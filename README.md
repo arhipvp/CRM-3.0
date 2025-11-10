@@ -19,3 +19,12 @@ API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 4. `npm run dev`
 
 Приложение доступно на `http://localhost:5173/` и взаимодействует с backend через переменную `VITE_API_URL`.
+
+## Docker Compose
+1. Убедитесь, что `backend/.env` содержит свободный `DJANGO_DB_PORT` (по умолчанию 5435).
+2. Выполните `docker compose up --build`.
+
+Сервисы:
+- Postgres: порт `5435`.
+- Backend: http://localhost:8000/
+- Frontend (Vite): http://localhost:5173/
