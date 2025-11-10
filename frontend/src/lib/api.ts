@@ -1,6 +1,7 @@
 import type {
   Client,
   Deal,
+  DealStage,
   Document,
   DocumentRecognitionResult,
   Expense,
@@ -8,6 +9,7 @@ import type {
   Income,
   Note,
   Payment,
+  Pipeline,
   Task,
 } from '../types'
 
@@ -76,11 +78,23 @@ export const api = {
   listDeals() {
     return request<Deal[]>('/deals/')
   },
+  createDeal(payload: Partial<Deal>) {
+    return request<Deal>('/deals/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
   listTasks() {
     return request<Task[]>('/tasks/')
   },
   listDocuments() {
     return request<Document[]>('/documents/')
+  },
+  listPipelines() {
+    return request<Pipeline[]>('/pipelines/')
+  },
+  listStages() {
+    return request<DealStage[]>('/stages/')
   },
   listPayments() {
     return request<Payment[]>('/payments/')

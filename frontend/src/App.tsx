@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
-import './components/Layout.css'
-import { Layout } from './components/Layout'
+import './components/MainLayout.css'
+import { MainLayout, type View } from './components/MainLayout'
+import { AddClientModal } from './components/modals/AddClientModal'
+import { AddDealModal } from './components/modals/AddDealModal'
 import { StatCard } from './components/StatCard'
 import { ClientsPage } from './pages/ClientsPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -11,6 +13,7 @@ import { FinancesPage } from './pages/FinancesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TasksPage } from './pages/TasksPage'
 import { api } from './lib/api'
+import type { Client, DealStage, Pipeline } from './types'
 
 type SummaryStats = {
   clients: number
@@ -19,18 +22,9 @@ type SummaryStats = {
   documents: number
 }
 
-const navItems = [
-  { key: 'dashboard', label: 'Дашборд', description: 'метрики и активности' },
-  { key: 'clients', label: 'Клиенты', description: 'карточки и контакты' },
-  { key: 'deals', label: 'Сделки', description: 'воронка + таблица' },
-  { key: 'tasks', label: 'Задачи', description: 'личные и командные' },
-  { key: 'documents', label: 'Документы', description: 'файлы и шаблоны' },
-  { key: 'finances', label: 'Финансы', description: 'платежи и отчёты' },
-  { key: 'settings', label: 'Настройки', description: 'пользователи и справочники' },
-]
-
 function App() {
-  const [activeView, setActiveView] = useState('dashboard')
+  const [view, setView] = useState<View>('deals')
+  const [modal, setModal] = useState<'deal' | 'client' | null>(null)
   const [summary, setSummary] = useState<SummaryStats>({
     clients: 0,
     deals: 0,
@@ -39,23 +33,26 @@ function App() {
   })
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [clients, setClients] = useState<Client[]>([])
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [stages, setStages] = useState<DealStage[]>([])
 
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true)
     setSummaryError(null)
     try {
-      const [clients, deals, tasks, documents] = await Promise.all([
+      const [clientsData, dealsData, tasksData, documentsData] = await Promise.all([
         api.listClients(),
         api.listDeals(),
         api.listTasks(),
         api.listDocuments(),
       ])
-
+      setClients(clientsData)
       setSummary({
-        clients: clients.length,
-        deals: deals.length,
-        tasks: tasks.length,
-        documents: documents.length,
+        clients: clientsData.length,
+        deals: dealsData.length,
+        tasks: tasksData.length,
+        documents: documentsData.length,
       })
     } catch (error) {
       console.error(error)
@@ -69,8 +66,23 @@ function App() {
     loadSummary()
   }, [loadSummary])
 
+  useEffect(() => {
+    const loadReferences = async () => {
+      try {
+        const [pipes, stageData] = await Promise.all([api.listPipelines(), api.listStages()])
+        setPipelines(pipes)
+        setStages(stageData)
+      } catch (err) {
+        console.error('Не удалось загрузить справочники', err)
+      }
+    }
+    loadReferences()
+  }, [])
+
   const content = useMemo(() => {
-    switch (activeView) {
+    switch (view) {
+      case 'dashboard':
+        return <DashboardPage summary={summary} />
       case 'clients':
         return <ClientsPage onDataChange={loadSummary} />
       case 'deals':
@@ -79,42 +91,77 @@ function App() {
         return <TasksPage />
       case 'documents':
         return <DocumentsPage />
-      case 'finances':
+      case 'payments':
+      case 'finance':
         return <FinancesPage />
+      case 'policies':
+        return <div className="muted">Страница полисов находится в разработке.</div>
       case 'settings':
         return <SettingsPage />
       default:
-        return <DashboardPage summary={summary} />
+        return <div className="muted">Раздел появится позже.</div>
     }
-  }, [activeView, loadSummary, summary])
+  }, [view, loadSummary, summary])
 
   return (
-    <Layout navItems={navItems} activeKey={activeView} onNavigate={setActiveView}>
-      <div className="grid">
-        <StatCard
-          label="Клиенты"
-          value={summaryLoading ? '…' : summary.clients.toString()}
-          hint="в системе"
+    <>
+      <MainLayout
+        activeView={view}
+        onNavigate={setView}
+        onAddClient={() => setModal('client')}
+        onAddDeal={() => setModal('deal')}
+      >
+        {view === 'dashboard' && (
+          <>
+            <div className="grid">
+              <StatCard
+                label="Клиенты"
+                value={summaryLoading ? '…' : summary.clients.toString()}
+                hint="в системе"
+              />
+              <StatCard
+                label="Сделки"
+                value={summaryLoading ? '…' : summary.deals.toString()}
+                hint="на всех этапах"
+              />
+              <StatCard
+                label="Задачи"
+                value={summaryLoading ? '…' : summary.tasks.toString()}
+                hint="в работе"
+              />
+              <StatCard
+                label="Документы"
+                value={summaryLoading ? '…' : summary.documents.toString()}
+                hint="загружено"
+              />
+            </div>
+            {summaryError && <div className="error">{summaryError}</div>}
+          </>
+        )}
+        {view !== 'dashboard' && summaryError && <div className="error">{summaryError}</div>}
+        <div className="view">{content}</div>
+      </MainLayout>
+
+      {modal === 'client' && (
+        <AddClientModal
+          onClose={() => setModal(null)}
+          onCreated={(client) => {
+            setClients((prev) => [client, ...prev])
+            loadSummary()
+          }}
         />
-        <StatCard
-          label="Сделки"
-          value={summaryLoading ? '…' : summary.deals.toString()}
-          hint="на всех этапах"
+      )}
+
+      {modal === 'deal' && (
+        <AddDealModal
+          clients={clients}
+          pipelines={pipelines}
+          stages={stages}
+          onClose={() => setModal(null)}
+          onCreated={() => loadSummary()}
         />
-        <StatCard
-          label="Задачи"
-          value={summaryLoading ? '…' : summary.tasks.toString()}
-          hint="в работе"
-        />
-        <StatCard
-          label="Документы"
-          value={summaryLoading ? '…' : summary.documents.toString()}
-          hint="загружено"
-        />
-      </div>
-      {summaryError && <div className="error">{summaryError}</div>}
-      <div className="view">{content}</div>
-    </Layout>
+      )}
+    </>
   )
 }
 
