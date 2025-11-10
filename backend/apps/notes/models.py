@@ -9,7 +9,9 @@ class Note(SoftDeleteModel):
         'deals.Deal',
         related_name='notes',
         on_delete=models.CASCADE,
-        help_text="Сделка"
+        help_text="Сделка",
+        null=True,
+        blank=True
     )
 
     body = models.TextField(help_text="Текст заметки")

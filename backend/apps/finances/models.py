@@ -14,7 +14,9 @@ class Payment(SoftDeleteModel):
         'deals.Deal',
         related_name='payments',
         on_delete=models.CASCADE,
-        help_text="Сделка"
+        help_text="Сделка",
+        null=True,
+        blank=True
     )
     amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма (в рублях)")
     description = models.CharField(max_length=255, blank=True, help_text="Описание")

@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='unsafe-dev-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default='1', cast=lambda x: x.lower() in ('true', '1', 'yes')) == True
+DEBUG = config('DEBUG', default='True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 CSRF_TRUSTED_ORIGINS = [origin for origin in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if origin]

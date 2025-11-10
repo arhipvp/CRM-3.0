@@ -27,7 +27,9 @@ class Task(SoftDeleteModel):
         'deals.Deal',
         related_name='tasks',
         on_delete=models.CASCADE,
-        help_text="Сделка"
+        help_text="Сделка",
+        null=True,
+        blank=True
     )
 
     # Назначение
