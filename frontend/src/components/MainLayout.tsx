@@ -32,18 +32,10 @@ const navItems: NavItem[] = [
 type MainLayoutProps = {
   activeView: View
   onNavigate: (view: View) => void
-  onAddDeal: () => void
-  onAddClient: () => void
   children: ReactNode
 }
 
-export const MainLayout = ({
-  activeView,
-  onNavigate,
-  onAddDeal,
-  onAddClient,
-  children,
-}: MainLayoutProps) => {
+export const MainLayout = ({ activeView, onNavigate, children }: MainLayoutProps) => {
   return (
     <div className="main-layout">
       <aside className="sidebar">
@@ -68,14 +60,6 @@ export const MainLayout = ({
             ))}
           </ul>
         </nav>
-        <div className="sidebar__actions">
-          <button type="button" onClick={onAddDeal}>
-            + Сделка
-          </button>
-          <button type="button" onClick={onAddClient}>
-            + Клиент
-          </button>
-        </div>
       </aside>
       <div className="main-content">
         <header className="main-header">

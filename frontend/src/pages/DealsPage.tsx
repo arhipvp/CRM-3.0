@@ -3,7 +3,11 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { api } from '../lib/api'
 import type { Deal, DocumentRecognitionResult, Note } from '../types'
 
-export function DealsPage() {
+type DealsPageProps = {
+  onAddDeal: () => void
+}
+
+export function DealsPage({ onAddDeal }: DealsPageProps) {
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -134,6 +138,12 @@ export function DealsPage() {
   return (
     <div className="deals-layout">
       <div>
+        <div className="deals-toolbar">
+          <h2>Сделки</h2>
+          <button type="button" onClick={onAddDeal}>
+            + Сделка
+          </button>
+        </div>
         {loading && <p className="muted">Загрузка…</p>}
         {error && <p className="error">{error}</p>}
         {!loading && deals.length === 0 && <p className="muted">Сделок пока нет.</p>}

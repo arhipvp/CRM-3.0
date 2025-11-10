@@ -374,6 +374,21 @@ tr:nth-child(even) {
   background: #020617;
 }
 
+.deals-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.deals-toolbar button {
+  background: #2563eb;
+  border: none;
+  border-radius: 0.5rem;
+  color: #fff;
+  padding: 0.4rem 0.9rem;
+}
+
 .notes-list li strong {
   display: block;
 }

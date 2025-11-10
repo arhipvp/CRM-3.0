@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import './components/MainLayout.css'
 import { MainLayout, type View } from './components/MainLayout'
-import { AddClientModal } from './components/modals/AddClientModal'
 import { AddDealModal } from './components/modals/AddDealModal'
 import { StatCard } from './components/StatCard'
 import { ClientsPage } from './pages/ClientsPage'
@@ -24,7 +23,7 @@ type SummaryStats = {
 
 function App() {
   const [view, setView] = useState<View>('deals')
-  const [modal, setModal] = useState<'deal' | 'client' | null>(null)
+  const [showDealModal, setShowDealModal] = useState(false)
   const [summary, setSummary] = useState<SummaryStats>({
     clients: 0,
     deals: 0,
@@ -86,7 +85,7 @@ function App() {
       case 'clients':
         return <ClientsPage onDataChange={loadSummary} />
       case 'deals':
-        return <DealsPage />
+        return <DealsPage onAddDeal={() => setShowDealModal(true)} />
       case 'tasks':
         return <TasksPage />
       case 'documents':
@@ -105,12 +104,7 @@ function App() {
 
   return (
     <>
-      <MainLayout
-        activeView={view}
-        onNavigate={setView}
-        onAddClient={() => setModal('client')}
-        onAddDeal={() => setModal('deal')}
-      >
+      <MainLayout activeView={view} onNavigate={setView}>
         {view === 'dashboard' && (
           <>
             <div className="grid">
@@ -142,22 +136,12 @@ function App() {
         <div className="view">{content}</div>
       </MainLayout>
 
-      {modal === 'client' && (
-        <AddClientModal
-          onClose={() => setModal(null)}
-          onCreated={(client) => {
-            setClients((prev) => [client, ...prev])
-            loadSummary()
-          }}
-        />
-      )}
-
-      {modal === 'deal' && (
+      {showDealModal && (
         <AddDealModal
           clients={clients}
           pipelines={pipelines}
           stages={stages}
-          onClose={() => setModal(null)}
+          onClose={() => setShowDealModal(false)}
           onCreated={() => loadSummary()}
         />
       )}
