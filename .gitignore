@@ -25,3 +25,4 @@ Thumbs.db
 .vscode/
 
 frontend_example/
+.claude/settings.local.json

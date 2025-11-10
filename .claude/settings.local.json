@@ -3,7 +3,20 @@
     "allow": [
       "Bash(dir \"C:\\Dev\\CRM 3.0\" /s /b)",
       "Bash(findstr:*)",
-      "Bash(dir \"C:\\Dev\\CRM 3.0\\backend\" /b)"
+      "Bash(dir \"C:\\Dev\\CRM 3.0\\backend\" /b)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(curl:*)",
+      "Bash(git reset:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
