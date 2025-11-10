@@ -118,6 +118,45 @@ tr:nth-child(even) {
   color: #94a3b8;
 }
 
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.open,
+.status-badge.info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.status-badge.won,
+.status-badge.success,
+.status-badge.paid {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.status-badge.lost {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fecaca;
+}
+
+.status-badge.on_hold {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fcd34d;
+}
+
+.status-badge.warning,
+.status-badge.partial {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fde68a;
+}
+
 .muted {
   color: #94a3b8;
 }
@@ -134,27 +173,49 @@ tr:nth-child(even) {
   border-radius: 0.6rem;
 }
 
-.kanban {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+.deals-board {
+  flex: 1;
+  min-width: 0;
 }
 
-.kanban-column {
-  background: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 0.75rem;
-  padding: 1rem;
-}
-
-.kanban-column header {
+.deals-toolbar__actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
+}
+
+.deals-toolbar__actions input {
+  border-radius: 999px;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: #f1f5f9;
+  padding: 0.4rem 0.9rem;
+  min-width: 240px;
+}
+
+.deals-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
 }
 
-.kanban-column ul {
+.deals-filters button {
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.deals-filters button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.deals-list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -163,11 +224,88 @@ tr:nth-child(even) {
   gap: 0.75rem;
 }
 
-.kanban-column li {
-  padding: 0.8rem;
-  border-radius: 0.6rem;
-  background: #020617;
+.deal-card {
+  width: 100%;
+  text-align: left;
   border: 1px solid #1e293b;
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: #020617;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deal-card.active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3);
+}
+
+.deal-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.deal-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.75rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-pill.open {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.status-pill.on_hold {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fcd34d;
+}
+
+.status-pill.won {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.status-pill.lost {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fecaca;
+}
+
+.deal-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.deal-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.deal-summary strong {
+  display: block;
+  font-size: 1.05rem;
+  margin-top: 0.1rem;
 }
 
 .tasks-list {
@@ -315,10 +453,6 @@ tr:nth-child(even) {
   align-items: flex-start;
 }
 
-.kanban-column li.selected {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3);
-}
 
 .deal-panel {
   width: 360px;

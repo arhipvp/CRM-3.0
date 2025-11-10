@@ -9,6 +9,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { DealsPage } from './pages/DealsPage'
 import { DocumentsPage } from './pages/DocumentsPage'
 import { FinancesPage } from './pages/FinancesPage'
+import { PaymentsPage } from './pages/PaymentsPage'
+import { PoliciesPage } from './pages/PoliciesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TasksPage } from './pages/TasksPage'
 import { api } from './lib/api'
@@ -76,10 +78,11 @@ function App() {
       case 'documents':
         return <DocumentsPage />
       case 'payments':
+        return <PaymentsPage />
       case 'finance':
         return <FinancesPage />
       case 'policies':
-        return <div className="muted">Страница полисов находится в разработке.</div>
+        return <PoliciesPage />
       case 'settings':
         return <SettingsPage />
       default:

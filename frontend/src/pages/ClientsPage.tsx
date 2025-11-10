@@ -15,6 +15,19 @@ const initialFormState = {
   email: '',
 }
 
+const dealStatusLabel = (status?: Deal['status']) => {
+  switch (status) {
+    case 'won':
+      return 'Сделка выиграна'
+    case 'lost':
+      return 'Сделка закрыта'
+    case 'on_hold':
+      return 'На паузе'
+    default:
+      return 'В работе'
+  }
+}
+
 export function ClientsPage({ onDataChange }: ClientsPageProps) {
   const [clients, setClients] = useState<Client[]>([])
   const [deals, setDeals] = useState<Deal[]>([])
@@ -281,7 +294,8 @@ export function ClientsPage({ onDataChange }: ClientsPageProps) {
                   <li key={deal.id}>
                     <div>
                       <strong>{deal.title}</strong>
-                      <small>{deal.stage_name ?? 'Не указан этап'}</small>
+                      <small>{dealStatusLabel(deal.status)}</small>
+                      {deal.stage_name && <span className="muted">{deal.stage_name}</span>}
                     </div>
                     <span>{deal.amount ? `${deal.amount} ₽` : ''}</span>
                   </li>

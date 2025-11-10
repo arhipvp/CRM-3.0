@@ -34,13 +34,16 @@ export const AddDealModal = ({ clients, onClose, onCreated }: AddDealModalProps)
     setSaving(true)
     setError(null)
     try {
-      const deal = await api.createDeal({
+      const payload: Partial<Deal> = {
         title: title.trim(),
         client: clientId,
         status,
-        stage_name: stageName.trim(),
         amount: Number(amount),
-      })
+      }
+      if (stageName.trim()) {
+        payload.stage_name = stageName.trim()
+      }
+      const deal = await api.createDeal(payload)
       onCreated(deal)
       onClose()
     } catch (err) {
@@ -79,17 +82,16 @@ export const AddDealModal = ({ clients, onClose, onCreated }: AddDealModalProps)
           </select>
         </label>
         <label>
-          Этап/комментарий
-          <input value={stageName} onChange={(event) => setStageName(event.target.value)} placeholder="Например, Подготовка КП" />
+          Комментарий
+          <input
+            value={stageName}
+            onChange={(event) => setStageName(event.target.value)}
+            placeholder="Например, Подготовить КП"
+          />
         </label>
         <label>
           Сумма
-          <input
-            type="number"
-            step="0.01"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-          />
+          <input type="number" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} />
         </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={saving || !clients.length}>

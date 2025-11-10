@@ -21,6 +21,8 @@ export type Deal = {
   amount?: number
   status?: string
   expected_close?: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 export type Task = {
