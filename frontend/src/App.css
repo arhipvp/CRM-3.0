@@ -43,6 +43,30 @@
   margin-bottom: 1rem;
 }
 
+.form-inline {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-inline input,
+.form-inline select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: #f8fafc;
+}
+
+.form-inline button {
+  background: #16a34a;
+  border: none;
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 0.5rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -82,6 +106,24 @@ tr:nth-child(even) {
 .badge-active {
   background: rgba(34, 197, 94, 0.2);
   color: #22c55e;
+}
+
+.badge-dormant {
+  background: rgba(248, 250, 252, 0.08);
+  color: #cbd5f5;
+}
+
+.badge-archived {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+.error {
+  color: #f87171;
 }
 
 .table-head button {

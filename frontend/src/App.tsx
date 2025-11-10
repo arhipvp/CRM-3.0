@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import './components/Layout.css'
 import { Layout } from './components/Layout'
@@ -9,6 +9,14 @@ import { DealsPage } from './pages/DealsPage'
 import { DocumentsPage } from './pages/DocumentsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TasksPage } from './pages/TasksPage'
+import { api } from './lib/api'
+
+type SummaryStats = {
+  clients: number
+  deals: number
+  tasks: number
+  documents: number
+}
 
 const navItems = [
   { key: 'dashboard', label: 'Дашборд', description: 'метрики и активности' },
@@ -21,11 +29,48 @@ const navItems = [
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard')
+  const [summary, setSummary] = useState<SummaryStats>({
+    clients: 0,
+    deals: 0,
+    tasks: 0,
+    documents: 0,
+  })
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true)
+    setSummaryError(null)
+    try {
+      const [clients, deals, tasks, documents] = await Promise.all([
+        api.listClients(),
+        api.listDeals(),
+        api.listTasks(),
+        api.listDocuments(),
+      ])
+
+      setSummary({
+        clients: clients.length,
+        deals: deals.length,
+        tasks: tasks.length,
+        documents: documents.length,
+      })
+    } catch (error) {
+      console.error(error)
+      setSummaryError('Не удалось загрузить сводку')
+    } finally {
+      setSummaryLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSummary()
+  }, [loadSummary])
 
   const content = useMemo(() => {
     switch (activeView) {
       case 'clients':
-        return <ClientsPage />
+        return <ClientsPage onDataChange={loadSummary} />
       case 'deals':
         return <DealsPage />
       case 'tasks':
@@ -35,17 +80,35 @@ function App() {
       case 'settings':
         return <SettingsPage />
       default:
-        return <DashboardPage />
+        return <DashboardPage summary={summary} />
     }
-  }, [activeView])
+  }, [activeView, loadSummary, summary])
 
   return (
     <Layout navItems={navItems} activeKey={activeView} onNavigate={setActiveView}>
       <div className="grid">
-        <StatCard label="Активные клиенты" value="24" hint="+3 за неделю" />
-        <StatCard label="Открытые сделки" value="12" hint="4 на финальном этапе" />
-        <StatCard label="Просроченные задачи" value="2" hint="нужно завершить сегодня" />
+        <StatCard
+          label="Клиенты"
+          value={summaryLoading ? '…' : summary.clients.toString()}
+          hint="в системе"
+        />
+        <StatCard
+          label="Сделки"
+          value={summaryLoading ? '…' : summary.deals.toString()}
+          hint="на всех этапах"
+        />
+        <StatCard
+          label="Задачи"
+          value={summaryLoading ? '…' : summary.tasks.toString()}
+          hint="в работе"
+        />
+        <StatCard
+          label="Документы"
+          value={summaryLoading ? '…' : summary.documents.toString()}
+          hint="загружено"
+        />
       </div>
+      {summaryError && <div className="error">{summaryError}</div>}
       <div className="view">{content}</div>
     </Layout>
   )

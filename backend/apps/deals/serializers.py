@@ -18,6 +18,10 @@ class DealStageSerializer(serializers.ModelSerializer):
 
 
 class DealSerializer(serializers.ModelSerializer):
+    client_name = serializers.CharField(source='client.name', read_only=True)
+    pipeline_name = serializers.CharField(source='pipeline.name', read_only=True)
+    stage_name = serializers.CharField(source='stage.name', read_only=True)
+
     class Meta:
         model = Deal
         fields = '__all__'
