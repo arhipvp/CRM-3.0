@@ -58,6 +58,7 @@ class Deal(SoftDeleteModel):
 
     # Даты
     expected_close = models.DateField(null=True, blank=True, help_text="Ожидаемая дата закрытия")
+    next_review_date = models.DateField(null=True, blank=True, help_text="Дата следующего просмотра")
 
     # Дополнительная информация
     source = models.CharField(max_length=100, blank=True, help_text="Источник")
@@ -65,7 +66,7 @@ class Deal(SoftDeleteModel):
     channel = models.CharField(max_length=100, blank=True, help_text="Канал продаж")
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['next_review_date', '-created_at']
         verbose_name = 'Сделка'
         verbose_name_plural = 'Сделки'
 
