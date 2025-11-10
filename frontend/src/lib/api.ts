@@ -8,7 +8,26 @@ const fallbackApiUrl = (() => {
   return 'http://localhost:8000/api/v1'
 })()
 
-const API_URL = import.meta.env.VITE_API_URL ?? fallbackApiUrl
+function resolveApiUrl() {
+  let url = import.meta.env.VITE_API_URL || fallbackApiUrl
+
+  try {
+    const parsed = new URL(url)
+    const browserHost =
+      typeof window !== 'undefined' ? window.location.hostname : 'localhost'
+
+    if (parsed.hostname === 'backend') {
+      parsed.hostname = browserHost
+      url = parsed.toString()
+    }
+  } catch {
+    url = fallbackApiUrl
+  }
+
+  return url.replace(/\/$/, '')
+}
+
+const API_URL = resolveApiUrl()
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
