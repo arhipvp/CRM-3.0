@@ -1,4 +1,15 @@
-import type { Client, Deal, Document, Task } from '../types'
+import type {
+  Client,
+  Deal,
+  Document,
+  DocumentRecognitionResult,
+  Expense,
+  FinanceSummary,
+  Income,
+  Note,
+  Payment,
+  Task,
+} from '../types'
 
 const fallbackApiUrl = (() => {
   if (typeof window !== 'undefined') {
@@ -30,13 +41,15 @@ function resolveApiUrl() {
 const API_URL = resolveApiUrl()
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-    ...init,
-  })
+  const options: RequestInit = { ...init }
+  const isFormData = options.body instanceof FormData
+  const defaultHeaders: HeadersInit = isFormData ? {} : { 'Content-Type': 'application/json' }
+  options.headers = {
+    ...defaultHeaders,
+    ...(options.headers || {}),
+  }
+
+  const response = await fetch(`${API_URL}${path}`, options)
 
   if (!response.ok) {
     const message = await response.text()
@@ -68,5 +81,61 @@ export const api = {
   },
   listDocuments() {
     return request<Document[]>('/documents/')
+  },
+  listPayments() {
+    return request<Payment[]>('/payments/')
+  },
+  createPayment(payload: Partial<Payment>) {
+    return request<Payment>('/payments/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  listIncomes() {
+    return request<Income[]>('/incomes/')
+  },
+  createIncome(payload: Partial<Income>) {
+    return request<Income>('/incomes/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  listExpenses() {
+    return request<Expense[]>('/expenses/')
+  },
+  createExpense(payload: Partial<Expense>) {
+    return request<Expense>('/expenses/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  getFinanceSummary() {
+    return request<FinanceSummary>('/finances/summary/')
+  },
+  listNotes(params?: { deal?: string; client?: string }) {
+    const query = new URLSearchParams()
+    if (params?.deal) {
+      query.append('deal', params.deal)
+    }
+    if (params?.client) {
+      query.append('client', params.client)
+    }
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return request<Note[]>(`/notes/${suffix}`)
+  },
+  createNote(payload: Partial<Note>) {
+    return request<Note>('/notes/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  recognizeDocuments(dealId: string, files: File[]) {
+    const formData = new FormData()
+    formData.append('deal_id', dealId)
+    files.forEach((file) => formData.append('files', file))
+    return request<{ results: DocumentRecognitionResult[] }>('/documents/recognize/', {
+      method: 'POST',
+      body: formData,
+    })
   },
 }

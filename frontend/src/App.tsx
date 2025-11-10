@@ -7,6 +7,7 @@ import { ClientsPage } from './pages/ClientsPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { DealsPage } from './pages/DealsPage'
 import { DocumentsPage } from './pages/DocumentsPage'
+import { FinancesPage } from './pages/FinancesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TasksPage } from './pages/TasksPage'
 import { api } from './lib/api'
@@ -24,6 +25,7 @@ const navItems = [
   { key: 'deals', label: 'Сделки', description: 'воронка + таблица' },
   { key: 'tasks', label: 'Задачи', description: 'личные и командные' },
   { key: 'documents', label: 'Документы', description: 'файлы и шаблоны' },
+  { key: 'finances', label: 'Финансы', description: 'платежи и отчёты' },
   { key: 'settings', label: 'Настройки', description: 'пользователи и справочники' },
 ]
 
@@ -77,6 +79,8 @@ function App() {
         return <TasksPage />
       case 'documents':
         return <DocumentsPage />
+      case 'finances':
+        return <FinancesPage />
       case 'settings':
         return <SettingsPage />
       default:
