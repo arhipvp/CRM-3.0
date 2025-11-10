@@ -12,6 +12,8 @@ export const AddClientModal = ({ onClose, onCreated }: AddClientModalProps) => {
   const [name, setName] = useState('')
   const [type, setType] = useState<'company' | 'person'>('company')
   const [status, setStatus] = useState('lead')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,7 +23,18 @@ export const AddClientModal = ({ onClose, onCreated }: AddClientModalProps) => {
     setSaving(true)
     setError(null)
     try {
-      const client = await api.createClient({ name: name.trim(), type, status })
+      const payload: Partial<Client> = {
+        name: name.trim(),
+        type,
+        status,
+      }
+      if (phone.trim()) {
+        payload.phones = [phone.trim()]
+      }
+      if (email.trim()) {
+        payload.emails = [email.trim()]
+      }
+      const client = await api.createClient(payload)
       onCreated(client)
       onClose()
     } catch (err) {
@@ -53,6 +66,14 @@ export const AddClientModal = ({ onClose, onCreated }: AddClientModalProps) => {
             <option value="active">Активный</option>
             <option value="dormant">Спящий</option>
           </select>
+        </label>
+        <label>
+          Телефон
+          <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+7..." />
+        </label>
+        <label>
+          Email
+          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" />
         </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={saving}>

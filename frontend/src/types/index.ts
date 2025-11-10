@@ -6,6 +6,10 @@ export type Client = {
   owner?: number | null
   tags?: string[]
   created_at?: string
+  phones?: string[]
+  emails?: string[]
+  messengers?: Record<string, string>
+  notes?: string
 }
 
 export type Pipeline = {

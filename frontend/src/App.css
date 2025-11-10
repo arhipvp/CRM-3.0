@@ -423,3 +423,10 @@ tr:nth-child(even) {
   gap: 1rem;
   margin-top: 2rem;
 }
+
+
+@media (max-width: 960px) {
+  .clients-layout {
+    grid-template-columns: 1fr;
+  }
+}
