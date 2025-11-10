@@ -8,8 +8,12 @@ while ! nc -z $DJANGO_DB_HOST $DJANGO_DB_PORT; do
 done
 echo "PostgreSQL started"
 
-echo "Running migrations..."
-python manage.py migrate --noinput
+if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+  echo "Running migrations..."
+  python manage.py migrate --noinput
+else
+  echo "Skipping migrations (set RUN_MIGRATIONS=true to enable automatic migrations)"
+fi
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput

@@ -1,122 +1,73 @@
-// Fix: Implemented type definitions for the application's data structures.
-export type DealStatus = 'Новая' | 'Расчет' | 'Переговоры' | 'Оформление' | 'Ожидает продления' | 'Закрыта';
-export type PolicyType = 'Авто' | 'Имущество' | 'Жизнь' | 'Здоровье';
-export type PaymentStatus = 'Оплачен' | 'Просрочен' | 'Ожидает';
-export type FinancialTransactionType = 'Доход' | 'Расход';
+export type DealStatus = "open" | "won" | "lost" | "on_hold";
+export type PaymentStatus = "planned" | "partial" | "paid";
+export type TaskStatus = "todo" | "in_progress" | "done" | "overdue" | "canceled";
+export type TaskPriority = "low" | "normal" | "high" | "urgent";
 
 export interface Client {
   id: string;
   name: string;
-  email: string;
-  phone: string;
-  address: string;
-  birthDate?: string;
-  notes?: string;
-}
-
-export interface Subtask {
-  id: string;
-  description: string;
-  completed: boolean;
-}
-
-export interface Task {
-  id: string;
-  description: string;
-  completed: boolean;
-  assignee: string;
-  dueDate: string;
-  subtasks?: Subtask[];
-  attachments?: FileAttachment[];
-}
-
-export interface Note {
-  id: string;
-  content: string;
+  phone?: string;
+  birthDate?: string | null;
   createdAt: string;
-  status: 'active' | 'archived';
-}
-
-export interface Quote {
-  id: string;
-  insurer: string;
-  insuranceType: string;
-  sumInsured: number;
-  premium: number;
-  deductible: string;
-  comments: string;
-}
-
-export interface FileAttachment {
-  id: string;
-  name: string;
-  size: number;
-  url: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: string;
-  text: string;
-  timestamp: string;
-}
-
-export interface ActivityLog {
-  id: string;
-  timestamp: string;
-  user: string;
-  action: string;
+  updatedAt: string;
 }
 
 export interface Deal {
   id: string;
   title: string;
+  description?: string;
   clientId: string;
+  clientName?: string;
   status: DealStatus;
-  owner: string;
-  assistant?: string;
-  summary: string;
-  nextReviewDate: string;
-  tasks: Task[];
-  notes: Note[];
-  quotes: Quote[];
-  files: FileAttachment[];
-  chat: ChatMessage[];
-  activityLog: ActivityLog[];
+  stageName?: string;
+  probability: number;
+  expectedClose?: string | null;
+  nextReviewDate?: string | null;
+  source?: string;
+  lossReason?: string;
+  channel?: string;
+  createdAt: string;
 }
 
 export interface Policy {
   id: string;
-  policyNumber: string;
-  type: PolicyType;
-  startDate: string;
-  endDate: string;
-  counterparty: string;
-  salesChannel: string;
-  clientId: string;
+  number: string;
+  insuranceCompany: string;
+  insuranceType: string;
   dealId: string;
-  carBrand?: string;
-  carModel?: string;
   vin?: string;
-  notes?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  amount: string;
+  status: string;
+  createdAt: string;
 }
 
 export interface Payment {
   id: string;
-  policyId: string;
-  clientId: string;
-  amount: number;
-  dueDate: string;
+  dealId?: string;
+  amount: string;
+  description?: string;
+  scheduledDate?: string | null;
+  actualDate?: string | null;
   status: PaymentStatus;
+  createdAt: string;
 }
 
-export interface FinancialTransaction {
+export interface ChecklistItem {
+  label: string;
+  done: boolean;
+}
+
+export interface Task {
   id: string;
-  description: string;
-  amount: number;
-  type: FinancialTransactionType;
-  date: string; // planned date
-  paymentDate?: string; // actual payment date
+  title: string;
+  description?: string;
   dealId?: string;
-  policyId?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueAt?: string | null;
+  remindAt?: string | null;
+  checklist: ChecklistItem[];
+  createdAt: string;
 }
