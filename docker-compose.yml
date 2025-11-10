@@ -1,28 +1,46 @@
+version: '3.8'
+
 services:
+  # PostgreSQL Database
   db:
-    image: postgres:16
+    image: postgres:16-alpine
+    container_name: crm3-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DJANGO_DB_NAME:-crm3}
       POSTGRES_USER: ${DJANGO_DB_USER:-crm3}
       POSTGRES_PASSWORD: ${DJANGO_DB_PASSWORD:-crm3}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${DJANGO_DB_PORT:-5435}:5432"
+      - "${DJANGO_DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DJANGO_DB_USER:-crm3} -d ${DJANGO_DB_NAME:-crm3}"]
       interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
+      start_period: 10s
+    networks:
+      - crm_network
+    # Для локальной разработки - уменьшаем лимиты
+    shm_size: 256m
 
+  # Django Backend
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    container_name: crm3-backend
+    restart: unless-stopped
     env_file:
       - backend/.env
     environment:
+      DEBUG: ${DEBUG:-False}
+      DJANGO_DB_ENGINE: postgresql
+      DJANGO_DB_NAME: ${DJANGO_DB_NAME:-crm3}
+      DJANGO_DB_USER: ${DJANGO_DB_USER:-crm3}
+      DJANGO_DB_PASSWORD: ${DJANGO_DB_PASSWORD:-crm3}
       DJANGO_DB_HOST: db
       DJANGO_DB_PORT: 5432
     depends_on:
@@ -30,20 +48,45 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+      - backend_static:/app/staticfiles
+      - backend_media:/app/media
+    networks:
+      - crm_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    env_file:
-      - frontend/.env
-    depends_on:
-      - backend
-    ports:
-      - "5173:5173"
+  # Frontend (опционально)
+  # frontend:
+  #   build:
+  #     context: frontend
+  #     dockerfile: Dockerfile
+  #   container_name: crm3-frontend
+  #   restart: unless-stopped
+  #   env_file:
+  #     - frontend/.env
+  #   depends_on:
+  #     - backend
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend:/app
+  #   networks:
+  #     - crm_network
 
 volumes:
   postgres_data:
+    driver: local
+  backend_static:
+    driver: local
+  backend_media:
+    driver: local
+
+networks:
+  crm_network:
+    driver: bridge

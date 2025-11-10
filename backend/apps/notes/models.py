@@ -1,19 +1,24 @@
-import uuid
-
 from django.db import models
+from apps.common.models import SoftDeleteModel
 
 
-class Note(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    deal = models.ForeignKey('deals.Deal', related_name='notes', on_delete=models.CASCADE, null=True, blank=True)
-    client = models.ForeignKey('clients.Client', related_name='notes', on_delete=models.CASCADE, null=True, blank=True)
-    body = models.TextField()
-    author_name = models.CharField(max_length=120, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+class Note(SoftDeleteModel):
+    """Заметка/комментарий к сделке"""
+
+    deal = models.ForeignKey(
+        'deals.Deal',
+        related_name='notes',
+        on_delete=models.CASCADE,
+        help_text="Сделка"
+    )
+
+    body = models.TextField(help_text="Текст заметки")
+    author_name = models.CharField(max_length=120, blank=True, help_text="Имя автора")
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Заметка'
+        verbose_name_plural = 'Заметки'
 
     def __str__(self) -> str:
-        target = self.deal or self.client
-        return f'Note for {target}' if target else 'Note'
+        return f'Заметка для {self.deal}'

@@ -1,10 +1,49 @@
+# Git
 .git
 .gitignore
-node_modules
-frontend/node_modules
-frontend/dist
-backend/.venv
-backend/staticfiles
-backend/media
-__pycache__
+.github
+
+# Python
+.venv
+venv
+env
 *.pyc
+__pycache__
+*.egg-info
+.pytest_cache
+.coverage
+htmlcov
+
+# Django
+*.db
+*.sqlite3
+staticfiles
+media
+.env
+.env.local
+
+# Frontend
+node_modules
+npm-debug.log
+yarn-error.log
+dist
+build
+.next
+
+# IDE
+.vscode
+.idea
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Docker
+.dockerignore
+Dockerfile
+
+# Project specific
+.claude
+frontend_example
+processes_lines.txt
+*.md
+crm3-*

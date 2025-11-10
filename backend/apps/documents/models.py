@@ -1,33 +1,47 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
+from apps.common.models import SoftDeleteModel
 
 
 def document_upload_path(instance, filename):
-    return f'documents/{instance.owner_id}/{filename}'
+    return f'documents/{instance.deal_id}/{filename}'
 
 
-class Document(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=255)
-    file = models.FileField(upload_to=document_upload_path)
-    file_size = models.PositiveIntegerField(default=0)
-    mime_type = models.CharField(max_length=120, blank=True)
-    deal = models.ForeignKey('deals.Deal', related_name='documents', on_delete=models.CASCADE, null=True, blank=True)
-    client = models.ForeignKey('clients.Client', related_name='documents', on_delete=models.CASCADE, null=True, blank=True)
-    contact = models.ForeignKey(
-        'clients.Contact', related_name='documents', on_delete=models.CASCADE, null=True, blank=True
+class Document(SoftDeleteModel):
+    """Документ, связанный со сделкой"""
+
+    title = models.CharField(max_length=255, help_text="Название документа")
+    file = models.FileField(upload_to=document_upload_path, help_text="Файл")
+    file_size = models.PositiveIntegerField(default=0, help_text="Размер файла в байтах")
+    mime_type = models.CharField(max_length=120, blank=True, help_text="MIME тип")
+
+    # Связь на сделку
+    deal = models.ForeignKey(
+        'deals.Deal',
+        related_name='documents',
+        on_delete=models.CASCADE,
+        help_text="Сделка"
     )
+
+    # Владелец
     owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name='documents', on_delete=models.SET_NULL, null=True, blank=True
+        settings.AUTH_USER_MODEL,
+        related_name='documents',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Владелец документа"
     )
-    doc_type = models.CharField(max_length=120, blank=True)
-    status = models.CharField(max_length=50, default='draft')
-    checksum = models.CharField(max_length=128, blank=True)
-    extra = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+    # Классификация
+    doc_type = models.CharField(max_length=120, blank=True, help_text="Тип документа")
+    status = models.CharField(max_length=50, default='draft', help_text="Статус")
+    checksum = models.CharField(max_length=128, blank=True, help_text="Контрольная сумма")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Документ'
+        verbose_name_plural = 'Документы'
 
     def save(self, *args, **kwargs):
         if self.file and not self.file_size:

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\Dev\\CRM 3.0\" /s /b)",
+      "Bash(findstr:*)",
+      "Bash(dir \"C:\\Dev\\CRM 3.0\\backend\" /b)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,39 +1,78 @@
-import uuid
-
 from django.conf import settings
 from django.db import models
+from apps.common.models import SoftDeleteModel
 
 
-class Task(models.Model):
+class Task(SoftDeleteModel):
+    """Задача, связанная со сделкой"""
+
     class TaskStatus(models.TextChoices):
-        TODO = 'todo', 'To do'
-        IN_PROGRESS = 'in_progress', 'In progress'
-        DONE = 'done', 'Done'
-        OVERDUE = 'overdue', 'Overdue'
-        CANCELED = 'canceled', 'Canceled'
+        TODO = 'todo', 'К выполнению'
+        IN_PROGRESS = 'in_progress', 'В процессе'
+        DONE = 'done', 'Завершена'
+        OVERDUE = 'overdue', 'Просрочена'
+        CANCELED = 'canceled', 'Отменена'
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    deal = models.ForeignKey('deals.Deal', related_name='tasks', on_delete=models.CASCADE, null=True, blank=True)
-    client = models.ForeignKey('clients.Client', related_name='tasks', on_delete=models.CASCADE, null=True, blank=True)
-    contact = models.ForeignKey(
-        'clients.Contact', related_name='tasks', on_delete=models.CASCADE, null=True, blank=True
+    class PriorityChoices(models.TextChoices):
+        LOW = 'low', 'Низкая'
+        NORMAL = 'normal', 'Обычная'
+        HIGH = 'high', 'Высокая'
+        URGENT = 'urgent', 'Срочная'
+
+    title = models.CharField(max_length=255, help_text="Название задачи")
+    description = models.TextField(blank=True, help_text="Описание задачи")
+
+    # Связь на сделку
+    deal = models.ForeignKey(
+        'deals.Deal',
+        related_name='tasks',
+        on_delete=models.CASCADE,
+        help_text="Сделка"
     )
+
+    # Назначение
     assignee = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name='assigned_tasks', on_delete=models.SET_NULL, null=True, blank=True
+        settings.AUTH_USER_MODEL,
+        related_name='assigned_tasks',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Назначен"
     )
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name='created_tasks', on_delete=models.SET_NULL, null=True, blank=True
+        settings.AUTH_USER_MODEL,
+        related_name='created_tasks',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Создано"
     )
-    due_at = models.DateTimeField(null=True, blank=True)
-    remind_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=TaskStatus.choices, default=TaskStatus.TODO)
-    priority = models.CharField(max_length=20, default='normal')
-    checklist = models.JSONField(default=list, blank=True)
-    extra = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+    # Сроки
+    due_at = models.DateTimeField(null=True, blank=True, help_text="Срок выполнения")
+    remind_at = models.DateTimeField(null=True, blank=True, help_text="Время напоминания")
+
+    # Статус и приоритет
+    status = models.CharField(
+        max_length=20,
+        choices=TaskStatus.choices,
+        default=TaskStatus.TODO,
+        help_text="Статус"
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=PriorityChoices.choices,
+        default=PriorityChoices.NORMAL,
+        help_text="Приоритет"
+    )
+
+    # Чек-лист
+    checklist = models.JSONField(default=list, blank=True, help_text="Пункты чек-листа")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Задача'
+        verbose_name_plural = 'Задачи'
 
     def __str__(self) -> str:
         return self.title

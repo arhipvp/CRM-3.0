@@ -1,50 +1,82 @@
-import uuid
-
 from django.db import models
+from apps.common.models import SoftDeleteModel
 
 
-class Payment(models.Model):
+class Payment(SoftDeleteModel):
+    """Платёж в рамках сделки"""
+
     class PaymentStatus(models.TextChoices):
-        PLANNED = 'planned', 'Planned'
-        PARTIAL = 'partial', 'Partial'
-        PAID = 'paid', 'Paid'
+        PLANNED = 'planned', 'Запланирован'
+        PARTIAL = 'partial', 'Частичный'
+        PAID = 'paid', 'Оплачен'
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    deal = models.ForeignKey('deals.Deal', related_name='payments', on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=8, default='RUB')
-    description = models.CharField(max_length=255, blank=True)
-    scheduled_date = models.DateField(null=True, blank=True)
-    actual_date = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PLANNED)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    deal = models.ForeignKey(
+        'deals.Deal',
+        related_name='payments',
+        on_delete=models.CASCADE,
+        help_text="Сделка"
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма (в рублях)")
+    description = models.CharField(max_length=255, blank=True, help_text="Описание")
+    scheduled_date = models.DateField(null=True, blank=True, help_text="Запланированная дата")
+    actual_date = models.DateField(null=True, blank=True, help_text="Фактическая дата")
+    status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PLANNED,
+        help_text="Статус"
+    )
 
-    def __str__(self) -> str:
-        return f'Payment {self.amount} {self.currency} for {self.deal}'
-
-
-class Income(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    payment = models.ForeignKey(Payment, related_name='incomes', on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    received_at = models.DateField(null=True, blank=True)
-    source = models.CharField(max_length=120, blank=True)
-    note = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Платёж'
+        verbose_name_plural = 'Платежи'
 
     def __str__(self) -> str:
-        return f'Income {self.amount} for {self.payment_id}'
+        return f'Платёж {self.amount} РУБ для {self.deal}'
 
 
-class Expense(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    payment = models.ForeignKey(Payment, related_name='expenses', on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    expense_type = models.CharField(max_length=120)
-    expense_date = models.DateField(null=True, blank=True)
-    note = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+class Income(SoftDeleteModel):
+    """Полученный доход"""
+
+    payment = models.ForeignKey(
+        Payment,
+        related_name='incomes',
+        on_delete=models.CASCADE,
+        help_text="Платёж"
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма (в рублях)")
+    received_at = models.DateField(null=True, blank=True, help_text="Дата получения")
+    source = models.CharField(max_length=120, blank=True, help_text="Источник")
+    note = models.TextField(blank=True, help_text="Примечание")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Доход'
+        verbose_name_plural = 'Доходы'
 
     def __str__(self) -> str:
-        return f'Expense {self.amount} for {self.payment_id}'
+        return f'Доход {self.amount} для {self.payment_id}'
+
+
+class Expense(SoftDeleteModel):
+    """Расход в рамках платежа"""
+
+    payment = models.ForeignKey(
+        Payment,
+        related_name='expenses',
+        on_delete=models.CASCADE,
+        help_text="Платёж"
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма")
+    expense_type = models.CharField(max_length=120, help_text="Тип расхода")
+    expense_date = models.DateField(null=True, blank=True, help_text="Дата расхода")
+    note = models.TextField(blank=True, help_text="Примечание")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Расход'
+        verbose_name_plural = 'Расходы'
+
+    def __str__(self) -> str:
+        return f'Расход {self.amount} для {self.payment_id}'
