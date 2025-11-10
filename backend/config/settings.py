@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,13 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'unsafe-dev-key')
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='unsafe-dev-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', '1') == '1'
+DEBUG = config('DEBUG', default='1', cast=lambda x: x.lower() in ('true', '1', 'yes')) == True
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',')
-CSRF_TRUSTED_ORIGINS = [origin for origin in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if origin]
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
+CSRF_TRUSTED_ORIGINS = [origin for origin in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if origin]
 
 
 # Application definition
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
+    'apps.common',
     'apps.users',
     'apps.clients',
     'apps.deals',
@@ -52,6 +54,7 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.finances',
     'apps.notes',
+    'apps.policies',
 ]
 
 MIDDLEWARE = [
@@ -91,12 +94,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DJANGO_DB_ENGINE', 'django.db.backends.sqlite3'),
-        'NAME': os.getenv('DJANGO_DB_NAME', BASE_DIR / 'db.sqlite3'),
-        'USER': os.getenv('DJANGO_DB_USER', ''),
-        'PASSWORD': os.getenv('DJANGO_DB_PASSWORD', ''),
-        'HOST': os.getenv('DJANGO_DB_HOST', ''),
-        'PORT': os.getenv('DJANGO_DB_PORT', ''),
+        'ENGINE': config('DJANGO_DB_ENGINE', default='django.db.backends.sqlite3'),
+        'NAME': config('DJANGO_DB_NAME', default=str(BASE_DIR / 'db.sqlite3')),
+        'USER': config('DJANGO_DB_USER', default=''),
+        'PASSWORD': config('DJANGO_DB_PASSWORD', default=''),
+        'HOST': config('DJANGO_DB_HOST', default=''),
+        'PORT': config('DJANGO_DB_PORT', default=''),
     }
 }
 

@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
-from .models import Client
+from .models import Policy
 
 
-class ClientSerializer(serializers.ModelSerializer):
+class PolicySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Client
+        model = Policy
         fields = '__all__'
         read_only_fields = ('id', 'created_at', 'updated_at', 'deleted_at')

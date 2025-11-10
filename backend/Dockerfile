@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем requirements и устанавливаем зависимости Python
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt && \
     pip install --user gunicorn
 
@@ -36,13 +36,12 @@ ENV PATH=/root/.local/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1
 
 # Копируем код приложения
-COPY . .
+COPY backend/ .
 
 # Создаем директорию для статических файлов и медиа
 RUN mkdir -p /app/staticfiles /app/media
 
-# Копируем entrypoint скрипт
-COPY entrypoint.sh /app/
+# entrypoint.sh уже скопирован выше
 RUN chmod +x /app/entrypoint.sh
 
 # Expose порта
@@ -53,4 +52,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import socket; socket.create_connection(('localhost', 8000), timeout=5)" || exit 1
 
 # Default command - используется в docker-compose
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
