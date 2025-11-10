@@ -1,6 +1,14 @@
 import type { Client, Deal, Document, Task } from '../types'
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
+const fallbackApiUrl = (() => {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location
+    return `${protocol}//${hostname}:8000/api/v1`
+  }
+  return 'http://localhost:8000/api/v1'
+})()
+
+const API_URL = import.meta.env.VITE_API_URL ?? fallbackApiUrl
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
