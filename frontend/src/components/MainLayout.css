@@ -59,22 +59,6 @@
   background: rgba(56, 189, 248, 0.12);
 }
 
-.sidebar__actions {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sidebar__actions button {
-  border: none;
-  border-radius: 0.5rem;
-  padding: 0.6rem;
-  background: #2563eb;
-  color: white;
-  font-weight: 600;
-}
-
 .main-content {
   display: flex;
   flex-direction: column;
@@ -221,7 +205,4 @@
     flex-wrap: wrap;
   }
 
-  .sidebar__actions {
-    flex-direction: row;
-  }
 }

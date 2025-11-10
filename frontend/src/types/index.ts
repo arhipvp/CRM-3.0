@@ -12,30 +12,15 @@ export type Client = {
   notes?: string
 }
 
-export type Pipeline = {
-  id: string
-  name: string
-  code?: string
-}
-
-export type DealStage = {
-  id: string
-  pipeline: string
-  name: string
-  order_index?: number
-}
-
 export type Deal = {
   id: string
   title: string
-  stage: string
   stage_name?: string
-  pipeline_name?: string
-  pipeline?: string
   client?: string
   client_name?: string
   amount?: number
   status?: string
+  expected_close?: string | null
 }
 
 export type Task = {

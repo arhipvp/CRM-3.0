@@ -4,37 +4,6 @@ from django.conf import settings
 from django.db import models
 
 
-class Pipeline(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=120)
-    code = models.CharField(max_length=50, unique=True)
-    is_default = models.BooleanField(default=False)
-    order_index = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ['order_index']
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class DealStage(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    pipeline = models.ForeignKey(Pipeline, related_name='stages', on_delete=models.CASCADE)
-    name = models.CharField(max_length=120)
-    code = models.CharField(max_length=50)
-    order_index = models.PositiveIntegerField(default=0)
-    probability_hint = models.PositiveIntegerField(default=0)
-    color = models.CharField(max_length=20, default='#000000')
-
-    class Meta:
-        ordering = ['order_index']
-        unique_together = ('pipeline', 'code')
-
-    def __str__(self) -> str:
-        return f'{self.pipeline.name}: {self.name}'
-
-
 class Deal(models.Model):
     class DealStatus(models.TextChoices):
         OPEN = 'open', 'Open'
@@ -44,8 +13,6 @@ class Deal(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
-    pipeline = models.ForeignKey(Pipeline, related_name='deals', on_delete=models.PROTECT)
-    stage = models.ForeignKey(DealStage, related_name='deals', on_delete=models.PROTECT)
     client = models.ForeignKey('clients.Client', related_name='deals', on_delete=models.CASCADE)
     primary_contact = models.ForeignKey(
         'clients.Contact', related_name='primary_deals', on_delete=models.SET_NULL, null=True, blank=True
@@ -57,6 +24,7 @@ class Deal(models.Model):
     currency = models.CharField(max_length=8, default='RUB')
     probability = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=20, choices=DealStatus.choices, default=DealStatus.OPEN)
+    stage_name = models.CharField(max_length=120, blank=True)
     expected_close = models.DateField(null=True, blank=True)
     source = models.CharField(max_length=100, blank=True)
     loss_reason = models.CharField(max_length=255, blank=True)

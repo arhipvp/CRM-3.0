@@ -1,7 +1,6 @@
 import type {
   Client,
   Deal,
-  DealStage,
   Document,
   DocumentRecognitionResult,
   Expense,
@@ -9,7 +8,6 @@ import type {
   Income,
   Note,
   Payment,
-  Pipeline,
   Task,
 } from '../types'
 
@@ -89,12 +87,6 @@ export const api = {
   },
   listDocuments() {
     return request<Document[]>('/documents/')
-  },
-  listPipelines() {
-    return request<Pipeline[]>('/pipelines/')
-  },
-  listStages() {
-    return request<DealStage[]>('/stages/')
   },
   listPayments() {
     return request<Payment[]>('/payments/')

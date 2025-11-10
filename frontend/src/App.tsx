@@ -12,7 +12,7 @@ import { FinancesPage } from './pages/FinancesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TasksPage } from './pages/TasksPage'
 import { api } from './lib/api'
-import type { Client, DealStage, Pipeline } from './types'
+import type { Client } from './types'
 
 type SummaryStats = {
   clients: number
@@ -33,8 +33,6 @@ function App() {
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [clients, setClients] = useState<Client[]>([])
-  const [pipelines, setPipelines] = useState<Pipeline[]>([])
-  const [stages, setStages] = useState<DealStage[]>([])
 
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true)
@@ -64,19 +62,6 @@ function App() {
   useEffect(() => {
     loadSummary()
   }, [loadSummary])
-
-  useEffect(() => {
-    const loadReferences = async () => {
-      try {
-        const [pipes, stageData] = await Promise.all([api.listPipelines(), api.listStages()])
-        setPipelines(pipes)
-        setStages(stageData)
-      } catch (err) {
-        console.error('Не удалось загрузить справочники', err)
-      }
-    }
-    loadReferences()
-  }, [])
 
   const content = useMemo(() => {
     switch (view) {
@@ -139,8 +124,6 @@ function App() {
       {showDealModal && (
         <AddDealModal
           clients={clients}
-          pipelines={pipelines}
-          stages={stages}
           onClose={() => setShowDealModal(false)}
           onCreated={() => loadSummary()}
         />

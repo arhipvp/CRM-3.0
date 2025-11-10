@@ -1,40 +1,34 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { Client, Deal, DealStage, Pipeline } from '../../types'
+import { useState } from 'react'
+import type { Client, Deal } from '../../types'
 import { api } from '../../lib/api'
 import { Modal } from './Modal'
 
 type AddDealModalProps = {
   clients: Client[]
-  pipelines: Pipeline[]
-  stages: DealStage[]
   onClose: () => void
   onCreated: (deal: Deal) => void
 }
 
-export const AddDealModal = ({ clients, pipelines, stages, onClose, onCreated }: AddDealModalProps) => {
+const statusOptions: Array<{ value: Deal['status']; label: string }> = [
+  { value: 'open', label: 'В работе' },
+  { value: 'on_hold', label: 'На паузе' },
+  { value: 'won', label: 'Выиграна' },
+  { value: 'lost', label: 'Проиграна' },
+]
+
+export const AddDealModal = ({ clients, onClose, onCreated }: AddDealModalProps) => {
   const [title, setTitle] = useState('')
   const [clientId, setClientId] = useState(clients[0]?.id || '')
-  const [pipelineId, setPipelineId] = useState(pipelines[0]?.id || '')
-  const [stageId, setStageId] = useState('')
+  const [status, setStatus] = useState<Deal['status']>('open')
+  const [stageName, setStageName] = useState('')
   const [amount, setAmount] = useState('0')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const filteredStages = useMemo(
-    () => stages.filter((stage) => stage.pipeline === pipelineId),
-    [stages, pipelineId],
-  )
-
-  useEffect(() => {
-    if (!stageId && filteredStages.length) {
-      setStageId(filteredStages[0].id)
-    }
-  }, [filteredStages, stageId])
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!title.trim() || !clientId || !pipelineId || !stageId) {
-      setError('Заполните все поля')
+    if (!title.trim() || !clientId) {
+      setError('Заполните название и выберите клиента')
       return
     }
     setSaving(true)
@@ -43,8 +37,8 @@ export const AddDealModal = ({ clients, pipelines, stages, onClose, onCreated }:
       const deal = await api.createDeal({
         title: title.trim(),
         client: clientId,
-        pipeline: pipelineId,
-        stage: stageId,
+        status,
+        stage_name: stageName.trim(),
         amount: Number(amount),
       })
       onCreated(deal)
@@ -75,30 +69,18 @@ export const AddDealModal = ({ clients, pipelines, stages, onClose, onCreated }:
           </select>
         </label>
         <label>
-          Воронка
-          <select
-            value={pipelineId}
-            onChange={(event) => {
-              setPipelineId(event.target.value)
-              setStageId('')
-            }}
-          >
-            {pipelines.map((pipeline) => (
-              <option key={pipeline.id} value={pipeline.id}>
-                {pipeline.name}
+          Статус
+          <select value={status} onChange={(event) => setStatus(event.target.value as Deal['status'])}>
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Этап
-          <select value={stageId} onChange={(event) => setStageId(event.target.value)}>
-            {filteredStages.map((stage) => (
-              <option key={stage.id} value={stage.id}>
-                {stage.name}
-              </option>
-            ))}
-          </select>
+          Этап/комментарий
+          <input value={stageName} onChange={(event) => setStageName(event.target.value)} placeholder="Например, Подготовка КП" />
         </label>
         <label>
           Сумма
@@ -110,7 +92,7 @@ export const AddDealModal = ({ clients, pipelines, stages, onClose, onCreated }:
           />
         </label>
         {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={saving || !clients.length || !pipelines.length}>
+        <button type="submit" disabled={saving || !clients.length}>
           {saving ? 'Сохранение…' : 'Создать'}
         </button>
       </form>
