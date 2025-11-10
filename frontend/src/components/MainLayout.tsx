@@ -11,13 +11,13 @@ interface MainLayoutProps {
 }
 
 const NAV_ITEMS: Array<{ view: View; label: string; icon: string }> = [
-  { view: "deals", label: "Сделки", icon: "??" },
-  { view: "clients", label: "Клиенты", icon: "??" },
-  { view: "policies", label: "Полисы", icon: "??" },
-  { view: "payments", label: "Платежи", icon: "??" },
-  { view: "finance", label: "Финансы", icon: "??" },
-  { view: "tasks", label: "Задачи", icon: "?" },
-  { view: "settings", label: "Настройки", icon: "??" },
+  { view: "deals", label: "РЎРґРµР»РєРё", icon: "рџ“‹" },
+  { view: "clients", label: "РљР»РёРµРЅС‚С‹", icon: "рџ‘Ґ" },
+  { view: "policies", label: "РџРѕР»РёСЃС‹", icon: "рџ“„" },
+  { view: "payments", label: "РџР»Р°С‚РµР¶Рё", icon: "рџ’і" },
+  { view: "finance", label: "Р¤РёРЅР°РЅСЃС‹", icon: "рџ“Љ" },
+  { view: "tasks", label: "Р—Р°РґР°С‡Рё", icon: "вњ…" },
+  { view: "settings", label: "РќР°СЃС‚СЂРѕР№РєРё", icon: "вљ™пёЏ" },
 ];
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, onAddDeal, onAddClient, children }) => {
@@ -49,10 +49,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, 
         </nav>
         <div className="p-4 border-t border-slate-200 space-y-2">
           <button onClick={onAddDeal} className="w-full bg-sky-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-sky-700">
-            + Новая сделка
+            + РќРѕРІР°СЏ СЃРґРµР»РєР°
           </button>
           <button onClick={onAddClient} className="w-full border border-slate-300 text-slate-700 rounded-lg py-2 text-sm font-semibold hover:bg-slate-50">
-            + Новый клиент
+            + РќРѕРІС‹Р№ РєР»РёРµРЅС‚
           </button>
         </div>
       </aside>
@@ -61,4 +61,4 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, 
       </main>
     </div>
   );
-};
+};

@@ -12,7 +12,9 @@ export const Modal: React.FC<ModalProps> = ({ title, onClose, children }) => {
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">?</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Закрыть">
+            ×
+          </button>
         </div>
         <div className="p-5">{children}</div>
       </div>

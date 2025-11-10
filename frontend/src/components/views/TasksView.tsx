@@ -2,11 +2,11 @@ import React from "react";
 import { Deal, Task } from "../../types";
 
 const statusLabels: Record<string, string> = {
-  todo: "К выполнению",
-  in_progress: "В работе",
-  done: "Готово",
-  overdue: "Просрочено",
-  canceled: "Отменено",
+  todo: "Рљ РІС‹РїРѕР»РЅРµРЅРёСЋ",
+  in_progress: "Р’ СЂР°Р±РѕС‚Рµ",
+  done: "Р“РѕС‚РѕРІРѕ",
+  overdue: "РџСЂРѕСЃСЂРѕС‡РµРЅРѕ",
+  canceled: "РћС‚РјРµРЅРµРЅРѕ",
 };
 
 interface TasksViewProps {
@@ -20,11 +20,11 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
           <tr>
-            <th className="px-5 py-3">Задача</th>
-            <th className="px-5 py-3">Статус</th>
-            <th className="px-5 py-3">Приоритет</th>
-            <th className="px-5 py-3">Сделка</th>
-            <th className="px-5 py-3">Дедлайн</th>
+            <th className="px-5 py-3">Р—Р°РґР°С‡Р°</th>
+            <th className="px-5 py-3">РЎС‚Р°С‚СѓСЃ</th>
+            <th className="px-5 py-3">РџСЂРёРѕСЂРёС‚РµС‚</th>
+            <th className="px-5 py-3">РЎРґРµР»РєР°</th>
+            <th className="px-5 py-3">Р”РµРґР»Р°Р№РЅ</th>
           </tr>
         </thead>
         <tbody>
@@ -38,9 +38,9 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
                 </td>
                 <td className="px-5 py-4 text-slate-600">{statusLabels[task.status] || task.status}</td>
                 <td className="px-5 py-4 text-slate-600">{task.priority}</td>
-                <td className="px-5 py-4 text-slate-600">{deal?.title || "—"}</td>
+                <td className="px-5 py-4 text-slate-600">{deal?.title || "вЂ”"}</td>
                 <td className="px-5 py-4 text-slate-600">
-                  {task.dueAt ? new Date(task.dueAt).toLocaleDateString("ru-RU") : "—"}
+                  {task.dueAt ? new Date(task.dueAt).toLocaleDateString("ru-RU") : "вЂ”"}
                 </td>
               </tr>
             );
@@ -48,7 +48,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
           {!tasks.length && (
             <tr>
               <td colSpan={5} className="px-5 py-6 text-center text-slate-500">
-                Задач пока нет
+                Р—Р°РґР°С‡ РїРѕРєР° РЅРµС‚
               </td>
             </tr>
           )}
@@ -56,4 +56,4 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
       </table>
     </div>
   );
-};
+};

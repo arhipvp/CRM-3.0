@@ -2,13 +2,13 @@ import React from "react";
 import { Client, Deal, DealStatus, Payment, Policy, Task } from "../../types";
 
 const statusLabels: Record<DealStatus, string> = {
-  open: "В работе",
-  won: "Успешно",
-  lost: "Закрыта (потеряна)",
-  on_hold: "На паузе",
+  open: "Р’ СЂР°Р±РѕС‚Рµ",
+  won: "РЈСЃРїРµС€РЅРѕ",
+  lost: "Р—Р°РєСЂС‹С‚Р° (РїРѕС‚РµСЂСЏРЅР°)",
+  on_hold: "РќР° РїР°СѓР·Рµ",
 };
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "вЂ”");
 
 interface DealsViewProps {
   deals: Deal[];
@@ -33,7 +33,7 @@ export const DealsView: React.FC<DealsViewProps> = ({ deals, clients, policies, 
       <section className="xl:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
+            <p className="text-xs uppercase tracking-wide text-slate-400">РЎРґРµР»РєРё</p>
             <p className="text-lg font-semibold text-slate-900">{deals.length}</p>
           </div>
         </div>
@@ -48,10 +48,10 @@ export const DealsView: React.FC<DealsViewProps> = ({ deals, clients, policies, 
             >
               <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
               <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
-              <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || "—"}</p>
+              <p className="text-xs text-slate-400 mt-1">РљР»РёРµРЅС‚: {deal.clientName || "вЂ”"}</p>
             </button>
           ))}
-          {!deals.length && <p className="p-6 text-sm text-slate-500">Сделок пока нет</p>}
+          {!deals.length && <p className="p-6 text-sm text-slate-500">РЎРґРµР»РѕРє РїРѕРєР° РЅРµС‚</p>}
         </div>
       </section>
 
@@ -61,12 +61,12 @@ export const DealsView: React.FC<DealsViewProps> = ({ deals, clients, policies, 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
-                  <p className="text-sm text-slate-500">Сделка</p>
+                  <p className="text-sm text-slate-500">РЎРґРµР»РєР°</p>
                   <h2 className="text-2xl font-semibold text-slate-900">{selectedDeal.title}</h2>
-                  <p className="text-sm text-slate-500 mt-1">{selectedClient?.name || "Без клиента"}</p>
+                  <p className="text-sm text-slate-500 mt-1">{selectedClient?.name || "Р‘РµР· РєР»РёРµРЅС‚Р°"}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <label className="text-sm text-slate-600">Статус</label>
+                  <label className="text-sm text-slate-600">РЎС‚Р°С‚СѓСЃ</label>
                   <select
                     value={selectedDeal.status}
                     onChange={(event) => onUpdateStatus(selectedDeal.id, event.target.value as DealStatus)}
@@ -85,20 +85,20 @@ export const DealsView: React.FC<DealsViewProps> = ({ deals, clients, policies, 
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 text-sm">
                 <div>
-                  <p className="text-slate-500">Вероятность</p>
+                  <p className="text-slate-500">Р’РµСЂРѕСЏС‚РЅРѕСЃС‚СЊ</p>
                   <p className="text-lg font-semibold">{selectedDeal.probability}%</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Проверить до</p>
+                  <p className="text-slate-500">РџСЂРѕРІРµСЂРёС‚СЊ РґРѕ</p>
                   <p className="text-lg font-semibold">{formatDate(selectedDeal.nextReviewDate)}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Закрытие</p>
+                  <p className="text-slate-500">Р—Р°РєСЂС‹С‚РёРµ</p>
                   <p className="text-lg font-semibold">{formatDate(selectedDeal.expectedClose)}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Этап</p>
-                  <p className="text-lg font-semibold">{selectedDeal.stageName || "—"}</p>
+                  <p className="text-slate-500">Р­С‚Р°Рї</p>
+                  <p className="text-lg font-semibold">{selectedDeal.stageName || "вЂ”"}</p>
                 </div>
               </div>
             </div>
@@ -106,7 +106,7 @@ export const DealsView: React.FC<DealsViewProps> = ({ deals, clients, policies, 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Полисы ({relatedPolicies.length})</h3>
+                  <h3 className="text-lg font-semibold">РџРѕР»РёСЃС‹ ({relatedPolicies.length})</h3>
                 </div>
                 {relatedPolicies.length ? (
                   <div className="space-y-3">
@@ -115,39 +115,39 @@ export const DealsView: React.FC<DealsViewProps> = ({ deals, clients, policies, 
                         <p className="text-sm font-semibold text-slate-900">{policy.number}</p>
                         <p className="text-xs text-slate-500">{policy.insuranceCompany}</p>
                         <p className="text-xs text-slate-400 mt-1">{policy.insuranceType}</p>
-                        <p className="text-xs text-slate-400 mt-1">Статус: {policy.status}</p>
+                        <p className="text-xs text-slate-400 mt-1">РЎС‚Р°С‚СѓСЃ: {policy.status}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500">Связанных полисов нет</p>
+                  <p className="text-sm text-slate-500">РЎРІСЏР·Р°РЅРЅС‹С… РїРѕР»РёСЃРѕРІ РЅРµС‚</p>
                 )}
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Платежи ({relatedPayments.length})</h3>
+                  <h3 className="text-lg font-semibold">РџР»Р°С‚РµР¶Рё ({relatedPayments.length})</h3>
                 </div>
                 {relatedPayments.length ? (
                   <div className="space-y-3">
                     {relatedPayments.map((payment) => (
                       <div key={payment.id} className="border border-slate-100 rounded-xl p-3 text-sm">
                         <p className="font-semibold text-slate-900">{Number(payment.amount).toLocaleString("ru-RU", { style: "currency", currency: "RUB" })}</p>
-                        <p className="text-slate-500">{payment.description || "Без описания"}</p>
-                        <p className="text-xs text-slate-400 mt-1">Плановая дата: {formatDate(payment.scheduledDate)}</p>
-                        <p className="text-xs text-slate-400">Факт: {formatDate(payment.actualDate)}</p>
-                        <p className="text-xs text-slate-500 mt-1">Статус: {payment.status}</p>
+                        <p className="text-slate-500">{payment.description || "Р‘РµР· РѕРїРёСЃР°РЅРёСЏ"}</p>
+                        <p className="text-xs text-slate-400 mt-1">РџР»Р°РЅРѕРІР°СЏ РґР°С‚Р°: {formatDate(payment.scheduledDate)}</p>
+                        <p className="text-xs text-slate-400">Р¤Р°РєС‚: {formatDate(payment.actualDate)}</p>
+                        <p className="text-xs text-slate-500 mt-1">РЎС‚Р°С‚СѓСЃ: {payment.status}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500">Платежей пока нет</p>
+                  <p className="text-sm text-slate-500">РџР»Р°С‚РµР¶РµР№ РїРѕРєР° РЅРµС‚</p>
                 )}
               </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Задачи ({relatedTasks.length})</h3>
+                <h3 className="text-lg font-semibold">Р—Р°РґР°С‡Рё ({relatedTasks.length})</h3>
               </div>
               {relatedTasks.length ? (
                 <ul className="divide-y divide-slate-100">
@@ -156,23 +156,23 @@ export const DealsView: React.FC<DealsViewProps> = ({ deals, clients, policies, 
                       <p className="font-semibold text-slate-900 text-sm">{task.title}</p>
                       {task.description && <p className="text-sm text-slate-500 mt-1">{task.description}</p>}
                       <div className="text-xs text-slate-400 mt-1 flex gap-4">
-                        <span>Статус: {task.status}</span>
-                        {task.dueAt && <span>Дедлайн: {formatDate(task.dueAt)}</span>}
+                        <span>РЎС‚Р°С‚СѓСЃ: {task.status}</span>
+                        {task.dueAt && <span>Р”РµРґР»Р°Р№РЅ: {formatDate(task.dueAt)}</span>}
                       </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-500">Активных задач нет</p>
+                <p className="text-sm text-slate-500">РђРєС‚РёРІРЅС‹С… Р·Р°РґР°С‡ РЅРµС‚</p>
               )}
             </div>
           </>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">
-            Добавьте первую сделку, чтобы увидеть детали
+            Р”РѕР±Р°РІСЊС‚Рµ РїРµСЂРІСѓСЋ СЃРґРµР»РєСѓ, С‡С‚РѕР±С‹ СѓРІРёРґРµС‚СЊ РґРµС‚Р°Р»Рё
           </div>
         )}
       </section>
     </div>
   );
-};
+};

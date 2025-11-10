@@ -16,4 +16,5 @@ COPY . .
 
 EXPOSE 5173
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+# Разрешаем Vite самому читать host/port из env (см. VITE_DEV_HOST)
+CMD ["npm", "run", "dev"]

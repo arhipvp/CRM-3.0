@@ -1,7 +1,7 @@
 import React from "react";
 import { Deal, Payment } from "../../types";
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "вЂ”");
 
 interface PaymentsViewProps {
   payments: Payment[];
@@ -15,12 +15,12 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
           <tr>
-            <th className="px-5 py-3">Сделка</th>
-            <th className="px-5 py-3">Сумма</th>
-            <th className="px-5 py-3">Плановая дата</th>
-            <th className="px-5 py-3">Факт</th>
-            <th className="px-5 py-3">Статус</th>
-            <th className="px-5 py-3 text-right">Действие</th>
+            <th className="px-5 py-3">РЎРґРµР»РєР°</th>
+            <th className="px-5 py-3">РЎСѓРјРјР°</th>
+            <th className="px-5 py-3">РџР»Р°РЅРѕРІР°СЏ РґР°С‚Р°</th>
+            <th className="px-5 py-3">Р¤Р°РєС‚</th>
+            <th className="px-5 py-3">РЎС‚Р°С‚СѓСЃ</th>
+            <th className="px-5 py-3 text-right">Р”РµР№СЃС‚РІРёРµ</th>
           </tr>
         </thead>
         <tbody>
@@ -29,7 +29,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
             return (
               <tr key={payment.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-5 py-4">
-                  <p className="font-semibold text-slate-900">{deal?.title || "—"}</p>
+                  <p className="font-semibold text-slate-900">{deal?.title || "вЂ”"}</p>
                   <p className="text-xs text-slate-500">{deal?.clientName || ""}</p>
                 </td>
                 <td className="px-5 py-4 text-slate-600">
@@ -44,10 +44,10 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
                       onClick={() => onMarkPaid(payment.id)}
                       className="text-sky-600 font-semibold hover:text-sky-800"
                     >
-                      Отметить оплаченным
+                      РћС‚РјРµС‚РёС‚СЊ РѕРїР»Р°С‡РµРЅРЅС‹Рј
                     </button>
                   ) : (
-                    <span className="text-xs text-green-600 font-semibold">Оплачен</span>
+                    <span className="text-xs text-green-600 font-semibold">РћРїР»Р°С‡РµРЅ</span>
                   )}
                 </td>
               </tr>
@@ -56,7 +56,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
           {!payments.length && (
             <tr>
               <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
-                Платежей пока нет
+                РџР»Р°С‚РµР¶РµР№ РїРѕРєР° РЅРµС‚
               </td>
             </tr>
           )}
@@ -64,4 +64,4 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
       </table>
     </div>
   );
-};
+};

@@ -1,7 +1,7 @@
 import React from "react";
 import { Client, Deal } from "../../types";
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "вЂ”");
 
 interface ClientsViewProps {
   clients: Client[];
@@ -18,15 +18,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <p className="text-sm text-slate-500">Клиентов</p>
+          <p className="text-sm text-slate-500">РљР»РёРµРЅС‚РѕРІ</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.clients}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <p className="text-sm text-slate-500">Активных сделок</p>
+          <p className="text-sm text-slate-500">РђРєС‚РёРІРЅС‹С… СЃРґРµР»РѕРє</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.active}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <p className="text-sm text-slate-500">Новых за 30 дней</p>
+          <p className="text-sm text-slate-500">РќРѕРІС‹С… Р·Р° 30 РґРЅРµР№</p>
           <p className="text-3xl font-semibold text-slate-900">{clients.filter((client) => Date.now() - Date.parse(client.createdAt) < 30 * 24 * 60 * 60 * 1000).length}</p>
         </div>
       </div>
@@ -35,11 +35,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
             <tr>
-              <th className="px-5 py-3">Имя</th>
-              <th className="px-5 py-3">Телефон</th>
-              <th className="px-5 py-3">Дата рождения</th>
-              <th className="px-5 py-3">Создан</th>
-              <th className="px-5 py-3 text-right">Сделок</th>
+              <th className="px-5 py-3">РРјСЏ</th>
+              <th className="px-5 py-3">РўРµР»РµС„РѕРЅ</th>
+              <th className="px-5 py-3">Р”Р°С‚Р° СЂРѕР¶РґРµРЅРёСЏ</th>
+              <th className="px-5 py-3">РЎРѕР·РґР°РЅ</th>
+              <th className="px-5 py-3 text-right">РЎРґРµР»РѕРє</th>
             </tr>
           </thead>
           <tbody>
@@ -50,7 +50,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
                   <td className="px-5 py-4">
                     <p className="font-semibold text-slate-900">{client.name}</p>
                   </td>
-                  <td className="px-5 py-4 text-slate-600">{client.phone || "—"}</td>
+                  <td className="px-5 py-4 text-slate-600">{client.phone || "вЂ”"}</td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.birthDate)}</td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.createdAt)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-slate-900">{clientDeals.length}</td>
@@ -60,7 +60,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
             {!clients.length && (
               <tr>
                 <td colSpan={5} className="px-5 py-6 text-center text-slate-500">
-                  Клиентов пока нет
+                  РљР»РёРµРЅС‚РѕРІ РїРѕРєР° РЅРµС‚
                 </td>
               </tr>
             )}
@@ -69,4 +69,4 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
       </div>
     </div>
   );
-};
+};

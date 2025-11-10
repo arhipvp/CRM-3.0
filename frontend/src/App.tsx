@@ -56,7 +56,7 @@ const App: React.FC = () => {
       setTasks(tasksData);
       setSelectedDealId((prev) => prev ?? (dealsData[0]?.id ?? null));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось загрузить данные");
+      setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґР°РЅРЅС‹Рµ");
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ const App: React.FC = () => {
       const updated = await updateDealStatus(dealId, status);
       setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось обновить статус");
+      setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ");
     } finally {
       setSyncing(false);
     }
@@ -99,7 +99,7 @@ const App: React.FC = () => {
 
   const renderView = () => {
     if (isLoading) {
-      return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
+      return <p className="text-sm text-slate-500">Р—Р°РіСЂСѓР¶Р°РµРј РґР°РЅРЅС‹Рµ РёР· backend...</p>;
     }
     switch (view) {
       case "deals":
@@ -142,25 +142,25 @@ const App: React.FC = () => {
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Рабочее место</h1>
-            <p className="text-sm text-slate-500">Данные синхронизируются с Django API</p>
+            <h1 className="text-2xl font-semibold text-slate-900">Р Р°Р±РѕС‡РµРµ РјРµСЃС‚Рѕ</h1>
+            <p className="text-sm text-slate-500">Р”Р°РЅРЅС‹Рµ СЃРёРЅС…СЂРѕРЅРёР·РёСЂСѓСЋС‚СЃСЏ СЃ Django API</p>
           </div>
           <button onClick={loadData} className="text-sm text-sky-600 font-semibold hover:text-sky-800" disabled={isLoading}>
-            Обновить данные
+            РћР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ
           </button>
         </div>
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
-        {isSyncing && <p className="text-xs text-sky-600">Обновляем статус сделки...</p>}
+        {isSyncing && <p className="text-xs text-sky-600">РћР±РЅРѕРІР»СЏРµРј СЃС‚Р°С‚СѓСЃ СЃРґРµР»РєРё...</p>}
         {renderView()}
       </div>
 
       {modal === "client" && (
-        <Modal title="Новый клиент" onClose={() => setModal(null)}>
-          <ClientForm onSubmit={handleAddClient} submitLabel="Создать клиента" />
+        <Modal title="РќРѕРІС‹Р№ РєР»РёРµРЅС‚" onClose={() => setModal(null)}>
+          <ClientForm onSubmit={handleAddClient} submitLabel="РЎРѕР·РґР°С‚СЊ РєР»РёРµРЅС‚Р°" />
         </Modal>
       )}
       {modal === "deal" && (
-        <Modal title="Новая сделка" onClose={() => setModal(null)}>
+        <Modal title="РќРѕРІР°СЏ СЃРґРµР»РєР°" onClose={() => setModal(null)}>
           <DealForm onSubmit={handleAddDeal} clients={clients} />
         </Modal>
       )}
@@ -168,5 +168,5 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
-
+export default App;
+

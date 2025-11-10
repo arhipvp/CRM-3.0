@@ -6,7 +6,7 @@ interface ClientFormProps {
   submitLabel?: string;
 }
 
-export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submitLabel = "Сохранить" }) => {
+export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submitLabel = "РЎРѕС…СЂР°РЅРёС‚СЊ" }) => {
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? "");
@@ -16,7 +16,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
-      setError("Имя обязательно");
+      setError("РРјСЏ РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ");
       return;
     }
     setError(null);
@@ -24,7 +24,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
     try {
       await onSubmit({ name: name.trim(), phone: phone.trim() || undefined, birthDate: birthDate || null });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить клиента");
+      setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РєР»РёРµРЅС‚Р°");
     } finally {
       setSubmitting(false);
     }
@@ -34,17 +34,17 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
       <div>
-        <label className="block text-sm font-medium text-slate-700">Имя*</label>
+        <label className="block text-sm font-medium text-slate-700">РРјСЏ*</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-          placeholder="ООО «Ромашка»"
+          placeholder="РћРћРћ В«Р РѕРјР°С€РєР°В»"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Телефон</label>
+        <label className="block text-sm font-medium text-slate-700">РўРµР»РµС„РѕРЅ</label>
         <input
           type="tel"
           value={phone}
@@ -54,7 +54,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Дата рождения</label>
+        <label className="block text-sm font-medium text-slate-700">Р”Р°С‚Р° СЂРѕР¶РґРµРЅРёСЏ</label>
         <input
           type="date"
           value={birthDate ?? ""}
@@ -67,8 +67,8 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
         disabled={isSubmitting}
         className="w-full bg-sky-600 text-white rounded-lg py-2 font-semibold text-sm disabled:opacity-60"
       >
-        {isSubmitting ? "Сохраняем..." : submitLabel}
+        {isSubmitting ? "РЎРѕС…СЂР°РЅСЏРµРј..." : submitLabel}
       </button>
     </form>
   );
-};
+};

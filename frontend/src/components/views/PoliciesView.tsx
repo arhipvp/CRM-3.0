@@ -1,7 +1,7 @@
 import React from "react";
 import { Deal, Policy } from "../../types";
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "вЂ”");
 
 interface PoliciesViewProps {
   policies: Policy[];
@@ -14,12 +14,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
           <tr>
-            <th className="px-5 py-3">№ полиса</th>
-            <th className="px-5 py-3">Компания</th>
-            <th className="px-5 py-3">Тип</th>
-            <th className="px-5 py-3">Сделка</th>
-            <th className="px-5 py-3">Период</th>
-            <th className="px-5 py-3">Статус</th>
+            <th className="px-5 py-3">в„– РїРѕР»РёСЃР°</th>
+            <th className="px-5 py-3">РљРѕРјРїР°РЅРёСЏ</th>
+            <th className="px-5 py-3">РўРёРї</th>
+            <th className="px-5 py-3">РЎРґРµР»РєР°</th>
+            <th className="px-5 py-3">РџРµСЂРёРѕРґ</th>
+            <th className="px-5 py-3">РЎС‚Р°С‚СѓСЃ</th>
           </tr>
         </thead>
         <tbody>
@@ -30,9 +30,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
                 <td className="px-5 py-4 font-semibold text-slate-900">{policy.number}</td>
                 <td className="px-5 py-4 text-slate-600">{policy.insuranceCompany}</td>
                 <td className="px-5 py-4 text-slate-600">{policy.insuranceType}</td>
-                <td className="px-5 py-4 text-slate-600">{deal?.title || "—"}</td>
+                <td className="px-5 py-4 text-slate-600">{deal?.title || "вЂ”"}</td>
                 <td className="px-5 py-4 text-slate-600">
-                  {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
+                  {formatDate(policy.startDate)} вЂ” {formatDate(policy.endDate)}
                 </td>
                 <td className="px-5 py-4 text-slate-600">{policy.status}</td>
               </tr>
@@ -41,7 +41,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
           {!policies.length && (
             <tr>
               <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
-                Полисов пока нет
+                РџРѕР»РёСЃРѕРІ РїРѕРєР° РЅРµС‚
               </td>
             </tr>
           )}
@@ -49,4 +49,4 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
       </table>
     </div>
   );
-};
+};

@@ -17,7 +17,7 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!title.trim() || !clientId) {
-      setError("Название и клиент обязательны");
+      setError("РќР°Р·РІР°РЅРёРµ Рё РєР»РёРµРЅС‚ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹");
       return;
     }
     setError(null);
@@ -30,7 +30,7 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
         expectedClose: expectedClose || null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать сделку");
+      setError(err instanceof Error ? err.message : "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ СЃРґРµР»РєСѓ");
     } finally {
       setSubmitting(false);
     }
@@ -40,17 +40,17 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
       <div>
-        <label className="block text-sm font-medium text-slate-700">Название*</label>
+        <label className="block text-sm font-medium text-slate-700">РќР°Р·РІР°РЅРёРµ*</label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-          placeholder="Страхование автопарка"
+          placeholder="РЎС‚СЂР°С…РѕРІР°РЅРёРµ Р°РІС‚РѕРїР°СЂРєР°"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Клиент*</label>
+        <label className="block text-sm font-medium text-slate-700">РљР»РёРµРЅС‚*</label>
         <select
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
@@ -64,7 +64,7 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Краткое описание</label>
+        <label className="block text-sm font-medium text-slate-700">РљСЂР°С‚РєРѕРµ РѕРїРёСЃР°РЅРёРµ</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -73,7 +73,7 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Ожидаемая дата закрытия</label>
+        <label className="block text-sm font-medium text-slate-700">РћР¶РёРґР°РµРјР°СЏ РґР°С‚Р° Р·Р°РєСЂС‹С‚РёСЏ</label>
         <input
           type="date"
           value={expectedClose}
@@ -86,8 +86,8 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
         disabled={isSubmitting || !clients.length}
         className="w-full bg-sky-600 text-white rounded-lg py-2 font-semibold text-sm disabled:opacity-60"
       >
-        {isSubmitting ? "Создаем..." : "Создать сделку"}
+        {isSubmitting ? "РЎРѕР·РґР°РµРј..." : "РЎРѕР·РґР°С‚СЊ СЃРґРµР»РєСѓ"}
       </button>
     </form>
   );
-};
+};

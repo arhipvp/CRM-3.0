@@ -13,7 +13,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Запрос ${path} завершился с ошибкой ${response.status}`);
+    throw new Error(text || `Р—Р°РїСЂРѕСЃ ${path} Р·Р°РІРµСЂС€РёР»СЃСЏ СЃ РѕС€РёР±РєРѕР№ ${response.status}`);
   }
 
   if (response.status === 204) {
@@ -181,8 +181,8 @@ export async function updatePayment(id: string, data: Partial<Pick<Payment, "sta
     }),
   });
   return mapPayment(payload);
-}
-
-
-
-
+}
+
+
+
+

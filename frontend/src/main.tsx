@@ -6,7 +6,7 @@ import "./index.css";
 const container = document.getElementById("root");
 
 if (!container) {
-  throw new Error("Не найден элемент #root для монтирования приложения");
+  throw new Error("РќРµ РЅР°Р№РґРµРЅ СЌР»РµРјРµРЅС‚ #root РґР»СЏ РјРѕРЅС‚РёСЂРѕРІР°РЅРёСЏ РїСЂРёР»РѕР¶РµРЅРёСЏ");
 }
 
 const root = createRoot(container);
@@ -14,4 +14,4 @@ root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
-);
+);
