@@ -23,3 +23,5 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+frontend_example/
