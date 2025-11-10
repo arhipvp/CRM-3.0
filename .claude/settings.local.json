@@ -16,7 +16,8 @@
       "Bash(curl:*)",
       "Bash(git reset:*)",
       "Bash(python -m json.tool:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(docker-compose build:*)"
     ],
     "deny": [],
     "ask": []

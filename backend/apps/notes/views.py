@@ -9,11 +9,8 @@ class NoteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        queryset = Note.objects.select_related('deal', 'client').all()
+        queryset = Note.objects.select_related('deal').all()
         deal_id = self.request.query_params.get('deal')
-        client_id = self.request.query_params.get('client')
         if deal_id:
             queryset = queryset.filter(deal_id=deal_id)
-        if client_id:
-            queryset = queryset.filter(client_id=client_id)
         return queryset

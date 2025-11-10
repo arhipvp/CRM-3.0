@@ -56,23 +56,25 @@ services:
       retries: 3
       start_period: 40s
 
-  # Frontend (опционально - требует npm install для работы)
-  # frontend:
-  #   build:
-  #     context: frontend
-  #     dockerfile: Dockerfile
-  #   container_name: crm3-frontend
-  #   restart: unless-stopped
-  #   env_file:
-  #     - frontend/.env
-  #   depends_on:
-  #     - backend
-  #   ports:
-  #     - "5173:5173"
-  #   volumes:
-  #     - ./frontend:/app
-  #   networks:
-  #     - crm_network
+  # Frontend
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: crm3-frontend
+    restart: unless-stopped
+    env_file:
+      - frontend/.env
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - crm_network
 
 volumes:
   postgres_data:
