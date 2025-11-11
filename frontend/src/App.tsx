@@ -440,6 +440,7 @@ const App: React.FC = () => {
             clients={clients}
             policies={policies}
             payments={payments}
+            financialRecords={financialRecords}
             tasks={tasks}
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
@@ -449,6 +450,10 @@ const App: React.FC = () => {
             onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
             onDeleteQuote={handleDeleteQuote}
             onDeletePolicy={handleDeletePolicy}
+            onAddPayment={handleAddPayment}
+            onUpdatePayment={handleUpdatePayment}
+            onAddFinancialRecord={handleAddFinancialRecord}
+            onUpdateFinancialRecord={handleUpdateFinancialRecord}
             onUploadDocument={handleUploadDocument}
             onDeleteDocument={handleDeleteDocument}
             onFetchChatMessages={handleFetchChatMessages}
@@ -467,7 +472,7 @@ const App: React.FC = () => {
       case "payments":
         return <PaymentsView payments={payments} deals={deals} onMarkPaid={handleMarkPayment} />;
       case "finance":
-        return <FinanceView payments={payments} />;
+        return <FinanceView payments={payments} financialRecords={financialRecords} />;
       case "tasks":
         return <TasksView tasks={tasks} deals={deals} />;
       case "settings":

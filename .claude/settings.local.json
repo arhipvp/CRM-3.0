@@ -21,7 +21,8 @@
       "Bash(del appsdealsmigrations0005_quote.py)",
       "Bash(rm:*)",
       "Bash(npm run build:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(python -m py_compile:*)"
     ],
     "deny": [],
     "ask": []

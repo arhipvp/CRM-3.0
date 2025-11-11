@@ -1,10 +1,12 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { ActivityLog, Client, Deal, DealStatus, Payment, Policy, Task, ChatMessage } from "../../types";
+import { ActivityLog, Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, ChatMessage } from "../../types";
 import { FileUploadManager } from "../FileUploadManager";
 import { ChatBox } from "../ChatBox";
 import { ActivityTimeline } from "../ActivityTimeline";
 import { EditDealForm, EditDealFormValues } from "../forms/EditDealForm";
 import { AddTaskForm, AddTaskFormValues } from "../forms/AddTaskForm";
+import { AddPaymentForm, AddPaymentFormValues } from "../forms/AddPaymentForm";
+import { AddFinancialRecordForm, AddFinancialRecordFormValues } from "../forms/AddFinancialRecordForm";
 
 const statusLabels: Record<DealStatus, string> = {
   open: "В работе",
@@ -17,9 +19,10 @@ const DEAL_TABS = [
   { id: "overview", label: "Обзор" },
   { id: "tasks", label: "Задачи" },
   { id: "quotes", label: "Расчеты" },
+  { id: "policies", label: "Полисы" },
+  { id: "payments", label: "Платежи" },
   { id: "chat", label: "Чат" },
   { id: "files", label: "Файлы" },
-  { id: "policies", label: "Полисы" },
   { id: "finance", label: "Финансы" },
   { id: "notes", label: "Заметки" },
   { id: "history", label: "История" },
@@ -39,6 +42,7 @@ interface DealsViewProps {
   clients: Client[];
   policies: Policy[];
   payments: Payment[];
+  financialRecords: FinancialRecord[];
   tasks: Task[];
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
@@ -48,6 +52,10 @@ interface DealsViewProps {
   onRequestAddPolicy: (dealId: string) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
+  onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
+  onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
   onUploadDocument: (dealId: string, file: File) => Promise<void>;
   onDeleteDocument: (documentId: string) => Promise<void>;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
@@ -64,6 +72,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   clients,
   policies,
   payments,
+  financialRecords,
   tasks,
   selectedDealId,
   onSelectDeal,
@@ -73,6 +82,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onRequestAddPolicy,
   onDeleteQuote,
   onDeletePolicy,
+  onAddPayment,
+  onUpdatePayment,
+  onAddFinancialRecord,
+  onUpdateFinancialRecord,
   onUploadDocument,
   onDeleteDocument,
   onFetchChatMessages,
@@ -94,6 +107,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
+  const [creatingFinancialRecordForPaymentId, setCreatingFinancialRecordForPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab("overview");
@@ -282,7 +298,117 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   };
 
-  const renderPaymentsTab = () => {
+  const renderPaymentsByPoliciesTab = () => {
+    if (!selectedDeal) {
+      return null;
+    }
+
+    // Группируем платежи по полисам
+    const paymentsByPolicy = relatedPolicies.map((policy) => ({
+      policy,
+      payments: relatedPayments.filter((p) => p.policyId === policy.id),
+    }));
+
+    if (!paymentsByPolicy.some((g) => g.payments.length > 0)) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">Платежей пока нет.</p>
+          <button
+            onClick={() => setEditingPaymentId("new")}
+            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
+          >
+            Создать платеж
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <button
+            onClick={() => setEditingPaymentId("new")}
+            className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          >
+            + Создать платеж
+          </button>
+        </div>
+
+        {paymentsByPolicy.map(({ policy, payments }) => (
+          <div key={policy.id} className="border border-slate-200 rounded-xl p-4">
+            <h4 className="font-semibold text-slate-900 mb-4">Полис: {policy.number}</h4>
+            {payments.length === 0 ? (
+              <p className="text-sm text-slate-500">Платежей по этому полису нет</p>
+            ) : (
+              <div className="space-y-3">
+                {payments.map((payment) => (
+                  <div key={payment.id} className="border border-slate-100 rounded-lg p-4 bg-slate-50">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
+                        <p className="text-sm text-slate-600 mt-1">{payment.description || "Нет описания"}</p>
+                        <div className="text-xs text-slate-500 mt-2 flex flex-wrap gap-4">
+                          <span>Запланировано: {formatDate(payment.scheduledDate)}</span>
+                          <span>Факт: {formatDate(payment.actualDate)}</span>
+                          <span>Статус: {payment.status}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditingPaymentId(payment.id)}
+                          className="text-xs text-sky-600 hover:text-sky-800 font-medium"
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          onClick={() => setCreatingFinancialRecordForPaymentId(payment.id)}
+                          className="text-xs text-emerald-600 hover:text-emerald-800 font-medium"
+                        >
+                          + Запись
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Финансовые записи платежа */}
+                    {payment.financialRecords && payment.financialRecords.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-slate-200">
+                        <p className="text-xs font-semibold text-slate-600 mb-3">Финансовые записи:</p>
+                        <div className="space-y-2">
+                          {payment.financialRecords.map((record) => (
+                            <div key={record.id} className="flex items-center justify-between text-xs bg-white p-2 rounded border border-slate-100">
+                              <div>
+                                <span className={`font-semibold ${parseFloat(record.amount) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                                  {parseFloat(record.amount) >= 0 ? "+" : "-"}{Math.abs(parseFloat(record.amount)).toLocaleString("ru-RU", {
+                                    style: "currency",
+                                    currency: "RUB",
+                                  })}
+                                </span>
+                                <span className="text-slate-500 ml-2">{record.description || "—"}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setEditingFinancialRecordId(record.id)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  ✎
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderFinanceTab = () => {
     if (!relatedPayments.length) {
       return <p className="text-sm text-slate-500">Платежей пока нет.</p>;
     }
@@ -449,8 +575,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
         return renderTasksTab();
       case "policies":
         return renderPoliciesTab();
+      case "payments":
+        return renderPaymentsByPoliciesTab();
       case "finance":
-        return renderPaymentsTab();
+        return renderFinanceTab();
       case "quotes":
         return renderQuotesTab();
       case "files":
@@ -649,6 +777,88 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   onCancel={() => setEditingTaskId(null)}
                 />
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Payment Modal */}
+      {editingPaymentId && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {editingPaymentId === "new" ? "Создать платеж" : "Редактировать платеж"}
+              </h3>
+              <button
+                onClick={() => setEditingPaymentId(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <AddPaymentForm
+                payment={
+                  editingPaymentId !== "new"
+                    ? payments.find((p) => p.id === editingPaymentId)
+                    : undefined
+                }
+                onSubmit={async (data) => {
+                  if (editingPaymentId === "new") {
+                    await onAddPayment(data);
+                  } else {
+                    await onUpdatePayment(editingPaymentId, data);
+                  }
+                  setEditingPaymentId(null);
+                }}
+                onCancel={() => setEditingPaymentId(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Financial Record Modal */}
+      {(editingFinancialRecordId || creatingFinancialRecordForPaymentId) && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {editingFinancialRecordId ? "Редактировать запись" : "Новая финансовая запись"}
+              </h3>
+              <button
+                onClick={() => {
+                  setEditingFinancialRecordId(null);
+                  setCreatingFinancialRecordForPaymentId(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <AddFinancialRecordForm
+                paymentId={creatingFinancialRecordForPaymentId || ""}
+                record={
+                  editingFinancialRecordId
+                    ? financialRecords.find((r) => r.id === editingFinancialRecordId)
+                    : undefined
+                }
+                onSubmit={async (data) => {
+                  if (editingFinancialRecordId) {
+                    await onUpdateFinancialRecord(editingFinancialRecordId, data);
+                  } else {
+                    await onAddFinancialRecord(data);
+                  }
+                  setEditingFinancialRecordId(null);
+                  setCreatingFinancialRecordForPaymentId(null);
+                }}
+                onCancel={() => {
+                  setEditingFinancialRecordId(null);
+                  setCreatingFinancialRecordForPaymentId(null);
+                }}
+              />
             </div>
           </div>
         </div>
