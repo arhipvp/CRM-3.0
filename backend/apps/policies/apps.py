@@ -5,3 +5,6 @@ class PoliciesConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.policies'
     verbose_name = 'Полисы'
+
+    def ready(self):
+        import apps.policies.signals  # noqa
