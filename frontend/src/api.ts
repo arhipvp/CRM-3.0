@@ -100,6 +100,10 @@ const mapPolicy = (raw: any): Policy => ({
 const mapPayment = (raw: any): Payment => ({
   id: raw.id,
   dealId: raw.deal,
+  dealTitle: raw.deal_title,
+  policyId: raw.policy,
+  policyNumber: raw.policy_number,
+  policyInsuranceType: raw.policy_insurance_type,
   amount: raw.amount,
   description: raw.description,
   scheduledDate: raw.scheduled_date,
@@ -248,7 +252,7 @@ export async function updateDeal(
   return mapDeal(payload);
 }
 
-export async function updatePayment(id: string, data: Partial<Pick<Payment, "status" | "actualDate" | "scheduledDate" | "description" | "amount">>): Promise<Payment> {
+export async function updatePayment(id: string, data: Partial<Pick<Payment, "status" | "actualDate" | "scheduledDate" | "description" | "amount" | "policyId">>): Promise<Payment> {
   const payload = await request<any>(`/payments/${id}/`, {
     method: "PATCH",
     body: JSON.stringify({
@@ -257,6 +261,7 @@ export async function updatePayment(id: string, data: Partial<Pick<Payment, "sta
       scheduled_date: data.scheduledDate,
       description: data.description,
       amount: data.amount,
+      policy: data.policyId,
     }),
   });
   return mapPayment(payload);
@@ -318,6 +323,7 @@ export async function createPolicy(data: {
 
 export async function createPayment(data: {
   dealId?: string;
+  policyId?: string;
   amount: number;
   description?: string;
   scheduledDate?: string | null;
@@ -328,6 +334,7 @@ export async function createPayment(data: {
     method: "POST",
     body: JSON.stringify({
       deal: data.dealId || null,
+      policy: data.policyId || null,
       amount: data.amount,
       description: data.description || "",
       scheduled_date: data.scheduledDate || null,

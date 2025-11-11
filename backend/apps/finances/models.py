@@ -43,18 +43,26 @@ class FinancialTransaction(SoftDeleteModel):
 
 
 class Payment(SoftDeleteModel):
-    """Платёж в рамках сделки"""
+    """Платёж в рамках полиса"""
 
     class PaymentStatus(models.TextChoices):
         PLANNED = 'planned', 'Запланирован'
         PARTIAL = 'partial', 'Частичный'
         PAID = 'paid', 'Оплачен'
 
+    policy = models.ForeignKey(
+        'policies.Policy',
+        related_name='payments',
+        on_delete=models.CASCADE,
+        help_text="Полис",
+        null=True,
+        blank=True
+    )
     deal = models.ForeignKey(
         'deals.Deal',
         related_name='payments',
         on_delete=models.CASCADE,
-        help_text="Сделка",
+        help_text="Сделка (денормализованное поле для производительности)",
         null=True,
         blank=True
     )
@@ -75,7 +83,7 @@ class Payment(SoftDeleteModel):
         verbose_name_plural = 'Платежи'
 
     def __str__(self) -> str:
-        return f'Платёж {self.amount} РУБ для {self.deal}'
+        return f'Платёж {self.amount} РУБ для {self.policy}'
 
 
 class Income(SoftDeleteModel):

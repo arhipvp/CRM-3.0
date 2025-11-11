@@ -4,7 +4,9 @@ from .models import Expense, Income, Payment, FinancialTransaction
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    deal_title = serializers.CharField(source='deal.title', read_only=True)
+    deal_title = serializers.CharField(source='deal.title', read_only=True, allow_null=True)
+    policy_number = serializers.CharField(source='policy.number', read_only=True, allow_null=True)
+    policy_insurance_type = serializers.CharField(source='policy.insurance_type', read_only=True, allow_null=True)
 
     class Meta:
         model = Payment

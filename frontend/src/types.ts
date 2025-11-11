@@ -80,6 +80,10 @@ export interface Policy {
 export interface Payment {
   id: string;
   dealId?: string;
+  dealTitle?: string;
+  policyId?: string;
+  policyNumber?: string;
+  policyInsuranceType?: string;
   amount: string;
   description?: string;
   scheduledDate?: string | null;

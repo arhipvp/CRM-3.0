@@ -170,6 +170,7 @@ const App: React.FC = () => {
       if (values.createPayment && values.paymentAmount) {
         const payment = await createPayment({
           dealId,
+          policyId: created.id,
           amount: values.paymentAmount,
           description: values.paymentDescription || `Платеж по полису ${values.number}`,
           status: "planned",
