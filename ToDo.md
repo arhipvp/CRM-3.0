@@ -64,8 +64,20 @@
   ✅ - Написать 18 тестов для Django admin (доступ, CRUD операции, soft delete, поиск, фильтрация)
   ✅ - Все 18 тестов админки успешно проходят
 
+[ФАЗА 8 - РАСШИРЕННОЕ ЛОГИРОВАНИЕ] ✅ ЗАВЕРШЕНА (21/21 тестов пройдены)
+  ✅ - Создать signals.py для Deal с логированием create/update/soft_delete/hard_delete
+  ✅ - Создать signals.py для Client с логированием всех операций
+  ✅ - Создать signals.py для Task с логированием изменений
+  ✅ - Создать signals.py для Document с логированием загрузок и удалений
+  ✅ - Создать signals.py для Payment с логированием платежей
+  ✅ - Создать signals.py для FinancialRecord (Income/Expense) с логированием
+  ✅ - Создать signals.py для Policy с логированием полисов
+  ✅ - Создать audit_helpers.py модуль с реусируемыми функциями сигналов
+  ✅ - Зарегистрировать signals в apps.py каждого приложения
+  ✅ - Написать 21 интеграционный тест для всех signals
+  ✅ - Все тесты успешно проходят (Deal, Client, Task, Document, Payment, FinancialRecord, Policy)
+
 Другие задачи
-  ⏳ - Расширить журналирование Django signals на все основные сущности (Deal, Client, Task, Document, Payment, Policy)
   ⏳ - Статус сделки (убрать?)
   ⏳ - Клик по клиенту - написать в вотсап
   ⏳ - Reports и аналитика в админке
