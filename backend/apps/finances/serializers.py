@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Expense, Income, Payment
+from .models import Expense, Income, Payment, FinancialTransaction
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -28,3 +28,13 @@ class ExpenseSerializer(serializers.ModelSerializer):
         model = Expense
         fields = '__all__'
         read_only_fields = ('id', 'created_at')
+
+
+class FinancialTransactionSerializer(serializers.ModelSerializer):
+    deal_title = serializers.CharField(source='deal.title', read_only=True, allow_null=True)
+    transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
+
+    class Meta:
+        model = FinancialTransaction
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at', 'deleted_at')

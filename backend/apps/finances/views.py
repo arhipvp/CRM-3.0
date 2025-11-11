@@ -3,8 +3,8 @@ from rest_framework import permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Expense, Income, Payment
-from .serializers import ExpenseSerializer, IncomeSerializer, PaymentSerializer
+from .models import Expense, Income, Payment, FinancialTransaction
+from .serializers import ExpenseSerializer, IncomeSerializer, PaymentSerializer, FinancialTransactionSerializer
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -22,6 +22,12 @@ class IncomeViewSet(viewsets.ModelViewSet):
 class ExpenseViewSet(viewsets.ModelViewSet):
     queryset = Expense.objects.select_related('payment').all().order_by('-expense_date', '-created_at')
     serializer_class = ExpenseSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class FinancialTransactionViewSet(viewsets.ModelViewSet):
+    queryset = FinancialTransaction.objects.select_related('deal').all().order_by('-transaction_date', '-created_at')
+    serializer_class = FinancialTransactionSerializer
     permission_classes = [permissions.AllowAny]
 
 

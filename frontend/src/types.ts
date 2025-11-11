@@ -88,6 +88,21 @@ export interface Payment {
   createdAt: string;
 }
 
+export interface FinancialTransaction {
+  id: string;
+  dealId?: string;
+  dealTitle?: string;
+  transactionType: "income" | "expense";
+  transactionTypeDisplay?: string;
+  amount: string;
+  description?: string;
+  transactionDate: string;
+  source?: string;
+  category?: string;
+  note?: string;
+  createdAt: string;
+}
+
 export interface ChecklistItem {
   label: string;
   done: boolean;

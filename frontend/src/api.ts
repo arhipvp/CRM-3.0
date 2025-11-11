@@ -1,4 +1,4 @@
-import { Client, Deal, DealStatus, Payment, Policy, Quote, Task, ChatMessage } from "./types";
+import { Client, Deal, DealStatus, FinancialTransaction, Payment, Policy, Quote, Task, ChatMessage } from "./types";
 
 const envBase = import.meta.env.VITE_API_URL;
 const API_BASE = (envBase && envBase.trim() !== "" ? envBase : "/api/v1").replace(/\/$/, "");
@@ -118,6 +118,21 @@ const mapTask = (raw: any): Task => ({
   dueAt: raw.due_at,
   remindAt: raw.remind_at,
   checklist: Array.isArray(raw.checklist) ? raw.checklist : [],
+  createdAt: raw.created_at,
+});
+
+const mapFinancialTransaction = (raw: any): FinancialTransaction => ({
+  id: raw.id,
+  dealId: raw.deal,
+  dealTitle: raw.deal_title,
+  transactionType: raw.transaction_type,
+  transactionTypeDisplay: raw.transaction_type_display,
+  amount: raw.amount,
+  description: raw.description,
+  transactionDate: raw.transaction_date,
+  source: raw.source,
+  category: raw.category,
+  note: raw.note,
   createdAt: raw.created_at,
 });
 
@@ -340,6 +355,61 @@ export async function createChatMessage(dealId: string, authorName: string, body
 
 export async function deleteChatMessage(id: string): Promise<void> {
   await request(`/chat_messages/${id}/`, { method: "DELETE" });
+}
+
+export async function fetchFinancialTransactions(): Promise<FinancialTransaction[]> {
+  const payload = await request<any>("/financial_transactions/");
+  return unwrapList(payload).map(mapFinancialTransaction);
+}
+
+export async function createFinancialTransaction(data: {
+  dealId?: string;
+  transactionType: "income" | "expense";
+  amount: number;
+  description?: string;
+  transactionDate: string;
+  source?: string;
+  category?: string;
+  note?: string;
+}): Promise<FinancialTransaction> {
+  const payload = await request<any>("/financial_transactions/", {
+    method: "POST",
+    body: JSON.stringify({
+      deal: data.dealId || null,
+      transaction_type: data.transactionType,
+      amount: data.amount,
+      description: data.description || "",
+      transaction_date: data.transactionDate,
+      source: data.source || "",
+      category: data.category || "",
+      note: data.note || "",
+    }),
+  });
+  return mapFinancialTransaction(payload);
+}
+
+export async function updateFinancialTransaction(
+  id: string,
+  data: Partial<Omit<FinancialTransaction, "id" | "createdAt">>
+): Promise<FinancialTransaction> {
+  const payload = await request<any>(`/financial_transactions/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      deal: data.dealId || null,
+      transaction_type: data.transactionType,
+      amount: data.amount,
+      description: data.description || "",
+      transaction_date: data.transactionDate,
+      source: data.source || "",
+      category: data.category || "",
+      note: data.note || "",
+    }),
+  });
+  return mapFinancialTransaction(payload);
+}
+
+export async function deleteFinancialTransaction(id: string): Promise<void> {
+  await request(`/financial_transactions/${id}/`, { method: "DELETE" });
 }
 
 

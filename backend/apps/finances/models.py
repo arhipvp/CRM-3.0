@@ -2,6 +2,46 @@ from django.db import models
 from apps.common.models import SoftDeleteModel
 
 
+class FinancialTransaction(SoftDeleteModel):
+    """Обобщённая финансовая транзакция (доход или расход)"""
+
+    class TransactionType(models.TextChoices):
+        INCOME = 'income', 'Доход'
+        EXPENSE = 'expense', 'Расход'
+
+    deal = models.ForeignKey(
+        'deals.Deal',
+        related_name='financial_transactions',
+        on_delete=models.CASCADE,
+        help_text="Сделка",
+        null=True,
+        blank=True
+    )
+
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=TransactionType.choices,
+        help_text="Тип транзакции"
+    )
+
+    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма (в рублях)")
+    description = models.CharField(max_length=255, blank=True, help_text="Описание")
+    transaction_date = models.DateField(help_text="Дата транзакции")
+
+    # Дополнительные поля
+    source = models.CharField(max_length=120, blank=True, help_text="Источник дохода")
+    category = models.CharField(max_length=120, blank=True, help_text="Категория/тип расхода")
+    note = models.TextField(blank=True, help_text="Примечание")
+
+    class Meta:
+        ordering = ['-transaction_date', '-created_at']
+        verbose_name = 'Финансовая транзакция'
+        verbose_name_plural = 'Финансовые транзакции'
+
+    def __str__(self) -> str:
+        return f'{self.get_transaction_type_display()} {self.amount} РУБ ({self.transaction_date})'
+
+
 class Payment(SoftDeleteModel):
     """Платёж в рамках сделки"""
 
