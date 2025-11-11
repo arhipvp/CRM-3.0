@@ -77,6 +77,22 @@ export interface Policy {
   createdAt: string;
 }
 
+export interface FinancialRecord {
+  id: string;
+  paymentId: string;
+  paymentDescription?: string;
+  paymentAmount?: string;
+  amount: string; // Положительное = доход, отрицательное = расход
+  date?: string | null;
+  description?: string;
+  source?: string;
+  note?: string;
+  recordType?: "Доход" | "Расход"; // Вычисляемое поле
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
 export interface Payment {
   id: string;
   dealId?: string;
@@ -89,22 +105,11 @@ export interface Payment {
   scheduledDate?: string | null;
   actualDate?: string | null;
   status: PaymentStatus;
+  financialRecords?: FinancialRecord[];
+  canDelete?: boolean;
   createdAt: string;
-}
-
-export interface FinancialTransaction {
-  id: string;
-  dealId?: string;
-  dealTitle?: string;
-  transactionType: "income" | "expense";
-  transactionTypeDisplay?: string;
-  amount: string;
-  description?: string;
-  transactionDate: string;
-  source?: string;
-  category?: string;
-  note?: string;
-  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
 }
 
 export interface ActivityLog {

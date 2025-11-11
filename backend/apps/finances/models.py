@@ -1,45 +1,6 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from apps.common.models import SoftDeleteModel
-
-
-class FinancialTransaction(SoftDeleteModel):
-    """Обобщённая финансовая транзакция (доход или расход)"""
-
-    class TransactionType(models.TextChoices):
-        INCOME = 'income', 'Доход'
-        EXPENSE = 'expense', 'Расход'
-
-    deal = models.ForeignKey(
-        'deals.Deal',
-        related_name='financial_transactions',
-        on_delete=models.CASCADE,
-        help_text="Сделка",
-        null=True,
-        blank=True
-    )
-
-    transaction_type = models.CharField(
-        max_length=20,
-        choices=TransactionType.choices,
-        help_text="Тип транзакции"
-    )
-
-    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма (в рублях)")
-    description = models.CharField(max_length=255, blank=True, help_text="Описание")
-    transaction_date = models.DateField(help_text="Дата транзакции")
-
-    # Дополнительные поля
-    source = models.CharField(max_length=120, blank=True, help_text="Источник дохода")
-    category = models.CharField(max_length=120, blank=True, help_text="Категория/тип расхода")
-    note = models.TextField(blank=True, help_text="Примечание")
-
-    class Meta:
-        ordering = ['-transaction_date', '-created_at']
-        verbose_name = 'Финансовая транзакция'
-        verbose_name_plural = 'Финансовые транзакции'
-
-    def __str__(self) -> str:
-        return f'{self.get_transaction_type_display()} {self.amount} РУБ ({self.transaction_date})'
 
 
 class Payment(SoftDeleteModel):
@@ -85,48 +46,60 @@ class Payment(SoftDeleteModel):
     def __str__(self) -> str:
         return f'Платёж {self.amount} РУБ для {self.policy}'
 
+    def can_delete(self) -> bool:
+        """Проверка: платёж можно удалить только если нет связанных записей"""
+        return not self.financial_records.filter(deleted_at__isnull=True).exists()
 
-class Income(SoftDeleteModel):
-    """Полученный доход"""
-
-    payment = models.ForeignKey(
-        Payment,
-        related_name='incomes',
-        on_delete=models.CASCADE,
-        help_text="Платёж"
-    )
-    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма (в рублях)")
-    received_at = models.DateField(null=True, blank=True, help_text="Дата получения")
-    source = models.CharField(max_length=120, blank=True, help_text="Источник")
-    note = models.TextField(blank=True, help_text="Примечание")
-
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Доход'
-        verbose_name_plural = 'Доходы'
-
-    def __str__(self) -> str:
-        return f'Доход {self.amount} для {self.payment_id}'
+    def delete(self, using=None, keep_parents=False):
+        """Мягкое удаление платежа с проверкой"""
+        if not self.can_delete():
+            raise ValidationError("Невозможно удалить платёж, так как у него есть финансовые записи.")
+        super().delete(using=using, keep_parents=keep_parents)
 
 
-class Expense(SoftDeleteModel):
-    """Расход в рамках платежа"""
+class FinancialRecord(SoftDeleteModel):
+    """Финансовая запись (доход/расход) для платежа
+
+    Положительное число - доход (заработок агента)
+    Отрицательное число - расход (затраты на ведение дел)
+    """
 
     payment = models.ForeignKey(
         Payment,
-        related_name='expenses',
+        related_name='financial_records',
         on_delete=models.CASCADE,
         help_text="Платёж"
     )
-    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Сумма")
-    expense_type = models.CharField(max_length=120, help_text="Тип расхода")
-    expense_date = models.DateField(null=True, blank=True, help_text="Дата расхода")
-    note = models.TextField(blank=True, help_text="Примечание")
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Сумма (положительное = доход, отрицательное = расход)"
+    )
+    date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Дата операции"
+    )
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Описание операции"
+    )
+    source = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text="Источник дохода / назначение расхода"
+    )
+    note = models.TextField(
+        blank=True,
+        help_text="Примечание"
+    )
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Расход'
-        verbose_name_plural = 'Расходы'
+        ordering = ['-date', '-created_at']
+        verbose_name = 'Финансовая запись'
+        verbose_name_plural = 'Финансовые записи'
 
     def __str__(self) -> str:
-        return f'Расход {self.amount} для {self.payment_id}'
+        record_type = "Доход" if self.amount >= 0 else "Расход"
+        return f'{record_type} {abs(self.amount)} РУБ для платежа {self.payment_id}'

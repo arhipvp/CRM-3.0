@@ -12,12 +12,19 @@ import { TasksView } from "./components/views/TasksView";
 import { SettingsView } from "./components/views/SettingsView";
 import { AddQuoteForm, QuoteFormValues } from "./components/forms/AddQuoteForm";
 import { AddPolicyForm, PolicyFormValues } from "./components/forms/AddPolicyForm";
+import { AddPaymentForm, AddPaymentFormValues } from "./components/forms/AddPaymentForm";
+import {
+  AddFinancialRecordForm,
+  AddFinancialRecordFormValues,
+} from "./components/forms/AddFinancialRecordForm";
 import {
   createClient,
   createDeal,
   createQuote,
   createPolicy,
   createPayment,
+  createFinancialRecord,
+  updateFinancialRecord,
   deleteQuote,
   deletePolicy,
   uploadDocument,
@@ -30,6 +37,7 @@ import {
   fetchPayments,
   fetchPolicies,
   fetchTasks,
+  fetchFinancialRecords,
   updateDealStatus,
   updateDeal,
   updatePayment,
@@ -38,19 +46,33 @@ import {
   updateTask,
   deleteTask,
 } from "./api";
-import { Client, Deal, DealStatus, Payment, Policy, Task } from "./types";
+import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task } from "./types";
 
 type ModalType = null | "client" | "deal";
+
+interface PaymentModalState {
+  policyId?: string;
+  paymentId?: string;
+}
+
+interface FinancialRecordModalState {
+  paymentId?: string;
+  recordId?: string;
+}
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>("deals");
   const [modal, setModal] = useState<ModalType>(null);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
+  const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
+  const [financialRecordModal, setFinancialRecordModal] =
+    useState<FinancialRecordModalState | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [isLoading, setLoading] = useState(true);
@@ -61,18 +83,21 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [clientsData, dealsData, policiesData, paymentsData, tasksData] = await Promise.all([
-        fetchClients(),
-        fetchDeals(),
-        fetchPolicies(),
-        fetchPayments(),
-        fetchTasks(),
-      ]);
+      const [clientsData, dealsData, policiesData, paymentsData, tasksData, financialRecordsData] =
+        await Promise.all([
+          fetchClients(),
+          fetchDeals(),
+          fetchPolicies(),
+          fetchPayments(),
+          fetchTasks(),
+          fetchFinancialRecords(),
+        ]);
       setClients(clientsData);
       setDeals(dealsData);
       setPolicies(policiesData);
       setPayments(paymentsData);
       setTasks(tasksData);
+      setFinancialRecords(financialRecordsData);
       setSelectedDealId((prev) => prev ?? (dealsData[0]?.id ?? null));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось загрузить данные");
@@ -280,6 +305,129 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddPayment = async (values: AddPaymentFormValues) => {
+    try {
+      const created = await createPayment({
+        policyId: values.policyId,
+        dealId: values.dealId,
+        amount: parseFloat(values.amount),
+        description: values.description,
+        scheduledDate: values.scheduledDate || null,
+        actualDate: values.actualDate || null,
+        status: values.status || "planned",
+      });
+
+      // Auto-create zero-value income record for tracking
+      const zeroIncome = await createFinancialRecord({
+        paymentId: created.id,
+        amount: 0,
+        date: new Date().toISOString().split("T")[0],
+        description: "Исходное значение (отслеживание)",
+        source: "Система",
+      });
+
+      setPayments((prev) => [created, ...prev]);
+      setFinancialRecords((prev) => [zeroIncome, ...prev]);
+      setPaymentModal(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось создать платеж");
+      throw err;
+    }
+  };
+
+  const handleUpdatePayment = async (paymentId: string, values: AddPaymentFormValues) => {
+    try {
+      const updated = await updatePayment(paymentId, {
+        policyId: values.policyId,
+        dealId: values.dealId,
+        amount: parseFloat(values.amount),
+        description: values.description,
+        scheduledDate: values.scheduledDate || null,
+        actualDate: values.actualDate || null,
+        status: values.status || "planned",
+      });
+
+      setPayments((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setPaymentModal(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось обновить платеж");
+      throw err;
+    }
+  };
+
+  const handleAddFinancialRecord = async (values: AddFinancialRecordFormValues) => {
+    try {
+      // Convert recordType to signed amount
+      const amount =
+        parseFloat(values.amount) * (values.recordType === "income" ? 1 : -1);
+
+      const created = await createFinancialRecord({
+        paymentId: values.paymentId,
+        amount,
+        date: values.date || null,
+        description: values.description,
+        source: values.source,
+        note: values.note,
+      });
+
+      setFinancialRecords((prev) => [created, ...prev]);
+      // Also update payments to reflect new financial record
+      const paymentId = values.paymentId;
+      setPayments((prev) =>
+        prev.map((p) =>
+          p.id === paymentId
+            ? {
+                ...p,
+                financialRecords: [created, ...(p.financialRecords || [])],
+              }
+            : p,
+        ),
+      );
+      setFinancialRecordModal(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось создать финансовую запись");
+      throw err;
+    }
+  };
+
+  const handleUpdateFinancialRecord = async (
+    recordId: string,
+    values: AddFinancialRecordFormValues,
+  ) => {
+    try {
+      // Convert recordType to signed amount
+      const amount =
+        parseFloat(values.amount) * (values.recordType === "income" ? 1 : -1);
+
+      const updated = await updateFinancialRecord(recordId, {
+        amount,
+        date: values.date || null,
+        description: values.description,
+        source: values.source,
+        note: values.note,
+      });
+
+      setFinancialRecords((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r)),
+      );
+      // Also update in payments
+      setPayments((prev) =>
+        prev.map((p) => ({
+          ...p,
+          financialRecords: p.financialRecords?.map((r) =>
+            r.id === updated.id ? updated : r,
+          ),
+        })),
+      );
+      setFinancialRecordModal(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Не удалось обновить финансовую запись",
+      );
+      throw err;
+    }
+  };
+
   const renderView = () => {
     if (isLoading) {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
@@ -369,6 +517,43 @@ const App: React.FC = () => {
       {policyDealId && (
         <Modal title="Новый полис" onClose={() => setPolicyDealId(null)}>
           <AddPolicyForm onSubmit={(values) => handleAddPolicy(policyDealId, values)} onCancel={() => setPolicyDealId(null)} />
+        </Modal>
+      )}
+      {paymentModal && (
+        <Modal
+          title={paymentModal.paymentId ? "Редактировать платеж" : "Новый платеж"}
+          onClose={() => setPaymentModal(null)}
+        >
+          <AddPaymentForm
+            payment={paymentModal.paymentId ? payments.find((p) => p.id === paymentModal.paymentId) : undefined}
+            onSubmit={(values) =>
+              paymentModal.paymentId
+                ? handleUpdatePayment(paymentModal.paymentId, values)
+                : handleAddPayment(values)
+            }
+            onCancel={() => setPaymentModal(null)}
+          />
+        </Modal>
+      )}
+      {financialRecordModal && (
+        <Modal
+          title={financialRecordModal.recordId ? "Редактировать запись" : "Новая финансовая запись"}
+          onClose={() => setFinancialRecordModal(null)}
+        >
+          <AddFinancialRecordForm
+            paymentId={financialRecordModal.paymentId || ""}
+            record={
+              financialRecordModal.recordId
+                ? financialRecords.find((r) => r.id === financialRecordModal.recordId)
+                : undefined
+            }
+            onSubmit={(values) =>
+              financialRecordModal.recordId
+                ? handleUpdateFinancialRecord(financialRecordModal.recordId, values)
+                : handleAddFinancialRecord(values)
+            }
+            onCancel={() => setFinancialRecordModal(null)}
+          />
         </Modal>
       )}
     </MainLayout>

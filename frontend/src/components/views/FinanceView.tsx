@@ -1,19 +1,19 @@
 import React, { useMemo, useState } from "react";
-import { Payment, FinancialTransaction } from "../../types";
+import { Payment, FinancialRecord } from "../../types";
 
 interface FinanceViewProps {
   payments: Payment[];
-  financialTransactions?: FinancialTransaction[];
-  onAddTransaction?: () => void;
-  onUpdateTransaction?: (id: string, data: Partial<FinancialTransaction>) => Promise<void>;
-  onDeleteTransaction?: (id: string) => Promise<void>;
+  financialRecords?: FinancialRecord[];
+  onAddRecord?: () => void;
+  onUpdateRecord?: (id: string, data: Partial<FinancialRecord>) => Promise<void>;
+  onDeleteRecord?: (id: string) => Promise<void>;
 }
 
 export const FinanceView: React.FC<FinanceViewProps> = ({
   payments,
-  financialTransactions = [],
-  onAddTransaction,
-  onDeleteTransaction,
+  financialRecords = [],
+  onAddRecord,
+  onDeleteRecord,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
@@ -25,65 +25,75 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     const partial = payments.filter((p) => p.status === "partial");
     const paid = payments.filter((p) => p.status === "paid");
 
-    const incomes = financialTransactions.filter((t) => t.transactionType === "income");
-    const expenses = financialTransactions.filter((t) => t.transactionType === "expense");
+    const incomes = financialRecords.filter((r) => parseFloat(r.amount) >= 0);
+    const expenses = financialRecords.filter((r) => parseFloat(r.amount) < 0);
 
-    const sum = (items: Payment[] | FinancialTransaction[]) =>
+    const sumPayments = (items: Payment[]) =>
       items.reduce((total, item) => total + Number(item.amount || 0), 0);
 
-    return {
-      plannedPayments: sum(planned),
-      partialPayments: sum(partial),
-      paidPayments: sum(paid),
-      totalPayments: sum(payments),
-      totalIncome: sum(incomes),
-      totalExpense: sum(expenses),
-      netBalance: sum(incomes) - sum(expenses),
-    };
-  }, [payments, financialTransactions]);
+    const totalIncome = incomes.reduce((total, r) => total + Number(r.amount || 0), 0);
+    const totalExpense = Math.abs(expenses.reduce((total, r) => total + Number(r.amount || 0), 0));
 
-  const filteredTransactions = useMemo(() => {
-    let result = financialTransactions;
+    return {
+      plannedPayments: sumPayments(planned),
+      partialPayments: sumPayments(partial),
+      paidPayments: sumPayments(paid),
+      totalPayments: sumPayments(payments),
+      totalIncome,
+      totalExpense,
+      netBalance: totalIncome - totalExpense,
+    };
+  }, [payments, financialRecords]);
+
+  const filteredRecords = useMemo(() => {
+    let result = financialRecords;
 
     if (filterType !== "all") {
-      result = result.filter((t) => t.transactionType === filterType);
+      if (filterType === "income") {
+        result = result.filter((r) => parseFloat(r.amount) >= 0);
+      } else if (filterType === "expense") {
+        result = result.filter((r) => parseFloat(r.amount) < 0);
+      }
     }
 
     if (filterDateFrom) {
-      result = result.filter((t) => new Date(t.transactionDate) >= new Date(filterDateFrom));
+      result = result.filter((r) => r.date && new Date(r.date) >= new Date(filterDateFrom));
     }
 
     if (filterDateTo) {
-      result = result.filter((t) => new Date(t.transactionDate) <= new Date(filterDateTo));
+      result = result.filter((r) => r.date && new Date(r.date) <= new Date(filterDateTo));
     }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
-        (t) =>
-          t.description?.toLowerCase().includes(query) ||
-          t.source?.toLowerCase().includes(query) ||
-          t.category?.toLowerCase().includes(query) ||
-          t.dealTitle?.toLowerCase().includes(query)
+        (r) =>
+          r.description?.toLowerCase().includes(query) ||
+          r.source?.toLowerCase().includes(query) ||
+          r.note?.toLowerCase().includes(query)
       );
     }
 
-    return result.sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime());
-  }, [financialTransactions, filterType, filterDateFrom, filterDateTo, searchQuery]);
+    return result.sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [financialRecords, filterType, filterDateFrom, filterDateTo, searchQuery]);
 
   const formatRub = (value: number) =>
     value.toLocaleString("ru-RU", { style: "currency", currency: "RUB" });
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("ru-RU");
+  const formatDate = (date?: string | null) => {
+    return date ? new Date(date).toLocaleDateString("ru-RU") : "—";
   };
 
-  const getTransactionTypeDisplay = (type: string) => {
-    return type === "income" ? "Доход" : "Расход";
+  const getRecordTypeDisplay = (amount: string) => {
+    return parseFloat(amount) >= 0 ? "Доход" : "Расход";
   };
 
-  const getTransactionTypeClass = (type: string) => {
-    return type === "income" ? "transaction-income" : "transaction-expense";
+  const getRecordTypeClass = (amount: string) => {
+    return parseFloat(amount) >= 0 ? "record-income" : "record-expense";
   };
 
   return (
@@ -161,55 +171,51 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="transactions-table-section">
+      {/* Records Table */}
+      <div className="records-table-section">
         <div className="table-header">
-          <h3>Финансовые транзакции ({filteredTransactions.length})</h3>
-          {onAddTransaction && (
-            <button onClick={onAddTransaction} className="btn-primary btn-sm">
-              Добавить транзакцию
+          <h3>Финансовые записи ({filteredRecords.length})</h3>
+          {onAddRecord && (
+            <button onClick={onAddRecord} className="btn-primary btn-sm">
+              Добавить запись
             </button>
           )}
         </div>
 
-        {filteredTransactions.length > 0 ? (
-          <table className="transactions-table">
+        {filteredRecords.length > 0 ? (
+          <table className="records-table">
             <thead>
               <tr>
                 <th>Дата</th>
                 <th>Тип</th>
                 <th>Описание</th>
                 <th>Сумма</th>
-                <th>Источник/Категория</th>
-                <th>Сделка</th>
+                <th>Источник</th>
+                <th>Примечание</th>
                 <th>Действия</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTransactions.map((transaction) => (
-                <tr key={transaction.id} className={getTransactionTypeClass(transaction.transactionType)}>
-                  <td className="date">{formatDate(transaction.transactionDate)}</td>
-                  <td className="type">{getTransactionTypeDisplay(transaction.transactionType)}</td>
-                  <td className="description">
-                    {transaction.description || "-"}
-                    {transaction.note && (
-                      <div className="note-text">{transaction.note}</div>
-                    )}
-                  </td>
+              {filteredRecords.map((record) => (
+                <tr key={record.id} className={getRecordTypeClass(record.amount)}>
+                  <td className="date">{formatDate(record.date)}</td>
+                  <td className="type">{getRecordTypeDisplay(record.amount)}</td>
+                  <td className="description">{record.description || "—"}</td>
                   <td className="amount">
-                    <strong>{formatRub(Number(transaction.amount))}</strong>
+                    <strong>{formatRub(Math.abs(Number(record.amount)))}</strong>
                   </td>
-                  <td className="source-category">
-                    <div>{transaction.source || "-"}</div>
-                    <div className="category-tag">{transaction.category || "-"}</div>
+                  <td className="source">
+                    {record.source || "—"}
                   </td>
-                  <td className="deal-title">{transaction.dealTitle || "-"}</td>
+                  <td className="note">
+                    {record.note || "—"}
+                  </td>
                   <td className="actions">
-                    {onDeleteTransaction && (
+                    {onDeleteRecord && (
                       <button
                         onClick={() => {
                           if (confirm("Вы уверены?")) {
-                            onDeleteTransaction(transaction.id);
+                            onDeleteRecord(record.id);
                           }
                         }}
                         className="btn-delete btn-sm"
@@ -224,7 +230,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           </table>
         ) : (
           <div className="empty-state">
-            <p>Нет транзакций по выбранным фильтрам</p>
+            <p>Нет записей по выбранным фильтрам</p>
           </div>
         )}
       </div>
@@ -328,7 +334,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           background: #e2e8f0;
         }
 
-        .transactions-table-section {
+        .records-table-section {
           background: white;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
@@ -380,73 +386,61 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           background: #fecaca;
         }
 
-        .transactions-table {
+        .records-table {
           width: 100%;
           border-collapse: collapse;
         }
 
-        .transactions-table thead {
+        .records-table thead {
           background: #f8fafc;
           font-size: 12px;
           color: #64748b;
           font-weight: 600;
         }
 
-        .transactions-table th {
+        .records-table th {
           padding: 12px;
           text-align: left;
           border-bottom: 1px solid #e2e8f0;
         }
 
-        .transactions-table td {
+        .records-table td {
           padding: 12px;
           border-bottom: 1px solid #f1f5f9;
         }
 
-        .transactions-table tbody tr:hover {
+        .records-table tbody tr:hover {
           background: #f8fafc;
         }
 
-        .transactions-table .date {
+        .records-table .date {
           font-weight: 500;
         }
 
-        .transactions-table .type {
+        .records-table .type {
           font-weight: 600;
         }
 
-        .transactions-table .amount {
+        .records-table .amount {
           text-align: right;
           font-weight: 600;
         }
 
-        .transaction-income .amount {
+        .record-income .amount {
           color: #16a34a;
         }
 
-        .transaction-expense .amount {
+        .record-expense .amount {
           color: #dc2626;
         }
 
-        .source-category {
+        .source {
           font-size: 13px;
         }
 
-        .category-tag {
-          background: #f1f5f9;
+        .note {
+          font-size: 13px;
           color: #64748b;
-          padding: 2px 6px;
-          border-radius: 3px;
-          font-size: 11px;
-          margin-top: 4px;
-          display: inline-block;
-        }
-
-        .note-text {
-          font-size: 12px;
-          color: #64748b;
-          margin-top: 4px;
-          font-style: italic;
         }
 
         .empty-state {

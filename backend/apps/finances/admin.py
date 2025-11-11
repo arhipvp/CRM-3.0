@@ -1,45 +1,38 @@
 from django.contrib import admin
+from django.db.models import Sum, Q
 
-from .models import Expense, Income, Payment
+from .models import Payment, FinancialRecord
 
 
-class IncomeInline(admin.TabularInline):
-    """Инлайн для доходов в платеже."""
-    model = Income
+class FinancialRecordInline(admin.TabularInline):
+    """Инлайн для финансовых записей (доход/расход) в платеже."""
+    model = FinancialRecord
     extra = 1
-    fields = ('amount', 'received_at', 'source', 'note')
-    readonly_fields = ('created_at',)
-
-
-class ExpenseInline(admin.TabularInline):
-    """Инлайн для расходов в платеже."""
-    model = Expense
-    extra = 1
-    fields = ('amount', 'expense_type', 'expense_date', 'note')
-    readonly_fields = ('created_at',)
+    fields = ('amount', 'date', 'description', 'source', 'note')
+    readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = (
-        'deal',
+        'id',
+        'policy',
         'amount',
         'status',
         'scheduled_date',
         'actual_date',
-        'total_income',
-        'total_expense',
+        'total_financial',
         'created_at'
     )
     list_filter = ('status', 'scheduled_date', 'actual_date', 'created_at', 'deleted_at')
-    search_fields = ('description', 'deal__title')
+    search_fields = ('description', 'policy__number', 'deal__title')
     readonly_fields = ('id', 'created_at', 'updated_at', 'deleted_at')
     ordering = ('-created_at',)
     date_hierarchy = 'scheduled_date'
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('deal', 'amount', 'description')
+            'fields': ('policy', 'deal', 'amount', 'description')
         }),
         ('Статус', {
             'fields': ('status',)
@@ -53,21 +46,15 @@ class PaymentAdmin(admin.ModelAdmin):
         }),
     )
 
-    inlines = [IncomeInline, ExpenseInline]
+    inlines = [FinancialRecordInline]
 
-    actions = ['mark_as_paid', 'mark_as_pending', 'mark_as_cancelled']
+    actions = ['mark_as_paid', 'mark_as_pending', 'mark_as_partial']
 
-    def total_income(self, obj):
-        """Показывает общую сумму доходов."""
-        total = obj.incomes.aggregate(s=admin.Sum('amount'))['s'] or 0
-        return f'{total} руб.'
-    total_income.short_description = 'Доходы'
-
-    def total_expense(self, obj):
-        """Показывает общую сумму расходов."""
-        total = obj.expenses.aggregate(s=admin.Sum('amount'))['s'] or 0
-        return f'{total} руб.'
-    total_expense.short_description = 'Расходы'
+    def total_financial(self, obj):
+        """Показывает сумму по всем финансовым записям (доход - расход)."""
+        total = obj.financial_records.filter(deleted_at__isnull=True).aggregate(s=Sum('amount'))['s'] or 0
+        return f'{float(total):.2f} руб.'
+    total_financial.short_description = 'Доход/Расход'
 
     def mark_as_paid(self, request, queryset):
         """Action для отметки платежей как оплачено."""
@@ -78,32 +65,32 @@ class PaymentAdmin(admin.ModelAdmin):
 
     def mark_as_pending(self, request, queryset):
         """Action для отметки платежей как в ожидании."""
-        updated = queryset.update(status='pending')
+        updated = queryset.update(status='planned')
         self.message_user(request, f'{updated} платежей отмечено как в ожидании')
-    mark_as_pending.short_description = "Отметить как в ожидании"
+    mark_as_pending.short_description = "Отметить как запланировано"
 
-    def mark_as_cancelled(self, request, queryset):
-        """Action для отметки платежей как отменено."""
-        updated = queryset.update(status='cancelled')
-        self.message_user(request, f'{updated} платежей отмечено как отменено')
-    mark_as_cancelled.short_description = "Отметить как отменено"
+    def mark_as_partial(self, request, queryset):
+        """Action для отметки платежей как частичный."""
+        updated = queryset.update(status='partial')
+        self.message_user(request, f'{updated} платежей отмечено как частичный')
+    mark_as_partial.short_description = "Отметить как частичный"
 
 
-@admin.register(Income)
-class IncomeAdmin(admin.ModelAdmin):
-    list_display = ('payment', 'amount', 'received_at', 'source', 'created_at')
-    search_fields = ('source', 'note', 'payment__deal__title')
-    list_filter = ('received_at', 'created_at')
-    readonly_fields = ('id', 'created_at', 'updated_at', 'deleted_at')
-    ordering = ('-received_at',)
-    date_hierarchy = 'received_at'
+@admin.register(FinancialRecord)
+class FinancialRecordAdmin(admin.ModelAdmin):
+    list_display = ('payment', 'amount', 'record_type', 'date', 'description', 'source', 'created_at')
+    search_fields = ('source', 'description', 'note', 'payment__policy__number')
+    list_filter = ('date', 'created_at', 'deleted_at')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'deleted_at', 'record_type')
+    ordering = ('-date', '-created_at')
+    date_hierarchy = 'date'
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('payment', 'amount', 'source')
+            'fields': ('payment', 'amount', 'record_type')
         }),
-        ('Дата получения', {
-            'fields': ('received_at',)
+        ('Детали', {
+            'fields': ('date', 'description', 'source')
         }),
         ('Примечание', {
             'fields': ('note',)
@@ -114,28 +101,7 @@ class IncomeAdmin(admin.ModelAdmin):
         }),
     )
 
-
-@admin.register(Expense)
-class ExpenseAdmin(admin.ModelAdmin):
-    list_display = ('payment', 'amount', 'expense_type', 'expense_date', 'created_at')
-    search_fields = ('expense_type', 'note', 'payment__deal__title')
-    list_filter = ('expense_type', 'expense_date', 'created_at')
-    readonly_fields = ('id', 'created_at', 'updated_at', 'deleted_at')
-    ordering = ('-expense_date',)
-    date_hierarchy = 'expense_date'
-
-    fieldsets = (
-        ('Основная информация', {
-            'fields': ('payment', 'amount', 'expense_type')
-        }),
-        ('Дата', {
-            'fields': ('expense_date',)
-        }),
-        ('Примечание', {
-            'fields': ('note',)
-        }),
-        ('Временные метки', {
-            'fields': ('id', 'created_at', 'updated_at', 'deleted_at'),
-            'classes': ('collapse',)
-        }),
-    )
+    def record_type(self, obj):
+        """Показывает тип записи: Доход или Расход."""
+        return 'Доход' if obj.amount >= 0 else 'Расход'
+    record_type.short_description = 'Тип'

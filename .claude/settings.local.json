@@ -20,7 +20,8 @@
       "Bash(docker-compose build:*)",
       "Bash(del appsdealsmigrations0005_quote.py)",
       "Bash(rm:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []

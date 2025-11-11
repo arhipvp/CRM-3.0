@@ -1,4 +1,4 @@
-import { ActivityLog, Client, Deal, DealStatus, FinancialTransaction, Payment, Policy, Quote, Task, ChatMessage } from "./types";
+import { ActivityLog, Client, Deal, DealStatus, FinancialRecord, Payment, PaymentStatus, Policy, Quote, Task, ChatMessage } from "./types";
 
 const envBase = import.meta.env.VITE_API_URL;
 const API_BASE = (envBase && envBase.trim() !== "" ? envBase : "/api/v1").replace(/\/$/, "");
@@ -97,6 +97,22 @@ const mapPolicy = (raw: any): Policy => ({
   createdAt: raw.created_at,
 });
 
+const mapFinancialRecord = (raw: any): FinancialRecord => ({
+  id: raw.id,
+  paymentId: raw.payment,
+  paymentDescription: raw.payment_description,
+  paymentAmount: raw.payment_amount,
+  amount: raw.amount,
+  date: raw.date,
+  description: raw.description,
+  source: raw.source,
+  note: raw.note,
+  recordType: raw.record_type,
+  createdAt: raw.created_at,
+  updatedAt: raw.updated_at,
+  deletedAt: raw.deleted_at,
+});
+
 const mapPayment = (raw: any): Payment => ({
   id: raw.id,
   dealId: raw.deal,
@@ -109,7 +125,11 @@ const mapPayment = (raw: any): Payment => ({
   scheduledDate: raw.scheduled_date,
   actualDate: raw.actual_date,
   status: raw.status,
+  financialRecords: Array.isArray(raw.financial_records) ? raw.financial_records.map(mapFinancialRecord) : [],
+  canDelete: raw.can_delete,
   createdAt: raw.created_at,
+  updatedAt: raw.updated_at,
+  deletedAt: raw.deleted_at,
 });
 
 const mapTask = (raw: any): Task => ({
@@ -122,21 +142,6 @@ const mapTask = (raw: any): Task => ({
   dueAt: raw.due_at,
   remindAt: raw.remind_at,
   checklist: Array.isArray(raw.checklist) ? raw.checklist : [],
-  createdAt: raw.created_at,
-});
-
-const mapFinancialTransaction = (raw: any): FinancialTransaction => ({
-  id: raw.id,
-  dealId: raw.deal,
-  dealTitle: raw.deal_title,
-  transactionType: raw.transaction_type,
-  transactionTypeDisplay: raw.transaction_type_display,
-  amount: raw.amount,
-  description: raw.description,
-  transactionDate: raw.transaction_date,
-  source: raw.source,
-  category: raw.category,
-  note: raw.note,
   createdAt: raw.created_at,
 });
 
@@ -252,16 +257,28 @@ export async function updateDeal(
   return mapDeal(payload);
 }
 
-export async function updatePayment(id: string, data: Partial<Pick<Payment, "status" | "actualDate" | "scheduledDate" | "description" | "amount" | "policyId">>): Promise<Payment> {
+export async function updatePayment(
+  id: string,
+  data: Partial<{
+    dealId: string;
+    policyId: string;
+    status: PaymentStatus;
+    actualDate: string | null;
+    scheduledDate: string | null;
+    description: string;
+    amount: number;
+  }>,
+): Promise<Payment> {
   const payload = await request<any>(`/payments/${id}/`, {
     method: "PATCH",
     body: JSON.stringify({
+      deal: data.dealId,
+      policy: data.policyId,
       status: data.status,
       actual_date: data.actualDate,
       scheduled_date: data.scheduledDate,
       description: data.description,
       amount: data.amount,
-      policy: data.policyId,
     }),
   });
   return mapPayment(payload);
@@ -404,59 +421,58 @@ export async function deleteChatMessage(id: string): Promise<void> {
   await request(`/chat_messages/${id}/`, { method: "DELETE" });
 }
 
-export async function fetchFinancialTransactions(): Promise<FinancialTransaction[]> {
-  const payload = await request<any>("/financial_transactions/");
-  return unwrapList(payload).map(mapFinancialTransaction);
+export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
+  const payload = await request<any>("/financial_records/");
+  return unwrapList(payload).map(mapFinancialRecord);
 }
 
-export async function createFinancialTransaction(data: {
-  dealId?: string;
-  transactionType: "income" | "expense";
+export async function createFinancialRecord(data: {
+  paymentId: string;
   amount: number;
+  date?: string | null;
   description?: string;
-  transactionDate: string;
   source?: string;
-  category?: string;
   note?: string;
-}): Promise<FinancialTransaction> {
-  const payload = await request<any>("/financial_transactions/", {
+}): Promise<FinancialRecord> {
+  const payload = await request<any>("/financial_records/", {
     method: "POST",
     body: JSON.stringify({
-      deal: data.dealId || null,
-      transaction_type: data.transactionType,
+      payment: data.paymentId,
       amount: data.amount,
+      date: data.date || null,
       description: data.description || "",
-      transaction_date: data.transactionDate,
       source: data.source || "",
-      category: data.category || "",
       note: data.note || "",
     }),
   });
-  return mapFinancialTransaction(payload);
+  return mapFinancialRecord(payload);
 }
 
-export async function updateFinancialTransaction(
+export async function updateFinancialRecord(
   id: string,
-  data: Partial<Omit<FinancialTransaction, "id" | "createdAt">>
-): Promise<FinancialTransaction> {
-  const payload = await request<any>(`/financial_transactions/${id}/`, {
+  data: Partial<{
+    amount: number;
+    date: string | null;
+    description: string;
+    source: string;
+    note: string;
+  }>
+): Promise<FinancialRecord> {
+  const payload = await request<any>(`/financial_records/${id}/`, {
     method: "PATCH",
     body: JSON.stringify({
-      deal: data.dealId || null,
-      transaction_type: data.transactionType,
       amount: data.amount,
-      description: data.description || "",
-      transaction_date: data.transactionDate,
-      source: data.source || "",
-      category: data.category || "",
-      note: data.note || "",
+      date: data.date,
+      description: data.description,
+      source: data.source,
+      note: data.note,
     }),
   });
-  return mapFinancialTransaction(payload);
+  return mapFinancialRecord(payload);
 }
 
-export async function deleteFinancialTransaction(id: string): Promise<void> {
-  await request(`/financial_transactions/${id}/`, { method: "DELETE" });
+export async function deleteFinancialRecord(id: string): Promise<void> {
+  await request(`/financial_records/${id}/`, { method: "DELETE" });
 }
 
 export async function fetchActivityLogs(dealId: string): Promise<ActivityLog[]> {
