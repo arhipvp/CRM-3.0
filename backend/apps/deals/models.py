@@ -84,3 +84,60 @@ class Quote(SoftDeleteModel):
 
     def __str__(self) -> str:
         return f"{self.insurance_type} — {self.insurer}"
+
+
+class ActivityLog(models.Model):
+    """Журнал действий по сделке для отслеживания изменений."""
+
+    class ActionType(models.TextChoices):
+        CREATED = "created", "Создано"
+        STATUS_CHANGED = "status_changed", "Изменен статус"
+        STAGE_CHANGED = "stage_changed", "Изменена стадия"
+        DESCRIPTION_UPDATED = "description_updated", "Обновлено описание"
+        ASSIGNED = "assigned", "Назначено"
+        POLICY_CREATED = "policy_created", "Создан полис"
+        QUOTE_ADDED = "quote_added", "Добавлен расчет"
+        DOCUMENT_UPLOADED = "document_uploaded", "Загружен документ"
+        PAYMENT_CREATED = "payment_created", "Создан платеж"
+        COMMENT_ADDED = "comment_added", "Добавлен комментарий"
+        CUSTOM = "custom", "Пользовательское действие"
+
+    deal = models.ForeignKey(
+        Deal,
+        related_name="activity_logs",
+        on_delete=models.CASCADE,
+        help_text="Сделка"
+    )
+
+    action_type = models.CharField(
+        max_length=50,
+        choices=ActionType.choices,
+        default=ActionType.CUSTOM,
+        help_text="Тип действия"
+    )
+
+    description = models.TextField(help_text="Описание действия")
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Пользователь, выполнивший действие"
+    )
+
+    old_value = models.TextField(blank=True, help_text="Старое значение")
+    new_value = models.TextField(blank=True, help_text="Новое значение")
+
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Время действия")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Лог активности"
+        verbose_name_plural = "Логи активности"
+        indexes = [
+            models.Index(fields=["deal", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.deal.title} — {self.get_action_type_display()} ({self.created_at.strftime('%d.%m.%Y %H:%M')})"

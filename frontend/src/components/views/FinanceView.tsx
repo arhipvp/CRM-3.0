@@ -3,7 +3,7 @@ import { Payment, FinancialTransaction } from "../../types";
 
 interface FinanceViewProps {
   payments: Payment[];
-  financialTransactions: FinancialTransaction[];
+  financialTransactions?: FinancialTransaction[];
   onAddTransaction?: () => void;
   onUpdateTransaction?: (id: string, data: Partial<FinancialTransaction>) => Promise<void>;
   onDeleteTransaction?: (id: string) => Promise<void>;
@@ -11,7 +11,7 @@ interface FinanceViewProps {
 
 export const FinanceView: React.FC<FinanceViewProps> = ({
   payments,
-  financialTransactions,
+  financialTransactions = [],
   onAddTransaction,
   onUpdateTransaction,
   onDeleteTransaction,

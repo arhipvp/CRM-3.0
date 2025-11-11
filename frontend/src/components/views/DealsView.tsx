@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { Client, Deal, DealStatus, Payment, Policy, Task, ChatMessage } from "../../types";
+import { ActivityLog, Client, Deal, DealStatus, Payment, Policy, Task, ChatMessage } from "../../types";
 import { FileUploadManager } from "../FileUploadManager";
 import { ChatBox } from "../ChatBox";
+import { ActivityTimeline } from "../ActivityTimeline";
 
 const statusLabels: Record<DealStatus, string> = {
   open: "В работе",
@@ -49,6 +50,7 @@ interface DealsViewProps {
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, authorName: string, body: string) => Promise<void>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
+  onFetchActivityLogs: (dealId: string) => Promise<ActivityLog[]>;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -69,6 +71,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onFetchChatMessages,
   onSendChatMessage,
   onDeleteChatMessage,
+  onFetchActivityLogs,
 }) => {
   const selectedDeal = selectedDealId ? deals.find((deal) => deal.id === selectedDealId) ?? null : deals[0] ?? null;
   const selectedClient = selectedDeal ? clients.find((client) => client.id === selectedDeal.clientId) ?? null : null;
@@ -76,6 +79,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [activeTab, setActiveTab] = useState<DealTabId>("overview");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [isActivityLoading, setIsActivityLoading] = useState(false);
 
   useEffect(() => {
     setActiveTab("overview");
@@ -85,6 +90,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
   useEffect(() => {
     if (activeTab === "chat" && selectedDeal) {
       loadChatMessages();
+    }
+  }, [activeTab, selectedDeal?.id]);
+
+  // Загружать логи активности когда открываем вкладку "История"
+  useEffect(() => {
+    if (activeTab === "history" && selectedDeal) {
+      loadActivityLogs();
     }
   }, [activeTab, selectedDeal?.id]);
 
@@ -98,6 +110,19 @@ export const DealsView: React.FC<DealsViewProps> = ({
       console.error("Ошибка загрузки сообщений:", err);
     } finally {
       setIsChatLoading(false);
+    }
+  };
+
+  const loadActivityLogs = async () => {
+    if (!selectedDeal) return;
+    setIsActivityLoading(true);
+    try {
+      const logs = await onFetchActivityLogs(selectedDeal.id);
+      setActivityLogs(logs);
+    } catch (err) {
+      console.error("Ошибка загрузки логов активности:", err);
+    } finally {
+      setIsActivityLoading(false);
     }
   };
 
@@ -329,6 +354,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   };
 
+  const renderActivityTab = () => {
+    return (
+      <ActivityTimeline
+        activities={activityLogs}
+        isLoading={isActivityLoading}
+      />
+    );
+  };
+
   const renderPlaceholder = (label: string) => (
     <div className="text-sm text-slate-500">{label} появится после имплементации соответствующей фичи.</div>
   );
@@ -373,7 +407,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       case "notes":
         return renderPlaceholder("Заметки");
       case "history":
-        return renderPlaceholder("История активности");
+        return renderActivityTab();
       default:
         return null;
     }

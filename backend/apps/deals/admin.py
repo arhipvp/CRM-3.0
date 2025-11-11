@@ -7,7 +7,7 @@ from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
 
-from .models import Deal, Quote
+from .models import ActivityLog, Deal, Quote
 
 
 class TaskInline(admin.TabularInline):
@@ -52,6 +52,14 @@ class QuoteInline(admin.TabularInline):
     readonly_fields = ("created_at",)
 
 
+class ActivityLogInline(admin.TabularInline):
+    model = ActivityLog
+    extra = 0
+    fields = ("action_type", "description", "user", "created_at")
+    readonly_fields = ("action_type", "description", "user", "created_at")
+    can_delete = False
+
+
 @admin.register(Deal)
 class DealAdmin(admin.ModelAdmin):
     list_display = (
@@ -94,7 +102,7 @@ class DealAdmin(admin.ModelAdmin):
         }),
     )
 
-    inlines = [QuoteInline, TaskInline, PaymentInline, PolicyInline, DocumentInline, NoteInline]
+    inlines = [ActivityLogInline, QuoteInline, TaskInline, PaymentInline, PolicyInline, DocumentInline, NoteInline]
     actions = ["mark_as_won", "mark_as_lost", "mark_as_on_hold"]
 
     def deals_count(self, obj):
@@ -119,3 +127,19 @@ class DealAdmin(admin.ModelAdmin):
         self.message_user(request, f"{updated} сделок поставлено на паузу")
 
     mark_as_on_hold.short_description = "Перевести на паузу"
+
+
+@admin.register(ActivityLog)
+class ActivityLogAdmin(admin.ModelAdmin):
+    list_display = ("deal", "action_type", "description", "user", "created_at")
+    list_filter = ("action_type", "created_at", "deal")
+    search_fields = ("deal__title", "description", "user__username")
+    readonly_fields = ("deal", "action_type", "description", "user", "old_value", "new_value", "created_at")
+    ordering = ("-created_at",)
+    date_hierarchy = "created_at"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

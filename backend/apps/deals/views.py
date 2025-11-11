@@ -1,7 +1,7 @@
 ﻿from rest_framework import permissions, viewsets
 
-from .models import Deal, Quote
-from .serializers import DealSerializer, QuoteSerializer
+from .models import ActivityLog, Deal, Quote
+from .serializers import ActivityLogSerializer, DealSerializer, QuoteSerializer
 
 
 class DealViewSet(viewsets.ModelViewSet):
@@ -23,3 +23,15 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+
+class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ActivityLogSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        queryset = ActivityLog.objects.select_related("deal", "user").all().order_by("-created_at")
+        deal_id = self.request.query_params.get("deal")
+        if deal_id:
+            queryset = queryset.filter(deal_id=deal_id)
+        return queryset

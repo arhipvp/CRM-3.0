@@ -1,4 +1,4 @@
-import { Client, Deal, DealStatus, FinancialTransaction, Payment, Policy, Quote, Task, ChatMessage } from "./types";
+import { ActivityLog, Client, Deal, DealStatus, FinancialTransaction, Payment, Policy, Quote, Task, ChatMessage } from "./types";
 
 const envBase = import.meta.env.VITE_API_URL;
 const API_BASE = (envBase && envBase.trim() !== "" ? envBase : "/api/v1").replace(/\/$/, "");
@@ -133,6 +133,19 @@ const mapFinancialTransaction = (raw: any): FinancialTransaction => ({
   source: raw.source,
   category: raw.category,
   note: raw.note,
+  createdAt: raw.created_at,
+});
+
+const mapActivityLog = (raw: any): ActivityLog => ({
+  id: raw.id,
+  deal: raw.deal,
+  actionType: raw.action_type,
+  actionTypeDisplay: raw.action_type_display,
+  description: raw.description,
+  user: raw.user,
+  userUsername: raw.user_username,
+  oldValue: raw.old_value,
+  newValue: raw.new_value,
   createdAt: raw.created_at,
 });
 
@@ -410,6 +423,11 @@ export async function updateFinancialTransaction(
 
 export async function deleteFinancialTransaction(id: string): Promise<void> {
   await request(`/financial_transactions/${id}/`, { method: "DELETE" });
+}
+
+export async function fetchActivityLogs(dealId: string): Promise<ActivityLog[]> {
+  const payload = await request<any>(`/activity_logs/?deal=${dealId}`);
+  return unwrapList(payload).map(mapActivityLog);
 }
 
 

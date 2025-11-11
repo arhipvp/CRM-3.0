@@ -103,6 +103,19 @@ export interface FinancialTransaction {
   createdAt: string;
 }
 
+export interface ActivityLog {
+  id: string;
+  deal: string;
+  actionType: "created" | "status_changed" | "stage_changed" | "description_updated" | "assigned" | "policy_created" | "quote_added" | "document_uploaded" | "payment_created" | "comment_added" | "custom";
+  actionTypeDisplay: string;
+  description: string;
+  user?: string | null;
+  userUsername?: string | null;
+  oldValue?: string;
+  newValue?: string;
+  createdAt: string;
+}
+
 export interface ChecklistItem {
   label: string;
   done: boolean;
