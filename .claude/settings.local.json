@@ -24,7 +24,11 @@
       "Bash(cd:*)",
       "Bash(python -m py_compile:*)",
       "Bash(python manage.py makemigrations:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(docker-compose:*)",
+      "Bash(git restore:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(python -m pytest:*)"
     ],
     "deny": [],
     "ask": []

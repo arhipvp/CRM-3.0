@@ -8,3 +8,9 @@ python-decouple==3.8
 drf-spectacular==0.28.0
 django-import-export==3.3.7
 openpyxl==3.1.5
+
+# Testing
+pytest==8.0.0
+pytest-django==4.7.0
+factory-boy==3.3.0
+pytest-cov==4.1.0

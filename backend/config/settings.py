@@ -102,6 +102,7 @@ DATABASES = {
         'PASSWORD': config('DJANGO_DB_PASSWORD', default=''),
         'HOST': config('DJANGO_DB_HOST', default=''),
         'PORT': config('DJANGO_DB_PORT', default=''),
+        'ATOMIC_REQUESTS': False,
     }
 }
 
