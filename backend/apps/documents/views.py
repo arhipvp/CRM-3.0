@@ -14,7 +14,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        # Если пользователь авторизован, сохранить его как owner
+        # Если нет (AnonymousUser), разрешить owner быть None
+        owner = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(owner=owner)
 
 
 class DocumentRecognitionView(APIView):
