@@ -4,6 +4,7 @@ import { FileUploadManager } from "../FileUploadManager";
 import { ChatBox } from "../ChatBox";
 import { ActivityTimeline } from "../ActivityTimeline";
 import { EditDealForm, EditDealFormValues } from "../forms/EditDealForm";
+import { AddTaskForm, AddTaskFormValues } from "../forms/AddTaskForm";
 
 const statusLabels: Record<DealStatus, string> = {
   open: "В работе",
@@ -53,6 +54,9 @@ interface DealsViewProps {
   onSendChatMessage: (dealId: string, authorName: string, body: string) => Promise<void>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchActivityLogs: (dealId: string) => Promise<ActivityLog[]>;
+  onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
+  onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
+  onDeleteTask: (taskId: string) => Promise<void>;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -75,6 +79,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onSendChatMessage,
   onDeleteChatMessage,
   onFetchActivityLogs,
+  onCreateTask,
+  onUpdateTask,
+  onDeleteTask,
 }) => {
   const selectedDeal = selectedDealId ? deals.find((deal) => deal.id === selectedDealId) ?? null : deals[0] ?? null;
   const selectedClient = selectedDeal ? clients.find((client) => client.id === selectedDeal.clientId) ?? null : null;
@@ -85,6 +92,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [isActivityLoading, setIsActivityLoading] = useState(false);
   const [isEditingDeal, setIsEditingDeal] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab("overview");
@@ -146,31 +155,71 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const quotes = selectedDeal?.quotes ?? [];
 
   const renderTasksTab = () => {
-    if (!relatedTasks.length) {
-      return <p className="text-sm text-slate-500">Задачи еще не созданы.</p>;
+    if (!selectedDeal) {
+      return null;
     }
+
+    if (!relatedTasks.length) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">Задачи еще не созданы.</p>
+          <button
+            onClick={() => setIsCreatingTask(true)}
+            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
+          >
+            Создать задачу
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <ul className="divide-y divide-slate-100">
-        {relatedTasks.map((task) => (
-          <li key={task.id} className="py-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-semibold text-slate-900 text-sm">{task.title}</p>
-                {task.description && <p className="text-sm text-slate-500 mt-1">{task.description}</p>}
-                <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-4">
-                  <span>Статус: {task.status}</span>
-                  {task.dueAt && <span>Срок: {formatDate(task.dueAt)}</span>}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-base font-semibold text-slate-800">Задачи</h3>
+          <button
+            onClick={() => setIsCreatingTask(true)}
+            className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          >
+            + Создать задачу
+          </button>
+        </div>
+        <ul className="divide-y divide-slate-100">
+          {relatedTasks.map((task) => (
+            <li key={task.id} className="py-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-semibold text-slate-900 text-sm">{task.title}</p>
+                  {task.description && <p className="text-sm text-slate-500 mt-1">{task.description}</p>}
+                  <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-4">
+                    <span>Статус: {task.status}</span>
+                    {task.dueAt && <span>Срок: {formatDate(task.dueAt)}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {task.priority && (
+                    <span className="text-xs font-semibold text-slate-500 uppercase bg-slate-100 rounded-full px-2 py-1 whitespace-nowrap">
+                      {task.priority}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setEditingTaskId(task.id)}
+                    className="text-xs text-slate-400 hover:text-sky-600 whitespace-nowrap"
+                  >
+                    ✎ Редактировать
+                  </button>
+                  <button
+                    onClick={() => onDeleteTask(task.id).catch(() => undefined)}
+                    className="text-xs text-slate-400 hover:text-red-500 whitespace-nowrap"
+                  >
+                    Удалить
+                  </button>
                 </div>
               </div>
-              {task.priority && (
-                <span className="text-xs font-semibold text-slate-500 uppercase bg-slate-100 rounded-full px-2 py-1">
-                  {task.priority}
-                </span>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   };
 
@@ -543,6 +592,63 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 }}
                 onCancel={() => setIsEditingDeal(false)}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Task Modal */}
+      {isCreatingTask && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Новая задача</h3>
+              <button
+                onClick={() => setIsCreatingTask(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <AddTaskForm
+                dealId={selectedDeal.id}
+                onSubmit={async (data) => {
+                  await onCreateTask(selectedDeal.id, data);
+                  setIsCreatingTask(false);
+                }}
+                onCancel={() => setIsCreatingTask(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {editingTaskId && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Редактировать задачу</h3>
+              <button
+                onClick={() => setEditingTaskId(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              {relatedTasks.find((t) => t.id === editingTaskId) && (
+                <AddTaskForm
+                  dealId={selectedDeal.id}
+                  task={relatedTasks.find((t) => t.id === editingTaskId)}
+                  onSubmit={async (data) => {
+                    await onUpdateTask(editingTaskId, data);
+                    setEditingTaskId(null);
+                  }}
+                  onCancel={() => setEditingTaskId(null)}
+                />
+              )}
             </div>
           </div>
         </div>

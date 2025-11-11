@@ -34,6 +34,9 @@ import {
   updateDeal,
   updatePayment,
   fetchActivityLogs,
+  createTask,
+  updateTask,
+  deleteTask,
 } from "./api";
 import { Client, Deal, DealStatus, Payment, Policy, Task } from "./types";
 
@@ -240,6 +243,42 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCreateTask = async (dealId: string, data: any) => {
+    setSyncing(true);
+    try {
+      const created = await createTask({ dealId, ...data });
+      setTasks((prev) => [created, ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось создать задачу");
+      throw err;
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleUpdateTask = async (taskId: string, data: any) => {
+    setSyncing(true);
+    try {
+      const updated = await updateTask(taskId, data);
+      setTasks((prev) => prev.map((task) => (task.id === updated.id ? updated : task)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось обновить задачу");
+      throw err;
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось удалить задачу");
+      throw err;
+    }
+  };
+
   const renderView = () => {
     if (isLoading) {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
@@ -267,6 +306,9 @@ const App: React.FC = () => {
             onSendChatMessage={handleSendChatMessage}
             onDeleteChatMessage={handleDeleteChatMessage}
             onFetchActivityLogs={fetchActivityLogs}
+            onCreateTask={handleCreateTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
           />
         );
       case "clients":

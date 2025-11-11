@@ -13,7 +13,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   payments,
   financialTransactions = [],
   onAddTransaction,
-  onUpdateTransaction,
   onDeleteTransaction,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");

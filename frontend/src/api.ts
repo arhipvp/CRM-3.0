@@ -456,6 +456,55 @@ export async function fetchActivityLogs(dealId: string): Promise<ActivityLog[]> 
   const payload = await request<any>(`/activity_logs/?deal=${dealId}`);
   return unwrapList(payload).map(mapActivityLog);
 }
+
+export async function createTask(data: {
+  dealId: string;
+  title: string;
+  description?: string;
+  priority: string;
+  dueAt?: string | null;
+  status?: string;
+}): Promise<Task> {
+  const payload = await request<any>("/tasks/", {
+    method: "POST",
+    body: JSON.stringify({
+      deal: data.dealId,
+      title: data.title,
+      description: data.description || "",
+      priority: data.priority,
+      due_at: data.dueAt || null,
+      status: data.status || "todo",
+    }),
+  });
+  return mapTask(payload);
+}
+
+export async function updateTask(
+  id: string,
+  data: Partial<{
+    title: string;
+    description: string;
+    priority: string;
+    dueAt: string | null;
+    status: string;
+  }>
+): Promise<Task> {
+  const payload = await request<any>(`/tasks/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      due_at: data.dueAt,
+      status: data.status,
+    }),
+  });
+  return mapTask(payload);
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await request(`/tasks/${id}/`, { method: "DELETE" });
+}
 
 
 

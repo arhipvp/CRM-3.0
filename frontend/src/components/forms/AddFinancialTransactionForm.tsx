@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { FinancialTransaction } from "../../types";
 
 export interface AddFinancialTransactionFormValues {
   transactionType: "income" | "expense";
