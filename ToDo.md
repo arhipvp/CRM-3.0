@@ -58,8 +58,13 @@
     ✅ - Красивый интерфейс админ-сайта с дизайном CRM
   ✅ - Все 11 приложений (users, clients, deals, tasks, documents, finances, notes, policies, notifications, chat) имеют полный admin функционал
 
+[ФАЗА 7 - АВТОМАТИЗИРОВАННОЕ ТЕСТИРОВАНИЕ] ✅ ЗАВЕРШЕНА
+  ✅ - Настроить pytest и pytest-django
+  ✅ - Создать factories и fixtures для тестирования (UserFactory, RoleFactory, PermissionFactory)
+  ✅ - Написать 18 тестов для Django admin (доступ, CRUD операции, soft delete, поиск, фильтрация)
+  ✅ - Все 18 тестов админки успешно проходят
+
 Другие задачи
-  ⏳ - Провести ручное тестирование админки: все операции, импорт/экспорт, восстановление удаленных
   ⏳ - Расширить журналирование Django signals на все основные сущности (Deal, Client, Task, Document, Payment, Policy)
   ⏳ - Статус сделки (убрать?)
   ⏳ - Клик по клиенту - написать в вотсап
