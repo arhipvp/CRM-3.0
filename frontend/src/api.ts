@@ -221,6 +221,33 @@ export async function updateDealStatus(id: string, status: DealStatus): Promise<
   return mapDeal(payload);
 }
 
+export async function updateDeal(
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    clientId?: string;
+    nextReviewDate?: string | null;
+    expectedClose?: string | null;
+    probability?: number;
+    stageName?: string;
+  }
+): Promise<Deal> {
+  const payload = await request<any>(`/deals/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title: data.title,
+      description: data.description,
+      client: data.clientId,
+      next_review_date: data.nextReviewDate || null,
+      expected_close: data.expectedClose || null,
+      probability: data.probability,
+      stage_name: data.stageName,
+    }),
+  });
+  return mapDeal(payload);
+}
+
 export async function updatePayment(id: string, data: Partial<Pick<Payment, "status" | "actualDate" | "scheduledDate" | "description" | "amount">>): Promise<Payment> {
   const payload = await request<any>(`/payments/${id}/`, {
     method: "PATCH",

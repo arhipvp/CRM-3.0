@@ -3,6 +3,7 @@ import { ActivityLog, Client, Deal, DealStatus, Payment, Policy, Task, ChatMessa
 import { FileUploadManager } from "../FileUploadManager";
 import { ChatBox } from "../ChatBox";
 import { ActivityTimeline } from "../ActivityTimeline";
+import { EditDealForm, EditDealFormValues } from "../forms/EditDealForm";
 
 const statusLabels: Record<DealStatus, string> = {
   open: "В работе",
@@ -41,6 +42,7 @@ interface DealsViewProps {
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
   onUpdateStatus: (dealId: string, status: DealStatus) => Promise<void>;
+  onUpdateDeal: (dealId: string, data: EditDealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestAddPolicy: (dealId: string) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
@@ -62,6 +64,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   selectedDealId,
   onSelectDeal,
   onUpdateStatus,
+  onUpdateDeal,
   onRequestAddQuote,
   onRequestAddPolicy,
   onDeleteQuote,
@@ -81,6 +84,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [isActivityLoading, setIsActivityLoading] = useState(false);
+  const [isEditingDeal, setIsEditingDeal] = useState(false);
 
   useEffect(() => {
     setActiveTab("overview");
@@ -449,7 +453,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 <h2 className="text-2xl font-semibold text-slate-900">{selectedDeal.title}</h2>
                 <p className="text-sm text-slate-500 mt-1">{selectedClient?.name || "Клиент не выбран"}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <label className="text-sm text-slate-600">Статус</label>
                 <select
                   value={selectedDeal.status}
@@ -462,6 +466,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
                     </option>
                   ))}
                 </select>
+                <button
+                  onClick={() => setIsEditingDeal(true)}
+                  className="px-3 py-2 text-sm font-medium text-sky-600 hover:bg-sky-50 rounded-lg border border-sky-200"
+                >
+                  ✎ Редактировать
+                </button>
               </div>
             </div>
 
@@ -509,6 +519,34 @@ export const DealsView: React.FC<DealsViewProps> = ({
           </div>
         )}
       </section>
+
+      {/* Edit Deal Modal */}
+      {isEditingDeal && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Редактировать сделку</h3>
+              <button
+                onClick={() => setIsEditingDeal(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <EditDealForm
+                deal={selectedDeal}
+                clients={clients}
+                onSubmit={async (data) => {
+                  await onUpdateDeal(selectedDeal.id, data);
+                  setIsEditingDeal(false);
+                }}
+                onCancel={() => setIsEditingDeal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

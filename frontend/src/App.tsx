@@ -31,7 +31,9 @@ import {
   fetchPolicies,
   fetchTasks,
   updateDealStatus,
+  updateDeal,
   updatePayment,
+  fetchActivityLogs,
 } from "./api";
 import { Client, Deal, DealStatus, Payment, Policy, Task } from "./types";
 
@@ -106,6 +108,20 @@ const App: React.FC = () => {
       setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось обновить статус");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleUpdateDeal = async (dealId: string, data: any) => {
+    setSyncing(true);
+    try {
+      const updated = await updateDeal(dealId, data);
+      setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
+      setSelectedDealId(updated.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось обновить сделку");
+      throw err;
     } finally {
       setSyncing(false);
     }
@@ -240,6 +256,7 @@ const App: React.FC = () => {
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
             onUpdateStatus={handleStatusChange}
+            onUpdateDeal={handleUpdateDeal}
             onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
             onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
             onDeleteQuote={handleDeleteQuote}
@@ -249,6 +266,7 @@ const App: React.FC = () => {
             onFetchChatMessages={handleFetchChatMessages}
             onSendChatMessage={handleSendChatMessage}
             onDeleteChatMessage={handleDeleteChatMessage}
+            onFetchActivityLogs={fetchActivityLogs}
           />
         );
       case "clients":
