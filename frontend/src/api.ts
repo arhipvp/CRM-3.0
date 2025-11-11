@@ -1,4 +1,4 @@
-import { Client, Deal, DealStatus, Payment, Policy, Task } from "./types";
+import { Client, Deal, DealStatus, Payment, Policy, Quote, Task } from "./types";
 
 const envBase = import.meta.env.VITE_API_URL;
 const API_BASE = (envBase && envBase.trim() !== "" ? envBase : "/api/v1").replace(/\/$/, "");
@@ -40,8 +40,21 @@ const mapClient = (raw: any): Client => ({
   name: raw.name,
   phone: toCamel(raw.phone),
   birthDate: raw.birth_date ?? null,
+  notes: raw.notes ?? null,
   createdAt: raw.created_at,
   updatedAt: raw.updated_at,
+});
+
+const mapQuote = (raw: any): Quote => ({
+  id: raw.id,
+  dealId: raw.deal,
+  insurer: raw.insurer,
+  insuranceType: raw.insurance_type,
+  sumInsured: raw.sum_insured,
+  premium: raw.premium,
+  deductible: raw.deductible || undefined,
+  comments: raw.comments || undefined,
+  createdAt: raw.created_at,
 });
 
 const mapDeal = (raw: any): Deal => ({
@@ -59,6 +72,7 @@ const mapDeal = (raw: any): Deal => ({
   lossReason: raw.loss_reason,
   channel: raw.channel,
   createdAt: raw.created_at,
+  quotes: Array.isArray(raw.quotes) ? raw.quotes.map(mapQuote) : [],
 });
 
 const mapPolicy = (raw: any): Policy => ({
@@ -124,25 +138,27 @@ export async function fetchTasks(): Promise<Task[]> {
   return unwrapList(payload).map(mapTask);
 }
 
-export async function createClient(data: { name: string; phone?: string; birthDate?: string | null; }): Promise<Client> {
+export async function createClient(data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null; }): Promise<Client> {
   const payload = await request<any>("/clients/", {
     method: "POST",
     body: JSON.stringify({
       name: data.name,
       phone: data.phone,
       birth_date: data.birthDate || null,
+      notes: data.notes ?? "",
     }),
   });
   return mapClient(payload);
 }
 
-export async function updateClient(id: string, data: { name: string; phone?: string; birthDate?: string | null; }): Promise<Client> {
+export async function updateClient(id: string, data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null; }): Promise<Client> {
   const payload = await request<any>(`/clients/${id}/`, {
     method: "PATCH",
     body: JSON.stringify({
       name: data.name,
       phone: data.phone,
       birth_date: data.birthDate || null,
+      notes: data.notes ?? "",
     }),
   });
   return mapClient(payload);
@@ -181,7 +197,87 @@ export async function updatePayment(id: string, data: Partial<Pick<Payment, "sta
     }),
   });
   return mapPayment(payload);
-}
+}
+
+export async function createQuote(data: {
+  dealId: string;
+  insurer: string;
+  insuranceType: string;
+  sumInsured: number;
+  premium: number;
+  deductible?: string;
+  comments?: string;
+}): Promise<Quote> {
+  const payload = await request<any>("/quotes/", {
+    method: "POST",
+    body: JSON.stringify({
+      deal: data.dealId,
+      insurer: data.insurer,
+      insurance_type: data.insuranceType,
+      sum_insured: data.sumInsured,
+      premium: data.premium,
+      deductible: data.deductible,
+      comments: data.comments,
+    }),
+  });
+  return mapQuote(payload);
+}
+
+export async function deleteQuote(id: string): Promise<void> {
+  await request(`/quotes/${id}/`, { method: "DELETE" });
+}
+
+export async function createPolicy(data: {
+  dealId: string;
+  number: string;
+  insuranceCompany: string;
+  insuranceType: string;
+  vin?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  amount: number;
+}): Promise<Policy> {
+  const payload = await request<any>("/policies/", {
+    method: "POST",
+    body: JSON.stringify({
+      deal: data.dealId,
+      number: data.number,
+      insurance_company: data.insuranceCompany,
+      insurance_type: data.insuranceType,
+      vin: data.vin,
+      start_date: data.startDate || null,
+      end_date: data.endDate || null,
+      amount: data.amount,
+    }),
+  });
+  return mapPolicy(payload);
+}
+
+export async function createPayment(data: {
+  dealId?: string;
+  amount: number;
+  description?: string;
+  scheduledDate?: string | null;
+  actualDate?: string | null;
+  status?: "planned" | "partial" | "paid";
+}): Promise<Payment> {
+  const payload = await request<any>("/payments/", {
+    method: "POST",
+    body: JSON.stringify({
+      deal: data.dealId || null,
+      amount: data.amount,
+      description: data.description || "",
+      scheduled_date: data.scheduledDate || null,
+      actual_date: data.actualDate || null,
+      status: data.status || "planned",
+    }),
+  });
+  return mapPayment(payload);
+}
+
+export async function deletePolicy(id: string): Promise<void> {
+  await request(`/policies/${id}/`, { method: "DELETE" });
+}
 
 
 

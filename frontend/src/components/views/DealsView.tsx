@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { Client, Deal, DealStatus, Payment, Policy, Task } from "../../types";
 
 const statusLabels: Record<DealStatus, string> = {
@@ -38,6 +38,10 @@ interface DealsViewProps {
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
   onUpdateStatus: (dealId: string, status: DealStatus) => Promise<void>;
+  onRequestAddQuote: (dealId: string) => void;
+  onRequestAddPolicy: (dealId: string) => void;
+  onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
+  onDeletePolicy: (policyId: string) => Promise<void>;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -49,6 +53,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
   selectedDealId,
   onSelectDeal,
   onUpdateStatus,
+  onRequestAddQuote,
+  onRequestAddPolicy,
+  onDeleteQuote,
+  onDeletePolicy,
 }) => {
   const selectedDeal = selectedDealId ? deals.find((deal) => deal.id === selectedDealId) ?? null : deals[0] ?? null;
   const selectedClient = selectedDeal ? clients.find((client) => client.id === selectedDeal.clientId) ?? null : null;
@@ -71,6 +79,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
     () => (selectedDeal ? tasks.filter((t) => t.dealId === selectedDeal.id) : []),
     [selectedDeal, tasks],
   );
+
+  const quotes = selectedDeal?.quotes ?? [];
 
   const renderTasksTab = () => {
     if (!relatedTasks.length) {
@@ -102,24 +112,60 @@ export const DealsView: React.FC<DealsViewProps> = ({
   };
 
   const renderPoliciesTab = () => {
-    if (!relatedPolicies.length) {
-      return <p className="text-sm text-slate-500">Для сделки пока нет полисов.</p>;
+    if (!selectedDeal) {
+      return null;
     }
+
+    if (!relatedPolicies.length) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">Для сделки пока нет полисов.</p>
+          <button
+            onClick={() => onRequestAddPolicy(selectedDeal.id)}
+            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
+          >
+            Создать полис
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <div className="space-y-3">
-        {relatedPolicies.map((policy) => (
-          <div key={policy.id} className="border border-slate-200 rounded-xl p-4">
-            <p className="text-sm font-semibold text-slate-900">{policy.number}</p>
-            <p className="text-xs text-slate-500 mt-1">{policy.insuranceCompany}</p>
-            <div className="text-xs text-slate-400 mt-2 flex flex-wrap gap-4">
-              <span>Тип: {policy.insuranceType}</span>
-              <span>
-                Период: {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
-              </span>
-              <span>Сумма: {formatCurrency(policy.amount)}</span>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-base font-semibold text-slate-800">Полисы</h3>
+          <button
+            onClick={() => onRequestAddPolicy(selectedDeal.id)}
+            className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          >
+            + Создать полис
+          </button>
+        </div>
+        <div className="space-y-3">
+          {relatedPolicies.map((policy) => (
+            <div key={policy.id} className="border border-slate-200 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-slate-900">{policy.number}</p>
+                  <p className="text-xs text-slate-500 mt-1">{policy.insuranceCompany}</p>
+                  <div className="text-xs text-slate-400 mt-2 flex flex-wrap gap-4">
+                    <span>Тип: {policy.insuranceType}</span>
+                    <span>
+                      Период: {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
+                    </span>
+                    <span>Сумма: {formatCurrency(policy.amount)}</span>
+                  </div>
+                </div>
+                <button
+                  className="text-xs text-slate-400 hover:text-red-500"
+                  onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                >
+                  Удалить
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   };
@@ -139,6 +185,73 @@ export const DealsView: React.FC<DealsViewProps> = ({
             <p className="text-xs text-slate-500 mt-1">Статус: {payment.status}</p>
           </div>
         ))}
+      </div>
+    );
+  };
+
+  const renderQuotesTab = () => {
+    if (!selectedDeal) {
+      return null;
+    }
+
+    if (!quotes.length) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">Расчетов пока нет.</p>
+          <button
+            onClick={() => onRequestAddQuote(selectedDeal.id)}
+            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
+          >
+            Добавить расчет
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-base font-semibold text-slate-800">Предложенные продукты</h3>
+          <button
+            onClick={() => onRequestAddQuote(selectedDeal.id)}
+            className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          >
+            + Добавить расчет
+          </button>
+        </div>
+        <div className="space-y-3">
+          {quotes.map((quote) => (
+            <div key={quote.id} className="border border-slate-200 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{quote.insuranceType}</p>
+                  <p className="text-xs text-slate-500 mt-1">{quote.insurer}</p>
+                </div>
+                <button
+                  className="text-xs text-slate-400 hover:text-red-500"
+                  onClick={() => onDeleteQuote(selectedDeal.id, quote.id).catch(() => undefined)}
+                >
+                  Удалить
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-slate-600 mt-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400">Страховая сумма</p>
+                  <p className="font-semibold">{formatCurrency(quote.sumInsured)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400">Премия</p>
+                  <p className="font-semibold">{formatCurrency(quote.premium)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400">Франшиза</p>
+                  <p className="font-semibold">{quote.deductible || "—"}</p>
+                </div>
+              </div>
+              {quote.comments && <p className="text-sm text-slate-500 mt-3">{quote.comments}</p>}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -179,7 +292,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       case "finance":
         return renderPaymentsTab();
       case "quotes":
-        return renderPlaceholder("Раздел «Расчеты»");
+        return renderQuotesTab();
       case "chat":
         return renderPlaceholder("Чат");
       case "files":

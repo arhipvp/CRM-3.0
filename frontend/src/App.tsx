@@ -10,9 +10,16 @@ import { PaymentsView } from "./components/views/PaymentsView";
 import { FinanceView } from "./components/views/FinanceView";
 import { TasksView } from "./components/views/TasksView";
 import { SettingsView } from "./components/views/SettingsView";
+import { AddQuoteForm, QuoteFormValues } from "./components/forms/AddQuoteForm";
+import { AddPolicyForm, PolicyFormValues } from "./components/forms/AddPolicyForm";
 import {
   createClient,
   createDeal,
+  createQuote,
+  createPolicy,
+  createPayment,
+  deleteQuote,
+  deletePolicy,
   fetchClients,
   fetchDeals,
   fetchPayments,
@@ -28,6 +35,8 @@ type ModalType = null | "client" | "deal";
 const App: React.FC = () => {
   const [view, setView] = useState<View>("deals");
   const [modal, setModal] = useState<ModalType>(null);
+  const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
+  const [policyDealId, setPolicyDealId] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -66,7 +75,7 @@ const App: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handleAddClient = async (data: { name: string; phone?: string; birthDate?: string | null }) => {
+  const handleAddClient = async (data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }) => {
     const created = await createClient(data);
     setClients((prev) => [created, ...prev]);
     setModal(null);
@@ -97,6 +106,70 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddQuote = async (dealId: string, values: QuoteFormValues) => {
+    try {
+      const created = await createQuote({ dealId, ...values });
+      setDeals((prev) =>
+        prev.map((deal) =>
+          deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal,
+        ),
+      );
+      setQuoteDealId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить расчет");
+      throw err;
+    }
+  };
+
+  const handleDeleteQuote = async (dealId: string, quoteId: string) => {
+    try {
+      await deleteQuote(quoteId);
+      setDeals((prev) =>
+        prev.map((deal) =>
+          deal.id === dealId
+            ? { ...deal, quotes: deal.quotes?.filter((quote) => quote.id !== quoteId) ?? [] }
+            : deal,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось удалить расчет");
+      throw err;
+    }
+  };
+
+  const handleAddPolicy = async (dealId: string, values: PolicyFormValues) => {
+    try {
+      const created = await createPolicy({ dealId, ...values });
+      setPolicies((prev) => [created, ...prev]);
+
+      // Создать платеж, если указано
+      if (values.createPayment && values.paymentAmount) {
+        const payment = await createPayment({
+          dealId,
+          amount: values.paymentAmount,
+          description: values.paymentDescription || `Платеж по полису ${values.number}`,
+          status: "planned",
+        });
+        setPayments((prev) => [payment, ...prev]);
+      }
+
+      setPolicyDealId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить полис");
+      throw err;
+    }
+  };
+
+  const handleDeletePolicy = async (policyId: string) => {
+    try {
+      await deletePolicy(policyId);
+      setPolicies((prev) => prev.filter((policy) => policy.id !== policyId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось удалить полис");
+      throw err;
+    }
+  };
+
   const renderView = () => {
     if (isLoading) {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
@@ -113,6 +186,10 @@ const App: React.FC = () => {
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
             onUpdateStatus={handleStatusChange}
+            onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
+            onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
+            onDeleteQuote={handleDeleteQuote}
+            onDeletePolicy={handleDeletePolicy}
           />
         );
       case "clients":
@@ -164,9 +241,21 @@ const App: React.FC = () => {
           <DealForm onSubmit={handleAddDeal} clients={clients} />
         </Modal>
       )}
+      {quoteDealId && (
+        <Modal title="Новый расчет" onClose={() => setQuoteDealId(null)}>
+          <AddQuoteForm onSubmit={(values) => handleAddQuote(quoteDealId, values)} onCancel={() => setQuoteDealId(null)} />
+        </Modal>
+      )}
+      {policyDealId && (
+        <Modal title="Новый полис" onClose={() => setPolicyDealId(null)}>
+          <AddPolicyForm onSubmit={(values) => handleAddPolicy(policyDealId, values)} onCancel={() => setPolicyDealId(null)} />
+        </Modal>
+      )}
     </MainLayout>
   );
 };
 
-export default App;
-
+export default App;
+
+
+

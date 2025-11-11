@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 
 interface ClientFormProps {
-  initial?: { name: string; phone?: string; birthDate?: string | null };
-  onSubmit: (data: { name: string; phone?: string; birthDate?: string | null }) => Promise<void>;
+  initial?: { name: string; phone?: string; birthDate?: string | null; notes?: string | null };
+  onSubmit: (data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }) => Promise<void>;
   submitLabel?: string;
 }
 
@@ -10,19 +10,25 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
-      setError("Имя обязательно");
+      setError("Имя клиента обязательно");
       return;
     }
     setError(null);
     setSubmitting(true);
     try {
-      await onSubmit({ name: name.trim(), phone: phone.trim() || undefined, birthDate: birthDate || null });
+      await onSubmit({
+        name: name.trim(),
+        phone: phone.trim() || undefined,
+        birthDate: birthDate || null,
+        notes: notes.trim() || undefined,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось сохранить клиента");
     } finally {
@@ -40,7 +46,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-          placeholder="ООО «Ромашка»"
+          placeholder="Имя и фамилия"
         />
       </div>
       <div>
@@ -62,6 +68,16 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
         />
       </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700">Примечание</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          placeholder="Добавьте важные детали"
+        />
+      </div>
       <button
         type="submit"
         disabled={isSubmitting}
@@ -71,4 +87,4 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
       </button>
     </form>
   );
-};
+};

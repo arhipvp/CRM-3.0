@@ -17,7 +17,10 @@
       "Bash(git reset:*)",
       "Bash(python -m json.tool:*)",
       "Bash(cat:*)",
-      "Bash(docker-compose build:*)"
+      "Bash(docker-compose build:*)",
+      "Bash(del appsdealsmigrations0005_quote.py)",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

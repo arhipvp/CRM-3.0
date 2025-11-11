@@ -8,8 +8,21 @@ export interface Client {
   name: string;
   phone?: string;
   birthDate?: string | null;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Quote {
+  id: string;
+  dealId: string;
+  insurer: string;
+  insuranceType: string;
+  sumInsured: string;
+  premium: string;
+  deductible?: string;
+  comments?: string;
+  createdAt: string;
 }
 
 export interface Deal {
@@ -27,6 +40,7 @@ export interface Deal {
   lossReason?: string;
   channel?: string;
   createdAt: string;
+  quotes: Quote[];
 }
 
 export interface Policy {
