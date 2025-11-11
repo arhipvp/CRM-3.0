@@ -7,12 +7,6 @@ from apps.common.models import SoftDeleteModel
 class Deal(SoftDeleteModel):
     """Сделка и её основные атрибуты."""
 
-    class DealStatus(models.TextChoices):
-        OPEN = "open", "В работе"
-        WON = "won", "Выиграна"
-        LOST = "lost", "Закрыта (проиграна)"
-        ON_HOLD = "on_hold", "На паузе"
-
     title = models.CharField(max_length=255, help_text="Название сделки")
     description = models.TextField(blank=True, help_text="Описание сделки")
 
@@ -43,10 +37,9 @@ class Deal(SoftDeleteModel):
     probability = models.PositiveIntegerField(default=0, help_text="Вероятность (0-100%)")
 
     status = models.CharField(
-        max_length=20,
-        choices=DealStatus.choices,
-        default=DealStatus.OPEN,
-        help_text="Статус сделки"
+        max_length=50,
+        default="open",
+        help_text="Статус сделки (произвольный текст)"
     )
     stage_name = models.CharField(max_length=120, blank=True, help_text="Стадия")
 

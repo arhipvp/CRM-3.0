@@ -143,7 +143,7 @@ class DealAdmin(ImportExportModelAdmin):
         return format_html(
             '<span style="background-color: {}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">{}</span>',
             color,
-            obj.get_status_display()
+            obj.status
         )
     status_badge.short_description = 'Статус'
 
