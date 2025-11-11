@@ -50,7 +50,20 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
                   <td className="px-5 py-4">
                     <p className="font-semibold text-slate-900">{client.name}</p>
                   </td>
-                  <td className="px-5 py-4 text-slate-600">{client.phone || "—"}</td>
+                  <td className="px-5 py-4 text-slate-600">
+                    {client.phone ? (
+                      <a
+                        href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        {client.phone}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.birthDate)}</td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.createdAt)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-slate-900">{clientDeals.length}</td>
