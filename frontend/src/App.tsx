@@ -20,6 +20,8 @@ import {
   createPayment,
   deleteQuote,
   deletePolicy,
+  uploadDocument,
+  deleteDocument,
   fetchClients,
   fetchDeals,
   fetchPayments,
@@ -170,6 +172,28 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUploadDocument = async (dealId: string, file: File) => {
+    try {
+      await uploadDocument(dealId, file);
+      // Перезагрузить сделки, чтобы получить обновленный список документов
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось загрузить файл");
+      throw err;
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    try {
+      await deleteDocument(documentId);
+      // Перезагрузить сделки, чтобы получить обновленный список документов
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось удалить файл");
+      throw err;
+    }
+  };
+
   const renderView = () => {
     if (isLoading) {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
@@ -190,6 +214,8 @@ const App: React.FC = () => {
             onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
             onDeleteQuote={handleDeleteQuote}
             onDeletePolicy={handleDeletePolicy}
+            onUploadDocument={handleUploadDocument}
+            onDeleteDocument={handleDeleteDocument}
           />
         );
       case "clients":

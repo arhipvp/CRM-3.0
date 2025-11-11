@@ -73,6 +73,14 @@ const mapDeal = (raw: any): Deal => ({
   channel: raw.channel,
   createdAt: raw.created_at,
   quotes: Array.isArray(raw.quotes) ? raw.quotes.map(mapQuote) : [],
+  documents: Array.isArray(raw.documents) ? raw.documents.map((d: any) => ({
+    id: d.id,
+    title: d.title,
+    file: d.file,
+    file_size: d.file_size,
+    mime_type: d.mime_type,
+    created_at: d.created_at,
+  })) : [],
 });
 
 const mapPolicy = (raw: any): Policy => ({
@@ -277,6 +285,30 @@ export async function createPayment(data: {
 
 export async function deletePolicy(id: string): Promise<void> {
   await request(`/policies/${id}/`, { method: "DELETE" });
+}
+
+export async function uploadDocument(dealId: string, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("title", file.name);
+  formData.append("deal", dealId);
+  formData.append("mime_type", file.type);
+
+  const response = await fetch(`${API_BASE}/documents/`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Не удалось загрузить файл: ${response.status}`);
+  }
+
+  return (await response.json()) as any;
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  await request(`/documents/${id}/`, { method: "DELETE" });
 }
 
 

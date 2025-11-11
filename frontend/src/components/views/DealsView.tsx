@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { Client, Deal, DealStatus, Payment, Policy, Task } from "../../types";
+import { FileUploadManager } from "../FileUploadManager";
 
 const statusLabels: Record<DealStatus, string> = {
   open: "В работе",
@@ -42,6 +43,8 @@ interface DealsViewProps {
   onRequestAddPolicy: (dealId: string) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onUploadDocument: (dealId: string, file: File) => Promise<void>;
+  onDeleteDocument: (documentId: string) => Promise<void>;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -57,6 +60,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onRequestAddPolicy,
   onDeleteQuote,
   onDeletePolicy,
+  onUploadDocument,
+  onDeleteDocument,
 }) => {
   const selectedDeal = selectedDealId ? deals.find((deal) => deal.id === selectedDealId) ?? null : deals[0] ?? null;
   const selectedClient = selectedDeal ? clients.find((client) => client.id === selectedDeal.clientId) ?? null : null;
@@ -256,6 +261,21 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   };
 
+  const renderFilesTab = () => {
+    if (!selectedDeal) {
+      return null;
+    }
+
+    return (
+      <FileUploadManager
+        dealId={selectedDeal.id}
+        documents={selectedDeal.documents || []}
+        onUpload={(file) => onUploadDocument(selectedDeal.id, file)}
+        onDelete={onDeleteDocument}
+      />
+    );
+  };
+
   const renderPlaceholder = (label: string) => (
     <div className="text-sm text-slate-500">{label} появится после имплементации соответствующей фичи.</div>
   );
@@ -293,10 +313,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
         return renderPaymentsTab();
       case "quotes":
         return renderQuotesTab();
+      case "files":
+        return renderFilesTab();
       case "chat":
         return renderPlaceholder("Чат");
-      case "files":
-        return renderPlaceholder("Файлы");
       case "notes":
         return renderPlaceholder("Заметки");
       case "history":

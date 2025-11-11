@@ -25,6 +25,15 @@ export interface Quote {
   createdAt: string;
 }
 
+export interface Document {
+  id: string;
+  title: string;
+  file?: string | null;
+  file_size: number;
+  mime_type: string;
+  created_at: string;
+}
+
 export interface Deal {
   id: string;
   title: string;
@@ -41,6 +50,7 @@ export interface Deal {
   channel?: string;
   createdAt: string;
   quotes: Quote[];
+  documents: Document[];
 }
 
 export interface Policy {
