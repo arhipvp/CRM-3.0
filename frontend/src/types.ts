@@ -34,6 +34,16 @@ export interface Document {
   created_at: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  deal: string;
+  author_name: string;
+  author_username?: string | null;
+  author?: string | null;
+  body: string;
+  created_at: string;
+}
+
 export interface Deal {
   id: string;
   title: string;

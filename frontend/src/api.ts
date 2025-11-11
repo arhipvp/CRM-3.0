@@ -1,4 +1,4 @@
-import { Client, Deal, DealStatus, Payment, Policy, Quote, Task } from "./types";
+import { Client, Deal, DealStatus, Payment, Policy, Quote, Task, ChatMessage } from "./types";
 
 const envBase = import.meta.env.VITE_API_URL;
 const API_BASE = (envBase && envBase.trim() !== "" ? envBase : "/api/v1").replace(/\/$/, "");
@@ -309,6 +309,37 @@ export async function uploadDocument(dealId: string, file: File): Promise<any> {
 
 export async function deleteDocument(id: string): Promise<void> {
   await request(`/documents/${id}/`, { method: "DELETE" });
+}
+
+const mapChatMessage = (raw: any): ChatMessage => ({
+  id: raw.id,
+  deal: raw.deal,
+  author_name: raw.author_name,
+  author_username: raw.author_username,
+  author: raw.author,
+  body: raw.body,
+  created_at: raw.created_at,
+});
+
+export async function fetchChatMessages(dealId: string): Promise<ChatMessage[]> {
+  const payload = await request<any>(`/chat_messages/?deal=${dealId}`);
+  return unwrapList(payload).map(mapChatMessage);
+}
+
+export async function createChatMessage(dealId: string, authorName: string, body: string): Promise<ChatMessage> {
+  const payload = await request<any>("/chat_messages/", {
+    method: "POST",
+    body: JSON.stringify({
+      deal: dealId,
+      author_name: authorName,
+      body: body,
+    }),
+  });
+  return mapChatMessage(payload);
+}
+
+export async function deleteChatMessage(id: string): Promise<void> {
+  await request(`/chat_messages/${id}/`, { method: "DELETE" });
 }
 
 

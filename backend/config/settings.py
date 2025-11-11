@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.finances',
     'apps.notes',
+    'apps.chat',
     'apps.policies',
 ]
 

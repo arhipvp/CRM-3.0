@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { Client, Deal, DealStatus, Payment, Policy, Task } from "../../types";
+import { Client, Deal, DealStatus, Payment, Policy, Task, ChatMessage } from "../../types";
 import { FileUploadManager } from "../FileUploadManager";
+import { ChatBox } from "../ChatBox";
 
 const statusLabels: Record<DealStatus, string> = {
   open: "В работе",
@@ -45,6 +46,9 @@ interface DealsViewProps {
   onDeletePolicy: (policyId: string) => Promise<void>;
   onUploadDocument: (dealId: string, file: File) => Promise<void>;
   onDeleteDocument: (documentId: string) => Promise<void>;
+  onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
+  onSendChatMessage: (dealId: string, authorName: string, body: string) => Promise<void>;
+  onDeleteChatMessage: (messageId: string) => Promise<void>;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -62,15 +66,40 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDeletePolicy,
   onUploadDocument,
   onDeleteDocument,
+  onFetchChatMessages,
+  onSendChatMessage,
+  onDeleteChatMessage,
 }) => {
   const selectedDeal = selectedDealId ? deals.find((deal) => deal.id === selectedDealId) ?? null : deals[0] ?? null;
   const selectedClient = selectedDeal ? clients.find((client) => client.id === selectedDeal.clientId) ?? null : null;
 
   const [activeTab, setActiveTab] = useState<DealTabId>("overview");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   useEffect(() => {
     setActiveTab("overview");
   }, [selectedDeal?.id]);
+
+  // Загружать сообщения когда открываем вкладку "Чат"
+  useEffect(() => {
+    if (activeTab === "chat" && selectedDeal) {
+      loadChatMessages();
+    }
+  }, [activeTab, selectedDeal?.id]);
+
+  const loadChatMessages = async () => {
+    if (!selectedDeal) return;
+    setIsChatLoading(true);
+    try {
+      const messages = await onFetchChatMessages(selectedDeal.id);
+      setChatMessages(messages);
+    } catch (err) {
+      console.error("Ошибка загрузки сообщений:", err);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
 
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
@@ -276,6 +305,30 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   };
 
+  const renderChatTab = () => {
+    if (!selectedDeal) {
+      return null;
+    }
+
+    if (isChatLoading) {
+      return <p className="text-sm text-slate-500">Загружаем сообщения...</p>;
+    }
+
+    return (
+      <ChatBox
+        messages={chatMessages}
+        onSendMessage={async (authorName, body) => {
+          await onSendChatMessage(selectedDeal.id, authorName, body);
+          await loadChatMessages();
+        }}
+        onDeleteMessage={async (messageId) => {
+          await onDeleteChatMessage(messageId);
+          await loadChatMessages();
+        }}
+      />
+    );
+  };
+
   const renderPlaceholder = (label: string) => (
     <div className="text-sm text-slate-500">{label} появится после имплементации соответствующей фичи.</div>
   );
@@ -316,7 +369,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       case "files":
         return renderFilesTab();
       case "chat":
-        return renderPlaceholder("Чат");
+        return renderChatTab();
       case "notes":
         return renderPlaceholder("Заметки");
       case "history":

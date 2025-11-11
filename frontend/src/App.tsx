@@ -22,6 +22,9 @@ import {
   deletePolicy,
   uploadDocument,
   deleteDocument,
+  fetchChatMessages,
+  createChatMessage,
+  deleteChatMessage,
   fetchClients,
   fetchDeals,
   fetchPayments,
@@ -194,6 +197,33 @@ const App: React.FC = () => {
     }
   };
 
+  const handleFetchChatMessages = async (dealId: string) => {
+    try {
+      return await fetchChatMessages(dealId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось загрузить сообщения");
+      throw err;
+    }
+  };
+
+  const handleSendChatMessage = async (dealId: string, authorName: string, body: string) => {
+    try {
+      await createChatMessage(dealId, authorName, body);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось отправить сообщение");
+      throw err;
+    }
+  };
+
+  const handleDeleteChatMessage = async (messageId: string) => {
+    try {
+      await deleteChatMessage(messageId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось удалить сообщение");
+      throw err;
+    }
+  };
+
   const renderView = () => {
     if (isLoading) {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
@@ -216,6 +246,9 @@ const App: React.FC = () => {
             onDeletePolicy={handleDeletePolicy}
             onUploadDocument={handleUploadDocument}
             onDeleteDocument={handleDeleteDocument}
+            onFetchChatMessages={handleFetchChatMessages}
+            onSendChatMessage={handleSendChatMessage}
+            onDeleteChatMessage={handleDeleteChatMessage}
           />
         );
       case "clients":
