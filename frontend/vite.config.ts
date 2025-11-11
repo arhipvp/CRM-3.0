@@ -15,6 +15,7 @@ export default defineConfig({
       host: 'localhost',
       port: 80,
       protocol: 'ws',
+      path: '/@vite/hmr',
     },
     proxy: {
       '/api': {
@@ -22,5 +23,6 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    middlewareMode: false,
   },
 });
