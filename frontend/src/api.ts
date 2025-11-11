@@ -2,12 +2,99 @@ import { ActivityLog, Client, Deal, DealStatus, FinancialRecord, Payment, Paymen
 
 const envBase = import.meta.env.VITE_API_URL;
 const API_BASE = (envBase && envBase.trim() !== "" ? envBase : "/api/v1").replace(/\/$/, "");
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+
+// ============ Auth Token Management ============
+const TOKEN_KEY = "jwt_access_token";
+const REFRESH_TOKEN_KEY = "jwt_refresh_token";
+
+export function getAccessToken(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+}
+
+export function setAccessToken(token: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+}
+
+export function setRefreshToken(token: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  }
+}
+
+export function getRefreshToken(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
+}
+
+export function clearTokens(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
+}
+
+// ============ Auth API Functions ============
+export interface LoginResponse {
+  access: string;
+  refresh: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    is_active: boolean;
+    is_staff: boolean;
+    user_roles: any[];
+    roles: string[];
+    date_joined: string;
+  };
+}
+
+export async function login(username: string, password: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE}/auth/login/`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...options.headers,
     },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Ошибка входа");
+  }
+
+  const data = (await response.json()) as LoginResponse;
+  setAccessToken(data.access);
+  setRefreshToken(data.refresh);
+  return data;
+}
+
+export function logout(): void {
+  clearTokens();
+}
+
+export async function getCurrentUser(): Promise<any> {
+  return request<any>("/auth/me/");
+}
+
+// ============ API Request Helper ============
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(typeof options.headers === 'object' && options.headers !== null ? Object.fromEntries(Object.entries(options.headers as any)) : {}),
+  };
+
+  // Add JWT token to headers
+  const token = getAccessToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers,
     ...options,
   });
 

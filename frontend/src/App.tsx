@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { MainLayout, View } from "./components/MainLayout";
 import { Modal } from "./components/Modal";
+import { LoginPage } from "./components/LoginPage";
 import { ClientForm } from "./components/forms/ClientForm";
 import { DealForm } from "./components/forms/DealForm";
 import { DealsView } from "./components/views/DealsView";
@@ -45,8 +46,10 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  getCurrentUser,
+  clearTokens,
 } from "./api";
-import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task } from "./types";
+import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, User } from "./types";
 
 type ModalType = null | "client" | "deal";
 
@@ -61,6 +64,9 @@ interface FinancialRecordModalState {
 }
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [view, setView] = useState<View>("deals");
   const [modal, setModal] = useState<ModalType>(null);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
@@ -109,6 +115,32 @@ const App: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Check authentication on app load
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const userData = await getCurrentUser();
+        // Parse roles from the API response structure
+        const roles = userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
+                     userData.roles || [];
+        const user: User = {
+          id: String(userData.id),
+          username: userData.username,
+          roles: roles
+        };
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } catch {
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const handleAddClient = async (data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }) => {
     const created = await createClient(data);
@@ -428,6 +460,37 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    clearTokens();
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setClients([]);
+    setDeals([]);
+    setPolicies([]);
+    setPayments([]);
+    setFinancialRecords([]);
+    setTasks([]);
+  };
+
+  const handleLoginSuccess = async () => {
+    try {
+      const userData = await getCurrentUser();
+      // Parse roles from the API response structure
+      const roles = userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
+                   userData.roles || [];
+      const user: User = {
+        id: String(userData.id),
+        username: userData.username,
+        roles: roles
+      };
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось загрузить данные пользователя");
+      setIsAuthenticated(false);
+    }
+  };
+
   const renderView = () => {
     if (isLoading) {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
@@ -482,12 +545,28 @@ const App: React.FC = () => {
     }
   };
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-sm text-slate-500">Проверяем аутентификацию...</p>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated || !currentUser) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <MainLayout
       activeView={view}
       onNavigate={setView}
       onAddDeal={() => setModal("deal")}
       onAddClient={() => setModal("client")}
+      currentUser={currentUser}
+      onLogout={handleLogout}
     >
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">

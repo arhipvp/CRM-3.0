@@ -9,12 +9,14 @@ from apps.notes.views import NoteViewSet
 from apps.notifications.views import NotificationViewSet
 from apps.tasks.views import TaskViewSet
 from apps.policies.views import PolicyViewSet
+from apps.users.views import UserViewSet, RoleViewSet, PermissionViewSet, AuditLogViewSet
 
 router = DefaultRouter()
 router.register('clients', ClientViewSet, basename='client')
 router.register('deals', DealViewSet, basename='deal')
 router.register('quotes', QuoteViewSet, basename='quote')
 router.register('activity_logs', ActivityLogViewSet, basename='activity_log')
+router.register('audit_logs', AuditLogViewSet, basename='audit_log')
 router.register('chat_messages', ChatMessageViewSet, basename='chat_message')
 router.register('tasks', TaskViewSet, basename='task')
 router.register('documents', DocumentViewSet, basename='document')
@@ -23,5 +25,8 @@ router.register('payments', PaymentViewSet, basename='payment')
 router.register('financial_records', FinancialRecordViewSet, basename='financial_record')
 router.register('notes', NoteViewSet, basename='note')
 router.register('policies', PolicyViewSet, basename='policy')
+router.register('users', UserViewSet, basename='user')
+router.register('roles', RoleViewSet, basename='role')
+router.register('permissions', PermissionViewSet, basename='permission')
 
 api_urlpatterns = router.urls

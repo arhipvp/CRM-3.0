@@ -3,6 +3,12 @@ export type PaymentStatus = "planned" | "partial" | "paid";
 export type TaskStatus = "todo" | "in_progress" | "done" | "overdue" | "canceled";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 
+export interface User {
+  id: string;
+  username: string;
+  roles: string[];
+}
+
 export interface Client {
   id: string;
   name: string;

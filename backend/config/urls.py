@@ -20,11 +20,15 @@ from django.urls import include, path
 
 from apps.documents.views import DocumentRecognitionView
 from apps.finances.views import FinanceSummaryView
+from apps.users.views import login_view, refresh_token_view, current_user_view
 from config.api_router import api_urlpatterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', lambda request: JsonResponse({'status': 'ok'})),
+    path('api/v1/auth/login/', login_view, name='login'),
+    path('api/v1/auth/refresh/', refresh_token_view, name='refresh-token'),
+    path('api/v1/auth/me/', current_user_view, name='current-user'),
     path('api/v1/finances/summary/', FinanceSummaryView.as_view(), name='finance-summary'),
     path('api/v1/documents/recognize/', DocumentRecognitionView.as_view(), name='document-recognize'),
     path('api/v1/', include(api_urlpatterns)),

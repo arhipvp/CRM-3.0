@@ -22,7 +22,9 @@
       "Bash(rm:*)",
       "Bash(npm run build:*)",
       "Bash(cd:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
