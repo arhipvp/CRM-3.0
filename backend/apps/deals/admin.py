@@ -1,5 +1,7 @@
 ﻿from django.contrib import admin
 from django.utils.html import format_html
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
 
 from apps.documents.models import Document
 from apps.finances.models import Payment
@@ -8,6 +10,29 @@ from apps.policies.models import Policy
 from apps.tasks.models import Task
 
 from .models import ActivityLog, Deal, Quote
+
+
+# ============ IMPORT/EXPORT RESOURCES ============
+
+class DealResource(resources.ModelResource):
+    class Meta:
+        model = Deal
+        fields = ('id', 'title', 'description', 'client', 'seller', 'executor', 'probability', 'status', 'stage_name', 'expected_close', 'next_review_date', 'source', 'loss_reason', 'channel', 'created_at', 'updated_at', 'deleted_at')
+        export_order = ('id', 'title', 'description', 'client', 'seller', 'executor', 'probability', 'status', 'stage_name', 'expected_close', 'next_review_date', 'source', 'loss_reason', 'channel', 'created_at', 'updated_at', 'deleted_at')
+
+
+class QuoteResource(resources.ModelResource):
+    class Meta:
+        model = Quote
+        fields = ('id', 'deal', 'insurer', 'insurance_type', 'sum_insured', 'premium', 'deductible', 'comments', 'created_at', 'updated_at', 'deleted_at')
+        export_order = ('id', 'deal', 'insurer', 'insurance_type', 'sum_insured', 'premium', 'deductible', 'comments', 'created_at', 'updated_at', 'deleted_at')
+
+
+class ActivityLogResource(resources.ModelResource):
+    class Meta:
+        model = ActivityLog
+        fields = ('id', 'deal', 'action_type', 'description', 'user', 'old_value', 'new_value', 'created_at')
+        export_order = ('id', 'deal', 'action_type', 'description', 'user', 'old_value', 'new_value', 'created_at')
 
 
 class TaskInline(admin.TabularInline):
@@ -61,14 +86,16 @@ class ActivityLogInline(admin.TabularInline):
 
 
 @admin.register(Deal)
-class DealAdmin(admin.ModelAdmin):
+class DealAdmin(ImportExportModelAdmin):
+    resource_class = DealResource
+
     list_display = (
         "title",
         "client",
-        "status",
+        "status_badge",
         "stage_name",
         "next_review_date",
-        "probability",
+        "probability_display",
         "seller",
         "executor",
         "created_at",
@@ -103,12 +130,29 @@ class DealAdmin(admin.ModelAdmin):
     )
 
     inlines = [ActivityLogInline, QuoteInline, TaskInline, PaymentInline, PolicyInline, DocumentInline, NoteInline]
-    actions = ["mark_as_won", "mark_as_lost", "mark_as_on_hold"]
+    actions = ["mark_as_won", "mark_as_lost", "mark_as_on_hold", "restore_deals"]
 
-    def deals_count(self, obj):
-        count = obj.deals.filter(deleted_at__isnull=True).count()
-        url = f"/admin/deals/deal/?client__id__exact={obj.id}"
-        return format_html('<a href="{}">{} сделок</a>', url, count)
+    def status_badge(self, obj):
+        colors = {
+            'open': '#3a86ff',
+            'won': '#06ffa5',
+            'lost': '#ff006e',
+            'on_hold': '#ffbe0b',
+        }
+        color = colors.get(obj.status, '#999999')
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display()
+        )
+    status_badge.short_description = 'Статус'
+
+    def probability_display(self, obj):
+        return format_html(
+            '<span style="background-color: #e0e0e0; padding: 3px 8px; border-radius: 3px;">{0}%</span>',
+            obj.probability
+        )
+    probability_display.short_description = 'Вероятность'
 
     def mark_as_won(self, request, queryset):
         updated = queryset.update(status="won")
@@ -127,6 +171,56 @@ class DealAdmin(admin.ModelAdmin):
         self.message_user(request, f"{updated} сделок поставлено на паузу")
 
     mark_as_on_hold.short_description = "Перевести на паузу"
+
+    def restore_deals(self, request, queryset):
+        restored = 0
+        for deal in queryset.filter(deleted_at__isnull=False):
+            deal.restore()
+            restored += 1
+        self.message_user(request, f'Восстановлено {restored} сделок')
+    restore_deals.short_description = '✓ Восстановить выбранные сделки'
+
+
+@admin.register(Quote)
+class QuoteAdmin(ImportExportModelAdmin):
+    resource_class = QuoteResource
+
+    list_display = ('deal', 'insurance_type', 'insurer', 'sum_insured', 'premium', 'created_at')
+    list_filter = ('insurance_type', 'insurer', 'created_at', 'deleted_at')
+    search_fields = ('deal__title', 'insurance_type', 'insurer')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'deleted_at')
+    ordering = ('-created_at',)
+    actions = ['restore_quotes']
+
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('id', 'deal')
+        }),
+        ('Страховая информация', {
+            'fields': ('insurance_type', 'insurer')
+        }),
+        ('Условия', {
+            'fields': ('sum_insured', 'premium', 'deductible')
+        }),
+        ('Примечания', {
+            'fields': ('comments',)
+        }),
+        ('Статус', {
+            'fields': ('deleted_at',)
+        }),
+        ('Время', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def restore_quotes(self, request, queryset):
+        restored = 0
+        for quote in queryset.filter(deleted_at__isnull=False):
+            quote.restore()
+            restored += 1
+        self.message_user(request, f'Восстановлено {restored} расчётов')
+    restore_quotes.short_description = '✓ Восстановить выбранные расчёты'
 
 
 @admin.register(ActivityLog)
