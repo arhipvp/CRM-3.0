@@ -8,15 +8,20 @@ from apps.users.models import UserRole
 
 class DealViewSet(viewsets.ModelViewSet):
     serializer_class = DealSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         """
         Фильтровать сделки в зависимости от роли пользователя:
         - Администратор: видит все сделки
         - Менеджер/Наблюдатель: видит только свои сделки (где user = seller или executor)
+        - Анонимный пользователь: видит все сделки
         """
         user = self.request.user
+
+        # Анонимные пользователи видят все сделки
+        if not user.is_authenticated:
+            return Deal.objects.select_related("client").prefetch_related("quotes").all().order_by("next_review_date", "-created_at")
 
         # Администраторы видят все
         is_admin = UserRole.objects.filter(
@@ -35,7 +40,7 @@ class DealViewSet(viewsets.ModelViewSet):
 
 class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         queryset = Quote.objects.select_related("deal", "deal__client").all().order_by("-created_at")
@@ -50,7 +55,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
 class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ActivityLogSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         queryset = ActivityLog.objects.select_related("deal", "user").all().order_by("-created_at")
