@@ -11,7 +11,6 @@ from apps.users.models import UserRole
 
 class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = PolicySerializer
-    permission_classes = [AllowAny]
     filterset_class = PolicyFilterSet
     search_fields = ['number', 'insurance_company', 'insurance_type']
     ordering_fields = ['created_at', 'updated_at', 'start_date', 'end_date', 'amount']

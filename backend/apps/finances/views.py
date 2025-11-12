@@ -16,7 +16,6 @@ from apps.users.models import UserRole
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
     serializer_class = FinancialRecordSerializer
-    permission_classes = [AllowAny]
     ordering_fields = ['created_at', 'updated_at', 'date']
     ordering = ['-created_at']
 
@@ -46,7 +45,6 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для платежей с поддержкой проверки удаления"""
     serializer_class = PaymentSerializer
-    permission_classes = [AllowAny]
     filterset_class = PaymentFilterSet
     search_fields = ['description', 'deal__title']
     ordering_fields = ['created_at', 'updated_at', 'scheduled_date', 'actual_date', 'amount']

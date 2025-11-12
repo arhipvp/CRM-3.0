@@ -10,7 +10,6 @@ from apps.users.models import UserRole
 
 class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = NoteSerializer
-    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user

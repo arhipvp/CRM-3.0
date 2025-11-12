@@ -10,7 +10,6 @@ from apps.users.models import UserRole
 
 class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = ChatMessageSerializer
-    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user

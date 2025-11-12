@@ -11,6 +11,20 @@ class EditProtectedMixin:
     Миксин для ограничения редактирования только Admin пользователям.
     Добавить в ViewSet: class MyViewSet(EditProtectedMixin, viewsets.ModelViewSet)
     """
+    def create(self, request, *args, **kwargs):
+        """
+        Логирует CREATE операции.
+        Аутентификация уже проверена на уровне permission_classes.
+        """
+        user_id = request.user.id if request.user else None
+        username = request.user.username if request.user else 'Unknown'
+
+        logger.info(
+            f"Record created | User: {username} (ID: {user_id}) | "
+            f"Fields: {list(request.data.keys())}"
+        )
+        return super().create(request, *args, **kwargs)
+
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
         model_name = instance.__class__.__name__

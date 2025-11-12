@@ -11,7 +11,6 @@ from apps.common.permissions import EditProtectedMixin
 
 class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DealSerializer
-    permission_classes = [AllowAny]
     filterset_class = DealFilterSet
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'updated_at', 'title', 'expected_close']
@@ -47,7 +46,6 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
 class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
-    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user
@@ -76,7 +74,6 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
 class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ActivityLogSerializer
-    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user

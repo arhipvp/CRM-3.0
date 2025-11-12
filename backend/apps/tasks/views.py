@@ -11,7 +11,6 @@ from apps.users.models import UserRole
 
 class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = TaskSerializer
-    permission_classes = [AllowAny]
     filterset_class = TaskFilterSet
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'updated_at', 'due_at']

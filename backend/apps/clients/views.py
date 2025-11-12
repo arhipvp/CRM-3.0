@@ -11,7 +11,6 @@ from apps.users.models import UserRole
 
 class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = ClientSerializer
-    permission_classes = [AllowAny]
     filterset_class = ClientFilterSet
     search_fields = ['name', 'phone']
     ordering_fields = ['created_at', 'updated_at', 'name']

@@ -14,7 +14,6 @@ from apps.users.models import UserRole
 
 class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
-    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user
