@@ -1,0 +1,151 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build Docker images
+        run: |
+          docker build -t crm30-backend:${{ github.sha }} -f backend/Dockerfile .
+          docker build -t crm30-frontend:${{ github.sha }} -f frontend/Dockerfile frontend/
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp docker-compose.yml deploy/
+          cp backend/.env.example deploy/.env.backend
+          cp frontend/.env.example deploy/.env.frontend
+          cp -r backend/entrypoint.sh deploy/
+          cp nginx.conf deploy/
+          echo "GIT_SHA=${{ github.sha }}" > deploy/.env.deploy
+          echo "DEPLOY_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> deploy/.env.deploy
+          echo "DEPLOY_BRANCH=${{ github.ref_name }}" >> deploy/.env.deploy
+          tar czf deploy-${{ github.sha }}.tar.gz deploy/
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+
+            echo "📦 Deploying CRM 3.0..."
+
+            # Create deployment directory
+            DEPLOY_DIR="/home/${{ secrets.VPS_USER }}/crm3-deploy"
+            mkdir -p $DEPLOY_DIR
+            cd $DEPLOY_DIR
+
+            # Pull latest code
+            echo "📥 Pulling latest code..."
+            git clone --depth 1 https://github.com/${{ github.repository }}.git . 2>/dev/null || git pull
+            git checkout ${{ github.sha }}
+
+            # Load environment
+            echo "⚙️ Loading environment..."
+            test -f .env && source .env || echo "No .env file found"
+
+            # Stop old containers (without deleting volumes!)
+            echo "🛑 Stopping old containers..."
+            docker-compose down || true
+
+            # Pull latest images
+            echo "🐳 Pulling Docker images..."
+            docker pull python:3.12-slim
+            docker pull node:20-alpine
+            docker pull postgres:16-alpine
+            docker pull nginx:alpine
+
+            # Build images
+            echo "🔨 Building Docker images..."
+            docker build -t crm30-backend:latest -f backend/Dockerfile .
+            docker build -t crm30-frontend:latest -f frontend/Dockerfile frontend/
+
+            # Start containers
+            echo "🚀 Starting containers..."
+            docker-compose up -d
+
+            # Wait for backend to be healthy
+            echo "⏳ Waiting for backend to be ready..."
+            for i in {1..30}; do
+              if docker-compose exec -T backend curl -f http://localhost:8000/health/ > /dev/null 2>&1; then
+                echo "✅ Backend is ready!"
+                break
+              fi
+              echo "Attempt $i/30..."
+              sleep 2
+            done
+
+            # Run migrations
+            echo "🗄️ Running database migrations..."
+            docker-compose exec -T backend python manage.py migrate --no-input || true
+
+            # Collect static files
+            echo "📦 Collecting static files..."
+            docker-compose exec -T backend python manage.py collectstatic --no-input || true
+
+            # Verify deployment
+            echo "✔️ Verifying deployment..."
+            if docker-compose exec -T backend curl -f http://localhost:8000/health/ > /dev/null 2>&1; then
+              echo "✅ Deployment successful!"
+            else
+              echo "❌ Deployment failed - health check failed"
+              exit 1
+            fi
+
+            echo "🎉 CRM 3.0 deployed successfully!"
+
+      - name: Notify deployment status
+        if: always()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "CRM 3.0 Deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment Status*\nStatus: ${{ job.status }}\nCommit: ${{ github.sha }}\nBranch: ${{ github.ref_name }}\nAuthor: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        continue-on-error: true
+
+  health-check:
+    name: Post-Deploy Health Check
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+
+    steps:
+      - name: Check API health
+        run: |
+          for i in {1..5}; do
+            if curl -f -s "http://${{ secrets.VPS_HOST }}/health/" > /dev/null; then
+              echo "✅ API is healthy"
+              exit 0
+            fi
+            echo "Attempt $i/5..."
+            sleep 5
+          done
+          echo "❌ API health check failed"
+          exit 1

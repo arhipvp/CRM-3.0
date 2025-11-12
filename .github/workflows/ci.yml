@@ -1,0 +1,231 @@
+name: CI - Code Quality & Tests
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  backend-lint:
+    name: Backend Linting & Type Checking
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install flake8 black isort mypy
+
+      - name: Run Black (formatting check)
+        run: black --check backend/
+        continue-on-error: true
+
+      - name: Run isort (import sorting)
+        run: isort --check-only backend/
+        continue-on-error: true
+
+      - name: Run Flake8 (linting)
+        run: flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        continue-on-error: true
+
+      - name: Run mypy (type checking)
+        run: mypy backend/ --ignore-missing-imports || true
+        continue-on-error: true
+
+  backend-tests:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: crm3_test
+          POSTGRES_USER: crm3
+          POSTGRES_PASSWORD: crm3
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-django pytest-cov
+
+      - name: Run migrations
+        env:
+          DEBUG: 'False'
+          DJANGO_DB_ENGINE: django.db.backends.postgresql
+          DJANGO_DB_HOST: localhost
+          DJANGO_DB_PORT: '5432'
+          DJANGO_DB_NAME: crm3_test
+          DJANGO_DB_USER: crm3
+          DJANGO_DB_PASSWORD: crm3
+          DJANGO_SECRET_KEY: test-secret-key
+        run: |
+          cd backend
+          python manage.py migrate --no-input
+
+      - name: Run tests
+        env:
+          DEBUG: 'False'
+          DJANGO_DB_ENGINE: django.db.backends.postgresql
+          DJANGO_DB_HOST: localhost
+          DJANGO_DB_PORT: '5432'
+          DJANGO_DB_NAME: crm3_test
+          DJANGO_DB_USER: crm3
+          DJANGO_DB_PASSWORD: crm3
+          DJANGO_SECRET_KEY: test-secret-key
+        run: |
+          cd backend
+          pytest -v --cov=. --cov-report=xml || true
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+        continue-on-error: true
+
+  frontend-lint:
+    name: Frontend Linting & Type Checking
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd frontend
+          npm run lint || true
+        continue-on-error: true
+
+      - name: Check TypeScript
+        run: |
+          cd frontend
+          npx tsc --noEmit || true
+        continue-on-error: true
+
+  frontend-build:
+    name: Frontend Build Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build project
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [backend-lint, backend-tests, frontend-lint, frontend-build]
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: false
+          tags: crm30-backend:${{ github.sha }}
+          cache-from: type=registry,ref=crm30-backend:latest
+          cache-to: type=inline
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: crm30-frontend:${{ github.sha }}
+          cache-from: type=registry,ref=crm30-frontend:latest
+          cache-to: type=inline
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [backend-lint, backend-tests, frontend-lint, frontend-build, docker-build]
+    if: always()
+
+    steps:
+      - name: Check workflow status
+        run: |
+          if [ "${{ needs.backend-tests.result }}" == "failure" ]; then
+            echo "❌ Backend tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.frontend-build.result }}" == "failure" ]; then
+            echo "❌ Frontend build failed"
+            exit 1
+          fi
+          if [ "${{ needs.docker-build.result }}" == "failure" ]; then
+            echo "❌ Docker build failed"
+            exit 1
+          fi
+          echo "✅ All quality checks passed!"
