@@ -3,11 +3,11 @@ from django.db.models import Q
 
 from .models import Note
 from .serializers import NoteSerializer
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
 
-class NoteViewSet(viewsets.ModelViewSet):
+class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = NoteSerializer
     permission_classes = [IsAuthenticatedPermission]
 

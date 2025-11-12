@@ -4,10 +4,10 @@ from django.db.models import Q
 from .models import ActivityLog, Deal, Quote
 from .serializers import ActivityLogSerializer, DealSerializer, QuoteSerializer
 from apps.users.models import UserRole
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 
 
-class DealViewSet(viewsets.ModelViewSet):
+class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DealSerializer
     permission_classes = [IsAuthenticatedPermission]
 

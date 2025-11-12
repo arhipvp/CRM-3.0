@@ -3,11 +3,11 @@ from django.db.models import Q
 
 from .models import Policy
 from .serializers import PolicySerializer
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
 
-class PolicyViewSet(viewsets.ModelViewSet):
+class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = PolicySerializer
     permission_classes = [IsAuthenticatedPermission]
 

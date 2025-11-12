@@ -3,11 +3,11 @@ from django.db.models import Q
 
 from .models import Client
 from .serializers import ClientSerializer
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
 
-class ClientViewSet(viewsets.ModelViewSet):
+class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = ClientSerializer
     permission_classes = [IsAuthenticatedPermission]
 

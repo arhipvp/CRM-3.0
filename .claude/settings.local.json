@@ -41,7 +41,9 @@
       "WebSearch",
       "Bash(ACCESS_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyOTQyNjkxLCJpYXQiOjE3NjI5NDE3OTEsImp0aSI6Ijc0M2JkOTFhZGM5YzQ0MzFiYzI5NzY5Yzg2NWY3NjA4IiwidXNlcl9pZCI6MX0.ru4llD7jFkyfsU7cYRE4Dqqq-K4StCSBQAONAd4tMLE\" curl:*)",
       "Bash(chmod:*)",
-      "Bash(\"C:/Dev/CRM 3.0/test_auth.sh\")"
+      "Bash(\"C:/Dev/CRM 3.0/test_auth.sh\")",
+      "Bash(docker volume:*)",
+      "Bash(docker run:*)"
     ],
     "deny": [],
     "ask": []

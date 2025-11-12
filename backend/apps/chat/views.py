@@ -3,11 +3,11 @@ from django.db.models import Q
 
 from .models import ChatMessage
 from .serializers import ChatMessageSerializer
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
 
-class ChatMessageViewSet(viewsets.ModelViewSet):
+class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = ChatMessageSerializer
     permission_classes = [IsAuthenticatedPermission]
 

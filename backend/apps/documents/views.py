@@ -7,11 +7,11 @@ from django.db.models import Q
 from .models import Document
 from .serializers import DocumentSerializer
 from apps.notes.models import Note
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
 
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticatedPermission]
 

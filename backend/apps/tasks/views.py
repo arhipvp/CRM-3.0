@@ -3,11 +3,11 @@ from django.db.models import Q
 
 from .models import Task
 from .serializers import TaskSerializer
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
 
-class TaskViewSet(viewsets.ModelViewSet):
+class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticatedPermission]
 
