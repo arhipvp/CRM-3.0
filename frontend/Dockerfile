@@ -16,5 +16,6 @@ COPY . .
 
 EXPOSE 5173
 
-# Разрешаем Vite самому читать host/port из env (см. VITE_DEV_HOST)
-CMD ["npm", "run", "dev"]
+# Build the application and run in preview mode (production-like server)
+RUN npm run build
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]

@@ -29,7 +29,19 @@
       "Bash(git restore:*)",
       "Bash(python -m pip install:*)",
       "Bash(python -m pytest:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(timeout 15 npm run dev:*)",
+      "Bash(timeout 180 docker-compose build:*)",
+      "Bash(docker image rm:*)",
+      "Bash(docker system:*)",
+      "WebSearch",
+      "Bash(ACCESS_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyOTQyNjkxLCJpYXQiOjE3NjI5NDE3OTEsImp0aSI6Ijc0M2JkOTFhZGM5YzQ0MzFiYzI5NzY5Yzg2NWY3NjA4IiwidXNlcl9pZCI6MX0.ru4llD7jFkyfsU7cYRE4Dqqq-K4StCSBQAONAd4tMLE\" curl:*)",
+      "Bash(chmod:*)",
+      "Bash(\"C:/Dev/CRM 3.0/test_auth.sh\")"
     ],
     "deny": [],
     "ask": []

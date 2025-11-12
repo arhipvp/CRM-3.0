@@ -30,4 +30,4 @@ else:
 END
 
 echo "Starting Gunicorn..."
-exec gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 config.wsgi:application
+exec gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 config.wsgi:application
