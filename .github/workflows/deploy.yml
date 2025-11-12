@@ -2,95 +2,42 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [ master ]
-  workflow_dispatch:
-
-concurrency:
-  group: deploy-to-vps
-  cancel-in-progress: true
-
-env:
-  APP_DIR: /root/apps/CRM-3.0
+    branches:
+      - master  # если у тебя ветка называется иначе — поменяй тут
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Start ssh-agent
+      - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-      - name: Add VPS host to known_hosts
+      - name: Add VPS to known_hosts
         run: |
           mkdir -p ~/.ssh
-          PORT="${{ secrets.VPS_PORT }}"
-          [ -z "$PORT" ] && PORT=22
-          ssh-keyscan -p "$PORT" ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Rsync project to server
+      - name: Deploy to VPS
         run: |
-          PORT="${{ secrets.VPS_PORT }}"
-          [ -z "$PORT" ] && PORT=22
-          rsync -az --delete \
-            --exclude ".git" \
-            --exclude "frontend/node_modules" \
-            -e "ssh -p $PORT" \
-            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.APP_DIR }}/
-
-      # Опционально: сгенерировать .env из секретов
-      - name: Ensure .env files (optional)
-        if: ${{ secrets.DJANGO_SECRET_KEY != '' || secrets.VITE_API_URL != '' }}
-        run: |
-          PORT="${{ secrets.VPS_PORT }}"
-          [ -z "$PORT" ] && PORT=22
-          ssh -p "$PORT" ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "bash -s" <<'EOS'
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
           set -e
-          cd "${APP_DIR}"
 
-          # backend/.env
-          if [ -n "${DJANGO_SECRET_KEY}" ]; then
-            cat > backend/.env <<ENV
-DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-DEBUG=False
-ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+          cd ${{ secrets.VPS_PATH }}
 
-DJANGO_DB_ENGINE=django.db.backends.postgresql
-DJANGO_DB_HOST=db
-DJANGO_DB_PORT=5432
-DJANGO_DB_NAME=crm3
-DJANGO_DB_USER=crm3
-DJANGO_DB_PASSWORD=crm3
+          echo "Pulling latest changes..."
+          git pull origin master
 
-CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost}
-ENV
-          fi
+          echo "Building and starting containers..."
+          docker compose -f stack.secure.yml pull
+          docker compose -f stack.secure.yml up -d --build
 
-          # frontend/.env
-          if [ -n "${VITE_API_URL}" ]; then
-            cat > frontend/.env <<ENV
-VITE_API_URL=${VITE_API_URL}
-ENV
-          fi
-EOS
-        env:
-          APP_DIR: ${{ env.APP_DIR }}
-          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
-          ALLOWED_HOSTS: ${{ secrets.ALLOWED_HOSTS }}
-          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          echo "Cleaning old images..."
+          docker image prune -f
 
-      - name: Deploy stack.secure.yml
-        run: |
-          PORT="${{ secrets.VPS_PORT }}"
-          [ -z "$PORT" ] && PORT=22
-          ssh -p "$PORT" ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "bash -lc '
-            set -e
-            cd ${APP_DIR}
-            docker compose -f stack.secure.yml pull || true
-            docker compose -f stack.secure.yml up -d --build
-            docker image prune -f || true
-          '"
+          EOF
