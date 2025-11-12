@@ -11,12 +11,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    hmr: {
-      host: 'localhost',
-      port: 80,
-      protocol: 'ws',
-      path: '/@vite/hmr',
-    },
+    // HMR disabled for development - use page reload instead
+    hmr: false,
     proxy: {
       '/api': {
         target: process.env.VITE_PROXY_TARGET ?? 'http://backend:8000',
