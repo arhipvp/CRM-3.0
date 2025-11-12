@@ -86,6 +86,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
+    console.log('Loading data...');
     setLoading(true);
     setError(null);
     try {
@@ -98,6 +99,7 @@ const App: React.FC = () => {
           fetchTasks(),
           fetchFinancialRecords(),
         ]);
+      console.log('Data loaded successfully:', { clientsData, dealsData });
       setClients(clientsData);
       setDeals(dealsData);
       setPolicies(policiesData);
@@ -106,6 +108,7 @@ const App: React.FC = () => {
       setFinancialRecords(financialRecordsData);
       setSelectedDealId((prev) => prev ?? (dealsData[0]?.id ?? null));
     } catch (err) {
+      console.error('Data loading error:', err);
       setError(err instanceof Error ? err.message : "Не удалось загрузить данные");
     } finally {
       setLoading(false);
@@ -120,7 +123,9 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('Checking authentication...');
         const userData = await getCurrentUser();
+        console.log('User data:', userData);
         // Parse roles from the API response structure
         const roles = userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
                      userData.roles || [];
@@ -129,9 +134,11 @@ const App: React.FC = () => {
           username: userData.username,
           roles: roles
         };
+        console.log('Setting current user:', user);
         setCurrentUser(user);
         setIsAuthenticated(true);
-      } catch {
+      } catch (err) {
+        console.error('Auth error:', err);
         setIsAuthenticated(false);
         setCurrentUser(null);
       } finally {
