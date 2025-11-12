@@ -16,6 +16,33 @@ Core concept: Everything revolves around **Deal** as the central entity. Clients
 - **Deployment**: Docker Compose (orchestrates PostgreSQL + Django)
 - **Authentication**: JWT (djangorestframework-simplejwt)
 
+### CRITICAL: Docker Data Protection
+⚠️ **IMPORTANT**: When managing Docker Compose containers, NEVER use `-v` flag with `docker-compose down` because it will DELETE all data volumes including the PostgreSQL database!
+
+**Correct commands:**
+```bash
+# Stop containers WITHOUT deleting data
+docker-compose down
+
+# Restart without losing data
+docker-compose restart
+
+# Rebuild image WITHOUT losing data
+docker-compose up -d --build
+```
+
+**WRONG - DO NOT USE:**
+```bash
+# This WILL DELETE all data including database!
+docker-compose down -v
+```
+
+If you accidentally delete data, use the populate_test_data.py script to restore:
+```bash
+cd "C:\Dev\CRM 3.0"
+docker-compose exec -T backend python manage.py shell < backend/populate_test_data.py
+```
+
 ### Directory Structure
 ```
 backend/
