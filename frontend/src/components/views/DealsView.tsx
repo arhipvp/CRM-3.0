@@ -96,7 +96,16 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onUpdateTask,
   onDeleteTask,
 }) => {
-  const selectedDeal = selectedDealId ? deals.find((deal) => deal.id === selectedDealId) ?? null : deals[0] ?? null;
+  // Сортируем сделки по дате следующего контакта (ближайшие сверху)
+  const sortedDeals = useMemo(() => {
+    return [...deals].sort((a, b) => {
+      const dateA = a.nextReviewDate ? new Date(a.nextReviewDate).getTime() : Infinity;
+      const dateB = b.nextReviewDate ? new Date(b.nextReviewDate).getTime() : Infinity;
+      return dateA - dateB;
+    });
+  }, [deals]);
+
+  const selectedDeal = selectedDealId ? sortedDeals.find((deal) => deal.id === selectedDealId) ?? null : sortedDeals[0] ?? null;
   const selectedClient = selectedDeal ? clients.find((client) => client.id === selectedDeal.clientId) ?? null : null;
 
   const [activeTab, setActiveTab] = useState<DealTabId>("overview");
@@ -600,11 +609,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
-            <p className="text-lg font-semibold text-slate-900">{deals.length}</p>
+            <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {deals.map((deal) => (
+          {sortedDeals.map((deal) => (
             <button
               key={deal.id}
               onClick={() => onSelectDeal(deal.id)}
@@ -615,9 +624,21 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
               <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
               <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || "—"}</p>
+              <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+                <span>Контакт: {formatDate(deal.nextReviewDate)}</span>
+                {deal.nextReviewDate && (
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    new Date(deal.nextReviewDate) < new Date()
+                      ? "bg-red-100 text-red-700"
+                      : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {new Date(deal.nextReviewDate) < new Date() ? "⚠ Просрочено" : "○"}
+                  </span>
+                )}
+              </div>
             </button>
           ))}
-          {!deals.length && <p className="p-6 text-sm text-slate-500">Сделок пока нет</p>}
+          {!sortedDeals.length && <p className="p-6 text-sm text-slate-500">Сделок пока нет</p>}
         </div>
       </section>
 
