@@ -492,6 +492,8 @@ const App: React.FC = () => {
       };
       setCurrentUser(user);
       setIsAuthenticated(true);
+      // Load application data after successful login
+      await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось загрузить данные пользователя");
       setIsAuthenticated(false);
