@@ -383,12 +383,22 @@ def refresh_token_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def current_user_view(request):
     """
     Эндпоинт для получения информации о текущем пользователе.
-    Требует: авторизация через JWT токен
+    Для аутентифицированного пользователя возвращает его данные.
+    Для анонимного пользователя возвращает информацию об анонимном пользователе.
     """
 
-    serializer = UserDetailSerializer(request.user)
-    return Response(serializer.data)
+    if request.user.is_authenticated:
+        serializer = UserDetailSerializer(request.user)
+        return Response(serializer.data)
+    else:
+        # Возвращаем информацию об анонимном пользователе
+        return Response({
+            'id': None,
+            'username': 'anonymous',
+            'email': '',
+            'is_authenticated': False
+        })
