@@ -13,7 +13,9 @@
       "Bash(.github/workflows/test.txt)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(timeout 10 ssh:*)",
+      "Bash(timeout 30 ssh:*)"
     ],
     "deny": [],
     "ask": []
