@@ -26,3 +26,5 @@ Thumbs.db
 
 frontend_example/
 .claude/settings.local.json
+deploy_key
+deploy_key.pub
