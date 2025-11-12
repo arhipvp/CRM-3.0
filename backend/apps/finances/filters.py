@@ -1,5 +1,7 @@
 """FilterSets for Finances app"""
+
 import django_filters
+
 from .models import Payment
 
 
@@ -16,32 +18,26 @@ class PaymentFilterSet(django_filters.FilterSet):
     """
 
     status = django_filters.ChoiceFilter(
-        field_name='status',
+        field_name="status",
         choices=Payment.PaymentStatus.choices,
-        label='Payment Status'
+        label="Payment Status",
     )
 
-    deal = django_filters.NumberFilter(
-        field_name='deal__id',
-        label='Deal ID'
-    )
+    deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
 
-    policy = django_filters.NumberFilter(
-        field_name='policy__id',
-        label='Policy ID'
-    )
+    policy = django_filters.NumberFilter(field_name="policy__id", label="Policy ID")
 
     ordering = django_filters.OrderingFilter(
         fields=(
-            ('created_at', 'created_at'),
-            ('updated_at', 'updated_at'),
-            ('scheduled_date', 'scheduled_date'),
-            ('actual_date', 'actual_date'),
-            ('amount', 'amount'),
+            ("created_at", "created_at"),
+            ("updated_at", "updated_at"),
+            ("scheduled_date", "scheduled_date"),
+            ("actual_date", "actual_date"),
+            ("amount", "amount"),
         ),
-        label='Sort by'
+        label="Sort by",
     )
 
     class Meta:
         model = Payment
-        fields = ('status', 'deal', 'policy')
+        fields = ("status", "deal", "policy")

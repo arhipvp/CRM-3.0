@@ -10,32 +10,108 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('deals', '0003_alter_deal_options_remove_deal_amount_and_more'),
+        ("deals", "0003_alter_deal_options_remove_deal_amount_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Policy',
+            name="Policy",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('deleted_at', models.DateTimeField(blank=True, default=None, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('number', models.CharField(help_text='Номер полиса', max_length=50, unique=True)),
-                ('insurance_company', models.CharField(help_text='Наименование страховой компании', max_length=255)),
-                ('insurance_type', models.CharField(help_text='Вид страхования (КАСКО, ОСАГО и т.д.)', max_length=120)),
-                ('vin', models.CharField(blank=True, help_text='VIN автомобиля', max_length=17)),
-                ('start_date', models.DateField(blank=True, help_text='Дата начала действия', null=True)),
-                ('end_date', models.DateField(blank=True, help_text='Дата окончания действия', null=True)),
-                ('amount', models.DecimalField(decimal_places=2, default=0, help_text='Сумма страховки (в рублях)', max_digits=12)),
-                ('status', models.CharField(default='active', help_text='Статус (active, expired, canceled и т.д.)', max_length=50)),
-                ('deal', models.ForeignKey(help_text='Сделка', on_delete=django.db.models.deletion.CASCADE, related_name='policies', to='deals.deal')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, default=None, null=True),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "number",
+                    models.CharField(
+                        help_text="Номер полиса", max_length=50, unique=True
+                    ),
+                ),
+                (
+                    "insurance_company",
+                    models.CharField(
+                        help_text="Наименование страховой компании", max_length=255
+                    ),
+                ),
+                (
+                    "insurance_type",
+                    models.CharField(
+                        help_text="Вид страхования (КАСКО, ОСАГО и т.д.)",
+                        max_length=120,
+                    ),
+                ),
+                (
+                    "vin",
+                    models.CharField(
+                        blank=True, help_text="VIN автомобиля", max_length=17
+                    ),
+                ),
+                (
+                    "start_date",
+                    models.DateField(
+                        blank=True, help_text="Дата начала действия", null=True
+                    ),
+                ),
+                (
+                    "end_date",
+                    models.DateField(
+                        blank=True, help_text="Дата окончания действия", null=True
+                    ),
+                ),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        help_text="Сумма страховки (в рублях)",
+                        max_digits=12,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        default="active",
+                        help_text="Статус (active, expired, canceled и т.д.)",
+                        max_length=50,
+                    ),
+                ),
+                (
+                    "deal",
+                    models.ForeignKey(
+                        help_text="Сделка",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="policies",
+                        to="deals.deal",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Полис',
-                'verbose_name_plural': 'Полисы',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['number'], name='policies_po_number_a05a45_idx'), models.Index(fields=['deal'], name='policies_po_deal_id_ac7165_idx'), models.Index(fields=['insurance_company'], name='policies_po_insuran_a16d23_idx')],
+                "verbose_name": "Полис",
+                "verbose_name_plural": "Полисы",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["number"], name="policies_po_number_a05a45_idx"
+                    ),
+                    models.Index(
+                        fields=["deal"], name="policies_po_deal_id_ac7165_idx"
+                    ),
+                    models.Index(
+                        fields=["insurance_company"],
+                        name="policies_po_insuran_a16d23_idx",
+                    ),
+                ],
             },
         ),
     ]

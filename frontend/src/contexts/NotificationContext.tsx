@@ -9,7 +9,11 @@ export interface Notification {
 
 interface NotificationContextType {
   notifications: Notification[];
-  addNotification: (message: string, type: 'error' | 'success' | 'info' | 'warning', duration?: number) => void;
+  addNotification: (
+    message: string,
+    type: 'error' | 'success' | 'info' | 'warning',
+    duration?: number
+  ) => void;
   removeNotification: (id: string) => void;
 }
 
@@ -23,7 +27,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const id = Date.now().toString();
       const notification: Notification = { id, message, type, duration };
 
-      setNotifications(prev => [...prev, notification]);
+      setNotifications((prev) => [...prev, notification]);
 
       // Auto-remove after duration if specified
       if (duration) {
@@ -36,7 +40,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   );
 
   const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
   return (

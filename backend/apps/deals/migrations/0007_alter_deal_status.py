@@ -6,13 +6,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0006_activitylog'),
+        ("deals", "0006_activitylog"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='deal',
-            name='status',
-            field=models.CharField(default='open', help_text='Статус сделки (произвольный текст)', max_length=50),
+            model_name="deal",
+            name="status",
+            field=models.CharField(
+                default="open",
+                help_text="Статус сделки (произвольный текст)",
+                max_length=50,
+            ),
         ),
     ]

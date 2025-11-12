@@ -6,11 +6,8 @@ export function NotificationDisplay() {
 
   return (
     <div className="notification-container">
-      {notifications.map(notification => (
-        <div
-          key={notification.id}
-          className={`notification notification-${notification.type}`}
-        >
+      {notifications.map((notification) => (
+        <div key={notification.id} className={`notification notification-${notification.type}`}>
           <div className="notification-content">
             <span>{notification.message}</span>
             <button

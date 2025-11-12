@@ -6,100 +6,102 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clients', '0001_initial'),
+        ("clients", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='contact',
-            name='client',
+            model_name="contact",
+            name="client",
         ),
         migrations.RemoveField(
-            model_name='contact',
-            name='owner',
+            model_name="contact",
+            name="owner",
         ),
         migrations.AlterModelOptions(
-            name='client',
-            options={'ordering': ['name']},
+            name="client",
+            options={"ordering": ["name"]},
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='addresses',
+            model_name="client",
+            name="addresses",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='emails',
+            model_name="client",
+            name="emails",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='extra',
+            model_name="client",
+            name="extra",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='industry',
+            model_name="client",
+            name="industry",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='legal_name',
+            model_name="client",
+            name="legal_name",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='messengers',
+            model_name="client",
+            name="messengers",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='owner',
+            model_name="client",
+            name="owner",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='phones',
+            model_name="client",
+            name="phones",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='rating',
+            model_name="client",
+            name="rating",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='source',
+            model_name="client",
+            name="source",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='status',
+            model_name="client",
+            name="status",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='tags',
+            model_name="client",
+            name="tags",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='tax_id',
+            model_name="client",
+            name="tax_id",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='type',
+            model_name="client",
+            name="type",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='website',
+            model_name="client",
+            name="website",
         ),
         migrations.AddField(
-            model_name='client',
-            name='birth_date',
-            field=models.DateField(blank=True, help_text='Дата рождения', null=True),
+            model_name="client",
+            name="birth_date",
+            field=models.DateField(blank=True, help_text="Дата рождения", null=True),
         ),
         migrations.AddField(
-            model_name='client',
-            name='deleted_at',
+            model_name="client",
+            name="deleted_at",
             field=models.DateTimeField(blank=True, default=None, null=True),
         ),
         migrations.AddField(
-            model_name='client',
-            name='phone',
-            field=models.CharField(blank=True, help_text='Номер телефона', max_length=20),
+            model_name="client",
+            name="phone",
+            field=models.CharField(
+                blank=True, help_text="Номер телефона", max_length=20
+            ),
         ),
         migrations.AlterField(
-            model_name='client',
-            name='name',
-            field=models.CharField(help_text='ФИО клиента', max_length=255),
+            model_name="client",
+            name="name",
+            field=models.CharField(help_text="ФИО клиента", max_length=255),
         ),
     ]

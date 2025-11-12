@@ -21,27 +21,30 @@ class CRMAdminSite(AdminSite):
         try:
             from apps.clients.models import Client
             from apps.deals.models import Deal
-            from apps.tasks.models import Task
             from apps.payments.models import Payment
+            from apps.tasks.models import Task
 
-            extra_context.update({
-                'total_clients': Client.objects.filter(deleted_at__isnull=True).count(),
-                'total_deals': Deal.objects.filter(deleted_at__isnull=True).count(),
-                'open_deals': Deal.objects.filter(
-                    status='open',
-                    deleted_at__isnull=True
-                ).count(),
-                'total_tasks': Task.objects.filter(deleted_at__isnull=True).count(),
-                'pending_tasks': Task.objects.filter(
-                    status='pending',
-                    deleted_at__isnull=True
-                ).count(),
-                'total_payments': Payment.objects.filter(deleted_at__isnull=True).count(),
-                'unpaid_payments': Payment.objects.filter(
-                    status__in=['pending', 'scheduled'],
-                    deleted_at__isnull=True
-                ).count(),
-            })
+            extra_context.update(
+                {
+                    "total_clients": Client.objects.filter(
+                        deleted_at__isnull=True
+                    ).count(),
+                    "total_deals": Deal.objects.filter(deleted_at__isnull=True).count(),
+                    "open_deals": Deal.objects.filter(
+                        status="open", deleted_at__isnull=True
+                    ).count(),
+                    "total_tasks": Task.objects.filter(deleted_at__isnull=True).count(),
+                    "pending_tasks": Task.objects.filter(
+                        status="pending", deleted_at__isnull=True
+                    ).count(),
+                    "total_payments": Payment.objects.filter(
+                        deleted_at__isnull=True
+                    ).count(),
+                    "unpaid_payments": Payment.objects.filter(
+                        status__in=["pending", "scheduled"], deleted_at__isnull=True
+                    ).count(),
+                }
+            )
         except Exception:
             pass
 
@@ -49,4 +52,4 @@ class CRMAdminSite(AdminSite):
 
 
 # Создаём кастомный AdminSite
-admin_site = CRMAdminSite(name='crm_admin')
+admin_site = CRMAdminSite(name="crm_admin")

@@ -7,42 +7,53 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0003_alter_deal_options_remove_deal_amount_and_more'),
-        ('notes', '0001_initial'),
+        ("deals", "0003_alter_deal_options_remove_deal_amount_and_more"),
+        ("notes", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='note',
-            options={'ordering': ['-created_at'], 'verbose_name': 'Заметка', 'verbose_name_plural': 'Заметки'},
+            name="note",
+            options={
+                "ordering": ["-created_at"],
+                "verbose_name": "Заметка",
+                "verbose_name_plural": "Заметки",
+            },
         ),
         migrations.RemoveField(
-            model_name='note',
-            name='client',
+            model_name="note",
+            name="client",
         ),
         migrations.AddField(
-            model_name='note',
-            name='deleted_at',
+            model_name="note",
+            name="deleted_at",
             field=models.DateTimeField(blank=True, default=None, null=True),
         ),
         migrations.AddField(
-            model_name='note',
-            name='updated_at',
+            model_name="note",
+            name="updated_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AlterField(
-            model_name='note',
-            name='author_name',
-            field=models.CharField(blank=True, help_text='Имя автора', max_length=120),
+            model_name="note",
+            name="author_name",
+            field=models.CharField(blank=True, help_text="Имя автора", max_length=120),
         ),
         migrations.AlterField(
-            model_name='note',
-            name='body',
-            field=models.TextField(help_text='Текст заметки'),
+            model_name="note",
+            name="body",
+            field=models.TextField(help_text="Текст заметки"),
         ),
         migrations.AlterField(
-            model_name='note',
-            name='deal',
-            field=models.ForeignKey(blank=True, help_text='Сделка', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='notes', to='deals.deal'),
+            model_name="note",
+            name="deal",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Сделка",
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="notes",
+                to="deals.deal",
+            ),
         ),
     ]

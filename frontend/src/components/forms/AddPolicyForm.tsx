@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 
 export interface PolicyFormValues {
   number: string;
@@ -19,23 +19,23 @@ interface AddPolicyFormProps {
 }
 
 export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel }) => {
-  const [number, setNumber] = useState("");
-  const [insuranceCompany, setInsuranceCompany] = useState("");
-  const [insuranceType, setInsuranceType] = useState("");
-  const [vin, setVin] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [amount, setAmount] = useState("");
+  const [number, setNumber] = useState('');
+  const [insuranceCompany, setInsuranceCompany] = useState('');
+  const [insuranceType, setInsuranceType] = useState('');
+  const [vin, setVin] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [amount, setAmount] = useState('');
   const [createPayment, setCreatePayment] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentDescription, setPaymentDescription] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDescription, setPaymentDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!number.trim() || !insuranceCompany.trim() || !insuranceType.trim() || !amount) {
-      setError("Заполните номер полиса, компанию, тип и сумму");
+      setError('Заполните номер полиса, компанию, тип и сумму');
       return;
     }
     setError(null);
@@ -54,7 +54,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
         paymentDescription: createPayment ? paymentDescription.trim() : undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить полис");
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить полис');
     } finally {
       setSubmitting(false);
     }
@@ -195,7 +195,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
           disabled={isSubmitting}
           className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
         >
-          {isSubmitting ? "Сохраняем..." : "Создать полис"}
+          {isSubmitting ? 'Сохраняем...' : 'Создать полис'}
         </button>
       </div>
     </form>

@@ -2,11 +2,12 @@
 Помощники для логирования аудита через Django signals.
 """
 
+import json
+from typing import Any, Dict, Optional
+
 from django.db.models import Model
 from django.http import HttpRequest
 from django.utils.html import escape
-import json
-from typing import Optional, Dict, Any
 
 
 def serialize_model_fields(instance, exclude_fields=None):
@@ -23,7 +24,7 @@ def serialize_model_fields(instance, exclude_fields=None):
         # Преобразование специальных типов
         if value is None:
             result[field.name] = None
-        elif hasattr(value, 'isoformat'):  # DateTime, Date
+        elif hasattr(value, "isoformat"):  # DateTime, Date
             result[field.name] = value.isoformat()
         elif isinstance(value, (int, str, bool, float)):
             result[field.name] = value
@@ -58,16 +59,16 @@ def get_changed_fields(instance, old_values: Optional[Dict] = None) -> Dict[str,
         new_value = getattr(instance, field_name, None)
 
         # Преобразовать DateTime/Date значения в строку для сравнения
-        if hasattr(old_value, 'isoformat'):
+        if hasattr(old_value, "isoformat"):
             old_value = old_value.isoformat()
-        if hasattr(new_value, 'isoformat'):
+        if hasattr(new_value, "isoformat"):
             new_value = new_value.isoformat()
 
         # Добавить только если значение действительно изменилось
         if old_value != new_value:
             changes[field_name] = {
-                'old': old_value,
-                'new': new_value,
+                "old": old_value,
+                "new": new_value,
             }
 
     return changes
@@ -86,6 +87,6 @@ def store_old_values(instance):
 
 def get_request_user(request: Optional[HttpRequest]):
     """Безопасно получить пользователя из request"""
-    if request and hasattr(request, 'user'):
+    if request and hasattr(request, "user"):
         return request.user if request.user.is_authenticated else None
     return None

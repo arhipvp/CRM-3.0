@@ -2,66 +2,74 @@
 Pytest configuration and fixtures for testing.
 """
 
+import factory
 import pytest
+from apps.users.models import Permission, Role, UserRole
 from django.contrib.auth.models import User
 from django.test import Client
-from apps.users.models import Role, Permission, UserRole
-import factory
-
 
 # ============ FACTORIES ============
 
+
 class UserFactory(factory.django.DjangoModelFactory):
     """Factory for creating test users."""
+
     class Meta:
         model = User
 
-    username = factory.Sequence(lambda n: f'user{n}')
-    email = factory.LazyAttribute(lambda o: f'{o.username}@example.com')
-    first_name = factory.Faker('first_name')
-    last_name = factory.Faker('last_name')
+    username = factory.Sequence(lambda n: f"user{n}")
+    email = factory.LazyAttribute(lambda o: f"{o.username}@example.com")
+    first_name = factory.Faker("first_name")
+    last_name = factory.Faker("last_name")
 
     @classmethod
     def create_superuser(cls, **kwargs):
         """Create a superuser."""
-        kwargs.setdefault('username', 'admin')
-        kwargs.setdefault('email', 'admin@example.com')
-        kwargs.setdefault('password', 'admin123')
+        kwargs.setdefault("username", "admin")
+        kwargs.setdefault("email", "admin@example.com")
+        kwargs.setdefault("password", "admin123")
         return User.objects.create_superuser(**kwargs)
 
 
 class RoleFactory(factory.django.DjangoModelFactory):
     """Factory for creating test roles."""
+
     class Meta:
         model = Role
 
-    name = factory.Sequence(lambda n: f'Role {n}')
-    description = factory.Faker('text', max_nb_chars=100)
+    name = factory.Sequence(lambda n: f"Role {n}")
+    description = factory.Faker("text", max_nb_chars=100)
 
 
 class PermissionFactory(factory.django.DjangoModelFactory):
     """Factory for creating test permissions."""
+
     class Meta:
         model = Permission
 
-    resource = factory.Faker('random_element', elements=['deal', 'client', 'task', 'document'])
-    action = factory.Faker('random_element', elements=['view', 'create', 'edit', 'delete'])
+    resource = factory.Faker(
+        "random_element", elements=["deal", "client", "task", "document"]
+    )
+    action = factory.Faker(
+        "random_element", elements=["view", "create", "edit", "delete"]
+    )
 
 
 # ============ FIXTURES ============
 
+
 @pytest.fixture
 def admin_user(db):
     """Create and return a superuser for testing."""
-    user = UserFactory.create_superuser(username='admin', password='admin123')
+    user = UserFactory.create_superuser(username="admin", password="admin123")
     return user
 
 
 @pytest.fixture
 def regular_user(db):
     """Create and return a regular user for testing."""
-    user = UserFactory.create(username='testuser', password='testpass123')
-    user.set_password('testpass123')
+    user = UserFactory.create(username="testuser", password="testpass123")
+    user.set_password("testpass123")
     user.save()
     return user
 
@@ -89,23 +97,23 @@ def user_client(client, regular_user):
 @pytest.fixture
 def role(db):
     """Create and return a test role."""
-    return RoleFactory.create(name='Test Role')
+    return RoleFactory.create(name="Test Role")
 
 
 @pytest.fixture
 def permission(db):
     """Create and return a test permission."""
-    return PermissionFactory.create(resource='deal', action='view')
+    return PermissionFactory.create(resource="deal", action="view")
 
 
 @pytest.fixture
 def user_with_role(db):
     """Create a user with a role."""
-    user = UserFactory.create(username='user_with_role')
-    user.set_password('password123')
+    user = UserFactory.create(username="user_with_role")
+    user.set_password("password123")
     user.save()
 
-    role = RoleFactory.create(name='Manager')
+    role = RoleFactory.create(name="Manager")
     UserRole.objects.create(user=user, role=role)
 
     return user

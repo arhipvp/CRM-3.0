@@ -9,76 +9,102 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0003_alter_deal_options_remove_deal_amount_and_more'),
-        ('documents', '0001_initial'),
+        ("deals", "0003_alter_deal_options_remove_deal_amount_and_more"),
+        ("documents", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='document',
-            options={'ordering': ['-created_at'], 'verbose_name': 'Документ', 'verbose_name_plural': 'Документы'},
+            name="document",
+            options={
+                "ordering": ["-created_at"],
+                "verbose_name": "Документ",
+                "verbose_name_plural": "Документы",
+            },
         ),
         migrations.RemoveField(
-            model_name='document',
-            name='client',
+            model_name="document",
+            name="client",
         ),
         migrations.RemoveField(
-            model_name='document',
-            name='contact',
+            model_name="document",
+            name="contact",
         ),
         migrations.RemoveField(
-            model_name='document',
-            name='extra',
+            model_name="document",
+            name="extra",
         ),
         migrations.AddField(
-            model_name='document',
-            name='deleted_at',
+            model_name="document",
+            name="deleted_at",
             field=models.DateTimeField(blank=True, default=None, null=True),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='checksum',
-            field=models.CharField(blank=True, help_text='Контрольная сумма', max_length=128),
+            model_name="document",
+            name="checksum",
+            field=models.CharField(
+                blank=True, help_text="Контрольная сумма", max_length=128
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='deal',
-            field=models.ForeignKey(blank=True, help_text='Сделка', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='deals.deal'),
+            model_name="document",
+            name="deal",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Сделка",
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="documents",
+                to="deals.deal",
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='doc_type',
-            field=models.CharField(blank=True, help_text='Тип документа', max_length=120),
+            model_name="document",
+            name="doc_type",
+            field=models.CharField(
+                blank=True, help_text="Тип документа", max_length=120
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='file',
-            field=models.FileField(help_text='Файл', upload_to=apps.documents.models.document_upload_path),
+            model_name="document",
+            name="file",
+            field=models.FileField(
+                help_text="Файл", upload_to=apps.documents.models.document_upload_path
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='file_size',
-            field=models.PositiveIntegerField(default=0, help_text='Размер файла в байтах'),
+            model_name="document",
+            name="file_size",
+            field=models.PositiveIntegerField(
+                default=0, help_text="Размер файла в байтах"
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='mime_type',
-            field=models.CharField(blank=True, help_text='MIME тип', max_length=120),
+            model_name="document",
+            name="mime_type",
+            field=models.CharField(blank=True, help_text="MIME тип", max_length=120),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='owner',
-            field=models.ForeignKey(blank=True, help_text='Владелец документа', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='documents', to=settings.AUTH_USER_MODEL),
+            model_name="document",
+            name="owner",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Владелец документа",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="documents",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='status',
-            field=models.CharField(default='draft', help_text='Статус', max_length=50),
+            model_name="document",
+            name="status",
+            field=models.CharField(default="draft", help_text="Статус", max_length=50),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='title',
-            field=models.CharField(help_text='Название документа', max_length=255),
+            model_name="document",
+            name="title",
+            field=models.CharField(help_text="Название документа", max_length=255),
         ),
     ]

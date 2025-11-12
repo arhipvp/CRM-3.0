@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { FilterParams } from "../api";
+import React, { useState } from 'react';
+import { FilterParams } from '../api';
 
 export interface FilterBarProps {
   onFilterChange: (filters: FilterParams) => void;
@@ -8,19 +8,19 @@ export interface FilterBarProps {
   customFilters?: Array<{
     key: string;
     label: string;
-    type: "text" | "select";
+    type: 'text' | 'select';
     options?: Array<{ value: string; label: string }>;
   }>;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
   onFilterChange,
-  searchPlaceholder = "Поиск...",
+  searchPlaceholder = 'Поиск...',
   sortOptions = [],
   customFilters = [],
 }) => {
-  const [search, setSearch] = useState("");
-  const [ordering, setOrdering] = useState("");
+  const [search, setSearch] = useState('');
+  const [ordering, setOrdering] = useState('');
   const [customFilterValues, setCustomFilterValues] = useState<Record<string, string>>({});
 
   const handleSearchChange = (value: string) => {
@@ -63,13 +63,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   const handleClearFilters = () => {
-    setSearch("");
-    setOrdering("");
+    setSearch('');
+    setOrdering('');
     setCustomFilterValues({});
     applyFilters({});
   };
 
-  const hasActiveFilters = search || ordering || Object.values(customFilterValues).some(v => v);
+  const hasActiveFilters = search || ordering || Object.values(customFilterValues).some((v) => v);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-4">
@@ -110,17 +110,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {customFilters.map((filter) => (
             <div key={filter.key} className="w-full md:w-auto">
               <label className="text-sm text-slate-600 mb-1 block">{filter.label}</label>
-              {filter.type === "text" ? (
+              {filter.type === 'text' ? (
                 <input
                   type="text"
-                  value={customFilterValues[filter.key] || ""}
+                  value={customFilterValues[filter.key] || ''}
                   onChange={(e) => handleCustomFilterChange(filter.key, e.target.value)}
                   placeholder={filter.label}
                   className="w-full md:w-auto px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                 />
               ) : (
                 <select
-                  value={customFilterValues[filter.key] || ""}
+                  value={customFilterValues[filter.key] || ''}
                   onChange={(e) => handleCustomFilterChange(filter.key, e.target.value)}
                   className="w-full md:w-auto px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                 >

@@ -1,25 +1,25 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { MainLayout, View } from "./components/MainLayout";
-import { Modal } from "./components/Modal";
-import { LoginPage } from "./components/LoginPage";
-import { NotificationProvider, useNotification } from "./contexts/NotificationContext";
-import { NotificationDisplay } from "./components/NotificationDisplay";
-import { ClientForm } from "./components/forms/ClientForm";
-import { DealForm } from "./components/forms/DealForm";
-import { DealsView } from "./components/views/DealsView";
-import { ClientsView } from "./components/views/ClientsView";
-import { PoliciesView } from "./components/views/PoliciesView";
-import { PaymentsView } from "./components/views/PaymentsView";
-import { FinanceView } from "./components/views/FinanceView";
-import { TasksView } from "./components/views/TasksView";
-import { SettingsView } from "./components/views/SettingsView";
-import { AddQuoteForm, QuoteFormValues } from "./components/forms/AddQuoteForm";
-import { AddPolicyForm, PolicyFormValues } from "./components/forms/AddPolicyForm";
-import { AddPaymentForm, AddPaymentFormValues } from "./components/forms/AddPaymentForm";
+import React, { useCallback, useEffect, useState } from 'react';
+import { MainLayout, View } from './components/MainLayout';
+import { Modal } from './components/Modal';
+import { LoginPage } from './components/LoginPage';
+import { NotificationProvider, useNotification } from './contexts/NotificationContext';
+import { NotificationDisplay } from './components/NotificationDisplay';
+import { ClientForm } from './components/forms/ClientForm';
+import { DealForm } from './components/forms/DealForm';
+import { DealsView } from './components/views/DealsView';
+import { ClientsView } from './components/views/ClientsView';
+import { PoliciesView } from './components/views/PoliciesView';
+import { PaymentsView } from './components/views/PaymentsView';
+import { FinanceView } from './components/views/FinanceView';
+import { TasksView } from './components/views/TasksView';
+import { SettingsView } from './components/views/SettingsView';
+import { AddQuoteForm, QuoteFormValues } from './components/forms/AddQuoteForm';
+import { AddPolicyForm, PolicyFormValues } from './components/forms/AddPolicyForm';
+import { AddPaymentForm, AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import {
   AddFinancialRecordForm,
   AddFinancialRecordFormValues,
-} from "./components/forms/AddFinancialRecordForm";
+} from './components/forms/AddFinancialRecordForm';
 import {
   createClient,
   createDeal,
@@ -51,10 +51,10 @@ import {
   getCurrentUser,
   clearTokens,
   APIError,
-} from "./api";
-import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, User } from "./types";
+} from './api';
+import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, User } from './types';
 
-type ModalType = null | "client" | "deal";
+type ModalType = null | 'client' | 'deal';
 
 interface PaymentModalState {
   policyId?: string;
@@ -71,7 +71,7 @@ const AppContent: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [view, setView] = useState<View>("deals");
+  const [view, setView] = useState<View>('deals');
   const [modal, setModal] = useState<ModalType>(null);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
@@ -110,10 +110,10 @@ const AppContent: React.FC = () => {
       setPayments(paymentsData);
       setTasks(tasksData);
       setFinancialRecords(financialRecordsData);
-      setSelectedDealId((prev) => prev ?? (dealsData[0]?.id ?? null));
+      setSelectedDealId((prev) => prev ?? dealsData[0]?.id ?? null);
     } catch (err) {
       console.error('Data loading error:', err);
-      setError(err instanceof Error ? err.message : "Не удалось загрузить данные");
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить данные');
     } finally {
       setLoading(false);
     }
@@ -131,12 +131,14 @@ const AppContent: React.FC = () => {
         const userData = await getCurrentUser();
         console.log('User data:', userData);
         // Parse roles from the API response structure
-        const roles = userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
-                     userData.roles || [];
+        const roles =
+          userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
+          userData.roles ||
+          [];
         const user: User = {
           id: String(userData.id),
           username: userData.username,
-          roles: roles
+          roles: roles,
         };
         console.log('Setting current user:', user);
         setCurrentUser(user);
@@ -153,13 +155,23 @@ const AppContent: React.FC = () => {
     checkAuth();
   }, []);
 
-  const handleAddClient = async (data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }) => {
+  const handleAddClient = async (data: {
+    name: string;
+    phone?: string;
+    birthDate?: string | null;
+    notes?: string | null;
+  }) => {
     const created = await createClient(data);
     setClients((prev) => [created, ...prev]);
     setModal(null);
   };
 
-  const handleAddDeal = async (data: { title: string; clientId: string; description?: string; expectedClose?: string | null }) => {
+  const handleAddDeal = async (data: {
+    title: string;
+    clientId: string;
+    description?: string;
+    expectedClose?: string | null;
+  }) => {
     const created = await createDeal(data);
     setDeals((prev) => [created, ...prev]);
     setSelectedDealId(created.id);
@@ -167,8 +179,8 @@ const AppContent: React.FC = () => {
   };
 
   const handleMarkPayment = async (paymentId: string) => {
-    const today = new Date().toISOString().split("T")[0];
-    const updated = await updatePayment(paymentId, { status: "paid", actualDate: today });
+    const today = new Date().toISOString().split('T')[0];
+    const updated = await updatePayment(paymentId, { status: 'paid', actualDate: today });
     setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
   };
 
@@ -178,7 +190,12 @@ const AppContent: React.FC = () => {
       const updated = await updateDealStatus(dealId, status);
       setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
     } catch (err) {
-      const message = err instanceof APIError ? err.message : (err instanceof Error ? err.message : "Не удалось обновить статус");
+      const message =
+        err instanceof APIError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Не удалось обновить статус';
       setError(message);
     } finally {
       setSyncing(false);
@@ -195,7 +212,7 @@ const AppContent: React.FC = () => {
       if (err instanceof APIError && err.status === 403) {
         addNotification('Только администратор может редактировать данные', 'error', 4000);
       } else {
-        setError(err instanceof Error ? err.message : "Не удалось обновить сделку");
+        setError(err instanceof Error ? err.message : 'Не удалось обновить сделку');
       }
       throw err;
     } finally {
@@ -208,12 +225,17 @@ const AppContent: React.FC = () => {
       const created = await createQuote({ dealId, ...values });
       setDeals((prev) =>
         prev.map((deal) =>
-          deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal,
-        ),
+          deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal
+        )
       );
       setQuoteDealId(null);
     } catch (err) {
-      const message = err instanceof APIError ? err.message : (err instanceof Error ? err.message : "Не удалось сохранить расчет");
+      const message =
+        err instanceof APIError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Не удалось сохранить расчет';
       setError(message);
       throw err;
     }
@@ -226,11 +248,11 @@ const AppContent: React.FC = () => {
         prev.map((deal) =>
           deal.id === dealId
             ? { ...deal, quotes: deal.quotes?.filter((quote) => quote.id !== quoteId) ?? [] }
-            : deal,
-        ),
+            : deal
+        )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить расчет");
+      setError(err instanceof Error ? err.message : 'Не удалось удалить расчет');
       throw err;
     }
   };
@@ -247,14 +269,14 @@ const AppContent: React.FC = () => {
           policyId: created.id,
           amount: values.paymentAmount,
           description: values.paymentDescription || `Платеж по полису ${values.number}`,
-          status: "planned",
+          status: 'planned',
         });
         setPayments((prev) => [payment, ...prev]);
       }
 
       setPolicyDealId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить полис");
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить полис');
       throw err;
     }
   };
@@ -264,7 +286,7 @@ const AppContent: React.FC = () => {
       await deletePolicy(policyId);
       setPolicies((prev) => prev.filter((policy) => policy.id !== policyId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить полис");
+      setError(err instanceof Error ? err.message : 'Не удалось удалить полис');
       throw err;
     }
   };
@@ -275,7 +297,7 @@ const AppContent: React.FC = () => {
       // Перезагрузить сделки, чтобы получить обновленный список документов
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось загрузить файл");
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
       throw err;
     }
   };
@@ -286,7 +308,7 @@ const AppContent: React.FC = () => {
       // Перезагрузить сделки, чтобы получить обновленный список документов
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить файл");
+      setError(err instanceof Error ? err.message : 'Не удалось удалить файл');
       throw err;
     }
   };
@@ -295,7 +317,7 @@ const AppContent: React.FC = () => {
     try {
       return await fetchChatMessages(dealId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось загрузить сообщения");
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить сообщения');
       throw err;
     }
   };
@@ -304,7 +326,7 @@ const AppContent: React.FC = () => {
     try {
       await createChatMessage(dealId, authorName, body);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось отправить сообщение");
+      setError(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
       throw err;
     }
   };
@@ -313,7 +335,7 @@ const AppContent: React.FC = () => {
     try {
       await deleteChatMessage(messageId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить сообщение");
+      setError(err instanceof Error ? err.message : 'Не удалось удалить сообщение');
       throw err;
     }
   };
@@ -324,7 +346,7 @@ const AppContent: React.FC = () => {
       const created = await createTask({ dealId, ...data });
       setTasks((prev) => [created, ...prev]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать задачу");
+      setError(err instanceof Error ? err.message : 'Не удалось создать задачу');
       throw err;
     } finally {
       setSyncing(false);
@@ -340,7 +362,7 @@ const AppContent: React.FC = () => {
       if (err instanceof APIError && err.status === 403) {
         addNotification('Только администратор может редактировать данные', 'error', 4000);
       } else {
-        setError(err instanceof Error ? err.message : "Не удалось обновить задачу");
+        setError(err instanceof Error ? err.message : 'Не удалось обновить задачу');
       }
       throw err;
     } finally {
@@ -353,7 +375,7 @@ const AppContent: React.FC = () => {
       await deleteTask(taskId);
       setTasks((prev) => prev.filter((task) => task.id !== taskId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить задачу");
+      setError(err instanceof Error ? err.message : 'Не удалось удалить задачу');
       throw err;
     }
   };
@@ -367,23 +389,23 @@ const AppContent: React.FC = () => {
         description: values.description,
         scheduledDate: values.scheduledDate || null,
         actualDate: values.actualDate || null,
-        status: values.status || "planned",
+        status: values.status || 'planned',
       });
 
       // Auto-create zero-value income record for tracking
       const zeroIncome = await createFinancialRecord({
         paymentId: created.id,
         amount: 0,
-        date: new Date().toISOString().split("T")[0],
-        description: "Исходное значение (отслеживание)",
-        source: "Система",
+        date: new Date().toISOString().split('T')[0],
+        description: 'Исходное значение (отслеживание)',
+        source: 'Система',
       });
 
       setPayments((prev) => [created, ...prev]);
       setFinancialRecords((prev) => [zeroIncome, ...prev]);
       setPaymentModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать платеж");
+      setError(err instanceof Error ? err.message : 'Не удалось создать платеж');
       throw err;
     }
   };
@@ -397,7 +419,7 @@ const AppContent: React.FC = () => {
         description: values.description,
         scheduledDate: values.scheduledDate || null,
         actualDate: values.actualDate || null,
-        status: values.status || "planned",
+        status: values.status || 'planned',
       });
 
       setPayments((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -406,7 +428,7 @@ const AppContent: React.FC = () => {
       if (err instanceof APIError && err.status === 403) {
         addNotification('Только администратор может редактировать данные', 'error', 4000);
       } else {
-        setError(err instanceof Error ? err.message : "Не удалось обновить платеж");
+        setError(err instanceof Error ? err.message : 'Не удалось обновить платеж');
       }
       throw err;
     }
@@ -415,8 +437,7 @@ const AppContent: React.FC = () => {
   const handleAddFinancialRecord = async (values: AddFinancialRecordFormValues) => {
     try {
       // Convert recordType to signed amount
-      const amount =
-        parseFloat(values.amount) * (values.recordType === "income" ? 1 : -1);
+      const amount = parseFloat(values.amount) * (values.recordType === 'income' ? 1 : -1);
 
       const created = await createFinancialRecord({
         paymentId: values.paymentId,
@@ -437,24 +458,23 @@ const AppContent: React.FC = () => {
                 ...p,
                 financialRecords: [created, ...(p.financialRecords || [])],
               }
-            : p,
-        ),
+            : p
+        )
       );
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать финансовую запись");
+      setError(err instanceof Error ? err.message : 'Не удалось создать финансовую запись');
       throw err;
     }
   };
 
   const handleUpdateFinancialRecord = async (
     recordId: string,
-    values: AddFinancialRecordFormValues,
+    values: AddFinancialRecordFormValues
   ) => {
     try {
       // Convert recordType to signed amount
-      const amount =
-        parseFloat(values.amount) * (values.recordType === "income" ? 1 : -1);
+      const amount = parseFloat(values.amount) * (values.recordType === 'income' ? 1 : -1);
 
       const updated = await updateFinancialRecord(recordId, {
         amount,
@@ -464,26 +484,20 @@ const AppContent: React.FC = () => {
         note: values.note,
       });
 
-      setFinancialRecords((prev) =>
-        prev.map((r) => (r.id === updated.id ? updated : r)),
-      );
+      setFinancialRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       // Also update in payments
       setPayments((prev) =>
         prev.map((p) => ({
           ...p,
-          financialRecords: p.financialRecords?.map((r) =>
-            r.id === updated.id ? updated : r,
-          ),
-        })),
+          financialRecords: p.financialRecords?.map((r) => (r.id === updated.id ? updated : r)),
+        }))
       );
       setFinancialRecordModal(null);
     } catch (err) {
       if (err instanceof APIError && err.status === 403) {
         addNotification('Только администратор может редактировать данные', 'error', 4000);
       } else {
-        setError(
-          err instanceof Error ? err.message : "Не удалось обновить финансовую запись",
-        );
+        setError(err instanceof Error ? err.message : 'Не удалось обновить финансовую запись');
       }
       throw err;
     }
@@ -507,12 +521,14 @@ const AppContent: React.FC = () => {
       const userData = await getCurrentUser();
       console.log('handleLoginSuccess: got user data', userData);
       // Parse roles from the API response structure
-      const roles = userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
-                   userData.roles || [];
+      const roles =
+        userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
+        userData.roles ||
+        [];
       const user: User = {
         id: String(userData.id),
         username: userData.username,
-        roles: roles
+        roles: roles,
       };
       setCurrentUser(user);
       setIsAuthenticated(true);
@@ -522,7 +538,7 @@ const AppContent: React.FC = () => {
       console.log('handleLoginSuccess: complete');
     } catch (err) {
       console.error('handleLoginSuccess: error', err);
-      setError(err instanceof Error ? err.message : "Не удалось загрузить данные пользователя");
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить данные пользователя');
       setIsAuthenticated(false);
     }
   };
@@ -532,7 +548,7 @@ const AppContent: React.FC = () => {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
     }
     switch (view) {
-      case "deals":
+      case 'deals':
         return (
           <DealsView
             deals={deals}
@@ -564,17 +580,17 @@ const AppContent: React.FC = () => {
             onDeleteTask={handleDeleteTask}
           />
         );
-      case "clients":
+      case 'clients':
         return <ClientsView clients={clients} deals={deals} />;
-      case "policies":
+      case 'policies':
         return <PoliciesView policies={policies} deals={deals} />;
-      case "payments":
+      case 'payments':
         return <PaymentsView payments={payments} deals={deals} onMarkPaid={handleMarkPayment} />;
-      case "finance":
+      case 'finance':
         return <FinanceView payments={payments} financialRecords={financialRecords} />;
-      case "tasks":
+      case 'tasks':
         return <TasksView tasks={tasks} deals={deals} />;
-      case "settings":
+      case 'settings':
         return <SettingsView />;
       default:
         return null;
@@ -601,8 +617,8 @@ const AppContent: React.FC = () => {
       <MainLayout
         activeView={view}
         onNavigate={setView}
-        onAddDeal={() => setModal("deal")}
-        onAddClient={() => setModal("client")}
+        onAddDeal={() => setModal('deal')}
+        onAddClient={() => setModal('client')}
         currentUser={currentUser}
         onLogout={handleLogout}
       >
@@ -612,7 +628,11 @@ const AppContent: React.FC = () => {
               <h1 className="text-2xl font-semibold text-slate-900">Рабочее место</h1>
               <p className="text-sm text-slate-500">Данные синхронизируются с Django API</p>
             </div>
-            <button onClick={loadData} className="text-sm text-sky-600 font-semibold hover:text-sky-800" disabled={isLoading}>
+            <button
+              onClick={loadData}
+              className="text-sm text-sky-600 font-semibold hover:text-sky-800"
+              disabled={isLoading}
+            >
               Обновить данные
             </button>
           </div>
@@ -621,33 +641,43 @@ const AppContent: React.FC = () => {
           {renderView()}
         </div>
 
-        {modal === "client" && (
+        {modal === 'client' && (
           <Modal title="Новый клиент" onClose={() => setModal(null)}>
             <ClientForm onSubmit={handleAddClient} submitLabel="Создать клиента" />
           </Modal>
         )}
-        {modal === "deal" && (
+        {modal === 'deal' && (
           <Modal title="Новая сделка" onClose={() => setModal(null)}>
             <DealForm onSubmit={handleAddDeal} clients={clients} />
           </Modal>
         )}
         {quoteDealId && (
           <Modal title="Новый расчет" onClose={() => setQuoteDealId(null)}>
-            <AddQuoteForm onSubmit={(values) => handleAddQuote(quoteDealId, values)} onCancel={() => setQuoteDealId(null)} />
+            <AddQuoteForm
+              onSubmit={(values) => handleAddQuote(quoteDealId, values)}
+              onCancel={() => setQuoteDealId(null)}
+            />
           </Modal>
         )}
         {policyDealId && (
           <Modal title="Новый полис" onClose={() => setPolicyDealId(null)}>
-            <AddPolicyForm onSubmit={(values) => handleAddPolicy(policyDealId, values)} onCancel={() => setPolicyDealId(null)} />
+            <AddPolicyForm
+              onSubmit={(values) => handleAddPolicy(policyDealId, values)}
+              onCancel={() => setPolicyDealId(null)}
+            />
           </Modal>
         )}
         {paymentModal && (
           <Modal
-            title={paymentModal.paymentId ? "Редактировать платеж" : "Новый платеж"}
+            title={paymentModal.paymentId ? 'Редактировать платеж' : 'Новый платеж'}
             onClose={() => setPaymentModal(null)}
           >
             <AddPaymentForm
-              payment={paymentModal.paymentId ? payments.find((p) => p.id === paymentModal.paymentId) : undefined}
+              payment={
+                paymentModal.paymentId
+                  ? payments.find((p) => p.id === paymentModal.paymentId)
+                  : undefined
+              }
               onSubmit={(values) =>
                 paymentModal.paymentId
                   ? handleUpdatePayment(paymentModal.paymentId, values)
@@ -659,11 +689,13 @@ const AppContent: React.FC = () => {
         )}
         {financialRecordModal && (
           <Modal
-            title={financialRecordModal.recordId ? "Редактировать запись" : "Новая финансовая запись"}
+            title={
+              financialRecordModal.recordId ? 'Редактировать запись' : 'Новая финансовая запись'
+            }
             onClose={() => setFinancialRecordModal(null)}
           >
             <AddFinancialRecordForm
-              paymentId={financialRecordModal.paymentId || ""}
+              paymentId={financialRecordModal.paymentId || ''}
               record={
                 financialRecordModal.recordId
                   ? financialRecords.find((r) => r.id === financialRecordModal.recordId)

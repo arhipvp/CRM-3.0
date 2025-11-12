@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Task, TaskPriority, TaskStatus } from "../../types";
+import React, { useState } from 'react';
+import { Task, TaskPriority, TaskStatus } from '../../types';
 
 export interface AddTaskFormValues {
   title: string;
@@ -16,26 +16,20 @@ interface AddTaskFormProps {
   onCancel: () => void;
 }
 
-export function AddTaskForm({
-  task,
-  onSubmit,
-  onCancel,
-}: AddTaskFormProps) {
+export function AddTaskForm({ task, onSubmit, onCancel }: AddTaskFormProps) {
   const [formData, setFormData] = useState<AddTaskFormValues>({
-    title: task?.title || "",
-    description: task?.description || "",
-    priority: task?.priority || "normal",
+    title: task?.title || '',
+    description: task?.description || '',
+    priority: task?.priority || 'normal',
     dueAt: task?.dueAt || null,
-    status: task?.status || "todo",
+    status: task?.status || 'todo',
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -46,17 +40,17 @@ export function AddTaskForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       if (!formData.title.trim()) {
-        throw new Error("Название задачи обязательно");
+        throw new Error('Название задачи обязательно');
       }
 
       await onSubmit(formData);
     } catch (err: any) {
-      setError(err.message || "Ошибка при сохранении задачи");
+      setError(err.message || 'Ошибка при сохранении задачи');
     } finally {
       setLoading(false);
     }
@@ -85,7 +79,7 @@ export function AddTaskForm({
         <textarea
           id="description"
           name="description"
-          value={formData.description || ""}
+          value={formData.description || ''}
           onChange={handleChange}
           placeholder="Описание задачи"
           rows={3}
@@ -116,7 +110,7 @@ export function AddTaskForm({
             type="date"
             id="dueAt"
             name="dueAt"
-            value={formData.dueAt || ""}
+            value={formData.dueAt || ''}
             onChange={handleChange}
             disabled={loading}
           />
@@ -129,7 +123,7 @@ export function AddTaskForm({
           <select
             id="status"
             name="status"
-            value={formData.status || "todo"}
+            value={formData.status || 'todo'}
             onChange={handleChange}
             disabled={loading}
           >
@@ -144,14 +138,9 @@ export function AddTaskForm({
 
       <div className="form-actions">
         <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? "Сохранение..." : task ? "Обновить" : "Создать"}
+          {loading ? 'Сохранение...' : task ? 'Обновить' : 'Создать'}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          className="btn-secondary"
-        >
+        <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
           Отмена
         </button>
       </div>

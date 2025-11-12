@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Deal, Client } from "../../types";
+import React, { useState } from 'react';
+import { Deal, Client } from '../../types';
 
 export interface EditDealFormValues {
   title: string;
@@ -16,22 +16,17 @@ interface EditDealFormProps {
   onCancel: () => void;
 }
 
-export function EditDealForm({
-  deal,
-  clients,
-  onSubmit,
-  onCancel,
-}: EditDealFormProps) {
+export function EditDealForm({ deal, clients, onSubmit, onCancel }: EditDealFormProps) {
   const [formData, setFormData] = useState<EditDealFormValues>({
     title: deal.title,
-    description: deal.description || "",
+    description: deal.description || '',
     clientId: deal.clientId,
     nextReviewDate: deal.nextReviewDate,
     expectedClose: deal.expectedClose,
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -45,20 +40,20 @@ export function EditDealForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       if (!formData.title.trim()) {
-        throw new Error("Название сделки обязательно");
+        throw new Error('Название сделки обязательно');
       }
       if (!formData.clientId) {
-        throw new Error("Клиент обязателен");
+        throw new Error('Клиент обязателен');
       }
 
       await onSubmit(formData);
     } catch (err: any) {
-      setError(err.message || "Ошибка при обновлении сделки");
+      setError(err.message || 'Ошибка при обновлении сделки');
     } finally {
       setLoading(false);
     }
@@ -121,7 +116,7 @@ export function EditDealForm({
             type="date"
             id="nextReviewDate"
             name="nextReviewDate"
-            value={formData.nextReviewDate || ""}
+            value={formData.nextReviewDate || ''}
             onChange={handleChange}
             disabled={loading}
           />
@@ -133,7 +128,7 @@ export function EditDealForm({
             type="date"
             id="expectedClose"
             name="expectedClose"
-            value={formData.expectedClose || ""}
+            value={formData.expectedClose || ''}
             onChange={handleChange}
             disabled={loading}
             required
@@ -143,14 +138,9 @@ export function EditDealForm({
 
       <div className="form-actions">
         <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? "Сохранение..." : "Сохранить"}
+          {loading ? 'Сохранение...' : 'Сохранить'}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          className="btn-secondary"
-        >
+        <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
           Отмена
         </button>
       </div>

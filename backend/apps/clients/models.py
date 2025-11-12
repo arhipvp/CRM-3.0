@@ -1,6 +1,5 @@
-﻿from django.db import models
-
-from apps.common.models import SoftDeleteModel
+﻿from apps.common.models import SoftDeleteModel
+from django.db import models
 
 
 class Client(SoftDeleteModel):

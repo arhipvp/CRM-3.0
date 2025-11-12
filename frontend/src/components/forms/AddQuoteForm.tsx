@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+﻿import React, { useState } from 'react';
 
 export interface QuoteFormValues {
   insurer: string;
@@ -15,19 +15,19 @@ interface AddQuoteFormProps {
 }
 
 export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ onSubmit, onCancel }) => {
-  const [insurer, setInsurer] = useState("");
-  const [insuranceType, setInsuranceType] = useState("");
-  const [sumInsured, setSumInsured] = useState("");
-  const [premium, setPremium] = useState("");
-  const [deductible, setDeductible] = useState("");
-  const [comments, setComments] = useState("");
+  const [insurer, setInsurer] = useState('');
+  const [insuranceType, setInsuranceType] = useState('');
+  const [sumInsured, setSumInsured] = useState('');
+  const [premium, setPremium] = useState('');
+  const [deductible, setDeductible] = useState('');
+  const [comments, setComments] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!insurer.trim() || !insuranceType.trim() || !sumInsured || !premium) {
-      setError("Заполните компанию, тип, сумму и премию");
+      setError('Заполните компанию, тип, сумму и премию');
       return;
     }
     setError(null);
@@ -42,7 +42,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ onSubmit, onCancel }
         comments: comments.trim() || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить расчет");
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить расчет');
     } finally {
       setSubmitting(false);
     }
@@ -127,7 +127,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ onSubmit, onCancel }
           disabled={isSubmitting}
           className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
         >
-          {isSubmitting ? "Сохраняем..." : "Сохранить"}
+          {isSubmitting ? 'Сохраняем...' : 'Сохранить'}
         </button>
       </div>
     </form>

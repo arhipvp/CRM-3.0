@@ -1,5 +1,5 @@
-﻿from datetime import date
-import re
+﻿import re
+from datetime import date
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -27,7 +27,9 @@ class ClientAdminForm(forms.ModelForm):
     def clean_phone(self):
         phone = self.cleaned_data.get("phone", "").strip()
         if phone and not re.match(r"^[\d\s\(\)\-\+]*$", phone):
-            raise ValidationError("Телефон может содержать только цифры и служебные символы.")
+            raise ValidationError(
+                "Телефон может содержать только цифры и служебные символы."
+            )
         return phone
 
     def clean_birth_date(self):

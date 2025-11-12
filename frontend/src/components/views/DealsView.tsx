@@ -1,40 +1,54 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
-import { ActivityLog, Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, ChatMessage } from "../../types";
-import { FileUploadManager } from "../FileUploadManager";
-import { ChatBox } from "../ChatBox";
-import { ActivityTimeline } from "../ActivityTimeline";
-import { EditDealForm, EditDealFormValues } from "../forms/EditDealForm";
-import { AddTaskForm, AddTaskFormValues } from "../forms/AddTaskForm";
-import { AddPaymentForm, AddPaymentFormValues } from "../forms/AddPaymentForm";
-import { AddFinancialRecordForm, AddFinancialRecordFormValues } from "../forms/AddFinancialRecordForm";
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityLog,
+  Client,
+  Deal,
+  DealStatus,
+  FinancialRecord,
+  Payment,
+  Policy,
+  Task,
+  ChatMessage,
+} from '../../types';
+import { FileUploadManager } from '../FileUploadManager';
+import { ChatBox } from '../ChatBox';
+import { ActivityTimeline } from '../ActivityTimeline';
+import { EditDealForm, EditDealFormValues } from '../forms/EditDealForm';
+import { AddTaskForm, AddTaskFormValues } from '../forms/AddTaskForm';
+import { AddPaymentForm, AddPaymentFormValues } from '../forms/AddPaymentForm';
+import {
+  AddFinancialRecordForm,
+  AddFinancialRecordFormValues,
+} from '../forms/AddFinancialRecordForm';
 
 const statusLabels: Record<DealStatus, string> = {
-  open: "В работе",
-  won: "Выиграна",
-  lost: "Закрыта (проиграна)",
-  on_hold: "На паузе",
+  open: 'В работе',
+  won: 'Выиграна',
+  lost: 'Закрыта (проиграна)',
+  on_hold: 'На паузе',
 };
 
 const DEAL_TABS = [
-  { id: "overview", label: "Обзор" },
-  { id: "tasks", label: "Задачи" },
-  { id: "quotes", label: "Расчеты" },
-  { id: "policies", label: "Полисы" },
-  { id: "payments", label: "Платежи" },
-  { id: "chat", label: "Чат" },
-  { id: "files", label: "Файлы" },
-  { id: "finance", label: "Финансы" },
-  { id: "notes", label: "Заметки" },
-  { id: "history", label: "История" },
+  { id: 'overview', label: 'Обзор' },
+  { id: 'tasks', label: 'Задачи' },
+  { id: 'quotes', label: 'Расчеты' },
+  { id: 'policies', label: 'Полисы' },
+  { id: 'payments', label: 'Платежи' },
+  { id: 'chat', label: 'Чат' },
+  { id: 'files', label: 'Файлы' },
+  { id: 'finance', label: 'Финансы' },
+  { id: 'notes', label: 'Заметки' },
+  { id: 'history', label: 'История' },
 ] as const;
 
-type DealTabId = (typeof DEAL_TABS)[number]["id"];
+type DealTabId = (typeof DEAL_TABS)[number]['id'];
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
 const formatCurrency = (value?: string) => {
   const amount = Number(value ?? 0);
-  return amount.toLocaleString("ru-RU", { style: "currency", currency: "RUB" });
+  return amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
 };
 
 interface DealsViewProps {
@@ -55,7 +69,10 @@ interface DealsViewProps {
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
-  onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord: (
+    recordId: string,
+    values: AddFinancialRecordFormValues
+  ) => Promise<void>;
   onUploadDocument: (dealId: string, file: File) => Promise<void>;
   onDeleteDocument: (documentId: string) => Promise<void>;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
@@ -105,10 +122,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
     });
   }, [deals]);
 
-  const selectedDeal = selectedDealId ? sortedDeals.find((deal) => deal.id === selectedDealId) ?? null : sortedDeals[0] ?? null;
-  const selectedClient = selectedDeal ? clients.find((client) => client.id === selectedDeal.clientId) ?? null : null;
+  const selectedDeal = selectedDealId
+    ? (sortedDeals.find((deal) => deal.id === selectedDealId) ?? null)
+    : (sortedDeals[0] ?? null);
+  const selectedClient = selectedDeal
+    ? (clients.find((client) => client.id === selectedDeal.clientId) ?? null)
+    : null;
 
-  const [activeTab, setActiveTab] = useState<DealTabId>("overview");
+  const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -118,22 +139,24 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
-  const [creatingFinancialRecordForPaymentId, setCreatingFinancialRecordForPaymentId] = useState<string | null>(null);
+  const [creatingFinancialRecordForPaymentId, setCreatingFinancialRecordForPaymentId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
-    setActiveTab("overview");
+    setActiveTab('overview');
   }, [selectedDeal?.id]);
 
   // Загружать сообщения когда открываем вкладку "Чат"
   useEffect(() => {
-    if (activeTab === "chat" && selectedDeal) {
+    if (activeTab === 'chat' && selectedDeal) {
       loadChatMessages();
     }
   }, [activeTab, selectedDeal?.id]);
 
   // Загружать логи активности когда открываем вкладку "История"
   useEffect(() => {
-    if (activeTab === "history" && selectedDeal) {
+    if (activeTab === 'history' && selectedDeal) {
       loadActivityLogs();
     }
   }, [activeTab, selectedDeal?.id]);
@@ -145,7 +168,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       const messages = await onFetchChatMessages(selectedDeal.id);
       setChatMessages(messages);
     } catch (err) {
-      console.error("Ошибка загрузки сообщений:", err);
+      console.error('Ошибка загрузки сообщений:', err);
     } finally {
       setIsChatLoading(false);
     }
@@ -158,7 +181,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       const logs = await onFetchActivityLogs(selectedDeal.id);
       setActivityLogs(logs);
     } catch (err) {
-      console.error("Ошибка загрузки логов активности:", err);
+      console.error('Ошибка загрузки логов активности:', err);
     } finally {
       setIsActivityLoading(false);
     }
@@ -166,15 +189,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
-    [policies, selectedDeal],
+    [policies, selectedDeal]
   );
   const relatedPayments = useMemo(
     () => (selectedDeal ? payments.filter((p) => p.dealId === selectedDeal.id) : []),
-    [payments, selectedDeal],
+    [payments, selectedDeal]
   );
   const relatedTasks = useMemo(
     () => (selectedDeal ? tasks.filter((t) => t.dealId === selectedDeal.id) : []),
-    [selectedDeal, tasks],
+    [selectedDeal, tasks]
   );
 
   const quotes = selectedDeal?.quotes ?? [];
@@ -215,7 +238,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <p className="font-semibold text-slate-900 text-sm">{task.title}</p>
-                  {task.description && <p className="text-sm text-slate-500 mt-1">{task.description}</p>}
+                  {task.description && (
+                    <p className="text-sm text-slate-500 mt-1">{task.description}</p>
+                  )}
                   <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-4">
                     <span>Статус: {task.status}</span>
                     {task.dueAt && <span>Срок: {formatDate(task.dueAt)}</span>}
@@ -323,7 +348,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
         <div className="space-y-4">
           <p className="text-sm text-slate-500">Платежей пока нет.</p>
           <button
-            onClick={() => setEditingPaymentId("new")}
+            onClick={() => setEditingPaymentId('new')}
             className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
           >
             Создать платеж
@@ -336,7 +361,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       <div className="space-y-6">
         <div className="flex justify-end">
           <button
-            onClick={() => setEditingPaymentId("new")}
+            onClick={() => setEditingPaymentId('new')}
             className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
           >
             + Создать платеж
@@ -351,11 +376,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
             ) : (
               <div className="space-y-3">
                 {payments.map((payment) => (
-                  <div key={payment.id} className="border border-slate-100 rounded-lg p-4 bg-slate-50">
+                  <div
+                    key={payment.id}
+                    className="border border-slate-100 rounded-lg p-4 bg-slate-50"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <p className="font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
-                        <p className="text-sm text-slate-600 mt-1">{payment.description || "Нет описания"}</p>
+                        <p className="font-semibold text-slate-900">
+                          {formatCurrency(payment.amount)}
+                        </p>
+                        <p className="text-sm text-slate-600 mt-1">
+                          {payment.description || 'Нет описания'}
+                        </p>
                         <div className="text-xs text-slate-500 mt-2 flex flex-wrap gap-4">
                           <span>Запланировано: {formatDate(payment.scheduledDate)}</span>
                           <span>Факт: {formatDate(payment.actualDate)}</span>
@@ -381,18 +413,28 @@ export const DealsView: React.FC<DealsViewProps> = ({
                     {/* Финансовые записи платежа */}
                     {payment.financialRecords && payment.financialRecords.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-slate-200">
-                        <p className="text-xs font-semibold text-slate-600 mb-3">Финансовые записи:</p>
+                        <p className="text-xs font-semibold text-slate-600 mb-3">
+                          Финансовые записи:
+                        </p>
                         <div className="space-y-2">
                           {payment.financialRecords.map((record) => (
-                            <div key={record.id} className="flex items-center justify-between text-xs bg-white p-2 rounded border border-slate-100">
+                            <div
+                              key={record.id}
+                              className="flex items-center justify-between text-xs bg-white p-2 rounded border border-slate-100"
+                            >
                               <div>
-                                <span className={`font-semibold ${parseFloat(record.amount) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                                  {parseFloat(record.amount) >= 0 ? "+" : "-"}{Math.abs(parseFloat(record.amount)).toLocaleString("ru-RU", {
-                                    style: "currency",
-                                    currency: "RUB",
+                                <span
+                                  className={`font-semibold ${parseFloat(record.amount) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                                >
+                                  {parseFloat(record.amount) >= 0 ? '+' : '-'}
+                                  {Math.abs(parseFloat(record.amount)).toLocaleString('ru-RU', {
+                                    style: 'currency',
+                                    currency: 'RUB',
                                   })}
                                 </span>
-                                <span className="text-slate-500 ml-2">{record.description || "—"}</span>
+                                <span className="text-slate-500 ml-2">
+                                  {record.description || '—'}
+                                </span>
                               </div>
                               <div className="flex gap-2">
                                 <button
@@ -426,8 +468,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
         {relatedPayments.map((payment) => (
           <div key={payment.id} className="border border-slate-100 rounded-xl p-3 text-sm">
             <p className="font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
-            <p className="text-slate-500">{payment.description || "Без описания"}</p>
-            <p className="text-xs text-slate-400 mt-1">Запланировано: {formatDate(payment.scheduledDate)}</p>
+            <p className="text-slate-500">{payment.description || 'Без описания'}</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Запланировано: {formatDate(payment.scheduledDate)}
+            </p>
             <p className="text-xs text-slate-400">Факт: {formatDate(payment.actualDate)}</p>
             <p className="text-xs text-slate-500 mt-1">Статус: {payment.status}</p>
           </div>
@@ -492,7 +536,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-slate-400">Франшиза</p>
-                  <p className="font-semibold">{quote.deductible || "—"}</p>
+                  <p className="font-semibold">{quote.deductible || '—'}</p>
                 </div>
               </div>
               {quote.comments && <p className="text-sm text-slate-500 mt-3">{quote.comments}</p>}
@@ -543,60 +587,69 @@ export const DealsView: React.FC<DealsViewProps> = ({
   };
 
   const renderActivityTab = () => {
-    return (
-      <ActivityTimeline
-        activities={activityLogs}
-        isLoading={isActivityLoading}
-      />
-    );
+    return <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />;
   };
 
   const renderPlaceholder = (label: string) => (
-    <div className="text-sm text-slate-500">{label} появится после имплементации соответствующей фичи.</div>
+    <div className="text-sm text-slate-500">
+      {label} появится после имплементации соответствующей фичи.
+    </div>
   );
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "overview":
+      case 'overview':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-400">Клиент</p>
-                <p className="text-lg font-semibold text-slate-900 mt-1">{selectedClient?.name || "Не указан"}</p>
-                {selectedClient?.phone && <p className="text-sm text-slate-500 mt-1">{selectedClient.phone}</p>}
+                <p className="text-lg font-semibold text-slate-900 mt-1">
+                  {selectedClient?.name || 'Не указан'}
+                </p>
+                {selectedClient?.phone && (
+                  <p className="text-sm text-slate-500 mt-1">{selectedClient.phone}</p>
+                )}
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-                <p className="text-lg font-semibold text-slate-900 mt-1">{formatDate(selectedDeal?.nextReviewDate)}</p>
+                <p className="text-lg font-semibold text-slate-900 mt-1">
+                  {formatDate(selectedDeal?.nextReviewDate)}
+                </p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-400">План закрытия</p>
-                <p className="text-lg font-semibold text-slate-900 mt-1">{formatDate(selectedDeal?.expectedClose)}</p>
+                <p className="text-lg font-semibold text-slate-900 mt-1">
+                  {formatDate(selectedDeal?.expectedClose)}
+                </p>
               </div>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-              {selectedDeal?.description ? <p>{selectedDeal.description}</p> : <p>Описание сделки не заполнено.</p>}
+              {selectedDeal?.description ? (
+                <p>{selectedDeal.description}</p>
+              ) : (
+                <p>Описание сделки не заполнено.</p>
+              )}
             </div>
           </div>
         );
-      case "tasks":
+      case 'tasks':
         return renderTasksTab();
-      case "policies":
+      case 'policies':
         return renderPoliciesTab();
-      case "payments":
+      case 'payments':
         return renderPaymentsByPoliciesTab();
-      case "finance":
+      case 'finance':
         return renderFinanceTab();
-      case "quotes":
+      case 'quotes':
         return renderQuotesTab();
-      case "files":
+      case 'files':
         return renderFilesTab();
-      case "chat":
+      case 'chat':
         return renderChatTab();
-      case "notes":
-        return renderPlaceholder("Заметки");
-      case "history":
+      case 'notes':
+        return renderPlaceholder('Заметки');
+      case 'history':
         return renderActivityTab();
       default:
         return null;
@@ -618,21 +671,23 @@ export const DealsView: React.FC<DealsViewProps> = ({
               key={deal.id}
               onClick={() => onSelectDeal(deal.id)}
               className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
-                selectedDeal?.id === deal.id ? "bg-sky-50" : "hover:bg-slate-50"
+                selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
               }`}
             >
               <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
               <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
-              <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || "—"}</p>
+              <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '—'}</p>
               <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
                 <span>Контакт: {formatDate(deal.nextReviewDate)}</span>
                 {deal.nextReviewDate && (
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    new Date(deal.nextReviewDate) < new Date()
-                      ? "bg-red-100 text-red-700"
-                      : "bg-blue-100 text-blue-700"
-                  }`}>
-                    {new Date(deal.nextReviewDate) < new Date() ? "⚠ Просрочено" : "○"}
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      new Date(deal.nextReviewDate) < new Date()
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}
+                  >
+                    {new Date(deal.nextReviewDate) < new Date() ? '⚠ Просрочено' : '○'}
                   </span>
                 )}
               </div>
@@ -649,13 +704,17 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <div>
                 <p className="text-sm text-slate-500">Сделка</p>
                 <h2 className="text-2xl font-semibold text-slate-900">{selectedDeal.title}</h2>
-                <p className="text-sm text-slate-500 mt-1">{selectedClient?.name || "Клиент не выбран"}</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  {selectedClient?.name || 'Клиент не выбран'}
+                </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <label className="text-sm text-slate-600">Статус</label>
                 <select
                   value={selectedDeal.status}
-                  onChange={(event) => onUpdateStatus(selectedDeal.id, event.target.value as DealStatus)}
+                  onChange={(event) =>
+                    onUpdateStatus(selectedDeal.id, event.target.value as DealStatus)
+                  }
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 >
                   {Object.entries(statusLabels).map(([value, label]) => (
@@ -680,11 +739,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
               </div>
               <div>
                 <p className="text-slate-500">Источник</p>
-                <p className="text-lg font-semibold">{selectedDeal.source || "—"}</p>
+                <p className="text-lg font-semibold">{selectedDeal.source || '—'}</p>
               </div>
               <div>
                 <p className="text-slate-500">Канал</p>
-                <p className="text-lg font-semibold">{selectedDeal.channel || "—"}</p>
+                <p className="text-lg font-semibold">{selectedDeal.channel || '—'}</p>
               </div>
               <div>
                 <p className="text-slate-500">Создана</p>
@@ -700,8 +759,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
                     onClick={() => setActiveTab(tab.id)}
                     className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
                       activeTab === tab.id
-                        ? "bg-white text-sky-600 border border-b-white border-slate-200"
-                        : "text-slate-500 hover:text-slate-700"
+                        ? 'bg-white text-sky-600 border border-b-white border-slate-200'
+                        : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     {tab.label}
@@ -809,7 +868,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">
-                {editingPaymentId === "new" ? "Создать платеж" : "Редактировать платеж"}
+                {editingPaymentId === 'new' ? 'Создать платеж' : 'Редактировать платеж'}
               </h3>
               <button
                 onClick={() => setEditingPaymentId(null)}
@@ -821,12 +880,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
             <div className="p-6">
               <AddPaymentForm
                 payment={
-                  editingPaymentId !== "new"
+                  editingPaymentId !== 'new'
                     ? payments.find((p) => p.id === editingPaymentId)
                     : undefined
                 }
                 onSubmit={async (data) => {
-                  if (editingPaymentId === "new") {
+                  if (editingPaymentId === 'new') {
                     await onAddPayment(data);
                   } else {
                     await onUpdatePayment(editingPaymentId, data);
@@ -846,7 +905,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">
-                {editingFinancialRecordId ? "Редактировать запись" : "Новая финансовая запись"}
+                {editingFinancialRecordId ? 'Редактировать запись' : 'Новая финансовая запись'}
               </h3>
               <button
                 onClick={() => {
@@ -860,7 +919,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
             <div className="p-6">
               <AddFinancialRecordForm
-                paymentId={creatingFinancialRecordForPaymentId || ""}
+                paymentId={creatingFinancialRecordForPaymentId || ''}
                 record={
                   editingFinancialRecordId
                     ? financialRecords.find((r) => r.id === editingFinancialRecordId)

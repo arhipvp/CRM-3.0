@@ -6,18 +6,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clients', '0004_client_notes'),
+        ("clients", "0004_client_notes"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='client',
-            name='name',
-            field=models.CharField(help_text='Имя клиента', max_length=255),
+            model_name="client",
+            name="name",
+            field=models.CharField(help_text="Имя клиента", max_length=255),
         ),
         migrations.AlterField(
-            model_name='client',
-            name='phone',
-            field=models.CharField(blank=True, help_text='Контактный телефон', max_length=20),
+            model_name="client",
+            name="phone",
+            field=models.CharField(
+                blank=True, help_text="Контактный телефон", max_length=20
+            ),
         ),
     ]

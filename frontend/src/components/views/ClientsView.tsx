@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { Client, Deal } from "../../types";
-import { FilterBar } from "../FilterBar";
-import { Pagination } from "../Pagination";
-import { FilterParams } from "../../api";
+import React, { useState } from 'react';
+import { Client, Deal } from '../../types';
+import { FilterBar } from '../FilterBar';
+import { Pagination } from '../Pagination';
+import { FilterParams } from '../../api';
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
 const PAGE_SIZE = 20;
 
@@ -53,7 +54,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
           <p className="text-sm text-slate-500">Новых за 30 дней</p>
-          <p className="text-3xl font-semibold text-slate-900">{clients.filter((client) => Date.now() - Date.parse(client.createdAt) < 30 * 24 * 60 * 60 * 1000).length}</p>
+          <p className="text-3xl font-semibold text-slate-900">
+            {
+              clients.filter(
+                (client) => Date.now() - Date.parse(client.createdAt) < 30 * 24 * 60 * 60 * 1000
+              ).length
+            }
+          </p>
         </div>
       </div>
 
@@ -61,10 +68,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         onFilterChange={handleFilterChange}
         searchPlaceholder="Поиск по имени или телефону..."
         sortOptions={[
-          { value: "-created_at", label: "Новые" },
-          { value: "created_at", label: "Старые" },
-          { value: "name", label: "Имя (А-Я)" },
-          { value: "-name", label: "Имя (Я-А)" },
+          { value: '-created_at', label: 'Новые' },
+          { value: 'created_at', label: 'Старые' },
+          { value: 'name', label: 'Имя (А-Я)' },
+          { value: '-name', label: 'Имя (Я-А)' },
         ]}
       />
 
@@ -98,12 +105,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         {client.phone}
                       </a>
                     ) : (
-                      "—"
+                      '—'
                     )}
                   </td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.birthDate)}</td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.createdAt)}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-slate-900">{clientDeals.length}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-slate-900">
+                    {clientDeals.length}
+                  </td>
                 </tr>
               );
             })}
@@ -128,4 +137,4 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       </div>
     </div>
   );
-};
+};

@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { FinancialRecord } from "../../types";
+import React, { useState } from 'react';
+import { FinancialRecord } from '../../types';
 
 export interface AddFinancialRecordFormValues {
   paymentId: string;
-  recordType: "income" | "expense";
+  recordType: 'income' | 'expense';
   amount: string;
   date?: string | null;
   description?: string;
@@ -26,25 +26,19 @@ export function AddFinancialRecordForm({
 }: AddFinancialRecordFormProps) {
   const [formData, setFormData] = useState<AddFinancialRecordFormValues>({
     paymentId,
-    recordType: record
-      ? parseFloat(record.amount) >= 0
-        ? "income"
-        : "expense"
-      : "income",
-    amount: record ? Math.abs(parseFloat(record.amount)).toString() : "",
-    date: record?.date || new Date().toISOString().split("T")[0],
-    description: record?.description || "",
-    source: record?.source || "",
-    note: record?.note || "",
+    recordType: record ? (parseFloat(record.amount) >= 0 ? 'income' : 'expense') : 'income',
+    amount: record ? Math.abs(parseFloat(record.amount)).toString() : '',
+    date: record?.date || new Date().toISOString().split('T')[0],
+    description: record?.description || '',
+    source: record?.source || '',
+    note: record?.note || '',
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -55,20 +49,20 @@ export function AddFinancialRecordForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       if (!formData.amount) {
-        throw new Error("Сумма обязательна");
+        throw new Error('Сумма обязательна');
       }
       if (!formData.date) {
-        throw new Error("Дата обязательна");
+        throw new Error('Дата обязательна');
       }
 
       await onSubmit(formData);
     } catch (err: any) {
-      setError(err.message || "Ошибка при сохранении финансовой записи");
+      setError(err.message || 'Ошибка при сохранении финансовой записи');
     } finally {
       setLoading(false);
     }
@@ -138,7 +132,7 @@ export function AddFinancialRecordForm({
           type="date"
           id="date"
           name="date"
-          value={formData.date || ""}
+          value={formData.date || ''}
           onChange={handleChange}
           disabled={loading}
         />
@@ -150,7 +144,7 @@ export function AddFinancialRecordForm({
           type="text"
           id="description"
           name="description"
-          value={formData.description || ""}
+          value={formData.description || ''}
           onChange={handleChange}
           placeholder="Описание записи"
           disabled={loading}
@@ -163,7 +157,7 @@ export function AddFinancialRecordForm({
           type="text"
           id="source"
           name="source"
-          value={formData.source || ""}
+          value={formData.source || ''}
           onChange={handleChange}
           placeholder="Источник дохода или назначение расхода"
           disabled={loading}
@@ -175,7 +169,7 @@ export function AddFinancialRecordForm({
         <textarea
           id="note"
           name="note"
-          value={formData.note || ""}
+          value={formData.note || ''}
           onChange={handleChange}
           placeholder="Дополнительные примечания"
           rows={3}
@@ -185,14 +179,9 @@ export function AddFinancialRecordForm({
 
       <div className="form-actions">
         <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? "Сохранение..." : record ? "Обновить" : "Создать"}
+          {loading ? 'Сохранение...' : record ? 'Обновить' : 'Создать'}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          className="btn-secondary"
-        >
+        <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
           Отмена
         </button>
       </div>

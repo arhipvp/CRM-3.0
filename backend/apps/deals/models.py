@@ -1,7 +1,6 @@
-﻿from django.conf import settings
+﻿from apps.common.models import SoftDeleteModel
+from django.conf import settings
 from django.db import models
-
-from apps.common.models import SoftDeleteModel
 
 
 class Deal(SoftDeleteModel):
@@ -14,7 +13,7 @@ class Deal(SoftDeleteModel):
         "clients.Client",
         related_name="deals",
         on_delete=models.PROTECT,
-        help_text="Клиент"
+        help_text="Клиент",
     )
 
     seller = models.ForeignKey(
@@ -23,7 +22,7 @@ class Deal(SoftDeleteModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Менеджер"
+        help_text="Менеджер",
     )
     executor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -31,23 +30,29 @@ class Deal(SoftDeleteModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Исполнитель"
+        help_text="Исполнитель",
     )
 
-    probability = models.PositiveIntegerField(default=0, help_text="Вероятность (0-100%)")
+    probability = models.PositiveIntegerField(
+        default=0, help_text="Вероятность (0-100%)"
+    )
 
     status = models.CharField(
-        max_length=50,
-        default="open",
-        help_text="Статус сделки (произвольный текст)"
+        max_length=50, default="open", help_text="Статус сделки (произвольный текст)"
     )
     stage_name = models.CharField(max_length=120, blank=True, help_text="Стадия")
 
-    expected_close = models.DateField(null=True, blank=True, help_text="Плановая дата закрытия")
-    next_review_date = models.DateField(null=True, blank=True, help_text="Дата следующего контакта")
+    expected_close = models.DateField(
+        null=True, blank=True, help_text="Плановая дата закрытия"
+    )
+    next_review_date = models.DateField(
+        null=True, blank=True, help_text="Дата следующего контакта"
+    )
 
     source = models.CharField(max_length=100, blank=True, help_text="Источник")
-    loss_reason = models.CharField(max_length=255, blank=True, help_text="Причина проигрыша")
+    loss_reason = models.CharField(
+        max_length=255, blank=True, help_text="Причина проигрыша"
+    )
     channel = models.CharField(max_length=100, blank=True, help_text="Канал продаж")
 
     class Meta:
@@ -62,10 +67,14 @@ class Deal(SoftDeleteModel):
 class Quote(SoftDeleteModel):
     """Расчет страхового продукта, подготовленный по сделке."""
 
-    deal = models.ForeignKey("deals.Deal", related_name="quotes", on_delete=models.CASCADE)
+    deal = models.ForeignKey(
+        "deals.Deal", related_name="quotes", on_delete=models.CASCADE
+    )
     insurer = models.CharField(max_length=255, help_text="Страховая компания")
     insurance_type = models.CharField(max_length=120, help_text="Тип страхования")
-    sum_insured = models.DecimalField(max_digits=14, decimal_places=2, help_text="Страховая сумма")
+    sum_insured = models.DecimalField(
+        max_digits=14, decimal_places=2, help_text="Страховая сумма"
+    )
     premium = models.DecimalField(max_digits=12, decimal_places=2, help_text="Премия")
     deductible = models.CharField(max_length=255, blank=True, help_text="Франшиза")
     comments = models.TextField(blank=True, help_text="Комментарий")
@@ -96,17 +105,14 @@ class ActivityLog(models.Model):
         CUSTOM = "custom", "Пользовательское действие"
 
     deal = models.ForeignKey(
-        Deal,
-        related_name="activity_logs",
-        on_delete=models.CASCADE,
-        help_text="Сделка"
+        Deal, related_name="activity_logs", on_delete=models.CASCADE, help_text="Сделка"
     )
 
     action_type = models.CharField(
         max_length=50,
         choices=ActionType.choices,
         default=ActionType.CUSTOM,
-        help_text="Тип действия"
+        help_text="Тип действия",
     )
 
     description = models.TextField(help_text="Описание действия")
@@ -116,7 +122,7 @@ class ActivityLog(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Пользователь, выполнивший действие"
+        help_text="Пользователь, выполнивший действие",
     )
 
     old_value = models.TextField(blank=True, help_text="Старое значение")

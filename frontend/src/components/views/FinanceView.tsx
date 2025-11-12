@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Payment, FinancialRecord } from "../../types";
+import React, { useMemo, useState } from 'react';
+import { Payment, FinancialRecord } from '../../types';
 
 interface FinanceViewProps {
   payments: Payment[];
@@ -15,15 +15,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   onAddRecord,
   onDeleteRecord,
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   const stats = useMemo(() => {
-    const planned = payments.filter((p) => p.status === "planned");
-    const partial = payments.filter((p) => p.status === "partial");
-    const paid = payments.filter((p) => p.status === "paid");
+    const planned = payments.filter((p) => p.status === 'planned');
+    const partial = payments.filter((p) => p.status === 'partial');
+    const paid = payments.filter((p) => p.status === 'paid');
 
     const incomes = financialRecords.filter((r) => parseFloat(r.amount) >= 0);
     const expenses = financialRecords.filter((r) => parseFloat(r.amount) < 0);
@@ -48,10 +48,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   const filteredRecords = useMemo(() => {
     let result = financialRecords;
 
-    if (filterType !== "all") {
-      if (filterType === "income") {
+    if (filterType !== 'all') {
+      if (filterType === 'income') {
         result = result.filter((r) => parseFloat(r.amount) >= 0);
-      } else if (filterType === "expense") {
+      } else if (filterType === 'expense') {
         result = result.filter((r) => parseFloat(r.amount) < 0);
       }
     }
@@ -82,18 +82,18 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   }, [financialRecords, filterType, filterDateFrom, filterDateTo, searchQuery]);
 
   const formatRub = (value: number) =>
-    value.toLocaleString("ru-RU", { style: "currency", currency: "RUB" });
+    value.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
 
   const formatDate = (date?: string | null) => {
-    return date ? new Date(date).toLocaleDateString("ru-RU") : "—";
+    return date ? new Date(date).toLocaleDateString('ru-RU') : '—';
   };
 
   const getRecordTypeDisplay = (amount: string) => {
-    return parseFloat(amount) >= 0 ? "Доход" : "Расход";
+    return parseFloat(amount) >= 0 ? 'Доход' : 'Расход';
   };
 
   const getRecordTypeClass = (amount: string) => {
-    return parseFloat(amount) >= 0 ? "record-income" : "record-expense";
+    return parseFloat(amount) >= 0 ? 'record-income' : 'record-expense';
   };
 
   return (
@@ -110,7 +110,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         </div>
         <div className="stat-card">
           <p className="stat-label">Баланс</p>
-          <p className={`stat-value ${stats.netBalance >= 0 ? "positive" : "negative"}`}>
+          <p className={`stat-value ${stats.netBalance >= 0 ? 'positive' : 'negative'}`}>
             {formatRub(stats.netBalance)}
           </p>
         </div>
@@ -160,12 +160,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             />
           </div>
 
-          <button onClick={() => {
-            setFilterType("all");
-            setFilterDateFrom("");
-            setFilterDateTo("");
-            setSearchQuery("");
-          }} className="btn-reset">
+          <button
+            onClick={() => {
+              setFilterType('all');
+              setFilterDateFrom('');
+              setFilterDateTo('');
+              setSearchQuery('');
+            }}
+            className="btn-reset"
+          >
             Сброс фильтров
           </button>
         </div>
@@ -200,21 +203,17 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 <tr key={record.id} className={getRecordTypeClass(record.amount)}>
                   <td className="date">{formatDate(record.date)}</td>
                   <td className="type">{getRecordTypeDisplay(record.amount)}</td>
-                  <td className="description">{record.description || "—"}</td>
+                  <td className="description">{record.description || '—'}</td>
                   <td className="amount">
                     <strong>{formatRub(Math.abs(Number(record.amount)))}</strong>
                   </td>
-                  <td className="source">
-                    {record.source || "—"}
-                  </td>
-                  <td className="note">
-                    {record.note || "—"}
-                  </td>
+                  <td className="source">{record.source || '—'}</td>
+                  <td className="note">{record.note || '—'}</td>
                   <td className="actions">
                     {onDeleteRecord && (
                       <button
                         onClick={() => {
-                          if (confirm("Вы уверены?")) {
+                          if (confirm('Вы уверены?')) {
                             onDeleteRecord(record.id);
                           }
                         }}
@@ -455,4 +454,4 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
       `}</style>
     </div>
   );
-};
+};

@@ -1,5 +1,6 @@
 from rest_framework import permissions
-from .models import UserRole, RolePermission, Permission
+
+from .models import Permission, RolePermission, UserRole
 
 
 class IsAdminUser(permissions.BasePermission):
@@ -14,8 +15,7 @@ class IsAdminUser(permissions.BasePermission):
 
         # Проверить, есть ли у пользователя роль 'Администратор'
         admin_role = UserRole.objects.filter(
-            user=request.user,
-            role__name='Администратор'
+            user=request.user, role__name="Администратор"
         ).exists()
 
         return admin_role
@@ -36,8 +36,7 @@ class HasDealPermission(permissions.BasePermission):
 
         # Администратор имеет полный доступ
         is_admin = UserRole.objects.filter(
-            user=request.user,
-            role__name='Администратор'
+            user=request.user, role__name="Администратор"
         ).exists()
 
         if is_admin:
@@ -51,8 +50,7 @@ class HasDealPermission(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         # Администратор имеет полный доступ
         is_admin = UserRole.objects.filter(
-            user=request.user,
-            role__name='Администратор'
+            user=request.user, role__name="Администратор"
         ).exists()
 
         if is_admin:
@@ -73,11 +71,10 @@ class HasDealPermission(permissions.BasePermission):
         # POST/PATCH/DELETE (редактирование, удаление) - только менеджерам
         # Проверить, есть ли у пользователя роль 'Менеджер'
         is_manager = UserRole.objects.filter(
-            user=request.user,
-            role__name='Менеджер'
+            user=request.user, role__name="Менеджер"
         ).exists()
 
-        if request.method in ['POST', 'PATCH', 'PUT', 'DELETE']:
+        if request.method in ["POST", "PATCH", "PUT", "DELETE"]:
             return is_manager
 
         return True
@@ -94,8 +91,7 @@ class HasRolePermission(permissions.BasePermission):
 
         # Администратор имеет полный доступ
         is_admin = UserRole.objects.filter(
-            user=request.user,
-            role__name='Администратор'
+            user=request.user, role__name="Администратор"
         ).exists()
 
         if is_admin:

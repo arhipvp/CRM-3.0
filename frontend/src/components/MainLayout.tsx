@@ -1,7 +1,7 @@
-import React from "react";
-import { User } from "../types";
+import React from 'react';
+import { User } from '../types';
 
-export type View = "deals" | "clients" | "policies" | "payments" | "finance" | "tasks" | "settings";
+export type View = 'deals' | 'clients' | 'policies' | 'payments' | 'finance' | 'tasks' | 'settings';
 
 interface MainLayoutProps {
   activeView: View;
@@ -14,16 +14,24 @@ interface MainLayoutProps {
 }
 
 const NAV_ITEMS: Array<{ view: View; label: string; icon: string }> = [
-  { view: "deals", label: "Сделки", icon: "📋" },
-  { view: "clients", label: "Клиенты", icon: "👥" },
-  { view: "policies", label: "Полисы", icon: "📄" },
-  { view: "payments", label: "Платежи", icon: "💳" },
-  { view: "finance", label: "Финансы", icon: "📊" },
-  { view: "tasks", label: "Задачи", icon: "✅" },
-  { view: "settings", label: "Настройки", icon: "⚙️" },
+  { view: 'deals', label: 'Сделки', icon: '📋' },
+  { view: 'clients', label: 'Клиенты', icon: '👥' },
+  { view: 'policies', label: 'Полисы', icon: '📄' },
+  { view: 'payments', label: 'Платежи', icon: '💳' },
+  { view: 'finance', label: 'Финансы', icon: '📊' },
+  { view: 'tasks', label: 'Задачи', icon: '✅' },
+  { view: 'settings', label: 'Настройки', icon: '⚙️' },
 ];
 
-export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, onAddDeal, onAddClient, currentUser, onLogout, children }) => {
+export const MainLayout: React.FC<MainLayoutProps> = ({
+  activeView,
+  onNavigate,
+  onAddDeal,
+  onAddClient,
+  currentUser,
+  onLogout,
+  children,
+}) => {
   return (
     <div className="min-h-screen flex bg-slate-100 text-slate-900">
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
@@ -39,8 +47,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, 
                   onClick={() => onNavigate(item.view)}
                   className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeView === item.view
-                      ? "bg-sky-100 text-sky-700"
-                      : "text-slate-600 hover:bg-slate-100"
+                      ? 'bg-sky-100 text-sky-700'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   <span>{item.icon}</span>
@@ -51,10 +59,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, 
           </ul>
         </nav>
         <div className="p-4 border-t border-slate-200 space-y-3">
-          <button onClick={onAddDeal} className="w-full bg-sky-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-sky-700">
+          <button
+            onClick={onAddDeal}
+            className="w-full bg-sky-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-sky-700"
+          >
             + Новая сделка
           </button>
-          <button onClick={onAddClient} className="w-full border border-slate-300 text-slate-700 rounded-lg py-2 text-sm font-semibold hover:bg-slate-50">
+          <button
+            onClick={onAddClient}
+            className="w-full border border-slate-300 text-slate-700 rounded-lg py-2 text-sm font-semibold hover:bg-slate-50"
+          >
             + Новый клиент
           </button>
           {currentUser && (
@@ -63,9 +77,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, 
                 <p className="font-semibold text-slate-700">{currentUser.username}</p>
                 <p className="text-slate-500">
                   {currentUser.roles && currentUser.roles.length > 0
-                    ? currentUser.roles.join(", ")
-                    : "Нет ролей"
-                  }
+                    ? currentUser.roles.join(', ')
+                    : 'Нет ролей'}
                 </p>
               </div>
               {onLogout && (
@@ -80,9 +93,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ activeView, onNavigate, 
           )}
         </div>
       </aside>
-      <main className="flex-1 min-h-screen">
-        {children}
-      </main>
+      <main className="flex-1 min-h-screen">{children}</main>
     </div>
   );
-};
+};

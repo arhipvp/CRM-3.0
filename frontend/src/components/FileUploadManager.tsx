@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Document } from "../types";
+import React, { useState } from 'react';
+import { Document } from '../types';
 
 interface FileUploadManagerProps {
   dealId: string;
@@ -9,23 +9,23 @@ interface FileUploadManagerProps {
 }
 
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return "0 Б";
+  if (bytes === 0) return '0 Б';
   const k = 1024;
-  const sizes = ["Б", "КБ", "МБ", "ГБ"];
+  const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 };
 
 const getFileIcon = (mimeType: string): string => {
-  if (mimeType.startsWith("image/")) return "🖼️";
-  if (mimeType.startsWith("video/")) return "🎥";
-  if (mimeType.startsWith("audio/")) return "🔊";
-  if (mimeType.includes("pdf")) return "📄";
-  if (mimeType.includes("word") || mimeType.includes("document")) return "📝";
-  if (mimeType.includes("sheet") || mimeType.includes("spreadsheet")) return "📊";
-  if (mimeType.includes("presentation")) return "📑";
-  if (mimeType.startsWith("text/")) return "📃";
-  return "📎";
+  if (mimeType.startsWith('image/')) return '🖼️';
+  if (mimeType.startsWith('video/')) return '🎥';
+  if (mimeType.startsWith('audio/')) return '🔊';
+  if (mimeType.includes('pdf')) return '📄';
+  if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
+  if (mimeType.includes('sheet') || mimeType.includes('spreadsheet')) return '📊';
+  if (mimeType.includes('presentation')) return '📑';
+  if (mimeType.startsWith('text/')) return '📃';
+  return '📎';
 };
 
 export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
@@ -44,7 +44,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
     // Ограничение размера: 100 МБ
     const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
-      setError("Размер файла не должен превышать 100 МБ");
+      setError('Размер файла не должен превышать 100 МБ');
       return;
     }
 
@@ -64,20 +64,20 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
       setUploadProgress(100);
       setTimeout(() => setUploadProgress(0), 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось загрузить файл");
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
     } finally {
       setUploading(false);
       // Очистить input
-      event.target.value = "";
+      event.target.value = '';
     }
   };
 
   const handleDelete = async (documentId: string) => {
-    if (!confirm("Вы уверены, что хотите удалить этот файл?")) return;
+    if (!confirm('Вы уверены, что хотите удалить этот файл?')) return;
     try {
       await onDelete(documentId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить файл");
+      setError(err instanceof Error ? err.message : 'Не удалось удалить файл');
     }
   };
 
@@ -94,7 +94,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
           <div className="text-center">
             <p className="text-3xl mb-2">📁</p>
             <p className="text-sm font-medium text-slate-700">
-              {isUploading ? "Загружаем файл..." : "Нажмите или перетащите файл сюда"}
+              {isUploading ? 'Загружаем файл...' : 'Нажмите или перетащите файл сюда'}
             </p>
             <p className="text-xs text-slate-500 mt-1">Максимум 100 МБ</p>
           </div>
@@ -127,12 +127,10 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
                 className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3 hover:bg-slate-100 transition"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xl flex-shrink-0">
-                    {getFileIcon(doc.mime_type)}
-                  </span>
+                  <span className="text-xl flex-shrink-0">{getFileIcon(doc.mime_type)}</span>
                   <div className="min-w-0 flex-1">
                     <a
-                      href={doc.file || "#"}
+                      href={doc.file || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm font-medium text-sky-600 hover:text-sky-800 break-all"
@@ -142,7 +140,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
                     <div className="text-xs text-slate-500 flex gap-2 mt-1">
                       <span>{formatFileSize(doc.file_size)}</span>
                       <span>•</span>
-                      <span>{new Date(doc.created_at).toLocaleDateString("ru-RU")}</span>
+                      <span>{new Date(doc.created_at).toLocaleDateString('ru-RU')}</span>
                     </div>
                   </div>
                 </div>

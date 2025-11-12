@@ -8,48 +8,61 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('notifications', '0001_initial'),
+        ("notifications", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='notification',
-            options={'ordering': ['-created_at'], 'verbose_name': 'Уведомление', 'verbose_name_plural': 'Уведомления'},
+            name="notification",
+            options={
+                "ordering": ["-created_at"],
+                "verbose_name": "Уведомление",
+                "verbose_name_plural": "Уведомления",
+            },
         ),
         migrations.AddField(
-            model_name='notification',
-            name='deleted_at',
+            model_name="notification",
+            name="deleted_at",
             field=models.DateTimeField(blank=True, default=None, null=True),
         ),
         migrations.AddField(
-            model_name='notification',
-            name='updated_at',
+            model_name="notification",
+            name="updated_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AlterField(
-            model_name='notification',
-            name='is_read',
-            field=models.BooleanField(default=False, help_text='Прочитано'),
+            model_name="notification",
+            name="is_read",
+            field=models.BooleanField(default=False, help_text="Прочитано"),
         ),
         migrations.AlterField(
-            model_name='notification',
-            name='payload',
-            field=models.JSONField(blank=True, default=dict, help_text='Данные уведомления'),
+            model_name="notification",
+            name="payload",
+            field=models.JSONField(
+                blank=True, default=dict, help_text="Данные уведомления"
+            ),
         ),
         migrations.AlterField(
-            model_name='notification',
-            name='read_at',
-            field=models.DateTimeField(blank=True, help_text='Время прочтения', null=True),
+            model_name="notification",
+            name="read_at",
+            field=models.DateTimeField(
+                blank=True, help_text="Время прочтения", null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='notification',
-            name='type',
-            field=models.CharField(help_text='Тип уведомления', max_length=120),
+            model_name="notification",
+            name="type",
+            field=models.CharField(help_text="Тип уведомления", max_length=120),
         ),
         migrations.AlterField(
-            model_name='notification',
-            name='user',
-            field=models.ForeignKey(help_text='Пользователь', on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to=settings.AUTH_USER_MODEL),
+            model_name="notification",
+            name="user",
+            field=models.ForeignKey(
+                help_text="Пользователь",
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="notifications",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

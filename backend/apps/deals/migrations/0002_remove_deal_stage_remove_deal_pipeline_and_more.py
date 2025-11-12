@@ -6,27 +6,27 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0001_initial'),
+        ("deals", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='deal',
-            name='stage',
+            model_name="deal",
+            name="stage",
         ),
         migrations.RemoveField(
-            model_name='deal',
-            name='pipeline',
+            model_name="deal",
+            name="pipeline",
         ),
         migrations.AddField(
-            model_name='deal',
-            name='stage_name',
+            model_name="deal",
+            name="stage_name",
             field=models.CharField(blank=True, max_length=120),
         ),
         migrations.DeleteModel(
-            name='DealStage',
+            name="DealStage",
         ),
         migrations.DeleteModel(
-            name='Pipeline',
+            name="Pipeline",
         ),
     ]

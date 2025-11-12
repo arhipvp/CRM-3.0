@@ -1,48 +1,94 @@
 ﻿from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin
+
+from apps.common.admin import SoftDeleteImportExportAdmin
 
 from .models import Client
 
-
 # ============ IMPORT/EXPORT RESOURCES ============
+
 
 class ClientResource(resources.ModelResource):
     class Meta:
         model = Client
-        fields = ('id', 'name', 'phone', 'birth_date', 'notes', 'created_at', 'updated_at', 'deleted_at')
-        export_order = ('id', 'name', 'phone', 'birth_date', 'notes', 'created_at', 'updated_at', 'deleted_at')
+        fields = (
+            "id",
+            "name",
+            "phone",
+            "birth_date",
+            "notes",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
+        export_order = (
+            "id",
+            "name",
+            "phone",
+            "birth_date",
+            "notes",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
 
 
 # ============ MODEL ADMINS ============
 
+
 @admin.register(Client)
-class ClientAdmin(ImportExportModelAdmin):
+class ClientAdmin(SoftDeleteImportExportAdmin):
     resource_class = ClientResource
 
-    list_display = ("name", "phone", "birth_date", "short_notes", "deals_count", "status_badge", "created_at")
+    list_display = (
+        "name",
+        "phone",
+        "birth_date",
+        "short_notes",
+        "deals_count",
+        "status_badge",
+        "created_at",
+    )
     search_fields = ("name", "phone", "notes")
     list_filter = ("created_at", "updated_at", "deleted_at", "birth_date")
-    readonly_fields = ("id", "created_at", "updated_at", "deleted_at", "deals_count_display")
+    readonly_fields = (
+        "id",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "deals_count_display",
+    )
     ordering = ("-created_at",)
-    actions = ['restore_clients']
+    actions = ["restore_clients"]
 
     fieldsets = (
-        ("Основные данные", {
-            "fields": ("id", "name", "phone", "birth_date", "notes"),
-        }),
-        ("Сделки", {
-            "fields": ("deals_count_display",),
-            "classes": ("collapse",),
-        }),
-        ("Статус", {
-            "fields": ("deleted_at",),
-        }),
-        ("Служебная информация", {
-            "fields": ("created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            "Основные данные",
+            {
+                "fields": ("id", "name", "phone", "birth_date", "notes"),
+            },
+        ),
+        (
+            "Сделки",
+            {
+                "fields": ("deals_count_display",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Статус",
+            {
+                "fields": ("deleted_at",),
+            },
+        ),
+        (
+            "Служебная информация",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def deals_count(self, obj):
@@ -54,7 +100,8 @@ class ClientAdmin(ImportExportModelAdmin):
 
     def deals_count_display(self, obj):
         count = obj.deals.filter(deleted_at__isnull=True).count()
-        return f'{count} активных сделок'
+        return f"{count} активных сделок"
+
     deals_count_display.short_description = "Сделки"
 
     def short_notes(self, obj):
@@ -66,8 +113,13 @@ class ClientAdmin(ImportExportModelAdmin):
 
     def status_badge(self, obj):
         if obj.deleted_at:
-            return format_html('<span style="background-color: #ffcccc; padding: 3px 8px; border-radius: 3px; color: #cc0000;">Удалён</span>')
-        return format_html('<span style="background-color: #ccffcc; padding: 3px 8px; border-radius: 3px; color: #00cc00;">Активен</span>')
+            return format_html(
+                '<span style="background-color: #ffcccc; padding: 3px 8px; border-radius: 3px; color: #cc0000;">Удалён</span>'
+            )
+        return format_html(
+            '<span style="background-color: #ccffcc; padding: 3px 8px; border-radius: 3px; color: #00cc00;">Активен</span>'
+        )
+
     status_badge.short_description = "Статус"
 
     def restore_clients(self, request, queryset):
@@ -75,5 +127,6 @@ class ClientAdmin(ImportExportModelAdmin):
         for client in queryset.filter(deleted_at__isnull=False):
             client.restore()
             restored += 1
-        self.message_user(request, f'Восстановлено {restored} клиентов')
-    restore_clients.short_description = '✓ Восстановить выбранных клиентов'
+        self.message_user(request, f"Восстановлено {restored} клиентов")
+
+    restore_clients.short_description = "✓ Восстановить выбранных клиентов"

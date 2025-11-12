@@ -1,20 +1,31 @@
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
-from .models import Role, Permission, UserRole, RolePermission, AuditLog
+
+from .models import AuditLog, Permission, Role, RolePermission, UserRole
 
 
 class PermissionSerializer(serializers.ModelSerializer):
     """Сериализатор для прав доступа"""
 
-    resource_display = serializers.CharField(source='get_resource_display', read_only=True)
-    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    resource_display = serializers.CharField(
+        source="get_resource_display", read_only=True
+    )
+    action_display = serializers.CharField(source="get_action_display", read_only=True)
 
     class Meta:
         model = Permission
-        fields = ['id', 'resource', 'action', 'resource_display', 'action_display', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = [
+            "id",
+            "resource",
+            "action",
+            "resource_display",
+            "action_display",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
 
 
 class RolePermissionSerializer(serializers.ModelSerializer):
@@ -22,15 +33,13 @@ class RolePermissionSerializer(serializers.ModelSerializer):
 
     permission = PermissionSerializer(read_only=True)
     permission_id = serializers.PrimaryKeyRelatedField(
-        queryset=Permission.objects.all(),
-        write_only=True,
-        source='permission'
+        queryset=Permission.objects.all(), write_only=True, source="permission"
     )
 
     class Meta:
         model = RolePermission
-        fields = ['id', 'permission', 'permission_id', 'created_at']
-        read_only_fields = ['created_at']
+        fields = ["id", "permission", "permission_id", "created_at"]
+        read_only_fields = ["created_at"]
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -41,8 +50,16 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
-        fields = ['id', 'name', 'description', 'permissions', 'user_count', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = [
+            "id",
+            "name",
+            "description",
+            "permissions",
+            "user_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
 
     def get_user_count(self, obj):
         """Количество пользователей с этой ролью"""
@@ -54,8 +71,16 @@ class RoleDetailSerializer(RoleSerializer):
 
     class Meta:
         model = Role
-        fields = ['id', 'name', 'description', 'permissions', 'user_count', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = [
+            "id",
+            "name",
+            "description",
+            "permissions",
+            "user_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
 
 
 class UserRoleSerializer(serializers.ModelSerializer):
@@ -63,15 +88,13 @@ class UserRoleSerializer(serializers.ModelSerializer):
 
     role = RoleSerializer(read_only=True)
     role_id = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(),
-        write_only=True,
-        source='role'
+        queryset=Role.objects.all(), write_only=True, source="role"
     )
 
     class Meta:
         model = UserRole
-        fields = ['id', 'role', 'role_id', 'created_at']
-        read_only_fields = ['created_at']
+        fields = ["id", "role", "role_id", "created_at"]
+        read_only_fields = ["created_at"]
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -82,12 +105,22 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'user_roles', 'roles']
-        read_only_fields = ['id']
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+            "user_roles",
+            "roles",
+        ]
+        read_only_fields = ["id"]
 
     def get_roles(self, obj):
         """Список названий ролей пользователя"""
-        return obj.user_roles.values_list('role__name', flat=True)
+        return obj.user_roles.values_list("role__name", flat=True)
 
 
 class UserDetailSerializer(UserSerializer):
@@ -95,8 +128,19 @@ class UserDetailSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'user_roles', 'roles', 'date_joined']
-        read_only_fields = ['id', 'date_joined']
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+            "user_roles",
+            "roles",
+            "date_joined",
+        ]
+        read_only_fields = ["id", "date_joined"]
 
 
 class UserCreateUpdateSerializer(serializers.ModelSerializer):
@@ -104,20 +148,25 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, required=False)
     role_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(),
-        many=True,
-        write_only=True,
-        required=False
+        queryset=Role.objects.all(), many=True, write_only=True, required=False
     )
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'is_active', 'role_ids']
+        fields = [
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "password",
+            "is_active",
+            "role_ids",
+        ]
 
     def create(self, validated_data):
         """Создание нового пользователя"""
-        password = validated_data.pop('password', None)
-        role_ids = validated_data.pop('role_ids', [])
+        password = validated_data.pop("password", None)
+        role_ids = validated_data.pop("role_ids", [])
 
         user = User.objects.create_user(**validated_data)
 
@@ -133,8 +182,8 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Обновление пользователя"""
-        password = validated_data.pop('password', None)
-        role_ids = validated_data.pop('role_ids', None)
+        password = validated_data.pop("password", None)
+        role_ids = validated_data.pop("role_ids", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -155,30 +204,32 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
 
 class LoginSerializer(serializers.Serializer):
     """Сериализатор для входа пользователя"""
+
     username = serializers.CharField(max_length=150)
     password = serializers.CharField(max_length=128, write_only=True)
 
     def validate(self, data):
-        username = data.get('username')
-        password = data.get('password')
+        username = data.get("username")
+        password = data.get("password")
 
         if not username or not password:
-            raise serializers.ValidationError('Необходимо указать username и password')
+            raise serializers.ValidationError("Необходимо указать username и password")
 
         user = authenticate(username=username, password=password)
 
         if not user:
-            raise serializers.ValidationError('Неверный username или password')
+            raise serializers.ValidationError("Неверный username или password")
 
         if not user.is_active:
-            raise serializers.ValidationError('Пользователь неактивен')
+            raise serializers.ValidationError("Пользователь неактивен")
 
-        data['user'] = user
+        data["user"] = user
         return data
 
 
 class TokenSerializer(serializers.Serializer):
     """Сериализатор для возврата токенов"""
+
     refresh = serializers.CharField()
     access = serializers.CharField()
     user = UserDetailSerializer(read_only=True)
@@ -186,6 +237,7 @@ class TokenSerializer(serializers.Serializer):
 
 class RefreshTokenSerializer(serializers.Serializer):
     """Сериализатор для обновления access токена"""
+
     refresh = serializers.CharField()
     access = serializers.CharField(read_only=True)
 
@@ -193,25 +245,29 @@ class RefreshTokenSerializer(serializers.Serializer):
 class AuditLogSerializer(serializers.ModelSerializer):
     """Сериализатор для журнала аудита"""
 
-    actor_username = serializers.CharField(source='actor.username', read_only=True, allow_null=True)
-    object_type_display = serializers.CharField(source='get_object_type_display', read_only=True)
-    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    actor_username = serializers.CharField(
+        source="actor.username", read_only=True, allow_null=True
+    )
+    object_type_display = serializers.CharField(
+        source="get_object_type_display", read_only=True
+    )
+    action_display = serializers.CharField(source="get_action_display", read_only=True)
 
     class Meta:
         model = AuditLog
         fields = [
-            'id',
-            'actor',
-            'actor_username',
-            'object_type',
-            'object_type_display',
-            'object_id',
-            'object_name',
-            'action',
-            'action_display',
-            'description',
-            'old_value',
-            'new_value',
-            'created_at',
+            "id",
+            "actor",
+            "actor_username",
+            "object_type",
+            "object_type_display",
+            "object_id",
+            "object_name",
+            "action",
+            "action_display",
+            "description",
+            "old_value",
+            "new_value",
+            "created_at",
         ]
-        read_only_fields = ['id', 'actor', 'created_at', 'old_value', 'new_value']
+        read_only_fields = ["id", "actor", "created_at", "old_value", "new_value"]

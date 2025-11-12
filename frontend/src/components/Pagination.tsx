@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 interface PaginationProps {
   currentPage: number;
@@ -35,7 +35,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       // Show ellipsis if needed
       if (currentPage > halfWindow + 2) {
-        pages.push("...");
+        pages.push('...');
       }
 
       // Show pages around current page
@@ -48,7 +48,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       // Show ellipsis if needed
       if (currentPage < totalPages - halfWindow - 1) {
-        pages.push("...");
+        pages.push('...');
       }
 
       // Always show last page
@@ -61,7 +61,8 @@ export const Pagination: React.FC<PaginationProps> = ({
   return (
     <div className="flex items-center justify-between mt-6 px-5 py-4 border-t border-slate-200">
       <div className="text-sm text-slate-600">
-        Показаны элементы {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalItems)} из {totalItems}
+        Показаны элементы {(currentPage - 1) * pageSize + 1}-
+        {Math.min(currentPage * pageSize, totalItems)} из {totalItems}
       </div>
 
       <div className="flex items-center gap-2">
@@ -76,15 +77,15 @@ export const Pagination: React.FC<PaginationProps> = ({
         <div className="flex items-center gap-1">
           {getPageNumbers().map((page, idx) => (
             <div key={idx}>
-              {page === "..." ? (
+              {page === '...' ? (
                 <span className="px-2 py-1 text-slate-500">...</span>
               ) : (
                 <button
                   onClick={() => onPageChange(page as number)}
                   className={`px-3 py-1 text-sm border rounded ${
                     currentPage === page
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "border-slate-300 hover:bg-slate-50"
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   {page}

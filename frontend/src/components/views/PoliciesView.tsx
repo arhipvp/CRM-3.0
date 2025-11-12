@@ -1,7 +1,8 @@
-import React from "react";
-import { Deal, Policy } from "../../types";
+import React from 'react';
+import { Deal, Policy } from '../../types';
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
 interface PoliciesViewProps {
   policies: Policy[];
@@ -30,7 +31,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
                 <td className="px-5 py-4 font-semibold text-slate-900">{policy.number}</td>
                 <td className="px-5 py-4 text-slate-600">{policy.insuranceCompany}</td>
                 <td className="px-5 py-4 text-slate-600">{policy.insuranceType}</td>
-                <td className="px-5 py-4 text-slate-600">{deal?.title || "—"}</td>
+                <td className="px-5 py-4 text-slate-600">{deal?.title || '—'}</td>
                 <td className="px-5 py-4 text-slate-600">
                   {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                 </td>
@@ -49,4 +50,4 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
       </table>
     </div>
   );
-};
+};

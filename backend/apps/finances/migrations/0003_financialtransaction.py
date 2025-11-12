@@ -8,31 +8,77 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0005_alter_deal_expected_close_alter_deal_loss_reason_and_more'),
-        ('finances', '0002_alter_expense_options_alter_income_options_and_more'),
+        ("deals", "0005_alter_deal_expected_close_alter_deal_loss_reason_and_more"),
+        ("finances", "0002_alter_expense_options_alter_income_options_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='FinancialTransaction',
+            name="FinancialTransaction",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('deleted_at', models.DateTimeField(blank=True, default=None, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('transaction_type', models.CharField(choices=[('income', 'Доход'), ('expense', 'Расход')], help_text='Тип транзакции', max_length=20)),
-                ('amount', models.DecimalField(decimal_places=2, help_text='Сумма (в рублях)', max_digits=12)),
-                ('description', models.CharField(blank=True, help_text='Описание', max_length=255)),
-                ('transaction_date', models.DateField(help_text='Дата транзакции')),
-                ('source', models.CharField(blank=True, help_text='Источник дохода', max_length=120)),
-                ('category', models.CharField(blank=True, help_text='Категория/тип расхода', max_length=120)),
-                ('note', models.TextField(blank=True, help_text='Примечание')),
-                ('deal', models.ForeignKey(blank=True, help_text='Сделка', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='financial_transactions', to='deals.deal')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, default=None, null=True),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "transaction_type",
+                    models.CharField(
+                        choices=[("income", "Доход"), ("expense", "Расход")],
+                        help_text="Тип транзакции",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2, help_text="Сумма (в рублях)", max_digits=12
+                    ),
+                ),
+                (
+                    "description",
+                    models.CharField(blank=True, help_text="Описание", max_length=255),
+                ),
+                ("transaction_date", models.DateField(help_text="Дата транзакции")),
+                (
+                    "source",
+                    models.CharField(
+                        blank=True, help_text="Источник дохода", max_length=120
+                    ),
+                ),
+                (
+                    "category",
+                    models.CharField(
+                        blank=True, help_text="Категория/тип расхода", max_length=120
+                    ),
+                ),
+                ("note", models.TextField(blank=True, help_text="Примечание")),
+                (
+                    "deal",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Сделка",
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="financial_transactions",
+                        to="deals.deal",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Финансовая транзакция',
-                'verbose_name_plural': 'Финансовые транзакции',
-                'ordering': ['-transaction_date', '-created_at'],
+                "verbose_name": "Финансовая транзакция",
+                "verbose_name_plural": "Финансовые транзакции",
+                "ordering": ["-transaction_date", "-created_at"],
             },
         ),
     ]

@@ -3,14 +3,23 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  font-family:
+    'Inter',
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Helvetica Neue',
+    sans-serif;
   color: #0f172a;
   background-color: #f5f7fb;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 

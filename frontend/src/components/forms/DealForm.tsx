@@ -1,23 +1,28 @@
-import React, { useState } from "react";
-import { Client } from "../../types";
+import React, { useState } from 'react';
+import { Client } from '../../types';
 
 interface DealFormProps {
   clients: Client[];
-  onSubmit: (data: { title: string; clientId: string; description?: string; expectedClose?: string | null }) => Promise<void>;
+  onSubmit: (data: {
+    title: string;
+    clientId: string;
+    description?: string;
+    expectedClose?: string | null;
+  }) => Promise<void>;
 }
 
 export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
-  const [title, setTitle] = useState("");
-  const [clientId, setClientId] = useState(clients[0]?.id ?? "");
-  const [description, setDescription] = useState("");
-  const [expectedClose, setExpectedClose] = useState<string>("");
+  const [title, setTitle] = useState('');
+  const [clientId, setClientId] = useState(clients[0]?.id ?? '');
+  const [description, setDescription] = useState('');
+  const [expectedClose, setExpectedClose] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!title.trim() || !clientId) {
-      setError("Название и клиент обязательны");
+      setError('Название и клиент обязательны');
       return;
     }
     setError(null);
@@ -30,7 +35,7 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
         expectedClose: expectedClose || null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать сделку");
+      setError(err instanceof Error ? err.message : 'Не удалось создать сделку');
     } finally {
       setSubmitting(false);
     }
@@ -86,8 +91,8 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
         disabled={isSubmitting || !clients.length}
         className="w-full bg-sky-600 text-white rounded-lg py-2 font-semibold text-sm disabled:opacity-60"
       >
-        {isSubmitting ? "Создаем..." : "Создать сделку"}
+        {isSubmitting ? 'Создаем...' : 'Создать сделку'}
       </button>
     </form>
   );
-};
+};

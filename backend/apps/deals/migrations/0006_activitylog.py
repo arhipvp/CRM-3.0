@@ -8,28 +8,84 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0005_alter_deal_expected_close_alter_deal_loss_reason_and_more'),
+        ("deals", "0005_alter_deal_expected_close_alter_deal_loss_reason_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ActivityLog',
+            name="ActivityLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action_type', models.CharField(choices=[('created', 'Создано'), ('status_changed', 'Изменен статус'), ('stage_changed', 'Изменена стадия'), ('description_updated', 'Обновлено описание'), ('assigned', 'Назначено'), ('policy_created', 'Создан полис'), ('quote_added', 'Добавлен расчет'), ('document_uploaded', 'Загружен документ'), ('payment_created', 'Создан платеж'), ('comment_added', 'Добавлен комментарий'), ('custom', 'Пользовательское действие')], default='custom', help_text='Тип действия', max_length=50)),
-                ('description', models.TextField(help_text='Описание действия')),
-                ('old_value', models.TextField(blank=True, help_text='Старое значение')),
-                ('new_value', models.TextField(blank=True, help_text='Новое значение')),
-                ('created_at', models.DateTimeField(auto_now_add=True, help_text='Время действия')),
-                ('deal', models.ForeignKey(help_text='Сделка', on_delete=django.db.models.deletion.CASCADE, related_name='activity_logs', to='deals.deal')),
-                ('user', models.ForeignKey(blank=True, help_text='Пользователь, выполнивший действие', null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "action_type",
+                    models.CharField(
+                        choices=[
+                            ("created", "Создано"),
+                            ("status_changed", "Изменен статус"),
+                            ("stage_changed", "Изменена стадия"),
+                            ("description_updated", "Обновлено описание"),
+                            ("assigned", "Назначено"),
+                            ("policy_created", "Создан полис"),
+                            ("quote_added", "Добавлен расчет"),
+                            ("document_uploaded", "Загружен документ"),
+                            ("payment_created", "Создан платеж"),
+                            ("comment_added", "Добавлен комментарий"),
+                            ("custom", "Пользовательское действие"),
+                        ],
+                        default="custom",
+                        help_text="Тип действия",
+                        max_length=50,
+                    ),
+                ),
+                ("description", models.TextField(help_text="Описание действия")),
+                (
+                    "old_value",
+                    models.TextField(blank=True, help_text="Старое значение"),
+                ),
+                ("new_value", models.TextField(blank=True, help_text="Новое значение")),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, help_text="Время действия"),
+                ),
+                (
+                    "deal",
+                    models.ForeignKey(
+                        help_text="Сделка",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="activity_logs",
+                        to="deals.deal",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Пользователь, выполнивший действие",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Лог активности',
-                'verbose_name_plural': 'Логи активности',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['deal', '-created_at'], name='deals_activ_deal_id_34c2c8_idx')],
+                "verbose_name": "Лог активности",
+                "verbose_name_plural": "Логи активности",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["deal", "-created_at"],
+                        name="deals_activ_deal_id_34c2c8_idx",
+                    )
+                ],
             },
         ),
     ]

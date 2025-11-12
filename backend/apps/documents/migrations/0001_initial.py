@@ -12,30 +12,79 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('clients', '0001_initial'),
-        ('deals', '0001_initial'),
+        ("clients", "0001_initial"),
+        ("deals", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Document',
+            name="Document",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('title', models.CharField(max_length=255)),
-                ('file', models.FileField(upload_to=apps.documents.models.document_upload_path)),
-                ('file_size', models.PositiveIntegerField(default=0)),
-                ('mime_type', models.CharField(blank=True, max_length=120)),
-                ('doc_type', models.CharField(blank=True, max_length=120)),
-                ('status', models.CharField(default='draft', max_length=50)),
-                ('checksum', models.CharField(blank=True, max_length=128)),
-                ('extra', models.JSONField(blank=True, default=dict)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('client', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='clients.client')),
-                ('contact', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='clients.contact')),
-                ('deal', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='deals.deal')),
-                ('owner', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='documents', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("title", models.CharField(max_length=255)),
+                (
+                    "file",
+                    models.FileField(
+                        upload_to=apps.documents.models.document_upload_path
+                    ),
+                ),
+                ("file_size", models.PositiveIntegerField(default=0)),
+                ("mime_type", models.CharField(blank=True, max_length=120)),
+                ("doc_type", models.CharField(blank=True, max_length=120)),
+                ("status", models.CharField(default="draft", max_length=50)),
+                ("checksum", models.CharField(blank=True, max_length=128)),
+                ("extra", models.JSONField(blank=True, default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "client",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="documents",
+                        to="clients.client",
+                    ),
+                ),
+                (
+                    "contact",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="documents",
+                        to="clients.contact",
+                    ),
+                ),
+                (
+                    "deal",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="documents",
+                        to="deals.deal",
+                    ),
+                ),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="documents",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

@@ -6,17 +6,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0003_alter_deal_options_remove_deal_amount_and_more'),
+        ("deals", "0003_alter_deal_options_remove_deal_amount_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='deal',
-            options={'ordering': ['next_review_date', '-created_at'], 'verbose_name': 'Сделка', 'verbose_name_plural': 'Сделки'},
+            name="deal",
+            options={
+                "ordering": ["next_review_date", "-created_at"],
+                "verbose_name": "Сделка",
+                "verbose_name_plural": "Сделки",
+            },
         ),
         migrations.AddField(
-            model_name='deal',
-            name='next_review_date',
-            field=models.DateField(blank=True, help_text='Дата следующего просмотра', null=True),
+            model_name="deal",
+            name="next_review_date",
+            field=models.DateField(
+                blank=True, help_text="Дата следующего просмотра", null=True
+            ),
         ),
     ]

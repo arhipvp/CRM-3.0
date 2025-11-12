@@ -6,14 +6,14 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clients', '0002_remove_contact_client_remove_contact_owner_and_more'),
-        ('deals', '0003_alter_deal_options_remove_deal_amount_and_more'),
-        ('documents', '0002_alter_document_options_remove_document_client_and_more'),
-        ('tasks', '0002_alter_task_options_remove_task_client_and_more'),
+        ("clients", "0002_remove_contact_client_remove_contact_owner_and_more"),
+        ("deals", "0003_alter_deal_options_remove_deal_amount_and_more"),
+        ("documents", "0002_alter_document_options_remove_document_client_and_more"),
+        ("tasks", "0002_alter_task_options_remove_task_client_and_more"),
     ]
 
     operations = [
         migrations.DeleteModel(
-            name='Contact',
+            name="Contact",
         ),
     ]

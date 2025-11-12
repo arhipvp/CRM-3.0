@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Payment, PaymentStatus } from "../../types";
+import React, { useState } from 'react';
+import { Payment, PaymentStatus } from '../../types';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -17,28 +17,22 @@ interface AddPaymentFormProps {
   onCancel: () => void;
 }
 
-export function AddPaymentForm({
-  payment,
-  onSubmit,
-  onCancel,
-}: AddPaymentFormProps) {
+export function AddPaymentForm({ payment, onSubmit, onCancel }: AddPaymentFormProps) {
   const [formData, setFormData] = useState<AddPaymentFormValues>({
-    policyId: payment?.policyId || "",
-    dealId: payment?.dealId || "",
-    amount: payment?.amount || "",
-    description: payment?.description || "",
-    scheduledDate: payment?.scheduledDate || "",
-    actualDate: payment?.actualDate || "",
-    status: payment?.status || "planned",
+    policyId: payment?.policyId || '',
+    dealId: payment?.dealId || '',
+    amount: payment?.amount || '',
+    description: payment?.description || '',
+    scheduledDate: payment?.scheduledDate || '',
+    actualDate: payment?.actualDate || '',
+    status: payment?.status || 'planned',
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -49,20 +43,20 @@ export function AddPaymentForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       if (!formData.amount) {
-        throw new Error("Сумма платежа обязательна");
+        throw new Error('Сумма платежа обязательна');
       }
       if (!formData.policyId) {
-        throw new Error("Выберите полис");
+        throw new Error('Выберите полис');
       }
 
       await onSubmit(formData);
     } catch (err: any) {
-      setError(err.message || "Ошибка при сохранении платежа");
+      setError(err.message || 'Ошибка при сохранении платежа');
     } finally {
       setLoading(false);
     }
@@ -103,7 +97,7 @@ export function AddPaymentForm({
           type="text"
           id="policyId"
           name="policyId"
-          value={formData.policyId || ""}
+          value={formData.policyId || ''}
           onChange={handleChange}
           placeholder="ID полиса"
           disabled={loading}
@@ -117,7 +111,7 @@ export function AddPaymentForm({
           type="text"
           id="dealId"
           name="dealId"
-          value={formData.dealId || ""}
+          value={formData.dealId || ''}
           onChange={handleChange}
           placeholder="ID сделки"
           disabled={loading}
@@ -144,7 +138,7 @@ export function AddPaymentForm({
         <textarea
           id="description"
           name="description"
-          value={formData.description || ""}
+          value={formData.description || ''}
           onChange={handleChange}
           placeholder="Описание платежа"
           rows={3}
@@ -159,7 +153,7 @@ export function AddPaymentForm({
             type="date"
             id="scheduledDate"
             name="scheduledDate"
-            value={formData.scheduledDate || ""}
+            value={formData.scheduledDate || ''}
             onChange={handleChange}
             disabled={loading}
           />
@@ -171,7 +165,7 @@ export function AddPaymentForm({
             type="date"
             id="actualDate"
             name="actualDate"
-            value={formData.actualDate || ""}
+            value={formData.actualDate || ''}
             onChange={handleChange}
             disabled={loading}
           />
@@ -183,7 +177,7 @@ export function AddPaymentForm({
         <select
           id="status"
           name="status"
-          value={formData.status || "planned"}
+          value={formData.status || 'planned'}
           onChange={handleChange}
           disabled={loading}
         >
@@ -195,14 +189,9 @@ export function AddPaymentForm({
 
       <div className="form-actions">
         <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? "Сохранение..." : payment ? "Обновить" : "Создать"}
+          {loading ? 'Сохранение...' : payment ? 'Обновить' : 'Создать'}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          className="btn-secondary"
-        >
+        <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
           Отмена
         </button>
       </div>

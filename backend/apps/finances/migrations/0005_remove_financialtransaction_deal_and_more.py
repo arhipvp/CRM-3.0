@@ -8,45 +8,86 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('finances', '0004_payment_policy_alter_payment_deal'),
+        ("finances", "0004_payment_policy_alter_payment_deal"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='financialtransaction',
-            name='deal',
+            model_name="financialtransaction",
+            name="deal",
         ),
         migrations.RemoveField(
-            model_name='income',
-            name='payment',
+            model_name="income",
+            name="payment",
         ),
         migrations.CreateModel(
-            name='FinancialRecord',
+            name="FinancialRecord",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('deleted_at', models.DateTimeField(blank=True, default=None, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('amount', models.DecimalField(decimal_places=2, help_text='Сумма (положительное = доход, отрицательное = расход)', max_digits=12)),
-                ('date', models.DateField(blank=True, help_text='Дата операции', null=True)),
-                ('description', models.CharField(blank=True, help_text='Описание операции', max_length=255)),
-                ('source', models.CharField(blank=True, help_text='Источник дохода / назначение расхода', max_length=120)),
-                ('note', models.TextField(blank=True, help_text='Примечание')),
-                ('payment', models.ForeignKey(help_text='Платёж', on_delete=django.db.models.deletion.CASCADE, related_name='financial_records', to='finances.payment')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, default=None, null=True),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        help_text="Сумма (положительное = доход, отрицательное = расход)",
+                        max_digits=12,
+                    ),
+                ),
+                (
+                    "date",
+                    models.DateField(blank=True, help_text="Дата операции", null=True),
+                ),
+                (
+                    "description",
+                    models.CharField(
+                        blank=True, help_text="Описание операции", max_length=255
+                    ),
+                ),
+                (
+                    "source",
+                    models.CharField(
+                        blank=True,
+                        help_text="Источник дохода / назначение расхода",
+                        max_length=120,
+                    ),
+                ),
+                ("note", models.TextField(blank=True, help_text="Примечание")),
+                (
+                    "payment",
+                    models.ForeignKey(
+                        help_text="Платёж",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="financial_records",
+                        to="finances.payment",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Финансовая запись',
-                'verbose_name_plural': 'Финансовые записи',
-                'ordering': ['-date', '-created_at'],
+                "verbose_name": "Финансовая запись",
+                "verbose_name_plural": "Финансовые записи",
+                "ordering": ["-date", "-created_at"],
             },
         ),
         migrations.DeleteModel(
-            name='Expense',
+            name="Expense",
         ),
         migrations.DeleteModel(
-            name='FinancialTransaction',
+            name="FinancialTransaction",
         ),
         migrations.DeleteModel(
-            name='Income',
+            name="Income",
         ),
     ]

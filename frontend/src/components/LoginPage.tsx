@@ -1,14 +1,14 @@
-import React, { useState } from "react";
-import { login } from "../api";
-import "./LoginPage.css";
+import React, { useState } from 'react';
+import { login } from '../api';
+import './LoginPage.css';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin123');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +24,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       console.log('Login successful, calling onLoginSuccess');
       onLoginSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка входа");
+      setError(err instanceof Error ? err.message : 'Ошибка входа');
       setIsLoading(false);
     }
   };
@@ -63,13 +63,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {error && <div className="error-message">{error}</div>}
 
           <button type="submit" disabled={isLoading} className="login-button">
-            {isLoading ? "Вход..." : "Войти"}
+            {isLoading ? 'Вход...' : 'Войти'}
           </button>
         </form>
 
         <p className="help-text">
-          Для тестирования используйте:<br />
-          Администратор: admin / admin123<br />
+          Для тестирования используйте:
+          <br />
+          Администратор: admin / admin123
+          <br />
           Менеджер: manager / manager123
         </p>
       </div>

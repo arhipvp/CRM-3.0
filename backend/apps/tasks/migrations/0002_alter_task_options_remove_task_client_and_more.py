@@ -8,81 +8,133 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0003_alter_deal_options_remove_deal_amount_and_more'),
-        ('tasks', '0001_initial'),
+        ("deals", "0003_alter_deal_options_remove_deal_amount_and_more"),
+        ("tasks", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='task',
-            options={'ordering': ['-created_at'], 'verbose_name': 'Задача', 'verbose_name_plural': 'Задачи'},
+            name="task",
+            options={
+                "ordering": ["-created_at"],
+                "verbose_name": "Задача",
+                "verbose_name_plural": "Задачи",
+            },
         ),
         migrations.RemoveField(
-            model_name='task',
-            name='client',
+            model_name="task",
+            name="client",
         ),
         migrations.RemoveField(
-            model_name='task',
-            name='contact',
+            model_name="task",
+            name="contact",
         ),
         migrations.RemoveField(
-            model_name='task',
-            name='extra',
+            model_name="task",
+            name="extra",
         ),
         migrations.AddField(
-            model_name='task',
-            name='deleted_at',
+            model_name="task",
+            name="deleted_at",
             field=models.DateTimeField(blank=True, default=None, null=True),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='assignee',
-            field=models.ForeignKey(blank=True, help_text='Назначен', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_tasks', to=settings.AUTH_USER_MODEL),
+            model_name="task",
+            name="assignee",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Назначен",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="assigned_tasks",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='checklist',
-            field=models.JSONField(blank=True, default=list, help_text='Пункты чек-листа'),
+            model_name="task",
+            name="checklist",
+            field=models.JSONField(
+                blank=True, default=list, help_text="Пункты чек-листа"
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='created_by',
-            field=models.ForeignKey(blank=True, help_text='Создано', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_tasks', to=settings.AUTH_USER_MODEL),
+            model_name="task",
+            name="created_by",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Создано",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="created_tasks",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='deal',
-            field=models.ForeignKey(blank=True, help_text='Сделка', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tasks', to='deals.deal'),
+            model_name="task",
+            name="deal",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Сделка",
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="tasks",
+                to="deals.deal",
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='description',
-            field=models.TextField(blank=True, help_text='Описание задачи'),
+            model_name="task",
+            name="description",
+            field=models.TextField(blank=True, help_text="Описание задачи"),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='due_at',
-            field=models.DateTimeField(blank=True, help_text='Срок выполнения', null=True),
+            model_name="task",
+            name="due_at",
+            field=models.DateTimeField(
+                blank=True, help_text="Срок выполнения", null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='priority',
-            field=models.CharField(choices=[('low', 'Низкая'), ('normal', 'Обычная'), ('high', 'Высокая'), ('urgent', 'Срочная')], default='normal', help_text='Приоритет', max_length=20),
+            model_name="task",
+            name="priority",
+            field=models.CharField(
+                choices=[
+                    ("low", "Низкая"),
+                    ("normal", "Обычная"),
+                    ("high", "Высокая"),
+                    ("urgent", "Срочная"),
+                ],
+                default="normal",
+                help_text="Приоритет",
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='remind_at',
-            field=models.DateTimeField(blank=True, help_text='Время напоминания', null=True),
+            model_name="task",
+            name="remind_at",
+            field=models.DateTimeField(
+                blank=True, help_text="Время напоминания", null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='status',
-            field=models.CharField(choices=[('todo', 'К выполнению'), ('in_progress', 'В процессе'), ('done', 'Завершена'), ('overdue', 'Просрочена'), ('canceled', 'Отменена')], default='todo', help_text='Статус', max_length=20),
+            model_name="task",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("todo", "К выполнению"),
+                    ("in_progress", "В процессе"),
+                    ("done", "Завершена"),
+                    ("overdue", "Просрочена"),
+                    ("canceled", "Отменена"),
+                ],
+                default="todo",
+                help_text="Статус",
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='title',
-            field=models.CharField(help_text='Название задачи', max_length=255),
+            model_name="task",
+            name="title",
+            field=models.CharField(help_text="Название задачи", max_length=255),
         ),
     ]

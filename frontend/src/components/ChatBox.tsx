@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { ChatMessage } from "../types";
+import React, { useEffect, useRef, useState } from 'react';
+import { ChatMessage } from '../types';
 
 interface ChatBoxProps {
   messages: ChatMessage[];
@@ -7,20 +7,16 @@ interface ChatBoxProps {
   onDeleteMessage: (messageId: string) => Promise<void>;
 }
 
-export const ChatBox: React.FC<ChatBoxProps> = ({
-  messages,
-  onSendMessage,
-  onDeleteMessage,
-}) => {
-  const [newMessage, setNewMessage] = useState("");
-  const [authorName, setAuthorName] = useState("Гость");
+export const ChatBox: React.FC<ChatBoxProps> = ({ messages, onSendMessage, onDeleteMessage }) => {
+  const [newMessage, setNewMessage] = useState('');
+  const [authorName, setAuthorName] = useState('Гость');
   const [isSubmitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Автоскролл к последнему сообщению
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -32,26 +28,26 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
 
     try {
       await onSendMessage(authorName, newMessage.trim());
-      setNewMessage("");
+      setNewMessage('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось отправить сообщение");
+      setError(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (messageId: string) => {
-    if (!confirm("Вы уверены, что хотите удалить это сообщение?")) return;
+    if (!confirm('Вы уверены, что хотите удалить это сообщение?')) return;
     try {
       await onDeleteMessage(messageId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить сообщение");
+      setError(err instanceof Error ? err.message : 'Не удалось удалить сообщение');
     }
   };
 
   const formatTime = (isoString: string) => {
     const date = new Date(isoString);
-    return date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -59,7 +55,9 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-3">
         {messages.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-8">Сообщений нет. Начните разговор!</p>
+          <p className="text-sm text-slate-500 text-center py-8">
+            Сообщений нет. Начните разговор!
+          </p>
         ) : (
           messages.map((msg) => (
             <div
@@ -112,7 +110,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
               disabled={isSubmitting || !newMessage.trim()}
               className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60 flex-shrink-0"
             >
-              {isSubmitting ? "..." : "📤"}
+              {isSubmitting ? '...' : '📤'}
             </button>
           </div>
         </form>

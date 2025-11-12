@@ -1,34 +1,46 @@
-import { ActivityLog, Client, Deal, DealStatus, FinancialRecord, Payment, PaymentStatus, Policy, Quote, Task, ChatMessage } from "./types";
+import {
+  ActivityLog,
+  Client,
+  Deal,
+  DealStatus,
+  FinancialRecord,
+  Payment,
+  PaymentStatus,
+  Policy,
+  Quote,
+  Task,
+  ChatMessage,
+} from './types';
 
 const envBase = import.meta.env.VITE_API_URL;
-const API_BASE = (envBase && envBase.trim() !== "" ? envBase : "/api/v1").replace(/\/$/, "");
+const API_BASE = (envBase && envBase.trim() !== '' ? envBase : '/api/v1').replace(/\/$/, '');
 
 // ============ Auth Token Management ============
-const TOKEN_KEY = "jwt_access_token";
-const REFRESH_TOKEN_KEY = "jwt_refresh_token";
+const TOKEN_KEY = 'jwt_access_token';
+const REFRESH_TOKEN_KEY = 'jwt_refresh_token';
 
 export function getAccessToken(): string | null {
-  return typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+  return typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
 }
 
 export function setAccessToken(token: string): void {
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     localStorage.setItem(TOKEN_KEY, token);
   }
 }
 
 export function setRefreshToken(token: string): void {
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     localStorage.setItem(REFRESH_TOKEN_KEY, token);
   }
 }
 
 export function getRefreshToken(): string | null {
-  return typeof window !== "undefined" ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
+  return typeof window !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
 }
 
 export function clearTokens(): void {
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
   }
@@ -54,22 +66,25 @@ export interface LoginResponse {
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE}/auth/login/`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({ username, password }),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || "Ошибка входа");
+    throw new Error(text || 'Ошибка входа');
   }
 
   const data = (await response.json()) as LoginResponse;
   setAccessToken(data.access);
   setRefreshToken(data.refresh);
-  console.log('Login successful, tokens saved:', { access: data.access?.substring(0, 20) + '...', hasToken: !!getAccessToken() });
+  console.log('Login successful, tokens saved:', {
+    access: data.access?.substring(0, 20) + '...',
+    hasToken: !!getAccessToken(),
+  });
   return data;
 }
 
@@ -78,7 +93,7 @@ export function logout(): void {
 }
 
 export async function getCurrentUser(): Promise<any> {
-  return request<any>("/auth/me/");
+  return request<any>('/auth/me/');
 }
 
 // ============ Custom Error Class for API Errors ============
@@ -97,14 +112,16 @@ export class APIError extends Error {
 // ============ API Request Helper ============
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(typeof options.headers === 'object' && options.headers !== null ? Object.fromEntries(Object.entries(options.headers as any)) : {}),
+    'Content-Type': 'application/json',
+    ...(typeof options.headers === 'object' && options.headers !== null
+      ? Object.fromEntries(Object.entries(options.headers as any))
+      : {}),
   };
 
   // Add JWT token to headers
   const token = getAccessToken();
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
     console.log(`API request ${path}: token present (${token.substring(0, 20)}...)`);
   } else {
     console.log(`API request ${path}: NO TOKEN FOUND`);
@@ -195,7 +212,7 @@ function buildQueryString(params: FilterParams): string {
   return qs ? `?${qs}` : '';
 }
 
-const toCamel = (value: any) => value === null || value === undefined ? undefined : value;
+const toCamel = (value: any) => (value === null || value === undefined ? undefined : value);
 
 const mapClient = (raw: any): Client => ({
   id: raw.id,
@@ -235,14 +252,16 @@ const mapDeal = (raw: any): Deal => ({
   channel: raw.channel,
   createdAt: raw.created_at,
   quotes: Array.isArray(raw.quotes) ? raw.quotes.map(mapQuote) : [],
-  documents: Array.isArray(raw.documents) ? raw.documents.map((d: any) => ({
-    id: d.id,
-    title: d.title,
-    file: d.file,
-    file_size: d.file_size,
-    mime_type: d.mime_type,
-    created_at: d.created_at,
-  })) : [],
+  documents: Array.isArray(raw.documents)
+    ? raw.documents.map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        file: d.file,
+        file_size: d.file_size,
+        mime_type: d.mime_type,
+        created_at: d.created_at,
+      }))
+    : [],
 });
 
 const mapPolicy = (raw: any): Policy => ({
@@ -287,7 +306,9 @@ const mapPayment = (raw: any): Payment => ({
   scheduledDate: raw.scheduled_date,
   actualDate: raw.actual_date,
   status: raw.status,
-  financialRecords: Array.isArray(raw.financial_records) ? raw.financial_records.map(mapFinancialRecord) : [],
+  financialRecords: Array.isArray(raw.financial_records)
+    ? raw.financial_records.map(mapFinancialRecord)
+    : [],
   canDelete: raw.can_delete,
   createdAt: raw.created_at,
   updatedAt: raw.updated_at,
@@ -351,7 +372,9 @@ export async function fetchTasks(filters?: FilterParams): Promise<Task[]> {
 }
 
 // Paginated fetch variants for use in views
-export async function fetchClientsWithPagination(filters?: FilterParams): Promise<PaginatedResponse<Client>> {
+export async function fetchClientsWithPagination(
+  filters?: FilterParams
+): Promise<PaginatedResponse<Client>> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/clients/${qs}`);
   return {
@@ -362,7 +385,9 @@ export async function fetchClientsWithPagination(filters?: FilterParams): Promis
   };
 }
 
-export async function fetchDealsWithPagination(filters?: FilterParams): Promise<PaginatedResponse<Deal>> {
+export async function fetchDealsWithPagination(
+  filters?: FilterParams
+): Promise<PaginatedResponse<Deal>> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/deals/${qs}`);
   return {
@@ -373,7 +398,9 @@ export async function fetchDealsWithPagination(filters?: FilterParams): Promise<
   };
 }
 
-export async function fetchPoliciesWithPagination(filters?: FilterParams): Promise<PaginatedResponse<Policy>> {
+export async function fetchPoliciesWithPagination(
+  filters?: FilterParams
+): Promise<PaginatedResponse<Policy>> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/policies/${qs}`);
   return {
@@ -384,7 +411,9 @@ export async function fetchPoliciesWithPagination(filters?: FilterParams): Promi
   };
 }
 
-export async function fetchPaymentsWithPagination(filters?: FilterParams): Promise<PaginatedResponse<Payment>> {
+export async function fetchPaymentsWithPagination(
+  filters?: FilterParams
+): Promise<PaginatedResponse<Payment>> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/payments/${qs}`);
   return {
@@ -395,7 +424,9 @@ export async function fetchPaymentsWithPagination(filters?: FilterParams): Promi
   };
 }
 
-export async function fetchTasksWithPagination(filters?: FilterParams): Promise<PaginatedResponse<Task>> {
+export async function fetchTasksWithPagination(
+  filters?: FilterParams
+): Promise<PaginatedResponse<Task>> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/tasks/${qs}`);
   return {
@@ -406,35 +437,48 @@ export async function fetchTasksWithPagination(filters?: FilterParams): Promise<
   };
 }
 
-export async function createClient(data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null; }): Promise<Client> {
-  const payload = await request<any>("/clients/", {
-    method: "POST",
+export async function createClient(data: {
+  name: string;
+  phone?: string;
+  birthDate?: string | null;
+  notes?: string | null;
+}): Promise<Client> {
+  const payload = await request<any>('/clients/', {
+    method: 'POST',
     body: JSON.stringify({
       name: data.name,
       phone: data.phone,
       birth_date: data.birthDate || null,
-      notes: data.notes ?? "",
+      notes: data.notes ?? '',
     }),
   });
   return mapClient(payload);
 }
 
-export async function updateClient(id: string, data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null; }): Promise<Client> {
+export async function updateClient(
+  id: string,
+  data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }
+): Promise<Client> {
   const payload = await request<any>(`/clients/${id}/`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({
       name: data.name,
       phone: data.phone,
       birth_date: data.birthDate || null,
-      notes: data.notes ?? "",
+      notes: data.notes ?? '',
     }),
   });
   return mapClient(payload);
 }
 
-export async function createDeal(data: { title: string; description?: string; clientId: string; expectedClose?: string | null; }): Promise<Deal> {
-  const payload = await request<any>("/deals/", {
-    method: "POST",
+export async function createDeal(data: {
+  title: string;
+  description?: string;
+  clientId: string;
+  expectedClose?: string | null;
+}): Promise<Deal> {
+  const payload = await request<any>('/deals/', {
+    method: 'POST',
     body: JSON.stringify({
       title: data.title,
       description: data.description,
@@ -447,7 +491,7 @@ export async function createDeal(data: { title: string; description?: string; cl
 
 export async function updateDealStatus(id: string, status: DealStatus): Promise<Deal> {
   const payload = await request<any>(`/deals/${id}/`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({ status }),
   });
   return mapDeal(payload);
@@ -466,7 +510,7 @@ export async function updateDeal(
   }
 ): Promise<Deal> {
   const payload = await request<any>(`/deals/${id}/`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({
       title: data.title,
       description: data.description,
@@ -490,10 +534,10 @@ export async function updatePayment(
     scheduledDate: string | null;
     description: string;
     amount: number;
-  }>,
+  }>
 ): Promise<Payment> {
   const payload = await request<any>(`/payments/${id}/`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({
       deal: data.dealId,
       policy: data.policyId,
@@ -516,8 +560,8 @@ export async function createQuote(data: {
   deductible?: string;
   comments?: string;
 }): Promise<Quote> {
-  const payload = await request<any>("/quotes/", {
-    method: "POST",
+  const payload = await request<any>('/quotes/', {
+    method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
       insurer: data.insurer,
@@ -532,7 +576,7 @@ export async function createQuote(data: {
 }
 
 export async function deleteQuote(id: string): Promise<void> {
-  await request(`/quotes/${id}/`, { method: "DELETE" });
+  await request(`/quotes/${id}/`, { method: 'DELETE' });
 }
 
 export async function createPolicy(data: {
@@ -545,8 +589,8 @@ export async function createPolicy(data: {
   endDate?: string | null;
   amount: number;
 }): Promise<Policy> {
-  const payload = await request<any>("/policies/", {
-    method: "POST",
+  const payload = await request<any>('/policies/', {
+    method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
       number: data.number,
@@ -568,36 +612,36 @@ export async function createPayment(data: {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
-  status?: "planned" | "partial" | "paid";
+  status?: 'planned' | 'partial' | 'paid';
 }): Promise<Payment> {
-  const payload = await request<any>("/payments/", {
-    method: "POST",
+  const payload = await request<any>('/payments/', {
+    method: 'POST',
     body: JSON.stringify({
       deal: data.dealId || null,
       policy: data.policyId || null,
       amount: data.amount,
-      description: data.description || "",
+      description: data.description || '',
       scheduled_date: data.scheduledDate || null,
       actual_date: data.actualDate || null,
-      status: data.status || "planned",
+      status: data.status || 'planned',
     }),
   });
   return mapPayment(payload);
 }
 
 export async function deletePolicy(id: string): Promise<void> {
-  await request(`/policies/${id}/`, { method: "DELETE" });
+  await request(`/policies/${id}/`, { method: 'DELETE' });
 }
 
 export async function uploadDocument(dealId: string, file: File): Promise<any> {
   const formData = new FormData();
-  formData.append("file", file);
-  formData.append("title", file.name);
-  formData.append("deal", dealId);
-  formData.append("mime_type", file.type);
+  formData.append('file', file);
+  formData.append('title', file.name);
+  formData.append('deal', dealId);
+  formData.append('mime_type', file.type);
 
   const response = await fetch(`${API_BASE}/documents/`, {
-    method: "POST",
+    method: 'POST',
     body: formData,
   });
 
@@ -610,7 +654,7 @@ export async function uploadDocument(dealId: string, file: File): Promise<any> {
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  await request(`/documents/${id}/`, { method: "DELETE" });
+  await request(`/documents/${id}/`, { method: 'DELETE' });
 }
 
 const mapChatMessage = (raw: any): ChatMessage => ({
@@ -628,9 +672,13 @@ export async function fetchChatMessages(dealId: string): Promise<ChatMessage[]> 
   return unwrapList(payload).map(mapChatMessage);
 }
 
-export async function createChatMessage(dealId: string, authorName: string, body: string): Promise<ChatMessage> {
-  const payload = await request<any>("/chat_messages/", {
-    method: "POST",
+export async function createChatMessage(
+  dealId: string,
+  authorName: string,
+  body: string
+): Promise<ChatMessage> {
+  const payload = await request<any>('/chat_messages/', {
+    method: 'POST',
     body: JSON.stringify({
       deal: dealId,
       author_name: authorName,
@@ -641,11 +689,11 @@ export async function createChatMessage(dealId: string, authorName: string, body
 }
 
 export async function deleteChatMessage(id: string): Promise<void> {
-  await request(`/chat_messages/${id}/`, { method: "DELETE" });
+  await request(`/chat_messages/${id}/`, { method: 'DELETE' });
 }
 
 export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
-  const payload = await request<any>("/financial_records/");
+  const payload = await request<any>('/financial_records/');
   return unwrapList(payload).map(mapFinancialRecord);
 }
 
@@ -657,15 +705,15 @@ export async function createFinancialRecord(data: {
   source?: string;
   note?: string;
 }): Promise<FinancialRecord> {
-  const payload = await request<any>("/financial_records/", {
-    method: "POST",
+  const payload = await request<any>('/financial_records/', {
+    method: 'POST',
     body: JSON.stringify({
       payment: data.paymentId,
       amount: data.amount,
       date: data.date || null,
-      description: data.description || "",
-      source: data.source || "",
-      note: data.note || "",
+      description: data.description || '',
+      source: data.source || '',
+      note: data.note || '',
     }),
   });
   return mapFinancialRecord(payload);
@@ -682,7 +730,7 @@ export async function updateFinancialRecord(
   }>
 ): Promise<FinancialRecord> {
   const payload = await request<any>(`/financial_records/${id}/`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({
       amount: data.amount,
       date: data.date,
@@ -695,7 +743,7 @@ export async function updateFinancialRecord(
 }
 
 export async function deleteFinancialRecord(id: string): Promise<void> {
-  await request(`/financial_records/${id}/`, { method: "DELETE" });
+  await request(`/financial_records/${id}/`, { method: 'DELETE' });
 }
 
 export async function fetchActivityLogs(dealId: string): Promise<ActivityLog[]> {
@@ -711,15 +759,15 @@ export async function createTask(data: {
   dueAt?: string | null;
   status?: string;
 }): Promise<Task> {
-  const payload = await request<any>("/tasks/", {
-    method: "POST",
+  const payload = await request<any>('/tasks/', {
+    method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
       title: data.title,
-      description: data.description || "",
+      description: data.description || '',
       priority: data.priority,
       due_at: data.dueAt || null,
-      status: data.status || "todo",
+      status: data.status || 'todo',
     }),
   });
   return mapTask(payload);
@@ -736,7 +784,7 @@ export async function updateTask(
   }>
 ): Promise<Task> {
   const payload = await request<any>(`/tasks/${id}/`, {
-    method: "PATCH",
+    method: 'PATCH',
     body: JSON.stringify({
       title: data.title,
       description: data.description,
@@ -749,9 +797,5 @@ export async function updateTask(
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  await request(`/tasks/${id}/`, { method: "DELETE" });
+  await request(`/tasks/${id}/`, { method: 'DELETE' });
 }
-
-
-
-

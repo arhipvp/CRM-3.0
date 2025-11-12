@@ -1,64 +1,67 @@
-import React from "react";
-import { ActivityLog } from "../types";
+import React from 'react';
+import { ActivityLog } from '../types';
 
 interface ActivityTimelineProps {
   activities: ActivityLog[];
   isLoading?: boolean;
 }
 
-export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, isLoading = false }) => {
+export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
+  activities,
+  isLoading = false,
+}) => {
   const getActionIcon = (actionType: string) => {
     switch (actionType) {
-      case "created":
-        return "✨";
-      case "status_changed":
-        return "🔄";
-      case "stage_changed":
-        return "📍";
-      case "description_updated":
-        return "📝";
-      case "assigned":
-        return "👤";
-      case "policy_created":
-        return "📄";
-      case "quote_added":
-        return "💰";
-      case "document_uploaded":
-        return "📎";
-      case "payment_created":
-        return "💳";
-      case "comment_added":
-        return "💬";
+      case 'created':
+        return '✨';
+      case 'status_changed':
+        return '🔄';
+      case 'stage_changed':
+        return '📍';
+      case 'description_updated':
+        return '📝';
+      case 'assigned':
+        return '👤';
+      case 'policy_created':
+        return '📄';
+      case 'quote_added':
+        return '💰';
+      case 'document_uploaded':
+        return '📎';
+      case 'payment_created':
+        return '💳';
+      case 'comment_added':
+        return '💬';
       default:
-        return "📌";
+        return '📌';
     }
   };
 
   const getActionColor = (actionType: string) => {
     switch (actionType) {
-      case "created":
-        return "#10b981";
-      case "status_changed":
-        return "#f59e0b";
-      case "stage_changed":
-        return "#3b82f6";
-      case "policy_created":
-        return "#8b5cf6";
-      case "payment_created":
-        return "#ec4899";
+      case 'created':
+        return '#10b981';
+      case 'status_changed':
+        return '#f59e0b';
+      case 'stage_changed':
+        return '#3b82f6';
+      case 'policy_created':
+        return '#8b5cf6';
+      case 'payment_created':
+        return '#ec4899';
       default:
-        return "#6b7280";
+        return '#6b7280';
     }
   };
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat("ru-RU", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return new Intl.DateTimeFormat('ru-RU', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     }).format(date);
   };
 
@@ -74,7 +77,10 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, 
     <div className="activity-timeline">
       {activities.map((activity, index) => (
         <div key={activity.id} className="activity-item">
-          <div className="activity-marker" style={{ backgroundColor: getActionColor(activity.actionType) }}>
+          <div
+            className="activity-marker"
+            style={{ backgroundColor: getActionColor(activity.actionType) }}
+          >
             {getActionIcon(activity.actionType)}
           </div>
           <div className="activity-content">

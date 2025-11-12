@@ -1,5 +1,7 @@
 """FilterSets for Tasks app"""
+
 import django_filters
+
 from .models import Task
 
 
@@ -16,31 +18,24 @@ class TaskFilterSet(django_filters.FilterSet):
     """
 
     status = django_filters.ChoiceFilter(
-        field_name='status',
-        choices=Task.TaskStatus.choices,
-        label='Task Status'
+        field_name="status", choices=Task.TaskStatus.choices, label="Task Status"
     )
 
     priority = django_filters.ChoiceFilter(
-        field_name='priority',
-        choices=Task.PriorityChoices.choices,
-        label='Priority'
+        field_name="priority", choices=Task.PriorityChoices.choices, label="Priority"
     )
 
-    deal = django_filters.NumberFilter(
-        field_name='deal__id',
-        label='Deal ID'
-    )
+    deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
 
     ordering = django_filters.OrderingFilter(
         fields=(
-            ('created_at', 'created_at'),
-            ('updated_at', 'updated_at'),
-            ('due_at', 'due_at'),
+            ("created_at", "created_at"),
+            ("updated_at", "updated_at"),
+            ("due_at", "due_at"),
         ),
-        label='Sort by'
+        label="Sort by",
     )
 
     class Meta:
         model = Task
-        fields = ('status', 'priority', 'deal')
+        fields = ("status", "priority", "deal")

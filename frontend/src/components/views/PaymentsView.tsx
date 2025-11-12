@@ -1,7 +1,8 @@
-import React from "react";
-import { Deal, Payment } from "../../types";
+import React from 'react';
+import { Deal, Payment } from '../../types';
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+const formatDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
 interface PaymentsViewProps {
   payments: Payment[];
@@ -29,17 +30,20 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
             return (
               <tr key={payment.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-5 py-4">
-                  <p className="font-semibold text-slate-900">{deal?.title || "—"}</p>
-                  <p className="text-xs text-slate-500">{deal?.clientName || ""}</p>
+                  <p className="font-semibold text-slate-900">{deal?.title || '—'}</p>
+                  <p className="text-xs text-slate-500">{deal?.clientName || ''}</p>
                 </td>
                 <td className="px-5 py-4 text-slate-600">
-                  {Number(payment.amount).toLocaleString("ru-RU", { style: "currency", currency: "RUB" })}
+                  {Number(payment.amount).toLocaleString('ru-RU', {
+                    style: 'currency',
+                    currency: 'RUB',
+                  })}
                 </td>
                 <td className="px-5 py-4 text-slate-600">{formatDate(payment.scheduledDate)}</td>
                 <td className="px-5 py-4 text-slate-600">{formatDate(payment.actualDate)}</td>
                 <td className="px-5 py-4 text-slate-600">{payment.status}</td>
                 <td className="px-5 py-4 text-right">
-                  {payment.status !== "paid" ? (
+                  {payment.status !== 'paid' ? (
                     <button
                       onClick={() => onMarkPaid(payment.id)}
                       className="text-sky-600 font-semibold hover:text-sky-800"
@@ -64,4 +68,4 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
       </table>
     </div>
   );
-};
+};

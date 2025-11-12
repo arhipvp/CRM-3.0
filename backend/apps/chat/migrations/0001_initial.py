@@ -11,27 +11,63 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('deals', '0005_alter_deal_expected_close_alter_deal_loss_reason_and_more'),
+        ("deals", "0005_alter_deal_expected_close_alter_deal_loss_reason_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ChatMessage',
+            name="ChatMessage",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('deleted_at', models.DateTimeField(blank=True, default=None, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('author_name', models.CharField(default='Anonymous', help_text='Имя автора сообщения', max_length=255)),
-                ('body', models.TextField(help_text='Текст сообщения')),
-                ('author', models.ForeignKey(blank=True, help_text='Пользователь (опционально)', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='chat_messages', to=settings.AUTH_USER_MODEL)),
-                ('deal', models.ForeignKey(help_text='Сделка', on_delete=django.db.models.deletion.CASCADE, related_name='chat_messages', to='deals.deal')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, default=None, null=True),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "author_name",
+                    models.CharField(
+                        default="Anonymous",
+                        help_text="Имя автора сообщения",
+                        max_length=255,
+                    ),
+                ),
+                ("body", models.TextField(help_text="Текст сообщения")),
+                (
+                    "author",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Пользователь (опционально)",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="chat_messages",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "deal",
+                    models.ForeignKey(
+                        help_text="Сделка",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="chat_messages",
+                        to="deals.deal",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Сообщение чата',
-                'verbose_name_plural': 'Сообщения чата',
-                'ordering': ['created_at'],
+                "verbose_name": "Сообщение чата",
+                "verbose_name_plural": "Сообщения чата",
+                "ordering": ["created_at"],
             },
         ),
     ]

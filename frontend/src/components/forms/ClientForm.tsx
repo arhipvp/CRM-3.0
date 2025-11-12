@@ -1,23 +1,32 @@
-﻿import React, { useState } from "react";
+﻿import React, { useState } from 'react';
 
 interface ClientFormProps {
   initial?: { name: string; phone?: string; birthDate?: string | null; notes?: string | null };
-  onSubmit: (data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }) => Promise<void>;
+  onSubmit: (data: {
+    name: string;
+    phone?: string;
+    birthDate?: string | null;
+    notes?: string | null;
+  }) => Promise<void>;
   submitLabel?: string;
 }
 
-export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submitLabel = "Сохранить" }) => {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [phone, setPhone] = useState(initial?.phone ?? "");
-  const [birthDate, setBirthDate] = useState(initial?.birthDate ?? "");
-  const [notes, setNotes] = useState(initial?.notes ?? "");
+export const ClientForm: React.FC<ClientFormProps> = ({
+  initial,
+  onSubmit,
+  submitLabel = 'Сохранить',
+}) => {
+  const [name, setName] = useState(initial?.name ?? '');
+  const [phone, setPhone] = useState(initial?.phone ?? '');
+  const [birthDate, setBirthDate] = useState(initial?.birthDate ?? '');
+  const [notes, setNotes] = useState(initial?.notes ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
-      setError("Имя клиента обязательно");
+      setError('Имя клиента обязательно');
       return;
     }
     setError(null);
@@ -30,7 +39,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
         notes: notes.trim() || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить клиента");
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить клиента');
     } finally {
       setSubmitting(false);
     }
@@ -63,7 +72,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
         <label className="block text-sm font-medium text-slate-700">Дата рождения</label>
         <input
           type="date"
-          value={birthDate ?? ""}
+          value={birthDate ?? ''}
           onChange={(e) => setBirthDate(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
         />
@@ -83,7 +92,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ initial, onSubmit, submi
         disabled={isSubmitting}
         className="w-full bg-sky-600 text-white rounded-lg py-2 font-semibold text-sm disabled:opacity-60"
       >
-        {isSubmitting ? "Сохраняем..." : submitLabel}
+        {isSubmitting ? 'Сохраняем...' : submitLabel}
       </button>
     </form>
   );
