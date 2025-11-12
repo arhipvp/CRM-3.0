@@ -34,8 +34,9 @@ jobs:
           git pull origin master
 
           echo "Building and starting containers..."
-          docker compose -f stack.secure.yml pull
-          docker compose -f stack.secure.yml up -d --build
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d --build
+
 
           echo "Cleaning old images..."
           docker image prune -f
