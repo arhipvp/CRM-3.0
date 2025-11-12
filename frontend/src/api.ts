@@ -163,6 +163,34 @@ function unwrapList<T>(payload: T[] | { results: T[] }): T[] {
   return [];
 }
 
+// ============ Pagination & Filtering Types ============
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface FilterParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  ordering?: string;
+  [key: string]: any;
+}
+
+// Helper to build query string from filter params
+function buildQueryString(params: FilterParams): string {
+  const queryParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      queryParams.append(key, String(value));
+    }
+  });
+  const qs = queryParams.toString();
+  return qs ? `?${qs}` : '';
+}
+
 const toCamel = (value: any) => value === null || value === undefined ? undefined : value;
 
 const mapClient = (raw: any): Client => ({
@@ -288,28 +316,93 @@ const mapActivityLog = (raw: any): ActivityLog => ({
   createdAt: raw.created_at,
 });
 
-export async function fetchClients(): Promise<Client[]> {
-  const payload = await request<any>("/clients/");
+export async function fetchClients(filters?: FilterParams): Promise<Client[] | PaginatedResponse<Client>> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/clients/${qs}`);
+
+  // If we have pagination params, return the full paginated response
+  if (filters?.page !== undefined || filters?.page_size !== undefined) {
+    return {
+      count: payload.count || 0,
+      next: payload.next || null,
+      previous: payload.previous || null,
+      results: (unwrapList(payload) || []).map(mapClient),
+    };
+  }
+
+  // Otherwise, return just the mapped results for backward compatibility
   return unwrapList(payload).map(mapClient);
 }
 
-export async function fetchDeals(): Promise<Deal[]> {
-  const payload = await request<any>("/deals/");
+export async function fetchDeals(filters?: FilterParams): Promise<Deal[] | PaginatedResponse<Deal>> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/deals/${qs}`);
+
+  // If we have pagination params, return the full paginated response
+  if (filters?.page !== undefined || filters?.page_size !== undefined) {
+    return {
+      count: payload.count || 0,
+      next: payload.next || null,
+      previous: payload.previous || null,
+      results: (unwrapList(payload) || []).map(mapDeal),
+    };
+  }
+
+  // Otherwise, return just the mapped results for backward compatibility
   return unwrapList(payload).map(mapDeal);
 }
 
-export async function fetchPolicies(): Promise<Policy[]> {
-  const payload = await request<any>("/policies/");
+export async function fetchPolicies(filters?: FilterParams): Promise<Policy[] | PaginatedResponse<Policy>> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/policies/${qs}`);
+
+  // If we have pagination params, return the full paginated response
+  if (filters?.page !== undefined || filters?.page_size !== undefined) {
+    return {
+      count: payload.count || 0,
+      next: payload.next || null,
+      previous: payload.previous || null,
+      results: (unwrapList(payload) || []).map(mapPolicy),
+    };
+  }
+
+  // Otherwise, return just the mapped results for backward compatibility
   return unwrapList(payload).map(mapPolicy);
 }
 
-export async function fetchPayments(): Promise<Payment[]> {
-  const payload = await request<any>("/payments/");
+export async function fetchPayments(filters?: FilterParams): Promise<Payment[] | PaginatedResponse<Payment>> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/payments/${qs}`);
+
+  // If we have pagination params, return the full paginated response
+  if (filters?.page !== undefined || filters?.page_size !== undefined) {
+    return {
+      count: payload.count || 0,
+      next: payload.next || null,
+      previous: payload.previous || null,
+      results: (unwrapList(payload) || []).map(mapPayment),
+    };
+  }
+
+  // Otherwise, return just the mapped results for backward compatibility
   return unwrapList(payload).map(mapPayment);
 }
 
-export async function fetchTasks(): Promise<Task[]> {
-  const payload = await request<any>("/tasks/");
+export async function fetchTasks(filters?: FilterParams): Promise<Task[] | PaginatedResponse<Task>> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/tasks/${qs}`);
+
+  // If we have pagination params, return the full paginated response
+  if (filters?.page !== undefined || filters?.page_size !== undefined) {
+    return {
+      count: payload.count || 0,
+      next: payload.next || null,
+      previous: payload.previous || null,
+      results: (unwrapList(payload) || []).map(mapTask),
+    };
+  }
+
+  // Otherwise, return just the mapped results for backward compatibility
   return unwrapList(payload).map(mapTask);
 }
 

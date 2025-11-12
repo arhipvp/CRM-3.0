@@ -3,6 +3,7 @@ from django.db.models import Q
 
 from .models import Task
 from .serializers import TaskSerializer
+from .filters import TaskFilterSet
 from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
@@ -10,6 +11,10 @@ from apps.users.models import UserRole
 class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticatedPermission]
+    filterset_class = TaskFilterSet
+    search_fields = ['title', 'description']
+    ordering_fields = ['created_at', 'updated_at', 'due_at']
+    ordering = ['-created_at']
 
     def get_queryset(self):
         user = self.request.user

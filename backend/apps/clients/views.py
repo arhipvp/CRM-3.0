@@ -3,6 +3,7 @@ from django.db.models import Q
 
 from .models import Client
 from .serializers import ClientSerializer
+from .filters import ClientFilterSet
 from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
@@ -10,6 +11,10 @@ from apps.users.models import UserRole
 class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = ClientSerializer
     permission_classes = [IsAuthenticatedPermission]
+    filterset_class = ClientFilterSet
+    search_fields = ['name', 'phone']
+    ordering_fields = ['created_at', 'updated_at', 'name']
+    ordering = ['-created_at']
 
     def get_queryset(self):
         user = self.request.user

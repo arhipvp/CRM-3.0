@@ -3,6 +3,7 @@ from django.db.models import Q
 
 from .models import ActivityLog, Deal, Quote
 from .serializers import ActivityLogSerializer, DealSerializer, QuoteSerializer
+from .filters import DealFilterSet
 from apps.users.models import UserRole
 from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 
@@ -10,6 +11,10 @@ from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
 class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DealSerializer
     permission_classes = [IsAuthenticatedPermission]
+    filterset_class = DealFilterSet
+    search_fields = ['title', 'description']
+    ordering_fields = ['created_at', 'updated_at', 'title', 'expected_close']
+    ordering = ['-created_at']
 
     def get_queryset(self):
         """

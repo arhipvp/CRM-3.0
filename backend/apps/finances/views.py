@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 
 from .models import Payment, FinancialRecord
 from .serializers import PaymentSerializer, FinancialRecordSerializer
+from .filters import PaymentFilterSet
 from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
 from apps.users.models import UserRole
 
@@ -15,6 +16,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
     serializer_class = FinancialRecordSerializer
     permission_classes = [IsAuthenticatedPermission]
+    ordering_fields = ['created_at', 'updated_at', 'date']
+    ordering = ['-created_at']
 
     def get_queryset(self):
         user = self.request.user
@@ -39,6 +42,10 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для платежей с поддержкой проверки удаления"""
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticatedPermission]
+    filterset_class = PaymentFilterSet
+    search_fields = ['description', 'deal__title']
+    ordering_fields = ['created_at', 'updated_at', 'scheduled_date', 'actual_date', 'amount']
+    ordering = ['-created_at']
 
     def get_queryset(self):
         user = self.request.user

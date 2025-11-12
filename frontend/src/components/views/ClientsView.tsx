@@ -1,14 +1,42 @@
-import React from "react";
+import React, { useState } from "react";
 import { Client, Deal } from "../../types";
+import { FilterBar, FilterBarProps } from "../FilterBar";
+import { Pagination } from "../Pagination";
+import { FilterParams } from "../../api";
 
 const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("ru-RU") : "—");
+
+const PAGE_SIZE = 20;
 
 interface ClientsViewProps {
   clients: Client[];
   deals: Deal[];
+  totalClients?: number;
+  onFilterChange?: (filters: FilterParams) => void;
+  loading?: boolean;
 }
 
-export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
+export const ClientsView: React.FC<ClientsViewProps> = ({
+  clients,
+  deals,
+  totalClients = 0,
+  onFilterChange,
+  loading = false,
+}) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState<FilterParams>({});
+
+  const handleFilterChange = (newFilters: FilterParams) => {
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+    onFilterChange?.(newFilters);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    onFilterChange?.({ ...filters, page, page_size: PAGE_SIZE });
+  };
+
   const totals = {
     active: deals.length,
     clients: clients.length,
@@ -30,6 +58,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
           <p className="text-3xl font-semibold text-slate-900">{clients.filter((client) => Date.now() - Date.parse(client.createdAt) < 30 * 24 * 60 * 60 * 1000).length}</p>
         </div>
       </div>
+
+      <FilterBar
+        onFilterChange={handleFilterChange}
+        searchPlaceholder="Поиск по имени или телефону..."
+        sortOptions={[
+          { value: "-created_at", label: "Новые" },
+          { value: "created_at", label: "Старые" },
+          { value: "name", label: "Имя (А-Я)" },
+          { value: "-name", label: "Имя (Я-А)" },
+        ]}
+      />
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
@@ -79,6 +118,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals }) => {
             )}
           </tbody>
         </table>
+
+        {clients.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalClients || clients.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
     </div>
   );
