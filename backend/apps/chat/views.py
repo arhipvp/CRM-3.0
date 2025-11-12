@@ -1,19 +1,24 @@
 from rest_framework import permissions, viewsets
+from rest_framework.permissions import AllowAny
 from django.db.models import Q
 
 from .models import ChatMessage
 from .serializers import ChatMessageSerializer
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 
 
 class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = ChatMessageSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user
         queryset = ChatMessage.objects.alive().order_by('created_at')
+
+        # Если пользователь не аутентифицирован, возвращаем все сообщения (AllowAny режим)
+        if not user.is_authenticated:
+            return queryset
 
         # Администраторы видят все сообщения чата
         is_admin = UserRole.objects.filter(

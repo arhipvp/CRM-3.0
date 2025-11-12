@@ -1,16 +1,17 @@
 from rest_framework import permissions, viewsets
+from rest_framework.permissions import AllowAny
 from django.db.models import Q
 
 from .models import Task
 from .serializers import TaskSerializer
 from .filters import TaskFilterSet
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 
 
 class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
     filterset_class = TaskFilterSet
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'updated_at', 'due_at']
@@ -19,6 +20,10 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = Task.objects.all().order_by('-created_at')
+
+        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
+        if not user.is_authenticated:
+            return queryset
 
         # Администраторы видят все задачи
         is_admin = UserRole.objects.filter(

@@ -1,16 +1,17 @@
 from rest_framework import permissions, viewsets
+from rest_framework.permissions import AllowAny
 from django.db.models import Q
 
 from .models import Client
 from .serializers import ClientSerializer
 from .filters import ClientFilterSet
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 
 
 class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = ClientSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
     filterset_class = ClientFilterSet
     search_fields = ['name', 'phone']
     ordering_fields = ['created_at', 'updated_at', 'name']
@@ -19,6 +20,10 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = Client.objects.alive().order_by('-created_at')
+
+        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
+        if not user.is_authenticated:
+            return queryset
 
         # Администраторы видят всех клиентов
         is_admin = UserRole.objects.filter(

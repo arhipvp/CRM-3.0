@@ -1,19 +1,27 @@
 from rest_framework import permissions, viewsets
+from rest_framework.permissions import AllowAny
 from django.db.models import Q
 
 from .models import Note
 from .serializers import NoteSerializer
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 
 
 class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = NoteSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user
         queryset = Note.objects.select_related('deal').all()
+
+        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
+        if not user.is_authenticated:
+            deal_id = self.request.query_params.get('deal')
+            if deal_id:
+                queryset = queryset.filter(deal_id=deal_id)
+            return queryset
 
         # Администраторы видят все заметки
         is_admin = UserRole.objects.filter(

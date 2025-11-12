@@ -1,4 +1,5 @@
 from rest_framework import permissions, status, viewsets
+from rest_framework.permissions import AllowAny
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,17 +8,21 @@ from django.db.models import Q
 from .models import Document
 from .serializers import DocumentSerializer
 from apps.notes.models import Note
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 
 
 class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user
         queryset = Document.objects.all()
+
+        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
+        if not user.is_authenticated:
+            return queryset
 
         # Администраторы видят все документы
         is_admin = UserRole.objects.filter(
@@ -40,7 +45,7 @@ class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
 
 class DocumentRecognitionView(APIView):
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):

@@ -1,6 +1,7 @@
 from django.db.models import Sum, Q
 from django.core.exceptions import ValidationError
 from rest_framework import permissions, viewsets, status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
@@ -8,20 +9,24 @@ from rest_framework.decorators import action
 from .models import Payment, FinancialRecord
 from .serializers import PaymentSerializer, FinancialRecordSerializer
 from .filters import PaymentFilterSet
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 
 
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
     serializer_class = FinancialRecordSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
     ordering_fields = ['created_at', 'updated_at', 'date']
     ordering = ['-created_at']
 
     def get_queryset(self):
         user = self.request.user
         queryset = FinancialRecord.objects.select_related('payment').all().order_by('-date', '-created_at')
+
+        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
+        if not user.is_authenticated:
+            return queryset
 
         # Администраторы видят все финансовые записи
         is_admin = UserRole.objects.filter(
@@ -41,7 +46,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для платежей с поддержкой проверки удаления"""
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
     filterset_class = PaymentFilterSet
     search_fields = ['description', 'deal__title']
     ordering_fields = ['created_at', 'updated_at', 'scheduled_date', 'actual_date', 'amount']
@@ -50,6 +55,10 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = Payment.objects.select_related('policy', 'deal').prefetch_related('financial_records').all().order_by('-scheduled_date')
+
+        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
+        if not user.is_authenticated:
+            return queryset
 
         # Администраторы видят все платежи
         is_admin = UserRole.objects.filter(
@@ -80,20 +89,23 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
 class FinanceSummaryView(APIView):
     """Endpoint для сводки по финансам"""
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         user = request.user
 
-        # Администраторы видят все финансы
-        is_admin = UserRole.objects.filter(
-            user=user,
-            role__name='Admin'
-        ).exists()
+        # Если пользователь не аутентифицирован, показываем общую сводку
+        is_admin = False
+        if user.is_authenticated:
+            # Администраторы видят все финансы
+            is_admin = UserRole.objects.filter(
+                user=user,
+                role__name='Admin'
+            ).exists()
 
         # Базовый queryset для финансовых записей
         records_queryset = FinancialRecord.objects.filter(deleted_at__isnull=True)
-        if not is_admin:
+        if not is_admin and user.is_authenticated:
             # Остальные видят только записи для своих сделок (где user = seller или executor)
             records_queryset = records_queryset.filter(
                 Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
@@ -109,7 +121,7 @@ class FinanceSummaryView(APIView):
             status=Payment.PaymentStatus.PLANNED,
             deleted_at__isnull=True
         )
-        if not is_admin:
+        if not is_admin and user.is_authenticated:
             payments_queryset = payments_queryset.filter(
                 Q(deal__seller=user) | Q(deal__executor=user)
             )

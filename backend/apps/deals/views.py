@@ -1,16 +1,17 @@
 ﻿from rest_framework import permissions, viewsets
+from rest_framework.permissions import AllowAny
 from django.db.models import Q
 
 from .models import ActivityLog, Deal, Quote
 from .serializers import ActivityLogSerializer, DealSerializer, QuoteSerializer
 from .filters import DealFilterSet
 from apps.users.models import UserRole
-from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission, EditProtectedMixin
+from apps.common.permissions import EditProtectedMixin
 
 
 class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DealSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
     filterset_class = DealFilterSet
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'updated_at', 'title', 'expected_close']
@@ -23,6 +24,11 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         - Seller/Executor: видит только свои сделки (где user = seller или executor)
         """
         user = self.request.user
+        queryset = Deal.objects.select_related("client").prefetch_related("quotes").all().order_by("next_review_date", "-created_at")
+
+        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
+        if not user.is_authenticated:
+            return queryset
 
         # Администраторы видят все
         is_admin = UserRole.objects.filter(
@@ -31,17 +37,17 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         ).exists()
 
         if is_admin:
-            return Deal.objects.select_related("client").prefetch_related("quotes").all().order_by("next_review_date", "-created_at")
+            return queryset
 
         # Остальные видят только свои сделки (как seller или executor)
-        return Deal.objects.filter(
+        return queryset.filter(
             Q(seller=user) | Q(executor=user)
-        ).select_related("client").prefetch_related("quotes").all().order_by("next_review_date", "-created_at")
+        )
 
 
 class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user
@@ -70,7 +76,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
 class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ActivityLogSerializer
-    permission_classes = [IsAuthenticatedPermission]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         user = self.request.user

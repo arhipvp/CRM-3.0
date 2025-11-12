@@ -43,7 +43,10 @@
       "Bash(chmod:*)",
       "Bash(\"C:/Dev/CRM 3.0/test_auth.sh\")",
       "Bash(docker volume:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(for:*)",
+      "Bash(do echo \"=== $file ===\" grep -n \"permission_classes.*IsAuthenticatedPermission\" \"$file\")",
+      "Bash(echo \"Not found\" grep -n \"IsAuthenticatedPermission\" \"$file\")"
     ],
     "deny": [],
     "ask": []
