@@ -69,6 +69,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   const data = (await response.json()) as LoginResponse;
   setAccessToken(data.access);
   setRefreshToken(data.refresh);
+  console.log('Login successful, tokens saved:', { access: data.access?.substring(0, 20) + '...', hasToken: !!getAccessToken() });
   return data;
 }
 
@@ -91,6 +92,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getAccessToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+    console.log(`API request ${path}: token present (${token.substring(0, 20)}...)`);
+  } else {
+    console.log(`API request ${path}: NO TOKEN FOUND`);
   }
 
   const response = await fetch(`${API_BASE}${path}`, {

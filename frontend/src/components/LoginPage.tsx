@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { login, setAccessToken, setRefreshToken } from "../api";
+import { login } from "../api";
 import "./LoginPage.css";
 
 interface LoginPageProps {
@@ -18,9 +18,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
-      const response = await login(username, password);
-      setAccessToken(response.access);
-      setRefreshToken(response.refresh);
+      await login(username, password);
+      // Tokens are already set by the login() function
+      // No need to call setAccessToken/setRefreshToken again
+      console.log('Login successful, calling onLoginSuccess');
       onLoginSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка входа");

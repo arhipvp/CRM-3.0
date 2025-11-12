@@ -481,7 +481,9 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = async () => {
     try {
+      console.log('handleLoginSuccess: starting...');
       const userData = await getCurrentUser();
+      console.log('handleLoginSuccess: got user data', userData);
       // Parse roles from the API response structure
       const roles = userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
                    userData.roles || [];
@@ -493,8 +495,11 @@ const App: React.FC = () => {
       setCurrentUser(user);
       setIsAuthenticated(true);
       // Load application data after successful login
+      console.log('handleLoginSuccess: loading data...');
       await loadData();
+      console.log('handleLoginSuccess: complete');
     } catch (err) {
+      console.error('handleLoginSuccess: error', err);
       setError(err instanceof Error ? err.message : "Не удалось загрузить данные пользователя");
       setIsAuthenticated(false);
     }

@@ -48,29 +48,17 @@
   - Неаутентифицированный доступ отклонен (401)
 ✅ Все 12 тестов проходят успешно
 
-### Этап 5.2: Ручное тестирование
-- [ ] Создать тестовых пользователей в Django admin:
-  - User 1: Seller (продавец)
-  - User 2: Executor (исполнитель)
-  - User 3: Admin
-- [ ] Создать тестовые сделки (User1 = seller, User2 = executor)
-- [ ] Протестировать с curl/Postman:
-  ```bash
-  # Логин User1
-  curl -X POST http://127.0.0.1:8000/api/v1/auth/login/ \
-    -H "Content-Type: application/json" \
-    -d '{"username":"user1","password":"pass1"}'
-
-  # Получить свои сделки (должна быть 1)
-  curl -H "Authorization: Bearer <token>" \
-    http://127.0.0.1:8000/api/v1/deals/
-
-  # Попытаться отредактировать (должна быть ошибка 403)
-  curl -X PATCH http://127.0.0.1:8000/api/v1/deals/{id}/ \
-    -H "Authorization: Bearer <token>" \
-    -H "Content-Type: application/json" \
-    -d '{"title":"New title"}'
-  ```
+### Этап 5.2: Ручное тестирование - ЗАВЕРШЕНА
+✅ Созданы тестовые пользователи:
+  - seller (Seller role)
+  - executor (Executor role)
+✅ Создана тестовая сделка (seller = seller, executor = executor)
+✅ Все тесты пройдены:
+  - Seller может логиниться ✓
+  - Seller видит только свои сделки ✓
+  - Seller получает 403 при попытке редактирования ✓
+  - Admin может логиниться ✓
+  - Admin может редактировать любые сделки (200 OK) ✓
 
 ### Этап 5.3: Интеграционное тестирование
 - [ ] Запустить приложение: `docker-compose up -d`
