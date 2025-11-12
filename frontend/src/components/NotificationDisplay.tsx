@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNotification } from '../contexts/NotificationContext';
 import './NotificationDisplay.css';
 

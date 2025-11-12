@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Client, Deal } from "../../types";
-import { FilterBar, FilterBarProps } from "../FilterBar";
+import { FilterBar } from "../FilterBar";
 import { Pagination } from "../Pagination";
 import { FilterParams } from "../../api";
 
@@ -13,7 +13,6 @@ interface ClientsViewProps {
   deals: Deal[];
   totalClients?: number;
   onFilterChange?: (filters: FilterParams) => void;
-  loading?: boolean;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -21,7 +20,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   deals,
   totalClients = 0,
   onFilterChange,
-  loading = false,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterParams>({});
