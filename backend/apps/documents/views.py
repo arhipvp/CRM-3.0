@@ -2,26 +2,45 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Q
 
 from .models import Document
 from .serializers import DocumentSerializer
 from apps.notes.models import Note
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.users.models import UserRole
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
-    queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Document.objects.all()
+
+        # Администраторы видят все документы
+        is_admin = UserRole.objects.filter(
+            user=user,
+            role__name='Admin'
+        ).exists()
+
+        if not is_admin:
+            # Остальные видят только документы для своих сделок (где user = seller или executor)
+            queryset = queryset.filter(
+                Q(deal__seller=user) | Q(deal__executor=user)
+            )
+
+        return queryset
 
     def perform_create(self, serializer):
         # Если пользователь авторизован, сохранить его как owner
-        # Если нет (AnonymousUser), разрешить owner быть None
         owner = self.request.user if self.request.user.is_authenticated else None
         serializer.save(owner=owner)
 
 
 class DocumentRecognitionView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):

@@ -1,13 +1,33 @@
 from rest_framework import permissions, viewsets
+from django.db.models import Q
 
 from .models import Task
 from .serializers import TaskSerializer
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.users.models import UserRole
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Task.objects.all().order_by('-created_at')
     serializer_class = TaskSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Task.objects.all().order_by('-created_at')
+
+        # Администраторы видят все задачи
+        is_admin = UserRole.objects.filter(
+            user=user,
+            role__name='Admin'
+        ).exists()
+
+        if not is_admin:
+            # Остальные видят только задачи для своих сделок (где user = seller или executor)
+            queryset = queryset.filter(
+                Q(deal__seller=user) | Q(deal__executor=user)
+            )
+
+        return queryset
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None

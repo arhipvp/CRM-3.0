@@ -250,7 +250,7 @@ class AuditLogViewSet(ModelViewSet):
         user = self.request.user
 
         # Проверить, есть ли у пользователя роль администратора
-        is_admin = user.user_roles.filter(role__name='Администратор').exists()
+        is_admin = user.user_roles.filter(role__name='Admin').exists()
 
         if not is_admin:
             # Обычные пользователи видят только логи своих действий
@@ -316,7 +316,7 @@ class AuditLogViewSet(ModelViewSet):
             )
 
         # Админы видят логи любого пользователя, остальные только свои
-        is_admin = request.user.user_roles.filter(role__name='Администратор').exists()
+        is_admin = request.user.user_roles.filter(role__name='Admin').exists()
         if not is_admin and int(actor_id) != request.user.id:
             return Response(
                 {'detail': 'Доступ запрещён'},

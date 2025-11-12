@@ -4,29 +4,25 @@ from django.db.models import Q
 from .models import ActivityLog, Deal, Quote
 from .serializers import ActivityLogSerializer, DealSerializer, QuoteSerializer
 from apps.users.models import UserRole
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
 
 
 class DealViewSet(viewsets.ModelViewSet):
     serializer_class = DealSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
 
     def get_queryset(self):
         """
         Фильтровать сделки в зависимости от роли пользователя:
-        - Администратор: видит все сделки
-        - Менеджер/Наблюдатель: видит только свои сделки (где user = seller или executor)
-        - Анонимный пользователь: видит все сделки
+        - Admin: видит все сделки
+        - Seller/Executor: видит только свои сделки (где user = seller или executor)
         """
         user = self.request.user
-
-        # Анонимные пользователи видят все сделки
-        if not user.is_authenticated:
-            return Deal.objects.select_related("client").prefetch_related("quotes").all().order_by("next_review_date", "-created_at")
 
         # Администраторы видят все
         is_admin = UserRole.objects.filter(
             user=user,
-            role__name='Администратор'
+            role__name='Admin'
         ).exists()
 
         if is_admin:
@@ -40,10 +36,24 @@ class DealViewSet(viewsets.ModelViewSet):
 
 class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
 
     def get_queryset(self):
+        user = self.request.user
         queryset = Quote.objects.select_related("deal", "deal__client").all().order_by("-created_at")
+
+        # Администраторы видят все котировки
+        is_admin = UserRole.objects.filter(
+            user=user,
+            role__name='Admin'
+        ).exists()
+
+        if not is_admin:
+            # Остальные видят только котировки для своих сделок (где user = seller или executor)
+            queryset = queryset.filter(
+                Q(deal__seller=user) | Q(deal__executor=user)
+            )
+
         deal_id = self.request.query_params.get("deal")
         if deal_id:
             queryset = queryset.filter(deal_id=deal_id)
@@ -55,10 +65,24 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
 class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ActivityLogSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
 
     def get_queryset(self):
+        user = self.request.user
         queryset = ActivityLog.objects.select_related("deal", "user").all().order_by("-created_at")
+
+        # Администраторы видят все логи активности
+        is_admin = UserRole.objects.filter(
+            user=user,
+            role__name='Admin'
+        ).exists()
+
+        if not is_admin:
+            # Остальные видят только логи для своих сделок (где user = seller или executor)
+            queryset = queryset.filter(
+                Q(deal__seller=user) | Q(deal__executor=user)
+            )
+
         deal_id = self.request.query_params.get("deal")
         if deal_id:
             queryset = queryset.filter(deal_id=deal_id)

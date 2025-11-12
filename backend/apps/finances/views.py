@@ -7,20 +7,56 @@ from rest_framework.decorators import action
 
 from .models import Payment, FinancialRecord
 from .serializers import PaymentSerializer, FinancialRecordSerializer
+from apps.common.permissions import IsAuthenticated as IsAuthenticatedPermission
+from apps.users.models import UserRole
 
 
 class FinancialRecordViewSet(viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
-    queryset = FinancialRecord.objects.select_related('payment').all().order_by('-date', '-created_at')
     serializer_class = FinancialRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = FinancialRecord.objects.select_related('payment').all().order_by('-date', '-created_at')
+
+        # Администраторы видят все финансовые записи
+        is_admin = UserRole.objects.filter(
+            user=user,
+            role__name='Admin'
+        ).exists()
+
+        if not is_admin:
+            # Остальные видят только записи для своих сделок (где user = seller или executor)
+            queryset = queryset.filter(
+                Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
+            )
+
+        return queryset
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
     """ViewSet для платежей с поддержкой проверки удаления"""
-    queryset = Payment.objects.select_related('policy', 'deal').prefetch_related('financial_records').all().order_by('-scheduled_date')
     serializer_class = PaymentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Payment.objects.select_related('policy', 'deal').prefetch_related('financial_records').all().order_by('-scheduled_date')
+
+        # Администраторы видят все платежи
+        is_admin = UserRole.objects.filter(
+            user=user,
+            role__name='Admin'
+        ).exists()
+
+        if not is_admin:
+            # Остальные видят только платежи для своих сделок (где user = seller или executor)
+            queryset = queryset.filter(
+                Q(deal__seller=user) | Q(deal__executor=user)
+            )
+
+        return queryset
 
     def destroy(self, request, *args, **kwargs):
         """Удаление платежа с проверкой наличия финансовых записей"""
@@ -37,28 +73,41 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
 class FinanceSummaryView(APIView):
     """Endpoint для сводки по финансам"""
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticatedPermission]
 
     def get(self, request):
+        user = request.user
+
+        # Администраторы видят все финансы
+        is_admin = UserRole.objects.filter(
+            user=user,
+            role__name='Admin'
+        ).exists()
+
+        # Базовый queryset для финансовых записей
+        records_queryset = FinancialRecord.objects.filter(deleted_at__isnull=True)
+        if not is_admin:
+            # Остальные видят только записи для своих сделок (где user = seller или executor)
+            records_queryset = records_queryset.filter(
+                Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
+            )
+
         # Считаем доходы (положительные суммы) и расходы (отрицательные суммы)
-        incomes_total = FinancialRecord.objects.filter(
-            amount__gt=0,
-            deleted_at__isnull=True
-        ).aggregate(total=Sum('amount'))['total'] or 0
-
-        expenses_total = abs(FinancialRecord.objects.filter(
-            amount__lt=0,
-            deleted_at__isnull=True
-        ).aggregate(total=Sum('amount'))['total'] or 0)
-
+        incomes_total = records_queryset.filter(amount__gt=0).aggregate(total=Sum('amount'))['total'] or 0
+        expenses_total = abs(records_queryset.filter(amount__lt=0).aggregate(total=Sum('amount'))['total'] or 0)
         net_total = incomes_total - expenses_total
 
         # Плановые платежи
-        planned_payments = Payment.objects.filter(
+        payments_queryset = Payment.objects.filter(
             status=Payment.PaymentStatus.PLANNED,
             deleted_at__isnull=True
-        ).select_related('policy').order_by('scheduled_date')[:5]
+        )
+        if not is_admin:
+            payments_queryset = payments_queryset.filter(
+                Q(deal__seller=user) | Q(deal__executor=user)
+            )
 
+        planned_payments = payments_queryset.select_related('policy').order_by('scheduled_date')[:5]
         serializer = PaymentSerializer(planned_payments, many=True)
 
         return Response({
