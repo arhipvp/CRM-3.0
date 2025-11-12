@@ -81,6 +81,18 @@ export async function getCurrentUser(): Promise<any> {
   return request<any>("/auth/me/");
 }
 
+// ============ Custom Error Class for API Errors ============
+export class APIError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public path: string
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
 // ============ API Request Helper ============
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -101,6 +113,33 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers,
     ...options,
   });
+
+  // Handle 401 Unauthorized - redirect to login
+  if (response.status === 401) {
+    console.warn(`Unauthorized (401) on ${path}. Clearing tokens and redirecting to login.`);
+    clearTokens();
+    // Redirect to login page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+    throw new APIError('Unauthorized', 401, path);
+  }
+
+  // Handle 403 Forbidden - throw error for component to handle
+  if (response.status === 403) {
+    const text = await response.text();
+    let detail = 'Доступ запрещен';
+    try {
+      const json = JSON.parse(text);
+      if (json.detail) {
+        detail = json.detail;
+      }
+    } catch (e) {
+      // Keep default message if response is not JSON
+    }
+    console.warn(`Forbidden (403) on ${path}: ${detail}`);
+    throw new APIError(detail, 403, path);
+  }
 
   if (!response.ok) {
     const text = await response.text();

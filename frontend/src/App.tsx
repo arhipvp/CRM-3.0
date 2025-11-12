@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { MainLayout, View } from "./components/MainLayout";
 import { Modal } from "./components/Modal";
 import { LoginPage } from "./components/LoginPage";
+import { NotificationProvider, useNotification } from "./contexts/NotificationContext";
+import { NotificationDisplay } from "./components/NotificationDisplay";
 import { ClientForm } from "./components/forms/ClientForm";
 import { DealForm } from "./components/forms/DealForm";
 import { DealsView } from "./components/views/DealsView";
@@ -48,6 +50,7 @@ import {
   deleteTask,
   getCurrentUser,
   clearTokens,
+  APIError,
 } from "./api";
 import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, User } from "./types";
 
@@ -63,7 +66,8 @@ interface FinancialRecordModalState {
   recordId?: string;
 }
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { addNotification } = useNotification();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -174,7 +178,8 @@ const App: React.FC = () => {
       const updated = await updateDealStatus(dealId, status);
       setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось обновить статус");
+      const message = err instanceof APIError ? err.message : (err instanceof Error ? err.message : "Не удалось обновить статус");
+      setError(message);
     } finally {
       setSyncing(false);
     }
@@ -187,7 +192,11 @@ const App: React.FC = () => {
       setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
       setSelectedDealId(updated.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось обновить сделку");
+      if (err instanceof APIError && err.status === 403) {
+        addNotification('Только администратор может редактировать данные', 'error', 4000);
+      } else {
+        setError(err instanceof Error ? err.message : "Не удалось обновить сделку");
+      }
       throw err;
     } finally {
       setSyncing(false);
@@ -204,7 +213,8 @@ const App: React.FC = () => {
       );
       setQuoteDealId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить расчет");
+      const message = err instanceof APIError ? err.message : (err instanceof Error ? err.message : "Не удалось сохранить расчет");
+      setError(message);
       throw err;
     }
   };
@@ -327,7 +337,11 @@ const App: React.FC = () => {
       const updated = await updateTask(taskId, data);
       setTasks((prev) => prev.map((task) => (task.id === updated.id ? updated : task)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось обновить задачу");
+      if (err instanceof APIError && err.status === 403) {
+        addNotification('Только администратор может редактировать данные', 'error', 4000);
+      } else {
+        setError(err instanceof Error ? err.message : "Не удалось обновить задачу");
+      }
       throw err;
     } finally {
       setSyncing(false);
@@ -389,7 +403,11 @@ const App: React.FC = () => {
       setPayments((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
       setPaymentModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось обновить платеж");
+      if (err instanceof APIError && err.status === 403) {
+        addNotification('Только администратор может редактировать данные', 'error', 4000);
+      } else {
+        setError(err instanceof Error ? err.message : "Не удалось обновить платеж");
+      }
       throw err;
     }
   };
@@ -460,9 +478,13 @@ const App: React.FC = () => {
       );
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Не удалось обновить финансовую запись",
-      );
+      if (err instanceof APIError && err.status === 403) {
+        addNotification('Только администратор может редактировать данные', 'error', 4000);
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Не удалось обновить финансовую запись",
+        );
+      }
       throw err;
     }
   };
@@ -574,91 +596,99 @@ const App: React.FC = () => {
   }
 
   return (
-    <MainLayout
-      activeView={view}
-      onNavigate={setView}
-      onAddDeal={() => setModal("deal")}
-      onAddClient={() => setModal("client")}
-      currentUser={currentUser}
-      onLogout={handleLogout}
-    >
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Рабочее место</h1>
-            <p className="text-sm text-slate-500">Данные синхронизируются с Django API</p>
+    <>
+      <NotificationDisplay />
+      <MainLayout
+        activeView={view}
+        onNavigate={setView}
+        onAddDeal={() => setModal("deal")}
+        onAddClient={() => setModal("client")}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      >
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">Рабочее место</h1>
+              <p className="text-sm text-slate-500">Данные синхронизируются с Django API</p>
+            </div>
+            <button onClick={loadData} className="text-sm text-sky-600 font-semibold hover:text-sky-800" disabled={isLoading}>
+              Обновить данные
+            </button>
           </div>
-          <button onClick={loadData} className="text-sm text-sky-600 font-semibold hover:text-sky-800" disabled={isLoading}>
-            Обновить данные
-          </button>
+          {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+          {isSyncing && <p className="text-xs text-sky-600">Обновляем статус сделки...</p>}
+          {renderView()}
         </div>
-        {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
-        {isSyncing && <p className="text-xs text-sky-600">Обновляем статус сделки...</p>}
-        {renderView()}
-      </div>
 
-      {modal === "client" && (
-        <Modal title="Новый клиент" onClose={() => setModal(null)}>
-          <ClientForm onSubmit={handleAddClient} submitLabel="Создать клиента" />
-        </Modal>
-      )}
-      {modal === "deal" && (
-        <Modal title="Новая сделка" onClose={() => setModal(null)}>
-          <DealForm onSubmit={handleAddDeal} clients={clients} />
-        </Modal>
-      )}
-      {quoteDealId && (
-        <Modal title="Новый расчет" onClose={() => setQuoteDealId(null)}>
-          <AddQuoteForm onSubmit={(values) => handleAddQuote(quoteDealId, values)} onCancel={() => setQuoteDealId(null)} />
-        </Modal>
-      )}
-      {policyDealId && (
-        <Modal title="Новый полис" onClose={() => setPolicyDealId(null)}>
-          <AddPolicyForm onSubmit={(values) => handleAddPolicy(policyDealId, values)} onCancel={() => setPolicyDealId(null)} />
-        </Modal>
-      )}
-      {paymentModal && (
-        <Modal
-          title={paymentModal.paymentId ? "Редактировать платеж" : "Новый платеж"}
-          onClose={() => setPaymentModal(null)}
-        >
-          <AddPaymentForm
-            payment={paymentModal.paymentId ? payments.find((p) => p.id === paymentModal.paymentId) : undefined}
-            onSubmit={(values) =>
-              paymentModal.paymentId
-                ? handleUpdatePayment(paymentModal.paymentId, values)
-                : handleAddPayment(values)
-            }
-            onCancel={() => setPaymentModal(null)}
-          />
-        </Modal>
-      )}
-      {financialRecordModal && (
-        <Modal
-          title={financialRecordModal.recordId ? "Редактировать запись" : "Новая финансовая запись"}
-          onClose={() => setFinancialRecordModal(null)}
-        >
-          <AddFinancialRecordForm
-            paymentId={financialRecordModal.paymentId || ""}
-            record={
-              financialRecordModal.recordId
-                ? financialRecords.find((r) => r.id === financialRecordModal.recordId)
-                : undefined
-            }
-            onSubmit={(values) =>
-              financialRecordModal.recordId
-                ? handleUpdateFinancialRecord(financialRecordModal.recordId, values)
-                : handleAddFinancialRecord(values)
-            }
-            onCancel={() => setFinancialRecordModal(null)}
-          />
-        </Modal>
-      )}
-    </MainLayout>
+        {modal === "client" && (
+          <Modal title="Новый клиент" onClose={() => setModal(null)}>
+            <ClientForm onSubmit={handleAddClient} submitLabel="Создать клиента" />
+          </Modal>
+        )}
+        {modal === "deal" && (
+          <Modal title="Новая сделка" onClose={() => setModal(null)}>
+            <DealForm onSubmit={handleAddDeal} clients={clients} />
+          </Modal>
+        )}
+        {quoteDealId && (
+          <Modal title="Новый расчет" onClose={() => setQuoteDealId(null)}>
+            <AddQuoteForm onSubmit={(values) => handleAddQuote(quoteDealId, values)} onCancel={() => setQuoteDealId(null)} />
+          </Modal>
+        )}
+        {policyDealId && (
+          <Modal title="Новый полис" onClose={() => setPolicyDealId(null)}>
+            <AddPolicyForm onSubmit={(values) => handleAddPolicy(policyDealId, values)} onCancel={() => setPolicyDealId(null)} />
+          </Modal>
+        )}
+        {paymentModal && (
+          <Modal
+            title={paymentModal.paymentId ? "Редактировать платеж" : "Новый платеж"}
+            onClose={() => setPaymentModal(null)}
+          >
+            <AddPaymentForm
+              payment={paymentModal.paymentId ? payments.find((p) => p.id === paymentModal.paymentId) : undefined}
+              onSubmit={(values) =>
+                paymentModal.paymentId
+                  ? handleUpdatePayment(paymentModal.paymentId, values)
+                  : handleAddPayment(values)
+              }
+              onCancel={() => setPaymentModal(null)}
+            />
+          </Modal>
+        )}
+        {financialRecordModal && (
+          <Modal
+            title={financialRecordModal.recordId ? "Редактировать запись" : "Новая финансовая запись"}
+            onClose={() => setFinancialRecordModal(null)}
+          >
+            <AddFinancialRecordForm
+              paymentId={financialRecordModal.paymentId || ""}
+              record={
+                financialRecordModal.recordId
+                  ? financialRecords.find((r) => r.id === financialRecordModal.recordId)
+                  : undefined
+              }
+              onSubmit={(values) =>
+                financialRecordModal.recordId
+                  ? handleUpdateFinancialRecord(financialRecordModal.recordId, values)
+                  : handleAddFinancialRecord(values)
+              }
+              onCancel={() => setFinancialRecordModal(null)}
+            />
+          </Modal>
+        )}
+      </MainLayout>
+    </>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <NotificationProvider>
+      <AppContent />
+    </NotificationProvider>
   );
 };
 
 export default App;
-
-
-
