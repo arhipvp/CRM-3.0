@@ -28,6 +28,7 @@ services:
     container_name: crm3-backend
     environment:
       DEBUG: ${DEBUG:-False}
+      RUN_MIGRATIONS: "true"
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DB_ENGINE: django.db.backends.postgresql
       DJANGO_DB_HOST: db
