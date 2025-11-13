@@ -126,3 +126,9 @@ postgres-data/
 logs/
 backend.log
 frontend.log
+
+# env-файлы (локальные и прод)
+.env
+.env.*
+backend/.env
+frontend/.env
