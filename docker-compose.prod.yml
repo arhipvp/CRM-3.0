@@ -21,6 +21,9 @@ services:
       - crm_network
 
   backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     image: crm30-backend:${IMAGE_TAG:-latest}
     container_name: crm3-backend
     environment:
@@ -47,6 +50,9 @@ services:
     restart: unless-stopped
 
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     image: crm30-frontend:${IMAGE_TAG:-latest}
     container_name: crm3-frontend
     environment:
