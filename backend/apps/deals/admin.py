@@ -171,6 +171,7 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         "client",
         "status_badge",
         "stage_name",
+        "next_contact_date",
         "next_review_date",
         "probability_display",
         "seller",
@@ -181,6 +182,7 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         "status",
         "stage_name",
         "created_at",
+        "next_contact_date",
         "next_review_date",
         "deleted_at",
     )
@@ -205,7 +207,7 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         (
             "Планирование",
             {
-                "fields": ("expected_close", "next_review_date"),
+                "fields": ("expected_close", "next_contact_date", "next_review_date"),
             },
         ),
         (

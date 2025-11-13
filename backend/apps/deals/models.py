@@ -1,6 +1,7 @@
 ﻿from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Deal(SoftDeleteModel):
@@ -44,6 +45,9 @@ class Deal(SoftDeleteModel):
 
     expected_close = models.DateField(
         null=True, blank=True, help_text="Плановая дата закрытия"
+    )
+    next_contact_date = models.DateField(
+        default=timezone.now, help_text="Дата следующего контакта (по-умолчанию - текущая дата)"
     )
     next_review_date = models.DateField(
         null=True, blank=True, help_text="Дата следующего контакта"
