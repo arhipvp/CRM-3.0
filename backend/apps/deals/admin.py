@@ -8,7 +8,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
 
-from .models import ActivityLog, Deal, Quote
+from .models import ActivityLog, Deal, InsuranceCompany, InsuranceType, Quote
 
 # ============ IMPORT/EXPORT RESOURCES ============
 
@@ -62,7 +62,7 @@ class QuoteResource(resources.ModelResource):
         fields = (
             "id",
             "deal",
-            "insurer",
+            "insurance_company",
             "insurance_type",
             "sum_insured",
             "premium",
@@ -75,7 +75,7 @@ class QuoteResource(resources.ModelResource):
         export_order = (
             "id",
             "deal",
-            "insurer",
+            "insurance_company",
             "insurance_type",
             "sum_insured",
             "premium",
@@ -150,7 +150,13 @@ class PaymentInline(admin.TabularInline):
 class QuoteInline(admin.TabularInline):
     model = Quote
     extra = 0
-    fields = ("insurer", "insurance_type", "sum_insured", "premium", "deductible")
+    fields = (
+        "insurance_company",
+        "insurance_type",
+        "sum_insured",
+        "premium",
+        "deductible",
+    )
     readonly_fields = ("created_at",)
 
 
@@ -302,20 +308,20 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
     list_display = (
         "deal",
         "insurance_type",
-        "insurer",
+        "insurance_company",
         "sum_insured",
         "premium",
         "created_at",
     )
-    list_filter = ("insurance_type", "insurer", "created_at", "deleted_at")
-    search_fields = ("deal__title", "insurance_type", "insurer")
+    list_filter = ("insurance_type", "insurance_company", "created_at", "deleted_at")
+    search_fields = ("deal__title", "insurance_type", "insurance_company")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("-created_at",)
     actions = ["restore_quotes"]
 
     fieldsets = (
         ("Основная информация", {"fields": ("id", "deal")}),
-        ("Страховая информация", {"fields": ("insurance_type", "insurer")}),
+        ("Страховая информация", {"fields": ("insurance_type", "insurance_company")}),
         ("Условия", {"fields": ("sum_insured", "premium", "deductible")}),
         ("Примечания", {"fields": ("comments",)}),
         ("Статус", {"fields": ("deleted_at",)}),
@@ -354,3 +360,19 @@ class ActivityLogAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(InsuranceCompany)
+class InsuranceCompanyAdmin(SoftDeleteImportExportAdmin):
+    list_display = ("name", "description", "created_at")
+    search_fields = ("name", "description")
+    readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    ordering = ("name",)
+
+
+@admin.register(InsuranceType)
+class InsuranceTypeAdmin(SoftDeleteImportExportAdmin):
+    list_display = ("name", "description", "created_at")
+    search_fields = ("name", "description")
+    readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    ordering = ("name",)

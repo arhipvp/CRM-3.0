@@ -1,16 +1,18 @@
 import {
   ActivityLog,
+  ChatMessage,
   Client,
   Deal,
   DealStatus,
   FinancialRecord,
+  InsuranceCompany,
+  InsuranceType,
   Payment,
   PaymentStatus,
   Policy,
   Quote,
   Task,
   User,
-  ChatMessage,
 } from './types';
 
 const envBase = import.meta.env.VITE_API_URL;
@@ -240,13 +242,33 @@ const mapClient = (raw: any): Client => ({
 const mapQuote = (raw: any): Quote => ({
   id: raw.id,
   dealId: raw.deal,
-  insurer: raw.insurer,
-  insuranceType: raw.insurance_type,
+  insuranceCompanyId: raw.insurance_company,
+  insuranceCompany: raw.insurance_company_name ?? raw.insurer ?? "",
+  insuranceTypeId: raw.insurance_type,
+  insuranceType: raw.insurance_type_name ?? raw.insurance_type ?? "",
   sumInsured: raw.sum_insured,
   premium: raw.premium,
   deductible: raw.deductible || undefined,
   comments: raw.comments || undefined,
   createdAt: raw.created_at,
+});
+
+const mapInsuranceCompany = (raw: any): InsuranceCompany => ({
+  id: raw.id,
+  name: raw.name,
+  description: raw.description || undefined,
+  createdAt: raw.created_at,
+  updatedAt: raw.updated_at,
+  deletedAt: raw.deleted_at ?? null,
+});
+
+const mapInsuranceType = (raw: any): InsuranceType => ({
+  id: raw.id,
+  name: raw.name,
+  description: raw.description || undefined,
+  createdAt: raw.created_at,
+  updatedAt: raw.updated_at,
+  deletedAt: raw.deleted_at ?? null,
 });
 
 const mapDeal = (raw: any): Deal => ({
@@ -382,6 +404,22 @@ export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/users/${qs}`);
   return unwrapList(payload).map(mapUser);
+}
+
+export async function fetchInsuranceCompanies(
+  filters?: FilterParams
+): Promise<InsuranceCompany[]> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/insurance_companies/${qs}`);
+  return unwrapList(payload).map(mapInsuranceCompany);
+}
+
+export async function fetchInsuranceTypes(
+  filters?: FilterParams
+): Promise<InsuranceType[]> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/insurance_types/${qs}`);
+  return unwrapList(payload).map(mapInsuranceType);
 }
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
@@ -590,8 +628,8 @@ export async function updatePayment(
 
 export async function createQuote(data: {
   dealId: string;
-  insurer: string;
-  insuranceType: string;
+  insuranceCompanyId: string;
+  insuranceTypeId: string;
   sumInsured: number;
   premium: number;
   deductible?: string;
@@ -601,8 +639,8 @@ export async function createQuote(data: {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
-      insurer: data.insurer,
-      insurance_type: data.insuranceType,
+      insurance_company: data.insuranceCompanyId,
+      insurance_type: data.insuranceTypeId,
       sum_insured: data.sumInsured,
       premium: data.premium,
       deductible: data.deductible,

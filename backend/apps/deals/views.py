@@ -5,8 +5,20 @@ from rest_framework import permissions, viewsets
 from rest_framework.permissions import AllowAny
 
 from .filters import DealFilterSet
-from .models import ActivityLog, Deal, Quote
-from .serializers import ActivityLogSerializer, DealSerializer, QuoteSerializer
+from .models import (
+    ActivityLog,
+    Deal,
+    InsuranceCompany,
+    InsuranceType,
+    Quote,
+)
+from .serializers import (
+    ActivityLogSerializer,
+    DealSerializer,
+    InsuranceCompanySerializer,
+    InsuranceTypeSerializer,
+    QuoteSerializer,
+)
 
 
 class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -55,7 +67,12 @@ class QuoteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = (
-            Quote.objects.select_related("deal", "deal__client")
+            Quote.objects.select_related(
+                "deal",
+                "deal__client",
+                "insurance_company",
+                "insurance_type",
+            )
             .all()
             .order_by("-created_at")
         )
@@ -74,6 +91,18 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+
+class InsuranceCompanyViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = InsuranceCompanySerializer
+    queryset = InsuranceCompany.objects.order_by("name")
+    pagination_class = None
+
+
+class InsuranceTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = InsuranceTypeSerializer
+    queryset = InsuranceType.objects.order_by("name")
+    pagination_class = None
 
 
 class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):

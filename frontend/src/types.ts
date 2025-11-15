@@ -22,13 +22,33 @@ export interface Client {
 export interface Quote {
   id: string;
   dealId: string;
-  insurer: string;
+  insuranceCompanyId: string;
+  insuranceCompany: string;
+  insuranceTypeId: string;
   insuranceType: string;
-  sumInsured: string;
-  premium: string;
+  sumInsured: number;
+  premium: number;
   deductible?: string;
   comments?: string;
   createdAt: string;
+}
+
+export interface InsuranceCompany {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface InsuranceType {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
 }
 
 export interface Document {

@@ -4,6 +4,50 @@ from django.db import models
 from django.utils import timezone
 
 
+class InsuranceCompany(SoftDeleteModel):
+    """Справочник страховых компаний для расчетов."""
+
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Название страховой компании",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Дополнительная информация о компании",
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Страховая компания"
+        verbose_name_plural = "Страховые компании"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class InsuranceType(SoftDeleteModel):
+    """Справочник видов страхования."""
+
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Наименование вида страхования",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Дополнительное описание типа страхования",
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Вид страхования"
+        verbose_name_plural = "Виды страхования"
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Deal(SoftDeleteModel):
     """Сделка и её основные атрибуты."""
 
@@ -74,8 +118,18 @@ class Quote(SoftDeleteModel):
     deal = models.ForeignKey(
         "deals.Deal", related_name="quotes", on_delete=models.CASCADE
     )
-    insurer = models.CharField(max_length=255, help_text="Страховая компания")
-    insurance_type = models.CharField(max_length=120, help_text="Тип страхования")
+    insurance_company = models.ForeignKey(
+        "deals.InsuranceCompany",
+        related_name="quotes",
+        on_delete=models.PROTECT,
+        help_text="Страховая компания",
+    )
+    insurance_type = models.ForeignKey(
+        "deals.InsuranceType",
+        related_name="quotes",
+        on_delete=models.PROTECT,
+        help_text="Тип страхования",
+    )
     sum_insured = models.DecimalField(
         max_digits=14, decimal_places=2, help_text="Страховая сумма"
     )
@@ -89,7 +143,9 @@ class Quote(SoftDeleteModel):
         verbose_name_plural = "Расчеты"
 
     def __str__(self) -> str:
-        return f"{self.insurance_type} — {self.insurer}"
+        type_name = self.insurance_type.name if self.insurance_type else "—"
+        company_name = self.insurance_company.name if self.insurance_company else "—"
+        return f"{type_name} — {company_name}"
 
 
 class ActivityLog(models.Model):

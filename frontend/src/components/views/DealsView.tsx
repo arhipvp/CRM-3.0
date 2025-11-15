@@ -641,33 +641,43 @@ export const DealsView: React.FC<DealsViewProps> = ({
         <div className="space-y-3">
           {quotes.map((quote) => (
             <div key={quote.id} className="border border-slate-200 rounded-xl p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_auto]">
+                <div className="space-y-1">
                   <p className="text-sm font-semibold text-slate-900">{quote.insuranceType}</p>
-                  <p className="text-xs text-slate-500 mt-1">{quote.insurer}</p>
+                  <p className="text-xs text-slate-500">{quote.insuranceCompany || '—'}</p>
+                  <p className="text-xs text-slate-400">
+                    Добавлен {formatDate(quote.createdAt)}
+                  </p>
                 </div>
-                <button
-                  className="text-xs text-slate-400 hover:text-red-500"
-                  onClick={() => onDeleteQuote(selectedDeal.id, quote.id).catch(() => undefined)}
-                >
-                  Удалить
-                </button>
+                <div className="flex items-start justify-end">
+                  <button
+                    className="text-xs text-slate-400 hover:text-red-500"
+                    onClick={() => onDeleteQuote(selectedDeal.id, quote.id).catch(() => undefined)}
+                  >
+                    Удалить
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-slate-600 mt-3">
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-slate-600">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Страховая сумма</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                    Страховая сумма
+                  </p>
                   <p className="font-semibold">{formatCurrency(quote.sumInsured)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Премия</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Премия</p>
                   <p className="font-semibold">{formatCurrency(quote.premium)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Франшиза</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Франшиза</p>
                   <p className="font-semibold">{quote.deductible || '—'}</p>
                 </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Комментарии</p>
+                  <p className="font-semibold">{quote.comments || '—'}</p>
+                </div>
               </div>
-              {quote.comments && <p className="text-sm text-slate-500 mt-3">{quote.comments}</p>}
             </div>
           ))}
         </div>

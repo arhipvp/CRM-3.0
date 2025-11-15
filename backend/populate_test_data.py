@@ -8,7 +8,13 @@ import uuid
 
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
-from apps.deals.models import ActivityLog, Deal, Quote
+from apps.deals.models import (
+    ActivityLog,
+    Deal,
+    InsuranceCompany,
+    InsuranceType,
+    Quote,
+)
 from apps.documents.models import Document
 from apps.finances.models import FinancialRecord, Payment
 from apps.notes.models import Note
@@ -108,10 +114,14 @@ print("6. Создание котировок...")
 quotes = []
 for i, deal in enumerate(deals):
     for j in range(2):
+        company_name = "Strahovaya kompaniya #{}".format((i + j) % 3 + 1)
+        company, _ = InsuranceCompany.objects.get_or_create(name=company_name)
+        type_name = ["liability", "property", "auto", "health"][j % 4]
+        insurance_type, _ = InsuranceType.objects.get_or_create(name=type_name)
         quote = Quote.objects.create(
             deal=deal,
-            insurer="Strahovaya kompaniya #{}".format((i + j) % 3 + 1),
-            insurance_type=["liability", "property", "auto", "health"][j % 4],
+            insurance_company=company,
+            insurance_type=insurance_type,
             sum_insured=500000 + (i + j) * 50000,
             premium=50000 + (i + j) * 10000,
             deductible="10%" if j == 0 else "20%",

@@ -1,6 +1,12 @@
 from apps.chat.views import ChatMessageViewSet
 from apps.clients.views import ClientViewSet
-from apps.deals.views import ActivityLogViewSet, DealViewSet, QuoteViewSet
+from apps.deals.views import (
+    ActivityLogViewSet,
+    DealViewSet,
+    InsuranceCompanyViewSet,
+    InsuranceTypeViewSet,
+    QuoteViewSet,
+)
 from apps.documents.views import DocumentViewSet
 from apps.finances.views import FinancialRecordViewSet, PaymentViewSet
 from apps.notes.views import NoteViewSet
@@ -20,6 +26,12 @@ router.register("clients", ClientViewSet, basename="client")
 router.register("deals", DealViewSet, basename="deal")
 router.register("quotes", QuoteViewSet, basename="quote")
 router.register("activity_logs", ActivityLogViewSet, basename="activity_log")
+router.register(
+    "insurance_companies",
+    InsuranceCompanyViewSet,
+    basename="insurance_company",
+)
+router.register("insurance_types", InsuranceTypeViewSet, basename="insurance_type")
 router.register("audit_logs", AuditLogViewSet, basename="audit_log")
 router.register("chat_messages", ChatMessageViewSet, basename="chat_message")
 router.register("tasks", TaskViewSet, basename="task")

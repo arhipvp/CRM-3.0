@@ -1,12 +1,67 @@
-﻿from rest_framework import serializers
+from rest_framework import serializers
 
-from .models import ActivityLog, Deal, Quote
+from .models import (
+    ActivityLog,
+    Deal,
+    InsuranceCompany,
+    InsuranceType,
+    Quote,
+)
 
 
 class QuoteSerializer(serializers.ModelSerializer):
+    insurance_company_name = serializers.CharField(
+        source="insurance_company.name", read_only=True
+    )
+    insurance_type_name = serializers.CharField(
+        source="insurance_type.name", read_only=True
+    )
+
     class Meta:
         model = Quote
-        fields = "__all__"
+        fields = (
+            "id",
+            "deal",
+            "insurance_company",
+            "insurance_type",
+            "insurance_company_name",
+            "insurance_type_name",
+            "sum_insured",
+            "premium",
+            "deductible",
+            "comments",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+
+
+class InsuranceCompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InsuranceCompany
+        fields = (
+            "id",
+            "name",
+            "description",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+
+
+class InsuranceTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InsuranceType
+        fields = (
+            "id",
+            "name",
+            "description",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
         read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
 
 
