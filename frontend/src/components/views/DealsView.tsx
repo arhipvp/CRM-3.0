@@ -53,6 +53,7 @@ const QUICK_NEXT_CONTACT_OPTIONS = [
   { label: 'Через 5 дней', days: 5 },
 ] as const;
 
+
 const getDatePlusDays = (days: number) => {
   const target = new Date();
   target.setDate(target.getDate() + days);
@@ -133,6 +134,7 @@ interface DealsViewProps {
   financialRecords: FinancialRecord[];
   tasks: Task[];
   users: User[];
+  currentUser: User;
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
   onUpdateStatus: (dealId: string, status: DealStatus) => Promise<void>;
@@ -151,7 +153,7 @@ interface DealsViewProps {
   onUploadDocument: (dealId: string, file: File) => Promise<void>;
   onDeleteDocument: (documentId: string) => Promise<void>;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
-  onSendChatMessage: (dealId: string, authorName: string, body: string) => Promise<void>;
+  onSendChatMessage: (dealId: string, body: string) => Promise<void>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchActivityLogs: (dealId: string) => Promise<ActivityLog[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
@@ -192,6 +194,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDeleteTask,
   dealSearch,
   onDealSearchChange,
+  currentUser,
 }) => {
   // Сортируем сделки по дате следующего контакта (ближайшие сверху)
   const sortedDeals = useMemo(() => {
@@ -814,8 +817,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
     return (
       <ChatBox
         messages={chatMessages}
-        onSendMessage={async (authorName, body) => {
-          await onSendChatMessage(selectedDeal.id, authorName, body);
+        currentUser={currentUser}
+        onSendMessage={async (body) => {
+          await onSendChatMessage(selectedDeal.id, body);
           await loadChatMessages();
         }}
         onDeleteMessage={async (messageId) => {

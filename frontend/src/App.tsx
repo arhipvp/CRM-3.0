@@ -700,6 +700,7 @@ const AppContent: React.FC = () => {
             financialRecords={financialRecords}
             tasks={tasks}
             users={users}
+            currentUser={currentUser}
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
             dealSearch={dealSearch}

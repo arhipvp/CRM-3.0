@@ -1,15 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChatMessage } from '../types';
+import { User, ChatMessage } from '../types';
 
 interface ChatBoxProps {
   messages: ChatMessage[];
-  onSendMessage: (authorName: string, body: string) => Promise<void>;
+  currentUser: User;
+  onSendMessage: (body: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
 }
 
-export const ChatBox: React.FC<ChatBoxProps> = ({ messages, onSendMessage, onDeleteMessage }) => {
+const getUserDisplayName = (user: User) => {
+  const parts = [user.firstName, user.lastName].filter(Boolean);
+  return parts.length ? parts.join(' ') : user.username;
+};
+
+export const ChatBox: React.FC<ChatBoxProps> = ({
+  messages,
+  currentUser,
+  onSendMessage,
+  onDeleteMessage,
+}) => {
   const [newMessage, setNewMessage] = useState('');
-  const [authorName, setAuthorName] = useState('Гость');
   const [isSubmitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -27,7 +37,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ messages, onSendMessage, onDel
     setSubmitting(true);
 
     try {
-      await onSendMessage(authorName, newMessage.trim());
+      await onSendMessage(newMessage.trim());
       setNewMessage('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
@@ -87,15 +97,9 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ messages, onSendMessage, onDel
       <div className="border-t border-slate-200 p-4 bg-white space-y-3">
         {error && <p className="text-xs text-red-500 bg-red-50 p-2 rounded">{error}</p>}
         <form onSubmit={handleSendMessage} className="space-y-2">
-          <input
-            type="text"
-            value={authorName}
-            onChange={(e) => setAuthorName(e.target.value)}
-            placeholder="Ваше имя"
-            maxLength={255}
-            disabled={isSubmitting}
-            className="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:border-sky-500 focus:ring-sky-500"
-          />
+          <div className="text-xs text-slate-500">
+            Отправляете как <span className="font-semibold text-slate-700">{getUserDisplayName(currentUser)}</span>
+          </div>
           <div className="flex gap-2">
             <textarea
               value={newMessage}
