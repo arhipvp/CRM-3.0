@@ -274,6 +274,10 @@ const mapDeal = (raw: any): Deal => ({
         created_at: d.created_at,
       }))
     : [],
+  seller: raw.seller,
+  executor: raw.executor,
+  sellerName: raw.seller_name ?? null,
+  executorName: raw.executor_name ?? null,
 });
 
 const mapPolicy = (raw: any): Policy => ({

@@ -46,6 +46,44 @@ type DealTabId = (typeof DEAL_TABS)[number]['id'];
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
+const QUICK_NEXT_CONTACT_OPTIONS = [
+  { label: 'Завтра', days: 1 },
+  { label: 'Через 2 дня', days: 2 },
+  { label: 'Через 5 дней', days: 5 },
+] as const;
+
+const getDatePlusDays = (days: number) => {
+  const target = new Date();
+  target.setDate(target.getDate() + days);
+  const year = target.getFullYear();
+  const month = String(target.getMonth() + 1).padStart(2, '0');
+  const day = String(target.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getDeadlineTone = (value?: string | null) => {
+  if (!value) {
+    return 'text-slate-400';
+  }
+  const today = new Date();
+  const deadline = new Date(value);
+  const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) {
+    return 'text-red-700';
+  }
+  if (diffDays <= 3) {
+    return 'text-red-600';
+  }
+  if (diffDays <= 7) {
+    return 'text-orange-600';
+  }
+  if (diffDays <= 14) {
+    return 'text-orange-500';
+  }
+  return 'text-slate-500';
+};
+
 const formatCurrency = (value?: string) => {
   const amount = Number(value ?? 0);
   return amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
@@ -146,6 +184,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [creatingFinancialRecordForPaymentId, setCreatingFinancialRecordForPaymentId] = useState<
     string | null
   >(null);
+  const [savingDateField, setSavingDateField] = useState<
+    'nextContactDate' | 'expectedClose' | null
+  >(null);
 
   useEffect(() => {
     setActiveTab('overview');
@@ -189,6 +230,44 @@ export const DealsView: React.FC<DealsViewProps> = ({
     } finally {
       setIsActivityLoading(false);
     }
+  };
+
+  const handleInlineDateChange = async (
+    field: 'nextContactDate' | 'expectedClose',
+    rawValue: string,
+    options?: { selectTopDeal?: boolean }
+  ) => {
+    if (!selectedDeal) return;
+    const value = rawValue || null;
+
+    const payload: EditDealFormValues = {
+      title: selectedDeal.title,
+      description: selectedDeal.description || '',
+      clientId: selectedDeal.clientId,
+      nextContactDate: field === 'nextContactDate' ? value : selectedDeal.nextContactDate ?? null,
+      expectedClose: field === 'expectedClose' ? value : selectedDeal.expectedClose ?? null,
+    };
+
+    setSavingDateField(field);
+    try {
+      await onUpdateDeal(selectedDeal.id, payload);
+      if (options?.selectTopDeal) {
+        const topDeal = sortedDeals[0];
+        if (topDeal && topDeal.id !== selectedDeal.id) {
+          onSelectDeal(topDeal.id);
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка обновления даты сделки:', err);
+    } finally {
+      setSavingDateField(null);
+    }
+  };
+
+  const handleQuickNextContact = async (days: number) => {
+    await handleInlineDateChange('nextContactDate', getDatePlusDays(days), {
+      selectTopDeal: true,
+    });
   };
 
   const relatedPolicies = useMemo(
@@ -602,7 +681,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'overview':
+      case 'overview': {
+        const expectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
@@ -617,15 +697,54 @@ export const DealsView: React.FC<DealsViewProps> = ({
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-                <p className="text-lg font-semibold text-slate-900 mt-1">
-                  {formatDate(selectedDeal?.nextContactDate)}
-                </p>
+                <div className="mt-1 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="date"
+                      value={selectedDeal?.nextContactDate ?? ''}
+                      onChange={(event) =>
+                        handleInlineDateChange('nextContactDate', event.target.value)
+                      }
+                      disabled={savingDateField === 'nextContactDate'}
+                      className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+                    />
+                    {savingDateField === 'nextContactDate' && (
+                      <span className="text-xs text-slate-500">Сохраняем...</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+                    {QUICK_NEXT_CONTACT_OPTIONS.map((option) => (
+                      <button
+                        key={option.label}
+                        type="button"
+                        onClick={() => handleQuickNextContact(option.days)}
+                        disabled={savingDateField === 'nextContactDate'}
+                        className="rounded-full border border-slate-300 px-3 py-1 transition hover:border-sky-400 hover:text-sky-600 disabled:opacity-50"
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">План закрытия</p>
-                <p className="text-lg font-semibold text-slate-900 mt-1">
-                  {formatDate(selectedDeal?.expectedClose)}
+                <p className={`text-xs uppercase tracking-wide ${expectedCloseTone}`}>
+                  Застраховать не позднее чем
                 </p>
+                <div className="mt-1 flex items-center gap-3">
+                  <input
+                    type="date"
+                    value={selectedDeal?.expectedClose ?? ''}
+                    onChange={(event) =>
+                      handleInlineDateChange('expectedClose', event.target.value)
+                    }
+                    disabled={savingDateField === 'expectedClose'}
+                    className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+                  />
+                  {savingDateField === 'expectedClose' && (
+                    <span className="text-xs text-slate-500">Сохраняем...</span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
@@ -637,6 +756,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
           </div>
         );
+      }
       case 'tasks':
         return renderTasksTab();
       case 'policies':
@@ -683,10 +803,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
           />
         </div>
         <div className="flex-1 overflow-y-auto">
-          {sortedDeals.map((deal) => {
+{sortedDeals.map((deal) => {
             const isOverdue = deal.nextContactDate
               ? new Date(deal.nextContactDate) < new Date()
               : false;
+            const deadlineTone = getDeadlineTone(deal.expectedClose);
             return (
               <button
                 key={deal.id}
@@ -698,6 +819,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
                 <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
                 <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'}</p>
+                <p className={`text-xs mt-1 ${deadlineTone}`}>
+                  Застраховать не позднее чем: {formatDate(deal.expectedClose)}
+                </p>
                 <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
                   <span>Контакт: {formatDate(deal.nextContactDate)}</span>
                   {deal.nextContactDate && (
@@ -727,6 +851,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 <h2 className="text-2xl font-semibold text-slate-900">{selectedDeal.title}</h2>
                 <p className="text-sm text-slate-500 mt-1">
                   {selectedClient?.name || 'Клиент не выбран'}
+                </p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Продавец: {selectedDeal.sellerName || '—'} · Исполнитель: {selectedDeal.executorName || '—'}
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">

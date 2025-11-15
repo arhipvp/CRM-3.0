@@ -60,6 +60,10 @@ export interface Deal {
   createdAt: string;
   quotes?: Quote[];
   documents?: Document[];
+  seller?: string | null;
+  executor?: string | null;
+  sellerName?: string | null;
+  executorName?: string | null;
 }
 
 // Policy type

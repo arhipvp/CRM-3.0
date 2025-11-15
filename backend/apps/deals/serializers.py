@@ -60,6 +60,8 @@ class DealSerializer(serializers.ModelSerializer):
     stage_name = serializers.CharField(
         required=False, allow_blank=True, allow_null=True, default=""
     )
+    seller_name = serializers.SerializerMethodField(read_only=True)
+    executor_name = serializers.SerializerMethodField(read_only=True)
     quotes = QuoteSerializer(many=True, read_only=True)
     documents = DocumentBriefSerializer(many=True, read_only=True)
 
@@ -68,3 +70,16 @@ class DealSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ("id", "created_at", "updated_at")
         extra_kwargs = {}
+
+    def get_seller_name(self, obj: Deal) -> str | None:
+        return self._get_user_display(obj.seller)
+
+    def get_executor_name(self, obj: Deal) -> str | None:
+        return self._get_user_display(obj.executor)
+
+    @staticmethod
+    def _get_user_display(user) -> str | None:
+        if not user:
+            return None
+        full_name = f"{user.first_name} {user.last_name}".strip()
+        return full_name or user.username
