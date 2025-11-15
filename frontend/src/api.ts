@@ -9,6 +9,7 @@ import {
   Policy,
   Quote,
   Task,
+  User,
   ChatMessage,
 } from './types';
 
@@ -280,6 +281,18 @@ const mapDeal = (raw: any): Deal => ({
   executorName: raw.executor_name ?? null,
 });
 
+const mapUser = (raw: any): User => ({
+  id: String(raw.id),
+  username: raw.username,
+  roles: Array.isArray(raw.roles)
+    ? raw.roles
+    : Array.isArray(raw.user_roles)
+    ? raw.user_roles
+        .map((ur: any) => ur.role?.name)
+        .filter((name) => typeof name === 'string')
+    : [],
+});
+
 const mapPolicy = (raw: any): Policy => ({
   id: raw.id,
   number: raw.number,
@@ -336,6 +349,8 @@ const mapTask = (raw: any): Task => ({
   title: raw.title,
   description: raw.description,
   dealId: raw.deal,
+  assignee: raw.assignee ? String(raw.assignee) : null,
+  assigneeName: raw.assignee_name ?? raw.assignee_username ?? null,
   status: raw.status,
   priority: raw.priority,
   dueAt: raw.due_at,
@@ -361,6 +376,12 @@ export async function fetchClients(filters?: FilterParams): Promise<Client[]> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/clients/${qs}`);
   return unwrapList(payload).map(mapClient);
+}
+
+export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
+  const qs = buildQueryString(filters || {});
+  const payload = await request<any>(`/users/${qs}`);
+  return unwrapList(payload).map(mapUser);
 }
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
@@ -774,17 +795,23 @@ export async function createTask(data: {
   priority: string;
   dueAt?: string | null;
   status?: string;
+  assigneeId?: string | null;
 }): Promise<Task> {
+  const body: Record<string, unknown> = {
+    deal: data.dealId,
+    title: data.title,
+    description: data.description || '',
+    priority: data.priority,
+    due_at: data.dueAt || null,
+    status: data.status || 'todo',
+  };
+  if (data.assigneeId) {
+    body.assignee = data.assigneeId;
+  }
+
   const payload = await request<any>('/tasks/', {
     method: 'POST',
-    body: JSON.stringify({
-      deal: data.dealId,
-      title: data.title,
-      description: data.description || '',
-      priority: data.priority,
-      due_at: data.dueAt || null,
-      status: data.status || 'todo',
-    }),
+    body: JSON.stringify(body),
   });
   return mapTask(payload);
 }
@@ -797,17 +824,23 @@ export async function updateTask(
     priority: string;
     dueAt: string | null;
     status: string;
+    assigneeId?: string | null;
   }>
 ): Promise<Task> {
+  const body: Record<string, unknown> = {
+    title: data.title,
+    description: data.description,
+    priority: data.priority,
+    due_at: data.dueAt,
+    status: data.status,
+  };
+  if ('assigneeId' in data) {
+    body.assignee = data.assigneeId === '' ? null : data.assigneeId;
+  }
+
   const payload = await request<any>(`/tasks/${id}/`, {
     method: 'PATCH',
-    body: JSON.stringify({
-      title: data.title,
-      description: data.description,
-      priority: data.priority,
-      due_at: data.dueAt,
-      status: data.status,
-    }),
+    body: JSON.stringify(body),
   });
   return mapTask(payload);
 }

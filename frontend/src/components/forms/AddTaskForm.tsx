@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Task, TaskPriority, TaskStatus } from '../../types';
+import { Task, TaskPriority, TaskStatus, User } from '../../types';
 
 export interface AddTaskFormValues {
   title: string;
   description?: string;
+  assigneeId?: string | null;
   priority: TaskPriority;
   dueAt?: string | null;
   status?: TaskStatus;
@@ -12,14 +13,23 @@ export interface AddTaskFormValues {
 interface AddTaskFormProps {
   dealId?: string;
   task?: Task;
+  users: User[];
+  defaultAssigneeId?: string | null;
   onSubmit: (data: AddTaskFormValues) => Promise<void>;
   onCancel: () => void;
 }
 
-export function AddTaskForm({ task, onSubmit, onCancel }: AddTaskFormProps) {
+export function AddTaskForm({
+  task,
+  users,
+  defaultAssigneeId,
+  onSubmit,
+  onCancel,
+}: AddTaskFormProps) {
   const [formData, setFormData] = useState<AddTaskFormValues>({
     title: task?.title || '',
     description: task?.description || '',
+    assigneeId: task?.assignee ?? defaultAssigneeId ?? null,
     priority: task?.priority || 'normal',
     dueAt: task?.dueAt || null,
     status: task?.status || 'todo',
@@ -85,6 +95,29 @@ export function AddTaskForm({ task, onSubmit, onCancel }: AddTaskFormProps) {
           rows={3}
           disabled={loading}
         />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="assigneeId">Исполнитель</label>
+        <select
+          id="assigneeId"
+          name="assigneeId"
+          value={formData.assigneeId ?? ''}
+          onChange={handleChange}
+          disabled={loading}
+        >
+          <option value="">Не назначен</option>
+          {users.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.username}
+            </option>
+          ))}
+        </select>
+        {!task && (
+          <p className="text-xs text-slate-400 mt-1">
+            По умолчанию будет назначен исполнитель сделки.
+          </p>
+        )}
       </div>
 
       <div className="form-row">

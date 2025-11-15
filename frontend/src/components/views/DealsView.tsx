@@ -8,6 +8,7 @@ import {
   Payment,
   Policy,
   Task,
+  User,
   ChatMessage,
 } from '../../types';
 import { FileUploadManager } from '../FileUploadManager';
@@ -96,6 +97,7 @@ interface DealsViewProps {
   payments: Payment[];
   financialRecords: FinancialRecord[];
   tasks: Task[];
+  users: User[];
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
   onUpdateStatus: (dealId: string, status: DealStatus) => Promise<void>;
@@ -131,6 +133,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   payments,
   financialRecords,
   tasks,
+  users,
   selectedDealId,
   onSelectDeal,
   onUpdateStatus,
@@ -179,6 +182,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [completingTaskIds, setCompletingTaskIds] = useState<string[]>([]);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
   const [creatingFinancialRecordForPaymentId, setCreatingFinancialRecordForPaymentId] = useState<
@@ -216,6 +220,20 @@ export const DealsView: React.FC<DealsViewProps> = ({
       console.error('Ошибка загрузки сообщений:', err);
     } finally {
       setIsChatLoading(false);
+    }
+  };
+
+  const handleMarkTaskDone = async (taskId: string) => {
+    if (completingTaskIds.includes(taskId)) {
+      return;
+    }
+    setCompletingTaskIds((prev) => [...prev, taskId]);
+    try {
+      await onUpdateTask(taskId, { status: 'done' });
+    } catch (err) {
+      console.error('Ошибка отметки задачи как выполненной:', err);
+    } finally {
+      setCompletingTaskIds((prev) => prev.filter((id) => id !== taskId));
     }
   };
 
@@ -285,6 +303,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const quotes = selectedDeal?.quotes ?? [];
 
+  const displayedTasks = useMemo(() => {
+    const active = relatedTasks.filter((task) => task.status !== 'done');
+    const done = relatedTasks.filter((task) => task.status === 'done');
+    return [...active, ...done];
+  }, [relatedTasks]);
+
   const renderTasksTab = () => {
     if (!selectedDeal) {
       return null;
@@ -316,13 +340,25 @@ export const DealsView: React.FC<DealsViewProps> = ({
           </button>
         </div>
         <ul className="divide-y divide-slate-100">
-          {relatedTasks.map((task) => (
+          {displayedTasks.map((task) => (
             <li key={task.id} className="py-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <p className="font-semibold text-slate-900 text-sm">{task.title}</p>
+                  <p
+                    className={`font-semibold text-sm ${
+                      task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-900'
+                    }`}
+                  >
+                    {task.title}
+                  </p>
                   {task.description && (
-                    <p className="text-sm text-slate-500 mt-1">{task.description}</p>
+                    <p
+                      className={`text-sm mt-1 ${
+                        task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-500'
+                      }`}
+                    >
+                      {task.description}
+                    </p>
                   )}
                   <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-4">
                     <span>Статус: {task.status}</span>
@@ -334,6 +370,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
                     <span className="text-xs font-semibold text-slate-500 uppercase bg-slate-100 rounded-full px-2 py-1 whitespace-nowrap">
                       {task.priority}
                     </span>
+                  )}
+                  {task.status !== 'done' && (
+                    <button
+                      onClick={() => handleMarkTaskDone(task.id)}
+                      disabled={completingTaskIds.includes(task.id)}
+                      className="text-xs text-emerald-600 hover:text-emerald-800 whitespace-nowrap"
+                    >
+                      {completingTaskIds.includes(task.id) ? 'Сохраняем...' : 'Сделано'}
+                    </button>
                   )}
                   <button
                     onClick={() => setEditingTaskId(task.id)}
@@ -969,6 +1014,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             <div className="p-6">
               <AddTaskForm
                 dealId={selectedDeal.id}
+                users={users}
+                defaultAssigneeId={selectedDeal.executor ?? null}
                 onSubmit={async (data) => {
                   await onCreateTask(selectedDeal.id, data);
                   setIsCreatingTask(false);
@@ -998,6 +1045,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 <AddTaskForm
                   dealId={selectedDeal.id}
                   task={relatedTasks.find((t) => t.id === editingTaskId)}
+                  users={users}
+                  defaultAssigneeId={selectedDeal.executor ?? null}
                   onSubmit={async (data) => {
                     await onUpdateTask(editingTaskId, data);
                     setEditingTaskId(null);

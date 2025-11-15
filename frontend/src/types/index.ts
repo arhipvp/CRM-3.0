@@ -127,6 +127,8 @@ export interface Task {
   title: string;
   description?: string;
   dealId: string;
+  assignee?: string | null;
+  assigneeName?: string | null;
   status: string;
   priority: string;
   dueAt?: string | null;

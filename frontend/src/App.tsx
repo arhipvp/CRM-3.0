@@ -41,6 +41,7 @@ import {
   fetchPolicies,
   fetchTasks,
   fetchFinancialRecords,
+  fetchUsers,
   updateDealStatus,
   updateDeal,
   updatePayment,
@@ -85,6 +86,7 @@ const AppContent: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [dealSearch, setDealSearch] = useState('');
   const searchInitialized = useRef(false);
@@ -113,14 +115,21 @@ const AppContent: React.FC = () => {
     setError(null);
     try {
       const dealsPromise = refreshDeals();
-      const [clientsData, policiesData, paymentsData, tasksData, financialRecordsData] =
-        await Promise.all([
-          fetchClients(),
-          fetchPolicies(),
-          fetchPayments(),
-          fetchTasks(),
-          fetchFinancialRecords(),
-        ]);
+      const [
+        clientsData,
+        policiesData,
+        paymentsData,
+        tasksData,
+        financialRecordsData,
+        usersData,
+      ] = await Promise.all([
+        fetchClients(),
+        fetchPolicies(),
+        fetchPayments(),
+        fetchTasks(),
+        fetchFinancialRecords(),
+        fetchUsers(),
+      ]);
       await dealsPromise;
       console.log('Data loaded successfully:', {
         clientsData,
@@ -134,6 +143,7 @@ const AppContent: React.FC = () => {
       setPayments(paymentsData);
       setTasks(tasksData);
       setFinancialRecords(financialRecordsData);
+      setUsers(usersData);
     } catch (err) {
       console.error('Data loading error:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить данные из backend');
@@ -560,6 +570,7 @@ const AppContent: React.FC = () => {
     setPayments([]);
     setFinancialRecords([]);
     setTasks([]);
+    setUsers([]);
   };
 
   const handleLoginSuccess = async () => {
@@ -604,6 +615,7 @@ const AppContent: React.FC = () => {
             payments={payments}
             financialRecords={financialRecords}
             tasks={tasks}
+            users={users}
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
             dealSearch={dealSearch}
