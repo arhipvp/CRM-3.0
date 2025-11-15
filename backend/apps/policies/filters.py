@@ -17,8 +17,13 @@ class PolicyFilterSet(django_filters.FilterSet):
     Also supports ordering by start_date and created_at.
     """
 
+    insurance_company = django_filters.CharFilter(
+        field_name="insurance_company__name",
+        lookup_expr="icontains",
+        label="Insurance Company (contains)",
+    )
     insurance_type = django_filters.CharFilter(
-        field_name="insurance_type",
+        field_name="insurance_type__name",
         lookup_expr="icontains",
         label="Insurance Type (contains)",
     )
@@ -35,11 +40,14 @@ class PolicyFilterSet(django_filters.FilterSet):
             ("updated_at", "updated_at"),
             ("start_date", "start_date"),
             ("end_date", "end_date"),
-            ("amount", "amount"),
         ),
         label="Sort by",
     )
 
+    is_vehicle = django_filters.BooleanFilter(
+        field_name="is_vehicle", label="Vehicle policy"
+    )
+
     class Meta:
         model = Policy
-        fields = ("insurance_type", "status", "deal")
+        fields = ("insurance_company", "insurance_type", "status", "deal", "is_vehicle")

@@ -443,7 +443,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
                     <span>
                       Период: {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                     </span>
-                    <span>Сумма: {formatCurrency(policy.amount)}</span>
+                    {policy.isVehicle && (
+                      <>
+                        <span>Марка: {policy.brand || '—'}</span>
+                        <span>Модель: {policy.model || '—'}</span>
+                        <span>VIN: {policy.vin || '—'}</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <button

@@ -12,8 +12,8 @@ from .serializers import PolicySerializer
 class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = PolicySerializer
     filterset_class = PolicyFilterSet
-    search_fields = ["number", "insurance_company", "insurance_type"]
-    ordering_fields = ["created_at", "updated_at", "start_date", "end_date", "amount"]
+    search_fields = ["number", "insurance_company__name", "insurance_type__name"]
+    ordering_fields = ["created_at", "updated_at", "start_date", "end_date", "brand", "model"]
     ordering = ["-created_at"]
 
     def get_queryset(self):

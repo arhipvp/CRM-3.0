@@ -3,58 +3,86 @@ from django.db import models
 
 
 class Policy(SoftDeleteModel):
-    """Страховой полис, привязанный к сделке"""
+    """Insurance policy bound to a deal."""
 
-    # Основная информация
-    number = models.CharField(max_length=50, help_text="Номер полиса", unique=True)
-    insurance_company = models.CharField(
-        max_length=255, help_text="Наименование страховой компании"
+    number = models.CharField(
+        max_length=50, help_text="Policy number", unique=True
     )
-    insurance_type = models.CharField(
-        max_length=120, help_text="Вид страхования (КАСКО, ОСАГО и т.д.)"
+    insurance_company = models.ForeignKey(
+        "deals.InsuranceCompany",
+        related_name="policies",
+        on_delete=models.PROTECT,
+        help_text="Insurance company",
+    )
+    insurance_type = models.ForeignKey(
+        "deals.InsuranceType",
+        related_name="policies",
+        on_delete=models.PROTECT,
+        help_text="Insurance type",
     )
 
-    # Привязка к сделке
     deal = models.ForeignKey(
         "deals.Deal",
         related_name="policies",
         on_delete=models.CASCADE,
-        help_text="Сделка",
+        help_text="Deal",
     )
 
-    # VIN (для автомобильных полисов)
-    vin = models.CharField(max_length=17, blank=True, help_text="VIN автомобиля")
+    is_vehicle = models.BooleanField(
+        default=False, help_text="True when the policy is for a vehicle"
+    )
+    brand = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Vehicle make",
+        verbose_name="Brand",
+    )
+    model = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Vehicle model",
+        verbose_name="Model",
+    )
+    vin = models.CharField(
+        max_length=17,
+        blank=True,
+        help_text="Vehicle VIN (17 characters)",
+    )
 
-    # Даты
+    counterparty = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Контрагент полиса (физическое или юридическое лицо)",
+    )
     start_date = models.DateField(
-        null=True, blank=True, help_text="Дата начала действия"
+        null=True,
+        blank=True,
+        help_text="Policy start date",
     )
     end_date = models.DateField(
-        null=True, blank=True, help_text="Дата окончания действия"
+        null=True,
+        blank=True,
+        help_text="Policy end date",
     )
 
-    # Сумма и статус
-    amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-        help_text="Сумма страховки (в рублях)",
-    )
     status = models.CharField(
         max_length=50,
         default="active",
-        help_text="Статус (active, expired, canceled и т.д.)",
+        help_text="Status (active, expired, canceled etc.)",
     )
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Полис"
-        verbose_name_plural = "Полисы"
+        verbose_name = "Policy"
+        verbose_name_plural = "Policies"
         indexes = [
             models.Index(fields=["number"]),
             models.Index(fields=["deal"]),
             models.Index(fields=["insurance_company"]),
+            models.Index(fields=["insurance_type"]),
         ]
 
     def __str__(self) -> str:
-        return f"Полис {self.number} ({self.insurance_type})"
+        company = self.insurance_company.name if self.insurance_company else "-"
+        type_name = self.insurance_type.name if self.insurance_type else "-"
+        return f"Policy {self.number} ({type_name} - {company})"

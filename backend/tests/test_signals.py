@@ -2,7 +2,7 @@
 
 import pytest
 from apps.clients.models import Client
-from apps.deals.models import Deal
+from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.documents.models import Document
 from apps.finances.models import FinancialRecord, Payment
 from apps.policies.models import Policy
@@ -404,12 +404,13 @@ class TestPolicySignals:
             seller=seller,
             executor=seller,
         )
+        company = InsuranceCompany.objects.create(name="Insurance Co")
+        insurance_type = InsuranceType.objects.create(name="OSAGO")
         policy = Policy.objects.create(
             number="POL123456",
-            insurance_company="Insurance Co",
-            insurance_type="OSAGO",
+            insurance_company=company,
+            insurance_type=insurance_type,
             deal=deal,
-            amount=15000.00,
         )
 
         log = AuditLog.objects.filter(
@@ -429,10 +430,12 @@ class TestPolicySignals:
             seller=seller,
             executor=seller,
         )
+        company = InsuranceCompany.objects.create(name="Insurance Co")
+        insurance_type = InsuranceType.objects.create(name="OSAGO")
         policy = Policy.objects.create(
             number="POL123456",
-            insurance_company="Insurance Co",
-            insurance_type="OSAGO",
+            insurance_company=company,
+            insurance_type=insurance_type,
             deal=deal,
         )
 
@@ -458,10 +461,12 @@ class TestPolicySignals:
             seller=seller,
             executor=seller,
         )
+        company = InsuranceCompany.objects.create(name="Insurance Co")
+        insurance_type = InsuranceType.objects.create(name="OSAGO")
         policy = Policy.objects.create(
             number="POL123456",
-            insurance_company="Insurance Co",
-            insurance_type="OSAGO",
+            insurance_company=company,
+            insurance_type=insurance_type,
             deal=deal,
         )
 

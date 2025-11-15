@@ -30,10 +30,19 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
               <tr key={policy.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-5 py-4 font-semibold text-slate-900">{policy.number}</td>
                 <td className="px-5 py-4 text-slate-600">{policy.insuranceCompany}</td>
-                <td className="px-5 py-4 text-slate-600">{policy.insuranceType}</td>
-                <td className="px-5 py-4 text-slate-600">{deal?.title || 'â€”'}</td>
                 <td className="px-5 py-4 text-slate-600">
-                  {formatDate(policy.startDate)} â€” {formatDate(policy.endDate)}
+                  {policy.insuranceType}
+                  {policy.isVehicle && (
+                    <div className="text-[11px] text-slate-400 mt-2 space-y-1">
+                      <div>Ìàðêà: {policy.brand || '—'}</div>
+                      <div>Ìîäåëü: {policy.model || '—'}</div>
+                      <div>VIN: {policy.vin || '—'}</div>
+                    </div>
+                  )}
+                </td>
+                <td className="px-5 py-4 text-slate-600">{deal?.title || '—'}</td>
+                <td className="px-5 py-4 text-slate-600">
+                  {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                 </td>
                 <td className="px-5 py-4 text-slate-600">{policy.status}</td>
               </tr>

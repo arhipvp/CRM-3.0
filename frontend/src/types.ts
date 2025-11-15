@@ -92,13 +92,18 @@ export interface Deal {
 export interface Policy {
   id: string;
   number: string;
+  insuranceCompanyId: string;
   insuranceCompany: string;
+  insuranceTypeId: string;
   insuranceType: string;
   dealId: string;
+  isVehicle: boolean;
+  brand?: string;
+  model?: string;
   vin?: string;
+  counterparty?: string;
   startDate?: string | null;
   endDate?: string | null;
-  amount: string;
   status: string;
   createdAt: string;
 }

@@ -4,13 +4,25 @@ interface ModalProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  closeOnOverlayClick?: boolean;
 }
 
-export const Modal: React.FC<ModalProps> = ({ title, onClose, children }) => {
+export const Modal: React.FC<ModalProps> = ({
+  title,
+  onClose,
+  children,
+  closeOnOverlayClick = true,
+}) => {
+  const handleOverlayClick = () => {
+    if (closeOnOverlayClick) {
+      onClose();
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
-      onClick={onClose}
+      onClick={handleOverlayClick}
     >
       <div
         className="bg-white rounded-xl shadow-2xl w-full max-w-lg"
@@ -21,9 +33,9 @@ export const Modal: React.FC<ModalProps> = ({ title, onClose, children }) => {
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600"
-            aria-label="Закрыть"
+            aria-label="Р—Р°РєСЂС‹С‚СЊ"
           >
-            ×
+            Р“Г—
           </button>
         </div>
         <div className="p-5">{children}</div>

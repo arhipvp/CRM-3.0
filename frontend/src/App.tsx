@@ -315,20 +315,100 @@ const AppContent: React.FC = () => {
   };
 
   const handleAddPolicy = async (dealId: string, values: PolicyFormValues) => {
+    const {
+      number,
+      insuranceCompanyId,
+      insuranceTypeId,
+      isVehicle,
+      brand,
+      model,
+      vin,
+      startDate,
+      endDate,
+      payments: paymentDrafts = [],
+    } = values;
+
     try {
-      const created = await createPolicy({ dealId, ...values });
+      const created = await createPolicy({
+        dealId,
+        number,
+        insuranceCompanyId,
+        insuranceTypeId,
+        isVehicle,
+        brand,
+        model,
+        vin,
+        startDate,
+        endDate,
+      });
       setPolicies((prev) => [created, ...prev]);
 
-      // Создать платеж, если указано
-      if (values.createPayment && values.paymentAmount) {
+      for (const paymentDraft of paymentDrafts) {
+        const amount = Number(paymentDraft.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          continue;
+        }
+
         const payment = await createPayment({
           dealId,
           policyId: created.id,
-          amount: values.paymentAmount,
-          description: values.paymentDescription || `Платеж по полису ${values.number}`,
-          status: 'planned',
+          amount,
+          description: paymentDraft.description,
+          scheduledDate: paymentDraft.scheduledDate || null,
+          actualDate: paymentDraft.actualDate || null,
+          status: paymentDraft.status || 'planned',
         });
         setPayments((prev) => [payment, ...prev]);
+
+        const createdRecords: FinancialRecord[] = [];
+
+        for (const income of paymentDraft.incomes) {
+          const incomeAmount = Number(income.amount);
+          if (!Number.isFinite(incomeAmount) || incomeAmount <= 0) {
+            continue;
+          }
+
+          const record = await createFinancialRecord({
+            paymentId: payment.id,
+            amount: incomeAmount,
+            date: income.date || null,
+            description: income.description,
+            source: income.source,
+            note: income.note,
+          });
+          createdRecords.push(record);
+        }
+
+        for (const expense of paymentDraft.expenses) {
+          const expenseAmount = Number(expense.amount);
+          if (!Number.isFinite(expenseAmount) || expenseAmount <= 0) {
+            continue;
+          }
+
+          const record = await createFinancialRecord({
+            paymentId: payment.id,
+            amount: -Math.abs(expenseAmount),
+            date: expense.date || null,
+            description: expense.description,
+            source: expense.source,
+            note: expense.note,
+          });
+          createdRecords.push(record);
+        }
+
+        if (createdRecords.length) {
+          setFinancialRecords((prev) => [...createdRecords, ...prev]);
+          setPayments((prev) =>
+            prev.map((existing) =>
+              existing.id === payment.id
+                ? {
+                    ...existing,
+                    financialRecords: [...createdRecords, ...(existing.financialRecords || [])],
+                  }
+                : existing
+            )
+          );
+        }
       }
 
       setPolicyDealId(null);
@@ -337,7 +417,6 @@ const AppContent: React.FC = () => {
       throw err;
     }
   };
-
   const handleDeletePolicy = async (policyId: string) => {
     try {
       await deletePolicy(policyId);
@@ -721,7 +800,11 @@ const AppContent: React.FC = () => {
           </Modal>
         )}
         {policyDealId && (
-          <Modal title="Новый полис" onClose={() => setPolicyDealId(null)}>
+        <Modal
+          title="Новый полис"
+          onClose={() => setPolicyDealId(null)}
+          closeOnOverlayClick={false}
+        >
             <AddPolicyForm
               onSubmit={(values) => handleAddPolicy(policyDealId, values)}
               onCancel={() => setPolicyDealId(null)}

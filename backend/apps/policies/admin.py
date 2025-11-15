@@ -19,8 +19,10 @@ class PolicyResource(resources.ModelResource):
             "deal",
             "insurance_type",
             "insurance_company",
+            "is_vehicle",
+            "brand",
+            "model",
             "vin",
-            "amount",
             "status",
             "start_date",
             "end_date",
@@ -28,21 +30,7 @@ class PolicyResource(resources.ModelResource):
             "updated_at",
             "deleted_at",
         )
-        export_order = (
-            "id",
-            "number",
-            "deal",
-            "insurance_type",
-            "insurance_company",
-            "vin",
-            "amount",
-            "status",
-            "start_date",
-            "end_date",
-            "created_at",
-            "updated_at",
-            "deleted_at",
-        )
+        export_order = fields
 
 
 # ============ MODEL ADMINS ============
@@ -55,8 +43,12 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
     list_display = (
         "number",
         "insurance_type",
+        "insurance_company",
+        "is_vehicle",
+        "brand",
+        "model",
         "vin",
-        "amount_display",
+        "counterparty",
         "status_badge",
         "period_display",
         "deal",
@@ -64,13 +56,18 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
     )
     search_fields = (
         "number",
-        "insurance_type",
+        "insurance_type__name",
+        "insurance_company__name",
         "vin",
-        "insurance_company",
+        "brand",
+        "model",
         "deal__title",
+        "counterparty",
     )
     list_filter = (
         "insurance_type",
+        "insurance_company",
+        "is_vehicle",
         "status",
         "start_date",
         "end_date",
@@ -83,21 +80,19 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
     actions = ["mark_as_active", "mark_as_inactive", "restore_policies"]
 
     fieldsets = (
-        ("Основная информация", {"fields": ("id", "number", "deal")}),
+        ("Main information", {"fields": ("id", "number", "deal")}),
         (
-            "Страховая информация",
-            {"fields": ("insurance_type", "insurance_company", "vin", "status")},
+            "Insurance information",
+            {"fields": ("insurance_type", "insurance_company", "counterparty", "status")},
         ),
-        ("Сумма", {"fields": ("amount",)}),
-        ("Сроки действия", {"fields": ("start_date", "end_date")}),
+        (
+            "Vehicle details",
+            {"fields": ("is_vehicle", "brand", "model", "vin")},
+        ),
+        ("Duration", {"fields": ("start_date", "end_date")}),
         ("Статус удаления", {"fields": ("deleted_at",)}),
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
-
-    def amount_display(self, obj):
-        return format_html("<strong>{} руб.</strong>", obj.amount)
-
-    amount_display.short_description = "Сумма"
 
     def status_badge(self, obj):
         # Determine status based on dates

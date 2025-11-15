@@ -318,13 +318,18 @@ const mapUser = (raw: any): User => ({
 const mapPolicy = (raw: any): Policy => ({
   id: raw.id,
   number: raw.number,
-  insuranceCompany: raw.insurance_company,
-  insuranceType: raw.insurance_type,
+  insuranceCompanyId: raw.insurance_company,
+  insuranceCompany: raw.insurance_company_name ?? raw.insurance_company ?? '',
+  insuranceTypeId: raw.insurance_type,
+  insuranceType: raw.insurance_type_name ?? raw.insurance_type ?? '',
   dealId: raw.deal,
+  isVehicle: Boolean(raw.is_vehicle),
+  brand: raw.brand || undefined,
+  model: raw.model || undefined,
   vin: raw.vin,
+  counterparty: raw.counterparty || undefined,
   startDate: raw.start_date,
   endDate: raw.end_date,
-  amount: raw.amount,
   status: raw.status,
   createdAt: raw.created_at,
 });
@@ -657,24 +662,30 @@ export async function deleteQuote(id: string): Promise<void> {
 export async function createPolicy(data: {
   dealId: string;
   number: string;
-  insuranceCompany: string;
-  insuranceType: string;
+  insuranceCompanyId: string;
+  insuranceTypeId: string;
+  isVehicle: boolean;
+  brand?: string;
+  model?: string;
   vin?: string;
+  counterparty?: string;
   startDate?: string | null;
   endDate?: string | null;
-  amount: number;
 }): Promise<Policy> {
   const payload = await request<any>('/policies/', {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
       number: data.number,
-      insurance_company: data.insuranceCompany,
-      insurance_type: data.insuranceType,
-      vin: data.vin,
+      insurance_company: data.insuranceCompanyId,
+      insurance_type: data.insuranceTypeId,
+      is_vehicle: data.isVehicle,
+      brand: data.brand || '',
+      model: data.model || '',
+      vin: data.vin || '',
+      counterparty: data.counterparty || '',
       start_date: data.startDate || null,
       end_date: data.endDate || null,
-      amount: data.amount,
     }),
   });
   return mapPolicy(payload);
