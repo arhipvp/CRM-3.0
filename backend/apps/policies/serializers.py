@@ -10,6 +10,7 @@ class PolicySerializer(serializers.ModelSerializer):
     insurance_type_name = serializers.CharField(
         source="insurance_type.name", read_only=True
     )
+    client_name = serializers.CharField(source="client.name", read_only=True)
 
     class Meta:
         model = Policy
@@ -21,6 +22,8 @@ class PolicySerializer(serializers.ModelSerializer):
             "insurance_type",
             "insurance_type_name",
             "deal",
+            "client",
+            "client_name",
             "is_vehicle",
             "brand",
             "model",
@@ -33,4 +36,4 @@ class PolicySerializer(serializers.ModelSerializer):
             "updated_at",
             "deleted_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+        read_only_fields = ("id", "created_at", "updated_at", "deleted_at", "client_name")

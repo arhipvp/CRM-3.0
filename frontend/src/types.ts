@@ -97,6 +97,8 @@ export interface Policy {
   insuranceTypeId: string;
   insuranceType: string;
   dealId: string;
+  clientId?: string;
+  clientName?: string;
   isVehicle: boolean;
   brand?: string;
   model?: string;

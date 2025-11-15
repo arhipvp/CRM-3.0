@@ -26,4 +26,10 @@ export default defineConfig({
   },
   // Убеждаемся, что base path правильный
   base: '/',
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: fileURLToPath(new URL('./src/setupTests.ts', import.meta.url)),
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+  },
 });

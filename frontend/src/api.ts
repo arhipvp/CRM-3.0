@@ -323,6 +323,8 @@ const mapPolicy = (raw: any): Policy => ({
   insuranceTypeId: raw.insurance_type,
   insuranceType: raw.insurance_type_name ?? raw.insurance_type ?? '',
   dealId: raw.deal,
+  clientId: raw.client,
+  clientName: raw.client_name ?? raw.client ?? '',
   isVehicle: Boolean(raw.is_vehicle),
   brand: raw.brand || undefined,
   model: raw.model || undefined,
@@ -664,6 +666,7 @@ export async function createPolicy(data: {
   number: string;
   insuranceCompanyId: string;
   insuranceTypeId: string;
+  clientId?: string;
   isVehicle: boolean;
   brand?: string;
   model?: string;
@@ -686,6 +689,7 @@ export async function createPolicy(data: {
       counterparty: data.counterparty || '',
       start_date: data.startDate || null,
       end_date: data.endDate || null,
+      client: data.clientId || null,
     }),
   });
   return mapPolicy(payload);

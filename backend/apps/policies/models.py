@@ -28,6 +28,15 @@ class Policy(SoftDeleteModel):
         help_text="Deal",
     )
 
+    client = models.ForeignKey(
+        "clients.Client",
+        related_name="policies",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        help_text="Client",
+    )
+
     is_vehicle = models.BooleanField(
         default=False, help_text="True when the policy is for a vehicle"
     )
@@ -80,9 +89,28 @@ class Policy(SoftDeleteModel):
             models.Index(fields=["deal"]),
             models.Index(fields=["insurance_company"]),
             models.Index(fields=["insurance_type"]),
+            models.Index(fields=["client"]),
         ]
 
     def __str__(self) -> str:
         company = self.insurance_company.name if self.insurance_company else "-"
         type_name = self.insurance_type.name if self.insurance_type else "-"
-        return f"Policy {self.number} ({type_name} - {company})"
+        client_name = self.client.name if self.client else None
+        client_suffix = f" - {client_name}" if client_name else ""
+        return f"Policy {self.number} ({type_name} - {company}){client_suffix}"
+
+    def save(self, *args, **kwargs):
+        if self.deal_id and not self.client_id:
+            client_id = getattr(self.deal, "client_id", None)
+            if not client_id:
+                from apps.deals.models import Deal
+
+                client_id = (
+                    Deal.objects.filter(pk=self.deal_id)
+                    .values_list("client_id", flat=True)
+                    .first()
+                )
+            if client_id:
+                self.client_id = client_id
+
+        super().save(*args, **kwargs)

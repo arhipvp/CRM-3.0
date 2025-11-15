@@ -327,10 +327,13 @@ const AppContent: React.FC = () => {
       endDate,
       payments: paymentDrafts = [],
     } = values;
+    const deal = deals.find((item) => item.id === dealId);
+    const clientId = deal?.clientId;
 
     try {
       const created = await createPolicy({
         dealId,
+        clientId,
         number,
         insuranceCompanyId,
         insuranceTypeId,

@@ -90,6 +90,41 @@ const formatCurrency = (value?: string) => {
   return amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
 };
 
+type PolicySortKey =
+  | 'number'
+  | 'insuranceCompany'
+  | 'insuranceType'
+  | 'client'
+  | 'startDate'
+  | 'endDate'
+  | 'transport';
+
+const getPolicyTransportSummary = (policy: Policy) =>
+  policy.isVehicle
+    ? `${policy.brand || '—'} / ${policy.model || '—'} / ${policy.vin || '—'}`
+    : 'Не транспортное';
+
+const getPolicySortValue = (policy: Policy, key: PolicySortKey) => {
+  switch (key) {
+    case 'number':
+      return policy.number ?? '';
+    case 'insuranceCompany':
+      return policy.insuranceCompany ?? '';
+    case 'insuranceType':
+      return policy.insuranceType ?? '';
+    case 'client':
+      return policy.clientName ?? policy.clientId ?? '';
+    case 'startDate':
+      return policy.startDate ? new Date(policy.startDate).getTime() : 0;
+    case 'endDate':
+      return policy.endDate ? new Date(policy.endDate).getTime() : 0;
+    case 'transport':
+      return getPolicyTransportSummary(policy);
+    default:
+      return '';
+  }
+};
+
 interface DealsViewProps {
   deals: Deal[];
   clients: Client[];
@@ -191,6 +226,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [savingDateField, setSavingDateField] = useState<
     'nextContactDate' | 'expectedClose' | null
   >(null);
+  const [policySortKey, setPolicySortKey] = useState<PolicySortKey>('startDate');
+  const [policySortOrder, setPolicySortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     setActiveTab('overview');
@@ -288,10 +325,38 @@ export const DealsView: React.FC<DealsViewProps> = ({
     });
   };
 
+  const handlePolicySort = (key: PolicySortKey) => {
+    if (policySortKey === key) {
+      setPolicySortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setPolicySortKey(key);
+    setPolicySortOrder('asc');
+  };
+
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
     [policies, selectedDeal]
   );
+  const sortedPolicies = useMemo(() => {
+    const normalized = [...relatedPolicies];
+    const multiplier = policySortOrder === 'asc' ? 1 : -1;
+    normalized.sort((a, b) => {
+      const valueA = getPolicySortValue(a, policySortKey);
+      const valueB = getPolicySortValue(b, policySortKey);
+
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return (valueA - valueB) * multiplier;
+      }
+
+      const textA = String(valueA ?? '');
+      const textB = String(valueB ?? '');
+
+      return textA.localeCompare(textB, 'ru-RU', { sensitivity: 'base' }) * multiplier;
+    });
+
+    return normalized;
+  }, [policySortKey, policySortOrder, relatedPolicies]);
   const relatedPayments = useMemo(
     () => (selectedDeal ? payments.filter((p) => p.dealId === selectedDeal.id) : []),
     [payments, selectedDeal]
@@ -401,6 +466,24 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   };
 
+  const renderPolicyHeaderCell = (label: string, key: PolicySortKey) => (
+    <th
+      scope="col"
+      className="px-4 py-3 cursor-pointer select-none text-left text-xs font-semibold uppercase tracking-wide text-slate-500 transition hover:text-slate-700"
+      onClick={() => handlePolicySort(key)}
+      aria-sort={
+        policySortKey === key ? (policySortOrder === 'asc' ? 'ascending' : 'descending') : 'none'
+      }
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <span className="text-[0.55rem] text-slate-400">
+          {policySortKey === key ? (policySortOrder === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </span>
+    </th>
+  );
+
   const renderPoliciesTab = () => {
     if (!selectedDeal) {
       return null;
@@ -431,36 +514,49 @@ export const DealsView: React.FC<DealsViewProps> = ({
             + Создать полис
           </button>
         </div>
-        <div className="space-y-3">
-          {relatedPolicies.map((policy) => (
-            <div key={policy.id} className="border border-slate-200 rounded-xl p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-900">{policy.number}</p>
-                  <p className="text-xs text-slate-500 mt-1">{policy.insuranceCompany}</p>
-                  <div className="text-xs text-slate-400 mt-2 flex flex-wrap gap-4">
-                    <span>Тип: {policy.insuranceType}</span>
-                    <span>
-                      Период: {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
-                    </span>
-                    {policy.isVehicle && (
-                      <>
-                        <span>Марка: {policy.brand || '—'}</span>
-                        <span>Модель: {policy.model || '—'}</span>
-                        <span>VIN: {policy.vin || '—'}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <button
-                  className="text-xs text-slate-400 hover:text-red-500"
-                  onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                {renderPolicyHeaderCell('Номер', 'number')}
+                {renderPolicyHeaderCell('Компания', 'insuranceCompany')}
+                {renderPolicyHeaderCell('Клиент', 'client')}
+                {renderPolicyHeaderCell('Тип', 'insuranceType')}
+                {renderPolicyHeaderCell('Начало', 'startDate')}
+                {renderPolicyHeaderCell('Окончание', 'endDate')}
+                {renderPolicyHeaderCell('Транспорт', 'transport')}
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Действие
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {sortedPolicies.map((policy) => (
+                <tr
+                  key={policy.id}
+                  className="transition hover:bg-slate-50 focus-within:bg-slate-50"
                 >
-                  Удалить
-                </button>
-              </div>
-            </div>
-          ))}
+                  <td className="px-4 py-3 font-semibold text-slate-900">{policy.number}</td>
+                  <td className="px-4 py-3">{policy.insuranceCompany || '—'}</td>
+                  <td className="px-4 py-3">{policy.clientName || '—'}</td>
+                  <td className="px-4 py-3">{policy.insuranceType || '—'}</td>
+                  <td className="px-4 py-3">{formatDate(policy.startDate)}</td>
+                  <td className="px-4 py-3">{formatDate(policy.endDate)}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    {getPolicyTransportSummary(policy)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      className="text-xs font-semibold text-slate-400 transition hover:text-red-500"
+                      onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                    >
+                      Удалить
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     );

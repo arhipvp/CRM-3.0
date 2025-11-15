@@ -2,7 +2,7 @@ import React from 'react';
 import { Deal, Policy } from '../../types';
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
+  (value ? new Date(value).toLocaleDateString('ru-RU') : '—');
 
 interface PoliciesViewProps {
   policies: Policy[];
@@ -17,6 +17,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
           <tr>
             <th className="px-5 py-3">№ полиса</th>
             <th className="px-5 py-3">Компания</th>
+            <th className="px-5 py-3">Клиент</th>
             <th className="px-5 py-3">Тип</th>
             <th className="px-5 py-3">Сделка</th>
             <th className="px-5 py-3">Период</th>
@@ -30,19 +31,20 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
               <tr key={policy.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-5 py-4 font-semibold text-slate-900">{policy.number}</td>
                 <td className="px-5 py-4 text-slate-600">{policy.insuranceCompany}</td>
+                <td className="px-5 py-4 text-slate-600">{policy.clientName || '—'}</td>
                 <td className="px-5 py-4 text-slate-600">
                   {policy.insuranceType}
                   {policy.isVehicle && (
                     <div className="text-[11px] text-slate-400 mt-2 space-y-1">
-                      <div>�����: {policy.brand || '�'}</div>
-                      <div>������: {policy.model || '�'}</div>
-                      <div>VIN: {policy.vin || '�'}</div>
+                      <div>Марка: {policy.brand || '—'}</div>
+                      <div>Модель: {policy.model || '—'}</div>
+                      <div>VIN: {policy.vin || '—'}</div>
                     </div>
                   )}
                 </td>
-                <td className="px-5 py-4 text-slate-600">{deal?.title || '�'}</td>
+                <td className="px-5 py-4 text-slate-600">{deal?.title || '—'}</td>
                 <td className="px-5 py-4 text-slate-600">
-                  {formatDate(policy.startDate)} � {formatDate(policy.endDate)}
+                  {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                 </td>
                 <td className="px-5 py-4 text-slate-600">{policy.status}</td>
               </tr>
@@ -50,7 +52,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
           })}
           {!policies.length && (
             <tr>
-              <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
+              <td colSpan={7} className="px-5 py-6 text-center text-slate-500">
                 Полисов пока нет
               </td>
             </tr>

@@ -28,19 +28,15 @@ jobs:
 
       - name: Run Black (formatting check)
         run: black --check backend/
-        continue-on-error: true
 
       - name: Run isort (import sorting)
         run: isort --check-only backend/
-        continue-on-error: true
 
       - name: Run Flake8 (linting)
         run: flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        continue-on-error: true
 
       - name: Run mypy (type checking)
-        run: mypy backend/ --ignore-missing-imports || true
-        continue-on-error: true
+        run: mypy backend/ --ignore-missing-imports
 
   backend-tests:
     name: Backend Unit Tests
@@ -102,7 +98,7 @@ jobs:
           DJANGO_SECRET_KEY: test-secret-key
         run: |
           cd backend
-          pytest -v --cov=. --cov-report=xml || true
+          pytest -v --cov=. --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -133,14 +129,17 @@ jobs:
       - name: Run ESLint
         run: |
           cd frontend
-          npm run lint || true
-        continue-on-error: true
+          npm run lint
 
       - name: Check TypeScript
         run: |
           cd frontend
-          npx tsc --noEmit || true
-        continue-on-error: true
+          npx tsc --noEmit
+
+      - name: Run frontend unit tests
+        run: |
+          cd frontend
+          npm run test
 
   frontend-build:
     name: Frontend Build Test

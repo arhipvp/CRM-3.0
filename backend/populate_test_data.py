@@ -255,12 +255,19 @@ insurance_types = ["liability", "property", "auto", "health"]
 policy_statuses = ["active", "inactive"]
 for i, deal in enumerate(deals):
     for j in range(2):
+        company_name = "Strakhovaya kompaniya #{}".format((i + j) % 3 + 1)
+        insurance_company, _ = InsuranceCompany.objects.get_or_create(name=company_name)
+        type_name = insurance_types[j % len(insurance_types)]
+        insurance_type, _ = InsuranceType.objects.get_or_create(name=type_name)
+
         policy = Policy.objects.create(
             deal=deal,
-            number="POL-{}-{}".format(deal.id.hex[:8].upper(), j + 1),
-            insurance_type=insurance_types[j % len(insurance_types)],
-            insurance_company="Strakhovaya kompaniya #{}".format((i + j) % 3 + 1),
-            amount=500000 + i * 50000,
+            number="POL-{}-{}".format(str(deal.id).replace("-", "")[:8].upper(), j + 1),
+            insurance_type=insurance_type,
+            insurance_company=insurance_company,
+            is_vehicle=j % 2 == 0,
+            brand="Brand {}".format(j + 1),
+            model="Model {}".format(j + 1),
             vin="VIN{:012d}".format(i * 100 + j),
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timezone.timedelta(days=365),
