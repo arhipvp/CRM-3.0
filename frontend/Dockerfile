@@ -6,16 +6,15 @@ WORKDIR /app
 # Устанавливаем необходимые зависимости для сборки нативных модулей
 RUN apk add --no-cache python3 make g++
 
-COPY package.json ./
+COPY package.json package-lock.json* ./
 
-# Удаляем package-lock.json если он есть и пересоздаём в Docker
-# Это гарантирует, что будут установлены правильные нативные модули для Alpine
+# Устанавливаем зависимости
 RUN npm install
 
 COPY . .
 
 EXPOSE 5173
 
-# Build the application and run in preview mode (production-like server)
-RUN npm run build
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
+# Запускаем dev сервер Vite для разработки
+# Это обеспечивает правильную загрузку CSS и других статических файлов
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
