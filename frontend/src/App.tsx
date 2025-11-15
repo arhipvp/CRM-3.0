@@ -461,9 +461,9 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleSendChatMessage = async (dealId: string, authorName: string, body: string) => {
+  const handleSendChatMessage = async (dealId: string, body: string) => {
     try {
-      await createChatMessage(dealId, authorName, body);
+      await createChatMessage(dealId, body);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
       throw err;
@@ -669,6 +669,8 @@ const AppContent: React.FC = () => {
         id: String(userData.id),
         username: userData.username,
         roles: roles,
+        firstName: userData.first_name || undefined,
+        lastName: userData.last_name || undefined,
       };
       setCurrentUser(user);
       setIsAuthenticated(true);

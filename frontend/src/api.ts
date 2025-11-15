@@ -764,15 +764,13 @@ export async function fetchChatMessages(dealId: string): Promise<ChatMessage[]> 
 
 export async function createChatMessage(
   dealId: string,
-  authorName: string,
   body: string
 ): Promise<ChatMessage> {
   const payload = await request<any>('/chat_messages/', {
     method: 'POST',
     body: JSON.stringify({
       deal: dealId,
-      author_name: authorName,
-      body: body,
+      body,
     }),
   });
   return mapChatMessage(payload);

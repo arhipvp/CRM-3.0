@@ -208,7 +208,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600">РЎСѓРјРјР°, в'Ѕ</label>
+            <label className="block text-xs font-medium text-slate-600">Сумма, ₽</label>
             <input
               type="number"
               value={record.amount}
@@ -237,7 +237,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600">Рсточник</label>
+            <label className="block text-xs font-medium text-slate-600">Источник</label>
             <input
               type="text"
               value={record.source || ''}
@@ -512,7 +512,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">РЎСѓРјРјР°, в'Ѕ</label>
+                  <label className="block text-xs font-medium text-slate-600">Сумма, ₽</label>
                   <input
                     type="number"
                     value={payment.amount}
@@ -599,4 +599,3 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
     </form>
   );
 };
-

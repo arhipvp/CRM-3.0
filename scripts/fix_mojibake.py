@@ -12,7 +12,12 @@ EXTENSIONS = {'.ts', '.tsx', '.js', '.jsx'}
 def fix_file(path: Path) -> bool:
     with path.open('r', encoding='latin1', newline='') as handle:
         original = handle.read()
-    fixed = ftfy.fix_text(original)
+    fixed = original
+    for _ in range(3):
+        next_fixed = ftfy.fix_text(fixed)
+        if next_fixed == fixed:
+            break
+        fixed = next_fixed
     if fixed == original:
         return False
     with path.open('w', encoding='utf-8', newline='') as handle:

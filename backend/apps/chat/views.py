@@ -1,8 +1,8 @@
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import Q
-from rest_framework import permissions, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 
 from .models import ChatMessage
 from .serializers import ChatMessageSerializer
@@ -30,5 +30,10 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Если пользователь авторизован, сохранить его как author
-        author = self.request.user if self.request.user.is_authenticated else None
-        serializer.save(author=author)
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            raise PermissionDenied("Только авторизованные пользователи могут отправлять сообщения.")
+
+        full_name = (user.get_full_name() or "").strip()
+        author_name = full_name or user.username
+        serializer.save(author=user, author_name=author_name)

@@ -7,6 +7,8 @@ export interface User {
   id: string;
   username: string;
   roles: string[];
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface Client {
