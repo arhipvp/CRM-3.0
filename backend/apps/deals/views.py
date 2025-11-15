@@ -1,6 +1,6 @@
 ﻿from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
-from django.db.models import Q
+from django.db.models import F, Q
 from rest_framework import permissions, viewsets
 from rest_framework.permissions import AllowAny
 
@@ -13,21 +13,26 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DealSerializer
     filterset_class = DealFilterSet
     search_fields = ["title", "description"]
-    ordering_fields = ["created_at", "updated_at", "title", "expected_close"]
-    ordering = ["-created_at"]
+    ordering_fields = ["created_at", "updated_at", "title", "expected_close", "next_contact_date"]
+    ordering = ["next_contact_date", "-created_at"]
 
     def get_queryset(self):
         """
         Фильтровать сделки в зависимости от роли пользователя:
         - Admin: видит все сделки
         - Seller/Executor: видит только свои сделки (где user = seller или executor)
+        Сортировка: по дате следующего контакта (ближайшие сверху), затем по дате следующего обзора, затем по дате создания.
         """
         user = self.request.user
         queryset = (
             Deal.objects.select_related("client")
             .prefetch_related("quotes")
             .all()
-            .order_by("next_review_date", "-created_at")
+            .order_by(
+                F("next_contact_date").asc(nulls_last=True),
+                F("next_review_date").desc(nulls_last=True),
+                "-created_at"
+            )
         )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)

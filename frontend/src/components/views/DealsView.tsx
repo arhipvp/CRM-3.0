@@ -82,6 +82,8 @@ interface DealsViewProps {
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
+  dealSearch: string;
+  onDealSearchChange: (value: string) => void;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -112,12 +114,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
+  dealSearch,
+  onDealSearchChange,
 }) => {
   // Сортируем сделки по дате следующего контакта (ближайшие сверху)
   const sortedDeals = useMemo(() => {
     return [...deals].sort((a, b) => {
-      const dateA = a.nextReviewDate ? new Date(a.nextReviewDate).getTime() : Infinity;
-      const dateB = b.nextReviewDate ? new Date(b.nextReviewDate).getTime() : Infinity;
+      const dateA = a.nextContactDate ? new Date(a.nextContactDate).getTime() : Infinity;
+      const dateB = b.nextContactDate ? new Date(b.nextContactDate).getTime() : Infinity;
       return dateA - dateB;
     });
   }, [deals]);
@@ -614,7 +618,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
                 <p className="text-lg font-semibold text-slate-900 mt-1">
-                  {formatDate(selectedDeal?.nextReviewDate)}
+                  {formatDate(selectedDeal?.nextContactDate)}
                 </p>
               </div>
               <div>
@@ -665,34 +669,51 @@ export const DealsView: React.FC<DealsViewProps> = ({
             <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
           </div>
         </div>
+        <div className="px-5 py-3 border-b border-slate-100">
+          <label htmlFor="dealSearch" className="sr-only">
+            Поиск по сделкам
+          </label>
+          <input
+            id="dealSearch"
+            type="search"
+            value={dealSearch}
+            onChange={(event) => onDealSearchChange(event.target.value)}
+            placeholder="Поиск по сделкам"
+            className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+          />
+        </div>
         <div className="flex-1 overflow-y-auto">
-          {sortedDeals.map((deal) => (
-            <button
-              key={deal.id}
-              onClick={() => onSelectDeal(deal.id)}
-              className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
-                selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
-              }`}
-            >
-              <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-              <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
-              <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '—'}</p>
-              <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
-                <span>Контакт: {formatDate(deal.nextReviewDate)}</span>
-                {deal.nextReviewDate && (
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${
-                      new Date(deal.nextReviewDate) < new Date()
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
-                    {new Date(deal.nextReviewDate) < new Date() ? '⚠ Просрочено' : '○'}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
+          {sortedDeals.map((deal) => {
+            const isOverdue = deal.nextContactDate
+              ? new Date(deal.nextContactDate) < new Date()
+              : false;
+            return (
+              <button
+                key={deal.id}
+                onClick={() => onSelectDeal(deal.id)}
+                className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
+                  selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
+                }`}
+              >
+                <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
+                <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
+                <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'}</p>
+                <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+                  <span>Контакт: {formatDate(deal.nextContactDate)}</span>
+                  {deal.nextContactDate && (
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        isOverdue ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {isOverdue ? '⚠ ' : ''}
+                      {formatDate(deal.nextContactDate)}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
           {!sortedDeals.length && <p className="p-6 text-sm text-slate-500">Сделок пока нет</p>}
         </div>
       </section>

@@ -60,7 +60,7 @@ class Deal(SoftDeleteModel):
     channel = models.CharField(max_length=100, blank=True, help_text="Канал продаж")
 
     class Meta:
-        ordering = ["next_review_date", "-created_at"]
+        ordering = ["next_contact_date", "-next_review_date", "-created_at"]
         verbose_name = "Сделка"
         verbose_name_plural = "Сделки"
 

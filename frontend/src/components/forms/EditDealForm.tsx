@@ -5,7 +5,7 @@ export interface EditDealFormValues {
   title: string;
   description: string;
   clientId: string;
-  nextReviewDate?: string | null;
+  nextContactDate?: string | null;
   expectedClose?: string | null;
 }
 
@@ -21,7 +21,7 @@ export function EditDealForm({ deal, clients, onSubmit, onCancel }: EditDealForm
     title: deal.title,
     description: deal.description || '',
     clientId: deal.clientId,
-    nextReviewDate: deal.nextReviewDate,
+    nextContactDate: deal.nextContactDate,
     expectedClose: deal.expectedClose,
   });
 
@@ -111,12 +111,12 @@ export function EditDealForm({ deal, clients, onSubmit, onCancel }: EditDealForm
 
       <div className="form-row">
         <div className="form-group">
-          <label htmlFor="nextReviewDate">Следующий контакт</label>
+          <label htmlFor="nextContactDate">Следующий контакт</label>
           <input
             type="date"
-            id="nextReviewDate"
-            name="nextReviewDate"
-            value={formData.nextReviewDate || ''}
+            id="nextContactDate"
+            name="nextContactDate"
+            value={formData.nextContactDate || ''}
             onChange={handleChange}
             disabled={loading}
           />

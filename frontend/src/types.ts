@@ -60,7 +60,7 @@ export interface Deal {
   stageName?: string;
   probability: number;
   expectedClose?: string | null;
-  nextReviewDate?: string | null;
+  nextContactDate?: string | null;
   source?: string;
   lossReason?: string;
   channel?: string;

@@ -41,6 +41,8 @@ class DealFilterSet(django_filters.FilterSet):
             ("updated_at", "updated_at"),
             ("title", "title"),
             ("expected_close", "expected_close"),
+            ("next_contact_date", "next_contact_date"),
+            ("next_review_date", "next_review_date"),
         ),
         label="Sort by",
     )
