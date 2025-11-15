@@ -1194,6 +1194,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
                     ? payments.find((p) => p.id === editingPaymentId)
                     : undefined
                 }
+                dealId={selectedDeal.id}
+                dealTitle={selectedDeal.title}
+                policies={relatedPolicies}
                 onSubmit={async (data) => {
                   if (editingPaymentId === 'new') {
                     await onAddPayment(data);

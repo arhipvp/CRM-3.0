@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Payment, PaymentStatus } from '../../types';
+import React, { useEffect, useState } from 'react';
+import { Payment, PaymentStatus, Policy } from '../../types';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -15,18 +15,44 @@ interface AddPaymentFormProps {
   payment?: Payment;
   onSubmit: (data: AddPaymentFormValues) => Promise<void>;
   onCancel: () => void;
+  dealId?: string;
+  dealTitle?: string;
+  policies?: Policy[];
 }
 
-export function AddPaymentForm({ payment, onSubmit, onCancel }: AddPaymentFormProps) {
+export function AddPaymentForm({
+  payment,
+  onSubmit,
+  onCancel,
+  dealId,
+  dealTitle,
+  policies,
+}: AddPaymentFormProps) {
   const [formData, setFormData] = useState<AddPaymentFormValues>({
     policyId: payment?.policyId || '',
-    dealId: payment?.dealId || '',
+    dealId: payment?.dealId || dealId || '',
     amount: payment?.amount || '',
     description: payment?.description || '',
     scheduledDate: payment?.scheduledDate || '',
     actualDate: payment?.actualDate || '',
     status: payment?.status || 'planned',
   });
+  const dealDisplayValue = dealTitle || dealId || formData.dealId || '';
+  const dealIsFixed = Boolean(dealId);
+  const policyOptions = policies ?? [];
+  const hasPolicyOptions = policyOptions.length > 0;
+  useEffect(() => {
+    if (!dealId) {
+      return;
+    }
+
+    setFormData((prev) => {
+      if (prev.dealId === dealId) {
+        return prev;
+      }
+      return { ...prev, dealId };
+    });
+  }, [dealId]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +80,12 @@ export function AddPaymentForm({ payment, onSubmit, onCancel }: AddPaymentFormPr
         throw new Error('Выберите полис');
       }
 
-      await onSubmit(formData);
+      const submission: AddPaymentFormValues = {
+        ...formData,
+        dealId: dealId ?? (formData.dealId || undefined),
+      };
+
+      await onSubmit(submission);
     } catch (err: any) {
       setError(err.message || 'Ошибка при сохранении платежа');
     } finally {
@@ -91,32 +122,67 @@ export function AddPaymentForm({ payment, onSubmit, onCancel }: AddPaymentFormPr
         </div>
       )}
 
-      <div className="form-group">
-        <label htmlFor="policyId">Полис *</label>
-        <input
-          type="text"
-          id="policyId"
-          name="policyId"
-          value={formData.policyId || ''}
-          onChange={handleChange}
-          placeholder="ID полиса"
-          disabled={loading}
-          required
-        />
-      </div>
+      {hasPolicyOptions ? (
+        <div className="form-group">
+          <label htmlFor="policyId">Полис *</label>
+          <select
+            id="policyId"
+            name="policyId"
+            value={formData.policyId || ''}
+            onChange={handleChange}
+            disabled={loading}
+            required
+          >
+            <option value="">Выберите полис</option>
+            {policyOptions.map((policy) => (
+              <option key={policy.id} value={policy.id}>
+                {policy.number || policy.id}
+                {policy.insuranceType ? ` — ${policy.insuranceType}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="form-group">
+          <label htmlFor="policyId">Полис *</label>
+          <input
+            type="text"
+            id="policyId"
+            name="policyId"
+            value={formData.policyId || ''}
+            onChange={handleChange}
+            placeholder="ID полиса"
+            disabled={loading}
+            required
+          />
+        </div>
+      )}
 
-      <div className="form-group">
-        <label htmlFor="dealId">Сделка (опционально)</label>
-        <input
-          type="text"
-          id="dealId"
-          name="dealId"
-          value={formData.dealId || ''}
-          onChange={handleChange}
-          placeholder="ID сделки"
-          disabled={loading}
-        />
-      </div>
+      {dealIsFixed ? (
+        <div className="form-group">
+          <label htmlFor="dealId">Сделка</label>
+          <input
+            type="text"
+            id="dealId"
+            name="dealId"
+            value={dealDisplayValue}
+            disabled
+          />
+        </div>
+      ) : (
+        <div className="form-group">
+          <label htmlFor="dealId">Сделка (опционально)</label>
+          <input
+            type="text"
+            id="dealId"
+            name="dealId"
+            value={formData.dealId || ''}
+            onChange={handleChange}
+            placeholder="ID сделки"
+            disabled={loading}
+          />
+        </div>
+      )}
 
       <div className="form-group">
         <label htmlFor="amount">Сумма (руб.) *</label>
