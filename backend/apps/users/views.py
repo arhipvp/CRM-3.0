@@ -382,7 +382,9 @@ def current_user_view(request):
 
     if request.user.is_authenticated:
         serializer = UserDetailSerializer(request.user)
-        return Response(serializer.data)
+        data = serializer.data
+        data["is_authenticated"] = True
+        return Response(data)
     else:
         # Возвращаем информацию об анонимном пользователе
         return Response(
