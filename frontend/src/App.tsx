@@ -24,6 +24,7 @@ import {
   createClient,
   createDeal,
   createQuote,
+  updateQuote,
   createPolicy,
   createPayment,
   createFinancialRecord,
@@ -54,7 +55,7 @@ import {
   APIError,
   FilterParams,
 } from './api';
-import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, User } from './types';
+import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, Task, User } from './types';
 
 type ModalType = null | 'client' | 'deal';
 
@@ -76,6 +77,7 @@ const AppContent: React.FC = () => {
   const [view, setView] = useState<View>('deals');
   const [modal, setModal] = useState<ModalType>(null);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
@@ -296,6 +298,42 @@ const AppContent: React.FC = () => {
       setError(message);
       throw err;
     }
+  };
+
+  const handleUpdateQuote = async (values: QuoteFormValues) => {
+    if (!editingQuote) {
+      return;
+    }
+    const { id, dealId } = editingQuote;
+    try {
+      const updated = await updateQuote(id, values);
+      setDeals((prev) =>
+        prev.map((deal) =>
+          deal.id === dealId
+            ? {
+                ...deal,
+                quotes: deal.quotes
+                  ? deal.quotes.map((quote) => (quote.id === id ? updated : quote))
+                  : [updated],
+              }
+            : deal
+        )
+      );
+      setEditingQuote(null);
+    } catch (err) {
+      const message =
+        err instanceof APIError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Не удалось обновить расчет';
+      setError(message);
+      throw err;
+    }
+  };
+
+  const handleRequestEditQuote = (quote: Quote) => {
+    setEditingQuote(quote);
   };
 
   const handleDeleteQuote = async (dealId: string, quoteId: string) => {
@@ -708,6 +746,7 @@ const AppContent: React.FC = () => {
             onUpdateStatus={handleStatusChange}
             onUpdateDeal={handleUpdateDeal}
             onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
+            onRequestEditQuote={handleRequestEditQuote}
             onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
             onDeleteQuote={handleDeleteQuote}
             onDeletePolicy={handleDeletePolicy}
@@ -742,6 +781,17 @@ const AppContent: React.FC = () => {
         return null;
     }
   };
+
+  const editingQuoteValues = editingQuote
+    ? {
+        insuranceCompanyId: editingQuote.insuranceCompanyId,
+        insuranceTypeId: editingQuote.insuranceTypeId,
+        sumInsured: editingQuote.sumInsured,
+        premium: editingQuote.premium,
+        deductible: editingQuote.deductible,
+        comments: editingQuote.comments,
+      }
+    : undefined;
 
   // Show loading while checking auth
   if (authLoading) {
@@ -802,6 +852,16 @@ const AppContent: React.FC = () => {
             <AddQuoteForm
               onSubmit={(values) => handleAddQuote(quoteDealId, values)}
               onCancel={() => setQuoteDealId(null)}
+            />
+          </Modal>
+        )}
+        {editingQuote && (
+          <Modal title="Редактировать расчет" onClose={() => setEditingQuote(null)}>
+            <AddQuoteForm
+              initialValues={editingQuoteValues}
+              onSubmit={handleUpdateQuote}
+              onCancel={() => setEditingQuote(null)}
+              submitLabel="Сохранить изменения"
             />
           </Modal>
         )}

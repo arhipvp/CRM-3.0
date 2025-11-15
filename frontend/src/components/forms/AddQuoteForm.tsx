@@ -18,15 +18,28 @@ export interface QuoteFormValues {
 interface AddQuoteFormProps {
   onSubmit: (values: QuoteFormValues) => Promise<void>;
   onCancel: () => void;
+  initialValues?: QuoteFormValues;
+  submitLabel?: string;
 }
 
-export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ onSubmit, onCancel }) => {
-  const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
-  const [insuranceTypeId, setInsuranceTypeId] = useState('');
-  const [sumInsured, setSumInsured] = useState('');
-  const [premium, setPremium] = useState('');
-  const [deductible, setDeductible] = useState('');
-  const [comments, setComments] = useState('');
+export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
+  onSubmit,
+  onCancel,
+  initialValues,
+  submitLabel = 'Сохранить',
+}) => {
+  const [insuranceCompanyId, setInsuranceCompanyId] = useState(
+    initialValues?.insuranceCompanyId ?? ''
+  );
+  const [insuranceTypeId, setInsuranceTypeId] = useState(initialValues?.insuranceTypeId ?? '');
+  const [sumInsured, setSumInsured] = useState(
+    initialValues ? String(initialValues.sumInsured) : ''
+  );
+  const [premium, setPremium] = useState(
+    initialValues ? String(initialValues.premium) : ''
+  );
+  const [deductible, setDeductible] = useState(initialValues?.deductible ?? '');
+  const [comments, setComments] = useState(initialValues?.comments ?? '');
   const [error, setError] = useState<string | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -180,7 +193,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({ onSubmit, onCancel }
           disabled={isSubmitting || loadingOptions}
           className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
         >
-          {isSubmitting ? 'Сохраняем...' : 'Сохранить'}
+          {isSubmitting ? 'Сохраняем...' : submitLabel}
         </button>
       </div>
       {loadingOptions && (

@@ -657,6 +657,31 @@ export async function createQuote(data: {
   return mapQuote(payload);
 }
 
+export async function updateQuote(
+  id: string,
+  data: {
+    insuranceCompanyId: string;
+    insuranceTypeId: string;
+    sumInsured: number;
+    premium: number;
+    deductible?: string;
+    comments?: string;
+  }
+): Promise<Quote> {
+  const payload = await request<any>(`/quotes/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      insurance_company: data.insuranceCompanyId,
+      insurance_type: data.insuranceTypeId,
+      sum_insured: data.sumInsured,
+      premium: data.premium,
+      deductible: data.deductible,
+      comments: data.comments,
+    }),
+  });
+  return mapQuote(payload);
+}
+
 export async function deleteQuote(id: string): Promise<void> {
   await request(`/quotes/${id}/`, { method: 'DELETE' });
 }

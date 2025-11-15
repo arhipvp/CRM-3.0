@@ -7,6 +7,7 @@ import {
   FinancialRecord,
   Payment,
   Policy,
+  Quote,
   Task,
   User,
   ChatMessage,
@@ -140,6 +141,7 @@ interface DealsViewProps {
   onUpdateStatus: (dealId: string, status: DealStatus) => Promise<void>;
   onUpdateDeal: (dealId: string, data: EditDealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
+  onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
@@ -176,6 +178,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onUpdateStatus,
   onUpdateDeal,
   onRequestAddQuote,
+  onRequestEditQuote,
   onRequestAddPolicy,
   onDeleteQuote,
   onDeletePolicy,
@@ -713,24 +716,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   };
 
+
   const renderQuotesTab = () => {
     if (!selectedDeal) {
       return null;
     }
 
-    if (!quotes.length) {
-      return (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500">Расчетов пока нет.</p>
-          <button
-            onClick={() => onRequestAddQuote(selectedDeal.id)}
-            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
-          >
-            Добавить расчет
-          </button>
-        </div>
-      );
-    }
+    const hasQuotes = quotes.length > 0;
 
     return (
       <div className="space-y-4">
@@ -743,53 +735,58 @@ export const DealsView: React.FC<DealsViewProps> = ({
             + Добавить расчет
           </button>
         </div>
-        <div className="space-y-3">
-          {quotes.map((quote) => (
-            <div key={quote.id} className="border border-slate-200 rounded-xl p-4">
-              <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_auto]">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">{quote.insuranceType}</p>
-                  <p className="text-xs text-slate-500">{quote.insuranceCompany || '—'}</p>
-                  <p className="text-xs text-slate-400">
-                    Добавлен {formatDate(quote.createdAt)}
-                  </p>
-                </div>
-                <div className="flex items-start justify-end">
-                  <button
-                    className="text-xs text-slate-400 hover:text-red-500"
-                    onClick={() => onDeleteQuote(selectedDeal.id, quote.id).catch(() => undefined)}
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-slate-600">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
-                    Страховая сумма
-                  </p>
-                  <p className="font-semibold">{formatCurrency(quote.sumInsured)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Премия</p>
-                  <p className="font-semibold">{formatCurrency(quote.premium)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Франшиза</p>
-                  <p className="font-semibold">{quote.deductible || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Комментарии</p>
-                  <p className="font-semibold">{quote.comments || '—'}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {!hasQuotes ? (
+          <p className="text-sm text-slate-500">Расчетов пока нет.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+            <table className="min-w-full text-sm text-left">
+              <thead className="text-[10px] uppercase tracking-[0.2em] text-slate-500 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3">Тип</th>
+                  <th className="px-4 py-3">Компания</th>
+                  <th className="px-4 py-3">Сумма</th>
+                  <th className="px-4 py-3">Премия</th>
+                  <th className="px-4 py-3">Франшиза</th>
+                  <th className="px-4 py-3">Комментарии</th>
+                  <th className="px-4 py-3">Добавлен</th>
+                  <th className="px-4 py-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {quotes.map((quote) => (
+                  <tr key={quote.id} className="odd:bg-white even:bg-slate-50">
+                    <td className="px-4 py-3 font-semibold text-slate-900">{quote.insuranceType}</td>
+                    <td className="px-4 py-3 text-slate-600">{quote.insuranceCompany || '—'}</td>
+                    <td className="px-4 py-3 text-slate-900">{formatCurrency(quote.sumInsured)}</td>
+                    <td className="px-4 py-3 text-slate-900">{formatCurrency(quote.premium)}</td>
+                    <td className="px-4 py-3 text-slate-900">{quote.deductible || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{quote.comments || '—'}</td>
+                    <td className="px-4 py-3 text-slate-400">{formatDate(quote.createdAt)}</td>
+                    <td className="px-4 py-3 text-right space-x-3">
+                      <button
+                        className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                        onClick={() => onRequestEditQuote(quote)}
+                        type="button"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        className="text-xs font-semibold text-rose-500 hover:text-rose-600"
+                        onClick={() => onDeleteQuote(selectedDeal.id, quote.id).catch(() => undefined)}
+                        type="button"
+                      >
+                        Удалить
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   };
-
   const renderFilesTab = () => {
     if (!selectedDeal) {
       return null;
