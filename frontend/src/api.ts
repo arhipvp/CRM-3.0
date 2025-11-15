@@ -96,6 +96,18 @@ export async function getCurrentUser(): Promise<any> {
   return request<any>('/auth/me/');
 }
 
+function redirectToLogin(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const loginPath = '/login';
+  if (window.location.pathname !== loginPath) {
+    window.location.replace(loginPath);
+  } else {
+    window.location.reload();
+  }
+}
+
 // ============ Custom Error Class for API Errors ============
 export class APIError extends Error {
   status: number;
@@ -120,6 +132,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   // Add JWT token to headers
   const token = getAccessToken();
+  const hadToken = Boolean(token);
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
     console.log(`API request ${path}: token present (${token.substring(0, 20)}...)`);
@@ -134,11 +147,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   // Handle 401 Unauthorized - redirect to login
   if (response.status === 401) {
-    console.warn(`Unauthorized (401) on ${path}. Clearing tokens and redirecting to login.`);
+    console.warn(`Unauthorized (401) on ${path}. Clearing tokens${hadToken ? ' and redirecting to login.' : '.'}`);
     clearTokens();
-    // Redirect to login page
-    if (typeof window !== 'undefined') {
-      window.location.href = '/';
+    if (hadToken) {
+      redirectToLogin();
     }
     throw new APIError('Unauthorized', 401, path);
   }
@@ -246,7 +258,7 @@ const mapDeal = (raw: any): Deal => ({
   stageName: raw.stage_name,
   probability: raw.probability ?? 0,
   expectedClose: raw.expected_close,
-  nextReviewDate: raw.next_review_date,
+  nextContactDate: raw.next_contact_date,
   source: raw.source,
   lossReason: raw.loss_reason,
   channel: raw.channel,
@@ -503,7 +515,7 @@ export async function updateDeal(
     title?: string;
     description?: string;
     clientId?: string;
-    nextReviewDate?: string | null;
+    nextContactDate?: string | null;
     expectedClose?: string | null;
     probability?: number;
     stageName?: string;
@@ -515,7 +527,7 @@ export async function updateDeal(
       title: data.title,
       description: data.description,
       client: data.clientId,
-      next_review_date: data.nextReviewDate || null,
+      next_contact_date: data.nextContactDate || null,
       expected_close: data.expectedClose || null,
       probability: data.probability,
       stage_name: data.stageName,

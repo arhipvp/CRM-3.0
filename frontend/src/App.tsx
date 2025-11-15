@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { MainLayout, View } from './components/MainLayout';
 import { Modal } from './components/Modal';
 import { LoginPage } from './components/LoginPage';
@@ -51,6 +51,7 @@ import {
   getCurrentUser,
   clearTokens,
   APIError,
+  FilterParams,
 } from './api';
 import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Task, User } from './types';
 
@@ -85,43 +86,82 @@ const AppContent: React.FC = () => {
   const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [dealSearch, setDealSearch] = useState('');
+  const searchInitialized = useRef(false);
   const [isLoading, setLoading] = useState(true);
   const [isSyncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const refreshDeals = useCallback(
+    async (filters?: FilterParams) => {
+      const resolvedFilters = { ordering: 'next_contact_date', ...(filters || {}) };
+      const dealsData = await fetchDeals(resolvedFilters);
+      setDeals(dealsData);
+      setSelectedDealId((prev) => {
+        if (prev && dealsData.some((deal) => deal.id === prev)) {
+          return prev;
+        }
+        return dealsData[0]?.id ?? null;
+      });
+    },
+    []
+  );
 
   const loadData = useCallback(async () => {
     console.log('Loading data...');
     setLoading(true);
     setError(null);
     try {
-      const [clientsData, dealsData, policiesData, paymentsData, tasksData, financialRecordsData] =
+      const dealsPromise = refreshDeals();
+      const [clientsData, policiesData, paymentsData, tasksData, financialRecordsData] =
         await Promise.all([
           fetchClients(),
-          fetchDeals(),
           fetchPolicies(),
           fetchPayments(),
           fetchTasks(),
           fetchFinancialRecords(),
         ]);
-      console.log('Data loaded successfully:', { clientsData, dealsData });
+      await dealsPromise;
+      console.log('Data loaded successfully:', {
+        clientsData,
+        policiesData,
+        paymentsData,
+        tasksData,
+        financialRecordsData,
+      });
       setClients(clientsData);
-      setDeals(dealsData);
       setPolicies(policiesData);
       setPayments(paymentsData);
       setTasks(tasksData);
       setFinancialRecords(financialRecordsData);
-      setSelectedDealId((prev) => prev ?? dealsData[0]?.id ?? null);
     } catch (err) {
       console.error('Data loading error:', err);
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить данные');
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить данные из backend');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshDeals]);
+
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!searchInitialized.current) {
+      searchInitialized.current = true;
+      return;
+    }
+    const handler = setTimeout(() => {
+      const query = dealSearch.trim();
+      const filters: FilterParams = { ordering: 'next_contact_date' };
+      if (query) {
+        filters.search = query;
+      }
+      setError(null);
+      refreshDeals(filters).catch((err) => {
+        console.error('Search deals error:', err);
+        setError(err instanceof Error ? err.message : 'Не удалось найти сделки по запросу');
+      });
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [dealSearch, refreshDeals]);
 
   // Check authentication on app load
   useEffect(() => {
@@ -130,6 +170,12 @@ const AppContent: React.FC = () => {
         console.log('Checking authentication...');
         const userData = await getCurrentUser();
         console.log('User data:', userData);
+        if (!userData?.is_authenticated) {
+          clearTokens();
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+          return;
+        }
         // Parse roles from the API response structure
         const roles =
           userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
@@ -143,6 +189,7 @@ const AppContent: React.FC = () => {
         console.log('Setting current user:', user);
         setCurrentUser(user);
         setIsAuthenticated(true);
+        await loadData();
       } catch (err) {
         console.error('Auth error:', err);
         setIsAuthenticated(false);
@@ -153,7 +200,7 @@ const AppContent: React.FC = () => {
     };
 
     checkAuth();
-  }, []);
+  }, [loadData]);
 
   const handleAddClient = async (data: {
     name: string;
@@ -559,6 +606,8 @@ const AppContent: React.FC = () => {
             tasks={tasks}
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
+            dealSearch={dealSearch}
+            onDealSearchChange={setDealSearch}
             onUpdateStatus={handleStatusChange}
             onUpdateDeal={handleUpdateDeal}
             onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
