@@ -33,9 +33,9 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600"
-            aria-label="Р—Р°РєСЂС‹С‚СЊ"
+            aria-label="Закрыть"
           >
-            Р“Г—
+            Г×
           </button>
         </div>
         <div className="p-5">{children}</div>

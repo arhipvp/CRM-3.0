@@ -41,9 +41,9 @@ interface AddPolicyFormProps {
 }
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  planned: 'Р—Р°РїР»Р°РЅРёСЂРѕРІР°РЅ',
-  partial: 'Р§Р°СЃС‚РёС‡РЅРѕ',
-  paid: 'РћРїР»Р°С‡РµРЅ',
+  planned: 'Запланирован',
+  partial: 'Частично',
+  paid: 'Оплачен',
 };
 
 const createEmptyRecord = (): FinancialRecordDraft => ({
@@ -95,7 +95,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
       })
       .catch(() => {
         if (!isMounted) return;
-        setOptionsError('РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚СЂР°С…РѕРІР°РЅРёСЏ');
+        setOptionsError('Не удалось загрузить справочники страхования');
       })
       .finally(() => {
         if (!isMounted) return;
@@ -196,19 +196,19 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
       <div key={`${type}-${recordIndex}`} className="border border-slate-200 rounded-lg p-3 space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-sm font-semibold text-slate-900">
-            {type === 'incomes' ? 'Р”РѕС…РѕРґ' : 'Р Р°СЃС…РѕРґ'} #{recordIndex + 1}
+            {type === 'incomes' ? 'Доход' : 'Расход'} #{recordIndex + 1}
           </span>
           <button
             type="button"
             className="text-xs text-red-500 hover:underline"
             onClick={() => removeRecord(paymentIndex, type, recordIndex)}
           >
-            РЈРґР°Р»РёС‚СЊ
+            Удалить
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600">РЎСѓРјРјР°, в‚Ѕ</label>
+            <label className="block text-xs font-medium text-slate-600">РЎСѓРјРјР°, в'Ѕ</label>
             <input
               type="number"
               value={record.amount}
@@ -217,7 +217,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600">Р”Р°С‚Р°</label>
+            <label className="block text-xs font-medium text-slate-600">Дата</label>
             <input
               type="date"
               value={record.date || ''}
@@ -226,7 +226,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600">РћРїРёСЃР°РЅРёРµ</label>
+            <label className="block text-xs font-medium text-slate-600">Описание</label>
             <input
               type="text"
               value={record.description || ''}
@@ -237,7 +237,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600">РСЃС‚РѕС‡РЅРёРє</label>
+            <label className="block text-xs font-medium text-slate-600">Рсточник</label>
             <input
               type="text"
               value={record.source || ''}
@@ -246,7 +246,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600">РџСЂРёРјРµРЅРµРЅРёРµ</label>
+            <label className="block text-xs font-medium text-slate-600">Применение</label>
             <input
               type="text"
               value={record.note || ''}
@@ -261,12 +261,12 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
-      setError('Р—Р°РїРѕР»РЅРёС‚Рµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ РїРѕР»СЏ РЅРѕРјРµСЂР° Рё СЃРїСЂР°РІРѕС‡РЅРёРєРѕРІ');
+      setError('Заполните обязательные поля номера и справочников');
       return;
     }
 
     if (isVehicle && !vin.trim()) {
-      setError('РЈРєР°Р¶РёС‚Рµ VIN, РµСЃР»Рё РїРѕР»РёСЃ РґР»СЏ Р°РІС‚РѕРјРѕР±РёР»СЏ');
+      setError('Укажите VIN, если полис для автомобиля');
       return;
     }
 
@@ -288,7 +288,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
         payments,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РїРѕР»РёСЃ');
+      setError(err instanceof Error ? err.message : 'Не удалось создать полис');
       throw err;
     } finally {
       setSubmitting(false);
@@ -308,7 +308,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
           }`}
           onClick={() => setActiveRecordTab((prev) => ({ ...prev, [paymentIndex]: tab }))}
         >
-          {tab === 'incomes' ? 'Р”РѕС…РѕРґС‹' : 'Р Р°СЃС…РѕРґС‹'}
+          {tab === 'incomes' ? 'Доходы' : 'Расходы'}
         </button>
       ))}
     </div>
@@ -316,7 +316,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
 
   const renderRecordSection = (paymentIndex: number) => {
     const activeTab = getActiveTab(paymentIndex);
-    const label = activeTab === 'incomes' ? 'Р”РѕС…РѕРґС‹' : 'Р Р°СЃС…РѕРґС‹';
+    const label = activeTab === 'incomes' ? 'Доходы' : 'Расходы';
     const records = payments[paymentIndex][activeTab];
 
     return (
@@ -328,11 +328,11 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
             className="text-xs text-sky-600 hover:underline"
             onClick={() => addRecord(paymentIndex, activeTab)}
           >
-            + Р”РѕР±Р°РІРёС‚СЊ {activeTab === 'incomes' ? 'РґРѕС…РѕРґ' : 'СЂР°СЃС…РѕРґ'}
+            + Добавить {activeTab === 'incomes' ? 'доход' : 'расход'}
           </button>
         </div>
         {records.length ? renderRecordInputs(paymentIndex, activeTab, records) : (
-          <p className="text-xs text-slate-500">РџРѕРєР° РЅРµС‚ {label.toLowerCase()}</p>
+          <p className="text-xs text-slate-500">Пока нет {label.toLowerCase()}</p>
         )}
       </div>
     );
@@ -346,7 +346,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">РќРѕРјРµСЂ РїРѕР»РёСЃР°*</label>
+          <label className="block text-sm font-medium text-slate-700">Номер полиса*</label>
           <input
             type="text"
             value={number}
@@ -356,14 +356,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">РЎС‚СЂР°С…РѕРІР°СЏ РєРѕРјРїР°РЅРёСЏ*</label>
+          <label className="block text-sm font-medium text-slate-700">Страховая компания*</label>
           <select
             value={insuranceCompanyId}
             onChange={(e) => setInsuranceCompanyId(e.target.value)}
             disabled={loadingOptions}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
           >
-            <option value="">Р’С‹Р±РµСЂРёС‚Рµ СЃС‚СЂР°С…РѕРІСѓСЋ РєРѕРјРїР°РЅРёСЋ</option>
+            <option value="">Выберите страховую компанию</option>
             {companies.map((company) => (
               <option key={company.id} value={company.id}>
                 {company.name}
@@ -375,14 +375,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">РўРёРї СЃС‚СЂР°С…РѕРІР°РЅРёСЏ*</label>
+          <label className="block text-sm font-medium text-slate-700">Тип страхования*</label>
           <select
             value={insuranceTypeId}
             onChange={(e) => setInsuranceTypeId(e.target.value)}
             disabled={loadingOptions}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
           >
-            <option value="">Р’С‹Р±РµСЂРёС‚Рµ С‚РёРї СЃС‚СЂР°С…РѕРІР°РЅРёСЏ</option>
+            <option value="">Выберите тип страхования</option>
             {types.map((insuranceType) => (
               <option key={insuranceType.id} value={insuranceType.id}>
                 {insuranceType.name}
@@ -391,20 +391,20 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">РљРѕРЅС‚СЂР°РіРµРЅС‚</label>
+          <label className="block text-sm font-medium text-slate-700">Контрагент</label>
           <input
             type="text"
             value={counterparty}
             onChange={(event) => setCounterparty(event.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-            placeholder="РљРѕРјРїР°РЅРёСЏ / С„РёР·Р»РёС†Рѕ"
+            placeholder="Компания / физлицо"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">РЎС‚СЂР°С…СѓРµС‚СЃСЏ Р°РІС‚РѕРјРѕР±РёР»СЊ</label>
+          <label className="block text-sm font-medium text-slate-700">Страхуется автомобиль</label>
           <label className="flex items-center gap-3 cursor-pointer mt-2">
             <input
               type="checkbox"
@@ -419,12 +419,12 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
               }}
               className="rounded border-slate-300"
             />
-            <span className="text-sm font-medium text-slate-700">Р”Р°</span>
+            <span className="text-sm font-medium text-slate-700">Да</span>
           </label>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Р”Р°С‚Р° РЅР°С‡Р°Р»Р°</label>
+            <label className="block text-sm font-medium text-slate-700">Дата начала</label>
             <input
               type="date"
               value={startDate}
@@ -433,7 +433,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ</label>
+            <label className="block text-sm font-medium text-slate-700">Дата окончания</label>
             <input
               type="date"
               value={endDate}
@@ -447,7 +447,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
       {isVehicle && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">РњР°СЂРєР°</label>
+            <label className="block text-sm font-medium text-slate-700">Марка</label>
             <input
               type="text"
               value={brand}
@@ -457,7 +457,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">РњРѕРґРµР»СЊ</label>
+            <label className="block text-sm font-medium text-slate-700">Модель</label>
             <input
               type="text"
               value={model}
@@ -474,7 +474,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
               onChange={(event) => setVin(event.target.value)}
               maxLength={17}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-              placeholder="РќРѕРјРµСЂ С€Р°СЃСЃРё (17 СЃРёРјРІРѕР»РѕРІ)"
+              placeholder="Номер шасси (17 символов)"
             />
           </div>
         </div>
@@ -482,37 +482,37 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">РџР»Р°С‚РµР¶Рё</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Платежи</h3>
           <button
             type="button"
             onClick={handleAddPayment}
             className="text-sm font-medium text-sky-600 hover:text-sky-800"
           >
-            + Р”РѕР±Р°РІРёС‚СЊ РїР»Р°С‚РµР¶
+            + Добавить платеж
           </button>
         </div>
 
         {payments.length === 0 && (
-          <p className="text-xs text-slate-500">Р”РѕР±Р°РІСЊС‚Рµ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ РїР»Р°С‚РµР¶ РґР»СЏ СЂР°СЃС‡РµС‚Р° С„РёРЅР°РЅСЃРѕРІ</p>
+          <p className="text-xs text-slate-500">Добавьте хотя бы один платеж для расчета финансов</p>
         )}
 
         <div className="space-y-4">
           {payments.map((payment, paymentIndex) => (
             <div key={paymentIndex} className="border border-slate-200 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-900">РџР»Р°С‚РµР¶ #{paymentIndex + 1}</span>
+                <span className="text-sm font-semibold text-slate-900">Платеж #{paymentIndex + 1}</span>
                 <button
                   type="button"
                   className="text-xs text-red-500 hover:underline"
                   onClick={() => handleRemovePayment(paymentIndex)}
                 >
-                  РЈРґР°Р»РёС‚СЊ РїР»Р°С‚РµР¶
+                  Удалить платеж
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">РЎСѓРјРјР°, в‚Ѕ</label>
+                  <label className="block text-xs font-medium text-slate-600">РЎСѓРјРјР°, в'Ѕ</label>
                   <input
                     type="number"
                     value={payment.amount}
@@ -521,7 +521,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">РЎС‚Р°С‚СѓСЃ</label>
+                  <label className="block text-xs font-medium text-slate-600">Статус</label>
                   <select
                     value={payment.status}
                     onChange={(e) =>
@@ -537,7 +537,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">Р”Р°С‚Р° РїР»Р°РЅРѕРІР°СЏ</label>
+                  <label className="block text-xs font-medium text-slate-600">Дата плановая</label>
                   <input
                     type="date"
                     value={payment.scheduledDate || ''}
@@ -549,7 +549,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">Р”Р°С‚Р° С„Р°РєС‚РёС‡РµСЃРєР°СЏ</label>
+                  <label className="block text-xs font-medium text-slate-600">Дата фактическая</label>
                   <input
                     type="date"
                     value={payment.actualDate || ''}
@@ -558,7 +558,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">РћРїРёСЃР°РЅРёРµ</label>
+                  <label className="block text-xs font-medium text-slate-600">Описание</label>
                   <input
                     type="text"
                     value={payment.description || ''}
@@ -586,14 +586,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
           className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
           disabled={isSubmitting}
         >
-          РћС‚РјРµРЅР°
+          Отмена
         </button>
         <button
           type="submit"
           className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'РЎРѕС…СЂР°РЅСЏРµРј...' : 'РЎРѕР·РґР°С‚СЊ РїРѕР»РёСЃ'}
+          {isSubmitting ? 'Сохраняем...' : 'Создать полис'}
         </button>
       </div>
     </form>

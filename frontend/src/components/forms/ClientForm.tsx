@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 
 interface ClientFormProps {
   initial?: { name: string; phone?: string; birthDate?: string | null; notes?: string | null };
