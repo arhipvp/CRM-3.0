@@ -192,7 +192,7 @@ interface DealsViewProps {
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<void>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
-  onFetchActivityLogs: (dealId: string) => Promise<ActivityLog[]>;
+  onFetchDealHistory: (dealId: string) => Promise<ActivityLog[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
@@ -226,7 +226,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onFetchChatMessages,
   onSendChatMessage,
   onDeleteChatMessage,
-  onFetchActivityLogs,
+  onFetchDealHistory,
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
@@ -328,7 +328,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
     if (!selectedDeal) return;
     setIsActivityLoading(true);
     try {
-      const logs = await onFetchActivityLogs(selectedDeal.id);
+      const logs = await onFetchDealHistory(selectedDeal.id);
       setActivityLogs(logs);
     } catch (err) {
       console.error('Ошибка загрузки логов активности:', err);

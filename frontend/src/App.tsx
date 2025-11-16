@@ -45,7 +45,7 @@ import {
   updateDealStatus,
   updateDeal,
   updatePayment,
-  fetchActivityLogs,
+  fetchDealHistory,
   createTask,
   updateTask,
   deleteTask,
@@ -759,7 +759,7 @@ const AppContent: React.FC = () => {
             onFetchChatMessages={handleFetchChatMessages}
             onSendChatMessage={handleSendChatMessage}
             onDeleteChatMessage={handleDeleteChatMessage}
-            onFetchActivityLogs={fetchActivityLogs}
+            onFetchDealHistory={fetchDealHistory}
             onCreateTask={handleCreateTask}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}

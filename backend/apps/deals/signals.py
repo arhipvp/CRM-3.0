@@ -14,7 +14,7 @@ from apps.users.models import AuditLog
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Deal
+from .models import Deal, Quote
 
 logger = logging.getLogger(__name__)
 
@@ -105,4 +105,78 @@ def log_deal_delete(sender, instance, **kwargs):
         object_name=instance.title,
         action="hard_delete",
         description=f"Окончательно удалена сделка '{instance.title}'",
+    )
+
+
+@receiver(pre_save, sender=Quote)
+def quote_pre_save(sender, instance, **kwargs):
+    """Сохраняем старые значения расчета перед сохранением."""
+    if instance.pk:
+        try:
+            old_instance = Quote.objects.with_deleted().get(pk=instance.pk)
+            store_old_values(old_instance)
+            instance._was_deleted = old_instance.deleted_at is not None
+            instance._now_deleted = instance.deleted_at is not None
+        except Quote.DoesNotExist:
+            pass
+
+
+@receiver(post_save, sender=Quote)
+def log_quote_change(sender, instance, created, **kwargs):
+    """Логируем операции с расчетом."""
+
+    actor = getattr(instance, "_audit_actor", None)
+    was_deleted = getattr(instance, "_was_deleted", False)
+    now_deleted = getattr(instance, "_now_deleted", False)
+
+    if was_deleted and now_deleted:
+        action = "update"
+    elif not was_deleted and now_deleted:
+        action = "soft_delete"
+    elif created:
+        action = "create"
+    else:
+        action = "update"
+
+    new_value = serialize_model_fields(instance, exclude_fields=["deleted_at"])
+    old_value = getattr(instance, "_old_value", None)
+
+    quote_name = f"{instance.insurance_type.name} — {instance.insurance_company.name}"
+
+    description_map = {
+        "create": f"Создан расчет '{quote_name}'",
+        "update": f"Обновлен расчет '{quote_name}'",
+        "soft_delete": f"Удален расчет '{quote_name}'",
+    }
+
+    AuditLog.objects.create(
+        actor=actor,
+        object_type="quote",
+        object_id=str(instance.id),
+        object_name=quote_name,
+        action=action,
+        description=description_map.get(action),
+        old_value=old_value,
+        new_value=new_value if action != "soft_delete" else None,
+    )
+
+    for attr in ("_was_deleted", "_now_deleted", "_old_value"):
+        if hasattr(instance, attr):
+            delattr(instance, attr)
+
+
+@receiver(post_delete, sender=Quote)
+def log_quote_delete(sender, instance, **kwargs):
+    """Логируем окончательное удаление расчета."""
+
+    actor = getattr(instance, "_audit_actor", None)
+    quote_name = f"{instance.insurance_type.name} — {instance.insurance_company.name}"
+
+    AuditLog.objects.create(
+        actor=actor,
+        object_type="quote",
+        object_id=str(instance.id),
+        object_name=quote_name,
+        action="hard_delete",
+        description=f"Документально удален расчет '{quote_name}'",
     )

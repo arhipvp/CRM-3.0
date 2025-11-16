@@ -907,9 +907,12 @@ export async function deleteFinancialRecord(id: string): Promise<void> {
   await request(`/financial_records/${id}/`, { method: 'DELETE' });
 }
 
-export async function fetchActivityLogs(dealId: string): Promise<ActivityLog[]> {
-  const payload = await request<any>(`/activity_logs/?deal=${dealId}`);
-  return unwrapList(payload).map(mapActivityLog);
+export async function fetchDealHistory(dealId: string): Promise<ActivityLog[]> {
+  const payload = await request<any>(`/deals/${dealId}/history/`);
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+  return payload.map(mapActivityLog);
 }
 
 export async function fetchDealNotes(

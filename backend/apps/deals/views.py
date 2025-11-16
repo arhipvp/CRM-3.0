@@ -1,3 +1,5 @@
+import json
+
 from apps.common.drive import (
     DriveError,
     ensure_deal_folder,
@@ -5,7 +7,12 @@ from apps.common.drive import (
     upload_file_to_drive,
 )
 from apps.common.permissions import EditProtectedMixin
-from apps.users.models import UserRole
+from apps.documents.models import Document
+from apps.finances.models import FinancialRecord, Payment
+from apps.notes.models import Note
+from apps.policies.models import Policy
+from apps.tasks.models import Task
+from apps.users.models import AuditLog, UserRole
 from django.db.models import F, Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -117,6 +124,93 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
         return Response({"files": files, "folder_id": folder_id})
+
+    @action(detail=True, methods=["get"], url_path="history")
+    def history(self, request, pk=None):
+        deal = self.get_object()
+        activities = ActivityLog.objects.filter(deal=deal).select_related("user")
+        activity_data = ActivityLogSerializer(activities, many=True).data
+        audit_logs = self._get_related_audit_logs(deal)
+        audit_data = [self._map_audit_log_entry(log, deal.id) for log in audit_logs]
+        timeline = sorted(
+            activity_data + audit_data,
+            key=lambda entry: entry["created_at"],
+            reverse=True,
+        )
+        return Response(timeline)
+
+    def _collect_related_ids(self, deal: Deal) -> dict:
+        def stringify(queryset):
+            return [str(pk) for pk in set(queryset)]
+
+        return {
+            "task": stringify(
+                Task.objects.with_deleted().filter(deal=deal).values_list("id", flat=True)
+            ),
+            "document": stringify(
+                Document.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True)
+            ),
+            "payment": stringify(
+                Payment.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True)
+            ),
+            "financial_record": stringify(
+                FinancialRecord.objects.with_deleted()
+                .filter(payment__deal=deal)
+                .values_list("id", flat=True)
+            ),
+            "note": stringify(
+                Note.objects.with_deleted().filter(deal=deal).values_list("id", flat=True)
+            ),
+            "policy": stringify(
+                Policy.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True)
+            ),
+            "quote": stringify(
+                Quote.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True)
+            ),
+        }
+
+    @staticmethod
+    def _format_value(value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return json.dumps(value, ensure_ascii=False)
+
+    def _get_related_audit_logs(self, deal: Deal):
+        filters = Q(object_type="deal", object_id=str(deal.id))
+        related_ids = self._collect_related_ids(deal)
+        for object_type, ids in related_ids.items():
+            if ids:
+                filters |= Q(object_type=object_type, object_id__in=ids)
+        return (
+            AuditLog.objects.filter(filters)
+            .select_related("actor")
+            .order_by("-created_at")
+        )
+
+    def _map_audit_log_entry(self, audit_log: AuditLog, deal_id):
+        description = audit_log.description or audit_log.object_name or audit_log.action_display
+        return {
+            "id": f"audit-{audit_log.id}",
+            "deal": str(deal_id),
+            "action_type": "custom",
+            "action_type_display": audit_log.action_display,
+            "description": description,
+            "user": audit_log.actor_id,
+            "user_username": audit_log.actor.username if audit_log.actor else None,
+            "old_value": self._format_value(audit_log.old_value),
+            "new_value": self._format_value(audit_log.new_value),
+            "created_at": audit_log.created_at.isoformat(),
+        }
 
 
 class QuoteViewSet(viewsets.ModelViewSet):
