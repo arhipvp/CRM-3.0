@@ -137,6 +137,7 @@ export interface Payment {
   policyInsuranceType?: string;
   amount: string;
   description?: string;
+  note?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
   status: PaymentStatus;

@@ -29,6 +29,7 @@ import {
   createPayment,
   createFinancialRecord,
   updateFinancialRecord,
+  deleteFinancialRecord,
   deleteQuote,
   deletePolicy,
   uploadDocument,
@@ -680,6 +681,22 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleDeleteFinancialRecord = async (recordId: string) => {
+    try {
+      await deleteFinancialRecord(recordId);
+      setFinancialRecords((prev) => prev.filter((r) => r.id !== recordId));
+      setPayments((prev) =>
+        prev.map((payment) => ({
+          ...payment,
+          financialRecords: payment.financialRecords?.filter((r) => r.id !== recordId),
+        }))
+      );
+    } catch (err) {
+      addNotification('Не удалось удалить финансовую запись', 'error', 4000);
+      throw err;
+    }
+  };
+
   const handleLogout = () => {
     clearTokens();
     setIsAuthenticated(false);
@@ -754,6 +771,7 @@ const AppContent: React.FC = () => {
             onUpdatePayment={handleUpdatePayment}
             onAddFinancialRecord={handleAddFinancialRecord}
             onUpdateFinancialRecord={handleUpdateFinancialRecord}
+            onDeleteFinancialRecord={handleDeleteFinancialRecord}
             onUploadDocument={handleUploadDocument}
             onDeleteDocument={handleDeleteDocument}
             onFetchChatMessages={handleFetchChatMessages}

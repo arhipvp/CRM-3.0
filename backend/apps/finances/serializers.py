@@ -32,6 +32,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     policy_insurance_type = serializers.CharField(
         source="policy.insurance_type", read_only=True, allow_null=True
     )
+    note = serializers.CharField(source="description", allow_blank=True, read_only=True)
     financial_records = FinancialRecordSerializer(many=True, read_only=True)
     can_delete = serializers.SerializerMethodField()
 

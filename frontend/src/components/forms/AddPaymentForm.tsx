@@ -18,6 +18,7 @@ interface AddPaymentFormProps {
   dealId?: string;
   dealTitle?: string;
   policies?: Policy[];
+  fixedPolicyId?: string;
 }
 
 export function AddPaymentForm({
@@ -27,9 +28,10 @@ export function AddPaymentForm({
   dealId,
   dealTitle,
   policies,
+  fixedPolicyId,
 }: AddPaymentFormProps) {
   const [formData, setFormData] = useState<AddPaymentFormValues>({
-    policyId: payment?.policyId || '',
+    policyId: payment?.policyId || fixedPolicyId || '',
     dealId: payment?.dealId || dealId || '',
     amount: payment?.amount || '',
     description: payment?.description || '',
@@ -41,6 +43,14 @@ export function AddPaymentForm({
   const dealIsFixed = Boolean(dealId);
   const policyOptions = policies ?? [];
   const hasPolicyOptions = policyOptions.length > 0;
+  const fixedPolicy = fixedPolicyId
+    ? policyOptions.find((policy) => policy.id === fixedPolicyId)
+    : undefined;
+  const fixedPolicyDisplay =
+    fixedPolicy?.number ||
+    fixedPolicy?.id ||
+    fixedPolicyId ||
+    '';
   useEffect(() => {
     if (!dealId) {
       return;
@@ -53,6 +63,16 @@ export function AddPaymentForm({
       return { ...prev, dealId };
     });
   }, [dealId]);
+
+  useEffect(() => {
+    if (!fixedPolicyId) {
+      return;
+    }
+
+    setFormData((prev) =>
+      prev.policyId === fixedPolicyId ? prev : { ...prev, policyId: fixedPolicyId }
+    );
+  }, [fixedPolicyId]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -122,7 +142,22 @@ export function AddPaymentForm({
         </div>
       )}
 
-      {hasPolicyOptions ? (
+      {fixedPolicyId ? (
+        <div className="form-group">
+          <label htmlFor="policyId">Полис *</label>
+          <input
+            type="text"
+            id="policyId"
+            name="policyId"
+            value={fixedPolicyDisplay}
+            disabled
+            required
+          />
+          {fixedPolicy && fixedPolicy.insuranceType && (
+            <p className="text-xs text-slate-500 mt-1">{fixedPolicy.insuranceType}</p>
+          )}
+        </div>
+      ) : hasPolicyOptions ? (
         <div className="form-group">
           <label htmlFor="policyId">Полис *</label>
           <select
@@ -200,13 +235,13 @@ export function AddPaymentForm({
       </div>
 
       <div className="form-group">
-        <label htmlFor="description">Описание</label>
+        <label htmlFor="description">Примечание</label>
         <textarea
           id="description"
           name="description"
           value={formData.description || ''}
           onChange={handleChange}
-          placeholder="Описание платежа"
+          placeholder="Примечание к платежу"
           rows={3}
           disabled={loading}
         />

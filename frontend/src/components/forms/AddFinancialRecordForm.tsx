@@ -16,6 +16,7 @@ interface AddFinancialRecordFormProps {
   record?: FinancialRecord;
   onSubmit: (data: AddFinancialRecordFormValues) => Promise<void>;
   onCancel: () => void;
+  defaultRecordType?: 'income' | 'expense';
 }
 
 export function AddFinancialRecordForm({
@@ -23,12 +24,17 @@ export function AddFinancialRecordForm({
   record,
   onSubmit,
   onCancel,
+  defaultRecordType,
 }: AddFinancialRecordFormProps) {
   const [formData, setFormData] = useState<AddFinancialRecordFormValues>({
     paymentId,
-    recordType: record ? (parseFloat(record.amount) >= 0 ? 'income' : 'expense') : 'income',
+    recordType: record
+      ? parseFloat(record.amount) >= 0
+        ? 'income'
+        : 'expense'
+      : defaultRecordType ?? 'income',
     amount: record ? Math.abs(parseFloat(record.amount)).toString() : '',
-    date: record?.date || new Date().toISOString().split('T')[0],
+    date: record?.date || '',
     description: record?.description || '',
     source: record?.source || '',
     note: record?.note || '',
@@ -55,9 +61,6 @@ export function AddFinancialRecordForm({
     try {
       if (!formData.amount) {
         throw new Error('Сумма обязательна');
-      }
-      if (!formData.date) {
-        throw new Error('Дата обязательна');
       }
 
       await onSubmit(formData);
