@@ -62,6 +62,17 @@ export interface Document {
   created_at: string;
 }
 
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: number | null;
+  createdAt?: string | null;
+  modifiedAt?: string | null;
+  webViewLink?: string | null;
+  isFolder: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   deal: string;
@@ -89,6 +100,7 @@ export interface Deal {
   createdAt: string;
   quotes: Quote[];
   documents: Document[];
+  driveFolderId?: string | null;
 }
 
 export interface Policy {

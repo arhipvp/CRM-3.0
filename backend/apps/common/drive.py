@@ -1,0 +1,278 @@
+"""Utilities to manage Google Drive folders used by the CRM."""
+
+from __future__ import annotations
+
+import logging
+from typing import Optional, TypedDict
+
+from django.conf import settings
+from django.db import models
+
+logger = logging.getLogger(__name__)
+
+try:
+    from googleapiclient.discovery import build as _gdrive_build
+    from googleapiclient.errors import HttpError as _GDriveHttpError
+    from google.oauth2 import service_account as _service_account
+except ImportError as exc:  # pragma: no cover - requires optional dependency
+    _gdrive_build = None
+    _GDriveHttpError = None
+    _service_account = None
+    _drive_import_error = exc
+else:
+    _drive_import_error = None
+
+_service_resource = None
+
+DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
+FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+
+
+class DriveError(Exception):
+    """Base class for Drive integration problems."""
+
+
+class DriveConfigurationError(DriveError):
+    """Raised when a configuration value is missing or invalid."""
+
+
+class DriveOperationError(DriveError):
+    """Raised when a Drive API call fails."""
+
+
+class DriveFileInfo(TypedDict):
+    """The subset of Drive file metadata used by the UI."""
+
+    id: str
+    name: str
+    mime_type: str
+    size: Optional[int]
+    created_at: Optional[str]
+    modified_at: Optional[str]
+    web_view_link: Optional[str]
+    is_folder: bool
+
+
+def _get_drive_service():
+    global _service_resource
+
+    if _drive_import_error:
+        raise DriveConfigurationError(
+            "google-api-python-client and google-auth must be installed to work with Drive."
+        )
+
+    if not _gdrive_build or not _service_account:
+        raise DriveConfigurationError("Drive client dependencies are not available.")
+
+    if _service_resource:
+        return _service_resource
+
+    keyfile = getattr(settings, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "").strip()
+    if not keyfile:
+        raise DriveConfigurationError("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is not configured.")
+
+    try:
+        credentials = _service_account.Credentials.from_service_account_file(
+            keyfile, scopes=DRIVE_SCOPES
+        )
+        _service_resource = _gdrive_build(
+            "drive", "v3", credentials=credentials, cache_discovery=False
+        )
+        return _service_resource
+    except Exception as exc:  # pragma: no cover - relies on third-party errors
+        logger.exception("Failed to initialize Google Drive client")
+        raise DriveConfigurationError("Unable to initialize Google Drive client.") from exc
+
+
+def _escape_name(value: str) -> str:
+    return value.replace("'", "\\'")
+
+
+def _find_folder(folder_name: str, parent_id: str) -> Optional[dict]:
+    service = _get_drive_service()
+    query = " and ".join(
+        (
+            f"name = '{_escape_name(folder_name)}'",
+            f"'{parent_id}' in parents",
+            f"mimeType = '{FOLDER_MIME_TYPE}'",
+            "trashed = false",
+        )
+    )
+    try:
+        response = (
+            service.files()
+            .list(
+                q=query,
+                spaces="drive",
+                fields="files(id, name)",
+                pageSize=1,
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+    except Exception as exc:
+        logger.exception("Error while searching Drive folders")
+        raise DriveOperationError("Unable to search for Drive folders.") from exc
+
+    files = response.get("files") or []
+    return files[0] if files else None
+
+
+def _make_folder(folder_name: str, parent_id: str) -> str:
+    service = _get_drive_service()
+    metadata = {
+        "name": folder_name,
+        "mimeType": FOLDER_MIME_TYPE,
+        "parents": [parent_id],
+    }
+    try:
+        folder = (
+            service.files()
+            .create(
+                body=metadata,
+                fields="id",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+    except Exception as exc:
+        logger.exception("Error while creating Drive folder")
+        raise DriveOperationError("Unable to create Drive folder.") from exc
+
+    return folder["id"]
+
+
+def _ensure_folder(folder_name: str, parent_id: str) -> str:
+    if not parent_id:
+        raise DriveConfigurationError("Google Drive root folder is not configured.")
+
+    existing = _find_folder(folder_name, parent_id)
+    if existing:
+        return existing["id"]
+
+    return _make_folder(folder_name, parent_id)
+
+
+def _update_instance_folder(instance: models.Model, folder_id: str) -> None:
+    if not folder_id or not getattr(instance, "pk", None):
+        return
+    existing = getattr(instance, "drive_folder_id", None)
+    if existing == folder_id:
+        return
+    instance.__class__.objects.filter(pk=instance.pk).update(drive_folder_id=folder_id)
+    setattr(instance, "drive_folder_id", folder_id)
+
+
+def _format_folder_name(prefix: str, fallback: str) -> str:
+    return prefix.strip() or fallback
+
+
+def ensure_client_folder(client) -> Optional[str]:
+    """Ensure a Drive folder exists for a client and store its ID."""
+
+    root_folder = getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "").strip()
+    if not root_folder:
+        raise DriveConfigurationError("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured.")
+
+    name = _format_folder_name(client.name or "client", "client")
+    folder_id = _ensure_folder(name, root_folder)
+    _update_instance_folder(client, folder_id)
+    return folder_id
+
+
+def ensure_deal_folder(deal) -> Optional[str]:
+    """Ensure a Deal folder exists inside its client's Drive folder."""
+
+    from apps.clients.models import Client
+
+    client = getattr(deal, "client", None)
+    if client is None and deal.client_id:
+        client = Client.objects.filter(pk=deal.client_id).first()
+    if not client:
+        raise DriveConfigurationError("Deal has no client; cannot create Drive folder.")
+
+    client_folder = ensure_client_folder(client)
+    if not client_folder:
+        return None
+
+    name = _format_folder_name(deal.title or "deal", "deal")
+    folder_id = _ensure_folder(name, client_folder)
+    _update_instance_folder(deal, folder_id)
+    return folder_id
+
+
+def ensure_policy_folder(policy) -> Optional[str]:
+    """Ensure a Policy folder exists inside its deal's Drive folder."""
+
+    from apps.deals.models import Deal
+
+    deal = getattr(policy, "deal", None)
+    if deal is None and policy.deal_id:
+        deal = Deal.objects.filter(pk=policy.deal_id).first()
+    if not deal:
+        raise DriveConfigurationError("Policy has no deal; cannot create Drive folder.")
+
+    deal_folder = ensure_deal_folder(deal)
+    if not deal_folder:
+        return None
+
+    name = _format_folder_name(policy.number or "policy", "policy")
+    folder_id = _ensure_folder(name, deal_folder)
+    _update_instance_folder(policy, folder_id)
+    return folder_id
+
+
+def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
+    """Return normalized metadata for the given Drive folder."""
+
+    if not folder_id:
+        raise DriveOperationError("Folder ID must be provided.")
+
+    service = _get_drive_service()
+    results: list[DriveFileInfo] = []
+    page_token: Optional[str] = None
+
+    while True:
+        try:
+            response = (
+                service.files()
+                .list(
+                    q=f"'{folder_id}' in parents and trashed = false",
+                    spaces="drive",
+                    fields="nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, webViewLink)",
+                    pageSize=200,
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+        except Exception as exc:
+            logger.exception("Error while loading Drive folder contents")
+            raise DriveOperationError("Unable to load Drive folder contents.") from exc
+
+        for item in response.get("files", []):
+            size_value = item.get("size")
+            size = None
+            if size_value:
+                try:
+                    size = int(size_value)
+                except (TypeError, ValueError):
+                    size = None
+            results.append(
+            DriveFileInfo(
+                id=item["id"],
+                name=item["name"],
+                mime_type=item.get("mimeType", ""),
+                size=size,
+                created_at=item.get("createdTime"),
+                modified_at=item.get("modifiedTime"),
+                web_view_link=item.get("webViewLink"),
+                is_folder=item.get("mimeType") == FOLDER_MIME_TYPE,
+            )
+        )
+
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+
+    return results

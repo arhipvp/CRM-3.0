@@ -491,6 +491,14 @@ const AppContent: React.FC = () => {
     }
   };
 
+
+  const handleDriveFolderCreated = (dealId: string, folderId: string) => {
+    setDeals((prev) =>
+      prev.map((deal) =>
+        deal.id === dealId ? { ...deal, driveFolderId: folderId } : deal
+      )
+    );
+  };
   const handleFetchChatMessages = async (dealId: string) => {
     try {
       return await fetchChatMessages(dealId);
@@ -774,6 +782,7 @@ const AppContent: React.FC = () => {
             onDeleteFinancialRecord={handleDeleteFinancialRecord}
             onUploadDocument={handleUploadDocument}
             onDeleteDocument={handleDeleteDocument}
+            onDriveFolderCreated={handleDriveFolderCreated}
             onFetchChatMessages={handleFetchChatMessages}
             onSendChatMessage={handleSendChatMessage}
             onDeleteChatMessage={handleDeleteChatMessage}

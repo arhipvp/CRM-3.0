@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityLog,
   Client,
   Deal,
   DealStatus,
+  DriveFile,
   FinancialRecord,
   Payment,
   Policy,
@@ -12,6 +13,7 @@ import {
   User,
   ChatMessage,
 } from '../../types';
+import { fetchDealDriveFiles } from '../../api';
 import { FileUploadManager } from '../FileUploadManager';
 import { ChatBox } from '../ChatBox';
 import { ActivityTimeline } from '../ActivityTimeline';
@@ -96,6 +98,27 @@ const formatCurrency = (value?: string) => {
   return amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
 };
 
+const formatDriveDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleString('ru-RU') : '—';
+
+const formatDriveFileSize = (bytes?: number | null) => {
+  if (bytes === undefined || bytes === null) {
+    return '—';
+  }
+  if (bytes === 0) {
+    return '0 Б';
+  }
+  const k = 1024;
+  const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(k)),
+    sizes.length - 1
+  );
+  return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
+};
+
+const getDriveItemIcon = (isFolder: boolean) => (isFolder ? '📁' : '📄');
+
 type PolicySortKey =
   | 'number'
   | 'insuranceCompany'
@@ -159,6 +182,7 @@ interface DealsViewProps {
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onUploadDocument: (dealId: string, file: File) => Promise<void>;
   onDeleteDocument: (documentId: string) => Promise<void>;
+  onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<void>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
@@ -194,6 +218,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDeleteFinancialRecord,
   onUploadDocument,
   onDeleteDocument,
+  onDriveFolderCreated,
   onFetchChatMessages,
   onSendChatMessage,
   onDeleteChatMessage,
@@ -240,6 +265,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
   >(null);
   const [policySortKey, setPolicySortKey] = useState<PolicySortKey>('startDate');
   const [policySortOrder, setPolicySortOrder] = useState<'asc' | 'desc'>('asc');
+  const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+  const [isDriveLoading, setIsDriveLoading] = useState(false);
+  const [driveError, setDriveError] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab('overview');
@@ -346,6 +374,44 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setPolicySortOrder('asc');
   };
 
+  const loadDriveFiles = useCallback(async () => {
+    if (!selectedDeal) {
+      setDriveFiles([]);
+      setDriveError(null);
+      return;
+    }
+
+    setIsDriveLoading(true);
+    try {
+      const { files, folderId } = await fetchDealDriveFiles(selectedDeal.id);
+      setDriveFiles(files);
+      setDriveError(null);
+      if (folderId && folderId !== selectedDeal.driveFolderId) {
+        onDriveFolderCreated(selectedDeal.id, folderId);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки файлов Google Drive:', err);
+      setDriveFiles([]);
+      setDriveError(
+        err instanceof Error
+          ? err.message
+          : 'Не удалось загрузить файлы из Google Drive.'
+      );
+    } finally {
+      setIsDriveLoading(false);
+    }
+  }, [selectedDeal, onDriveFolderCreated]);
+
+  useEffect(() => {
+    if (activeTab === 'files') {
+      void loadDriveFiles();
+      return;
+    }
+
+    setDriveFiles([]);
+    setDriveError(null);
+  }, [activeTab, loadDriveFiles]);
+
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
     [policies, selectedDeal]
@@ -385,6 +451,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
     const done = relatedTasks.filter((task) => task.status === 'done');
     return [...active, ...done];
   }, [relatedTasks]);
+
+  const sortedDriveFiles = useMemo(() => {
+    return [...driveFiles].sort((a, b) => {
+      if (a.isFolder !== b.isFolder) {
+        return a.isFolder ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name, 'ru-RU', { sensitivity: 'base' });
+    });
+  }, [driveFiles]);
 
   const renderTasksTab = () => {
     if (!selectedDeal) {
@@ -886,12 +961,87 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
 
     return (
-      <FileUploadManager
-        dealId={selectedDeal.id}
-        documents={selectedDeal.documents || []}
-        onUpload={(file) => onUploadDocument(selectedDeal.id, file)}
-        onDelete={onDeleteDocument}
-      />
+      <div className="space-y-6">
+        <FileUploadManager
+          dealId={selectedDeal.id}
+          documents={selectedDeal.documents || []}
+          onUpload={(file) => onUploadDocument(selectedDeal.id, file)}
+          onDelete={onDeleteDocument}
+        />
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Файлы Google Drive</p>
+              <p className="text-xs text-slate-500">
+                Контент читается прямо из папки, привязанной к этой сделке.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={loadDriveFiles}
+              disabled={!selectedDeal.driveFolderId || isDriveLoading}
+              className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isDriveLoading ? 'Обновляю...' : 'Обновить'}
+            </button>
+          </div>
+
+          {driveError && (
+            <p className="text-xs text-rose-500 bg-rose-50 p-3 rounded-lg">{driveError}</p>
+          )}
+
+          {!driveError && !selectedDeal.driveFolderId && (
+            <p className="text-sm text-slate-500">
+              Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.
+            </p>
+          )}
+
+          {!driveError && selectedDeal.driveFolderId && isDriveLoading && (
+            <p className="text-sm text-slate-500">Загружаю файлы...</p>
+          )}
+
+          {!driveError &&
+            selectedDeal.driveFolderId &&
+            !isDriveLoading &&
+            sortedDriveFiles.length === 0 && (
+              <p className="text-sm text-slate-500">Папка пуста.</p>
+            )}
+
+          {!driveError && sortedDriveFiles.length > 0 && (
+            <div className="space-y-2">
+              {sortedDriveFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="text-xl">{getDriveItemIcon(file.isFolder)}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 break-all">{file.name}</p>
+                      <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
+                        <span>{formatDriveFileSize(file.size)}</span>
+                        <span>{formatDriveDate(file.modifiedAt ?? file.createdAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {file.webViewLink ? (
+                    <a
+                      href={file.webViewLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                    >
+                      Открыть
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     );
   };
 

@@ -1,15 +1,20 @@
 """Django signals для логирования изменений Policy."""
 
+import logging
+
 from apps.common.audit_helpers import (
     get_changed_fields,
     serialize_model_fields,
     store_old_values,
 )
+from apps.common.drive import DriveError, ensure_policy_folder
 from apps.users.models import AuditLog
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import Policy
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(pre_save, sender=Policy)
@@ -72,6 +77,11 @@ def log_policy_change(sender, instance, created, **kwargs):
         delattr(instance, "_now_deleted")
     if hasattr(instance, "_old_value"):
         delattr(instance, "_old_value")
+
+    try:
+        ensure_policy_folder(instance)
+    except DriveError:
+        logger.exception("Failed to sync Google Drive folder for policy %s", instance.pk)
 
 
 @receiver(post_delete, sender=Policy)

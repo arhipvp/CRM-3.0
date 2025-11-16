@@ -150,6 +150,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = config("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default="")
+GOOGLE_DRIVE_ROOT_FOLDER_ID = config("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",

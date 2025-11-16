@@ -47,6 +47,7 @@ services:
       - ./backend:/app
       - backend_static:/app/staticfiles
       - backend_media:/app/media
+      - ./credentials.json:/app/credentials.json:ro
     networks:
       - crm_network
     healthcheck:

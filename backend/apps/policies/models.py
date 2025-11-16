@@ -79,6 +79,9 @@ class Policy(SoftDeleteModel):
         default="active",
         help_text="Status (active, expired, canceled etc.)",
     )
+    drive_folder_id = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
+    )
 
     class Meta:
         ordering = ["-created_at"]

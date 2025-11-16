@@ -102,6 +102,9 @@ class Deal(SoftDeleteModel):
         max_length=255, blank=True, help_text="Причина проигрыша"
     )
     channel = models.CharField(max_length=100, blank=True, help_text="Канал продаж")
+    drive_folder_id = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
+    )
 
     class Meta:
         ordering = ["next_contact_date", "-next_review_date", "-created_at"]

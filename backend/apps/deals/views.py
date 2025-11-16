@@ -1,8 +1,10 @@
-﻿from apps.common.permissions import EditProtectedMixin
+from apps.common.drive import DriveError, ensure_deal_folder, list_drive_folder_contents
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import F, Q
-from rest_framework import permissions, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from .filters import DealFilterSet
 from .models import (
@@ -59,6 +61,30 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         # Остальные видят только свои сделки (как seller или executor)
         return queryset.filter(Q(seller=user) | Q(executor=user))
+
+    @action(detail=True, methods=["get"], url_path="drive-files")
+    def drive_files(self, request, pk=None):
+        deal = self.get_object()
+        try:
+            folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        if not folder_id:
+            return Response({"files": [], "folder_id": None})
+
+        try:
+            files = list_drive_folder_contents(folder_id)
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response({"files": files, "folder_id": folder_id})
 
 
 class QuoteViewSet(viewsets.ModelViewSet):

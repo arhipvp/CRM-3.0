@@ -1,3 +1,4 @@
+import datetime
 from rest_framework import serializers
 
 from .models import (
@@ -110,6 +111,15 @@ class ActivityLogSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at")
 
 
+class DateOrDateTimeField(serializers.DateField):
+    """DateField that tolerates datetime objects by trimming to date."""
+
+    def to_representation(self, value):
+        if isinstance(value, datetime.datetime):
+            value = value.date()
+        return super().to_representation(value)
+
+
 class DealSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source="client.name", read_only=True)
     stage_name = serializers.CharField(
@@ -119,11 +129,14 @@ class DealSerializer(serializers.ModelSerializer):
     executor_name = serializers.SerializerMethodField(read_only=True)
     quotes = QuoteSerializer(many=True, read_only=True)
     documents = DocumentBriefSerializer(many=True, read_only=True)
+    next_contact_date = DateOrDateTimeField(required=False, allow_null=True)
+    expected_close = DateOrDateTimeField(required=False, allow_null=True)
+    next_review_date = DateOrDateTimeField(required=False, allow_null=True)
 
     class Meta:
         model = Deal
         fields = "__all__"
-        read_only_fields = ("id", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at", "drive_folder_id")
         extra_kwargs = {}
 
     def get_seller_name(self, obj: Deal) -> str | None:

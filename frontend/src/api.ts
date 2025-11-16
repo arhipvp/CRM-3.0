@@ -4,6 +4,7 @@ import {
   Client,
   Deal,
   DealStatus,
+  DriveFile,
   FinancialRecord,
   InsuranceCompany,
   InsuranceType,
@@ -297,11 +298,33 @@ const mapDeal = (raw: any): Deal => ({
         created_at: d.created_at,
       }))
     : [],
+  driveFolderId: raw.drive_folder_id ?? null,
   seller: raw.seller,
   executor: raw.executor,
   sellerName: raw.seller_name ?? null,
   executorName: raw.executor_name ?? null,
 });
+
+const mapDriveFile = (raw: any): DriveFile => {
+  const sizeValue = raw.size ?? raw.file_size;
+  const parsedSize =
+    sizeValue !== undefined && sizeValue !== null ? Number(sizeValue) : null;
+  return {
+    id: raw.id,
+    name: raw.name,
+    mimeType: raw.mime_type ?? raw.mimeType ?? "",
+    size: parsedSize !== null && Number.isNaN(parsedSize) ? null : parsedSize,
+    createdAt: raw.created_at ?? raw.createdAt ?? null,
+    modifiedAt: raw.modified_at ?? raw.modifiedAt ?? null,
+    webViewLink: raw.web_view_link ?? raw.webViewLink ?? null,
+    isFolder: Boolean(raw.is_folder ?? raw.isFolder),
+  };
+};
+
+export interface DriveFilesResponse {
+  files: DriveFile[];
+  folderId?: string | null;
+}
 
 const mapUser = (raw: any): User => ({
   id: String(raw.id),
@@ -433,6 +456,19 @@ export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/deals/${qs}`);
   return unwrapList(payload).map(mapDeal);
+}
+
+export async function fetchDealDriveFiles(
+  dealId: string
+): Promise<DriveFilesResponse> {
+  const payload = await request<{ files?: any[]; folder_id?: string | null }>(
+    `/deals/${dealId}/drive-files/`
+  );
+  const rawFiles = Array.isArray(payload?.files) ? payload.files : [];
+  return {
+    files: rawFiles.map(mapDriveFile),
+    folderId: payload?.folder_id ?? null,
+  };
 }
 
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
