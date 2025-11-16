@@ -38,6 +38,9 @@ export interface PolicyFormValues {
 interface AddPolicyFormProps {
   onSubmit: (values: PolicyFormValues) => Promise<void>;
   onCancel: () => void;
+  initialValues?: PolicyFormValues;
+  initialInsuranceCompanyName?: string;
+  initialInsuranceTypeName?: string;
 }
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -64,7 +67,13 @@ const createEmptyPayment = (): PaymentDraft => ({
   expenses: [],
 });
 
-export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel }) => {
+export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
+  onSubmit,
+  onCancel,
+  initialValues,
+  initialInsuranceCompanyName,
+  initialInsuranceTypeName,
+}) => {
   const [number, setNumber] = useState('');
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
   const [insuranceTypeId, setInsuranceTypeId] = useState('');
@@ -106,6 +115,65 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({ onSubmit, onCancel
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!initialValues) {
+      setNumber('');
+      setInsuranceCompanyId('');
+      setInsuranceTypeId('');
+      setIsVehicle(false);
+      setBrand('');
+      setModel('');
+      setVin('');
+      setCounterparty('');
+      setStartDate('');
+      setEndDate('');
+      setPayments([]);
+      return;
+    }
+    setNumber(initialValues.number || '');
+    setInsuranceCompanyId(initialValues.insuranceCompanyId);
+    setInsuranceTypeId(initialValues.insuranceTypeId);
+    setIsVehicle(initialValues.isVehicle);
+    setBrand(initialValues.brand || '');
+    setModel(initialValues.model || '');
+    setVin(initialValues.vin || '');
+    setCounterparty(initialValues.counterparty || '');
+    setStartDate(initialValues.startDate || '');
+    setEndDate(initialValues.endDate || '');
+    const initialPayments = initialValues.payments || [];
+    setPayments(
+      initialPayments.map((payment) => ({
+        ...payment,
+        incomes: payment.incomes ?? [],
+        expenses: payment.expenses ?? [],
+      }))
+    );
+  }, [initialValues]);
+
+  useEffect(() => {
+    if (!initialInsuranceCompanyName || !companies.length) {
+      return;
+    }
+    const match = companies.find(
+      (company) => company.name.toLowerCase() === initialInsuranceCompanyName.toLowerCase()
+    );
+    if (match) {
+      setInsuranceCompanyId(match.id);
+    }
+  }, [initialInsuranceCompanyName, companies]);
+
+  useEffect(() => {
+    if (!initialInsuranceTypeName || !types.length) {
+      return;
+    }
+    const match = types.find(
+      (type) => type.name.toLowerCase() === initialInsuranceTypeName.toLowerCase()
+    );
+    if (match) {
+      setInsuranceTypeId(match.id);
+    }
+  }, [initialInsuranceTypeName, types]);
 
   const getActiveTab = (paymentIndex: number) => activeRecordTab[paymentIndex] || 'incomes';
 

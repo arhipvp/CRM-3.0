@@ -12,6 +12,7 @@ import {
   Payment,
   PaymentStatus,
   Policy,
+  PolicyRecognitionResult,
   Quote,
   Task,
   User,
@@ -505,6 +506,27 @@ export async function uploadDealDriveFile(
   }
 
   return mapDriveFile(payload.file);
+}
+
+export async function recognizeDealPolicies(
+  dealId: string,
+  fileIds: string[]
+): Promise<{ results: PolicyRecognitionResult[] }> {
+  const payload = await request<{ results?: any[] }>('/policies/recognize/', {
+    method: 'POST',
+    body: JSON.stringify({ deal_id: dealId, file_ids: fileIds }),
+  });
+  const rawResults = Array.isArray(payload?.results) ? payload.results : [];
+  return {
+    results: rawResults.map((item) => ({
+      fileId: item.fileId,
+      fileName: item.fileName ?? null,
+      status: item.status === 'parsed' ? 'parsed' : 'error',
+      message: item.message,
+      transcript: item.transcript ?? null,
+      data: item.data ?? null,
+    })),
+  };
 }
 
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {

@@ -73,6 +73,15 @@ export interface DriveFile {
   isFolder: boolean;
 }
 
+export interface PolicyRecognitionResult {
+  fileId: string;
+  fileName?: string | null;
+  status: 'parsed' | 'error';
+  message?: string;
+  transcript?: string | null;
+  data?: Record<string, unknown>;
+}
+
 export interface ChatMessage {
   id: string;
   deal: string;

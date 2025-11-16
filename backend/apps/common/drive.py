@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from io import BytesIO
 from typing import BinaryIO, Optional, TypedDict
 
 from django.conf import settings
@@ -13,12 +14,14 @@ logger = logging.getLogger(__name__)
 try:
     from googleapiclient.discovery import build as _gdrive_build
     from googleapiclient.errors import HttpError as _GDriveHttpError
+    from googleapiclient.http import MediaIoBaseDownload as _MediaIoBaseDownload
     from googleapiclient.http import MediaIoBaseUpload as _MediaIoBaseUpload
     from google.oauth2 import service_account as _service_account
 except ImportError as exc:  # pragma: no cover - requires optional dependency
     _gdrive_build = None
     _GDriveHttpError = None
     _MediaIoBaseUpload = None
+    _MediaIoBaseDownload = None
     _service_account = None
     _drive_import_error = exc
 else:
@@ -342,3 +345,27 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
             break
 
     return results
+
+def download_drive_file(file_id: str) -> bytes:
+    """Скачать файл из Google Drive и вернуть байты."""
+
+    if not file_id:
+        raise DriveOperationError("File ID must be provided.")
+
+    if _MediaIoBaseDownload is None:
+        raise DriveConfigurationError("Drive download dependencies are not available.")
+
+    service = _get_drive_service()
+    try:
+        request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+        buffer = BytesIO()
+        downloader = _MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+    except Exception as exc:
+        logger.exception("Error while downloading Drive file")
+        raise DriveOperationError("Unable to download Drive file.") from exc
+
+    buffer.seek(0)
+    return buffer.read()

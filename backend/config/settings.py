@@ -153,6 +153,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = config("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default="")
 GOOGLE_DRIVE_ROOT_FOLDER_ID = config("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
 
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+OPENAI_BASE_URL = config("OPENAI_BASE_URL", default="")
+OPENAI_MODEL = config("OPENAI_MODEL", default="gpt-4o")
+AI_POLICY_PROMPT = config("AI_POLICY_PROMPT", default="")
+AI_DOCUMENT_PROMPT = config("AI_DOCUMENT_PROMPT", default="")
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",

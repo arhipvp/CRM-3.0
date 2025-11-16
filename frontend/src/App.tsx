@@ -54,7 +54,62 @@ import {
   APIError,
   FilterParams,
 } from './api';
-import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, Task, User } from './types';
+import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, Task, User, PaymentStatus } from './types';
+
+const normalizeStringValue = (value: unknown): string =>
+  typeof value === 'string' ? value : value ? String(value) : '';
+
+const normalizeDateValue = (value: unknown): string => {
+  if (typeof value === 'string' && value.trim()) {
+    return value;
+  }
+  return '';
+};
+
+const buildPolicyDraftFromRecognition = (
+  parsed: Record<string, unknown>
+): PolicyFormValues => {
+  const policy = (parsed.policy ?? {}) as Record<string, unknown>;
+  const paymentsRaw = Array.isArray(parsed.payments)
+    ? (parsed.payments as Record<string, unknown>[])
+    : [];
+  const payments =
+    paymentsRaw.length > 0
+      ? paymentsRaw.map((payment) => ({
+          amount: normalizeStringValue(payment.amount),
+          description: '',
+          scheduledDate: normalizeDateValue(payment.payment_date),
+          actualDate: normalizeDateValue(payment.actual_payment_date),
+          status: 'paid' as PaymentStatus,
+          incomes: [],
+          expenses: [],
+        }))
+      : [
+          {
+            amount: '',
+            description: '',
+            scheduledDate: '',
+            actualDate: '',
+            status: 'planned' as PaymentStatus,
+            incomes: [],
+            expenses: [],
+          },
+        ];
+
+  return {
+    number: normalizeStringValue(policy.policy_number),
+    insuranceCompanyId: '',
+    insuranceTypeId: '',
+    isVehicle: Boolean(policy.vehicle_brand || policy.vehicle_model || policy.vehicle_vin),
+    brand: normalizeStringValue(policy.vehicle_brand),
+    model: normalizeStringValue(policy.vehicle_model),
+    vin: normalizeStringValue(policy.vehicle_vin),
+    counterparty: normalizeStringValue(policy.contractor),
+    startDate: normalizeDateValue(policy.start_date) || null,
+    endDate: normalizeDateValue(policy.end_date) || null,
+    payments,
+  };
+};
 
 type ModalType = null | 'client' | 'deal';
 
@@ -78,6 +133,11 @@ const AppContent: React.FC = () => {
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
+  const [policyPrefill, setPolicyPrefill] = useState<{
+    values: PolicyFormValues;
+    insuranceCompanyName?: string;
+    insuranceTypeName?: string;
+  } | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
     useState<FinancialRecordModalState | null>(null);
@@ -110,6 +170,34 @@ const AppContent: React.FC = () => {
     []
   );
 
+  const refreshPolicies = useCallback(async () => {
+    const policiesData = await fetchPolicies();
+    setPolicies(policiesData);
+    return policiesData;
+  }, []);
+
+  const handlePolicyDraftReady = useCallback(
+    (dealId: string, parsed: Record<string, unknown>) => {
+      if (!parsed) {
+        return;
+      }
+      const draft = buildPolicyDraftFromRecognition(parsed);
+      const policyObj = (parsed.policy ?? {}) as Record<string, unknown>;
+      setPolicyDealId(dealId);
+      setPolicyPrefill({
+        values: draft,
+        insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
+        insuranceTypeName: normalizeStringValue(policyObj.insurance_type),
+      });
+    },
+    []
+  );
+
+  const closePolicyModal = useCallback(() => {
+    setPolicyDealId(null);
+    setPolicyPrefill(null);
+  }, []);
+
   const loadData = useCallback(async () => {
     console.log('Loading data...');
     setLoading(true);
@@ -118,29 +206,26 @@ const AppContent: React.FC = () => {
       const dealsPromise = refreshDeals();
       const [
         clientsData,
-        policiesData,
         paymentsData,
         tasksData,
         financialRecordsData,
         usersData,
       ] = await Promise.all([
         fetchClients(),
-        fetchPolicies(),
         fetchPayments(),
         fetchTasks(),
         fetchFinancialRecords(),
         fetchUsers(),
       ]);
       await dealsPromise;
+      await refreshPolicies();
       console.log('Data loaded successfully:', {
         clientsData,
-        policiesData,
         paymentsData,
         tasksData,
         financialRecordsData,
       });
       setClients(clientsData);
-      setPolicies(policiesData);
       setPayments(paymentsData);
       setTasks(tasksData);
       setFinancialRecords(financialRecordsData);
@@ -151,7 +236,7 @@ const AppContent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [refreshDeals]);
+  }, [refreshDeals, refreshPolicies]);
 
 
   useEffect(() => {
@@ -452,6 +537,7 @@ const AppContent: React.FC = () => {
       }
 
       setPolicyDealId(null);
+      setPolicyPrefill(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить полис');
       throw err;
@@ -750,6 +836,8 @@ const AppContent: React.FC = () => {
             onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
             onDeleteQuote={handleDeleteQuote}
             onDeletePolicy={handleDeletePolicy}
+            onRefreshPolicies={refreshPolicies}
+            onPolicyDraftReady={handlePolicyDraftReady}
             onAddPayment={handleAddPayment}
             onUpdatePayment={handleUpdatePayment}
             onAddFinancialRecord={handleAddFinancialRecord}
@@ -868,12 +956,15 @@ const AppContent: React.FC = () => {
         {policyDealId && (
         <Modal
           title="Новый полис"
-          onClose={() => setPolicyDealId(null)}
+          onClose={closePolicyModal}
           closeOnOverlayClick={false}
         >
             <AddPolicyForm
+              initialValues={policyPrefill?.values}
+              initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
+              initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
               onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-              onCancel={() => setPolicyDealId(null)}
+              onCancel={closePolicyModal}
             />
           </Modal>
         )}

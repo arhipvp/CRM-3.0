@@ -10,6 +10,7 @@ import {
   Note,
   Payment,
   Policy,
+  PolicyRecognitionResult,
   Quote,
   Task,
   User,
@@ -21,6 +22,7 @@ import {
   createNote,
   archiveNote,
   restoreNote,
+  recognizeDealPolicies,
 } from '../../api';
 import { FileUploadManager } from '../FileUploadManager';
 import { ChatBox } from '../ChatBox';
@@ -180,6 +182,12 @@ interface DealsViewProps {
   onRequestAddPolicy: (dealId: string) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onRefreshPolicies?: () => Promise<void>;
+  onPolicyDraftReady?: (
+    dealId: string,
+    parsed: Record<string, unknown>,
+    fileName?: string | null
+  ) => void;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
@@ -217,6 +225,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onRequestAddPolicy,
   onDeleteQuote,
   onDeletePolicy,
+  onRefreshPolicies,
+  onPolicyDraftReady,
   onAddPayment,
   onUpdatePayment,
   onAddFinancialRecord,
@@ -272,6 +282,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
+  const [selectedDriveFileIds, setSelectedDriveFileIds] = useState<string[]>([]);
+  const [isRecognizing, setRecognizing] = useState(false);
+  const [recognitionResults, setRecognitionResults] = useState<PolicyRecognitionResult[]>([]);
+  const [recognitionMessage, setRecognitionMessage] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesFilter, setNotesFilter] = useState<'active' | 'archived'>('active');
@@ -281,6 +295,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   useEffect(() => {
     setActiveTab('overview');
+  }, [selectedDeal?.id]);
+
+  useEffect(() => {
+    setSelectedDriveFileIds([]);
+    setRecognitionResults([]);
+    setRecognitionMessage(null);
   }, [selectedDeal?.id]);
 
   // Загружать сообщения когда открываем вкладку "Чат"
@@ -480,6 +500,57 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setDriveFiles([]);
     setDriveError(null);
   }, [activeTab, loadDriveFiles]);
+
+  const toggleDriveFileSelection = useCallback((fileId: string) => {
+    setSelectedDriveFileIds((prev) =>
+      prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]
+    );
+  }, []);
+
+  const handleRecognizePolicies = useCallback(async () => {
+    if (!selectedDeal) {
+      return;
+    }
+    if (!selectedDriveFileIds.length) {
+      setRecognitionMessage('Выберите хотя бы один файл для распознавания.');
+      return;
+    }
+    setRecognizing(true);
+    setRecognitionMessage(null);
+    try {
+      const { results } = await recognizeDealPolicies(
+        selectedDeal.id,
+        selectedDriveFileIds
+      );
+      setRecognitionResults(results);
+      const parsed = results.find((result) => result.status === 'parsed' && result.data);
+      if (parsed && onPolicyDraftReady) {
+        onPolicyDraftReady(selectedDeal.id, parsed.data!, parsed.fileName ?? null);
+      }
+      if (onRefreshPolicies) {
+        await onRefreshPolicies();
+      }
+    } catch (error) {
+      console.error('Ошибка распознавания полисов:', error);
+      setRecognitionMessage(
+        error instanceof Error
+          ? error.message
+          : 'Не удалось распознать полисы. Попробуйте позже.'
+      );
+    } finally {
+      setRecognizing(false);
+    }
+  }, [onRefreshPolicies, selectedDeal, selectedDriveFileIds]);
+
+  const formatRecognitionSummary = useCallback(
+    (result: PolicyRecognitionResult) => {
+      if (result.status === 'parsed') {
+        return 'Полис распознан, откройте форму для проверки';
+      }
+      return result.message ?? 'Ошибка при распознавании';
+    },
+    []
+  );
 
   const loadNotes = useCallback(
     async (filter: 'active' | 'archived') => {
@@ -1091,6 +1162,64 @@ export const DealsView: React.FC<DealsViewProps> = ({
           disabled={disableUpload}
         />
 
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleRecognizePolicies}
+            disabled={
+              isRecognizing ||
+              !selectedDeal.driveFolderId ||
+              selectedDriveFileIds.length === 0 ||
+              !!driveError
+            }
+            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {isRecognizing ? 'Распознаем...' : 'Распознать выделенные'}
+          </button>
+          <p className="text-xs text-slate-500">
+            {selectedDriveFileIds.length
+              ? `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
+              : 'Выберите файлы для распознавания'}
+          </p>
+        </div>
+
+        {recognitionMessage && (
+          <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
+            {recognitionMessage}
+          </p>
+        )}
+
+        {recognitionResults.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3 text-xs">
+            {recognitionResults.map((result) => (
+              <div key={`${result.fileId}-${result.status}`} className="space-y-1">
+                <p className="font-semibold text-slate-900">
+                  {result.fileName ?? result.fileId}
+                </p>
+                <p
+                  className={`text-[11px] ${
+                    result.status === 'error'
+                      ? 'text-rose-600'
+                      : result.status === 'exists'
+                      ? 'text-amber-600'
+                      : 'text-slate-500'
+                  }`}
+                >
+                  {formatRecognitionSummary(result)}
+                </p>
+                {result.transcript && (
+                  <details className="text-[10px] text-slate-400">
+                    <summary>Показать транскрипт</summary>
+                    <pre className="whitespace-pre-wrap text-[11px] leading-snug">
+                      {result.transcript}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {driveError && (
           <p className="text-xs text-rose-500 bg-rose-50 p-3 rounded-lg">{driveError}</p>
         )}
@@ -1115,37 +1244,50 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
           {!driveError && sortedDriveFiles.length > 0 && (
             <div className="space-y-2">
-              {sortedDriveFiles.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-xl">{getDriveItemIcon(file.isFolder)}</span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 break-all">{file.name}</p>
-                      <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
-                        <span>{formatDriveFileSize(file.size)}</span>
-                        <span>{formatDriveDate(file.modifiedAt ?? file.createdAt)}</span>
+              {sortedDriveFiles.map((file) => {
+                const isSelected = selectedDriveFileIds.includes(file.id);
+                const canSelect = !file.isFolder && !isDriveLoading;
+                return (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={!canSelect}
+                        onChange={() => toggleDriveFileSelection(file.id)}
+                        className="h-4 w-4 rounded-sm border border-slate-300 text-sky-600 focus:ring-0"
+                      />
+                      <span className="text-xl">{getDriveItemIcon(file.isFolder)}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 break-all">
+                          {file.name}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
+                          <span>{formatDriveFileSize(file.size)}</span>
+                          <span>{formatDriveDate(file.modifiedAt ?? file.createdAt)}</span>
+                        </div>
                       </div>
                     </div>
+                    {file.webViewLink ? (
+                      <a
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      >
+                        Открыть
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
                   </div>
-                  {file.webViewLink ? (
-                    <a
-                      href={file.webViewLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
-                    >
-                      Открыть
-                    </a>
-                  ) : (
-                    <span className="text-xs text-slate-400">—</span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
-        )}
+          )}
       </div>
     </section>
   );
