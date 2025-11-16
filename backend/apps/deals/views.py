@@ -198,12 +198,13 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         )
 
     def _map_audit_log_entry(self, audit_log: AuditLog, deal_id):
-        description = audit_log.description or audit_log.object_name or audit_log.action_display
+        action_display = audit_log.get_action_display()
+        description = audit_log.description or audit_log.object_name or action_display
         return {
             "id": f"audit-{audit_log.id}",
             "deal": str(deal_id),
             "action_type": "custom",
-            "action_type_display": audit_log.action_display,
+            "action_type_display": action_display,
             "description": description,
             "user": audit_log.actor_id,
             "user_username": audit_log.actor.username if audit_log.actor else None,
