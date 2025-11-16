@@ -1,19 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityLog,
+  ChatMessage,
   Client,
   Deal,
   DealStatus,
   DriveFile,
   FinancialRecord,
+  Note,
   Payment,
   Policy,
   Quote,
   Task,
   User,
-  ChatMessage,
 } from '../../types';
-import { fetchDealDriveFiles, uploadDealDriveFile } from '../../api';
+import {
+  fetchDealDriveFiles,
+  uploadDealDriveFile,
+  fetchDealNotes,
+  createNote,
+  archiveNote,
+  restoreNote,
+} from '../../api';
 import { FileUploadManager } from '../FileUploadManager';
 import { ChatBox } from '../ChatBox';
 import { ActivityTimeline } from '../ActivityTimeline';
@@ -264,6 +272,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesFilter, setNotesFilter] = useState<'active' | 'archived'>('active');
+  const [noteDraft, setNoteDraft] = useState('');
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [notesAction, setNotesAction] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab('overview');
@@ -361,6 +375,65 @@ export const DealsView: React.FC<DealsViewProps> = ({
     });
   };
 
+  const handleAddNote = async () => {
+    if (!selectedDeal) {
+      return;
+    }
+    const trimmed = noteDraft.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setNotesAction('create');
+    setNotesError(null);
+    try {
+      await createNote(selectedDeal.id, trimmed);
+      setNoteDraft('');
+      await loadNotes(notesFilter);
+    } catch (err) {
+      console.error('Ошибка создания заметки:', err);
+      setNotesError(
+        err instanceof Error ? err.message : 'Не удалось создать заметку'
+      );
+    } finally {
+      setNotesAction(null);
+    }
+  };
+
+  const handleArchiveNote = async (noteId: string) => {
+    setNotesAction(noteId);
+    setNotesError(null);
+    try {
+      await archiveNote(noteId);
+      setNotesFilter('archived');
+    } catch (err) {
+      console.error('Ошибка отправки заметки в архив:', err);
+      setNotesError(
+        err instanceof Error
+          ? err.message
+          : 'Не удалось переместить заметку в архив'
+      );
+    } finally {
+      setNotesAction(null);
+    }
+  };
+
+  const handleRestoreNote = async (noteId: string) => {
+    setNotesAction(noteId);
+    setNotesError(null);
+    try {
+      await restoreNote(noteId);
+      setNotesFilter('active');
+    } catch (err) {
+      console.error('Ошибка восстановления заметки:', err);
+      setNotesError(
+        err instanceof Error ? err.message : 'Не удалось восстановить заметку'
+      );
+    } finally {
+      setNotesAction(null);
+    }
+  };
+
   const handlePolicySort = (key: PolicySortKey) => {
     if (policySortKey === key) {
       setPolicySortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -407,6 +480,39 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setDriveFiles([]);
     setDriveError(null);
   }, [activeTab, loadDriveFiles]);
+
+  const loadNotes = useCallback(
+    async (filter: 'active' | 'archived') => {
+      if (!selectedDeal) {
+        setNotes([]);
+        return;
+      }
+      setNotesLoading(true);
+      setNotesError(null);
+      try {
+        const fetchedNotes = await fetchDealNotes(
+          selectedDeal.id,
+          filter === 'archived'
+        );
+        setNotes(fetchedNotes);
+      } catch (err) {
+        console.error('Ошибка загрузки заметок:', err);
+        setNotesError(
+          err instanceof Error ? err.message : 'Не удалось загрузить заметки'
+        );
+      } finally {
+        setNotesLoading(false);
+      }
+    },
+    [selectedDeal?.id]
+  );
+
+  useEffect(() => {
+    if (activeTab !== 'notes') {
+      return;
+    }
+    void loadNotes(notesFilter);
+  }, [activeTab, loadNotes, notesFilter]);
 
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
@@ -1039,8 +1145,119 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </div>
               ))}
             </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+  const renderNotesTab = () => {
+    if (!selectedDeal) {
+      return null;
+    }
+
+    const filterOptions: { value: 'active' | 'archived'; label: string }[] = [
+      { value: 'active', label: 'Активные' },
+      { value: 'archived', label: 'Архив' },
+    ];
+
+    return (
+      <section className="space-y-6">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                disabled={notesLoading}
+                onClick={() => setNotesFilter(option.value)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  notesFilter === option.value
+                    ? 'bg-slate-900 text-white border border-slate-900'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {notesError && (
+            <p className="text-xs text-rose-500">{notesError}</p>
+          )}
+          {notesFilter === 'active' && (
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+              <textarea
+                rows={4}
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                placeholder="Заметка к сделке"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-inner focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-slate-400">Все заметки видны всем участникам</p>
+                <button
+                  type="button"
+                  onClick={handleAddNote}
+                  disabled={notesAction === 'create'}
+                  className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                >
+                  {notesAction === 'create' ? 'Сохраняем...' : 'Добавить заметку'}
+                </button>
+              </div>
+            </div>
           )}
         </div>
+
+        {notesLoading ? (
+          <p className="text-sm text-slate-500">Загрузка заметок...</p>
+        ) : notes.length ? (
+          <div className="columns-1 gap-4 space-y-4 sm:columns-2 xl:columns-3 2xl:columns-4">
+            {notes.map((note) => (
+              <article
+                key={note.id}
+                className="relative mb-4 overflow-hidden rounded-[28px] border border-amber-200 bg-amber-50 p-4 pb-5 text-slate-900 shadow-[0_20px_40px_rgba(245,158,11,0.25)] transition hover:-translate-y-1 break-inside-avoid-column"
+              >
+                <div className="absolute top-2 right-4 h-3 w-12 rounded-full bg-amber-300 opacity-80 shadow-[0_4px_15px_rgba(245,158,11,0.5)]" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                  {note.authorName || '—'}
+                </p>
+                <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
+                  {note.body || '—'}
+                </p>
+                <div className="mt-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <span className="text-[11px] font-normal text-slate-500">
+                    {formatDate(note.createdAt)}
+                  </span>
+                  {notesFilter === 'active' ? (
+                    <button
+                      type="button"
+                      disabled={notesAction === note.id}
+                      onClick={() => handleArchiveNote(note.id)}
+                      className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
+                    >
+                      {notesAction === note.id ? 'Архивируем...' : 'В архив'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={notesAction === note.id}
+                      onClick={() => handleRestoreNote(note.id)}
+                      className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
+                    >
+                      {notesAction === note.id ? 'Сохраняем...' : 'Восстановить'}
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500">
+            {notesFilter === 'active'
+              ? 'Заметок пока нет — добавьте первую, чтобы зафиксировать важное.'
+              : 'Архив пуст — вы ещё не отправляли заметки в архив.'}
+          </div>
+        )}
       </section>
     );
   };
@@ -1073,12 +1290,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const renderActivityTab = () => {
     return <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />;
   };
-
-  const renderPlaceholder = (label: string) => (
-    <div className="text-sm text-slate-500">
-      {label} появится после имплементации соответствующей фичи.
-    </div>
-  );
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -1171,7 +1382,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       case 'chat':
         return renderChatTab();
       case 'notes':
-        return renderPlaceholder('Заметки');
+        return renderNotesTab();
       case 'history':
         return renderActivityTab();
       default:

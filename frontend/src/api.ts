@@ -8,6 +8,7 @@ import {
   FinancialRecord,
   InsuranceCompany,
   InsuranceType,
+  Note,
   Payment,
   PaymentStatus,
   Policy,
@@ -424,6 +425,17 @@ const mapActivityLog = (raw: any): ActivityLog => ({
   oldValue: raw.old_value,
   newValue: raw.new_value,
   createdAt: raw.created_at,
+});
+
+const mapNote = (raw: any): Note => ({
+  id: raw.id,
+  dealId: String(raw.deal),
+  dealTitle: raw.deal_title ?? raw.dealTitle ?? undefined,
+  body: raw.body ?? '',
+  authorName: raw.author_name ?? raw.authorName ?? null,
+  createdAt: raw.created_at,
+  updatedAt: raw.updated_at,
+  deletedAt: raw.deleted_at ?? null,
 });
 
 export async function fetchClients(filters?: FilterParams): Promise<Client[]> {
@@ -898,6 +910,41 @@ export async function deleteFinancialRecord(id: string): Promise<void> {
 export async function fetchActivityLogs(dealId: string): Promise<ActivityLog[]> {
   const payload = await request<any>(`/activity_logs/?deal=${dealId}`);
   return unwrapList(payload).map(mapActivityLog);
+}
+
+export async function fetchDealNotes(
+  dealId: string,
+  archived?: boolean
+): Promise<Note[]> {
+  const params: FilterParams = { deal: dealId };
+  if (archived !== undefined) {
+    params.archived = archived ? 'true' : 'false';
+  }
+  const qs = buildQueryString(params);
+  const payload = await request<any>(`/notes/${qs}`);
+  return unwrapList(payload).map(mapNote);
+}
+
+export async function createNote(dealId: string, body: string): Promise<Note> {
+  const payload = await request<any>('/notes/', {
+    method: 'POST',
+    body: JSON.stringify({
+      deal: dealId,
+      body,
+    }),
+  });
+  return mapNote(payload);
+}
+
+export async function archiveNote(id: string): Promise<void> {
+  await request(`/notes/${id}/`, { method: 'DELETE' });
+}
+
+export async function restoreNote(id: string): Promise<Note> {
+  const payload = await request<any>(`/notes/${id}/restore/`, {
+    method: 'POST',
+  });
+  return mapNote(payload);
 }
 
 export async function createTask(data: {

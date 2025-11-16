@@ -160,6 +160,17 @@ export interface Payment {
   deletedAt?: string | null;
 }
 
+export interface Note {
+  id: string;
+  dealId: string;
+  dealTitle?: string;
+  body: string;
+  authorName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
 export interface ActivityLog {
   id: string;
   deal: string;
