@@ -127,18 +127,20 @@ export class APIError extends Error {
 
 // ============ API Request Helper ============
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(typeof options.headers === 'object' && options.headers !== null
-      ? Object.fromEntries(Object.entries(options.headers as any))
-      : {}),
-  };
+  const { headers: customHeaders, ...requestOptions } = options;
+  const headers = new Headers(customHeaders as HeadersInit);
+  const isFormData = requestOptions.body instanceof FormData;
 
-  // Add JWT token to headers
+  if (isFormData) {
+    headers.delete('Content-Type');
+  } else if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const token = getAccessToken();
   const hadToken = Boolean(token);
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.set('Authorization', `Bearer ${token}`);
     console.log(`API request ${path}: token present (${token.substring(0, 20)}...)`);
   } else {
     console.log(`API request ${path}: NO TOKEN FOUND`);
@@ -146,7 +148,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const response = await fetch(`${API_BASE}${path}`, {
     headers,
-    ...options,
+    ...requestOptions,
   });
 
   // Handle 401 Unauthorized - redirect to login
@@ -471,6 +473,28 @@ export async function fetchDealDriveFiles(
   };
 }
 
+export async function uploadDealDriveFile(
+  dealId: string,
+  file: File
+): Promise<DriveFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const payload = await request<{ file?: any; folder_id?: string | null }>(
+    `/deals/${dealId}/drive-files/`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  if (!payload?.file) {
+    throw new Error('Не удалось загрузить файл в Google Drive');
+  }
+
+  return mapDriveFile(payload.file);
+}
+
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/policies/${qs}`);
@@ -782,30 +806,6 @@ export async function createPayment(data: {
 
 export async function deletePolicy(id: string): Promise<void> {
   await request(`/policies/${id}/`, { method: 'DELETE' });
-}
-
-export async function uploadDocument(dealId: string, file: File): Promise<any> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('title', file.name);
-  formData.append('deal', dealId);
-  formData.append('mime_type', file.type);
-
-  const response = await fetch(`${API_BASE}/documents/`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Не удалось загрузить файл: ${response.status}`);
-  }
-
-  return (await response.json()) as any;
-}
-
-export async function deleteDocument(id: string): Promise<void> {
-  await request(`/documents/${id}/`, { method: 'DELETE' });
 }
 
 const mapChatMessage = (raw: any): ChatMessage => ({

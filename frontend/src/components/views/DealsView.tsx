@@ -13,7 +13,7 @@ import {
   User,
   ChatMessage,
 } from '../../types';
-import { fetchDealDriveFiles } from '../../api';
+import { fetchDealDriveFiles, uploadDealDriveFile } from '../../api';
 import { FileUploadManager } from '../FileUploadManager';
 import { ChatBox } from '../ChatBox';
 import { ActivityTimeline } from '../ActivityTimeline';
@@ -180,8 +180,6 @@ interface DealsViewProps {
     values: AddFinancialRecordFormValues
   ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
-  onUploadDocument: (dealId: string, file: File) => Promise<void>;
-  onDeleteDocument: (documentId: string) => Promise<void>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<void>;
@@ -216,8 +214,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
-  onUploadDocument,
-  onDeleteDocument,
   onDriveFolderCreated,
   onFetchChatMessages,
   onSendChatMessage,
@@ -960,42 +956,46 @@ export const DealsView: React.FC<DealsViewProps> = ({
       return null;
     }
 
+    const disableUpload = !selectedDeal.driveFolderId;
+
     return (
-      <div className="space-y-6">
-        <FileUploadManager
-          dealId={selectedDeal.id}
-          documents={selectedDeal.documents || []}
-          onUpload={(file) => onUploadDocument(selectedDeal.id, file)}
-          onDelete={onDeleteDocument}
-        />
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Файлы Google Drive</p>
-              <p className="text-xs text-slate-500">
-                Контент читается прямо из папки, привязанной к этой сделке.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={loadDriveFiles}
-              disabled={!selectedDeal.driveFolderId || isDriveLoading}
-              className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isDriveLoading ? 'Обновляю...' : 'Обновить'}
-            </button>
-          </div>
-
-          {driveError && (
-            <p className="text-xs text-rose-500 bg-rose-50 p-3 rounded-lg">{driveError}</p>
-          )}
-
-          {!driveError && !selectedDeal.driveFolderId && (
-            <p className="text-sm text-slate-500">
-              Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.
+      <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Файлы Google Drive</p>
+            <p className="text-xs text-slate-500">
+              Контент читается прямо из папки, привязанной к этой сделке.
             </p>
-          )}
+          </div>
+          <button
+            type="button"
+            onClick={loadDriveFiles}
+            disabled={!selectedDeal.driveFolderId || isDriveLoading}
+            className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDriveLoading ? 'Обновляю...' : 'Обновить'}
+          </button>
+        </div>
 
+        <FileUploadManager
+          onUpload={async (file) => {
+            await uploadDealDriveFile(selectedDeal.id, file);
+            await loadDriveFiles();
+          }}
+          disabled={disableUpload}
+        />
+
+        {driveError && (
+          <p className="text-xs text-rose-500 bg-rose-50 p-3 rounded-lg">{driveError}</p>
+        )}
+
+        {!driveError && !selectedDeal.driveFolderId && (
+          <p className="text-xs text-slate-500">
+            Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.
+          </p>
+        )}
+
+        <div className="space-y-3 border-t border-slate-100 pt-4">
           {!driveError && selectedDeal.driveFolderId && isDriveLoading && (
             <p className="text-sm text-slate-500">Загружаю файлы...</p>
           )}
@@ -1040,8 +1040,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
               ))}
             </div>
           )}
-        </section>
-      </div>
+        </div>
+      </section>
     );
   };
 

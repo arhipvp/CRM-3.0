@@ -32,8 +32,6 @@ import {
   deleteFinancialRecord,
   deleteQuote,
   deletePolicy,
-  uploadDocument,
-  deleteDocument,
   fetchChatMessages,
   createChatMessage,
   deleteChatMessage,
@@ -469,29 +467,6 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleUploadDocument = async (dealId: string, file: File) => {
-    try {
-      await uploadDocument(dealId, file);
-      // Перезагрузить сделки, чтобы получить обновленный список документов
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
-      throw err;
-    }
-  };
-
-  const handleDeleteDocument = async (documentId: string) => {
-    try {
-      await deleteDocument(documentId);
-      // Перезагрузить сделки, чтобы получить обновленный список документов
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить файл');
-      throw err;
-    }
-  };
-
-
   const handleDriveFolderCreated = (dealId: string, folderId: string) => {
     setDeals((prev) =>
       prev.map((deal) =>
@@ -780,8 +755,6 @@ const AppContent: React.FC = () => {
             onAddFinancialRecord={handleAddFinancialRecord}
             onUpdateFinancialRecord={handleUpdateFinancialRecord}
             onDeleteFinancialRecord={handleDeleteFinancialRecord}
-            onUploadDocument={handleUploadDocument}
-            onDeleteDocument={handleDeleteDocument}
             onDriveFolderCreated={handleDriveFolderCreated}
             onFetchChatMessages={handleFetchChatMessages}
             onSendChatMessage={handleSendChatMessage}

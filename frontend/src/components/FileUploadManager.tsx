@@ -1,11 +1,8 @@
-import React, { useState } from 'react';
-import { Document } from '../types';
+import React, { useEffect, useState } from 'react';
 
 interface FileUploadManagerProps {
-  dealId: string;
-  documents: Document[];
   onUpload: (file: File) => Promise<void>;
-  onDelete: (documentId: string) => Promise<void>;
+  disabled?: boolean;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -28,20 +25,34 @@ const getFileIcon = (mimeType: string): string => {
   return '📎';
 };
 
-export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
-  documents,
-  onUpload,
-  onDelete,
-}) => {
+export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, disabled }) => {
   const [isUploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isDragActive, setDragActive] = useState(false);
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  useEffect(() => {
+    const preventDefaults = (event: DragEvent) => {
+      event.preventDefault();
+    };
 
-    // Ограничение размера: 100 МБ
+    const options = { passive: false, capture: true };
+    window.addEventListener('dragover', preventDefaults, options);
+    window.addEventListener('drop', preventDefaults, options);
+    document.body?.addEventListener('dragover', preventDefaults, options);
+    document.body?.addEventListener('drop', preventDefaults, options);
+
+    return () => {
+      window.removeEventListener('dragover', preventDefaults, options);
+      window.removeEventListener('drop', preventDefaults, options);
+      document.body?.removeEventListener('dragover', preventDefaults, options);
+      document.body?.removeEventListener('drop', preventDefaults, options);
+    };
+  }, []);
+
+  const uploadFile = async (file: File, resetInput?: () => void) => {
+    if (isUploading || disabled) return;
+
     const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       setError('Размер файла не должен превышать 100 МБ');
@@ -52,43 +63,100 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
     setUploading(true);
     setUploadProgress(0);
 
+    let progressInterval: ReturnType<typeof setInterval> | null = null;
+
     try {
-      // Имитация прогресса загрузки
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setUploadProgress((prev) => Math.min(prev + Math.random() * 30, 90));
       }, 200);
 
       await onUpload(file);
 
-      clearInterval(progressInterval);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+
       setUploadProgress(100);
       setTimeout(() => setUploadProgress(0), 500);
     } catch (err) {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+      setUploadProgress(0);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
     } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setUploading(false);
-      // Очистить input
-      event.target.value = '';
+      resetInput?.();
     }
   };
 
-  const handleDelete = async (documentId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить этот файл?')) return;
-    try {
-      await onDelete(documentId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить файл');
-    }
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    await uploadFile(file, () => {
+      event.target.value = '';
+    });
   };
+
+  const handleDragEnter = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isUploading || disabled) return;
+    setDragActive(true);
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isUploading || disabled) return;
+    setDragActive(true);
+    event.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isUploading || disabled) return;
+    setDragActive(false);
+
+    const droppedFile = event.dataTransfer.files?.[0];
+    if (!droppedFile) return;
+
+    await uploadFile(droppedFile);
+  };
+
+  const dropAreaClasses = [
+    'border-2 border-dashed rounded-2xl p-6 transition-colors duration-200',
+    isDragActive ? 'border-sky-500 bg-slate-50' : 'border-slate-300 bg-slate-50',
+    isUploading ? 'opacity-80' : 'hover:border-slate-400 hover:bg-slate-100',
+  ].join(' ');
 
   return (
-    <div className="space-y-4">
-      <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 bg-slate-50 hover:bg-slate-100 transition">
-        <label className="block cursor-pointer">
+    <div className="space-y-3">
+      <label
+        className="block cursor-pointer"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className={dropAreaClasses}>
           <input
             type="file"
             onChange={handleFileSelect}
-            disabled={isUploading}
+            disabled={isUploading || disabled}
             className="hidden"
           />
           <div className="text-center">
@@ -98,67 +166,22 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
             </p>
             <p className="text-xs text-slate-500 mt-1">Максимум 100 МБ</p>
           </div>
-        </label>
+        </div>
+      </label>
 
-        {uploadProgress > 0 && uploadProgress < 100 && (
-          <div className="mt-4">
-            <div className="bg-slate-200 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-sky-500 h-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-slate-500 mt-2 text-center">{Math.round(uploadProgress)}%</p>
+      {uploadProgress > 0 && uploadProgress < 100 && (
+        <div className="mt-1">
+          <div className="bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-sky-500 h-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
           </div>
-        )}
-      </div>
-
-      {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
-
-      {documents.length > 0 && (
-        <div>
-          <p className="text-sm font-medium text-slate-700 mb-3">
-            Загруженные файлы ({documents.length})
-          </p>
-          <div className="space-y-2">
-            {documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3 hover:bg-slate-100 transition"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xl flex-shrink-0">{getFileIcon(doc.mime_type)}</span>
-                  <div className="min-w-0 flex-1">
-                    <a
-                      href={doc.file || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-sky-600 hover:text-sky-800 break-all"
-                    >
-                      {doc.title}
-                    </a>
-                    <div className="text-xs text-slate-500 flex gap-2 mt-1">
-                      <span>{formatFileSize(doc.file_size)}</span>
-                      <span>•</span>
-                      <span>{new Date(doc.created_at).toLocaleDateString('ru-RU')}</span>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDelete(doc.id)}
-                  className="text-xs text-slate-400 hover:text-red-500 flex-shrink-0 ml-2"
-                >
-                  Удалить
-                </button>
-              </div>
-            ))}
-          </div>
+          <p className="text-xs text-slate-500 mt-2 text-center">{Math.round(uploadProgress)}%</p>
         </div>
       )}
 
-      {documents.length === 0 && !error && (
-        <p className="text-sm text-slate-500 text-center py-4">Файлы пока не загружены</p>
-      )}
+      {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
     </div>
   );
 };

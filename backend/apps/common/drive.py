@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, TypedDict
+from typing import BinaryIO, Optional, TypedDict
 
 from django.conf import settings
 from django.db import models
@@ -13,10 +13,12 @@ logger = logging.getLogger(__name__)
 try:
     from googleapiclient.discovery import build as _gdrive_build
     from googleapiclient.errors import HttpError as _GDriveHttpError
+    from googleapiclient.http import MediaIoBaseUpload as _MediaIoBaseUpload
     from google.oauth2 import service_account as _service_account
 except ImportError as exc:  # pragma: no cover - requires optional dependency
     _gdrive_build = None
     _GDriveHttpError = None
+    _MediaIoBaseUpload = None
     _service_account = None
     _drive_import_error = exc
 else:
@@ -161,6 +163,70 @@ def _update_instance_folder(instance: models.Model, folder_id: str) -> None:
         return
     instance.__class__.objects.filter(pk=instance.pk).update(drive_folder_id=folder_id)
     setattr(instance, "drive_folder_id", folder_id)
+
+
+def _safe_int(value: Optional[str]) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def upload_file_to_drive(
+    folder_id: str,
+    file_obj: BinaryIO,
+    file_name: str,
+    mime_type: Optional[str],
+) -> DriveFileInfo:
+    """Upload a binary stream to the specified Drive folder."""
+
+    if not folder_id:
+        raise DriveOperationError("Folder ID must be provided.")
+
+    if _MediaIoBaseUpload is None:
+        raise DriveConfigurationError("Drive upload dependencies are not available.")
+
+    service = _get_drive_service()
+    try:
+        file_obj.seek(0)
+    except Exception:
+        pass
+
+    media_body = _MediaIoBaseUpload(
+        file_obj,
+        mimetype=mime_type or "application/octet-stream",
+        resumable=False,
+    )
+
+    metadata = {"name": file_name, "parents": [folder_id]}
+
+    try:
+        created = (
+            service.files()
+            .create(
+                body=metadata,
+                media_body=media_body,
+                fields="id, name, mimeType, size, createdTime, modifiedTime, webViewLink",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+    except Exception as exc:
+        logger.exception("Error uploading file to Drive")
+        raise DriveOperationError("Unable to upload file to Google Drive.") from exc
+
+    return DriveFileInfo(
+        id=created["id"],
+        name=created["name"],
+        mime_type=created.get("mimeType", mime_type or ""),
+        size=_safe_int(created.get("size")),
+        created_at=created.get("createdTime"),
+        modified_at=created.get("modifiedTime"),
+        web_view_link=created.get("webViewLink"),
+        is_folder=False,
+    )
 
 
 def _format_folder_name(prefix: str, fallback: str) -> str:
