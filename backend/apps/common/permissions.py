@@ -12,6 +12,36 @@ class EditProtectedMixin:
     Миксин для ограничения редактирования только Admin пользователям.
     Добавить в ViewSet: class MyViewSet(EditProtectedMixin, viewsets.ModelViewSet)
     """
+    owner_field = None
+
+    def _is_admin(self, user):
+        if not user or not user.is_authenticated:
+            return False
+        return UserRole.objects.filter(user=user, role__name="Admin").exists()
+
+    def _get_owner_id(self, instance):
+        owner_field = getattr(self, "owner_field", None)
+        if not owner_field:
+            return None
+
+        owner = getattr(instance, owner_field, None)
+        if owner is None:
+            return None
+
+        if isinstance(owner, (int, str)):
+            return owner
+
+        return getattr(owner, "id", None)
+
+    def _can_modify(self, user, instance):
+        if not user or not user.is_authenticated:
+            return False
+
+        if self._is_admin(user):
+            return True
+
+        owner_id = self._get_owner_id(instance)
+        return owner_id == getattr(user, "id", None)
 
     def create(self, request, *args, **kwargs):
         """
@@ -34,13 +64,13 @@ class EditProtectedMixin:
         user_id = request.user.id if request.user else None
         username = request.user.username if request.user else "Anonymous"
 
-        if not request.user.user_roles.filter(role__name="Admin").exists():
+        if not self._can_modify(request.user, instance):
             logger.warning(
                 f"Unauthorized update attempt | Model: {model_name} | ID: {instance_id} | "
                 f"User: {username} (ID: {user_id}) | Fields: {list(request.data.keys())}"
             )
             return Response(
-                {"detail": "Только администратор может редактировать данные"},
+                {"detail": "Только администратор или владелец может редактировать данные"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -57,13 +87,13 @@ class EditProtectedMixin:
         user_id = request.user.id if request.user else None
         username = request.user.username if request.user else "Anonymous"
 
-        if not request.user.user_roles.filter(role__name="Admin").exists():
+        if not self._can_modify(request.user, instance):
             logger.warning(
                 f"Unauthorized partial update attempt | Model: {model_name} | ID: {instance_id} | "
                 f"User: {username} (ID: {user_id}) | Fields: {list(request.data.keys())}"
             )
             return Response(
-                {"detail": "Только администратор может редактировать данные"},
+                {"detail": "Только администратор или владелец может редактировать данные"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -80,13 +110,13 @@ class EditProtectedMixin:
         user_id = request.user.id if request.user else None
         username = request.user.username if request.user else "Anonymous"
 
-        if not request.user.user_roles.filter(role__name="Admin").exists():
+        if not self._can_modify(request.user, instance):
             logger.warning(
                 f"Unauthorized delete attempt | Model: {model_name} | ID: {instance_id} | "
                 f"User: {username} (ID: {user_id})"
             )
             return Response(
-                {"detail": "Только администратор может удалять данные"},
+                {"detail": "Только администратор или владелец может удалять данные"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

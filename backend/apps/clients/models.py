@@ -1,9 +1,19 @@
 ﻿from apps.common.models import SoftDeleteModel
+from django.conf import settings
 from django.db import models
 
 
 class Client(SoftDeleteModel):
     """Клиент - страхователь"""
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="created_clients",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Пользователь, создавший клиента",
+    )
 
     name = models.CharField(max_length=255, help_text="Имя клиента")
     phone = models.CharField(max_length=20, blank=True, help_text="Контактный телефон")

@@ -15,6 +15,10 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     search_fields = ["name", "phone"]
     ordering_fields = ["created_at", "updated_at", "name"]
     ordering = ["-created_at"]
+    owner_field = "created_by"
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
     def get_queryset(self):
         user = self.request.user
@@ -28,9 +32,10 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
 
         if not is_admin:
-            # Остальные видят только клиентов, у которых есть сделки, где user = seller или executor
             queryset = queryset.filter(
-                Q(deals__seller=user) | Q(deals__executor=user)
+                Q(created_by=user)
+                | Q(deals__seller=user)
+                | Q(deals__executor=user)
             ).distinct()
 
         return queryset
