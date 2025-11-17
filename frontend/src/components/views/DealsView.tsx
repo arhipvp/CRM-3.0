@@ -12,6 +12,7 @@ import {
   Policy,
   PolicyRecognitionResult,
   Quote,
+  SalesChannel,
   Task,
   User,
 } from '../../types';
@@ -139,6 +140,7 @@ type PolicySortKey =
   | 'insuranceCompany'
   | 'insuranceType'
   | 'client'
+  | 'salesChannel'
   | 'startDate'
   | 'endDate'
   | 'transport';
@@ -158,6 +160,8 @@ const getPolicySortValue = (policy: Policy, key: PolicySortKey) => {
       return policy.insuranceType ?? '';
     case 'client':
       return policy.clientName ?? policy.clientId ?? '';
+    case 'salesChannel':
+      return policy.salesChannelName ?? policy.salesChannel ?? '';
     case 'startDate':
       return policy.startDate ? new Date(policy.startDate).getTime() : 0;
     case 'endDate':
@@ -177,6 +181,7 @@ interface DealsViewProps {
   financialRecords: FinancialRecord[];
   tasks: Task[];
   users: User[];
+  salesChannels: SalesChannel[];
   currentUser: User;
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
@@ -229,6 +234,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   financialRecords,
   tasks,
   users,
+  salesChannels,
   selectedDealId,
   onSelectDeal,
   onUpdateStatus,
@@ -802,6 +808,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 {renderPolicyHeaderCell('Номер', 'number')}
                 {renderPolicyHeaderCell('Компания', 'insuranceCompany')}
                 {renderPolicyHeaderCell('Клиент', 'client')}
+                {renderPolicyHeaderCell('Канал продаж', 'salesChannel')}
                 {renderPolicyHeaderCell('Тип', 'insuranceType')}
                 {renderPolicyHeaderCell('Начало', 'startDate')}
                 {renderPolicyHeaderCell('Окончание', 'endDate')}
@@ -820,6 +827,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   <td className="px-4 py-3 font-semibold text-slate-900">{policy.number}</td>
                   <td className="px-4 py-3">{policy.insuranceCompany || '—'}</td>
                   <td className="px-4 py-3">{policy.clientName || '—'}</td>
+                  <td className="px-4 py-3">{policy.salesChannel || '—'}</td>
                   <td className="px-4 py-3">{policy.insuranceType || '—'}</td>
                   <td className="px-4 py-3">{formatDate(policy.startDate)}</td>
                   <td className="px-4 py-3">{formatDate(policy.endDate)}</td>
@@ -1721,7 +1729,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               </div>
               <div>
                 <p className="text-slate-500">Канал</p>
-                <p className="text-lg font-semibold">{selectedDeal.channel || '—'}</p>
+                <p className="text-lg font-semibold">{selectedDeal.salesChannelName || '—'}</p>
               </div>
               <div>
                 <p className="text-slate-500">Создана</p>
@@ -1772,6 +1780,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <EditDealForm
                 deal={selectedDeal}
                 clients={clients}
+                salesChannels={salesChannels}
                 onSubmit={async (data) => {
                   await onUpdateDeal(selectedDeal.id, data);
                   setIsEditingDeal(false);

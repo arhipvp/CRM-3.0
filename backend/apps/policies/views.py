@@ -36,7 +36,12 @@ class PolicyRecognitionSerializer(serializers.Serializer):
 class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = PolicySerializer
     filterset_class = PolicyFilterSet
-    search_fields = ["number", "insurance_company__name", "insurance_type__name"]
+    search_fields = [
+        "number",
+        "insurance_company__name",
+        "insurance_type__name",
+        "sales_channel__name",
+    ]
     ordering_fields = ["created_at", "updated_at", "start_date", "end_date", "brand", "model"]
     ordering = ["-created_at"]
 

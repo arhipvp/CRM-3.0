@@ -5,6 +5,7 @@ from apps.deals.views import (
     InsuranceCompanyViewSet,
     InsuranceTypeViewSet,
     QuoteViewSet,
+    SalesChannelViewSet,
 )
 from apps.documents.views import DocumentViewSet
 from apps.finances.views import FinancialRecordViewSet, PaymentViewSet
@@ -30,6 +31,7 @@ router.register(
     basename="insurance_company",
 )
 router.register("insurance_types", InsuranceTypeViewSet, basename="insurance_type")
+router.register("sales_channels", SalesChannelViewSet, basename="sales_channel")
 router.register("audit_logs", AuditLogViewSet, basename="audit_log")
 router.register("chat_messages", ChatMessageViewSet, basename="chat_message")
 router.register("tasks", TaskViewSet, basename="task")

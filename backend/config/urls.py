@@ -18,13 +18,13 @@ Including another URLconf
 from apps.documents.views import DocumentRecognitionView
 from apps.finances.views import FinanceSummaryView
 from apps.users.views import current_user_view, login_view, refresh_token_view
+from config.admin import admin_site
 from config.api_router import api_urlpatterns
-from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("admin/", admin_site.urls),
     path("health/", lambda request: JsonResponse({"status": "ok"})),
     path("api/v1/auth/login/", login_view, name="login"),
     path("api/v1/auth/refresh/", refresh_token_view, name="refresh-token"),

@@ -62,6 +62,16 @@ export interface Document {
   created_at: string;
 }
 
+
+export interface SalesChannel {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
 export interface DriveFile {
   id: string;
   name: string;
@@ -105,6 +115,8 @@ export interface Deal {
   source?: string;
   lossReason?: string;
   channel?: string;
+  salesChannelId?: string;
+  salesChannelName?: string;
   createdAt: string;
   quotes: Quote[];
   documents: Document[];
@@ -126,6 +138,9 @@ export interface Policy {
   model?: string;
   vin?: string;
   counterparty?: string;
+  salesChannel?: string;
+  salesChannelId?: string;
+  salesChannelName?: string;
   startDate?: string | null;
   endDate?: string | null;
   status: string;

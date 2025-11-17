@@ -20,12 +20,13 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from .filters import DealFilterSet
-from .models import Deal, InsuranceCompany, InsuranceType, Quote
+from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 from .serializers import (
     DealSerializer,
     InsuranceCompanySerializer,
     InsuranceTypeSerializer,
     QuoteSerializer,
+    SalesChannelSerializer,
 )
 
 
@@ -249,4 +250,10 @@ class InsuranceCompanyViewSet(viewsets.ReadOnlyModelViewSet):
 class InsuranceTypeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InsuranceTypeSerializer
     queryset = InsuranceType.objects.order_by("name")
+    pagination_class = None
+
+
+class SalesChannelViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = SalesChannelSerializer
+    queryset = SalesChannel.objects.order_by("name")
     pagination_class = None

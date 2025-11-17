@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
-import type { InsuranceCompany, InsuranceType, PaymentStatus } from '../../types';
+import type { InsuranceCompany, InsuranceType, PaymentStatus, SalesChannel } from '../../types';
 
 interface FinancialRecordDraft {
   amount: string;
@@ -30,6 +30,7 @@ export interface PolicyFormValues {
   model?: string;
   vin?: string;
   counterparty?: string;
+  salesChannelId?: string;
   startDate?: string | null;
   endDate?: string | null;
   payments: PaymentDraft[];
@@ -38,6 +39,7 @@ export interface PolicyFormValues {
 interface AddPolicyFormProps {
   onSubmit: (values: PolicyFormValues) => Promise<void>;
   onCancel: () => void;
+  salesChannels: SalesChannel[];
   initialValues?: PolicyFormValues;
   initialInsuranceCompanyName?: string;
   initialInsuranceTypeName?: string;
@@ -70,6 +72,7 @@ const createEmptyPayment = (): PaymentDraft => ({
 export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onSubmit,
   onCancel,
+  salesChannels,
   initialValues,
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
@@ -82,6 +85,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [model, setModel] = useState('');
   const [vin, setVin] = useState('');
   const [counterparty, setCounterparty] = useState('');
+  const [salesChannelId, setSalesChannelId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [payments, setPayments] = useState<PaymentDraft[]>([]);
@@ -126,6 +130,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setModel('');
       setVin('');
       setCounterparty('');
+      setSalesChannelId('');
       setStartDate('');
       setEndDate('');
       setPayments([]);
@@ -139,6 +144,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setModel(initialValues.model || '');
     setVin(initialValues.vin || '');
     setCounterparty(initialValues.counterparty || '');
+    setSalesChannelId(initialValues.salesChannelId || '');
     setStartDate(initialValues.startDate || '');
     setEndDate(initialValues.endDate || '');
     const initialPayments = initialValues.payments || [];
@@ -351,6 +357,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         model: isVehicle ? model.trim() || undefined : undefined,
         vin: isVehicle ? vin.trim() : undefined,
         counterparty: counterparty.trim() || undefined,
+        salesChannelId: salesChannelId || undefined,
         startDate: startDate || null,
         endDate: endDate || null,
         payments,
@@ -441,7 +448,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-700">Тип страхования*</label>
           <select
@@ -467,6 +474,22 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
             placeholder="Компания / физлицо"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Канал продаж</label>
+          <select
+            value={salesChannelId}
+            onChange={(event) => setSalesChannelId(event.target.value)}
+            disabled={loadingOptions}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+          >
+            <option value="">Выберите канал продаж</option>
+            {salesChannels.map((channel) => (
+              <option key={channel.id} value={channel.id}>
+                {channel.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

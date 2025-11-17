@@ -41,6 +41,7 @@ import {
   fetchPolicies,
   fetchTasks,
   fetchFinancialRecords,
+  fetchSalesChannels,
   fetchUsers,
   updateDealStatus,
   updateDeal,
@@ -54,7 +55,7 @@ import {
   APIError,
   FilterParams,
 } from './api';
-import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, Task, User, PaymentStatus } from './types';
+import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, SalesChannel, Task, User, PaymentStatus } from './types';
 
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
@@ -144,6 +145,7 @@ const AppContent: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [salesChannels, setSalesChannels] = useState<SalesChannel[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -187,14 +189,22 @@ const AppContent: React.FC = () => {
       }
       const draft = buildPolicyDraftFromRecognition(parsed);
       const policyObj = (parsed.policy ?? {}) as Record<string, unknown>;
+      const recognizedSalesChannel = normalizeStringValue(policyObj.sales_channel);
+      const matchedChannel = salesChannels.find(
+        (channel) => channel.name.toLowerCase() === recognizedSalesChannel.toLowerCase()
+      );
+      const values = {
+        ...draft,
+        salesChannelId: matchedChannel?.id,
+      };
       setPolicyDealId(dealId);
       setPolicyPrefill({
-        values: draft,
+        values,
         insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
         insuranceTypeName: normalizeStringValue(policyObj.insurance_type),
       });
     },
-    []
+    [salesChannels]
   );
 
   const closePolicyModal = useCallback(() => {
@@ -214,12 +224,14 @@ const AppContent: React.FC = () => {
         tasksData,
         financialRecordsData,
         usersData,
+        salesChannelsData,
       ] = await Promise.all([
         fetchClients(),
         fetchPayments(),
         fetchTasks(),
         fetchFinancialRecords(),
         fetchUsers(),
+        fetchSalesChannels(),
       ]);
       await dealsPromise;
       await refreshPolicies();
@@ -234,6 +246,7 @@ const AppContent: React.FC = () => {
       setTasks(tasksData);
       setFinancialRecords(financialRecordsData);
       setUsers(usersData);
+      setSalesChannels(salesChannelsData);
     } catch (err) {
       console.error('Data loading error:', err);
       setError(err instanceof Error ? err.message : 'Не удалось загрузить данные из backend');
@@ -471,6 +484,7 @@ const AppContent: React.FC = () => {
       vin,
       startDate,
       endDate,
+      salesChannelId,
       payments: paymentDrafts = [],
     } = values;
     const deal = deals.find((item) => item.id === dealId);
@@ -484,6 +498,7 @@ const AppContent: React.FC = () => {
         insuranceCompanyId,
         insuranceTypeId,
         isVehicle,
+        salesChannelId,
         brand,
         model,
         vin,
@@ -848,6 +863,7 @@ const AppContent: React.FC = () => {
             financialRecords={financialRecords}
             tasks={tasks}
             users={users}
+            salesChannels={salesChannels}
             currentUser={currentUser}
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
@@ -964,7 +980,7 @@ const AppContent: React.FC = () => {
         )}
         {modal === 'deal' && (
           <Modal title="Новая сделка" onClose={() => setModal(null)}>
-            <DealForm onSubmit={handleAddDeal} clients={clients} />
+          <DealForm onSubmit={handleAddDeal} clients={clients} salesChannels={salesChannels} />
           </Modal>
         )}
         {quoteDealId && (
@@ -991,13 +1007,14 @@ const AppContent: React.FC = () => {
           onClose={closePolicyModal}
           closeOnOverlayClick={false}
         >
-            <AddPolicyForm
-              initialValues={policyPrefill?.values}
-              initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
-              initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
-              onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-              onCancel={closePolicyModal}
-            />
+          <AddPolicyForm
+            initialValues={policyPrefill?.values}
+            initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
+            initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+            salesChannels={salesChannels}
+            onSubmit={(values) => handleAddPolicy(policyDealId, values)}
+            onCancel={closePolicyModal}
+          />
           </Modal>
         )}
         {paymentModal && (

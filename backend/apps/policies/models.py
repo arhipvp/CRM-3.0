@@ -63,6 +63,14 @@ class Policy(SoftDeleteModel):
         blank=True,
         help_text="Контрагент полиса (физическое или юридическое лицо)",
     )
+    sales_channel = models.ForeignKey(
+        "deals.SalesChannel",
+        related_name="policies",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Канал продаж",
+    )
     start_date = models.DateField(
         null=True,
         blank=True,
@@ -93,6 +101,9 @@ class Policy(SoftDeleteModel):
             models.Index(fields=["insurance_company"]),
             models.Index(fields=["insurance_type"]),
             models.Index(fields=["client"]),
+            models.Index(
+                fields=["sales_channel"], name="policies_po_sales_c_51cd4d_idx"
+            ),
         ]
 
     def __str__(self) -> str:

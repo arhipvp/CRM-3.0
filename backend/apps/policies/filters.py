@@ -13,6 +13,7 @@ class PolicyFilterSet(django_filters.FilterSet):
     - insurance_type: Type of insurance (auto, health, life, property, etc.)
     - status: Policy status (active, expired, cancelled)
     - deal: Associated deal
+    - sales_channel: Sales channel that brings revenue
 
     Also supports ordering by start_date and created_at.
     """
@@ -26,6 +27,11 @@ class PolicyFilterSet(django_filters.FilterSet):
         field_name="insurance_type__name",
         lookup_expr="icontains",
         label="Insurance Type (contains)",
+    )
+    sales_channel = django_filters.CharFilter(
+        field_name="sales_channel__name",
+        lookup_expr="icontains",
+        label="Sales Channel (contains)",
     )
 
     status = django_filters.CharFilter(
@@ -50,4 +56,4 @@ class PolicyFilterSet(django_filters.FilterSet):
 
     class Meta:
         model = Policy
-        fields = ("insurance_company", "insurance_type", "status", "deal", "is_vehicle")
+        fields = ("insurance_company", "insurance_type", "status", "deal", "is_vehicle", "sales_channel")

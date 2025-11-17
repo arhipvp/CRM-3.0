@@ -48,6 +48,23 @@ class InsuranceType(SoftDeleteModel):
         return self.name
 
 
+class SalesChannel(SoftDeleteModel):
+    """Справочник каналов продаж."""
+
+    name = models.CharField(
+        max_length=100, unique=True, help_text="Название канала продаж"
+    )
+    description = models.TextField(blank=True, help_text="Дополнительный комментарий")
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Канал продаж"
+        verbose_name_plural = "Каналы продаж"
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Deal(SoftDeleteModel):
     """Сделка и её основные атрибуты."""
 
@@ -97,7 +114,14 @@ class Deal(SoftDeleteModel):
     loss_reason = models.CharField(
         max_length=255, blank=True, help_text="Причина проигрыша"
     )
-    channel = models.CharField(max_length=100, blank=True, help_text="Канал продаж")
+    sales_channel = models.ForeignKey(
+        "deals.SalesChannel",
+        related_name="deals",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Канал продаж",
+    )
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
     )
@@ -106,6 +130,9 @@ class Deal(SoftDeleteModel):
         ordering = ["next_contact_date", "-next_review_date", "-created_at"]
         verbose_name = "Сделка"
         verbose_name_plural = "Сделки"
+        indexes = [
+            models.Index(fields=["sales_channel"], name="deals_deal_sales_ch_idx")
+        ]
 
     def __str__(self) -> str:
         return self.title

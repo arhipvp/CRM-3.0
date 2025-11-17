@@ -1,7 +1,7 @@
 import datetime
 from rest_framework import serializers
 
-from .models import Deal, InsuranceCompany, InsuranceType, Quote
+from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 
 
 class QuoteSerializer(serializers.ModelSerializer):
@@ -60,6 +60,20 @@ class InsuranceTypeSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
 
 
+class SalesChannelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalesChannel
+        fields = (
+            "id",
+            "name",
+            "description",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+
+
 class DocumentBriefSerializer(serializers.Serializer):
     """Lightweight document serializer for Deal embedding"""
 
@@ -95,6 +109,12 @@ class DealSerializer(serializers.ModelSerializer):
         required=False, allow_blank=True, allow_null=True, default=""
     )
     seller_name = serializers.SerializerMethodField(read_only=True)
+    sales_channel_name = serializers.CharField(
+        source="sales_channel.name", read_only=True, allow_null=True
+    )
+    channel = serializers.CharField(
+        source="sales_channel.name", read_only=True, allow_null=True
+    )
     executor_name = serializers.SerializerMethodField(read_only=True)
     quotes = QuoteSerializer(many=True, read_only=True)
     documents = DocumentBriefSerializer(many=True, read_only=True)

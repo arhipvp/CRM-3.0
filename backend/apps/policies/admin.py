@@ -23,6 +23,7 @@ class PolicyResource(resources.ModelResource):
             "brand",
             "model",
             "vin",
+            "sales_channel",
             "status",
             "start_date",
             "end_date",
@@ -49,6 +50,7 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         "model",
         "vin",
         "counterparty",
+        "sales_channel",
         "status_badge",
         "period_display",
         "deal",
@@ -63,11 +65,13 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         "model",
         "deal__title",
         "counterparty",
+        "sales_channel__name",
     )
     list_filter = (
         "insurance_type",
         "insurance_company",
         "is_vehicle",
+        "sales_channel",
         "status",
         "start_date",
         "end_date",
@@ -83,7 +87,15 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         ("Main information", {"fields": ("id", "number", "deal")}),
         (
             "Insurance information",
-            {"fields": ("insurance_type", "insurance_company", "counterparty", "status")},
+            {
+                "fields": (
+                    "insurance_type",
+                    "insurance_company",
+                    "counterparty",
+                    "sales_channel",
+                    "status",
+                )
+            },
         ),
         (
             "Vehicle details",

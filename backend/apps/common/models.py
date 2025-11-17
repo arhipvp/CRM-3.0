@@ -27,17 +27,20 @@ class SoftDeleteQuerySet(models.QuerySet):
 class SoftDeleteManager(models.Manager):
     """Manager для мягкого удаления"""
 
+    def _base_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
     def get_queryset(self):
-        return SoftDeleteQuerySet(self.model, using=self._db).alive()
+        return self._base_queryset().alive()
 
     def alive(self):
         return self.get_queryset()
 
     def dead(self):
-        return self.get_queryset().dead()
+        return self._base_queryset().dead()
 
     def with_deleted(self):
-        return self.get_queryset().with_deleted()
+        return self._base_queryset()
 
 
 class SoftDeleteModel(models.Model):

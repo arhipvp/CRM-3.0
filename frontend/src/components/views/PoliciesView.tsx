@@ -20,6 +20,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
             <th className="px-5 py-3">Клиент</th>
             <th className="px-5 py-3">Тип</th>
             <th className="px-5 py-3">Сделка</th>
+            <th className="px-5 py-3">Канал продаж</th>
             <th className="px-5 py-3">Период</th>
             <th className="px-5 py-3">Статус</th>
           </tr>
@@ -43,6 +44,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
                   )}
                 </td>
                 <td className="px-5 py-4 text-slate-600">{deal?.title || '—'}</td>
+                <td className="px-5 py-4 text-slate-600">{policy.salesChannel || '—'}</td>
                 <td className="px-5 py-4 text-slate-600">
                   {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                 </td>
@@ -51,8 +53,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
             );
           })}
           {!policies.length && (
-            <tr>
-              <td colSpan={7} className="px-5 py-6 text-center text-slate-500">
+          <tr>
+            <td colSpan={8} className="px-5 py-6 text-center text-slate-500">
                 Полисов пока нет
               </td>
             </tr>

@@ -8,7 +8,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
 
-from .models import Deal, InsuranceCompany, InsuranceType, Quote
+from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 
 # ============ IMPORT/EXPORT RESOURCES ============
 
@@ -29,29 +29,26 @@ class DealResource(resources.ModelResource):
             "next_review_date",
             "source",
             "loss_reason",
-            "channel",
+            "sales_channel",
             "created_at",
             "updated_at",
             "deleted_at",
         )
-        export_order = (
+        export_order = fields
+
+
+class SalesChannelResource(resources.ModelResource):
+    class Meta:
+        model = SalesChannel
+        fields = (
             "id",
-            "title",
+            "name",
             "description",
-            "client",
-            "seller",
-            "executor",
-            "status",
-            "stage_name",
-            "expected_close",
-            "next_review_date",
-            "source",
-            "loss_reason",
-            "channel",
             "created_at",
             "updated_at",
             "deleted_at",
         )
+        export_order = fields
 
 
 class QuoteResource(resources.ModelResource):
@@ -150,12 +147,13 @@ class DealAdmin(SoftDeleteImportExportAdmin):
     list_filter = (
         "status",
         "stage_name",
+        "sales_channel",
         "created_at",
         "next_contact_date",
         "next_review_date",
         "deleted_at",
     )
-    search_fields = ("title", "client__name", "description")
+    search_fields = ("title", "client__name", "description", "sales_channel__name")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("next_review_date", "-created_at")
     date_hierarchy = "next_review_date"
@@ -188,7 +186,7 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         (
             "Источник",
             {
-                "fields": ("source", "loss_reason", "channel"),
+                "fields": ("source", "loss_reason", "sales_channel"),
                 "classes": ("collapse",),
             },
         ),
@@ -254,6 +252,26 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         self.message_user(request, f"Восстановлено {restored} сделок")
 
     restore_deals.short_description = "✓ Восстановить выбранные сделки"
+
+
+@admin.register(SalesChannel)
+class SalesChannelAdmin(SoftDeleteImportExportAdmin):
+    resource_class = SalesChannelResource
+    list_display = ("name", "description", "created_at")
+    search_fields = ("name", "description")
+    readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    ordering = ("name",)
+    list_filter = ("created_at", "deleted_at")
+    fieldsets = (
+        ("Основная информация", {"fields": ("name", "description")}),
+        (
+            "Метаданные",
+            {
+                "fields": ("id", "created_at", "updated_at", "deleted_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
 
 
 @admin.register(Quote)

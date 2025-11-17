@@ -13,6 +13,7 @@ import {
   PaymentStatus,
   Policy,
   PolicyRecognitionResult,
+  SalesChannel,
   Quote,
   Task,
   User,
@@ -345,7 +346,9 @@ const mapDeal = (raw: any): Deal => ({
   nextContactDate: raw.next_contact_date,
   source: raw.source,
   lossReason: raw.loss_reason,
-  channel: raw.channel,
+  channel: raw.sales_channel_name ?? raw.channel ?? '',
+  salesChannelId: raw.sales_channel,
+  salesChannelName: raw.sales_channel_name,
   createdAt: raw.created_at,
   quotes: Array.isArray(raw.quotes) ? raw.quotes.map(mapQuote) : [],
   documents: Array.isArray(raw.documents)
@@ -363,6 +366,15 @@ const mapDeal = (raw: any): Deal => ({
   executor: raw.executor,
   sellerName: raw.seller_name ?? null,
   executorName: raw.executor_name ?? null,
+});
+
+const mapSalesChannel = (raw: any): SalesChannel => ({
+  id: raw.id,
+  name: raw.name,
+  description: raw.description || '',
+  createdAt: raw.created_at,
+  updatedAt: raw.updated_at,
+  deletedAt: raw.deleted_at,
 });
 
 const mapDriveFile = (raw: any): DriveFile => {
@@ -413,6 +425,11 @@ const mapPolicy = (raw: any): Policy => ({
   model: raw.model || undefined,
   vin: raw.vin,
   counterparty: raw.counterparty || undefined,
+    salesChannel:
+      (raw.sales_channel_name ?? raw.sales_channel) || undefined,
+  salesChannelId: raw.sales_channel,
+    salesChannelName:
+      (raw.sales_channel_name ?? raw.sales_channel) || undefined,
   startDate: raw.start_date,
   endDate: raw.end_date,
   status: raw.status,
@@ -524,6 +541,11 @@ export async function fetchInsuranceTypes(
   const qs = buildQueryString(filters || {});
   const payload = await request<any>(`/insurance_types/${qs}`);
   return unwrapList(payload).map(mapInsuranceType);
+}
+
+export async function fetchSalesChannels(): Promise<SalesChannel[]> {
+  const payload = await request<any>('/sales_channels/');
+  return unwrapList(payload).map(mapSalesChannel);
 }
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
@@ -711,6 +733,7 @@ export async function createDeal(data: {
   description?: string;
   clientId: string;
   expectedClose?: string | null;
+  salesChannelId?: string;
 }): Promise<Deal> {
   const payload = await request<any>('/deals/', {
     method: 'POST',
@@ -719,6 +742,7 @@ export async function createDeal(data: {
       description: data.description,
       client: data.clientId,
       expected_close: data.expectedClose || null,
+      sales_channel: data.salesChannelId || null,
     }),
   });
   return mapDeal(payload);
@@ -741,18 +765,23 @@ export async function updateDeal(
     nextContactDate?: string | null;
     expectedClose?: string | null;
     stageName?: string;
+    salesChannelId?: string | null;
   }
 ): Promise<Deal> {
+  const body: Record<string, unknown> = {
+    title: data.title,
+    description: data.description,
+    client: data.clientId,
+    next_contact_date: data.nextContactDate || null,
+    expected_close: data.expectedClose || null,
+    stage_name: data.stageName,
+  };
+  if ('salesChannelId' in data) {
+    body.sales_channel = data.salesChannelId || null;
+  }
   const payload = await request<any>(`/deals/${id}/`, {
     method: 'PATCH',
-    body: JSON.stringify({
-      title: data.title,
-      description: data.description,
-      client: data.clientId,
-      next_contact_date: data.nextContactDate || null,
-      expected_close: data.expectedClose || null,
-      stage_name: data.stageName,
-    }),
+    body: JSON.stringify(body),
   });
   return mapDeal(payload);
 }
@@ -848,6 +877,7 @@ export async function createPolicy(data: {
   model?: string;
   vin?: string;
   counterparty?: string;
+  salesChannelId?: string;
   startDate?: string | null;
   endDate?: string | null;
 }): Promise<Policy> {
@@ -863,6 +893,7 @@ export async function createPolicy(data: {
       model: data.model || '',
       vin: data.vin || '',
       counterparty: data.counterparty || '',
+      sales_channel: data.salesChannelId || null,
       start_date: data.startDate || null,
       end_date: data.endDate || null,
       client: data.clientId || null,
