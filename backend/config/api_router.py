@@ -1,7 +1,6 @@
 from apps.chat.views import ChatMessageViewSet
 from apps.clients.views import ClientViewSet
 from apps.deals.views import (
-    ActivityLogViewSet,
     DealViewSet,
     InsuranceCompanyViewSet,
     InsuranceTypeViewSet,
@@ -25,7 +24,6 @@ router = DefaultRouter()
 router.register("clients", ClientViewSet, basename="client")
 router.register("deals", DealViewSet, basename="deal")
 router.register("quotes", QuoteViewSet, basename="quote")
-router.register("activity_logs", ActivityLogViewSet, basename="activity_log")
 router.register(
     "insurance_companies",
     InsuranceCompanyViewSet,

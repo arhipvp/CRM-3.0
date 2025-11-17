@@ -11,6 +11,9 @@ backend/media/
 backend/.env
 backend/.env.*
 
+# Sensitive overrides (should never be committed)
+.env.vps.secure
+
 # Node
 node_modules/
 frontend/node_modules/

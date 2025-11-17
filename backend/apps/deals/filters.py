@@ -33,6 +33,14 @@ class DealFilterSet(django_filters.FilterSet):
         field_name="executor__id", label="Executor ID"
     )
 
+    source = django_filters.CharFilter(
+        field_name="source", lookup_expr="icontains", label="Source (contains)"
+    )
+
+    expected_close = django_filters.DateFromToRangeFilter(
+        field_name="expected_close", label="Expected Close (range)"
+    )
+
     client = django_filters.NumberFilter(field_name="client__id", label="Client ID")
 
     ordering = django_filters.OrderingFilter(
@@ -49,4 +57,12 @@ class DealFilterSet(django_filters.FilterSet):
 
     class Meta:
         model = Deal
-        fields = ("status", "stage_name", "seller", "executor", "client")
+        fields = (
+            "status",
+            "stage_name",
+            "seller",
+            "executor",
+            "client",
+            "source",
+            "expected_close",
+        )

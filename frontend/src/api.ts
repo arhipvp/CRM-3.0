@@ -24,6 +24,7 @@ const API_BASE = (envBase && envBase.trim() !== '' ? envBase : '/api/v1').replac
 // ============ Auth Token Management ============
 const TOKEN_KEY = 'jwt_access_token';
 const REFRESH_TOKEN_KEY = 'jwt_refresh_token';
+const REFRESH_ENDPOINT = '/auth/refresh/';
 
 export function getAccessToken(): string | null {
   return typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
@@ -49,6 +50,50 @@ export function clearTokens(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
+}
+
+interface RefreshResponse {
+  access: string;
+  refresh?: string;
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}${REFRESH_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    if (!response.ok) {
+      console.warn(`Token refresh failed with status ${response.status}`);
+      return false;
+    }
+
+    const data = (await response.json()) as RefreshResponse;
+    if (!data.access) {
+      console.warn('Token refresh response missing new access token');
+      return false;
+    }
+
+    setAccessToken(data.access);
+    if (data.refresh) {
+      setRefreshToken(data.refresh);
+    }
+
+    console.log('Access token renewed via refresh token');
+    return true;
+  } catch (error) {
+    console.error('Refreshing access token failed', error);
+    return false;
   }
 }
 
@@ -128,7 +173,11 @@ export class APIError extends Error {
 }
 
 // ============ API Request Helper ============
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  refreshAttempted = false
+): Promise<T> {
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
   const isFormData = requestOptions.body instanceof FormData;
@@ -140,7 +189,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   const token = getAccessToken();
+  const refreshToken = getRefreshToken();
   const hadToken = Boolean(token);
+  const hadRefreshToken = Boolean(refreshToken);
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
     console.log(`API request ${path}: token present (${token.substring(0, 20)}...)`);
@@ -155,9 +206,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   // Handle 401 Unauthorized - redirect to login
   if (response.status === 401) {
-    console.warn(`Unauthorized (401) on ${path}. Clearing tokens${hadToken ? ' and redirecting to login.' : '.'}`);
+    if (!refreshAttempted && (await refreshAccessToken())) {
+      return request(path, options, true);
+    }
+    const hadAnyTokens = hadToken || hadRefreshToken;
+    console.warn(
+      `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`
+    );
     clearTokens();
-    if (hadToken) {
+    if (hadAnyTokens) {
       redirectToLogin();
     }
     throw new APIError('Unauthorized', 401, path);
@@ -284,7 +341,6 @@ const mapDeal = (raw: any): Deal => ({
   clientName: raw.client_name,
   status: raw.status as DealStatus,
   stageName: raw.stage_name,
-  probability: raw.probability ?? 0,
   expectedClose: raw.expected_close,
   nextContactDate: raw.next_contact_date,
   source: raw.source,
@@ -425,6 +481,9 @@ const mapActivityLog = (raw: any): ActivityLog => ({
   userUsername: raw.user_username,
   oldValue: raw.old_value,
   newValue: raw.new_value,
+  objectId: raw.object_id,
+  objectType: raw.object_type,
+  objectName: raw.object_name,
   createdAt: raw.created_at,
 });
 
@@ -681,7 +740,6 @@ export async function updateDeal(
     clientId?: string;
     nextContactDate?: string | null;
     expectedClose?: string | null;
-    probability?: number;
     stageName?: string;
   }
 ): Promise<Deal> {
@@ -693,7 +751,6 @@ export async function updateDeal(
       client: data.clientId,
       next_contact_date: data.nextContactDate || null,
       expected_close: data.expectedClose || null,
-      probability: data.probability,
       stage_name: data.stageName,
     }),
   });

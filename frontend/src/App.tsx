@@ -150,6 +150,10 @@ const AppContent: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [dealSearch, setDealSearch] = useState('');
+  const [dealExecutorFilter, setDealExecutorFilter] = useState('');
+  const [dealSourceFilter, setDealSourceFilter] = useState('');
+  const [dealExpectedCloseFrom, setDealExpectedCloseFrom] = useState('');
+  const [dealExpectedCloseTo, setDealExpectedCloseTo] = useState('');
   const searchInitialized = useRef(false);
   const [isLoading, setLoading] = useState(true);
   const [isSyncing, setSyncing] = useState(false);
@@ -245,10 +249,23 @@ const AppContent: React.FC = () => {
       return;
     }
     const handler = setTimeout(() => {
-      const query = dealSearch.trim();
       const filters: FilterParams = { ordering: 'next_contact_date' };
+      const query = dealSearch.trim();
       if (query) {
         filters.search = query;
+      }
+      if (dealExecutorFilter) {
+        filters.executor = dealExecutorFilter;
+      }
+      const trimmedSource = dealSourceFilter.trim();
+      if (trimmedSource) {
+        filters.source = trimmedSource;
+      }
+      if (dealExpectedCloseFrom) {
+        filters['expected_close_after'] = dealExpectedCloseFrom;
+      }
+      if (dealExpectedCloseTo) {
+        filters['expected_close_before'] = dealExpectedCloseTo;
       }
       setError(null);
       refreshDeals(filters).catch((err) => {
@@ -257,7 +274,14 @@ const AppContent: React.FC = () => {
       });
     }, 300);
     return () => clearTimeout(handler);
-  }, [dealSearch, refreshDeals]);
+  }, [
+    dealExpectedCloseFrom,
+    dealExpectedCloseTo,
+    dealExecutorFilter,
+    dealSearch,
+    dealSourceFilter,
+    refreshDeals,
+  ]);
 
   // Check authentication on app load
   useEffect(() => {
@@ -829,6 +853,14 @@ const AppContent: React.FC = () => {
             onSelectDeal={setSelectedDealId}
             dealSearch={dealSearch}
             onDealSearchChange={setDealSearch}
+            dealExecutorFilter={dealExecutorFilter}
+            onDealExecutorFilterChange={setDealExecutorFilter}
+            dealSourceFilter={dealSourceFilter}
+            onDealSourceFilterChange={setDealSourceFilter}
+            dealExpectedCloseFrom={dealExpectedCloseFrom}
+            onDealExpectedCloseFromChange={setDealExpectedCloseFrom}
+            dealExpectedCloseTo={dealExpectedCloseTo}
+            onDealExpectedCloseToChange={setDealExpectedCloseTo}
             onUpdateStatus={handleStatusChange}
             onUpdateDeal={handleUpdateDeal}
             onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}

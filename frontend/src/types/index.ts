@@ -73,7 +73,6 @@ export interface Deal {
   clientName: string;
   status: DealStatus;
   stageName?: string;
-  probability?: number;
   expectedClose?: string | null;
   nextContactDate?: string | null;
   source?: string;
@@ -187,4 +186,7 @@ export interface ActivityLog {
   oldValue?: any;
   newValue?: any;
   createdAt: string;
+  objectId?: string;
+  objectType?: string;
+  objectName?: string | null;
 }

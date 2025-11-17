@@ -22,6 +22,9 @@ media
 .env
 .env.local
 
+# Local virtual envs under backend
+backend/.venv
+
 # Frontend
 node_modules
 npm-debug.log

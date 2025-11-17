@@ -4,7 +4,7 @@ Integration tests for the deal history endpoint.
 
 import pytest
 from apps.clients.models import Client
-from apps.deals.models import ActivityLog, Deal, InsuranceCompany, InsuranceType, Quote
+from apps.deals.models import Deal, InsuranceCompany, InsuranceType, Quote
 from apps.documents.models import Document
 from apps.finances.models import FinancialRecord, Payment
 from apps.notes.models import Note
@@ -28,13 +28,6 @@ def test_deal_history_includes_related_entities():
         title="Historical Deal",
         client=client_record,
         status="open",
-        probability=50,
-    )
-
-    ActivityLog.objects.create(
-        deal=deal,
-        action_type=ActivityLog.ActionType.CREATED,
-        description="Создана тестовая сделка",
     )
 
     Task.objects.create(
@@ -80,12 +73,15 @@ def test_deal_history_includes_related_entities():
     response = api_client.get(f"/api/v1/deals/{deal.id}/history/")
     assert response.status_code == 200
     data = response.json()
-    normalized = [str(entry["description"]).lower() for entry in data]
-
-    assert any("создана сделка" in desc for desc in normalized)
-    assert any("загружен документ" in desc for desc in normalized)
-    assert any("создан" in desc and "расчет" in desc for desc in normalized)
-    assert any("создан полис" in desc for desc in normalized)
-    assert any("создан платёж" in desc for desc in normalized)
-    assert any("создан доход" in desc or "создан расход" in desc for desc in normalized)
-    assert any("создана заметка" in desc for desc in normalized)
+    object_types = {entry.get("object_type") for entry in data if entry.get("object_type")}
+    expected_object_types = {
+        "deal",
+        "task",
+        "document",
+        "payment",
+        "financial_record",
+        "note",
+        "policy",
+        "quote",
+    }
+    assert expected_object_types <= object_types

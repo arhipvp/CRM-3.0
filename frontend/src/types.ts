@@ -100,7 +100,6 @@ export interface Deal {
   clientName?: string;
   status: DealStatus;
   stageName?: string;
-  probability: number;
   expectedClose?: string | null;
   nextContactDate?: string | null;
   source?: string;
@@ -202,6 +201,9 @@ export interface ActivityLog {
   oldValue?: string;
   newValue?: string;
   createdAt: string;
+  objectId?: string;
+  objectType?: string;
+  objectName?: string | null;
 }
 
 export interface ChecklistItem {

@@ -20,15 +20,8 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from .filters import DealFilterSet
-from .models import (
-    ActivityLog,
-    Deal,
-    InsuranceCompany,
-    InsuranceType,
-    Quote,
-)
+from .models import Deal, InsuranceCompany, InsuranceType, Quote
 from .serializers import (
-    ActivityLogSerializer,
     DealSerializer,
     InsuranceCompanySerializer,
     InsuranceTypeSerializer,
@@ -128,12 +121,10 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="history")
     def history(self, request, pk=None):
         deal = self.get_object()
-        activities = ActivityLog.objects.filter(deal=deal).select_related("user")
-        activity_data = ActivityLogSerializer(activities, many=True).data
         audit_logs = self._get_related_audit_logs(deal)
         audit_data = [self._map_audit_log_entry(log, deal.id) for log in audit_logs]
         timeline = sorted(
-            activity_data + audit_data,
+            audit_data,
             key=lambda entry: entry["created_at"],
             reverse=True,
         )
@@ -203,6 +194,9 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         return {
             "id": f"audit-{audit_log.id}",
             "deal": str(deal_id),
+            "object_type": audit_log.object_type,
+            "object_id": audit_log.object_id,
+            "object_name": audit_log.object_name,
             "action_type": "custom",
             "action_type_display": action_display,
             "description": description,
@@ -256,27 +250,3 @@ class InsuranceTypeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InsuranceTypeSerializer
     queryset = InsuranceType.objects.order_by("name")
     pagination_class = None
-
-
-class ActivityLogViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = ActivityLogSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        queryset = (
-            ActivityLog.objects.select_related("deal", "user")
-            .all()
-            .order_by("-created_at")
-        )
-
-        # Администраторы видят все логи активности
-        is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
-
-        if not is_admin:
-            # Остальные видят только логи для своих сделок (где user = seller или executor)
-            queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
-
-        deal_id = self.request.query_params.get("deal")
-        if deal_id:
-            queryset = queryset.filter(deal_id=deal_id)
-        return queryset

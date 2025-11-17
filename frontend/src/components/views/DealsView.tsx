@@ -127,6 +127,11 @@ const formatDriveFileSize = (bytes?: number | null) => {
   return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
 };
 
+const getUserDisplayName = (user: User) => {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  return fullName || user.username;
+};
+
 const getDriveItemIcon = (isFolder: boolean) => (isFolder ? '📁' : '📄');
 
 type PolicySortKey =
@@ -206,6 +211,14 @@ interface DealsViewProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
+  dealExecutorFilter: string;
+  onDealExecutorFilterChange: (value: string) => void;
+  dealSourceFilter: string;
+  onDealSourceFilterChange: (value: string) => void;
+  dealExpectedCloseFrom: string;
+  onDealExpectedCloseFromChange: (value: string) => void;
+  dealExpectedCloseTo: string;
+  onDealExpectedCloseToChange: (value: string) => void;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -242,6 +255,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDeleteTask,
   dealSearch,
   onDealSearchChange,
+  dealExecutorFilter,
+  onDealExecutorFilterChange,
+  dealSourceFilter,
+  onDealSourceFilterChange,
+  dealExpectedCloseFrom,
+  onDealExpectedCloseFromChange,
+  dealExpectedCloseTo,
+  onDealExpectedCloseToChange,
   currentUser,
 }) => {
   // Сортируем сделки по дате следующего контакта (ближайшие сверху)
@@ -1541,18 +1562,79 @@ export const DealsView: React.FC<DealsViewProps> = ({
             <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
           </div>
         </div>
-        <div className="px-5 py-3 border-b border-slate-100">
-          <label htmlFor="dealSearch" className="sr-only">
-            Поиск по сделкам
-          </label>
-          <input
-            id="dealSearch"
-            type="search"
-            value={dealSearch}
-            onChange={(event) => onDealSearchChange(event.target.value)}
-            placeholder="Поиск по сделкам"
-            className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-          />
+        <div className="px-5 py-3 border-b border-slate-100 space-y-3">
+          <div>
+            <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
+              Поиск
+            </label>
+            <input
+              id="dealSearch"
+              type="search"
+              value={dealSearch}
+              onChange={(event) => onDealSearchChange(event.target.value)}
+              placeholder="Поиск по сделкам"
+              className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label htmlFor="dealExecutor" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Ответственный
+              </label>
+              <select
+                id="dealExecutor"
+                value={dealExecutorFilter}
+                onChange={(event) => onDealExecutorFilterChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              >
+                <option value="">Все</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {getUserDisplayName(user)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="dealSource" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Источник
+              </label>
+              <input
+                id="dealSource"
+                type="text"
+                value={dealSourceFilter}
+                onChange={(event) => onDealSourceFilterChange(event.target.value)}
+                placeholder="Например, реклама, рефералы"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label htmlFor="dealExpectedCloseFrom" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Дата закрытия с
+              </label>
+              <input
+                id="dealExpectedCloseFrom"
+                type="date"
+                value={dealExpectedCloseFrom}
+                onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              />
+            </div>
+            <div>
+              <label htmlFor="dealExpectedCloseTo" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Дата закрытия по
+              </label>
+              <input
+                id="dealExpectedCloseTo"
+                type="date"
+                value={dealExpectedCloseTo}
+                onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              />
+            </div>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
 {sortedDeals.map((deal) => {
@@ -1633,10 +1715,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-slate-500">Вероятность</p>
-                <p className="text-lg font-semibold">{selectedDeal.probability}%</p>
-              </div>
               <div>
                 <p className="text-slate-500">Источник</p>
                 <p className="text-lg font-semibold">{selectedDeal.source || '—'}</p>

@@ -7,6 +7,13 @@ def document_upload_path(instance, filename):
     return f"documents/{instance.deal_id}/{filename}"
 
 
+class DocumentStatus(models.TextChoices):
+    DRAFT = "draft", "Черновик"
+    PENDING = "pending", "Ожидание"
+    COMPLETED = "completed", "Завершено"
+    ERROR = "error", "Ошибка"
+
+
 class Document(SoftDeleteModel):
     """Документ, связанный со сделкой"""
 
@@ -39,7 +46,12 @@ class Document(SoftDeleteModel):
 
     # Классификация
     doc_type = models.CharField(max_length=120, blank=True, help_text="Тип документа")
-    status = models.CharField(max_length=50, default="draft", help_text="Статус")
+    status = models.CharField(
+        max_length=50,
+        choices=DocumentStatus.choices,
+        default=DocumentStatus.DRAFT,
+        help_text="Статус",
+    )
     checksum = models.CharField(
         max_length=128, blank=True, help_text="Контрольная сумма"
     )

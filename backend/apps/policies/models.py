@@ -11,7 +11,7 @@ class Policy(SoftDeleteModel):
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
         related_name="policies",
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         help_text="Insurance company",
     )
     insurance_type = models.ForeignKey(

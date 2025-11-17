@@ -8,13 +8,7 @@ import uuid
 
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
-from apps.deals.models import (
-    ActivityLog,
-    Deal,
-    InsuranceCompany,
-    InsuranceType,
-    Quote,
-)
+from apps.deals.models import Deal, InsuranceCompany, InsuranceType, Quote
 from apps.documents.models import Document
 from apps.finances.models import FinancialRecord, Payment
 from apps.notes.models import Note
@@ -130,33 +124,6 @@ for i, deal in enumerate(deals):
         quotes.append(quote)
 print("   OK: {} kotirovok\n".format(len(quotes)))
 
-# 7. Создаю логи активности
-print("7. Создание логов активности...")
-activities = []
-action_types = [
-    "created",
-    "status_changed",
-    "stage_changed",
-    "description_updated",
-    "assigned",
-    "policy_created",
-    "quote_added",
-]
-for i, deal in enumerate(deals):
-    for j in range(2):
-        activity = ActivityLog.objects.create(
-            deal=deal,
-            user=users[1 + (i % 3)],
-            action_type=action_types[j % len(action_types)],
-            description="Deystvie #{}: {} dlya {}".format(
-                j + 1, action_types[j % len(action_types)], deal.title
-            ),
-            old_value="",
-            new_value="",
-        )
-        activities.append(activity)
-print("   OK: {} zapisey logov\n".format(len(activities)))
-
 # 8. Создаю задачи
 print("8. Создание zadach...")
 tasks = []
@@ -178,8 +145,8 @@ for i, deal in enumerate(deals):
         tasks.append(task)
 print("   OK: {} zadach\n".format(len(tasks)))
 
-# 9. Создаю документы
-print("9. Создание dokumentov...")
+# 8. Создаю документы
+print("8. Создание dokumentov...")
 documents = []
 doc_types = ["contract", "invoice", "specification", "proposal"]
 statuses = ["draft", "approved", "archived"]
@@ -199,8 +166,8 @@ for i, deal in enumerate(deals):
         documents.append(doc)
 print("   OK: {} dokumentov\n".format(len(documents)))
 
-# 10. Создаю платежи и финансовые записи
-print("10. Создание platezhey i finansovykh zapisey...")
+# 9. Создаю платежи и финансовые записи
+print("9. Создание platezhey i finansovykh zapisey...")
 payments = []
 financial_records = []
 payment_statuses = ["planned", "partial", "paid"]
@@ -233,8 +200,8 @@ print(
     )
 )
 
-# 11. Создаю заметки
-print("11. Создание zametok...")
+# 10. Создаю заметки
+print("10. Создание zametok...")
 notes = []
 for i, deal in enumerate(deals):
     for j in range(2):
@@ -248,8 +215,8 @@ for i, deal in enumerate(deals):
         notes.append(note)
 print("   OK: {} zametok\n".format(len(notes)))
 
-# 12. Создаю полисы
-print("12. Создание polisov...")
+# 11. Создаю полисы
+print("11. Создание polisov...")
 policies = []
 insurance_types = ["liability", "property", "auto", "health"]
 policy_statuses = ["active", "inactive"]
@@ -276,8 +243,8 @@ for i, deal in enumerate(deals):
         policies.append(policy)
 print("   OK: {} polisov\n".format(len(policies)))
 
-# 13. Создаю сообщения в чате
-print("13. Создание soobshcheniy v chate...")
+# 12. Создаю сообщения в чате
+print("12. Создание soobshcheniy v chate...")
 chat_messages = []
 for i, deal in enumerate(deals):
     for j in range(2):
@@ -293,8 +260,8 @@ for i, deal in enumerate(deals):
         chat_messages.append(msg)
 print("   OK: {} soobshcheniy v chate\n".format(len(chat_messages)))
 
-# 14. Создаю уведомления
-print("14. Создание uvedomleniy...")
+# 13. Создаю уведомления
+print("13. Создание uvedomleniy...")
 notifications = []
 notification_types = ["info", "warning", "error", "success"]
 for i, user in enumerate(users):
