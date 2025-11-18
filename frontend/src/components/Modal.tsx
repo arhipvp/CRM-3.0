@@ -35,7 +35,7 @@ export const Modal: React.FC<ModalProps> = ({
             className="text-slate-400 hover:text-slate-600"
             aria-label="Закрыть"
           >
-            Г×
+            ×
           </button>
         </div>
         <div className="p-5">{children}</div>
