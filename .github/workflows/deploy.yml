@@ -25,9 +25,8 @@ jobs:
 
       - name: Deploy via SSH
         run: |
-          REF="${GITHUB_REF:-refs/heads/master}"
-          BRANCH="${REF##*/}"
-          env BRANCH="${BRANCH}" ssh "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" <<'EOF'
+          BRANCH="${GITHUB_REF_NAME:-master}"
+          ssh "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" <<EOF
           set -euo pipefail
 
           cd "${{ secrets.VPS_PATH }}"
