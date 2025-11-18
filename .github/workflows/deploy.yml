@@ -25,10 +25,8 @@ jobs:
 
       - name: Deploy via SSH
         run: |
-          BRANCH="${GITHUB_REF##*/}"
-          if [[ -z "$BRANCH" ]]; then
-            BRANCH="master"
-          fi
+          REF="${GITHUB_REF:-refs/heads/master}"
+          BRANCH="${REF##*/}"
           ssh "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" <<'EOF'
           set -euo pipefail
 
