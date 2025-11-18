@@ -733,6 +733,7 @@ export async function createDeal(data: {
   clientId: string;
   expectedClose?: string | null;
   executorId?: string | null;
+  source?: string;
 }): Promise<Deal> {
   const payload = await request<any>('/deals/', {
     method: 'POST',
@@ -742,6 +743,7 @@ export async function createDeal(data: {
       client: data.clientId,
       expected_close: data.expectedClose || null,
       executor: data.executorId || null,
+      source: data.source?.trim() ?? '',
     }),
   });
   return mapDeal(payload);
@@ -765,6 +767,7 @@ export async function updateDeal(
     expectedClose?: string | null;
     stageName?: string;
     executorId?: string | null;
+    source?: string | null;
   }
 ): Promise<Deal> {
   const body: Record<string, unknown> = {
@@ -777,6 +780,9 @@ export async function updateDeal(
   };
   if ('executorId' in data) {
     body.executor = data.executorId || null;
+  }
+  if ('source' in data) {
+    body.source = data.source ?? null;
   }
   const payload = await request<any>(`/deals/${id}/`, {
     method: 'PATCH',

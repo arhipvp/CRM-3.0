@@ -396,6 +396,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       title: selectedDeal.title,
       description: selectedDeal.description || '',
       clientId: selectedDeal.clientId,
+      source: selectedDeal.source ?? null,
       nextContactDate: field === 'nextContactDate' ? value : selectedDeal.nextContactDate ?? null,
       expectedClose: field === 'expectedClose' ? value : selectedDeal.expectedClose ?? null,
     };

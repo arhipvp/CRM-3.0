@@ -11,6 +11,7 @@ interface DealFormProps {
     description?: string;
     expectedClose?: string | null;
     executorId?: string | null;
+    source?: string;
   }) => Promise<void>;
 }
 
@@ -23,6 +24,7 @@ export const DealForm: React.FC<DealFormProps> = ({
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState(clients[0]?.id ?? '');
   const [description, setDescription] = useState('');
+  const [source, setSource] = useState('');
   const [expectedClose, setExpectedClose] = useState<string>('');
   const [executorId, setExecutorId] = useState(defaultExecutorId ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export const DealForm: React.FC<DealFormProps> = ({
         description: description.trim() || undefined,
         expectedClose: expectedClose || null,
         executorId: executorId || undefined,
+        source: source.trim() || undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось создать сделку');
@@ -104,6 +107,17 @@ export const DealForm: React.FC<DealFormProps> = ({
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
         />
       </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700">Источник</label>
+        <input
+          type="text"
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          placeholder="Источник сделки"
+        />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-slate-700">Ожидаемая дата закрытия</label>
         <input

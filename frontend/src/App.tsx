@@ -352,6 +352,7 @@ const AppContent: React.FC = () => {
     description?: string;
     expectedClose?: string | null;
     executorId?: string | null;
+    source?: string;
   }) => {
     const created = await createDeal({
       title: data.title,
@@ -359,6 +360,7 @@ const AppContent: React.FC = () => {
       description: data.description,
       expectedClose: data.expectedClose,
       executorId: data.executorId,
+      source: data.source,
     });
     setDeals((prev) => [created, ...prev]);
     setSelectedDealId(created.id);

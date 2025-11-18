@@ -8,6 +8,7 @@ export interface EditDealFormValues {
   nextContactDate?: string | null;
   expectedClose?: string | null;
   executorId?: string | null;
+  source?: string | null;
 }
 
 interface EditDealFormProps {
@@ -32,6 +33,7 @@ export function EditDealForm({
     nextContactDate: deal.nextContactDate,
     expectedClose: deal.expectedClose,
     executorId: deal.executor ?? null,
+    source: deal.source ?? '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -95,6 +97,19 @@ export function EditDealForm({
           onChange={handleChange}
           placeholder="Описание сделки"
           rows={4}
+          disabled={loading}
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="source">Источник</label>
+        <input
+          type="text"
+          id="source"
+          name="source"
+          value={formData.source ?? ''}
+          onChange={handleChange}
+          placeholder="Источник сделки"
           disabled={loading}
         />
       </div>
