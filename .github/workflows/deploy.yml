@@ -3,7 +3,7 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - master  # если у тебя ветка называется иначе — поменяй тут
+      - master
 
 jobs:
   deploy:
@@ -13,32 +13,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup SSH key
+      - name: Prepare SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-      - name: Add VPS to known_hosts
+      - name: Add VPS to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy to VPS
+      - name: Deploy via SSH
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-          set -e
+          BRANCH=$(basename "${GITHUB_REF}")
+          ssh "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" <<'EOF'
+          set -euo pipefail
 
-          cd ${{ secrets.VPS_PATH }}
+          cd "${{ secrets.VPS_PATH }}"
 
-          echo "Pulling latest changes..."
-          git pull origin master
+          echo "Fetching ${BRANCH}..."
+          git fetch origin "${BRANCH}" --quiet
+          git checkout "${BRANCH}"
+          git reset --hard "origin/${BRANCH}"
 
-          echo "Building and starting containers..."
-          docker compose -f docker-compose.prod.yml up -d --build
+          echo "Building and restarting stack"
+          docker compose -f docker-compose.prod.yml --env-file .env.production pull
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d
 
-
-
-          echo "Cleaning old images..."
+          echo "Pruning unused images"
           docker image prune -f
-
           EOF

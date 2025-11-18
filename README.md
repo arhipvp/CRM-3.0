@@ -29,22 +29,20 @@ API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 - Backend: http://localhost:8000/
 - Frontend (Vite): http://localhost:5173/
 
-## Локальный скрипт деплоя
+## CI/CD: GitHub Actions
 
-Чтобы пересобрать весь проект и скопировать код на VPS в один шаг, используй `./deploy.sh`.
+Деплой теперь автоматизирован через `.github/workflows/deploy.yml`: при `push` в ветку `master` GitHub Actions подключается к VPS по SSH (секреты см. ниже), делает `git reset --hard origin/master`, а потом `docker compose -f docker-compose.prod.yml --env-file .env.production pull` и `up --build -d`. После сборки очищается неиспользуемая картинка.
 
-```bash
-# Сделай скрипт исполняемым (один раз)
-chmod +x deploy.sh
+Перед тем как делать `push`, проверь, что `master` содержит актуальные изменения и что конфиг `.env.production` на сервере заполнен (пароли/ключи, `ALLOWED_HOSTS`, `VITE_API_URL`).
 
-# После изменений запускай:
-./deploy.sh
-```
+### Что нужно сделать тебе:
 
-Параметры можно переопределить через переменные окружения:
+1. В репозитории на GitHub зайди в **Settings → Secrets and variables → Actions** и добавь:
+   - `VPS_SSH_KEY` (приватный ключ, которым можно зайти на сервер);
+   - `VPS_USER` (`root` или другой SSH-пользователь);
+   - `VPS_HOST` (`173.249.7.183`);
+   - `VPS_PATH` (`/root/crm3`).
+2. Убедись, что на сервере уже есть репозиторий (`/root/crm3`), `.env.production` с секретами и что `git remote` правильно настроен (или сможешь вручную `git pull` оттуда).
+3. Если нужно деплоить из другой ветки — просто обнови `on.push.branches` в workflow (и, при необходимости, соответствующий путь в `git reset --hard origin/...`).
 
-```bash
-SSH_USER=deploy SSH_HOST=173.249.7.183 ./deploy.sh
-```
-
-Скрипт использует `rsync` (с `--delete`) и пропускает локальные артефакты/файлы окружения, затем на сервере вызывает `docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d`. Убедись, что файл `/root/crm3/.env.production` уже настроен и содержит актуальные пароли/ключи.
+После этих настроек достаточно пуша в `master` (или другой ветку, если перепишешь workflow), и GitHub Actions сделает всё остальное — без локальных скриптов.
