@@ -27,7 +27,7 @@ jobs:
         run: |
           REF="${GITHUB_REF:-refs/heads/master}"
           BRANCH="${REF##*/}"
-          ssh "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" <<'EOF'
+          env BRANCH="${BRANCH}" ssh "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" <<'EOF'
           set -euo pipefail
 
           cd "${{ secrets.VPS_PATH }}"
