@@ -114,9 +114,6 @@ export interface Deal {
   nextContactDate?: string | null;
   source?: string;
   lossReason?: string;
-  channel?: string;
-  salesChannelId?: string;
-  salesChannelName?: string;
   createdAt: string;
   quotes: Quote[];
   documents: Document[];

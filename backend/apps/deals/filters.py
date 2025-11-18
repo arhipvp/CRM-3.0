@@ -37,12 +37,6 @@ class DealFilterSet(django_filters.FilterSet):
         field_name="source", lookup_expr="icontains", label="Source (contains)"
     )
 
-    sales_channel = django_filters.CharFilter(
-        field_name="sales_channel__name",
-        lookup_expr="icontains",
-        label="Sales Channel (contains)",
-    )
-
     expected_close = django_filters.DateFromToRangeFilter(
         field_name="expected_close", label="Expected Close (range)"
     )
@@ -70,6 +64,5 @@ class DealFilterSet(django_filters.FilterSet):
             "executor",
             "client",
             "source",
-            "sales_channel",
             "expected_close",
         )

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Deal, Client, SalesChannel, User } from '../../types';
+import { Deal, Client, User } from '../../types';
 
 export interface EditDealFormValues {
   title: string;
@@ -7,14 +7,12 @@ export interface EditDealFormValues {
   clientId: string;
   nextContactDate?: string | null;
   expectedClose?: string | null;
-  salesChannelId?: string | null;
   executorId?: string | null;
 }
 
 interface EditDealFormProps {
   deal: Deal;
   clients: Client[];
-  salesChannels: SalesChannel[];
   users: User[];
   onSubmit: (data: EditDealFormValues) => Promise<void>;
   onCancel: () => void;
@@ -23,7 +21,6 @@ interface EditDealFormProps {
 export function EditDealForm({
   deal,
   clients,
-  salesChannels,
   users,
   onSubmit,
   onCancel,
@@ -34,7 +31,6 @@ export function EditDealForm({
     clientId: deal.clientId,
     nextContactDate: deal.nextContactDate,
     expectedClose: deal.expectedClose,
-    salesChannelId: deal.salesChannelId ?? null,
     executorId: deal.executor ?? null,
   });
 
@@ -117,24 +113,6 @@ export function EditDealForm({
           {clients.map((client) => (
             <option key={client.id} value={client.id}>
               {client.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="salesChannelId">Канал продаж</label>
-        <select
-          id="salesChannelId"
-          name="salesChannelId"
-          value={formData.salesChannelId || ''}
-          onChange={handleChange}
-          disabled={loading}
-        >
-          <option value="">-- Выберите канал продаж --</option>
-          {salesChannels.map((channel) => (
-            <option key={channel.id} value={channel.id}>
-              {channel.name}
             </option>
           ))}
         </select>

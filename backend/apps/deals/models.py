@@ -114,14 +114,6 @@ class Deal(SoftDeleteModel):
     loss_reason = models.CharField(
         max_length=255, blank=True, help_text="Причина проигрыша"
     )
-    sales_channel = models.ForeignKey(
-        "deals.SalesChannel",
-        related_name="deals",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        help_text="Канал продаж",
-    )
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
     )
@@ -130,9 +122,6 @@ class Deal(SoftDeleteModel):
         ordering = ["next_contact_date", "-next_review_date", "-created_at"]
         verbose_name = "Сделка"
         verbose_name_plural = "Сделки"
-        indexes = [
-            models.Index(fields=["sales_channel"], name="deals_deal_sales_ch_idx")
-        ]
 
     def __str__(self) -> str:
         return self.title

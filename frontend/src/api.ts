@@ -346,9 +346,6 @@ const mapDeal = (raw: any): Deal => ({
   nextContactDate: raw.next_contact_date,
   source: raw.source,
   lossReason: raw.loss_reason,
-  channel: raw.sales_channel_name ?? raw.channel ?? '',
-  salesChannelId: raw.sales_channel,
-  salesChannelName: raw.sales_channel_name,
   createdAt: raw.created_at,
   quotes: Array.isArray(raw.quotes) ? raw.quotes.map(mapQuote) : [],
   documents: Array.isArray(raw.documents)
@@ -735,7 +732,6 @@ export async function createDeal(data: {
   description?: string;
   clientId: string;
   expectedClose?: string | null;
-  salesChannelId?: string;
   executorId?: string | null;
 }): Promise<Deal> {
   const payload = await request<any>('/deals/', {
@@ -745,7 +741,6 @@ export async function createDeal(data: {
       description: data.description,
       client: data.clientId,
       expected_close: data.expectedClose || null,
-      sales_channel: data.salesChannelId || null,
       executor: data.executorId || null,
     }),
   });
@@ -769,7 +764,6 @@ export async function updateDeal(
     nextContactDate?: string | null;
     expectedClose?: string | null;
     stageName?: string;
-    salesChannelId?: string | null;
     executorId?: string | null;
   }
 ): Promise<Deal> {
@@ -781,9 +775,6 @@ export async function updateDeal(
     expected_close: data.expectedClose || null,
     stage_name: data.stageName,
   };
-  if ('salesChannelId' in data) {
-    body.sales_channel = data.salesChannelId || null;
-  }
   if ('executorId' in data) {
     body.executor = data.executorId || null;
   }

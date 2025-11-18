@@ -351,10 +351,15 @@ const AppContent: React.FC = () => {
     clientId: string;
     description?: string;
     expectedClose?: string | null;
-    salesChannelId?: string;
     executorId?: string | null;
   }) => {
-    const created = await createDeal(data);
+    const created = await createDeal({
+      title: data.title,
+      clientId: data.clientId,
+      description: data.description,
+      expectedClose: data.expectedClose,
+      executorId: data.executorId,
+    });
     setDeals((prev) => [created, ...prev]);
     setSelectedDealId(created.id);
     setModal(null);
@@ -985,7 +990,6 @@ const AppContent: React.FC = () => {
             <DealForm
               onSubmit={handleAddDeal}
               clients={clients}
-              salesChannels={salesChannels}
               users={users}
               defaultExecutorId={currentUser?.id ?? undefined}
             />

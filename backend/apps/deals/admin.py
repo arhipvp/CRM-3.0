@@ -28,9 +28,8 @@ class DealResource(resources.ModelResource):
             "expected_close",
             "next_review_date",
             "source",
-            "loss_reason",
-            "sales_channel",
-            "created_at",
+        "loss_reason",
+        "created_at",
             "updated_at",
             "deleted_at",
         )
@@ -147,13 +146,12 @@ class DealAdmin(SoftDeleteImportExportAdmin):
     list_filter = (
         "status",
         "stage_name",
-        "sales_channel",
         "created_at",
         "next_contact_date",
         "next_review_date",
         "deleted_at",
     )
-    search_fields = ("title", "client__name", "description", "sales_channel__name")
+    search_fields = ("title", "client__name", "description")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("next_review_date", "-created_at")
     date_hierarchy = "next_review_date"
@@ -186,7 +184,7 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         (
             "Источник",
             {
-                "fields": ("source", "loss_reason", "sales_channel"),
+                "fields": ("source", "loss_reason"),
                 "classes": ("collapse",),
             },
         ),
