@@ -1781,6 +1781,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 deal={selectedDeal}
                 clients={clients}
                 salesChannels={salesChannels}
+                users={users}
                 onSubmit={async (data) => {
                   await onUpdateDeal(selectedDeal.id, data);
                   setIsEditingDeal(false);

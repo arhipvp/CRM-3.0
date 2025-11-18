@@ -362,8 +362,10 @@ const mapDeal = (raw: any): Deal => ({
       }))
     : [],
   driveFolderId: raw.drive_folder_id ?? null,
-  seller: raw.seller,
-  executor: raw.executor,
+  seller:
+    raw.seller === null || raw.seller === undefined ? null : String(raw.seller),
+  executor:
+    raw.executor === null || raw.executor === undefined ? null : String(raw.executor),
   sellerName: raw.seller_name ?? null,
   executorName: raw.executor_name ?? null,
 });
@@ -734,6 +736,7 @@ export async function createDeal(data: {
   clientId: string;
   expectedClose?: string | null;
   salesChannelId?: string;
+  executorId?: string | null;
 }): Promise<Deal> {
   const payload = await request<any>('/deals/', {
     method: 'POST',
@@ -743,6 +746,7 @@ export async function createDeal(data: {
       client: data.clientId,
       expected_close: data.expectedClose || null,
       sales_channel: data.salesChannelId || null,
+      executor: data.executorId || null,
     }),
   });
   return mapDeal(payload);
@@ -766,6 +770,7 @@ export async function updateDeal(
     expectedClose?: string | null;
     stageName?: string;
     salesChannelId?: string | null;
+    executorId?: string | null;
   }
 ): Promise<Deal> {
   const body: Record<string, unknown> = {
@@ -778,6 +783,9 @@ export async function updateDeal(
   };
   if ('salesChannelId' in data) {
     body.sales_channel = data.salesChannelId || null;
+  }
+  if ('executorId' in data) {
+    body.executor = data.executorId || null;
   }
   const payload = await request<any>(`/deals/${id}/`, {
     method: 'PATCH',

@@ -137,3 +137,4 @@ backend/.env
 frontend/.env
 credentials.json
 backup_2025-11-12_16-11.xlsx
+deploy.sh

@@ -18,16 +18,31 @@ fi
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-echo "Creating superuser (if doesn't exist)..."
-python manage.py shell << END
+echo "Ensuring superuser exists..."
+python manage.py shell <<'PY'
+import os
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
-if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
-    print('Superuser created: admin / admin123')
+
+username = os.environ.get("DJANGO_SUPERUSER_USERNAME", "admin")
+email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "admin@example.com")
+password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "admin123")
+
+user, created = User.objects.get_or_create(username=username, defaults={
+    "email": email,
+})
+if created:
+    user.set_password(password)
+    user.is_staff = True
+    user.is_superuser = True
+    user.save()
+    print(f"Superuser created: {username} / <hidden>")
 else:
-    print('Superuser already exists')
-END
+    user.set_password(password)
+    user.save()
+    print(f"Superuser {username} password reset")
+PY
 
 echo "Starting Gunicorn..."
 exec gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 config.wsgi:application

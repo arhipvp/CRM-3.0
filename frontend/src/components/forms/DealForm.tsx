@@ -1,24 +1,34 @@
 import React, { useState } from 'react';
-import { Client, SalesChannel } from '../../types';
+import { Client, SalesChannel, User } from '../../types';
 
 interface DealFormProps {
   clients: Client[];
   salesChannels: SalesChannel[];
+  users: User[];
+  defaultExecutorId?: string | null;
   onSubmit: (data: {
     title: string;
     clientId: string;
     description?: string;
     expectedClose?: string | null;
     salesChannelId?: string;
+    executorId?: string | null;
   }) => Promise<void>;
 }
 
-export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
+export const DealForm: React.FC<DealFormProps> = ({
+  clients,
+  salesChannels,
+  users,
+  defaultExecutorId,
+  onSubmit,
+}) => {
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState(clients[0]?.id ?? '');
   const [description, setDescription] = useState('');
   const [expectedClose, setExpectedClose] = useState<string>('');
   const [salesChannelId, setSalesChannelId] = useState('');
+  const [executorId, setExecutorId] = useState(defaultExecutorId ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
@@ -37,6 +47,7 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
         description: description.trim() || undefined,
         expectedClose: expectedClose || null,
         salesChannelId: salesChannelId || undefined,
+        executorId: executorId || undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось создать сделку');
@@ -83,6 +94,23 @@ export const DealForm: React.FC<DealFormProps> = ({ clients, onSubmit }) => {
           {salesChannels.map((channel) => (
             <option key={channel.id} value={channel.id}>
               {channel.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700">Исполнитель</label>
+        <select
+          value={executorId}
+          onChange={(e) => setExecutorId(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+        >
+          <option value="">Не выбран</option>
+          {users.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.firstName || user.lastName
+                ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+                : user.username}
             </option>
           ))}
         </select>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Deal, Client, SalesChannel } from '../../types';
+import { Deal, Client, SalesChannel, User } from '../../types';
 
 export interface EditDealFormValues {
   title: string;
@@ -8,17 +8,26 @@ export interface EditDealFormValues {
   nextContactDate?: string | null;
   expectedClose?: string | null;
   salesChannelId?: string | null;
+  executorId?: string | null;
 }
 
 interface EditDealFormProps {
   deal: Deal;
   clients: Client[];
   salesChannels: SalesChannel[];
+  users: User[];
   onSubmit: (data: EditDealFormValues) => Promise<void>;
   onCancel: () => void;
 }
 
-export function EditDealForm({ deal, clients, salesChannels, onSubmit, onCancel }: EditDealFormProps) {
+export function EditDealForm({
+  deal,
+  clients,
+  salesChannels,
+  users,
+  onSubmit,
+  onCancel,
+}: EditDealFormProps) {
   const [formData, setFormData] = useState<EditDealFormValues>({
     title: deal.title,
     description: deal.description || '',
@@ -26,6 +35,7 @@ export function EditDealForm({ deal, clients, salesChannels, onSubmit, onCancel 
     nextContactDate: deal.nextContactDate,
     expectedClose: deal.expectedClose,
     salesChannelId: deal.salesChannelId ?? null,
+    executorId: deal.executor ?? null,
   });
 
   const [loading, setLoading] = useState(false);
@@ -125,6 +135,26 @@ export function EditDealForm({ deal, clients, salesChannels, onSubmit, onCancel 
           {salesChannels.map((channel) => (
             <option key={channel.id} value={channel.id}>
               {channel.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="executorId">Исполнитель</label>
+        <select
+          id="executorId"
+          name="executorId"
+          value={formData.executorId ?? ''}
+          onChange={handleChange}
+          disabled={loading}
+        >
+          <option value="">-- Выберите исполнителя --</option>
+          {users.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.firstName || user.lastName
+                ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+                : user.username}
             </option>
           ))}
         </select>

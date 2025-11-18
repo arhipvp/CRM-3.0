@@ -238,7 +238,10 @@ class QuoteViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save()
+        defaults: dict[str, object] = {}
+        if self.request.user.is_authenticated and 'seller' not in serializer.validated_data:
+            defaults['seller'] = self.request.user
+        serializer.save(**defaults)
 
 
 class InsuranceCompanyViewSet(viewsets.ReadOnlyModelViewSet):

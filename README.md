@@ -28,3 +28,23 @@ API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 - Postgres: порт `5435`.
 - Backend: http://localhost:8000/
 - Frontend (Vite): http://localhost:5173/
+
+## Локальный скрипт деплоя
+
+Чтобы пересобрать весь проект и скопировать код на VPS в один шаг, используй `./deploy.sh`.
+
+```bash
+# Сделай скрипт исполняемым (один раз)
+chmod +x deploy.sh
+
+# После изменений запускай:
+./deploy.sh
+```
+
+Параметры можно переопределить через переменные окружения:
+
+```bash
+SSH_USER=deploy SSH_HOST=173.249.7.183 ./deploy.sh
+```
+
+Скрипт использует `rsync` (с `--delete`) и пропускает локальные артефакты/файлы окружения, затем на сервере вызывает `docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d`. Убедись, что файл `/root/crm3/.env.production` уже настроен и содержит актуальные пароли/ключи.
