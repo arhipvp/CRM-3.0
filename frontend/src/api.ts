@@ -365,6 +365,8 @@ const mapDeal = (raw: any): Deal => ({
     raw.executor === null || raw.executor === undefined ? null : String(raw.executor),
   sellerName: raw.seller_name ?? null,
   executorName: raw.executor_name ?? null,
+  paymentsPaid: raw.payments_paid ?? raw.paymentsPaid ?? '0',
+  paymentsTotal: raw.payments_total ?? raw.paymentsTotal ?? '0',
 });
 
 const mapSalesChannel = (raw: any): SalesChannel => ({
@@ -432,6 +434,8 @@ const mapPolicy = (raw: any): Policy => ({
   startDate: raw.start_date,
   endDate: raw.end_date,
   status: raw.status,
+  paymentsPaid: raw.payments_paid ?? raw.paymentsPaid ?? '0',
+  paymentsTotal: raw.payments_total ?? raw.paymentsTotal ?? '0',
   createdAt: raw.created_at,
 });
 

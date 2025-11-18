@@ -13,7 +13,8 @@ from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import AuditLog, UserRole
-from django.db.models import F, Q
+from django.db.models import DecimalField, F, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -54,6 +55,22 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 F("next_review_date").desc(nulls_last=True),
                 "-created_at"
             )
+        )
+        decimal_field = DecimalField(max_digits=12, decimal_places=2)
+        queryset = queryset.annotate(
+            payments_total=Coalesce(
+                Sum("payments__amount"),
+                Value(0),
+                output_field=decimal_field,
+            ),
+            payments_paid=Coalesce(
+                Sum(
+                    "payments__amount",
+                    filter=Q(payments__status=Payment.PaymentStatus.PAID),
+                ),
+                Value(0),
+                output_field=decimal_field,
+            ),
         )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)

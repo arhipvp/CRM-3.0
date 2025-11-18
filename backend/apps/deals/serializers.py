@@ -115,11 +115,20 @@ class DealSerializer(serializers.ModelSerializer):
     next_contact_date = DateOrDateTimeField(required=False, allow_null=True)
     expected_close = DateOrDateTimeField(required=False, allow_null=True)
     next_review_date = DateOrDateTimeField(required=False, allow_null=True)
+    payments_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    payments_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = Deal
         fields = "__all__"
-        read_only_fields = ("id", "created_at", "updated_at", "drive_folder_id")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "drive_folder_id",
+            "payments_total",
+            "payments_paid",
+        )
         extra_kwargs = {}
 
     def get_seller_name(self, obj: Deal) -> str | None:

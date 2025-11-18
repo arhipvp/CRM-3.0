@@ -14,6 +14,12 @@ class PolicySerializer(serializers.ModelSerializer):
     sales_channel_name = serializers.CharField(
         source="sales_channel.name", read_only=True, allow_null=True
     )
+    payments_total = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
+    payments_paid = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = Policy
@@ -37,6 +43,8 @@ class PolicySerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "status",
+            "payments_paid",
+            "payments_total",
             "created_at",
             "updated_at",
             "deleted_at",
@@ -48,4 +56,6 @@ class PolicySerializer(serializers.ModelSerializer):
             "deleted_at",
             "client_name",
             "sales_channel_name",
+            "payments_paid",
+            "payments_total",
         )

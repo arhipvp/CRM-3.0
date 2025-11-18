@@ -810,6 +810,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 {renderPolicyHeaderCell('Компания', 'insuranceCompany')}
                 {renderPolicyHeaderCell('Клиент', 'client')}
                 {renderPolicyHeaderCell('Канал продаж', 'salesChannel')}
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Сумма
+                </th>
                 {renderPolicyHeaderCell('Тип', 'insuranceType')}
                 {renderPolicyHeaderCell('Начало', 'startDate')}
                 {renderPolicyHeaderCell('Окончание', 'endDate')}
@@ -829,6 +832,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   <td className="px-4 py-3">{policy.insuranceCompany || '—'}</td>
                   <td className="px-4 py-3">{policy.clientName || '—'}</td>
                   <td className="px-4 py-3">{policy.salesChannel || '—'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="font-semibold text-slate-900">
+                      {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
+                    </div>
+                    <div className="text-[11px] text-slate-400">оплачено / начислено</div>
+                  </td>
                   <td className="px-4 py-3">{policy.insuranceType || '—'}</td>
                   <td className="px-4 py-3">{formatDate(policy.startDate)}</td>
                   <td className="px-4 py-3">{formatDate(policy.endDate)}</td>
@@ -1731,6 +1740,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <div>
                 <p className="text-slate-500">Создана</p>
                 <p className="text-lg font-semibold">{formatDate(selectedDeal.createdAt)}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Сумма</p>
+                <div className="text-lg font-semibold">
+                  {formatCurrency(selectedDeal.paymentsPaid)} /{' '}
+                  {formatCurrency(selectedDeal.paymentsTotal)}
+                </div>
+                <p className="text-[11px] text-slate-400">оплачено / начислено</p>
               </div>
             </div>
 

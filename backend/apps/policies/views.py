@@ -1,7 +1,8 @@
 import logging
 from typing import List
 
-from django.db.models import Q
+from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,6 +15,7 @@ from apps.common.drive import (
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.deals.models import Deal, InsuranceCompany
+from apps.finances.models import Payment
 from apps.users.models import UserRole
 from .ai_service import PolicyRecognitionError, recognize_policy_from_bytes
 from .filters import PolicyFilterSet
@@ -47,7 +49,23 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Policy.objects.alive().order_by("-created_at")
+        queryset = Policy.objects.alive()
+        decimal_field = DecimalField(max_digits=12, decimal_places=2)
+        queryset = queryset.annotate(
+            payments_total=Coalesce(
+                Sum("payments__amount"),
+                Value(0),
+                output_field=decimal_field,
+            ),
+            payments_paid=Coalesce(
+                Sum(
+                    "payments__amount",
+                    filter=Q(payments__status=Payment.PaymentStatus.PAID),
+                ),
+                Value(0),
+                output_field=decimal_field,
+            ),
+        ).order_by("-created_at")
 
         if not user.is_authenticated:
             return queryset

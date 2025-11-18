@@ -118,6 +118,8 @@ export interface Deal {
   quotes: Quote[];
   documents: Document[];
   driveFolderId?: string | null;
+  paymentsPaid?: string;
+  paymentsTotal?: string;
 }
 
 export interface Policy {
@@ -141,6 +143,8 @@ export interface Policy {
   startDate?: string | null;
   endDate?: string | null;
   status: string;
+  paymentsPaid?: string;
+  paymentsTotal?: string;
   createdAt: string;
 }
 

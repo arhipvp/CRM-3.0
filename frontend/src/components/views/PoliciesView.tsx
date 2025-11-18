@@ -4,6 +4,20 @@ import { Deal, Policy } from '../../types';
 const formatDate = (value?: string | null) =>
   (value ? new Date(value).toLocaleDateString('ru-RU') : '—');
 
+const formatCurrency = (value?: string | number | null) => {
+  if (value === null || value === undefined) {
+    return '—';
+  }
+  const amount = Number(value);
+  if (Number.isNaN(amount)) {
+    return '—';
+  }
+  return amount.toLocaleString('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+  });
+};
+
 interface PoliciesViewProps {
   policies: Policy[];
   deals: Deal[];
@@ -21,6 +35,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
             <th className="px-5 py-3">Тип</th>
             <th className="px-5 py-3">Сделка</th>
             <th className="px-5 py-3">Канал продаж</th>
+            <th className="px-5 py-3">Сумма</th>
             <th className="px-5 py-3">Период</th>
             <th className="px-5 py-3">Статус</th>
           </tr>
@@ -46,6 +61,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
                 <td className="px-5 py-4 text-slate-600">{deal?.title || '—'}</td>
                 <td className="px-5 py-4 text-slate-600">{policy.salesChannel || '—'}</td>
                 <td className="px-5 py-4 text-slate-600">
+                  <div className="font-semibold text-slate-900">
+                    {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
+                  </div>
+                  <div className="text-[11px] text-slate-400">оплачено / начислено</div>
+                </td>
+                <td className="px-5 py-4 text-slate-600">
                   {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                 </td>
                 <td className="px-5 py-4 text-slate-600">{policy.status}</td>
@@ -54,7 +75,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
           })}
           {!policies.length && (
           <tr>
-            <td colSpan={8} className="px-5 py-6 text-center text-slate-500">
+            <td colSpan={9} className="px-5 py-6 text-center text-slate-500">
                 Полисов пока нет
               </td>
             </tr>
