@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Deal, Client, User } from '../../types';
 
+const formatUserLabel = (user: User) => {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  return fullName || user.username;
+};
+
 export interface EditDealFormValues {
   title: string;
   description: string;
@@ -8,6 +13,7 @@ export interface EditDealFormValues {
   nextContactDate?: string | null;
   expectedClose?: string | null;
   executorId?: string | null;
+  sellerId?: string | null;
   source?: string | null;
 }
 
@@ -33,6 +39,7 @@ export function EditDealForm({
     nextContactDate: deal.nextContactDate,
     expectedClose: deal.expectedClose,
     executorId: deal.executor ?? null,
+    sellerId: deal.seller ?? null,
     source: deal.source ?? '',
   });
 
@@ -128,6 +135,24 @@ export function EditDealForm({
           {clients.map((client) => (
             <option key={client.id} value={client.id}>
               {client.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="sellerId">Продавец</label>
+        <select
+          id="sellerId"
+          name="sellerId"
+          value={formData.sellerId ?? ''}
+          onChange={handleChange}
+          disabled={loading}
+        >
+          <option value="">-- Выберите продавца --</option>
+          {users.map((user) => (
+            <option key={user.id} value={user.id}>
+              {formatUserLabel(user)}
             </option>
           ))}
         </select>

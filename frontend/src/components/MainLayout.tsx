@@ -1,5 +1,6 @@
 import React from 'react';
 import { User } from '../types';
+import { UserBadge } from './common/UserBadge';
 
 export type View = 'deals' | 'clients' | 'policies' | 'payments' | 'finance' | 'tasks' | 'settings';
 
@@ -73,9 +74,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </button>
           {currentUser && (
             <div className="pt-2 border-t border-slate-200 space-y-2">
-              <div className="text-xs">
-                <p className="font-semibold text-slate-700">{currentUser.username}</p>
-                <p className="text-slate-500">
+              <div className="space-y-1">
+                <UserBadge username={currentUser.username} displayName={currentUser.username} size="sm" />
+                <p className="text-slate-500 text-xs">
                   {currentUser.roles && currentUser.roles.length > 0
                     ? currentUser.roles.join(', ')
                     : 'Нет ролей'}

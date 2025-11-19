@@ -925,6 +925,7 @@ export async function updateDeal(
     expectedClose?: string | null;
     stageName?: string;
     executorId?: string | null;
+    sellerId?: string | null;
     source?: string | null;
   }
 ): Promise<Deal> {
@@ -938,6 +939,9 @@ export async function updateDeal(
   };
   if ('executorId' in data) {
     body.executor = data.executorId || null;
+  }
+  if ('sellerId' in data) {
+    body.seller = data.sellerId || null;
   }
   if ('source' in data) {
     body.source = data.source ?? null;

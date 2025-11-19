@@ -27,6 +27,7 @@ import {
 import { FileUploadManager } from '../FileUploadManager';
 import { ChatBox } from '../ChatBox';
 import { ActivityTimeline } from '../ActivityTimeline';
+import { UserBadge } from '../common/UserBadge';
 import { EditDealForm, EditDealFormValues } from '../forms/EditDealForm';
 import { AddTaskForm, AddTaskFormValues } from '../forms/AddTaskForm';
 import { AddPaymentForm, AddPaymentFormValues } from '../forms/AddPaymentForm';
@@ -282,6 +283,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const selectedClient = selectedDeal
     ? (clients.find((client) => client.id === selectedDeal.clientId) ?? null)
     : null;
+  const sellerUser = selectedDeal
+    ? users.find((user) => user.id === selectedDeal.seller)
+    : undefined;
+  const executorUser = selectedDeal
+    ? users.find((user) => user.id === selectedDeal.executor)
+    : undefined;
+  const sellerDisplayName = sellerUser
+    ? getUserDisplayName(sellerUser)
+    : selectedDeal?.sellerName || '—';
+  const executorDisplayName = executorUser
+    ? getUserDisplayName(executorUser)
+    : selectedDeal?.executorName || '—';
 
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -1705,9 +1718,26 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 <p className="text-sm text-slate-500 mt-1">
                   {selectedClient?.name || 'Клиент не выбран'}
                 </p>
-                <p className="text-sm text-slate-500 mt-1">
-                  Продавец: {selectedDeal.sellerName || '—'} · Исполнитель: {selectedDeal.executorName || '—'}
-                </p>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400">
+                      Продавец
+                    </span>
+                    <UserBadge
+                      username={sellerUser?.username ?? selectedDeal.sellerName ?? '—'}
+                      displayName={sellerDisplayName}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] uppercase tracking-wider text-slate-400">
+                      Исполнитель
+                    </span>
+                    <UserBadge
+                      username={executorUser?.username ?? selectedDeal.executorName ?? '—'}
+                      displayName={executorDisplayName}
+                    />
+                  </div>
+                </div>
                 <p className="text-sm text-slate-500 mt-1 max-w-3xl whitespace-pre-line">
                   {selectedDeal.description || 'Описание сделки не заполнено.'}
                 </p>

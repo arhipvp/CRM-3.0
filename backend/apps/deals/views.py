@@ -37,6 +37,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     search_fields = ["title", "description"]
     ordering_fields = ["created_at", "updated_at", "title", "expected_close", "next_contact_date"]
     ordering = ["next_contact_date", "-created_at"]
+    owner_field = "seller"
 
     def get_queryset(self):
         """
@@ -224,6 +225,12 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "new_value": self._format_value(audit_log.new_value),
             "created_at": audit_log.created_at.isoformat(),
         }
+
+    def perform_create(self, serializer):
+        if self.request.user and self.request.user.is_authenticated:
+            serializer.save(seller=self.request.user)
+        else:
+            serializer.save()
 
 
 class QuoteViewSet(viewsets.ModelViewSet):

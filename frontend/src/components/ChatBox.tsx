@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { User, ChatMessage } from '../types';
+import { getUserColor } from '../utils/userColor';
 
 interface ChatBoxProps {
   messages: ChatMessage[];
@@ -7,28 +8,6 @@ interface ChatBoxProps {
   onSendMessage: (body: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
 }
-
-const USER_COLOR_PALETTE = [
-  '#2563eb',
-  '#059669',
-  '#db2777',
-  '#f97316',
-  '#0ea5e9',
-  '#9333ea',
-  '#10b981',
-  '#6366f1',
-];
-
-const getUserColor = (identifier?: string | null) => {
-  if (!identifier) {
-    return undefined;
-  }
-  let hash = 0;
-  for (let i = 0; i < identifier.length; i += 1) {
-    hash = (hash * 31 + identifier.charCodeAt(i)) >>> 0;
-  }
-  return USER_COLOR_PALETTE[hash % USER_COLOR_PALETTE.length];
-};
 
 const getUserDisplayName = (user: User) => {
   const parts = [user.firstName, user.lastName].filter(Boolean);
