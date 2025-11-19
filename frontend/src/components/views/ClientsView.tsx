@@ -14,6 +14,7 @@ interface ClientsViewProps {
   deals: Deal[];
   totalClients?: number;
   onFilterChange?: (filters: FilterParams) => void;
+  onClientEdit?: (client: Client) => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -21,6 +22,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   deals,
   totalClients = 0,
   onFilterChange,
+  onClientEdit,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterParams>({});
@@ -84,6 +86,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <th className="px-5 py-3">Дата рождения</th>
               <th className="px-5 py-3">Создан</th>
               <th className="px-5 py-3 text-right">Сделок</th>
+              <th className="px-5 py-3 text-right">Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -113,12 +116,25 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <td className="px-5 py-4 text-right font-semibold text-slate-900">
                     {clientDeals.length}
                   </td>
+                  <td className="px-5 py-4 text-right">
+                    {onClientEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => onClientEdit(client)}
+                        className="text-sm font-semibold text-sky-600 hover:text-sky-800"
+                      >
+                        Редактировать
+                      </button>
+                    ) : (
+                      <span className="text-xs uppercase tracking-wide text-slate-400">—</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {!clients.length && (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-slate-500">
+                <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
                   Клиентов пока нет
                 </td>
               </tr>

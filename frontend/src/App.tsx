@@ -24,6 +24,7 @@ import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
 import {
   createClient,
+  updateClient,
   createDeal,
   createQuote,
   updateQuote,
@@ -150,6 +151,7 @@ const AppContent: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [view, setView] = useState<View>('deals');
   const [modal, setModal] = useState<ModalType>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
@@ -360,6 +362,30 @@ const AppContent: React.FC = () => {
     const created = await createClient(data);
     setClients((prev) => [created, ...prev]);
     setModal(null);
+  };
+
+  const handleEditClient = (client: Client) => {
+    setModal(null);
+    setEditingClient(client);
+  };
+
+  const handleUpdateClient = async (
+    clientId: string,
+    data: {
+      name: string;
+      phone?: string;
+      birthDate?: string | null;
+      notes?: string | null;
+    }
+  ) => {
+    const updated = await updateClient(clientId, data);
+    setClients((prev) => prev.map((client) => (client.id === updated.id ? updated : client)));
+    setDeals((prev) =>
+      prev.map((deal) =>
+        deal.clientId === updated.id ? { ...deal, clientName: updated.name } : deal
+      )
+    );
+    setEditingClient(null);
   };
 
   const handleAddDeal = async (data: {
@@ -913,7 +939,9 @@ const AppContent: React.FC = () => {
           />
         );
       case 'clients':
-        return <ClientsView clients={clients} deals={deals} />;
+        return (
+          <ClientsView clients={clients} deals={deals} onClientEdit={handleEditClient} />
+        );
       case 'policies':
         return <PoliciesView policies={policies} deals={deals} />;
       case 'payments':
@@ -989,6 +1017,20 @@ const AppContent: React.FC = () => {
         {modal === 'client' && (
           <Modal title="Новый клиент" onClose={() => setModal(null)}>
             <ClientForm onSubmit={handleAddClient} submitLabel="Создать клиента" />
+          </Modal>
+        )}
+        {editingClient && (
+          <Modal title="Редактировать клиента" onClose={() => setEditingClient(null)}>
+            <ClientForm
+              initial={{
+                name: editingClient.name,
+                phone: editingClient.phone,
+                birthDate: editingClient.birthDate,
+                notes: editingClient.notes,
+              }}
+              onSubmit={(data) => handleUpdateClient(editingClient.id, data)}
+              submitLabel="Сохранить изменения"
+            />
           </Modal>
         )}
         {modal === 'deal' && (
