@@ -36,7 +36,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         }, duration);
       }
     },
-    []
+    [removeNotification]
   );
 
   const removeNotification = useCallback((id: string) => {

@@ -65,7 +65,7 @@ def test_deal_history_includes_related_entities():
         insurance_type=insurance_type,
     )
 
-    payment = Payment.objects.create(deal=deal, amount=2000, status=Payment.PaymentStatus.PLANNED)
+    payment = Payment.objects.create(deal=deal, amount=2000)
     FinancialRecord.objects.create(payment=payment, amount=2000, description="Оплата")
 
     Note.objects.create(deal=deal, body="Историческая заметка")

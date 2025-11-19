@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
@@ -18,7 +18,6 @@ class PaymentResource(resources.ModelResource):
             "deal",
             "amount",
             "description",
-            "status",
             "scheduled_date",
             "actual_date",
             "created_at",
@@ -31,7 +30,6 @@ class PaymentResource(resources.ModelResource):
             "deal",
             "amount",
             "description",
-            "status",
             "scheduled_date",
             "actual_date",
             "created_at",
@@ -89,14 +87,12 @@ class PaymentAdmin(ImportExportModelAdmin):
         "id",
         "policy",
         "amount_display",
-        "status_badge",
         "scheduled_date",
         "actual_date",
         "total_financial",
         "created_at",
     )
     list_filter = (
-        "status",
         "scheduled_date",
         "actual_date",
         "created_at",
@@ -106,14 +102,13 @@ class PaymentAdmin(ImportExportModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("-created_at",)
     date_hierarchy = "scheduled_date"
-    actions = ["mark_as_paid", "mark_as_pending", "mark_as_partial", "restore_payments"]
+    actions = ["mark_as_paid", "restore_payments"]
 
     fieldsets = (
         (
             "Основная информация",
             {"fields": ("id", "policy", "deal", "amount", "description")},
         ),
-        ("Статус", {"fields": ("status",)}),
         ("Даты", {"fields": ("scheduled_date", "actual_date")}),
         ("Статус удаления", {"fields": ("deleted_at",)}),
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
@@ -125,21 +120,6 @@ class PaymentAdmin(ImportExportModelAdmin):
         return format_html("<strong>{} руб.</strong>", obj.amount)
 
     amount_display.short_description = "Сумма"
-
-    def status_badge(self, obj):
-        colors = {
-            "planned": "#3a86ff",
-            "partial": "#ffbe0b",
-            "paid": "#06ffa5",
-        }
-        color = colors.get(obj.status, "#999999")
-        return format_html(
-            '<span style="background-color: {}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;">{}</span>',
-            color,
-            obj.get_status_display(),
-        )
-
-    status_badge.short_description = "Статус"
 
     def total_financial(self, obj):
         """Показывает сумму по всем финансовым записям (доход - расход)."""
@@ -154,27 +134,15 @@ class PaymentAdmin(ImportExportModelAdmin):
     total_financial.short_description = "Финансы"
 
     def mark_as_paid(self, request, queryset):
-        """Action для отметки платежей как оплачено."""
+        """Action для записи даты фактической оплаты."""
         from datetime import date
 
-        updated = queryset.update(status="paid", actual_date=date.today())
-        self.message_user(request, f"{updated} платежей отмечено как оплачено")
+        updated = queryset.update(actual_date=date.today())
+        self.message_user(request, f"{updated} платежей получили актуальную дату оплаты")
 
     mark_as_paid.short_description = "✓ Отметить как оплачено"
 
-    def mark_as_pending(self, request, queryset):
-        """Action для отметки платежей как в ожидании."""
-        updated = queryset.update(status="planned")
-        self.message_user(request, f"{updated} платежей отмечено как запланировано")
 
-    mark_as_pending.short_description = "⏳ Отметить как запланировано"
-
-    def mark_as_partial(self, request, queryset):
-        """Action для отметки платежей как частичный."""
-        updated = queryset.update(status="partial")
-        self.message_user(request, f"{updated} платежей отмечено как частичный")
-
-    mark_as_partial.short_description = "◐ Отметить как частичный"
 
     def restore_payments(self, request, queryset):
         restored = 0

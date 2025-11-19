@@ -10,18 +10,11 @@ class PaymentFilterSet(django_filters.FilterSet):
     FilterSet for Payment model.
 
     Supports filtering by:
-    - status: Payment status (planned, partial, paid)
     - deal: Associated deal
     - policy: Associated policy
 
     Also supports ordering by scheduled_date and created_at.
     """
-
-    status = django_filters.ChoiceFilter(
-        field_name="status",
-        choices=Payment.PaymentStatus.choices,
-        label="Payment Status",
-    )
 
     deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
 
@@ -40,4 +33,4 @@ class PaymentFilterSet(django_filters.FilterSet):
 
     class Meta:
         model = Payment
-        fields = ("status", "deal", "policy")
+        fields = ("deal", "policy")

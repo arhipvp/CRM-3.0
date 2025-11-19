@@ -59,8 +59,8 @@ export function AddTaskForm({
       }
 
       await onSubmit(formData);
-    } catch (err: any) {
-      setError(err.message || 'Ошибка при сохранении задачи');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при сохранении задачи');
     } finally {
       setLoading(false);
     }

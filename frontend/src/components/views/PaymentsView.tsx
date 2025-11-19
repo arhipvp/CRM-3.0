@@ -20,7 +20,6 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
             <th className="px-5 py-3">Сумма</th>
             <th className="px-5 py-3">Плановая дата</th>
             <th className="px-5 py-3">Факт</th>
-            <th className="px-5 py-3">Статус</th>
             <th className="px-5 py-3 text-right">Действие</th>
           </tr>
         </thead>
@@ -41,9 +40,8 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
                 </td>
                 <td className="px-5 py-4 text-slate-600">{formatDate(payment.scheduledDate)}</td>
                 <td className="px-5 py-4 text-slate-600">{formatDate(payment.actualDate)}</td>
-                <td className="px-5 py-4 text-slate-600">{payment.status}</td>
                 <td className="px-5 py-4 text-right">
-                  {payment.status !== 'paid' ? (
+                  {!payment.actualDate ? (
                     <button
                       onClick={() => onMarkPaid(payment.id)}
                       className="text-sky-600 font-semibold hover:text-sky-800"
@@ -59,7 +57,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
           })}
           {!payments.length && (
             <tr>
-              <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
+              <td colSpan={5} className="px-5 py-6 text-center text-slate-500">
                 Платежей пока нет
               </td>
             </tr>

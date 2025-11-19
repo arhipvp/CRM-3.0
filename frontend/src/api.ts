@@ -10,7 +10,6 @@ import {
   InsuranceType,
   Note,
   Payment,
-  PaymentStatus,
   Policy,
   PolicyRecognitionResult,
   SalesChannel,
@@ -110,10 +109,29 @@ export interface LoginResponse {
     last_name: string;
     is_active: boolean;
     is_staff: boolean;
-    user_roles: any[];
+    user_roles: UserRole[];
     roles: string[];
     date_joined: string;
   };
+}
+
+export interface UserRole {
+  role?: {
+    name?: string;
+  };
+}
+
+export interface CurrentUserResponse {
+  id: number;
+  username: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  is_authenticated?: boolean;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+  user_roles?: UserRole[];
+  roles?: string[];
 }
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
@@ -144,8 +162,8 @@ export function logout(): void {
   clearTokens();
 }
 
-export async function getCurrentUser(): Promise<any> {
-  return request<any>('/auth/me/');
+export async function getCurrentUser(): Promise<CurrentUserResponse> {
+  return request<CurrentUserResponse>('/auth/me/');
 }
 
 function redirectToLogin(): void {
@@ -174,7 +192,7 @@ export class APIError extends Error {
 }
 
 // ============ API Request Helper ============
-async function request<T>(
+async function request<T = unknown>(
   path: string,
   options: RequestInit = {},
   refreshAttempted = false
@@ -249,12 +267,23 @@ async function request<T>(
   return (await response.json()) as T;
 }
 
-function unwrapList<T>(payload: T[] | { results: T[] }): T[] {
-  if (Array.isArray(payload)) {
-    return payload;
+function isResultsPayload(value: unknown): value is { results: unknown[] } {
+  if (typeof value !== 'object' || value === null) {
+    return false;
   }
-  if (payload && Array.isArray((payload as any).results)) {
-    return (payload as any).results;
+
+  return (
+    'results' in value &&
+    Array.isArray((value as { results: unknown[] }).results)
+  );
+}
+
+function unwrapList<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) {
+    return payload as T[];
+  }
+  if (isResultsPayload(payload)) {
+    return payload.results as T[];
   }
   return [];
 }
@@ -272,7 +301,7 @@ export interface FilterParams {
   page_size?: number;
   search?: string;
   ordering?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Helper to build query string from filter params
@@ -290,107 +319,142 @@ function buildQueryString(params: FilterParams): string {
   return qs ? `?${qs}` : '';
 }
 
-const toCamel = (value: any) => (value === null || value === undefined ? undefined : value);
+const toOptionalString = (value: unknown): string | undefined =>
+  value === undefined || value === null ? undefined : String(value);
 
-const mapClient = (raw: any): Client => ({
-  id: raw.id,
-  name: raw.name,
-  phone: toCamel(raw.phone),
-  birthDate: raw.birth_date ?? null,
-  notes: raw.notes ?? null,
-  createdAt: raw.created_at,
-  updatedAt: raw.updated_at,
+const toNullableString = (value: unknown): string | null =>
+  value === undefined || value === null ? null : String(value);
+
+const toStringValue = (value: unknown, fallback = ''): string =>
+  value === undefined || value === null ? fallback : String(value);
+
+const toNumberValue = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const toNullableNumber = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const mapClient = (raw: Record<string, unknown>): Client => ({
+  id: toStringValue(raw.id),
+  name: toStringValue(raw.name),
+  phone: toOptionalString(raw.phone),
+  birthDate: toNullableString(raw.birth_date ?? raw.birthDate),
+  notes: toNullableString(raw.notes),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
 });
 
-const mapQuote = (raw: any): Quote => ({
-  id: raw.id,
-  dealId: raw.deal,
-  insuranceCompanyId: raw.insurance_company,
-  insuranceCompany: raw.insurance_company_name ?? raw.insurer ?? "",
-  insuranceTypeId: raw.insurance_type,
-  insuranceType: raw.insurance_type_name ?? raw.insurance_type ?? "",
-  sumInsured: raw.sum_insured,
-  premium: raw.premium,
-  deductible: raw.deductible || undefined,
-  comments: raw.comments || undefined,
-  createdAt: raw.created_at,
+const mapQuote = (raw: Record<string, unknown>): Quote => ({
+  id: toStringValue(raw.id),
+  dealId: toStringValue(raw.deal),
+  insuranceCompanyId: toStringValue(raw.insurance_company),
+  insuranceCompany: toStringValue(raw.insurance_company_name ?? raw.insurer ?? ''),
+  insuranceTypeId: toStringValue(raw.insurance_type),
+  insuranceType: toStringValue(raw.insurance_type_name ?? raw.insurance_type ?? ''),
+  sumInsured: toNumberValue(raw.sum_insured),
+  premium: toNumberValue(raw.premium),
+  deductible: toOptionalString(raw.deductible),
+  comments: toOptionalString(raw.comments),
+  createdAt: toStringValue(raw.created_at),
 });
 
-const mapInsuranceCompany = (raw: any): InsuranceCompany => ({
-  id: raw.id,
-  name: raw.name,
-  description: raw.description || undefined,
-  createdAt: raw.created_at,
-  updatedAt: raw.updated_at,
-  deletedAt: raw.deleted_at ?? null,
+const mapInsuranceCompany = (raw: Record<string, unknown>): InsuranceCompany => ({
+  id: toStringValue(raw.id),
+  name: toStringValue(raw.name),
+  description: toOptionalString(raw.description),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
 });
 
-const mapInsuranceType = (raw: any): InsuranceType => ({
-  id: raw.id,
-  name: raw.name,
-  description: raw.description || undefined,
-  createdAt: raw.created_at,
-  updatedAt: raw.updated_at,
-  deletedAt: raw.deleted_at ?? null,
+const mapInsuranceType = (raw: Record<string, unknown>): InsuranceType => ({
+  id: toStringValue(raw.id),
+  name: toStringValue(raw.name),
+  description: toOptionalString(raw.description),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
 });
 
-const mapDeal = (raw: any): Deal => ({
-  id: raw.id,
-  title: raw.title,
-  description: raw.description,
-  clientId: raw.client,
-  clientName: raw.client_name,
-  status: raw.status as DealStatus,
-  stageName: raw.stage_name,
-  expectedClose: raw.expected_close,
-  nextContactDate: raw.next_contact_date,
-  source: raw.source,
-  lossReason: raw.loss_reason,
-  createdAt: raw.created_at,
-  quotes: Array.isArray(raw.quotes) ? raw.quotes.map(mapQuote) : [],
-  documents: Array.isArray(raw.documents)
-    ? raw.documents.map((d: any) => ({
-        id: d.id,
-        title: d.title,
-        file: d.file,
-        file_size: d.file_size,
-        mime_type: d.mime_type,
-        created_at: d.created_at,
-      }))
-    : [],
-  driveFolderId: raw.drive_folder_id ?? null,
-  seller:
-    raw.seller === null || raw.seller === undefined ? null : String(raw.seller),
-  executor:
-    raw.executor === null || raw.executor === undefined ? null : String(raw.executor),
-  sellerName: raw.seller_name ?? null,
-  executorName: raw.executor_name ?? null,
-  paymentsPaid: raw.payments_paid ?? raw.paymentsPaid ?? '0',
-  paymentsTotal: raw.payments_total ?? raw.paymentsTotal ?? '0',
-});
+const DEAL_STATUSES: DealStatus[] = ['open', 'won', 'lost', 'on_hold'];
+const resolveDealStatus = (value: unknown): DealStatus =>
+  typeof value === 'string' && DEAL_STATUSES.includes(value as DealStatus) ? (value as DealStatus) : 'open';
 
-const mapSalesChannel = (raw: any): SalesChannel => ({
-  id: raw.id,
-  name: raw.name,
-  description: raw.description || '',
-  createdAt: raw.created_at,
-  updatedAt: raw.updated_at,
-  deletedAt: raw.deleted_at,
-});
-
-const mapDriveFile = (raw: any): DriveFile => {
-  const sizeValue = raw.size ?? raw.file_size;
-  const parsedSize =
-    sizeValue !== undefined && sizeValue !== null ? Number(sizeValue) : null;
+const mapDeal = (raw: Record<string, unknown>): Deal => {
+  const quoteList = Array.isArray(raw.quotes) ? raw.quotes : [];
+  const documentList = Array.isArray(raw.documents) ? raw.documents : [];
   return {
-    id: raw.id,
-    name: raw.name,
-    mimeType: raw.mime_type ?? raw.mimeType ?? "",
-    size: parsedSize !== null && Number.isNaN(parsedSize) ? null : parsedSize,
-    createdAt: raw.created_at ?? raw.createdAt ?? null,
-    modifiedAt: raw.modified_at ?? raw.modifiedAt ?? null,
-    webViewLink: raw.web_view_link ?? raw.webViewLink ?? null,
-    isFolder: Boolean(raw.is_folder ?? raw.isFolder),
+    id: toStringValue(raw.id),
+    title: toStringValue(raw.title),
+    description: toOptionalString(raw.description),
+    clientId: toStringValue(raw.client),
+    clientName: toOptionalString(raw.client_name),
+    status: resolveDealStatus(raw.status),
+    stageName: toOptionalString(raw.stage_name),
+    expectedClose: raw.expected_close === undefined ? undefined : toNullableString(raw.expected_close),
+    nextContactDate:
+      raw.next_contact_date === undefined ? undefined : toNullableString(raw.next_contact_date),
+    source: toOptionalString(raw.source),
+    lossReason: toOptionalString(raw.loss_reason),
+    createdAt: toStringValue(raw.created_at),
+    quotes: quoteList.map((quote) => mapQuote(quote as Record<string, unknown>)),
+    documents: documentList.map((doc) => {
+      const record = doc as Record<string, unknown>;
+      return {
+        id: toStringValue(record.id),
+        title: toStringValue(record.title),
+        file: toOptionalString(record.file),
+        file_size: toNumberValue(record.file_size ?? record.fileSize),
+        mime_type: toStringValue(record.mime_type ?? record.mimeType),
+        created_at: toStringValue(record.created_at ?? record.createdAt),
+      };
+    }),
+    driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
+    paymentsPaid: toStringValue(raw.payments_paid ?? raw.paymentsPaid ?? '0'),
+    paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
+    seller: toNullableString(raw.seller),
+    executor: toNullableString(raw.executor),
+    sellerName: toNullableString(raw.seller_name),
+    executorName: toNullableString(raw.executor_name),
+  };
+};
+
+const mapSalesChannel = (raw: Record<string, unknown>): SalesChannel => ({
+  id: toStringValue(raw.id),
+  name: toStringValue(raw.name),
+  description: toOptionalString(raw.description) ?? '',
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
+});
+
+const mapDriveFile = (raw: Record<string, unknown>): DriveFile => {
+  const sizeValue = raw.size ?? raw.file_size ?? raw.fileSize;
+  return {
+    id: toStringValue(raw.id),
+    name: toStringValue(raw.name),
+    mimeType: toStringValue(raw.mime_type ?? raw.mimeType ?? ''),
+    size: toNullableNumber(sizeValue),
+    createdAt: toNullableString(raw.created_at ?? raw.createdAt),
+    modifiedAt: toNullableString(raw.modified_at ?? raw.modifiedAt),
+    webViewLink: toNullableString(raw.web_view_link ?? raw.webViewLink),
+    isFolder: Boolean(raw.is_folder ?? raw.isFolder ?? false),
   };
 };
 
@@ -399,134 +463,165 @@ export interface DriveFilesResponse {
   folderId?: string | null;
 }
 
-const mapUser = (raw: any): User => ({
-  id: String(raw.id),
-  username: raw.username,
-  roles: Array.isArray(raw.roles)
-    ? raw.roles
-    : Array.isArray(raw.user_roles)
-    ? raw.user_roles
-        .map((ur: any) => ur.role?.name)
-        .filter((name) => typeof name === 'string')
-    : [],
+const mapUser = (raw: Record<string, unknown>): User => {
+  const legacyRoles = Array.isArray(raw.roles)
+    ? (raw.roles as unknown[])
+        .map(toOptionalString)
+        .filter((role): role is string => Boolean(role))
+    : [];
+  const userRoleEntries = Array.isArray(raw.user_roles)
+    ? (raw.user_roles as unknown[])
+        .map((entry) => {
+          if (typeof entry !== 'object' || entry === null) {
+            return undefined;
+          }
+          const record = entry as Record<string, unknown>;
+          return toOptionalString(record.role?.name);
+        })
+        .filter((name): name is string => Boolean(name))
+    : [];
+
+  return {
+    id: toStringValue(raw.id),
+    username: toStringValue(raw.username),
+    firstName: toOptionalString(raw.first_name ?? raw.firstName),
+    lastName: toOptionalString(raw.last_name ?? raw.lastName),
+    roles: userRoleEntries.length > 0 ? userRoleEntries : legacyRoles,
+  };
+};
+
+const mapPolicy = (raw: Record<string, unknown>): Policy => ({
+  id: toStringValue(raw.id),
+  number: toStringValue(raw.number),
+  insuranceCompanyId: toStringValue(raw.insurance_company),
+  insuranceCompany: toStringValue(raw.insurance_company_name ?? raw.insurance_company ?? ''),
+  insuranceTypeId: toStringValue(raw.insurance_type),
+  insuranceType: toStringValue(raw.insurance_type_name ?? raw.insurance_type ?? ''),
+  dealId: toStringValue(raw.deal),
+  clientId: toOptionalString(raw.client),
+  clientName: toOptionalString(raw.client_name ?? raw.client),
+  isVehicle: Boolean(raw.is_vehicle ?? raw.vehicle),
+  brand: toOptionalString(raw.brand),
+  model: toOptionalString(raw.model),
+  vin: toOptionalString(raw.vin),
+  counterparty: toOptionalString(raw.counterparty),
+  salesChannel: toOptionalString(raw.sales_channel_name ?? raw.sales_channel),
+  salesChannelId: toOptionalString(raw.sales_channel),
+  salesChannelName: toOptionalString(raw.sales_channel_name ?? raw.sales_channel),
+  startDate: raw.start_date === undefined ? undefined : toNullableString(raw.start_date),
+  endDate: raw.end_date === undefined ? undefined : toNullableString(raw.end_date),
+  status: toStringValue(raw.status),
+  paymentsPaid: toStringValue(raw.payments_paid ?? raw.paymentsPaid ?? '0'),
+  paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
+  createdAt: toStringValue(raw.created_at),
 });
 
-const mapPolicy = (raw: any): Policy => ({
-  id: raw.id,
-  number: raw.number,
-  insuranceCompanyId: raw.insurance_company,
-  insuranceCompany: raw.insurance_company_name ?? raw.insurance_company ?? '',
-  insuranceTypeId: raw.insurance_type,
-  insuranceType: raw.insurance_type_name ?? raw.insurance_type ?? '',
-  dealId: raw.deal,
-  clientId: raw.client,
-  clientName: raw.client_name ?? raw.client ?? '',
-  isVehicle: Boolean(raw.is_vehicle),
-  brand: raw.brand || undefined,
-  model: raw.model || undefined,
-  vin: raw.vin,
-  counterparty: raw.counterparty || undefined,
-    salesChannel:
-      (raw.sales_channel_name ?? raw.sales_channel) || undefined,
-  salesChannelId: raw.sales_channel,
-    salesChannelName:
-      (raw.sales_channel_name ?? raw.sales_channel) || undefined,
-  startDate: raw.start_date,
-  endDate: raw.end_date,
-  status: raw.status,
-  paymentsPaid: raw.payments_paid ?? raw.paymentsPaid ?? '0',
-  paymentsTotal: raw.payments_total ?? raw.paymentsTotal ?? '0',
-  createdAt: raw.created_at,
+const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecord => ({
+  id: toStringValue(raw.id),
+  paymentId: toStringValue(raw.payment),
+  paymentDescription: toOptionalString(raw.payment_description),
+  paymentAmount: toOptionalString(raw.payment_amount),
+  amount: toStringValue(raw.amount),
+  date: raw.date === undefined ? undefined : toNullableString(raw.date),
+  description: toOptionalString(raw.description),
+  source: toOptionalString(raw.source),
+  note: toOptionalString(raw.note),
+  recordType: toOptionalString(raw.record_type),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
 });
 
-const mapFinancialRecord = (raw: any): FinancialRecord => ({
-  id: raw.id,
-  paymentId: raw.payment,
-  paymentDescription: raw.payment_description,
-  paymentAmount: raw.payment_amount,
-  amount: raw.amount,
-  date: raw.date,
-  description: raw.description,
-  source: raw.source,
-  note: raw.note,
-  recordType: raw.record_type,
-  createdAt: raw.created_at,
-  updatedAt: raw.updated_at,
-  deletedAt: raw.deleted_at,
-});
-
-const mapPayment = (raw: any): Payment => ({
-  id: raw.id,
-  dealId: raw.deal,
-  dealTitle: raw.deal_title,
-  policyId: raw.policy,
-  policyNumber: raw.policy_number,
-  policyInsuranceType: raw.policy_insurance_type,
-  amount: raw.amount,
-  description: raw.description,
-  scheduledDate: raw.scheduled_date,
-  actualDate: raw.actual_date,
-  status: raw.status,
+const mapPayment = (raw: Record<string, unknown>): Payment => ({
+  id: toStringValue(raw.id),
+  dealId: toOptionalString(raw.deal),
+  dealTitle: toOptionalString(raw.deal_title),
+  policyId: toOptionalString(raw.policy),
+  policyNumber: toOptionalString(raw.policy_number),
+  policyInsuranceType: toOptionalString(raw.policy_insurance_type),
+  amount: toStringValue(raw.amount),
+  description: toOptionalString(raw.description),
+  note: toOptionalString(raw.note),
+  scheduledDate:
+    raw.scheduled_date === undefined ? undefined : toNullableString(raw.scheduled_date),
+  actualDate: raw.actual_date === undefined ? undefined : toNullableString(raw.actual_date),
   financialRecords: Array.isArray(raw.financial_records)
-    ? raw.financial_records.map(mapFinancialRecord)
+    ? (raw.financial_records as unknown[]).map((record) =>
+        mapFinancialRecord(record as Record<string, unknown>)
+      )
     : [],
-  canDelete: raw.can_delete,
-  createdAt: raw.created_at,
-  updatedAt: raw.updated_at,
-  deletedAt: raw.deleted_at,
+  canDelete: Boolean(raw.can_delete ?? raw.canDelete),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
 });
 
-const mapTask = (raw: any): Task => ({
-  id: raw.id,
-  title: raw.title,
-  description: raw.description,
-  dealId: raw.deal,
-  assignee: raw.assignee ? String(raw.assignee) : null,
-  assigneeName: raw.assignee_name ?? raw.assignee_username ?? null,
-  status: raw.status,
-  priority: raw.priority,
-  dueAt: raw.due_at,
-  remindAt: raw.remind_at,
-  checklist: Array.isArray(raw.checklist) ? raw.checklist : [],
-  createdAt: raw.created_at,
+const mapTask = (raw: Record<string, unknown>): Task => {
+  const checklistItems = Array.isArray(raw.checklist)
+    ? (raw.checklist as unknown[]).map((item) => {
+        if (typeof item !== 'object' || item === null) {
+          return { label: '', done: false };
+        }
+        const record = item as Record<string, unknown>;
+        return {
+          label: toStringValue(record.label),
+          done: Boolean(record.done),
+        };
+      })
+    : [];
+
+  return {
+    id: toStringValue(raw.id),
+    title: toStringValue(raw.title),
+    description: toOptionalString(raw.description),
+    dealId: toOptionalString(raw.deal),
+    assignee: toNullableString(raw.assignee),
+    assigneeName: toNullableString(raw.assignee_name ?? raw.assignee_username),
+    status: toStringValue(raw.status),
+    priority: toStringValue(raw.priority),
+    dueAt: raw.due_at === undefined ? undefined : toNullableString(raw.due_at),
+    remindAt: raw.remind_at === undefined ? undefined : toNullableString(raw.remind_at),
+    checklist: checklistItems,
+    createdAt: toStringValue(raw.created_at),
+  };
+};
+
+const mapActivityLog = (raw: Record<string, unknown>): ActivityLog => ({
+  id: toStringValue(raw.id),
+  deal: toStringValue(raw.deal),
+  actionType: toStringValue(raw.action_type),
+  actionTypeDisplay: toStringValue(raw.action_type_display),
+  description: toOptionalString(raw.description) ?? '',
+  user: toOptionalString(raw.user),
+  userUsername: toOptionalString(raw.user_username),
+  oldValue: toOptionalString(raw.old_value),
+  newValue: toOptionalString(raw.new_value),
+  objectId: toOptionalString(raw.object_id),
+  objectType: toOptionalString(raw.object_type),
+  objectName: toOptionalString(raw.object_name),
+  createdAt: toStringValue(raw.created_at),
 });
 
-const mapActivityLog = (raw: any): ActivityLog => ({
-  id: raw.id,
-  deal: raw.deal,
-  actionType: raw.action_type,
-  actionTypeDisplay: raw.action_type_display,
-  description: raw.description,
-  user: raw.user,
-  userUsername: raw.user_username,
-  oldValue: raw.old_value,
-  newValue: raw.new_value,
-  objectId: raw.object_id,
-  objectType: raw.object_type,
-  objectName: raw.object_name,
-  createdAt: raw.created_at,
-});
-
-const mapNote = (raw: any): Note => ({
-  id: raw.id,
-  dealId: String(raw.deal),
-  dealTitle: raw.deal_title ?? raw.dealTitle ?? undefined,
-  body: raw.body ?? '',
-  authorName: raw.author_name ?? raw.authorName ?? null,
-  createdAt: raw.created_at,
-  updatedAt: raw.updated_at,
-  deletedAt: raw.deleted_at ?? null,
+const mapNote = (raw: Record<string, unknown>): Note => ({
+  id: toStringValue(raw.id),
+  dealId: toStringValue(raw.deal),
+  dealTitle: toOptionalString(raw.deal_title ?? raw.dealTitle),
+  body: toStringValue(raw.body ?? ''),
+  authorName: toNullableString(raw.author_name ?? raw.authorName),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
 });
 
 export async function fetchClients(filters?: FilterParams): Promise<Client[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/clients/${qs}`);
+  const payload = await request(`/clients/${qs}`);
   return unwrapList(payload).map(mapClient);
 }
 
 export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/users/${qs}`);
+  const payload = await request(`/users/${qs}`);
   return unwrapList(payload).map(mapUser);
 }
 
@@ -534,7 +629,7 @@ export async function fetchInsuranceCompanies(
   filters?: FilterParams
 ): Promise<InsuranceCompany[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/insurance_companies/${qs}`);
+  const payload = await request(`/insurance_companies/${qs}`);
   return unwrapList(payload).map(mapInsuranceCompany);
 }
 
@@ -542,25 +637,25 @@ export async function fetchInsuranceTypes(
   filters?: FilterParams
 ): Promise<InsuranceType[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/insurance_types/${qs}`);
+  const payload = await request(`/insurance_types/${qs}`);
   return unwrapList(payload).map(mapInsuranceType);
 }
 
 export async function fetchSalesChannels(): Promise<SalesChannel[]> {
-  const payload = await request<any>('/sales_channels/');
+  const payload = await request('/sales_channels/');
   return unwrapList(payload).map(mapSalesChannel);
 }
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/deals/${qs}`);
+  const payload = await request(`/deals/${qs}`);
   return unwrapList(payload).map(mapDeal);
 }
 
 export async function fetchDealDriveFiles(
   dealId: string
 ): Promise<DriveFilesResponse> {
-  const payload = await request<{ files?: any[]; folder_id?: string | null }>(
+  const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
     `/deals/${dealId}/drive-files/`
   );
   const rawFiles = Array.isArray(payload?.files) ? payload.files : [];
@@ -577,7 +672,7 @@ export async function uploadDealDriveFile(
   const formData = new FormData();
   formData.append('file', file);
 
-  const payload = await request<{ file?: any; folder_id?: string | null }>(
+  const payload = await request<{ file?: unknown; folder_id?: string | null }>(
     `/deals/${dealId}/drive-files/`,
     {
       method: 'POST',
@@ -596,7 +691,7 @@ export async function recognizeDealPolicies(
   dealId: string,
   fileIds: string[]
 ): Promise<{ results: PolicyRecognitionResult[] }> {
-  const payload = await request<{ results?: any[] }>('/policies/recognize/', {
+  const payload = await request<{ results?: unknown[] }>('/policies/recognize/', {
     method: 'POST',
     body: JSON.stringify({ deal_id: dealId, file_ids: fileIds }),
   });
@@ -615,19 +710,19 @@ export async function recognizeDealPolicies(
 
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/policies/${qs}`);
+  const payload = await request(`/policies/${qs}`);
   return unwrapList(payload).map(mapPolicy);
 }
 
 export async function fetchPayments(filters?: FilterParams): Promise<Payment[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/payments/${qs}`);
+  const payload = await request(`/payments/${qs}`);
   return unwrapList(payload).map(mapPayment);
 }
 
 export async function fetchTasks(filters?: FilterParams): Promise<Task[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/tasks/${qs}`);
+  const payload = await request(`/tasks/${qs}`);
   return unwrapList(payload).map(mapTask);
 }
 
@@ -636,7 +731,7 @@ export async function fetchClientsWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Client>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/clients/${qs}`);
+  const payload = await request(`/clients/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
@@ -649,7 +744,7 @@ export async function fetchDealsWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Deal>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/deals/${qs}`);
+  const payload = await request(`/deals/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
@@ -662,7 +757,7 @@ export async function fetchPoliciesWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Policy>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/policies/${qs}`);
+  const payload = await request(`/policies/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
@@ -675,7 +770,7 @@ export async function fetchPaymentsWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Payment>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/payments/${qs}`);
+  const payload = await request(`/payments/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
@@ -688,7 +783,7 @@ export async function fetchTasksWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Task>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request<any>(`/tasks/${qs}`);
+  const payload = await request(`/tasks/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
@@ -703,7 +798,7 @@ export async function createClient(data: {
   birthDate?: string | null;
   notes?: string | null;
 }): Promise<Client> {
-  const payload = await request<any>('/clients/', {
+  const payload = await request('/clients/', {
     method: 'POST',
     body: JSON.stringify({
       name: data.name,
@@ -719,7 +814,7 @@ export async function updateClient(
   id: string,
   data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }
 ): Promise<Client> {
-  const payload = await request<any>(`/clients/${id}/`, {
+  const payload = await request(`/clients/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       name: data.name,
@@ -739,7 +834,7 @@ export async function createDeal(data: {
   executorId?: string | null;
   source?: string;
 }): Promise<Deal> {
-  const payload = await request<any>('/deals/', {
+  const payload = await request('/deals/', {
     method: 'POST',
     body: JSON.stringify({
       title: data.title,
@@ -754,7 +849,7 @@ export async function createDeal(data: {
 }
 
 export async function updateDealStatus(id: string, status: DealStatus): Promise<Deal> {
-  const payload = await request<any>(`/deals/${id}/`, {
+  const payload = await request(`/deals/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
@@ -788,7 +883,7 @@ export async function updateDeal(
   if ('source' in data) {
     body.source = data.source ?? null;
   }
-  const payload = await request<any>(`/deals/${id}/`, {
+  const payload = await request(`/deals/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   });
@@ -800,19 +895,17 @@ export async function updatePayment(
   data: Partial<{
     dealId: string;
     policyId: string;
-    status: PaymentStatus;
     actualDate: string | null;
     scheduledDate: string | null;
     description: string;
     amount: number;
   }>
 ): Promise<Payment> {
-  const payload = await request<any>(`/payments/${id}/`, {
+  const payload = await request(`/payments/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       deal: data.dealId,
       policy: data.policyId,
-      status: data.status,
       actual_date: data.actualDate,
       scheduled_date: data.scheduledDate,
       description: data.description,
@@ -831,7 +924,7 @@ export async function createQuote(data: {
   deductible?: string;
   comments?: string;
 }): Promise<Quote> {
-  const payload = await request<any>('/quotes/', {
+  const payload = await request('/quotes/', {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
@@ -857,7 +950,7 @@ export async function updateQuote(
     comments?: string;
   }
 ): Promise<Quote> {
-  const payload = await request<any>(`/quotes/${id}/`, {
+  const payload = await request(`/quotes/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       insurance_company: data.insuranceCompanyId,
@@ -890,7 +983,7 @@ export async function createPolicy(data: {
   startDate?: string | null;
   endDate?: string | null;
 }): Promise<Policy> {
-  const payload = await request<any>('/policies/', {
+  const payload = await request('/policies/', {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
@@ -918,9 +1011,8 @@ export async function createPayment(data: {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
-  status?: 'planned' | 'partial' | 'paid';
 }): Promise<Payment> {
-  const payload = await request<any>('/payments/', {
+  const payload = await request('/payments/', {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId || null,
@@ -929,7 +1021,6 @@ export async function createPayment(data: {
       description: data.description || '',
       scheduled_date: data.scheduledDate || null,
       actual_date: data.actualDate || null,
-      status: data.status || 'planned',
     }),
   });
   return mapPayment(payload);
@@ -939,18 +1030,18 @@ export async function deletePolicy(id: string): Promise<void> {
   await request(`/policies/${id}/`, { method: 'DELETE' });
 }
 
-const mapChatMessage = (raw: any): ChatMessage => ({
-  id: raw.id,
-  deal: raw.deal,
-  author_name: raw.author_name,
-  author_username: raw.author_username,
-  author: raw.author,
-  body: raw.body,
-  created_at: raw.created_at,
+const mapChatMessage = (raw: Record<string, unknown>): ChatMessage => ({
+  id: toStringValue(raw.id),
+  deal: toStringValue(raw.deal),
+  author_name: toStringValue(raw.author_name),
+  author_username: toNullableString(raw.author_username),
+  author: toNullableString(raw.author),
+  body: toStringValue(raw.body),
+  created_at: toStringValue(raw.created_at),
 });
 
 export async function fetchChatMessages(dealId: string): Promise<ChatMessage[]> {
-  const payload = await request<any>(`/chat_messages/?deal=${dealId}`);
+  const payload = await request(`/chat_messages/?deal=${dealId}`);
   return unwrapList(payload).map(mapChatMessage);
 }
 
@@ -958,7 +1049,7 @@ export async function createChatMessage(
   dealId: string,
   body: string
 ): Promise<ChatMessage> {
-  const payload = await request<any>('/chat_messages/', {
+  const payload = await request('/chat_messages/', {
     method: 'POST',
     body: JSON.stringify({
       deal: dealId,
@@ -973,7 +1064,7 @@ export async function deleteChatMessage(id: string): Promise<void> {
 }
 
 export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
-  const payload = await request<any>('/financial_records/');
+  const payload = await request('/financial_records/');
   return unwrapList(payload).map(mapFinancialRecord);
 }
 
@@ -985,7 +1076,7 @@ export async function createFinancialRecord(data: {
   source?: string;
   note?: string;
 }): Promise<FinancialRecord> {
-  const payload = await request<any>('/financial_records/', {
+  const payload = await request('/financial_records/', {
     method: 'POST',
     body: JSON.stringify({
       payment: data.paymentId,
@@ -1009,7 +1100,7 @@ export async function updateFinancialRecord(
     note: string;
   }>
 ): Promise<FinancialRecord> {
-  const payload = await request<any>(`/financial_records/${id}/`, {
+  const payload = await request(`/financial_records/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       amount: data.amount,
@@ -1027,7 +1118,7 @@ export async function deleteFinancialRecord(id: string): Promise<void> {
 }
 
 export async function fetchDealHistory(dealId: string): Promise<ActivityLog[]> {
-  const payload = await request<any>(`/deals/${dealId}/history/`);
+  const payload = await request(`/deals/${dealId}/history/`);
   if (!Array.isArray(payload)) {
     return [];
   }
@@ -1043,12 +1134,12 @@ export async function fetchDealNotes(
     params.archived = archived ? 'true' : 'false';
   }
   const qs = buildQueryString(params);
-  const payload = await request<any>(`/notes/${qs}`);
+  const payload = await request(`/notes/${qs}`);
   return unwrapList(payload).map(mapNote);
 }
 
 export async function createNote(dealId: string, body: string): Promise<Note> {
-  const payload = await request<any>('/notes/', {
+  const payload = await request('/notes/', {
     method: 'POST',
     body: JSON.stringify({
       deal: dealId,
@@ -1063,7 +1154,7 @@ export async function archiveNote(id: string): Promise<void> {
 }
 
 export async function restoreNote(id: string): Promise<Note> {
-  const payload = await request<any>(`/notes/${id}/restore/`, {
+  const payload = await request(`/notes/${id}/restore/`, {
     method: 'POST',
   });
   return mapNote(payload);
@@ -1090,7 +1181,7 @@ export async function createTask(data: {
     body.assignee = data.assigneeId;
   }
 
-  const payload = await request<any>('/tasks/', {
+  const payload = await request('/tasks/', {
     method: 'POST',
     body: JSON.stringify(body),
   });
@@ -1119,7 +1210,7 @@ export async function updateTask(
     body.assignee = data.assigneeId === '' ? null : data.assigneeId;
   }
 
-  const payload = await request<any>(`/tasks/${id}/`, {
+  const payload = await request(`/tasks/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   });

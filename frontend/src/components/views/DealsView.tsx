@@ -332,30 +332,33 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   // Загружать сообщения когда открываем вкладку "Чат"
   useEffect(() => {
-    if (activeTab === 'chat' && selectedDeal) {
-      loadChatMessages();
+    if (activeTab === 'chat') {
+      void loadChatMessages();
     }
-  }, [activeTab, selectedDeal?.id]);
+  }, [activeTab, loadChatMessages]);
 
   // Загружать логи активности когда открываем вкладку "История"
   useEffect(() => {
-    if (activeTab === 'history' && selectedDeal) {
-      loadActivityLogs();
+    if (activeTab === 'history') {
+      void loadActivityLogs();
     }
-  }, [activeTab, selectedDeal?.id]);
+  }, [activeTab, loadActivityLogs]);
 
-  const loadChatMessages = async () => {
-    if (!selectedDeal) return;
+  const loadChatMessages = useCallback(async () => {
+    const dealId = selectedDeal?.id;
+    if (!dealId) {
+      return;
+    }
     setIsChatLoading(true);
     try {
-      const messages = await onFetchChatMessages(selectedDeal.id);
+      const messages = await onFetchChatMessages(dealId);
       setChatMessages(messages);
     } catch (err) {
       console.error('Ошибка загрузки сообщений:', err);
     } finally {
       setIsChatLoading(false);
     }
-  };
+  }, [onFetchChatMessages, selectedDeal?.id]);
 
   const handleMarkTaskDone = async (taskId: string) => {
     if (completingTaskIds.includes(taskId)) {
@@ -371,18 +374,21 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
   };
 
-  const loadActivityLogs = async () => {
-    if (!selectedDeal) return;
+  const loadActivityLogs = useCallback(async () => {
+    const dealId = selectedDeal?.id;
+    if (!dealId) {
+      return;
+    }
     setIsActivityLoading(true);
     try {
-      const logs = await onFetchDealHistory(selectedDeal.id);
+      const logs = await onFetchDealHistory(dealId);
       setActivityLogs(logs);
     } catch (err) {
       console.error('Ошибка загрузки логов активности:', err);
     } finally {
       setIsActivityLoading(false);
     }
-  };
+  }, [onFetchDealHistory, selectedDeal?.id]);
 
   const handleInlineDateChange = async (
     field: 'nextContactDate' | 'expectedClose',
@@ -568,7 +574,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
     } finally {
       setRecognizing(false);
     }
-  }, [onRefreshPolicies, selectedDeal, selectedDriveFileIds]);
+  }, [
+    onRefreshPolicies,
+    onPolicyDraftReady,
+    selectedDeal,
+    selectedDriveFileIds,
+  ]);
 
   const formatRecognitionSummary = useCallback(
     (result: PolicyRecognitionResult) => {

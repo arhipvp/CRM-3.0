@@ -119,9 +119,6 @@ export interface Policy {
   createdAt: string;
 }
 
-// Payment Status type
-export type PaymentStatus = 'planned' | 'partial' | 'paid';
-
 // Financial Record type
 export interface FinancialRecord {
   id: string;
@@ -151,7 +148,6 @@ export interface Payment {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
-  status: PaymentStatus;
   financialRecords?: FinancialRecord[];
   canDelete?: boolean;
   createdAt: string;
@@ -171,7 +167,7 @@ export interface Task {
   priority: string;
   dueAt?: string | null;
   remindAt?: string | null;
-  checklist?: any[];
+  checklist?: unknown[];
   createdAt: string;
 }
 
@@ -195,8 +191,8 @@ export interface ActivityLog {
   description?: string;
   user?: string;
   userUsername?: string;
-  oldValue?: any;
-  newValue?: any;
+  oldValue?: string;
+  newValue?: string;
   createdAt: string;
   objectId?: string;
   objectType?: string;

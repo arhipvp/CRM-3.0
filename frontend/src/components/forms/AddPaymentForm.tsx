@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Payment, PaymentStatus, Policy } from '../../types';
+import { Payment, Policy } from '../../types';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -8,7 +8,6 @@ export interface AddPaymentFormValues {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
-  status?: PaymentStatus;
 }
 
 interface AddPaymentFormProps {
@@ -37,7 +36,6 @@ export function AddPaymentForm({
     description: payment?.description || '',
     scheduledDate: payment?.scheduledDate || '',
     actualDate: payment?.actualDate || '',
-    status: payment?.status || 'planned',
   });
   const dealDisplayValue = dealTitle || dealId || formData.dealId || '';
   const dealIsFixed = Boolean(dealId);
@@ -106,8 +104,8 @@ export function AddPaymentForm({
       };
 
       await onSubmit(submission);
-    } catch (err: any) {
-      setError(err.message || 'Ошибка при сохранении платежа');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при сохранении платежа');
     } finally {
       setLoading(false);
     }
@@ -271,21 +269,6 @@ export function AddPaymentForm({
             disabled={loading}
           />
         </div>
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="status">Статус</label>
-        <select
-          id="status"
-          name="status"
-          value={formData.status || 'planned'}
-          onChange={handleChange}
-          disabled={loading}
-        >
-          <option value="planned">Запланирован</option>
-          <option value="partial">Частичный</option>
-          <option value="paid">Оплачен</option>
-        </select>
       </div>
 
       <div className="form-actions">

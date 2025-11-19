@@ -6,11 +6,6 @@ from django.db import models
 class Payment(SoftDeleteModel):
     """Платёж в рамках полиса"""
 
-    class PaymentStatus(models.TextChoices):
-        PLANNED = "planned", "Запланирован"
-        PARTIAL = "partial", "Частичный"
-        PAID = "paid", "Оплачен"
-
     policy = models.ForeignKey(
         "policies.Policy",
         related_name="payments",
@@ -35,17 +30,16 @@ class Payment(SoftDeleteModel):
         null=True, blank=True, help_text="Запланированная дата"
     )
     actual_date = models.DateField(null=True, blank=True, help_text="Фактическая дата")
-    status = models.CharField(
-        max_length=20,
-        choices=PaymentStatus.choices,
-        default=PaymentStatus.PLANNED,
-        help_text="Статус",
-    )
 
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "Платёж"
         verbose_name_plural = "Платежи"
+
+    @property
+    def is_paid(self) -> bool:
+        """Платёж считается оплачен, если actual_date не None."""
+        return self.actual_date is not None
 
     def __str__(self) -> str:
         return f"Платёж {self.amount} РУБ для {self.policy}"

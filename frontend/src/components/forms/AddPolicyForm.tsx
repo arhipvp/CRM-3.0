@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
-import type { InsuranceCompany, InsuranceType, PaymentStatus, SalesChannel } from '../../types';
+import type { InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
 
 interface FinancialRecordDraft {
   amount: string;
@@ -16,7 +16,6 @@ interface PaymentDraft {
   description?: string;
   scheduledDate?: string;
   actualDate?: string;
-  status: PaymentStatus;
   incomes: FinancialRecordDraft[];
   expenses: FinancialRecordDraft[];
 }
@@ -45,12 +44,6 @@ interface AddPolicyFormProps {
   initialInsuranceTypeName?: string;
 }
 
-const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  planned: 'Запланирован',
-  partial: 'Частично',
-  paid: 'Оплачен',
-};
-
 const createEmptyRecord = (): FinancialRecordDraft => ({
   amount: '',
   date: '',
@@ -64,7 +57,6 @@ const createEmptyPayment = (): PaymentDraft => ({
   description: '',
   scheduledDate: '',
   actualDate: '',
-  status: 'planned',
   incomes: [],
   expenses: [],
 });
@@ -199,7 +191,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const updatePaymentField = (
     index: number,
     field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>,
-    value: string | PaymentStatus
+    value: string
   ) => {
     setPayments((prev) =>
       prev.map((payment, idx) =>
@@ -610,22 +602,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                     onChange={(e) => updatePaymentField(paymentIndex, 'amount', e.target.value)}
                     className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">Статус</label>
-                  <select
-                    value={payment.status}
-                    onChange={(e) =>
-                      updatePaymentField(paymentIndex, 'status', e.target.value as PaymentStatus)
-                    }
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white focus:border-sky-500 focus:ring-sky-500"
-                  >
-                    {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600">Дата плановая</label>

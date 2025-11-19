@@ -63,8 +63,8 @@ export function EditDealForm({
       }
 
       await onSubmit(formData);
-    } catch (err: any) {
-      setError(err.message || 'Ошибка при обновлении сделки');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при обновлении сделки');
     } finally {
       setLoading(false);
     }

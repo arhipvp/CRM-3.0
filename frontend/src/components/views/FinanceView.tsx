@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Payment, FinancialRecord } from '../../types';
 
+type FinanceFilterType = 'all' | 'income' | 'expense';
+
 interface FinanceViewProps {
   payments: Payment[];
   financialRecords?: FinancialRecord[];
@@ -16,14 +18,12 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   onDeleteRecord,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterType, setFilterType] = useState<FinanceFilterType>('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
   const stats = useMemo(() => {
-    const planned = payments.filter((p) => p.status === 'planned');
-    const partial = payments.filter((p) => p.status === 'partial');
-    const paid = payments.filter((p) => p.status === 'paid');
+    const paid = payments.filter((p) => Boolean(p.actualDate));
 
     const incomes = financialRecords.filter((r) => parseFloat(r.amount) >= 0);
     const expenses = financialRecords.filter((r) => parseFloat(r.amount) < 0);
@@ -35,8 +35,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     const totalExpense = Math.abs(expenses.reduce((total, r) => total + Number(r.amount || 0), 0));
 
     return {
-      plannedPayments: sumPayments(planned),
-      partialPayments: sumPayments(partial),
       paidPayments: sumPayments(paid),
       totalPayments: sumPayments(payments),
       totalIncome,
@@ -135,7 +133,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         <div className="filters-row">
           <div className="filter-group">
             <label>Тип</label>
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as FinanceFilterType)}
+            >
               <option value="all">Все</option>
               <option value="income">Доходы</option>
               <option value="expense">Расходы</option>

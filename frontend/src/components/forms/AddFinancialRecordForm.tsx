@@ -64,8 +64,10 @@ export function AddFinancialRecordForm({
       }
 
       await onSubmit(formData);
-    } catch (err: any) {
-      setError(err.message || 'Ошибка при сохранении финансовой записи');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Ошибка при сохранении финансовой записи'
+      );
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,7 @@
 """Integration tests для Django signals логирования."""
 
+from datetime import date
+
 import pytest
 from apps.clients.models import Client
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
@@ -250,7 +252,7 @@ class TestPaymentSignals:
             seller=seller,
             executor=seller,
         )
-        payment = Payment.objects.create(deal=deal, amount=1000.00, status="pending")
+        payment = Payment.objects.create(deal=deal, amount=1000.00)
 
         log = AuditLog.objects.filter(
             object_type="payment", object_id=str(payment.id)
@@ -270,14 +272,14 @@ class TestPaymentSignals:
             seller=seller,
             executor=seller,
         )
-        payment = Payment.objects.create(deal=deal, amount=1000.00, status="pending")
+        payment = Payment.objects.create(deal=deal, amount=1000.00)
 
         # Clear previous logs
         AuditLog.objects.filter(
             object_type="payment", object_id=str(payment.id)
         ).delete()
 
-        payment.status = "completed"
+        payment.actual_date = date.today()
         payment.save()
 
         log = AuditLog.objects.filter(

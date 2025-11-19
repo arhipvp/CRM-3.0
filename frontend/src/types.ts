@@ -1,5 +1,4 @@
 export type DealStatus = 'open' | 'won' | 'lost' | 'on_hold';
-export type PaymentStatus = 'planned' | 'partial' | 'paid';
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'overdue' | 'canceled';
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent';
 
@@ -118,6 +117,10 @@ export interface Deal {
   quotes: Quote[];
   documents: Document[];
   driveFolderId?: string | null;
+  seller?: string | null;
+  executor?: string | null;
+  sellerName?: string | null;
+  executorName?: string | null;
   paymentsPaid?: string;
   paymentsTotal?: string;
 }
@@ -176,7 +179,6 @@ export interface Payment {
   note?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
-  status: PaymentStatus;
   financialRecords?: FinancialRecord[];
   canDelete?: boolean;
   createdAt: string;
@@ -232,6 +234,8 @@ export interface Task {
   title: string;
   description?: string;
   dealId?: string;
+  assignee?: string | null;
+  assigneeName?: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   dueAt?: string | null;

@@ -5,26 +5,6 @@ interface FileUploadManagerProps {
   disabled?: boolean;
 }
 
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Б';
-  const k = 1024;
-  const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-};
-
-const getFileIcon = (mimeType: string): string => {
-  if (mimeType.startsWith('image/')) return '🖼️';
-  if (mimeType.startsWith('video/')) return '🎥';
-  if (mimeType.startsWith('audio/')) return '🔊';
-  if (mimeType.includes('pdf')) return '📄';
-  if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
-  if (mimeType.includes('sheet') || mimeType.includes('spreadsheet')) return '📊';
-  if (mimeType.includes('presentation')) return '📑';
-  if (mimeType.startsWith('text/')) return '📃';
-  return '📎';
-};
-
 export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, disabled }) => {
   const [isUploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);

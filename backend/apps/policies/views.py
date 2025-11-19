@@ -60,7 +60,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             payments_paid=Coalesce(
                 Sum(
                     "payments__amount",
-                    filter=Q(payments__status=Payment.PaymentStatus.PAID),
+                    filter=Q(payments__actual_date__isnull=False),
                 ),
                 Value(0),
                 output_field=decimal_field,

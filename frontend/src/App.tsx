@@ -20,6 +20,8 @@ import {
   AddFinancialRecordForm,
   AddFinancialRecordFormValues,
 } from './components/forms/AddFinancialRecordForm';
+import type { AddTaskFormValues } from './components/forms/AddTaskForm';
+import type { EditDealFormValues } from './components/forms/EditDealForm';
 import {
   createClient,
   createDeal,
@@ -55,7 +57,8 @@ import {
   APIError,
   FilterParams,
 } from './api';
-import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, SalesChannel, Task, User, PaymentStatus } from './types';
+import type { CurrentUserResponse } from './api';
+import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, SalesChannel, Task, User } from './types';
 
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
@@ -76,25 +79,23 @@ const buildPolicyDraftFromRecognition = (
     : [];
   const payments =
     paymentsRaw.length > 0
-      ? paymentsRaw.map((payment) => ({
-          amount: normalizeStringValue(payment.amount),
-          description: '',
-          scheduledDate: normalizeDateValue(payment.payment_date),
-          actualDate: normalizeDateValue(payment.actual_payment_date),
-          status: 'paid' as PaymentStatus,
-          incomes: [],
-          expenses: [],
-        }))
-      : [
-          {
-            amount: '',
-            description: '',
-            scheduledDate: '',
-            actualDate: '',
-            status: 'planned' as PaymentStatus,
-            incomes: [],
-            expenses: [],
-          },
+          ? paymentsRaw.map((payment) => ({
+              amount: normalizeStringValue(payment.amount),
+              description: '',
+              scheduledDate: normalizeDateValue(payment.payment_date),
+              actualDate: normalizeDateValue(payment.actual_payment_date),
+              incomes: [],
+              expenses: [],
+            }))
+          : [
+              {
+                amount: '',
+                description: '',
+                scheduledDate: '',
+                actualDate: '',
+                incomes: [],
+                expenses: [],
+              },
         ];
 
   return {
@@ -111,6 +112,24 @@ const buildPolicyDraftFromRecognition = (
     payments,
   };
 };
+
+const resolveRoleNames = (userData: CurrentUserResponse): string[] => {
+  const parsed = userData.user_roles
+    ?.map((ur) => ur.role?.name)
+    .filter((name): name is string => Boolean(name)) ?? [];
+  if (parsed.length > 0) {
+    return parsed;
+  }
+  return userData.roles ?? [];
+};
+
+const mapApiUser = (userData: CurrentUserResponse): User => ({
+  id: String(userData.id),
+  username: userData.username,
+  roles: resolveRoleNames(userData),
+  firstName: userData.first_name ?? undefined,
+  lastName: userData.last_name ?? undefined,
+});
 
 type ModalType = null | 'client' | 'deal';
 
@@ -310,15 +329,7 @@ const AppContent: React.FC = () => {
           return;
         }
         // Parse roles from the API response structure
-        const roles =
-          userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
-          userData.roles ||
-          [];
-        const user: User = {
-          id: String(userData.id),
-          username: userData.username,
-          roles: roles,
-        };
+        const user = mapApiUser(userData);
         console.log('Setting current user:', user);
         setCurrentUser(user);
         setIsAuthenticated(true);
@@ -369,7 +380,7 @@ const AppContent: React.FC = () => {
 
   const handleMarkPayment = async (paymentId: string) => {
     const today = new Date().toISOString().split('T')[0];
-    const updated = await updatePayment(paymentId, { status: 'paid', actualDate: today });
+    const updated = await updatePayment(paymentId, { actualDate: today });
     setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
   };
 
@@ -391,7 +402,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleUpdateDeal = async (dealId: string, data: any) => {
+  const handleUpdateDeal = async (dealId: string, data: EditDealFormValues) => {
     setSyncing(true);
     try {
       const updated = await updateDeal(dealId, data);
@@ -635,7 +646,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleCreateTask = async (dealId: string, data: any) => {
+  const handleCreateTask = async (dealId: string, data: AddTaskFormValues) => {
     setSyncing(true);
     try {
       const created = await createTask({ dealId, ...data });
@@ -648,7 +659,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleUpdateTask = async (taskId: string, data: any) => {
+  const handleUpdateTask = async (taskId: string, data: Partial<AddTaskFormValues>) => {
     setSyncing(true);
     try {
       const updated = await updateTask(taskId, data);
@@ -684,7 +695,6 @@ const AppContent: React.FC = () => {
         description: values.description,
         scheduledDate: values.scheduledDate || null,
         actualDate: values.actualDate || null,
-        status: values.status || 'planned',
       });
 
       // Auto-create zero-value income record for tracking
@@ -714,7 +724,6 @@ const AppContent: React.FC = () => {
         description: values.description,
         scheduledDate: values.scheduledDate || null,
         actualDate: values.actualDate || null,
-        status: values.status || 'planned',
       });
 
       setPayments((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -833,17 +842,7 @@ const AppContent: React.FC = () => {
       const userData = await getCurrentUser();
       console.log('handleLoginSuccess: got user data', userData);
       // Parse roles from the API response structure
-      const roles =
-        userData.user_roles?.map((ur: any) => ur.role?.name).filter(Boolean) ||
-        userData.roles ||
-        [];
-      const user: User = {
-        id: String(userData.id),
-        username: userData.username,
-        roles: roles,
-        firstName: userData.first_name || undefined,
-        lastName: userData.last_name || undefined,
-      };
+      const user = mapApiUser(userData);
       setCurrentUser(user);
       setIsAuthenticated(true);
       // Load application data after successful login

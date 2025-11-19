@@ -135,7 +135,7 @@ class FinanceSummaryView(APIView):
 
         # Плановые платежи
         payments_queryset = Payment.objects.filter(
-            status=Payment.PaymentStatus.PLANNED, deleted_at__isnull=True
+            actual_date__isnull=True, deleted_at__isnull=True
         )
         if not is_admin and user.is_authenticated:
             payments_queryset = payments_queryset.filter(

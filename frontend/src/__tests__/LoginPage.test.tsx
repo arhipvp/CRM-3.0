@@ -3,12 +3,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LoginPage } from '../components/LoginPage';
 import { login } from '../api';
+import type { User } from '../types';
 
 vi.mock('../api', () => ({
   login: vi.fn(),
 }));
 
 const mockedLogin = vi.mocked(login);
+const mockUser: User = { id: '1', username: 'admin', roles: [] };
 
 describe('LoginPage', () => {
   beforeEach(() => {
@@ -25,7 +27,7 @@ describe('LoginPage', () => {
 
   it('calls onLoginSuccess when the login request succeeds', async () => {
     const onLoginSuccess = vi.fn();
-    mockedLogin.mockResolvedValue({ access: 'token', refresh: 'token', user: {} as any });
+    mockedLogin.mockResolvedValue({ access: 'token', refresh: 'token', user: mockUser });
     const user = userEvent.setup();
 
     render(<LoginPage onLoginSuccess={onLoginSuccess} />);
