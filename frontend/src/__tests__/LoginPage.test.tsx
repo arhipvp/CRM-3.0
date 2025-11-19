@@ -2,15 +2,25 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LoginPage } from '../components/LoginPage';
-import { login } from '../api';
-import type { User } from '../types';
+import { login, type LoginResponse } from '../api';
 
 vi.mock('../api', () => ({
   login: vi.fn(),
 }));
 
 const mockedLogin = vi.mocked(login);
-const mockUser: User = { id: '1', username: 'admin', roles: [] };
+const mockUser: LoginResponse['user'] = {
+  id: 1,
+  username: 'admin',
+  email: 'admin@example.com',
+  first_name: 'Admin',
+  last_name: 'User',
+  is_active: true,
+  is_staff: true,
+  user_roles: [],
+  roles: [],
+  date_joined: new Date().toISOString(),
+};
 
 describe('LoginPage', () => {
   beforeEach(() => {

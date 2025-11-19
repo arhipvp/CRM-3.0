@@ -198,7 +198,6 @@ const AppContent: React.FC = () => {
   const refreshPolicies = useCallback(async () => {
     const policiesData = await fetchPolicies();
     setPolicies(policiesData);
-    return policiesData;
   }, []);
 
   const handlePolicyDraftReady = useCallback(
@@ -276,10 +275,16 @@ const AppContent: React.FC = () => {
 
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      searchInitialized.current = false;
+      return;
+    }
+
     if (!searchInitialized.current) {
       searchInitialized.current = true;
       return;
     }
+
     const handler = setTimeout(() => {
       const filters: FilterParams = { ordering: 'next_contact_date' };
       const query = dealSearch.trim();
@@ -302,7 +307,7 @@ const AppContent: React.FC = () => {
       setError(null);
       refreshDeals(filters).catch((err) => {
         console.error('Search deals error:', err);
-        setError(err instanceof Error ? err.message : 'Не удалось найти сделки по запросу');
+        setError(err instanceof Error ? err.message : 'Не удалось найти сделки по фильтру');
       });
     }, 300);
     return () => clearTimeout(handler);
@@ -313,8 +318,8 @@ const AppContent: React.FC = () => {
     dealSearch,
     dealSourceFilter,
     refreshDeals,
+    isAuthenticated,
   ]);
-
   // Check authentication on app load
   useEffect(() => {
     const checkAuth = async () => {
@@ -540,7 +545,6 @@ const AppContent: React.FC = () => {
           description: paymentDraft.description,
           scheduledDate: paymentDraft.scheduledDate || null,
           actualDate: paymentDraft.actualDate || null,
-          status: paymentDraft.status || 'planned',
         });
         setPayments((prev) => [payment, ...prev]);
 
@@ -856,7 +860,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const renderView = () => {
+  const renderView = (authUser: User) => {
     if (isLoading) {
       return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
     }
@@ -871,8 +875,7 @@ const AppContent: React.FC = () => {
             financialRecords={financialRecords}
             tasks={tasks}
             users={users}
-            salesChannels={salesChannels}
-            currentUser={currentUser}
+            currentUser={authUser}
             selectedDealId={selectedDealId}
             onSelectDeal={setSelectedDealId}
             dealSearch={dealSearch}
@@ -951,6 +954,8 @@ const AppContent: React.FC = () => {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const authenticatedUser = currentUser;
+
   return (
     <>
       <NotificationDisplay />
@@ -959,7 +964,7 @@ const AppContent: React.FC = () => {
         onNavigate={setView}
         onAddDeal={() => setModal('deal')}
         onAddClient={() => setModal('client')}
-        currentUser={currentUser}
+        currentUser={authenticatedUser}
         onLogout={handleLogout}
       >
         <div className="p-6 space-y-4">
@@ -978,7 +983,7 @@ const AppContent: React.FC = () => {
           </div>
           {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
           {isSyncing && <p className="text-xs text-sky-600">Обновляем статус сделки...</p>}
-          {renderView()}
+          {renderView(authenticatedUser)}
         </div>
 
         {modal === 'client' && (
@@ -988,12 +993,12 @@ const AppContent: React.FC = () => {
         )}
         {modal === 'deal' && (
           <Modal title="Новая сделка" onClose={() => setModal(null)}>
-            <DealForm
-              onSubmit={handleAddDeal}
-              clients={clients}
-              users={users}
-              defaultExecutorId={currentUser?.id ?? undefined}
-            />
+              <DealForm
+                onSubmit={handleAddDeal}
+                clients={clients}
+                users={users}
+                defaultExecutorId={authenticatedUser.id}
+              />
           </Modal>
         )}
         {quoteDealId && (

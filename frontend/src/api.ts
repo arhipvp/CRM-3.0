@@ -1,4 +1,5 @@
 import {
+  ActivityActionType,
   ActivityLog,
   ChatMessage,
   Client,
@@ -6,6 +7,7 @@ import {
   DealStatus,
   DriveFile,
   FinancialRecord,
+  FinancialRecordType,
   InsuranceCompany,
   InsuranceType,
   Note,
@@ -15,6 +17,8 @@ import {
   SalesChannel,
   Quote,
   Task,
+  TaskPriority,
+  TaskStatus,
   User,
 } from './types';
 
@@ -248,7 +252,7 @@ async function request<T = unknown>(
       if (json.detail) {
         detail = json.detail;
       }
-    } catch (e) {
+    } catch {
       // Keep default message if response is not JSON
     }
     console.warn(`Forbidden (403) on ${path}: ${detail}`);
@@ -393,8 +397,49 @@ const mapInsuranceType = (raw: Record<string, unknown>): InsuranceType => ({
 });
 
 const DEAL_STATUSES: DealStatus[] = ['open', 'won', 'lost', 'on_hold'];
+const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done', 'overdue', 'canceled'];
+const TASK_PRIORITIES: TaskPriority[] = ['low', 'normal', 'high', 'urgent'];
+const ACTIVITY_ACTION_TYPES: ActivityActionType[] = [
+  'created',
+  'status_changed',
+  'stage_changed',
+  'description_updated',
+  'assigned',
+  'policy_created',
+  'quote_added',
+  'document_uploaded',
+  'payment_created',
+  'comment_added',
+  'custom',
+];
+const FINANCIAL_RECORD_TYPES: FinancialRecordType[] = ['Доход', 'Расход'];
+
+const resolveStringUnion = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+  typeof value === 'string' && allowed.includes(value as T) ? (value as T) : fallback;
+
+const resolveOptionalStringUnion = <T extends string>(
+  value: unknown,
+  allowed: readonly T[]
+): T | undefined => (typeof value === 'string' && allowed.includes(value as T) ? (value as T) : undefined);
+
+const resolveRoleName = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  return toOptionalString(record.name);
+};
+
 const resolveDealStatus = (value: unknown): DealStatus =>
-  typeof value === 'string' && DEAL_STATUSES.includes(value as DealStatus) ? (value as DealStatus) : 'open';
+  resolveStringUnion(value, DEAL_STATUSES, 'open');
+const resolveTaskStatus = (value: unknown): TaskStatus =>
+  resolveStringUnion(value, TASK_STATUSES, 'todo');
+const resolveTaskPriority = (value: unknown): TaskPriority =>
+  resolveStringUnion(value, TASK_PRIORITIES, 'normal');
+const resolveActivityActionType = (value: unknown): ActivityActionType =>
+  resolveStringUnion(value, ACTIVITY_ACTION_TYPES, 'custom');
+const resolveFinancialRecordType = (value: unknown): FinancialRecordType | undefined =>
+  resolveOptionalStringUnion(value, FINANCIAL_RECORD_TYPES);
 
 const mapDeal = (raw: Record<string, unknown>): Deal => {
   const quoteList = Array.isArray(raw.quotes) ? raw.quotes : [];
@@ -476,7 +521,7 @@ const mapUser = (raw: Record<string, unknown>): User => {
             return undefined;
           }
           const record = entry as Record<string, unknown>;
-          return toOptionalString(record.role?.name);
+          return resolveRoleName(record.role);
         })
         .filter((name): name is string => Boolean(name))
     : [];
@@ -526,7 +571,7 @@ const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecord => ({
   description: toOptionalString(raw.description),
   source: toOptionalString(raw.source),
   note: toOptionalString(raw.note),
-  recordType: toOptionalString(raw.record_type),
+  recordType: resolveFinancialRecordType(raw.record_type ?? raw.recordType),
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
   deletedAt: toNullableString(raw.deleted_at),
@@ -577,8 +622,8 @@ const mapTask = (raw: Record<string, unknown>): Task => {
     dealId: toOptionalString(raw.deal),
     assignee: toNullableString(raw.assignee),
     assigneeName: toNullableString(raw.assignee_name ?? raw.assignee_username),
-    status: toStringValue(raw.status),
-    priority: toStringValue(raw.priority),
+    status: resolveTaskStatus(raw.status ?? raw.state),
+    priority: resolveTaskPriority(raw.priority ?? raw.priority_level),
     dueAt: raw.due_at === undefined ? undefined : toNullableString(raw.due_at),
     remindAt: raw.remind_at === undefined ? undefined : toNullableString(raw.remind_at),
     checklist: checklistItems,
@@ -589,7 +634,7 @@ const mapTask = (raw: Record<string, unknown>): Task => {
 const mapActivityLog = (raw: Record<string, unknown>): ActivityLog => ({
   id: toStringValue(raw.id),
   deal: toStringValue(raw.deal),
-  actionType: toStringValue(raw.action_type),
+  actionType: resolveActivityActionType(raw.action_type ?? raw.actionType),
   actionTypeDisplay: toStringValue(raw.action_type_display),
   description: toOptionalString(raw.description) ?? '',
   user: toOptionalString(raw.user),
@@ -615,14 +660,14 @@ const mapNote = (raw: Record<string, unknown>): Note => ({
 
 export async function fetchClients(filters?: FilterParams): Promise<Client[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/clients/${qs}`);
-  return unwrapList(payload).map(mapClient);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/clients/${qs}`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapClient);
 }
 
 export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
   const qs = buildQueryString(filters || {});
   const payload = await request(`/users/${qs}`);
-  return unwrapList(payload).map(mapUser);
+  return unwrapList<Record<string, unknown>>(payload).map(mapUser);
 }
 
 export async function fetchInsuranceCompanies(
@@ -630,7 +675,7 @@ export async function fetchInsuranceCompanies(
 ): Promise<InsuranceCompany[]> {
   const qs = buildQueryString(filters || {});
   const payload = await request(`/insurance_companies/${qs}`);
-  return unwrapList(payload).map(mapInsuranceCompany);
+  return unwrapList<Record<string, unknown>>(payload).map(mapInsuranceCompany);
 }
 
 export async function fetchInsuranceTypes(
@@ -638,18 +683,18 @@ export async function fetchInsuranceTypes(
 ): Promise<InsuranceType[]> {
   const qs = buildQueryString(filters || {});
   const payload = await request(`/insurance_types/${qs}`);
-  return unwrapList(payload).map(mapInsuranceType);
+  return unwrapList<Record<string, unknown>>(payload).map(mapInsuranceType);
 }
 
 export async function fetchSalesChannels(): Promise<SalesChannel[]> {
   const payload = await request('/sales_channels/');
-  return unwrapList(payload).map(mapSalesChannel);
+  return unwrapList<Record<string, unknown>>(payload).map(mapSalesChannel);
 }
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/deals/${qs}`);
-  return unwrapList(payload).map(mapDeal);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapDeal);
 }
 
 export async function fetchDealDriveFiles(
@@ -658,7 +703,9 @@ export async function fetchDealDriveFiles(
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
     `/deals/${dealId}/drive-files/`
   );
-  const rawFiles = Array.isArray(payload?.files) ? payload.files : [];
+  const rawFiles = Array.isArray(payload?.files)
+    ? (payload.files as Record<string, unknown>[])
+    : [];
   return {
     files: rawFiles.map(mapDriveFile),
     folderId: payload?.folder_id ?? null,
@@ -684,7 +731,7 @@ export async function uploadDealDriveFile(
     throw new Error('Не удалось загрузить файл в Google Drive');
   }
 
-  return mapDriveFile(payload.file);
+  return mapDriveFile(payload.file as Record<string, unknown>);
 }
 
 export async function recognizeDealPolicies(
@@ -695,35 +742,47 @@ export async function recognizeDealPolicies(
     method: 'POST',
     body: JSON.stringify({ deal_id: dealId, file_ids: fileIds }),
   });
-  const rawResults = Array.isArray(payload?.results) ? payload.results : [];
+  const rawResults = Array.isArray(payload?.results) ? (payload.results as Record<string, unknown>[]) : [];
   return {
-    results: rawResults.map((item) => ({
-      fileId: item.fileId,
-      fileName: item.fileName ?? null,
-      status: item.status === 'parsed' ? 'parsed' : 'error',
-      message: item.message,
-      transcript: item.transcript ?? null,
-      data: item.data ?? null,
-    })),
+    results: rawResults.map((raw) => {
+      const item = raw as Record<string, unknown>;
+      const statusValue = toStringValue(item.status ?? item.state);
+      return {
+        fileId: toStringValue(item.fileId ?? item.file_id),
+        fileName: toNullableString(item.fileName ?? item.file_name),
+        status:
+          statusValue === 'parsed'
+            ? 'parsed'
+            : statusValue === 'exists'
+            ? 'exists'
+            : 'error',
+        message: toOptionalString(item.message),
+        transcript: toNullableString(item.transcript ?? item.transcript_text),
+        data:
+          typeof item.data === 'object' && item.data !== null
+            ? (item.data as Record<string, unknown>)
+            : undefined,
+      };
+    }),
   };
 }
 
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/policies/${qs}`);
-  return unwrapList(payload).map(mapPolicy);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/policies/${qs}`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapPolicy);
 }
 
 export async function fetchPayments(filters?: FilterParams): Promise<Payment[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/payments/${qs}`);
-  return unwrapList(payload).map(mapPayment);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/payments/${qs}`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapPayment);
 }
 
 export async function fetchTasks(filters?: FilterParams): Promise<Task[]> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/tasks/${qs}`);
-  return unwrapList(payload).map(mapTask);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/tasks/${qs}`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapTask);
 }
 
 // Paginated fetch variants for use in views
@@ -731,12 +790,12 @@ export async function fetchClientsWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Client>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/clients/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/clients/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
     previous: payload.previous || null,
-    results: unwrapList(payload).map(mapClient),
+    results: unwrapList<Record<string, unknown>>(payload).map(mapClient),
   };
 }
 
@@ -744,12 +803,12 @@ export async function fetchDealsWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Deal>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/deals/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
     previous: payload.previous || null,
-    results: unwrapList(payload).map(mapDeal),
+    results: unwrapList<Record<string, unknown>>(payload).map(mapDeal),
   };
 }
 
@@ -757,12 +816,12 @@ export async function fetchPoliciesWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Policy>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/policies/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/policies/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
     previous: payload.previous || null,
-    results: unwrapList(payload).map(mapPolicy),
+    results: unwrapList<Record<string, unknown>>(payload).map(mapPolicy),
   };
 }
 
@@ -770,12 +829,12 @@ export async function fetchPaymentsWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Payment>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/payments/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/payments/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
     previous: payload.previous || null,
-    results: unwrapList(payload).map(mapPayment),
+    results: unwrapList<Record<string, unknown>>(payload).map(mapPayment),
   };
 }
 
@@ -783,12 +842,12 @@ export async function fetchTasksWithPagination(
   filters?: FilterParams
 ): Promise<PaginatedResponse<Task>> {
   const qs = buildQueryString(filters || {});
-  const payload = await request(`/tasks/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/tasks/${qs}`);
   return {
     count: payload.count || 0,
     next: payload.next || null,
     previous: payload.previous || null,
-    results: unwrapList(payload).map(mapTask),
+    results: unwrapList<Record<string, unknown>>(payload).map(mapTask),
   };
 }
 
@@ -798,7 +857,7 @@ export async function createClient(data: {
   birthDate?: string | null;
   notes?: string | null;
 }): Promise<Client> {
-  const payload = await request('/clients/', {
+  const payload = await request<Record<string, unknown>>('/clients/', {
     method: 'POST',
     body: JSON.stringify({
       name: data.name,
@@ -814,7 +873,7 @@ export async function updateClient(
   id: string,
   data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }
 ): Promise<Client> {
-  const payload = await request(`/clients/${id}/`, {
+  const payload = await request<Record<string, unknown>>(`/clients/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       name: data.name,
@@ -834,7 +893,7 @@ export async function createDeal(data: {
   executorId?: string | null;
   source?: string;
 }): Promise<Deal> {
-  const payload = await request('/deals/', {
+  const payload = await request<Record<string, unknown>>('/deals/', {
     method: 'POST',
     body: JSON.stringify({
       title: data.title,
@@ -849,7 +908,7 @@ export async function createDeal(data: {
 }
 
 export async function updateDealStatus(id: string, status: DealStatus): Promise<Deal> {
-  const payload = await request(`/deals/${id}/`, {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
@@ -883,7 +942,7 @@ export async function updateDeal(
   if ('source' in data) {
     body.source = data.source ?? null;
   }
-  const payload = await request(`/deals/${id}/`, {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   });
@@ -901,7 +960,7 @@ export async function updatePayment(
     amount: number;
   }>
 ): Promise<Payment> {
-  const payload = await request(`/payments/${id}/`, {
+  const payload = await request<Record<string, unknown>>(`/payments/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       deal: data.dealId,
@@ -924,7 +983,7 @@ export async function createQuote(data: {
   deductible?: string;
   comments?: string;
 }): Promise<Quote> {
-  const payload = await request('/quotes/', {
+  const payload = await request<Record<string, unknown>>('/quotes/', {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
@@ -950,7 +1009,7 @@ export async function updateQuote(
     comments?: string;
   }
 ): Promise<Quote> {
-  const payload = await request(`/quotes/${id}/`, {
+  const payload = await request<Record<string, unknown>>(`/quotes/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       insurance_company: data.insuranceCompanyId,
@@ -983,7 +1042,7 @@ export async function createPolicy(data: {
   startDate?: string | null;
   endDate?: string | null;
 }): Promise<Policy> {
-  const payload = await request('/policies/', {
+  const payload = await request<Record<string, unknown>>('/policies/', {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId,
@@ -1012,7 +1071,7 @@ export async function createPayment(data: {
   scheduledDate?: string | null;
   actualDate?: string | null;
 }): Promise<Payment> {
-  const payload = await request('/payments/', {
+  const payload = await request<Record<string, unknown>>('/payments/', {
     method: 'POST',
     body: JSON.stringify({
       deal: data.dealId || null,
@@ -1042,14 +1101,14 @@ const mapChatMessage = (raw: Record<string, unknown>): ChatMessage => ({
 
 export async function fetchChatMessages(dealId: string): Promise<ChatMessage[]> {
   const payload = await request(`/chat_messages/?deal=${dealId}`);
-  return unwrapList(payload).map(mapChatMessage);
+  return unwrapList<Record<string, unknown>>(payload).map(mapChatMessage);
 }
 
 export async function createChatMessage(
   dealId: string,
   body: string
 ): Promise<ChatMessage> {
-  const payload = await request('/chat_messages/', {
+  const payload = await request<Record<string, unknown>>('/chat_messages/', {
     method: 'POST',
     body: JSON.stringify({
       deal: dealId,
@@ -1064,8 +1123,8 @@ export async function deleteChatMessage(id: string): Promise<void> {
 }
 
 export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
-  const payload = await request('/financial_records/');
-  return unwrapList(payload).map(mapFinancialRecord);
+  const payload = await request<Record<string, unknown>>('/financial_records/');
+  return unwrapList<Record<string, unknown>>(payload).map(mapFinancialRecord);
 }
 
 export async function createFinancialRecord(data: {
@@ -1076,7 +1135,7 @@ export async function createFinancialRecord(data: {
   source?: string;
   note?: string;
 }): Promise<FinancialRecord> {
-  const payload = await request('/financial_records/', {
+  const payload = await request<Record<string, unknown>>('/financial_records/', {
     method: 'POST',
     body: JSON.stringify({
       payment: data.paymentId,
@@ -1100,7 +1159,7 @@ export async function updateFinancialRecord(
     note: string;
   }>
 ): Promise<FinancialRecord> {
-  const payload = await request(`/financial_records/${id}/`, {
+  const payload = await request<Record<string, unknown>>(`/financial_records/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({
       amount: data.amount,
@@ -1135,11 +1194,11 @@ export async function fetchDealNotes(
   }
   const qs = buildQueryString(params);
   const payload = await request(`/notes/${qs}`);
-  return unwrapList(payload).map(mapNote);
+  return unwrapList<Record<string, unknown>>(payload).map(mapNote);
 }
 
 export async function createNote(dealId: string, body: string): Promise<Note> {
-  const payload = await request('/notes/', {
+  const payload = await request<Record<string, unknown>>('/notes/', {
     method: 'POST',
     body: JSON.stringify({
       deal: dealId,
@@ -1154,7 +1213,7 @@ export async function archiveNote(id: string): Promise<void> {
 }
 
 export async function restoreNote(id: string): Promise<Note> {
-  const payload = await request(`/notes/${id}/restore/`, {
+  const payload = await request<Record<string, unknown>>(`/notes/${id}/restore/`, {
     method: 'POST',
   });
   return mapNote(payload);
@@ -1181,7 +1240,7 @@ export async function createTask(data: {
     body.assignee = data.assigneeId;
   }
 
-  const payload = await request('/tasks/', {
+  const payload = await request<Record<string, unknown>>('/tasks/', {
     method: 'POST',
     body: JSON.stringify(body),
   });
@@ -1210,7 +1269,7 @@ export async function updateTask(
     body.assignee = data.assigneeId === '' ? null : data.assigneeId;
   }
 
-  const payload = await request(`/tasks/${id}/`, {
+  const payload = await request<Record<string, unknown>>(`/tasks/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   });

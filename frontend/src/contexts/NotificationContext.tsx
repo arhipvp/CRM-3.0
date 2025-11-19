@@ -1,21 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-
-export interface Notification {
-  id: string;
-  message: string;
-  type: 'error' | 'success' | 'info' | 'warning';
-  duration?: number; // milliseconds, undefined = persistent
-}
-
-interface NotificationContextType {
-  notifications: Notification[];
-  addNotification: (
-    message: string,
-    type: 'error' | 'success' | 'info' | 'warning',
-    duration?: number
-  ) => void;
-  removeNotification: (id: string) => void;
-}
+import { Notification, NotificationContextType, NotificationLevel } from './NotificationTypes';
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -27,7 +11,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const addNotification = useCallback(
-    (message: string, type: 'error' | 'success' | 'info' | 'warning' = 'info', duration = 4000) => {
+    (
+      message: string,
+      type: NotificationLevel = 'info',
+      duration = 4000
+    ) => {
       const id = Date.now().toString();
       const notification: Notification = { id, message, type, duration };
 

@@ -2,6 +2,21 @@ export type DealStatus = 'open' | 'won' | 'lost' | 'on_hold';
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'overdue' | 'canceled';
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent';
 
+export type ActivityActionType =
+  | 'created'
+  | 'status_changed'
+  | 'stage_changed'
+  | 'description_updated'
+  | 'assigned'
+  | 'policy_created'
+  | 'quote_added'
+  | 'document_uploaded'
+  | 'payment_created'
+  | 'comment_added'
+  | 'custom';
+
+export type FinancialRecordType = 'Доход' | 'Расход';
+
 export interface User {
   id: string;
   username: string;
@@ -85,7 +100,7 @@ export interface DriveFile {
 export interface PolicyRecognitionResult {
   fileId: string;
   fileName?: string | null;
-  status: 'parsed' | 'error';
+  status: 'parsed' | 'error' | 'exists';
   message?: string;
   transcript?: string | null;
   data?: Record<string, unknown>;
@@ -161,7 +176,7 @@ export interface FinancialRecord {
   description?: string;
   source?: string;
   note?: string;
-  recordType?: 'Доход' | 'Расход'; // Вычисляемое поле
+  recordType?: FinancialRecordType; // Вычисляемое поле
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -200,18 +215,7 @@ export interface Note {
 export interface ActivityLog {
   id: string;
   deal: string;
-  actionType:
-    | 'created'
-    | 'status_changed'
-    | 'stage_changed'
-    | 'description_updated'
-    | 'assigned'
-    | 'policy_created'
-    | 'quote_added'
-    | 'document_uploaded'
-    | 'payment_created'
-    | 'comment_added'
-    | 'custom';
+  actionType: ActivityActionType;
   actionTypeDisplay: string;
   description: string;
   user?: string | null;

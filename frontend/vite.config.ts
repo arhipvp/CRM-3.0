@@ -1,11 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type UserConfigExport } from 'vite';
+import type { UserConfig as VitestUserConfig } from 'vitest';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url));
 
-export default defineConfig({
+const config: UserConfigExport & { test?: VitestUserConfig } = {
   root: rootDir,
   publicDir: fileURLToPath(new URL('./public', import.meta.url)),
   plugins: [react(), tailwindcss()],
@@ -32,4 +33,6 @@ export default defineConfig({
     setupFiles: fileURLToPath(new URL('./src/setupTests.ts', import.meta.url)),
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
-});
+};
+
+export default defineConfig(config);

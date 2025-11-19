@@ -12,7 +12,6 @@ import {
   Policy,
   PolicyRecognitionResult,
   Quote,
-  SalesChannel,
   Task,
   User,
 } from '../../types';
@@ -181,7 +180,6 @@ interface DealsViewProps {
   financialRecords: FinancialRecord[];
   tasks: Task[];
   users: User[];
-  salesChannels: SalesChannel[];
   currentUser: User;
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
@@ -234,7 +232,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
   financialRecords,
   tasks,
   users,
-  salesChannels,
   selectedDealId,
   onSelectDeal,
   onUpdateStatus,
@@ -330,20 +327,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setRecognitionMessage(null);
   }, [selectedDeal?.id]);
 
-  // Загружать сообщения когда открываем вкладку "Чат"
-  useEffect(() => {
-    if (activeTab === 'chat') {
-      void loadChatMessages();
-    }
-  }, [activeTab, loadChatMessages]);
-
-  // Загружать логи активности когда открываем вкладку "История"
-  useEffect(() => {
-    if (activeTab === 'history') {
-      void loadActivityLogs();
-    }
-  }, [activeTab, loadActivityLogs]);
-
   const loadChatMessages = useCallback(async () => {
     const dealId = selectedDeal?.id;
     if (!dealId) {
@@ -360,6 +343,37 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
   }, [onFetchChatMessages, selectedDeal?.id]);
 
+  const loadActivityLogs = useCallback(async () => {
+    const dealId = selectedDeal?.id;
+    if (!dealId) {
+      return;
+    }
+    setIsActivityLoading(true);
+    try {
+      const logs = await onFetchDealHistory(dealId);
+      setActivityLogs(logs);
+    } catch (err) {
+      console.error('Ошибка загрузки истории:', err);
+    } finally {
+      setIsActivityLoading(false);
+    }
+  }, [onFetchDealHistory, selectedDeal?.id]);
+
+  // Reload activity log when the "history" tab becomes active
+  useEffect(() => {
+    if (activeTab === 'history') {
+      void loadActivityLogs();
+    }
+  }, [activeTab, loadActivityLogs]);
+
+  // Reload chat messages when the "chat" tab becomes active
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      void loadChatMessages();
+    }
+  }, [activeTab, loadChatMessages]);
+
+
   const handleMarkTaskDone = async (taskId: string) => {
     if (completingTaskIds.includes(taskId)) {
       return;
@@ -373,22 +387,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
       setCompletingTaskIds((prev) => prev.filter((id) => id !== taskId));
     }
   };
-
-  const loadActivityLogs = useCallback(async () => {
-    const dealId = selectedDeal?.id;
-    if (!dealId) {
-      return;
-    }
-    setIsActivityLoading(true);
-    try {
-      const logs = await onFetchDealHistory(dealId);
-      setActivityLogs(logs);
-    } catch (err) {
-      console.error('Ошибка загрузки логов активности:', err);
-    } finally {
-      setIsActivityLoading(false);
-    }
-  }, [onFetchDealHistory, selectedDeal?.id]);
 
   const handleInlineDateChange = async (
     field: 'nextContactDate' | 'expectedClose',
@@ -593,23 +591,19 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const loadNotes = useCallback(
     async (filter: 'active' | 'archived') => {
-      if (!selectedDeal) {
+      const dealId = selectedDeal?.id;
+      if (!dealId) {
         setNotes([]);
         return;
       }
       setNotesLoading(true);
       setNotesError(null);
       try {
-        const fetchedNotes = await fetchDealNotes(
-          selectedDeal.id,
-          filter === 'archived'
-        );
+        const fetchedNotes = await fetchDealNotes(dealId, filter === 'archived');
         setNotes(fetchedNotes);
       } catch (err) {
         console.error('Ошибка загрузки заметок:', err);
-        setNotesError(
-          err instanceof Error ? err.message : 'Не удалось загрузить заметки'
-        );
+        setNotesError(err instanceof Error ? err.message : 'Не удалось загрузить заметки');
       } finally {
         setNotesLoading(false);
       }
@@ -1148,8 +1142,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   <tr key={quote.id} className="odd:bg-white even:bg-slate-50">
                     <td className="px-4 py-3 font-semibold text-slate-900">{quote.insuranceType}</td>
                     <td className="px-4 py-3 text-slate-600">{quote.insuranceCompany || '—'}</td>
-                    <td className="px-4 py-3 text-slate-900">{formatCurrency(quote.sumInsured)}</td>
-                    <td className="px-4 py-3 text-slate-900">{formatCurrency(quote.premium)}</td>
+                    <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.sumInsured))}</td>
+                    <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.premium))}</td>
                     <td className="px-4 py-3 text-slate-900">{quote.deductible || '—'}</td>
                     <td className="px-4 py-3 text-slate-600">{quote.comments || '—'}</td>
                     <td className="px-4 py-3 text-slate-400">{formatDate(quote.createdAt)}</td>
@@ -1163,7 +1157,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       </button>
                       <button
                         className="text-xs font-semibold text-rose-500 hover:text-rose-600"
-                        onClick={() => onDeleteQuote(selectedDeal.id, quote.id).catch(() => undefined)}
+                        onClick={() =>
+                          onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(() => undefined)
+                        }
                         type="button"
                       >
                         Удалить
