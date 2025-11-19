@@ -50,7 +50,6 @@ const DEAL_TABS = [
   { id: 'payments', label: 'Платежи' },
   { id: 'chat', label: 'Чат' },
   { id: 'files', label: 'Файлы' },
-  { id: 'notes', label: 'Заметки' },
   { id: 'history', label: 'История' },
 ] as const;
 
@@ -457,13 +456,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setNotesError(null);
     try {
       await archiveNote(noteId);
-      setNotesFilter('archived');
+      await loadNotes(notesFilter);
     } catch (err) {
-      console.error('Ошибка отправки заметки в архив:', err);
+      console.error('Ошибка удаления заметки:', err);
       setNotesError(
         err instanceof Error
           ? err.message
-          : 'Не удалось переместить заметку в архив'
+          : 'Не удалось удалить заметку'
       );
     } finally {
       setNotesAction(null);
@@ -612,11 +611,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
   );
 
   useEffect(() => {
-    if (activeTab !== 'notes') {
+    if (!selectedDeal?.id) {
+      setNotes([]);
       return;
     }
     void loadNotes(notesFilter);
-  }, [activeTab, loadNotes, notesFilter]);
+  }, [selectedDeal?.id, loadNotes, notesFilter]);
 
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
@@ -1339,14 +1339,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
   );
 };
 
-  const renderNotesTab = () => {
+  const renderNotesSection = () => {
     if (!selectedDeal) {
       return null;
     }
 
     const filterOptions: { value: 'active' | 'archived'; label: string }[] = [
       { value: 'active', label: 'Активные' },
-      { value: 'archived', label: 'Архив' },
+      { value: 'archived', label: 'Показать удаленные заметки' },
     ];
 
     return (
@@ -1423,7 +1423,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       onClick={() => handleArchiveNote(note.id)}
                       className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
                     >
-                      {notesAction === note.id ? 'Архивируем...' : 'В архив'}
+                      {notesAction === note.id ? 'Удаляем...' : 'Удалить'}
                     </button>
                   ) : (
                     <button
@@ -1443,7 +1443,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500">
             {notesFilter === 'active'
               ? 'Заметок пока нет — добавьте первую, чтобы зафиксировать важное.'
-              : 'Архив пуст — вы ещё не отправляли заметки в архив.'}
+              : 'Удаленные заметки пусты — вы еще не удаляли заметки.'}
           </div>
         )}
       </section>
@@ -1547,12 +1547,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </div>
               </div>
             </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-              {selectedDeal?.description ? (
-                <p>{selectedDeal.description}</p>
-              ) : (
-                <p>Описание сделки не заполнено.</p>
-              )}
+            <div className="space-y-6">
+              {renderNotesSection()}
             </div>
           </div>
         );
@@ -1569,8 +1565,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
         return renderFilesTab();
       case 'chat':
         return renderChatTab();
-      case 'notes':
-        return renderNotesTab();
       case 'history':
         return renderActivityTab();
       default:
@@ -1713,6 +1707,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </p>
                 <p className="text-sm text-slate-500 mt-1">
                   Продавец: {selectedDeal.sellerName || '—'} · Исполнитель: {selectedDeal.executorName || '—'}
+                </p>
+                <p className="text-sm text-slate-500 mt-1 max-w-3xl whitespace-pre-line">
+                  {selectedDeal.description || 'Описание сделки не заполнено.'}
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
