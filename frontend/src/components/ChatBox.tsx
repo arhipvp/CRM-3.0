@@ -8,6 +8,28 @@ interface ChatBoxProps {
   onDeleteMessage: (messageId: string) => Promise<void>;
 }
 
+const USER_COLOR_PALETTE = [
+  '#2563eb',
+  '#059669',
+  '#db2777',
+  '#f97316',
+  '#0ea5e9',
+  '#9333ea',
+  '#10b981',
+  '#6366f1',
+];
+
+const getUserColor = (identifier?: string | null) => {
+  if (!identifier) {
+    return undefined;
+  }
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i += 1) {
+    hash = (hash * 31 + identifier.charCodeAt(i)) >>> 0;
+  }
+  return USER_COLOR_PALETTE[hash % USER_COLOR_PALETTE.length];
+};
+
 const getUserDisplayName = (user: User) => {
   const parts = [user.firstName, user.lastName].filter(Boolean);
   return parts.length ? parts.join(' ') : user.username;
@@ -22,11 +44,15 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
   const [newMessage, setNewMessage] = useState('');
   const [isSubmitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Автоскролл к последнему сообщению
+  // РђРІС‚РѕСЃРєСЂРѕР»Р» Рє РїРѕСЃР»РµРґРЅРµРјСѓ СЃРѕРѕР±С‰РµРЅРёСЋ
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
+    }
+    container.scrollTop = container.scrollHeight;
   }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -40,18 +66,18 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
       await onSendMessage(newMessage.trim());
       setNewMessage('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
+      setError(err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (messageId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить это сообщение?')) return;
+    if (!confirm('Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ СЌС‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ?')) return;
     try {
       await onDeleteMessage(messageId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить сообщение');
+      setError(err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ');
     }
   };
 
@@ -61,41 +87,61 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full max-h-96 bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full min-h-[55vh] max-h-[70vh] w-full bg-white border border-slate-200 rounded-lg overflow-hidden">
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-3">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto bg-slate-50 p-3 space-y-2"
+      >
         {messages.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-8">
             Сообщений нет. Начните разговор!
           </p>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className="bg-white rounded-lg p-3 border border-slate-100 hover:border-slate-200 transition group"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-900">{msg.author_name}</p>
-                  <p className="text-sm text-slate-600 mt-1 break-words">{msg.body}</p>
-                  <p className="text-xs text-slate-400 mt-2">{formatTime(msg.created_at)}</p>
+          messages.map((msg) => {
+            const authorColor = getUserColor(
+              msg.author ?? msg.author_username ?? msg.author_name
+            );
+            const authorName =
+              msg.author_name || msg.author_username || 'Пользователь';
+            return (
+              <div
+                key={msg.id}
+                className="group flex items-start gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2 shadow-sm transition hover:border-slate-200"
+              >
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p
+                      className="text-sm font-semibold"
+                      style={authorColor ? { color: authorColor } : undefined}
+                    >
+                      {authorName}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {formatTime(msg.created_at)}
+                    </p>
+                  </div>
+                  <p className="text-sm text-slate-600 break-words leading-relaxed">
+                    {msg.body}
+                  </p>
                 </div>
                 <button
                   onClick={() => handleDelete(msg.id)}
                   className="text-xs text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition flex-shrink-0"
                 >
-                  ✕
+                  ×
                 </button>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input area */}
-      <div className="border-t border-slate-200 p-4 bg-white space-y-3">
-        {error && <p className="text-xs text-red-500 bg-red-50 p-2 rounded">{error}</p>}
+      <div className="border-t border-slate-200 bg-white px-4 py-3">
+        {error && (
+          <p className="text-xs text-red-500 bg-red-50 p-2 rounded">{error}</p>
+        )}
         <form onSubmit={handleSendMessage} className="space-y-2">
           <div className="text-xs text-slate-500">
             Отправляете как <span className="font-semibold text-slate-700">{getUserDisplayName(currentUser)}</span>
@@ -114,7 +160,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
               disabled={isSubmitting || !newMessage.trim()}
               className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60 flex-shrink-0"
             >
-              {isSubmitting ? '...' : '📤'}
+              {isSubmitting ? '...' : '💬'}
             </button>
           </div>
         </form>
