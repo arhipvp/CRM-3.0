@@ -3,6 +3,7 @@ from apps.users.models import UserRole
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import viewsets
 
@@ -47,10 +48,24 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         author_name = serializer.validated_data.get("author_name")
+        deal = serializer.validated_data.get("deal")
+        self._ensure_user_is_deal_seller(deal)
         if not author_name and user and user.is_authenticated:
             full_name = (user.get_full_name() or "").strip()
             author_name = full_name or user.username
         serializer.save(author_name=author_name or "")
+
+    def _ensure_user_is_deal_seller(self, deal):
+        user = self.request.user
+        if not user or not user.is_authenticated or not deal:
+            raise PermissionDenied(
+                "Только владелец сделки (продавец) может создавать заметки."
+            )
+
+        if deal.seller_id != user.id:
+            raise PermissionDenied(
+                "Только владелец сделки (продавец) может создавать заметки."
+            )
 
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
