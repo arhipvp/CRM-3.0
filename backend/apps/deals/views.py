@@ -12,8 +12,9 @@ from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import AuditLog, UserRole
-from django.db.models import DecimalField, F, Q, Sum, Value
+from django.db.models import DecimalField, F, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
+from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -36,6 +37,48 @@ def _is_admin_user(user) -> bool:
     if not hasattr(user, "_cached_is_admin"):
         user._cached_is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
     return user._cached_is_admin
+
+
+HISTORY_PREFETCHES = [
+    Prefetch(
+        "tasks",
+        queryset=Task.objects.with_deleted().only("id"),
+        to_attr="_history_tasks",
+    ),
+    Prefetch(
+        "documents",
+        queryset=Document.objects.with_deleted().only("id"),
+        to_attr="_history_documents",
+    ),
+    Prefetch(
+        "notes",
+        queryset=Note.objects.with_deleted().only("id"),
+        to_attr="_history_notes",
+    ),
+    Prefetch(
+        "policies",
+        queryset=Policy.objects.with_deleted().only("id"),
+        to_attr="_history_policies",
+    ),
+    Prefetch(
+        "quotes",
+        queryset=Quote.objects.with_deleted().only("id"),
+        to_attr="_history_quotes",
+    ),
+    Prefetch(
+        "payments",
+        queryset=Payment.objects.with_deleted()
+        .only("id")
+        .prefetch_related(
+            Prefetch(
+                "financial_records",
+                queryset=FinancialRecord.objects.with_deleted().only("id"),
+                to_attr="_history_financial_records",
+            )
+        ),
+        to_attr="_history_payments",
+    ),
+]
 
 
 class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -101,7 +144,11 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         parser_classes=[MultiPartParser, FormParser],
     )
     def drive_files(self, request, pk=None):
-        deal = self.get_object()
+        queryset = (
+            self.filter_queryset(self.get_queryset())
+            .prefetch_related(*HISTORY_PREFETCHES)
+        )
+        deal = get_object_or_404(queryset, pk=pk)
         uploaded_file = request.FILES.get("file") if request.method == "POST" else None
 
         if request.method == "POST" and not uploaded_file:
@@ -136,40 +183,66 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         return Response(timeline)
 
     def _collect_related_ids(self, deal: Deal) -> dict:
-        def stringify(queryset):
-            return [str(pk) for pk in set(queryset)]
+        def _prefetched_ids(attr: str, fallback):
+            items = getattr(deal, attr, None)
+            if items is None:
+                return [str(pk) for pk in fallback]
+            return [str(obj.id) for obj in items]
 
-        return {
-            "task": stringify(
-                Task.objects.with_deleted().filter(deal=deal).values_list("id", flat=True)
-            ),
-            "document": stringify(
-                Document.objects.with_deleted()
-                .filter(deal=deal)
-                .values_list("id", flat=True)
-            ),
-            "payment": stringify(
-                Payment.objects.with_deleted()
-                .filter(deal=deal)
-                .values_list("id", flat=True)
-            ),
-            "financial_record": stringify(
-                FinancialRecord.objects.with_deleted()
+        def _financial_record_ids():
+            payments = getattr(deal, "_history_payments", None)
+            if payments is not None:
+                ids = []
+                for payment in payments:
+                    records = getattr(payment, "_history_financial_records", None)
+                    if records is None:
+                        records = (
+                            FinancialRecord.objects.with_deleted()
+                            .filter(payment=payment)
+                            .values_list("id", flat=True)
+                        )
+                    ids.extend(str(pk) for pk in records)
+                return list(set(ids))
+            return [
+                str(pk)
+                for pk in FinancialRecord.objects.with_deleted()
                 .filter(payment__deal=deal)
                 .values_list("id", flat=True)
+            ]
+
+        return {
+            "task": _prefetched_ids(
+                "_history_tasks",
+                Task.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
             ),
-            "note": stringify(
-                Note.objects.with_deleted().filter(deal=deal).values_list("id", flat=True)
+            "document": _prefetched_ids(
+                "_history_documents",
+                Document.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True),
             ),
-            "policy": stringify(
+            "payment": _prefetched_ids(
+                "_history_payments",
+                Payment.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True),
+            ),
+            "financial_record": _financial_record_ids(),
+            "note": _prefetched_ids(
+                "_history_notes",
+                Note.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
+            ),
+            "policy": _prefetched_ids(
+                "_history_policies",
                 Policy.objects.with_deleted()
                 .filter(deal=deal)
-                .values_list("id", flat=True)
+                .values_list("id", flat=True),
             ),
-            "quote": stringify(
+            "quote": _prefetched_ids(
+                "_history_quotes",
                 Quote.objects.with_deleted()
                 .filter(deal=deal)
-                .values_list("id", flat=True)
+                .values_list("id", flat=True),
             ),
         }
 
