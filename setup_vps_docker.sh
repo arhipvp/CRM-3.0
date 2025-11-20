@@ -5,7 +5,7 @@
 set -e
 
 echo "============================================"
-echo "🐳 Setting up Docker and Docker-Compose"
+echo "🐳 Setting up Docker and Docker Compose"
 echo "============================================"
 
 # Update package manager
@@ -20,8 +20,8 @@ apt-get install -y docker.io
 
 # Install Docker-Compose
 echo ""
-echo "🔧 Installing Docker-Compose..."
-apt-get install -y docker-compose
+echo "🔧 Installing Docker Compose Plugin..."
+apt-get install -y docker-compose-plugin
 
 # Create deploy user if it doesn't exist
 echo ""
@@ -62,7 +62,7 @@ echo "============================================"
 echo "✅ Verification"
 echo "============================================"
 docker --version
-docker-compose --version
+docker compose version
 echo ""
 echo "👤 Deploy user info:"
 id deploy

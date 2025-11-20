@@ -17,7 +17,7 @@ echo "Папка бекапа: $BACKUP_DIR/$BACKUP_NAME"
 
 # 1. Бекап PostgreSQL БД
 echo "📦 Создаём dump базы данных..."
-docker-compose exec -T db pg_dump -U crm3 crm3 > "$BACKUP_DIR/$BACKUP_NAME/database.sql"
+docker compose exec -T db pg_dump -U crm3 crm3 > "$BACKUP_DIR/$BACKUP_NAME/database.sql"
 
 # 2. Бекап загруженных файлов (если есть)
 if [ -d "./backend/media" ]; then

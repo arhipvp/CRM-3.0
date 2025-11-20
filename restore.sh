@@ -30,9 +30,9 @@ echo "Бекап: $BACKUP_NAME"
 echo ""
 
 # Проверка что контейнеры запущены
-if ! docker-compose ps | grep -q "db"; then
-    echo "⚠️  БД контейнер не запущен. Запускаем docker-compose..."
-    docker-compose up -d
+if ! docker compose ps | grep -q "db"; then
+    echo "⚠️  БД контейнер не запущен. Запускаем docker compose..."
+    docker compose up -d
     sleep 10
 fi
 
@@ -43,9 +43,9 @@ tar -xzf "$BACKUP_FILE" -C ./backups
 
 # 2. Восстанавливаем БД
 echo "🗄️  Восстанавливаем базу данных..."
-docker-compose exec -T db dropdb -U crm3 crm3 --if-exists
-docker-compose exec -T db createdb -U crm3 crm3
-docker-compose exec -T db psql -U crm3 crm3 < "$BACKUP_DIR/$BACKUP_NAME/database.sql"
+docker compose exec -T db dropdb -U crm3 crm3 --if-exists
+docker compose exec -T db createdb -U crm3 crm3
+docker compose exec -T db psql -U crm3 crm3 < "$BACKUP_DIR/$BACKUP_NAME/database.sql"
 
 # 3. Восстанавливаем загруженные файлы
 if [ -d "$BACKUP_DIR/$BACKUP_NAME/media" ] && [ "$(ls -A $BACKUP_DIR/$BACKUP_NAME/media)" ]; then
@@ -75,6 +75,6 @@ echo ""
 echo "✅ Восстановление завершено успешно!"
 echo ""
 echo "Следующие шаги:"
-echo "  1. docker-compose restart backend  # Перезагрузить бэкенд"
+echo "  1. docker compose restart backend  # Перезагрузить бэкенд"
 echo "  2. Проверить что всё работает"
-echo "  3. docker-compose logs -f backend  # Смотреть логи"
+echo "  3. docker compose logs -f backend  # Смотреть логи"
