@@ -30,6 +30,14 @@ from .serializers import (
 )
 
 
+def _is_admin_user(user) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    if not hasattr(user, "_cached_is_admin"):
+        user._cached_is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
+    return user._cached_is_admin
+
+
 class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DealSerializer
     filterset_class = DealFilterSet
@@ -78,7 +86,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return queryset
 
         # Администраторы видят все
-        is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
+        is_admin = _is_admin_user(user)
 
         if is_admin:
             return queryset
@@ -228,7 +236,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
         )
 
         # Администраторы видят все котировки
-        is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
+        is_admin = _is_admin_user(user)
 
         if not is_admin:
             # Остальные видят только котировки для своих сделок (где user = seller или executor)

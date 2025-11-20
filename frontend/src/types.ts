@@ -33,6 +33,7 @@ export interface Client {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
+  driveFolderId?: string | null;
 }
 
 export interface Quote {
@@ -178,7 +179,6 @@ export interface Policy {
   endDate?: string | null;
   status: string;
   paymentsPaid?: string;
-  paymentsTotal?: string;
   paymentsTotal?: string;
   createdAt: string;
   driveFolderId?: string | null;

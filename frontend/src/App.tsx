@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { MainLayout, View } from './components/MainLayout';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { MainLayout } from './components/MainLayout';
 import { Modal } from './components/Modal';
 import { LoginPage } from './components/LoginPage';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
@@ -83,24 +84,24 @@ const buildPolicyDraftFromRecognition = (
     : [];
   const payments =
     paymentsRaw.length > 0
-          ? paymentsRaw.map((payment) => ({
-              amount: normalizeStringValue(payment.amount),
-              description: '',
-              scheduledDate: normalizeDateValue(payment.payment_date),
-              actualDate: normalizeDateValue(payment.actual_payment_date),
-              incomes: [],
-              expenses: [],
-            }))
-          : [
-              {
-                amount: '',
-                description: '',
-                scheduledDate: '',
-                actualDate: '',
-                incomes: [],
-                expenses: [],
-              },
-        ];
+      ? paymentsRaw.map((payment) => ({
+        amount: normalizeStringValue(payment.amount),
+        description: '',
+        scheduledDate: normalizeDateValue(payment.payment_date),
+        actualDate: normalizeDateValue(payment.actual_payment_date),
+        incomes: [],
+        expenses: [],
+      }))
+      : [
+        {
+          amount: '',
+          description: '',
+          scheduledDate: '',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ];
 
   return {
     number: normalizeStringValue(policy.policy_number),
@@ -152,7 +153,6 @@ const AppContent: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [view, setView] = useState<View>('deals');
   const [modal, setModal] = useState<ModalType>(null);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
@@ -188,6 +188,7 @@ const AppContent: React.FC = () => {
   const [isLoading, setLoading] = useState(true);
   const [isSyncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
 
   const refreshDeals = useCallback(
     async (filters?: FilterParams) => {
@@ -247,11 +248,6 @@ const AppContent: React.FC = () => {
     },
     [salesChannels]
   );
-
-  const closePolicyModal = useCallback(() => {
-    setPolicyDealId(null);
-    setPolicyPrefill(null);
-  }, []);
 
   const loadData = useCallback(async () => {
     console.log('Loading data...');
@@ -343,14 +339,15 @@ const AppContent: React.FC = () => {
     refreshDeals,
     isAuthenticated,
   ]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       return;
     }
-    if (view === 'knowledge') {
+    if (location.pathname === '/knowledge') {
       refreshKnowledgeDocuments();
     }
-  }, [isAuthenticated, refreshKnowledgeDocuments, view]);
+  }, [isAuthenticated, refreshKnowledgeDocuments, location.pathname]);
 
   // Check authentication on app load
   useEffect(() => {
@@ -529,11 +526,11 @@ const AppContent: React.FC = () => {
         prev.map((deal) =>
           deal.id === dealId
             ? {
-                ...deal,
-                quotes: deal.quotes
-                  ? deal.quotes.map((quote) => (quote.id === id ? updated : quote))
-                  : [updated],
-              }
+              ...deal,
+              quotes: deal.quotes
+                ? deal.quotes.map((quote) => (quote.id === id ? updated : quote))
+                : [updated],
+            }
             : deal
         )
       );
@@ -662,9 +659,9 @@ const AppContent: React.FC = () => {
             prev.map((existing) =>
               existing.id === payment.id
                 ? {
-                    ...existing,
-                    financialRecords: [...createdRecords, ...(existing.financialRecords || [])],
-                  }
+                  ...existing,
+                  financialRecords: [...createdRecords, ...(existing.financialRecords || [])],
+                }
                 : existing
             )
           );
@@ -801,49 +798,32 @@ const AppContent: React.FC = () => {
         scheduledDate: values.scheduledDate || null,
         actualDate: values.actualDate || null,
       });
-
-      setPayments((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
       setPaymentModal(null);
     } catch (err) {
-      if (err instanceof APIError && err.status === 403) {
-        addNotification('Только администратор может редактировать данные', 'error', 4000);
-      } else {
-        setError(err instanceof Error ? err.message : 'Не удалось обновить платеж');
-      }
+      setError(err instanceof Error ? err.message : 'Не удалось обновить платеж');
       throw err;
     }
   };
 
   const handleAddFinancialRecord = async (values: AddFinancialRecordFormValues) => {
+    const paymentId = values.paymentId || financialRecordModal?.paymentId;
+    if (!paymentId) {
+      return;
+    }
     try {
-      // Convert recordType to signed amount
-      const amount = parseFloat(values.amount) * (values.recordType === 'income' ? 1 : -1);
-
       const created = await createFinancialRecord({
-        paymentId: values.paymentId,
-        amount,
+        paymentId: paymentId,
+        amount: parseFloat(values.amount),
         date: values.date || null,
         description: values.description,
         source: values.source,
         note: values.note,
       });
-
       setFinancialRecords((prev) => [created, ...prev]);
-      // Also update payments to reflect new financial record
-      const paymentId = values.paymentId;
-      setPayments((prev) =>
-        prev.map((p) =>
-          p.id === paymentId
-            ? {
-                ...p,
-                financialRecords: [created, ...(p.financialRecords || [])],
-              }
-            : p
-        )
-      );
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать финансовую запись');
+      setError(err instanceof Error ? err.message : 'Не удалось создать запись');
       throw err;
     }
   };
@@ -853,32 +833,19 @@ const AppContent: React.FC = () => {
     values: AddFinancialRecordFormValues
   ) => {
     try {
-      // Convert recordType to signed amount
-      const amount = parseFloat(values.amount) * (values.recordType === 'income' ? 1 : -1);
-
       const updated = await updateFinancialRecord(recordId, {
-        amount,
+        amount: parseFloat(values.amount),
         date: values.date || null,
         description: values.description,
         source: values.source,
         note: values.note,
       });
-
-      setFinancialRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-      // Also update in payments
-      setPayments((prev) =>
-        prev.map((p) => ({
-          ...p,
-          financialRecords: p.financialRecords?.map((r) => (r.id === updated.id ? updated : r)),
-        }))
+      setFinancialRecords((prev) =>
+        prev.map((record) => (record.id === updated.id ? updated : record))
       );
       setFinancialRecordModal(null);
     } catch (err) {
-      if (err instanceof APIError && err.status === 403) {
-        addNotification('Только администратор может редактировать данные', 'error', 4000);
-      } else {
-        setError(err instanceof Error ? err.message : 'Не удалось обновить финансовую запись');
-      }
+      setError(err instanceof Error ? err.message : 'Не удалось обновить запись');
       throw err;
     }
   };
@@ -886,307 +853,299 @@ const AppContent: React.FC = () => {
   const handleDeleteFinancialRecord = async (recordId: string) => {
     try {
       await deleteFinancialRecord(recordId);
-      setFinancialRecords((prev) => prev.filter((r) => r.id !== recordId));
-      setPayments((prev) =>
-        prev.map((payment) => ({
-          ...payment,
-          financialRecords: payment.financialRecords?.filter((r) => r.id !== recordId),
-        }))
-      );
+      setFinancialRecords((prev) => prev.filter((record) => record.id !== recordId));
+      setFinancialRecordModal(null);
     } catch (err) {
-      addNotification('Не удалось удалить финансовую запись', 'error', 4000);
+      setError(err instanceof Error ? err.message : 'Не удалось удалить запись');
       throw err;
     }
   };
 
   const handleLogout = () => {
     clearTokens();
-    setIsAuthenticated(false);
     setCurrentUser(null);
-    setClients([]);
+    setIsAuthenticated(false);
     setDeals([]);
+    setClients([]);
     setPolicies([]);
     setPayments([]);
     setFinancialRecords([]);
     setTasks([]);
-    setUsers([]);
   };
 
-  const handleLoginSuccess = async () => {
-    try {
-      console.log('handleLoginSuccess: starting...');
-      const userData = await getCurrentUser();
-      console.log('handleLoginSuccess: got user data', userData);
-      // Parse roles from the API response structure
-      const user = mapApiUser(userData);
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      // Load application data after successful login
-      console.log('handleLoginSuccess: loading data...');
-      await loadData();
-      console.log('handleLoginSuccess: complete');
-    } catch (err) {
-      console.error('handleLoginSuccess: error', err);
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить данные пользователя');
-      setIsAuthenticated(false);
-    }
-  };
-
-  const renderView = (authUser: User) => {
-    if (isLoading) {
-      return <p className="text-sm text-slate-500">Загружаем данные из backend...</p>;
-    }
-    switch (view) {
-      case 'deals':
-        return (
-          <DealsView
-            deals={deals}
-            clients={clients}
-            policies={policies}
-            payments={payments}
-            financialRecords={financialRecords}
-            tasks={tasks}
-            users={users}
-            currentUser={authUser}
-            selectedDealId={selectedDealId}
-            onSelectDeal={setSelectedDealId}
-            dealSearch={dealSearch}
-            onDealSearchChange={setDealSearch}
-            dealExecutorFilter={dealExecutorFilter}
-            onDealExecutorFilterChange={setDealExecutorFilter}
-            dealSourceFilter={dealSourceFilter}
-            onDealSourceFilterChange={setDealSourceFilter}
-            dealExpectedCloseFrom={dealExpectedCloseFrom}
-            onDealExpectedCloseFromChange={setDealExpectedCloseFrom}
-            dealExpectedCloseTo={dealExpectedCloseTo}
-            onDealExpectedCloseToChange={setDealExpectedCloseTo}
-            onUpdateStatus={handleStatusChange}
-            onUpdateDeal={handleUpdateDeal}
-            onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
-            onRequestEditQuote={handleRequestEditQuote}
-            onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
-            onDeleteQuote={handleDeleteQuote}
-            onDeletePolicy={handleDeletePolicy}
-            onRefreshPolicies={refreshPolicies}
-            onPolicyDraftReady={handlePolicyDraftReady}
-            onAddPayment={handleAddPayment}
-            onUpdatePayment={handleUpdatePayment}
-            onAddFinancialRecord={handleAddFinancialRecord}
-            onUpdateFinancialRecord={handleUpdateFinancialRecord}
-            onDeleteFinancialRecord={handleDeleteFinancialRecord}
-            onDriveFolderCreated={handleDriveFolderCreated}
-            onFetchChatMessages={handleFetchChatMessages}
-            onSendChatMessage={handleSendChatMessage}
-            onDeleteChatMessage={handleDeleteChatMessage}
-            onFetchDealHistory={fetchDealHistory}
-            onCreateTask={handleCreateTask}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-          />
-        );
-      case 'clients':
-        return (
-          <ClientsView clients={clients} deals={deals} onClientEdit={handleEditClient} />
-        );
-      case 'policies':
-        return <PoliciesView policies={policies} deals={deals} />;
-      case 'payments':
-        return <PaymentsView payments={payments} deals={deals} onMarkPaid={handleMarkPayment} />;
-      case 'finance':
-        return <FinanceView payments={payments} financialRecords={financialRecords} />;
-      case 'tasks':
-        return <TasksView tasks={tasks} deals={deals} />;
-      case 'knowledge':
-        return (
-          <KnowledgeDocumentsView
-            documents={knowledgeDocs}
-            isLoading={knowledgeLoading}
-            error={knowledgeError}
-            onUpload={handleKnowledgeUpload}
-            disabled={knowledgeUploading}
-          />
-        );
-      case 'settings':
-        return <SettingsView />;
-      default:
-        return null;
-    }
-  };
-
-  const editingQuoteValues = editingQuote
-    ? {
-        insuranceCompanyId: editingQuote.insuranceCompanyId,
-        insuranceTypeId: editingQuote.insuranceTypeId,
-        sumInsured: editingQuote.sumInsured,
-        premium: editingQuote.premium,
-        deductible: editingQuote.deductible,
-        comments: editingQuote.comments,
-      }
-    : undefined;
-
-  // Show loading while checking auth
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-sm text-slate-500">Проверяем аутентификацию...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="text-slate-500">
+          {authLoading ? 'Загрузка...' : 'Загрузка данных...'}
+        </div>
       </div>
     );
   }
 
-  // Show login page if not authenticated
-  if (!isAuthenticated || !currentUser) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  if (!isAuthenticated) {
+    return (
+      <LoginPage
+        onLoginSuccess={async () => {
+          const userData = await getCurrentUser();
+          const user = mapApiUser(userData);
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          await loadData();
+        }}
+      />
+    );
   }
 
-  const authenticatedUser = currentUser;
-
   return (
-    <>
-      <NotificationDisplay />
-      <MainLayout
-        activeView={view}
-        onNavigate={setView}
-        onAddDeal={() => setModal('deal')}
-        onAddClient={() => setModal('client')}
-        currentUser={authenticatedUser}
-        onLogout={handleLogout}
-      >
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">Рабочее место</h1>
-              <p className="text-sm text-slate-500">Данные синхронизируются с Django API</p>
-            </div>
-            <button
-              onClick={loadData}
-              className="text-sm text-sky-600 font-semibold hover:text-sky-800"
-              disabled={isLoading}
-            >
-              Обновить данные
-            </button>
-          </div>
-          {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
-          {isSyncing && <p className="text-xs text-sky-600">Обновляем статус сделки...</p>}
-          {renderView(authenticatedUser)}
-        </div>
-
-        {modal === 'client' && (
-          <Modal title="Новый клиент" onClose={() => setModal(null)}>
-            <ClientForm onSubmit={handleAddClient} submitLabel="Создать клиента" />
-          </Modal>
-        )}
-        {editingClient && (
-          <Modal title="Редактировать клиента" onClose={() => setEditingClient(null)}>
-            <ClientForm
-              initial={{
-                name: editingClient.name,
-                phone: editingClient.phone,
-                birthDate: editingClient.birthDate,
-                notes: editingClient.notes,
+    <MainLayout
+      onAddDeal={() => setModal('deal')}
+      onAddClient={() => setModal('client')}
+      currentUser={currentUser || undefined}
+      onLogout={handleLogout}
+    >
+      <Routes>
+        <Route
+          path="/deals"
+          element={
+            <DealsView
+              deals={deals}
+              clients={clients}
+              policies={policies}
+              payments={payments}
+              financialRecords={financialRecords}
+              tasks={tasks}
+              users={users}
+              currentUser={currentUser as User}
+              selectedDealId={selectedDealId}
+              onSelectDeal={setSelectedDealId}
+              onUpdateStatus={handleStatusChange}
+              onUpdateDeal={handleUpdateDeal}
+              onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
+              onRequestEditQuote={handleRequestEditQuote}
+              onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
+              onDeleteQuote={handleDeleteQuote}
+              onDeletePolicy={handleDeletePolicy}
+              onAddPayment={async (values) => {
+                if (selectedDealId) await handleAddPayment({ ...values, dealId: selectedDealId });
               }}
-              onSubmit={(data) => handleUpdateClient(editingClient.id, data)}
-              submitLabel="Сохранить изменения"
+              onUpdatePayment={handleUpdatePayment}
+              onAddFinancialRecord={handleAddFinancialRecord}
+              onUpdateFinancialRecord={handleUpdateFinancialRecord}
+              onDeleteFinancialRecord={handleDeleteFinancialRecord}
+              onDriveFolderCreated={handleDriveFolderCreated}
+              onFetchChatMessages={handleFetchChatMessages}
+              onSendChatMessage={handleSendChatMessage}
+              onDeleteChatMessage={handleDeleteChatMessage}
+              onFetchDealHistory={fetchDealHistory}
+              onCreateTask={handleCreateTask}
+              onUpdateTask={handleUpdateTask}
+              onDeleteTask={handleDeleteTask}
+              dealSearch={dealSearch}
+              onDealSearchChange={setDealSearch}
+              dealExecutorFilter={dealExecutorFilter}
+              onDealExecutorFilterChange={setDealExecutorFilter}
+              dealSourceFilter={dealSourceFilter}
+              onDealSourceFilterChange={setDealSourceFilter}
+              dealExpectedCloseFrom={dealExpectedCloseFrom}
+              onDealExpectedCloseFromChange={setDealExpectedCloseFrom}
+              dealExpectedCloseTo={dealExpectedCloseTo}
+              onDealExpectedCloseToChange={setDealExpectedCloseTo}
+              onPolicyDraftReady={handlePolicyDraftReady}
             />
-          </Modal>
-        )}
-        {modal === 'deal' && (
-          <Modal title="Новая сделка" onClose={() => setModal(null)}>
-              <DealForm
-                onSubmit={handleAddDeal}
-                clients={clients}
-                users={users}
-                defaultExecutorId={authenticatedUser.id}
-              />
-          </Modal>
-        )}
-        {quoteDealId && (
-          <Modal title="Новый расчет" onClose={() => setQuoteDealId(null)}>
-            <AddQuoteForm
-              onSubmit={(values) => handleAddQuote(quoteDealId, values)}
-              onCancel={() => setQuoteDealId(null)}
+          }
+        />
+        <Route
+          path="/clients"
+          element={
+            <ClientsView
+              clients={clients}
+              deals={deals}
+              onClientEdit={handleEditClient}
             />
-          </Modal>
-        )}
-        {editingQuote && (
-          <Modal title="Редактировать расчет" onClose={() => setEditingQuote(null)}>
-            <AddQuoteForm
-              initialValues={editingQuoteValues}
-              onSubmit={handleUpdateQuote}
-              onCancel={() => setEditingQuote(null)}
-              submitLabel="Сохранить изменения"
+          }
+        />
+        <Route
+          path="/policies"
+          element={
+            <PoliciesView
+              policies={policies}
+              deals={deals}
             />
-          </Modal>
-        )}
-        {policyDealId && (
-          <Modal
-            title="Новый полис"
-            size="xl"
-            onClose={closePolicyModal}
-            closeOnOverlayClick={false}
-          >
-            <AddPolicyForm
-              initialValues={policyPrefill?.values}
-              initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
-              initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
-              salesChannels={salesChannels}
-              onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-              onCancel={closePolicyModal}
+          }
+        />
+        <Route
+          path="/payments"
+          element={
+            <PaymentsView
+              payments={payments}
+              deals={deals}
+              onMarkPaid={handleMarkPayment}
             />
-          </Modal>
-        )}
-        {paymentModal && (
-          <Modal
-            title={paymentModal.paymentId ? 'Редактировать платеж' : 'Новый платеж'}
-            onClose={() => setPaymentModal(null)}
-          >
-            <AddPaymentForm
-              payment={
-                paymentModal.paymentId
-                  ? payments.find((p) => p.id === paymentModal.paymentId)
-                  : undefined
-              }
-              onSubmit={(values) =>
-                paymentModal.paymentId
-                  ? handleUpdatePayment(paymentModal.paymentId, values)
-                  : handleAddPayment(values)
-              }
-              onCancel={() => setPaymentModal(null)}
+          }
+        />
+        <Route
+          path="/finance"
+          element={
+            <FinanceView
+              financialRecords={financialRecords}
+              payments={payments}
             />
-          </Modal>
-        )}
-        {financialRecordModal && (
-          <Modal
-            title={
-              financialRecordModal.recordId ? 'Редактировать запись' : 'Новая финансовая запись'
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <TasksView
+              tasks={tasks}
+              deals={deals}
+            />
+          }
+        />
+        <Route
+          path="/knowledge"
+          element={
+            <KnowledgeDocumentsView
+              documents={knowledgeDocs}
+              isLoading={knowledgeLoading}
+              disabled={knowledgeUploading}
+              error={knowledgeError}
+              onUpload={handleKnowledgeUpload}
+            />
+          }
+        />
+        <Route path="/settings" element={<SettingsView />} />
+        <Route path="*" element={<Navigate to="/deals" replace />} />
+      </Routes>
+
+      {/* Modals */}
+      {modal === 'client' && (
+        <Modal
+          title="Новый клиент"
+          onClose={() => setModal(null)}
+        >
+          <ClientForm onSubmit={handleAddClient} />
+        </Modal>
+      )}
+
+      {editingClient && (
+        <Modal
+          title="Редактирование клиента"
+          onClose={() => setEditingClient(null)}
+        >
+          <ClientForm
+            initial={editingClient}
+            onSubmit={(data) => handleUpdateClient(editingClient.id, data)}
+          />
+        </Modal>
+      )}
+
+      {modal === 'deal' && (
+        <Modal
+          title="Новая сделка"
+          onClose={() => setModal(null)}
+        >
+          <DealForm
+            clients={clients}
+            users={users}
+            onSubmit={handleAddDeal}
+          />
+        </Modal>
+      )}
+
+      {quoteDealId && (
+        <Modal title="Добавить расчет" onClose={() => setQuoteDealId(null)}>
+          <AddQuoteForm
+            onSubmit={(values) => handleAddQuote(quoteDealId, values)}
+            onCancel={() => setQuoteDealId(null)}
+          />
+        </Modal>
+      )}
+
+      {editingQuote && (
+        <Modal title="Редактировать расчет" onClose={() => setEditingQuote(null)}>
+          <AddQuoteForm
+            initialValues={editingQuote}
+            onSubmit={(values) => handleUpdateQuote(values)}
+            onCancel={() => setEditingQuote(null)}
+          />
+        </Modal>
+      )}
+
+      {policyDealId && (
+        <Modal title="Добавить полис" onClose={() => setPolicyDealId(null)} size="xl">
+          <AddPolicyForm
+            salesChannels={salesChannels}
+            initialValues={policyPrefill?.values}
+            initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
+            initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+            onSubmit={(values) => handleAddPolicy(policyDealId, values)}
+            onCancel={() => {
+              setPolicyDealId(null);
+              setPolicyPrefill(null);
+            }}
+          />
+        </Modal>
+      )}
+
+      {paymentModal && (
+        <Modal
+          title="Редактировать платеж"
+          onClose={() => setPaymentModal(null)}
+        >
+          <AddPaymentForm
+            payment={payments.find((p) => p.id === paymentModal.paymentId)}
+            onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
+            onCancel={() => setPaymentModal(null)}
+          />
+        </Modal>
+      )}
+
+      {financialRecordModal && (
+        <Modal
+          title="Редактировать запись"
+          onClose={() => setFinancialRecordModal(null)}
+        >
+          <AddFinancialRecordForm
+            paymentId={financialRecordModal.paymentId!}
+            record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
+            onSubmit={(values) =>
+              handleUpdateFinancialRecord(financialRecordModal.recordId!, values)
             }
-            onClose={() => setFinancialRecordModal(null)}
-          >
-            <AddFinancialRecordForm
-              paymentId={financialRecordModal.paymentId || ''}
-              record={
-                financialRecordModal.recordId
-                  ? financialRecords.find((r) => r.id === financialRecordModal.recordId)
-                  : undefined
-              }
-              onSubmit={(values) =>
-                financialRecordModal.recordId
-                  ? handleUpdateFinancialRecord(financialRecordModal.recordId, values)
-                  : handleAddFinancialRecord(values)
-              }
-              onCancel={() => setFinancialRecordModal(null)}
-            />
-          </Modal>
-        )}
-      </MainLayout>
-    </>
+            onCancel={() => setFinancialRecordModal(null)}
+          />
+        </Modal>
+      )}
+
+      <NotificationDisplay />
+
+      {error && (
+        <div className="fixed bottom-4 left-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50 max-w-md shadow-lg">
+          <strong className="font-bold">Ошибка!</strong>
+          <span className="block sm:inline"> {error}</span>
+          <button className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
+            <span className="text-2xl">&times;</span>
+          </button>
+        </div>
+      )}
+
+      {isSyncing && (
+        <div className="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2">
+          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+          <span className="text-sm font-medium">Синхронизация...</span>
+        </div>
+      )}
+    </MainLayout>
   );
 };
 
-const App: React.FC = () => {
+export const App: React.FC = () => {
   return (
-    <NotificationProvider>
-      <AppContent />
-    </NotificationProvider>
+    <BrowserRouter>
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
+    </BrowserRouter>
   );
 };
 

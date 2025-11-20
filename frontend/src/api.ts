@@ -575,7 +575,6 @@ const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   status: toStringValue(raw.status),
   paymentsPaid: toStringValue(raw.payments_paid ?? raw.paymentsPaid ?? '0'),
   paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
-  paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
   createdAt: toStringValue(raw.created_at),
   driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
 });

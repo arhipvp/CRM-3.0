@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { User } from '../types';
 import { UserBadge } from './common/UserBadge';
 
@@ -13,8 +14,6 @@ export type View =
   | 'settings';
 
 interface MainLayoutProps {
-  activeView: View;
-  onNavigate: (view: View) => void;
   onAddDeal: () => void;
   onAddClient: () => void;
   currentUser?: User;
@@ -22,20 +21,18 @@ interface MainLayoutProps {
   children: React.ReactNode;
 }
 
-const NAV_ITEMS: Array<{ view: View; label: string; icon: string }> = [
-  { view: 'deals', label: 'Сделки', icon: '📋' },
-  { view: 'clients', label: 'Клиенты', icon: '👥' },
-  { view: 'policies', label: 'Полисы', icon: '📄' },
-  { view: 'payments', label: 'Платежи', icon: '💳' },
-  { view: 'finance', label: 'Финансы', icon: '📊' },
-  { view: 'tasks', label: 'Задачи', icon: '✅' },
-  { view: 'knowledge', label: 'Библиотека', icon: '📚' },
-  { view: 'settings', label: 'Настройки', icon: '⚙️' },
+const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
+  { path: '/deals', label: 'Сделки', icon: '📋' },
+  { path: '/clients', label: 'Клиенты', icon: '👥' },
+  { path: '/policies', label: 'Полисы', icon: '📄' },
+  { path: '/payments', label: 'Платежи', icon: '💳' },
+  { path: '/finance', label: 'Финансы', icon: '📊' },
+  { path: '/tasks', label: 'Задачи', icon: '✅' },
+  { path: '/knowledge', label: 'Библиотека', icon: '📚' },
+  { path: '/settings', label: 'Настройки', icon: '⚙️' },
 ];
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
-  activeView,
-  onNavigate,
   onAddDeal,
   onAddClient,
   currentUser,
@@ -44,7 +41,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
   return (
     <div className="min-h-screen flex bg-slate-100 text-slate-900">
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col fixed h-full z-10">
         <div className="px-6 py-5 border-b border-slate-200">
           <p className="text-xs uppercase tracking-wide text-slate-400">CRM 3.0</p>
           <h1 className="text-2xl font-bold text-sky-600">Insure Desk</h1>
@@ -52,23 +49,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             {NAV_ITEMS.map((item) => (
-              <li key={item.view}>
-                <button
-                  onClick={() => onNavigate(item.view)}
-                  className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeView === item.view
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
                       ? 'bg-sky-100 text-sky-700'
                       : 'text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`
+                  }
                 >
                   <span>{item.icon}</span>
                   {item.label}
-                </button>
+                </NavLink>
               </li>
             ))}
           </ul>
         </nav>
-        <div className="p-4 border-t border-slate-200 space-y-3">
+        <div className="p-4 border-t border-slate-200 space-y-3 bg-white">
           <button
             onClick={onAddDeal}
             className="w-full bg-sky-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-sky-700"
@@ -103,7 +101,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           )}
         </div>
       </aside>
-      <main className="flex-1 min-h-screen">{children}</main>
+      <main className="flex-1 min-h-screen ml-64">{children}</main>
     </div>
   );
 };

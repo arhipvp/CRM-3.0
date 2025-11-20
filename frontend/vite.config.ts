@@ -17,12 +17,12 @@ const config: UserConfigExport & { test?: VitestUserConfig } = {
     // HMR disabled for development - use page reload instead
     hmr: false,
     // Важно: не использовать proxy в Docker, так как nginx уже проксирует запросы
-    // proxy: {
-    //   '/api': {
-    //     target: process.env.VITE_PROXY_TARGET ?? 'http://backend:8000',
-    //     changeOrigin: true,
-    //   },
-    // },
+    proxy: {
+      '/api': {
+        target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
     middlewareMode: false,
   },
   // Убеждаемся, что base path правильный
