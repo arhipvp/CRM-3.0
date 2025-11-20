@@ -2,7 +2,15 @@ import React from 'react';
 import { User } from '../types';
 import { UserBadge } from './common/UserBadge';
 
-export type View = 'deals' | 'clients' | 'policies' | 'payments' | 'finance' | 'tasks' | 'settings';
+export type View =
+  | 'deals'
+  | 'clients'
+  | 'policies'
+  | 'payments'
+  | 'finance'
+  | 'tasks'
+  | 'knowledge'
+  | 'settings';
 
 interface MainLayoutProps {
   activeView: View;
@@ -21,6 +29,7 @@ const NAV_ITEMS: Array<{ view: View; label: string; icon: string }> = [
   { view: 'payments', label: 'Платежи', icon: '💳' },
   { view: 'finance', label: 'Финансы', icon: '📊' },
   { view: 'tasks', label: 'Задачи', icon: '✅' },
+  { view: 'knowledge', label: 'Библиотека', icon: '📚' },
   { view: 'settings', label: 'Настройки', icon: '⚙️' },
 ];
 

@@ -76,6 +76,21 @@ export interface Document {
   created_at: string;
 }
 
+export interface KnowledgeDocument {
+  id: string;
+  title: string;
+  description?: string | null;
+  fileName: string;
+  driveFileId: string;
+  webViewLink?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  ownerId?: string | null;
+  ownerUsername?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 export interface SalesChannel {
   id: string;

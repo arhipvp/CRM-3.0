@@ -13,6 +13,7 @@ import { PaymentsView } from './components/views/PaymentsView';
 import { FinanceView } from './components/views/FinanceView';
 import { TasksView } from './components/views/TasksView';
 import { SettingsView } from './components/views/SettingsView';
+import { KnowledgeDocumentsView } from './components/views/KnowledgeDocumentsView';
 import { AddQuoteForm, QuoteFormValues } from './components/forms/AddQuoteForm';
 import { AddPolicyForm, PolicyFormValues } from './components/forms/AddPolicyForm';
 import { AddPaymentForm, AddPaymentFormValues } from './components/forms/AddPaymentForm';
@@ -57,9 +58,11 @@ import {
   clearTokens,
   APIError,
   FilterParams,
+  fetchKnowledgeDocuments,
+  uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse } from './api';
-import { Client, Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, SalesChannel, Task, User } from './types';
+import { Client, Deal, DealStatus, FinancialRecord, KnowledgeDocument, Payment, Policy, Quote, SalesChannel, Task, User } from './types';
 
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
@@ -171,6 +174,10 @@ const AppContent: React.FC = () => {
   const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDocument[]>([]);
+  const [knowledgeLoading, setKnowledgeLoading] = useState(false);
+  const [knowledgeError, setKnowledgeError] = useState<string | null>(null);
+  const [knowledgeUploading, setKnowledgeUploading] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [dealSearch, setDealSearch] = useState('');
   const [dealExecutorFilter, setDealExecutorFilter] = useState('');
@@ -200,6 +207,20 @@ const AppContent: React.FC = () => {
   const refreshPolicies = useCallback(async () => {
     const policiesData = await fetchPolicies();
     setPolicies(policiesData);
+  }, []);
+
+  const refreshKnowledgeDocuments = useCallback(async () => {
+    setKnowledgeLoading(true);
+    setKnowledgeError(null);
+    try {
+      const docs = await fetchKnowledgeDocuments();
+      setKnowledgeDocs(docs);
+    } catch (err) {
+      console.error('Knowledge docs loading error:', err);
+      setKnowledgeError(err instanceof Error ? err.message : 'Не удалось загрузить документы');
+    } finally {
+      setKnowledgeLoading(false);
+    }
   }, []);
 
   const handlePolicyDraftReady = useCallback(
@@ -322,6 +343,15 @@ const AppContent: React.FC = () => {
     refreshDeals,
     isAuthenticated,
   ]);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (view === 'knowledge') {
+      refreshKnowledgeDocuments();
+    }
+  }, [isAuthenticated, refreshKnowledgeDocuments, view]);
+
   // Check authentication on app load
   useEffect(() => {
     const checkAuth = async () => {
@@ -414,6 +444,22 @@ const AppContent: React.FC = () => {
     const updated = await updatePayment(paymentId, { actualDate: today });
     setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
   };
+
+  const handleKnowledgeUpload = useCallback(
+    async (file: File, metadata: { title?: string; description?: string }) => {
+      setKnowledgeUploading(true);
+      try {
+        await uploadKnowledgeDocument(file, metadata);
+        await refreshKnowledgeDocuments();
+      } catch (err) {
+        const message = err instanceof Error ? err : new Error('Не удалось загрузить документ');
+        throw message;
+      } finally {
+        setKnowledgeUploading(false);
+      }
+    },
+    [refreshKnowledgeDocuments]
+  );
 
   const handleStatusChange = async (dealId: string, status: DealStatus) => {
     setSyncing(true);
@@ -950,6 +996,16 @@ const AppContent: React.FC = () => {
         return <FinanceView payments={payments} financialRecords={financialRecords} />;
       case 'tasks':
         return <TasksView tasks={tasks} deals={deals} />;
+      case 'knowledge':
+        return (
+          <KnowledgeDocumentsView
+            documents={knowledgeDocs}
+            isLoading={knowledgeLoading}
+            error={knowledgeError}
+            onUpload={handleKnowledgeUpload}
+            disabled={knowledgeUploading}
+          />
+        );
       case 'settings':
         return <SettingsView />;
       default:
@@ -1062,19 +1118,20 @@ const AppContent: React.FC = () => {
           </Modal>
         )}
         {policyDealId && (
-        <Modal
-          title="Новый полис"
-          onClose={closePolicyModal}
-          closeOnOverlayClick={false}
-        >
-          <AddPolicyForm
-            initialValues={policyPrefill?.values}
-            initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
-            initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
-            salesChannels={salesChannels}
-            onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-            onCancel={closePolicyModal}
-          />
+          <Modal
+            title="Новый полис"
+            size="xl"
+            onClose={closePolicyModal}
+            closeOnOverlayClick={false}
+          >
+            <AddPolicyForm
+              initialValues={policyPrefill?.values}
+              initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
+              initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+              salesChannels={salesChannels}
+              onSubmit={(values) => handleAddPolicy(policyDealId, values)}
+              onCancel={closePolicyModal}
+            />
           </Modal>
         )}
         {paymentModal && (

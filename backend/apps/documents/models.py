@@ -68,3 +68,43 @@ class Document(SoftDeleteModel):
 
     def __str__(self) -> str:
         return self.title
+
+
+class KnowledgeDocument(SoftDeleteModel):
+    """Общие документы, доступные всей команде."""
+
+    title = models.CharField(max_length=255, help_text="Название файла")
+    description = models.TextField(blank=True, help_text="Краткое описание")
+    file_name = models.CharField(max_length=255, help_text="Оригинальное имя файла")
+    drive_file_id = models.CharField(
+        max_length=128,
+        unique=True,
+        help_text="ID файла в Google Drive",
+    )
+    web_view_link = models.URLField(
+        max_length=512,
+        blank=True,
+        help_text="Ссылка для просмотра файла",
+    )
+    mime_type = models.CharField(
+        max_length=120, blank=True, help_text="MIME тип файла"
+    )
+    file_size = models.PositiveBigIntegerField(
+        null=True, blank=True, help_text="Размер файла в байтах"
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="knowledge_documents",
+        help_text="Пользователь, загрузивший документ",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Библиотечный документ"
+        verbose_name_plural = "Библиотечные документы"
+
+    def __str__(self) -> str:
+        return self.title

@@ -10,6 +10,7 @@ import {
   FinancialRecordType,
   InsuranceCompany,
   InsuranceType,
+  KnowledgeDocument,
   Note,
   Payment,
   Policy,
@@ -503,6 +504,21 @@ const mapDriveFile = (raw: Record<string, unknown>): DriveFile => {
   };
 };
 
+const mapKnowledgeDocument = (raw: Record<string, unknown>): KnowledgeDocument => ({
+  id: toStringValue(raw.id),
+  title: toStringValue(raw.title),
+  description: toNullableString(raw.description),
+  fileName: toStringValue(raw.file_name ?? raw.fileName ?? ''),
+  driveFileId: toStringValue(raw.drive_file_id ?? raw.driveFileId ?? ''),
+  webViewLink: toNullableString(raw.web_view_link ?? raw.webViewLink),
+  mimeType: toNullableString(raw.mime_type ?? raw.mimeType),
+  fileSize: toNullableNumber(raw.file_size ?? raw.fileSize),
+  ownerId: toNullableString(raw.owner_id ?? raw.ownerId),
+  ownerUsername: toNullableString(raw.owner_username ?? raw.ownerUsername),
+  createdAt: toStringValue(raw.created_at ?? raw.createdAt),
+  updatedAt: toStringValue(raw.updated_at ?? raw.updatedAt),
+});
+
 export interface DriveFilesResponse {
   files: DriveFile[];
   folderId?: string | null;
@@ -710,6 +726,32 @@ export async function fetchDealDriveFiles(
     files: rawFiles.map(mapDriveFile),
     folderId: payload?.folder_id ?? null,
   };
+}
+
+export async function fetchKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/knowledge_documents/`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapKnowledgeDocument);
+}
+
+export async function uploadKnowledgeDocument(
+  file: File,
+  metadata?: { title?: string; description?: string }
+): Promise<KnowledgeDocument> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (metadata?.title) {
+    formData.append('title', metadata.title);
+  }
+  if (metadata?.description) {
+    formData.append('description', metadata.description);
+  }
+
+  const payload = await request<Record<string, unknown>>('/knowledge_documents/', {
+    method: 'POST',
+    body: formData,
+  });
+
+  return mapKnowledgeDocument(payload);
 }
 
 export async function uploadDealDriveFile(

@@ -7,7 +7,7 @@ from apps.deals.views import (
     QuoteViewSet,
     SalesChannelViewSet,
 )
-from apps.documents.views import DocumentViewSet
+from apps.documents.views import DocumentViewSet, KnowledgeDocumentViewSet
 from apps.finances.views import FinancialRecordViewSet, PaymentViewSet
 from apps.notes.views import NoteViewSet
 from apps.notifications.views import NotificationViewSet
@@ -36,6 +36,11 @@ router.register("audit_logs", AuditLogViewSet, basename="audit_log")
 router.register("chat_messages", ChatMessageViewSet, basename="chat_message")
 router.register("tasks", TaskViewSet, basename="task")
 router.register("documents", DocumentViewSet, basename="document")
+router.register(
+    "knowledge_documents",
+    KnowledgeDocumentViewSet,
+    basename="knowledge_document",
+)
 router.register("notifications", NotificationViewSet, basename="notification")
 router.register("payments", PaymentViewSet, basename="payment")
 router.register(

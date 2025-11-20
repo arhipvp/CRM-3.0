@@ -12,6 +12,12 @@ Monorepo с backend на Django + DRF и frontend на React + Vite.
 
 API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 
+## Shared Documentation Library
+
+- `GET` and `POST` `/api/v1/knowledge_documents/` expose the shared knowledge documents; `POST` accepts a `file` part (multi-part form) plus optional `title`/`description`, uploads the file to Google Drive, and returns metadata with `web_view_link` and file stats.
+- The Drive folder into which uploads land is configured via `GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID` (in addition to the existing `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`/`GOOGLE_DRIVE_ROOT_FOLDER_ID` settings).
+- All users can read and upload documents; only admins can update or delete entries (the endpoint already enforces the role check).
+
 ## Frontend
 1. `cd frontend`
 2. `npm install`

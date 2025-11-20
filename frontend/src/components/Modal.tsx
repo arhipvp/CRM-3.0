@@ -1,10 +1,20 @@
 import React from 'react';
 
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
+
+const MODAL_SIZE_TO_CLASS: Record<ModalSize, string> = {
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-3xl',
+};
+
 interface ModalProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   closeOnOverlayClick?: boolean;
+  size?: ModalSize;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -12,6 +22,7 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   closeOnOverlayClick = true,
+  size = 'md',
 }) => {
   const handleOverlayClick = () => {
     if (closeOnOverlayClick) {
@@ -19,13 +30,15 @@ export const Modal: React.FC<ModalProps> = ({
     }
   };
 
+  const sizeClass = MODAL_SIZE_TO_CLASS[size];
+
   return (
     <div
       className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
       onClick={handleOverlayClick}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-lg"
+        className={`bg-white rounded-xl shadow-2xl w-full ${sizeClass}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">

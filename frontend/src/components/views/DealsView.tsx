@@ -295,6 +295,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const executorDisplayName = executorUser
     ? getUserDisplayName(executorUser)
     : selectedDeal?.executorName || '—';
+  const headerExpectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
 
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -1492,77 +1493,72 @@ export const DealsView: React.FC<DealsViewProps> = ({
     return <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />;
   };
 
+  const renderHeaderDates = () => {
+    if (!selectedDeal) {
+      return null;
+    }
+
+    return (
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
+          <div className="mt-1 space-y-2">
+            <div className="flex items-center gap-3">
+              <input
+                type="date"
+                value={selectedDeal.nextContactDate ?? ''}
+                onChange={(event) =>
+                  handleInlineDateChange('nextContactDate', event.target.value)
+                }
+                disabled={savingDateField === 'nextContactDate'}
+                className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+              />
+              {savingDateField === 'nextContactDate' && (
+                <span className="text-xs text-slate-500">Сохраняем...</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+              {QUICK_NEXT_CONTACT_OPTIONS.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => handleQuickNextContact(option.days)}
+                  disabled={savingDateField === 'nextContactDate'}
+                  className="rounded-full border border-slate-300 px-3 py-1 transition hover:border-sky-400 hover:text-sky-600 disabled:opacity-50"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div>
+          <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
+            Застраховать не позднее чем
+          </p>
+          <div className="mt-1 flex items-center gap-3">
+            <input
+              type="date"
+              value={selectedDeal.expectedClose ?? ''}
+              onChange={(event) => handleInlineDateChange('expectedClose', event.target.value)}
+              disabled={savingDateField === 'expectedClose'}
+              className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+            />
+            {savingDateField === 'expectedClose' && (
+              <span className="text-xs text-slate-500">Сохраняем...</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview': {
-        const expectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">Клиент</p>
-                <p className="text-lg font-semibold text-slate-900 mt-1">
-                  {selectedClient?.name || 'Не указан'}
-                </p>
-                {selectedClient?.phone && (
-                  <p className="text-sm text-slate-500 mt-1">{selectedClient.phone}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-                <div className="mt-1 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="date"
-                      value={selectedDeal?.nextContactDate ?? ''}
-                      onChange={(event) =>
-                        handleInlineDateChange('nextContactDate', event.target.value)
-                      }
-                      disabled={savingDateField === 'nextContactDate'}
-                      className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-                    />
-                    {savingDateField === 'nextContactDate' && (
-                      <span className="text-xs text-slate-500">Сохраняем...</span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-                    {QUICK_NEXT_CONTACT_OPTIONS.map((option) => (
-                      <button
-                        key={option.label}
-                        type="button"
-                        onClick={() => handleQuickNextContact(option.days)}
-                        disabled={savingDateField === 'nextContactDate'}
-                        className="rounded-full border border-slate-300 px-3 py-1 transition hover:border-sky-400 hover:text-sky-600 disabled:opacity-50"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className={`text-xs uppercase tracking-wide ${expectedCloseTone}`}>
-                  Застраховать не позднее чем
-                </p>
-                <div className="mt-1 flex items-center gap-3">
-                  <input
-                    type="date"
-                    value={selectedDeal?.expectedClose ?? ''}
-                    onChange={(event) =>
-                      handleInlineDateChange('expectedClose', event.target.value)
-                    }
-                    disabled={savingDateField === 'expectedClose'}
-                    className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-                  />
-                  {savingDateField === 'expectedClose' && (
-                    <span className="text-xs text-slate-500">Сохраняем...</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="space-y-6">
-              {renderNotesSection()}
-            </div>
+          <div className="space-y-6">
+            {renderNotesSection()}
           </div>
         );
       }
@@ -1584,6 +1580,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
         return null;
     }
   };
+
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-full">
@@ -1765,7 +1762,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </button>
               </div>
             </div>
-
+            {renderHeaderDates()}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-slate-500">Источник</p>

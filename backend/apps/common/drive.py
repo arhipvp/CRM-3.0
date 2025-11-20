@@ -291,6 +291,19 @@ def ensure_policy_folder(policy) -> Optional[str]:
     return folder_id
 
 
+def get_document_library_folder_id() -> str:
+    """Return the configured folder ID for shared documentation."""
+
+    library_folder = getattr(
+        settings, "GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID", ""
+    ).strip()
+    if not library_folder:
+        raise DriveConfigurationError(
+            "GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID is not configured."
+        )
+    return library_folder
+
+
 def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
     """Return normalized metadata for the given Drive folder."""
 
