@@ -3,6 +3,7 @@ import { Client, Deal } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { Pagination } from '../Pagination';
 import { FilterParams } from '../../api';
+import { DriveFilesModal } from '../DriveFilesModal';
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('ru-RU') : '—';
@@ -26,6 +27,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterParams>({});
+  const [filesModalClient, setFilesModalClient] = useState<Client | null>(null);
 
   const handleFilterChange = (newFilters: FilterParams) => {
     setFilters(newFilters);
@@ -86,6 +88,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <th className="px-5 py-3">Дата рождения</th>
               <th className="px-5 py-3">Создан</th>
               <th className="px-5 py-3 text-right">Сделок</th>
+              <th className="px-5 py-3 text-right">Файлы</th>
               <th className="px-5 py-3 text-right">Действия</th>
             </tr>
           </thead>
@@ -115,6 +118,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.createdAt)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-slate-900">
                     {clientDeals.length}
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <button
+                      onClick={() => setFilesModalClient(client)}
+                      className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
+                    >
+                      📁 Файлы
+                    </button>
                   </td>
                   <td className="px-5 py-4 text-right">
                     {onClientEdit ? (
@@ -151,6 +162,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           />
         )}
       </div>
+
+      {filesModalClient && (
+        <DriveFilesModal
+          isOpen={!!filesModalClient}
+          onClose={() => setFilesModalClient(null)}
+          entityId={filesModalClient.id}
+          entityType="client"
+          title={`Файлы клиента: ${filesModalClient.name}`}
+        />
+      )}
     </div>
   );
 };

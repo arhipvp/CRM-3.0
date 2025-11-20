@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Deal, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
+import { DriveFilesModal } from '../DriveFilesModal';
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('ru-RU') : '—';
@@ -72,6 +73,7 @@ interface PoliciesViewProps {
 
 export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) => {
   const [filters, setFilters] = useState<FilterParams>({});
+  const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
 
   const statusOptions = useMemo(() => {
     const unique = Array.from(new Set(policies.map((policy) => policy.status).filter(Boolean)));
@@ -123,13 +125,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
 
   const customFilters = statusOptions.length
     ? [
-        {
-          key: 'status',
-          label: 'Статус',
-          type: 'select',
-          options: statusOptions,
-        },
-      ]
+      {
+        key: 'status',
+        label: 'Статус',
+        type: 'select' as const,
+        options: statusOptions,
+      },
+    ]
     : [];
 
   return (
@@ -153,6 +155,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
               <th className="px-5 py-3">Сумма</th>
               <th className="px-5 py-3">Период</th>
               <th className="px-5 py-3">Статус</th>
+              <th className="px-5 py-3 text-right">Файлы</th>
             </tr>
           </thead>
           <tbody>
@@ -185,6 +188,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
                     {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                   </td>
                   <td className="px-5 py-4 text-slate-600">{policy.status || '—'}</td>
+                  <td className="px-5 py-4 text-right">
+                    <button
+                      onClick={() => setFilesModalPolicy(policy)}
+                      className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
+                    >
+                      📁 Файлы
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -198,6 +209,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
           </tbody>
         </table>
       </div>
+
+      {filesModalPolicy && (
+        <DriveFilesModal
+          isOpen={!!filesModalPolicy}
+          onClose={() => setFilesModalPolicy(null)}
+          entityId={filesModalPolicy.id}
+          entityType="policy"
+          title={`Файлы полиса: ${filesModalPolicy.number}`}
+        />
+      )}
     </div>
   );
 };

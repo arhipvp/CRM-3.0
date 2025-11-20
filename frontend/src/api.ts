@@ -363,6 +363,7 @@ const mapClient = (raw: Record<string, unknown>): Client => ({
   notes: toNullableString(raw.notes),
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
+  driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
 });
 
 const mapQuote = (raw: Record<string, unknown>): Quote => ({
@@ -527,19 +528,19 @@ export interface DriveFilesResponse {
 const mapUser = (raw: Record<string, unknown>): User => {
   const legacyRoles = Array.isArray(raw.roles)
     ? (raw.roles as unknown[])
-        .map(toOptionalString)
-        .filter((role): role is string => Boolean(role))
+      .map(toOptionalString)
+      .filter((role): role is string => Boolean(role))
     : [];
   const userRoleEntries = Array.isArray(raw.user_roles)
     ? (raw.user_roles as unknown[])
-        .map((entry) => {
-          if (typeof entry !== 'object' || entry === null) {
-            return undefined;
-          }
-          const record = entry as Record<string, unknown>;
-          return resolveRoleName(record.role);
-        })
-        .filter((name): name is string => Boolean(name))
+      .map((entry) => {
+        if (typeof entry !== 'object' || entry === null) {
+          return undefined;
+        }
+        const record = entry as Record<string, unknown>;
+        return resolveRoleName(record.role);
+      })
+      .filter((name): name is string => Boolean(name))
     : [];
 
   return {
@@ -574,7 +575,9 @@ const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   status: toStringValue(raw.status),
   paymentsPaid: toStringValue(raw.payments_paid ?? raw.paymentsPaid ?? '0'),
   paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
+  paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
   createdAt: toStringValue(raw.created_at),
+  driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
 });
 
 const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecord => ({
@@ -608,8 +611,8 @@ const mapPayment = (raw: Record<string, unknown>): Payment => ({
   actualDate: raw.actual_date === undefined ? undefined : toNullableString(raw.actual_date),
   financialRecords: Array.isArray(raw.financial_records)
     ? (raw.financial_records as unknown[]).map((record) =>
-        mapFinancialRecord(record as Record<string, unknown>)
-      )
+      mapFinancialRecord(record as Record<string, unknown>)
+    )
     : [],
   canDelete: Boolean(raw.can_delete ?? raw.canDelete),
   createdAt: toStringValue(raw.created_at),
@@ -620,15 +623,15 @@ const mapPayment = (raw: Record<string, unknown>): Payment => ({
 const mapTask = (raw: Record<string, unknown>): Task => {
   const checklistItems = Array.isArray(raw.checklist)
     ? (raw.checklist as unknown[]).map((item) => {
-        if (typeof item !== 'object' || item === null) {
-          return { label: '', done: false };
-        }
-        const record = item as Record<string, unknown>;
-        return {
-          label: toStringValue(record.label),
-          done: Boolean(record.done),
-        };
-      })
+      if (typeof item !== 'object' || item === null) {
+        return { label: '', done: false };
+      }
+      const record = item as Record<string, unknown>;
+      return {
+        label: toStringValue(record.label),
+        done: Boolean(record.done),
+      };
+    })
     : [];
 
   return {
@@ -728,6 +731,36 @@ export async function fetchDealDriveFiles(
   };
 }
 
+export async function fetchClientDriveFiles(
+  clientId: string
+): Promise<DriveFilesResponse> {
+  const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
+    `/clients/${clientId}/drive-files/`
+  );
+  const rawFiles = Array.isArray(payload?.files)
+    ? (payload.files as Record<string, unknown>[])
+    : [];
+  return {
+    files: rawFiles.map(mapDriveFile),
+    folderId: payload?.folder_id ?? null,
+  };
+}
+
+export async function fetchPolicyDriveFiles(
+  policyId: string
+): Promise<DriveFilesResponse> {
+  const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
+    `/policies/${policyId}/drive-files/`
+  );
+  const rawFiles = Array.isArray(payload?.files)
+    ? (payload.files as Record<string, unknown>[])
+    : [];
+  return {
+    files: rawFiles.map(mapDriveFile),
+    folderId: payload?.folder_id ?? null,
+  };
+}
+
 export async function fetchKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/knowledge_documents/`);
   return unwrapList<Record<string, unknown>>(payload).map(mapKnowledgeDocument);
@@ -776,6 +809,50 @@ export async function uploadDealDriveFile(
   return mapDriveFile(payload.file as Record<string, unknown>);
 }
 
+export async function uploadClientDriveFile(
+  clientId: string,
+  file: File
+): Promise<DriveFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const payload = await request<{ file?: unknown; folder_id?: string | null }>(
+    `/clients/${clientId}/drive-files/`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  if (!payload?.file) {
+    throw new Error('Не удалось загрузить файл в Google Drive');
+  }
+
+  return mapDriveFile(payload.file as Record<string, unknown>);
+}
+
+export async function uploadPolicyDriveFile(
+  policyId: string,
+  file: File
+): Promise<DriveFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const payload = await request<{ file?: unknown; folder_id?: string | null }>(
+    `/policies/${policyId}/drive-files/`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  if (!payload?.file) {
+    throw new Error('Не удалось загрузить файл в Google Drive');
+  }
+
+  return mapDriveFile(payload.file as Record<string, unknown>);
+}
+
 export async function recognizeDealPolicies(
   dealId: string,
   fileIds: string[]
@@ -796,8 +873,8 @@ export async function recognizeDealPolicies(
           statusValue === 'parsed'
             ? 'parsed'
             : statusValue === 'exists'
-            ? 'exists'
-            : 'error',
+              ? 'exists'
+              : 'error',
         message: toOptionalString(item.message),
         transcript: toNullableString(item.transcript ?? item.transcript_text),
         data:

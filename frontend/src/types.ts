@@ -89,6 +89,7 @@ export interface KnowledgeDocument {
   ownerUsername?: string | null;
   createdAt: string;
   updatedAt: string;
+  driveFolderId?: string | null;
 }
 
 
@@ -178,7 +179,9 @@ export interface Policy {
   status: string;
   paymentsPaid?: string;
   paymentsTotal?: string;
+  paymentsTotal?: string;
   createdAt: string;
+  driveFolderId?: string | null;
 }
 
 export interface FinancialRecord {
