@@ -15,12 +15,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "${DJANGO_DB_PORT:-5433}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DJANGO_DB_USER:-crm3} -d ${DJANGO_DB_NAME:-crm3}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
     networks:
       - crm_network
     shm_size: 256m
@@ -41,8 +35,7 @@ services:
       DJANGO_DB_PORT: "5432"
       RUN_MIGRATIONS: "true"
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     volumes:
       - ./backend:/app
       - backend_static:/app/staticfiles
@@ -56,7 +49,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Не expose порт 8000, используем через nginx
 
   # Frontend (Vite dev server)
   frontend:
@@ -68,14 +60,12 @@ services:
     env_file:
       - frontend/.env
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
       - crm_network
-    # Доступен через nginx, не expose напрямую
 
   # Nginx Reverse Proxy & Static File Server
   nginx:
@@ -90,10 +80,8 @@ services:
       - backend_static:/app/staticfiles:ro
       - backend_media:/app/media:ro
     depends_on:
-      backend:
-        condition: service_healthy
-      frontend:
-        condition: service_started
+      - backend
+      - frontend
     networks:
       - crm_network
 

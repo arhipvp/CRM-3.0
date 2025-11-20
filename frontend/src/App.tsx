@@ -40,14 +40,6 @@ import {
   fetchChatMessages,
   createChatMessage,
   deleteChatMessage,
-  fetchClients,
-  fetchDeals,
-  fetchPayments,
-  fetchPolicies,
-  fetchTasks,
-  fetchFinancialRecords,
-  fetchSalesChannels,
-  fetchUsers,
   updateDealStatus,
   updateDeal,
   updatePayment,
@@ -59,11 +51,11 @@ import {
   clearTokens,
   APIError,
   FilterParams,
-  fetchKnowledgeDocuments,
   uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse } from './api';
-import { Client, Deal, DealStatus, FinancialRecord, KnowledgeDocument, Payment, Policy, Quote, SalesChannel, Task, User } from './types';
+import { Client, DealStatus, FinancialRecord, Payment, Quote, User } from './types';
+import { useAppData } from './hooks/useAppData';
 
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
@@ -166,18 +158,33 @@ const AppContent: React.FC = () => {
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
     useState<FinancialRecordModalState | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [salesChannels, setSalesChannels] = useState<SalesChannel[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDocument[]>([]);
-  const [knowledgeLoading, setKnowledgeLoading] = useState(false);
-  const [knowledgeError, setKnowledgeError] = useState<string | null>(null);
-  const [knowledgeUploading, setKnowledgeUploading] = useState(false);
+  const {
+    dataState,
+    loadData,
+    refreshDeals,
+    refreshKnowledgeDocuments,
+    updateAppData,
+    setAppData,
+    isLoading,
+    isSyncing,
+    setIsSyncing,
+    error,
+    setError,
+  } = useAppData();
+  const {
+    clients,
+    deals,
+    policies,
+    salesChannels,
+    payments,
+    financialRecords,
+    tasks,
+    users,
+    knowledgeDocs,
+    knowledgeLoading,
+    knowledgeError,
+    knowledgeUploading,
+  } = dataState;
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [dealSearch, setDealSearch] = useState('');
   const [dealExecutorFilter, setDealExecutorFilter] = useState('');
@@ -185,44 +192,21 @@ const AppContent: React.FC = () => {
   const [dealExpectedCloseFrom, setDealExpectedCloseFrom] = useState('');
   const [dealExpectedCloseTo, setDealExpectedCloseTo] = useState('');
   const searchInitialized = useRef(false);
-  const [isLoading, setLoading] = useState(true);
-  const [isSyncing, setSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const location = useLocation();
 
-  const refreshDeals = useCallback(
+  const refreshDealsWithSelection = useCallback(
     async (filters?: FilterParams) => {
-      const resolvedFilters = { ordering: 'next_contact_date', ...(filters || {}) };
-      const dealsData = await fetchDeals(resolvedFilters);
-      setDeals(dealsData);
+      const dealsData = await refreshDeals(filters);
       setSelectedDealId((prev) => {
         if (prev && dealsData.some((deal) => deal.id === prev)) {
           return prev;
         }
         return dealsData[0]?.id ?? null;
       });
+      return dealsData;
     },
-    []
+    [refreshDeals]
   );
-
-  const refreshPolicies = useCallback(async () => {
-    const policiesData = await fetchPolicies();
-    setPolicies(policiesData);
-  }, []);
-
-  const refreshKnowledgeDocuments = useCallback(async () => {
-    setKnowledgeLoading(true);
-    setKnowledgeError(null);
-    try {
-      const docs = await fetchKnowledgeDocuments();
-      setKnowledgeDocs(docs);
-    } catch (err) {
-      console.error('Knowledge docs loading error:', err);
-      setKnowledgeError(err instanceof Error ? err.message : 'Не удалось загрузить документы');
-    } finally {
-      setKnowledgeLoading(false);
-    }
-  }, []);
 
   const handlePolicyDraftReady = useCallback(
     (dealId: string, parsed: Record<string, unknown>) => {
@@ -248,50 +232,6 @@ const AppContent: React.FC = () => {
     },
     [salesChannels]
   );
-
-  const loadData = useCallback(async () => {
-    console.log('Loading data...');
-    setLoading(true);
-    setError(null);
-    try {
-      const dealsPromise = refreshDeals();
-      const [
-        clientsData,
-        paymentsData,
-        tasksData,
-        financialRecordsData,
-        usersData,
-        salesChannelsData,
-      ] = await Promise.all([
-        fetchClients(),
-        fetchPayments(),
-        fetchTasks(),
-        fetchFinancialRecords(),
-        fetchUsers(),
-        fetchSalesChannels(),
-      ]);
-      await dealsPromise;
-      await refreshPolicies();
-      console.log('Data loaded successfully:', {
-        clientsData,
-        paymentsData,
-        tasksData,
-        financialRecordsData,
-      });
-      setClients(clientsData);
-      setPayments(paymentsData);
-      setTasks(tasksData);
-      setFinancialRecords(financialRecordsData);
-      setUsers(usersData);
-      setSalesChannels(salesChannelsData);
-    } catch (err) {
-      console.error('Data loading error:', err);
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить данные из backend');
-    } finally {
-      setLoading(false);
-    }
-  }, [refreshDeals, refreshPolicies]);
-
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -324,9 +264,9 @@ const AppContent: React.FC = () => {
         filters['expected_close_before'] = dealExpectedCloseTo;
       }
       setError(null);
-      refreshDeals(filters).catch((err) => {
+      refreshDealsWithSelection(filters).catch((err) => {
         console.error('Search deals error:', err);
-        setError(err instanceof Error ? err.message : 'Не удалось найти сделки по фильтру');
+        setError(err instanceof Error ? err.message : 'Ошибка при поиске сделок');
       });
     }, 300);
     return () => clearTimeout(handler);
@@ -336,10 +276,10 @@ const AppContent: React.FC = () => {
     dealExecutorFilter,
     dealSearch,
     dealSourceFilter,
-    refreshDeals,
+    refreshDealsWithSelection,
     isAuthenticated,
+    setError,
   ]);
-
   useEffect(() => {
     if (!isAuthenticated) {
       return;
@@ -387,7 +327,7 @@ const AppContent: React.FC = () => {
     notes?: string | null;
   }) => {
     const created = await createClient(data);
-    setClients((prev) => [created, ...prev]);
+    updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
     setModal(null);
   };
 
@@ -406,12 +346,12 @@ const AppContent: React.FC = () => {
     }
   ) => {
     const updated = await updateClient(clientId, data);
-    setClients((prev) => prev.map((client) => (client.id === updated.id ? updated : client)));
-    setDeals((prev) =>
-      prev.map((deal) =>
+    updateAppData((prev) => ({
+      clients: prev.clients.map((client) => (client.id === updated.id ? updated : client)),
+      deals: prev.deals.map((deal) =>
         deal.clientId === updated.id ? { ...deal, clientName: updated.name } : deal
-      )
-    );
+      ),
+    }));
     setEditingClient(null);
   };
 
@@ -431,7 +371,7 @@ const AppContent: React.FC = () => {
       executorId: data.executorId,
       source: data.source,
     });
-    setDeals((prev) => [created, ...prev]);
+    updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
     setSelectedDealId(created.id);
     setModal(null);
   };
@@ -439,69 +379,73 @@ const AppContent: React.FC = () => {
   const handleMarkPayment = async (paymentId: string) => {
     const today = new Date().toISOString().split('T')[0];
     const updated = await updatePayment(paymentId, { actualDate: today });
-    setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
+    updateAppData((prev) => ({ payments: prev.payments.map((payment) => (payment.id === updated.id ? updated : payment)) }));
   };
 
   const handleKnowledgeUpload = useCallback(
     async (file: File, metadata: { title?: string; description?: string }) => {
-      setKnowledgeUploading(true);
+      setAppData({ knowledgeUploading: true });
       try {
         await uploadKnowledgeDocument(file, metadata);
         await refreshKnowledgeDocuments();
       } catch (err) {
-        const message = err instanceof Error ? err : new Error('Не удалось загрузить документ');
+        const message = err instanceof Error ? err : new Error('Ошибка при загрузке справочной базы');
         throw message;
       } finally {
-        setKnowledgeUploading(false);
+        setAppData({ knowledgeUploading: false });
       }
     },
-    [refreshKnowledgeDocuments]
+    [refreshKnowledgeDocuments, setAppData]
   );
 
   const handleStatusChange = async (dealId: string, status: DealStatus) => {
-    setSyncing(true);
+    setIsSyncing(true);
     try {
       const updated = await updateDealStatus(dealId, status);
-      setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
+      }));
     } catch (err) {
       const message =
         err instanceof APIError
           ? err.message
           : err instanceof Error
             ? err.message
-            : 'Не удалось обновить статус';
+            : 'Ошибка при обновлении статуса сделки';
       setError(message);
     } finally {
-      setSyncing(false);
+      setIsSyncing(false);
     }
   };
 
   const handleUpdateDeal = async (dealId: string, data: EditDealFormValues) => {
-    setSyncing(true);
+    setIsSyncing(true);
     try {
       const updated = await updateDeal(dealId, data);
-      setDeals((prev) => prev.map((deal) => (deal.id === updated.id ? updated : deal)));
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
+      }));
       setSelectedDealId(updated.id);
     } catch (err) {
       if (err instanceof APIError && err.status === 403) {
-        addNotification('Только администратор может редактировать данные', 'error', 4000);
+        addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
       } else {
-        setError(err instanceof Error ? err.message : 'Не удалось обновить сделку');
+        setError(err instanceof Error ? err.message : 'Ошибка при обновлении сделки');
       }
       throw err;
     } finally {
-      setSyncing(false);
+      setIsSyncing(false);
     }
   };
 
   const handleAddQuote = async (dealId: string, values: QuoteFormValues) => {
     try {
       const created = await createQuote({ dealId, ...values });
-      setDeals((prev) =>
-        prev.map((deal) =>
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) =>
           deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal
-        )
-      );
+        ),
+      }));
       setQuoteDealId(null);
     } catch (err) {
       const message =
@@ -509,7 +453,7 @@ const AppContent: React.FC = () => {
           ? err.message
           : err instanceof Error
             ? err.message
-            : 'Не удалось сохранить расчет';
+            : 'Ошибка при добавлении предложения';
       setError(message);
       throw err;
     }
@@ -522,8 +466,8 @@ const AppContent: React.FC = () => {
     const { id, dealId } = editingQuote;
     try {
       const updated = await updateQuote(id, values);
-      setDeals((prev) =>
-        prev.map((deal) =>
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) =>
           deal.id === dealId
             ? {
               ...deal,
@@ -532,8 +476,8 @@ const AppContent: React.FC = () => {
                 : [updated],
             }
             : deal
-        )
-      );
+        ),
+      }));
       setEditingQuote(null);
     } catch (err) {
       const message =
@@ -541,7 +485,7 @@ const AppContent: React.FC = () => {
           ? err.message
           : err instanceof Error
             ? err.message
-            : 'Не удалось обновить расчет';
+            : 'Ошибка при обновлении предложения';
       setError(message);
       throw err;
     }
@@ -554,15 +498,15 @@ const AppContent: React.FC = () => {
   const handleDeleteQuote = async (dealId: string, quoteId: string) => {
     try {
       await deleteQuote(quoteId);
-      setDeals((prev) =>
-        prev.map((deal) =>
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) =>
           deal.id === dealId
             ? { ...deal, quotes: deal.quotes?.filter((quote) => quote.id !== quoteId) ?? [] }
             : deal
-        )
-      );
+        ),
+      }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить расчет');
+      setError(err instanceof Error ? err.message : 'Ошибка при удалении предложения');
       throw err;
     }
   };
@@ -599,7 +543,7 @@ const AppContent: React.FC = () => {
         startDate,
         endDate,
       });
-      setPolicies((prev) => [created, ...prev]);
+      updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
 
       for (const paymentDraft of paymentDrafts) {
         const amount = Number(paymentDraft.amount);
@@ -615,8 +559,6 @@ const AppContent: React.FC = () => {
           scheduledDate: paymentDraft.scheduledDate || null,
           actualDate: paymentDraft.actualDate || null,
         });
-        setPayments((prev) => [payment, ...prev]);
-
         const createdRecords: FinancialRecord[] = [];
 
         for (const income of paymentDraft.incomes) {
@@ -653,19 +595,19 @@ const AppContent: React.FC = () => {
           createdRecords.push(record);
         }
 
-        if (createdRecords.length) {
-          setFinancialRecords((prev) => [...createdRecords, ...prev]);
-          setPayments((prev) =>
-            prev.map((existing) =>
-              existing.id === payment.id
-                ? {
-                  ...existing,
-                  financialRecords: [...createdRecords, ...(existing.financialRecords || [])],
-                }
-                : existing
-            )
-          );
-        }
+        const paymentWithRecords: Payment = {
+          ...payment,
+          financialRecords: createdRecords.length
+            ? [...createdRecords, ...(payment.financialRecords ?? [])]
+            : payment.financialRecords,
+        };
+        updateAppData((prev) => ({
+          payments: [paymentWithRecords, ...prev.payments],
+          financialRecords:
+            createdRecords.length > 0
+              ? [...createdRecords, ...prev.financialRecords]
+              : prev.financialRecords,
+        }));
       }
 
       setPolicyDealId(null);
@@ -678,7 +620,7 @@ const AppContent: React.FC = () => {
   const handleDeletePolicy = async (policyId: string) => {
     try {
       await deletePolicy(policyId);
-      setPolicies((prev) => prev.filter((policy) => policy.id !== policyId));
+      updateAppData((prev) => ({ policies: prev.policies.filter((policy) => policy.id !== policyId) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось удалить полис');
       throw err;
@@ -686,11 +628,11 @@ const AppContent: React.FC = () => {
   };
 
   const handleDriveFolderCreated = (dealId: string, folderId: string) => {
-    setDeals((prev) =>
-      prev.map((deal) =>
+    updateAppData((prev) => ({
+      deals: prev.deals.map((deal) =>
         deal.id === dealId ? { ...deal, driveFolderId: folderId } : deal
-      )
-    );
+      ),
+    }));
   };
   const handleFetchChatMessages = async (dealId: string) => {
     try {
@@ -720,41 +662,43 @@ const AppContent: React.FC = () => {
   };
 
   const handleCreateTask = async (dealId: string, data: AddTaskFormValues) => {
-    setSyncing(true);
+    setIsSyncing(true);
     try {
       const created = await createTask({ dealId, ...data });
-      setTasks((prev) => [created, ...prev]);
+      updateAppData((prev) => ({ tasks: [created, ...prev.tasks] }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать задачу');
+      setError(err instanceof Error ? err.message : 'Ошибка при создании задачи');
       throw err;
     } finally {
-      setSyncing(false);
+      setIsSyncing(false);
     }
   };
 
   const handleUpdateTask = async (taskId: string, data: Partial<AddTaskFormValues>) => {
-    setSyncing(true);
+    setIsSyncing(true);
     try {
       const updated = await updateTask(taskId, data);
-      setTasks((prev) => prev.map((task) => (task.id === updated.id ? updated : task)));
+      updateAppData((prev) => ({
+        tasks: prev.tasks.map((task) => (task.id === updated.id ? updated : task)),
+      }));
     } catch (err) {
       if (err instanceof APIError && err.status === 403) {
-        addNotification('Только администратор может редактировать данные', 'error', 4000);
+        addNotification('Ошибка доступа при обновлении задачи', 'error', 4000);
       } else {
-        setError(err instanceof Error ? err.message : 'Не удалось обновить задачу');
+        setError(err instanceof Error ? err.message : 'Ошибка при обновлении задачи');
       }
       throw err;
     } finally {
-      setSyncing(false);
+      setIsSyncing(false);
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     try {
       await deleteTask(taskId);
-      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+      updateAppData((prev) => ({ tasks: prev.tasks.filter((task) => task.id !== taskId) }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить задачу');
+      setError(err instanceof Error ? err.message : 'Ошибка при удалении задачи');
       throw err;
     }
   };
@@ -770,20 +714,21 @@ const AppContent: React.FC = () => {
         actualDate: values.actualDate || null,
       });
 
-      // Auto-create zero-value income record for tracking
       const zeroIncome = await createFinancialRecord({
         paymentId: created.id,
         amount: 0,
         date: new Date().toISOString().split('T')[0],
-        description: 'Исходное значение (отслеживание)',
+        description: 'Счёт: автоматически создан для учета',
         source: 'Система',
       });
 
-      setPayments((prev) => [created, ...prev]);
-      setFinancialRecords((prev) => [zeroIncome, ...prev]);
+      updateAppData((prev) => ({
+        payments: [created, ...prev.payments],
+        financialRecords: [zeroIncome, ...prev.financialRecords],
+      }));
       setPaymentModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать платеж');
+      setError(err instanceof Error ? err.message : 'Ошибка при создании платежа');
       throw err;
     }
   };
@@ -798,10 +743,12 @@ const AppContent: React.FC = () => {
         scheduledDate: values.scheduledDate || null,
         actualDate: values.actualDate || null,
       });
-      setPayments((prev) => prev.map((payment) => (payment.id === updated.id ? updated : payment)));
+      updateAppData((prev) => ({
+        payments: prev.payments.map((payment) => (payment.id === updated.id ? updated : payment)),
+      }));
       setPaymentModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось обновить платеж');
+      setError(err instanceof Error ? err.message : 'Ошибка при обновлении платежа');
       throw err;
     }
   };
@@ -820,18 +767,15 @@ const AppContent: React.FC = () => {
         source: values.source,
         note: values.note,
       });
-      setFinancialRecords((prev) => [created, ...prev]);
+      updateAppData((prev) => ({ financialRecords: [created, ...prev.financialRecords] }));
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать запись');
+      setError(err instanceof Error ? err.message : 'Ошибка при создании записи');
       throw err;
     }
   };
 
-  const handleUpdateFinancialRecord = async (
-    recordId: string,
-    values: AddFinancialRecordFormValues
-  ) => {
+  const handleUpdateFinancialRecord = async (recordId: string, values: AddFinancialRecordFormValues) => {
     try {
       const updated = await updateFinancialRecord(recordId, {
         amount: parseFloat(values.amount),
@@ -840,12 +784,14 @@ const AppContent: React.FC = () => {
         source: values.source,
         note: values.note,
       });
-      setFinancialRecords((prev) =>
-        prev.map((record) => (record.id === updated.id ? updated : record))
-      );
+      updateAppData((prev) => ({
+        financialRecords: prev.financialRecords.map((record) =>
+          record.id === updated.id ? updated : record
+        ),
+      }));
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось обновить запись');
+      setError(err instanceof Error ? err.message : 'Ошибка при обновлении записи');
       throw err;
     }
   };
@@ -853,10 +799,12 @@ const AppContent: React.FC = () => {
   const handleDeleteFinancialRecord = async (recordId: string) => {
     try {
       await deleteFinancialRecord(recordId);
-      setFinancialRecords((prev) => prev.filter((record) => record.id !== recordId));
+      updateAppData((prev) => ({
+        financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
+      }));
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить запись');
+      setError(err instanceof Error ? err.message : 'Ошибка при удалении записи');
       throw err;
     }
   };
@@ -865,12 +813,20 @@ const AppContent: React.FC = () => {
     clearTokens();
     setCurrentUser(null);
     setIsAuthenticated(false);
-    setDeals([]);
-    setClients([]);
-    setPolicies([]);
-    setPayments([]);
-    setFinancialRecords([]);
-    setTasks([]);
+    setAppData({
+      clients: [],
+      deals: [],
+      policies: [],
+      salesChannels: [],
+      payments: [],
+      financialRecords: [],
+      tasks: [],
+      users: [],
+      knowledgeDocs: [],
+      knowledgeLoading: false,
+      knowledgeError: null,
+      knowledgeUploading: false,
+    });
   };
 
   if (authLoading || isLoading) {

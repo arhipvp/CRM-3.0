@@ -88,15 +88,9 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ordering_fields = ["created_at", "updated_at", "title", "expected_close", "next_contact_date"]
     ordering = ["next_contact_date", "-created_at"]
     owner_field = "seller"
+    decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
-    def get_queryset(self):
-        """
-        Фильтровать сделки в зависимости от роли пользователя:
-        - Admin: видит все сделки
-        - Seller/Executor: видит только свои сделки (где user = seller или executor)
-        Сортировка: по дате следующего контакта (ближайшие сверху), затем по дате следующего обзора, затем по дате создания.
-        """
-        user = self.request.user
+    def _base_queryset(self):
         queryset = (
             Deal.objects.select_related("client")
             .prefetch_related("quotes")
@@ -107,22 +101,28 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "-created_at"
             )
         )
-        decimal_field = DecimalField(max_digits=12, decimal_places=2)
-        queryset = queryset.annotate(
+        return queryset.annotate(
             payments_total=Coalesce(
                 Sum("payments__amount"),
                 Value(0),
-                output_field=decimal_field,
+                output_field=self.decimal_field,
             ),
             payments_paid=Coalesce(
-                Sum(
-                    "payments__amount",
-                    filter=Q(payments__actual_date__isnull=False),
-                ),
+                Sum("payments__amount", filter=Q(payments__actual_date__isnull=False)),
                 Value(0),
-                output_field=decimal_field,
+                output_field=self.decimal_field,
             ),
         )
+
+    def get_queryset(self):
+        """
+        Фильтровать сделки в зависимости от роли пользователя:
+        - Admin: видит все сделки
+        - Seller/Executor: видит только свои сделки (где user = seller или executor)
+        Сортировка: по дате следующего контакта (ближайшие сверху), затем по дате следующего обзора, затем по дате создания.
+        """
+        user = self.request.user
+        queryset = self._base_queryset()
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:
@@ -144,10 +144,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         parser_classes=[MultiPartParser, FormParser],
     )
     def drive_files(self, request, pk=None):
-        queryset = (
-            self.filter_queryset(self.get_queryset())
-            .prefetch_related(*HISTORY_PREFETCHES)
-        )
+        queryset = self.filter_queryset(self.get_queryset())
         deal = get_object_or_404(queryset, pk=pk)
         uploaded_file = request.FILES.get("file") if request.method == "POST" else None
 
@@ -172,7 +169,8 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="history")
     def history(self, request, pk=None):
-        deal = self.get_object()
+        queryset = self.get_queryset().prefetch_related(*HISTORY_PREFETCHES)
+        deal = get_object_or_404(queryset, pk=pk)
         audit_logs = self._get_related_audit_logs(deal)
         audit_data = [self._map_audit_log_entry(log, deal.id) for log in audit_logs]
         timeline = sorted(
