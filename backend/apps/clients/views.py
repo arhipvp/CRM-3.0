@@ -6,11 +6,10 @@ from rest_framework.permissions import AllowAny
 
 from .filters import ClientFilterSet
 from .models import Client
+from apps.common.services import manage_drive_files
 from apps.common.drive import (
     DriveError,
     ensure_client_folder,
-    list_drive_folder_contents,
-    upload_file_to_drive,
 )
 from .serializers import ClientSerializer
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -58,44 +57,23 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     )
     def drive_files(self, request, pk=None):
         client = self.get_object()
+        uploaded_file = request.FILES.get("file") if request.method == "POST" else None
+
+        if request.method == "POST" and not uploaded_file:
+            return Response(
+                {"detail": "Файл не передан"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
-            folder_id = ensure_client_folder(client) or client.drive_folder_id
+            result = manage_drive_files(
+                instance=client,
+                ensure_folder_func=ensure_client_folder,
+                uploaded_file=uploaded_file,
+            )
+            return Response(result)
         except DriveError as exc:
             return Response(
                 {"detail": str(exc)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-
-        if not folder_id:
-            return Response({"files": [], "folder_id": None})
-
-        if request.method == "POST":
-            uploaded_file = request.FILES.get("file")
-            if not uploaded_file:
-                return Response(
-                    {"detail": "Файл не передан"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            try:
-                drive_file = upload_file_to_drive(
-                    folder_id,
-                    uploaded_file.file,
-                    uploaded_file.name,
-                    uploaded_file.content_type or "application/octet-stream",
-                )
-            except DriveError as exc:
-                return Response(
-                    {"detail": str(exc)},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            return Response({"file": drive_file, "folder_id": folder_id})
-
-        try:
-            files = list_drive_folder_contents(folder_id)
-        except DriveError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        return Response({"files": files, "folder_id": folder_id})
