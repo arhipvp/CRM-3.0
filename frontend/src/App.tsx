@@ -50,12 +50,13 @@ import {
   getCurrentUser,
   clearTokens,
   APIError,
-  FilterParams,
   uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse } from './api';
 import { Client, DealStatus, FinancialRecord, Payment, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
+import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { useDealFilters } from './hooks/useDealFilters';
 
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
@@ -186,11 +187,19 @@ const AppContent: React.FC = () => {
     knowledgeUploading,
   } = dataState;
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
-  const [dealSearch, setDealSearch] = useState('');
-  const [dealExecutorFilter, setDealExecutorFilter] = useState('');
-  const [dealSourceFilter, setDealSourceFilter] = useState('');
-  const [dealExpectedCloseFrom, setDealExpectedCloseFrom] = useState('');
-  const [dealExpectedCloseTo, setDealExpectedCloseTo] = useState('');
+  const {
+    dealSearch,
+    setDealSearch,
+    dealExecutorFilter,
+    setDealExecutorFilter,
+    dealSourceFilter,
+    setDealSourceFilter,
+    dealExpectedCloseFrom,
+    setDealExpectedCloseFrom,
+    dealExpectedCloseTo,
+    setDealExpectedCloseTo,
+    filters: dealFilters,
+  } = useDealFilters();
   const searchInitialized = useRef(false);
   const location = useLocation();
 
@@ -233,6 +242,8 @@ const AppContent: React.FC = () => {
     [salesChannels]
   );
 
+  const debouncedDealFilters = useDebouncedValue(dealFilters, 300);
+
   useEffect(() => {
     if (!isAuthenticated) {
       searchInitialized.current = false;
@@ -244,38 +255,13 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    const handler = setTimeout(() => {
-      const filters: FilterParams = { ordering: 'next_contact_date' };
-      const query = dealSearch.trim();
-      if (query) {
-        filters.search = query;
-      }
-      if (dealExecutorFilter) {
-        filters.executor = dealExecutorFilter;
-      }
-      const trimmedSource = dealSourceFilter.trim();
-      if (trimmedSource) {
-        filters.source = trimmedSource;
-      }
-      if (dealExpectedCloseFrom) {
-        filters['expected_close_after'] = dealExpectedCloseFrom;
-      }
-      if (dealExpectedCloseTo) {
-        filters['expected_close_before'] = dealExpectedCloseTo;
-      }
-      setError(null);
-      refreshDealsWithSelection(filters).catch((err) => {
-        console.error('Search deals error:', err);
-        setError(err instanceof Error ? err.message : 'Ошибка при поиске сделок');
-      });
-    }, 300);
-    return () => clearTimeout(handler);
+    setError(null);
+    refreshDealsWithSelection(debouncedDealFilters).catch((err) => {
+      console.error('Search deals error:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка при поиске сделок');
+    });
   }, [
-    dealExpectedCloseFrom,
-    dealExpectedCloseTo,
-    dealExecutorFilter,
-    dealSearch,
-    dealSourceFilter,
+    debouncedDealFilters,
     refreshDealsWithSelection,
     isAuthenticated,
     setError,
