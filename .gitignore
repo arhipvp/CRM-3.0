@@ -139,3 +139,6 @@ credentials.json
 backup_2025-11-12_16-11.xlsx
 deploy.sh
 nginx.conf
+
+# Excel temp artifacts
+scripts/templates/~$*

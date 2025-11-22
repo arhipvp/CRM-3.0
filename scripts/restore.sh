@@ -8,7 +8,7 @@ set -e
 if [ -z "$1" ]; then
     echo "❌ Ошибка: укажите имя бекапа"
     echo ""
-    echo "Использование: ./restore.sh <backup_name>"
+    echo "Использование: ./scripts/restore.sh <backup_name>"
     echo ""
     echo "Доступные бекапы:"
     ls -1 ./backups/*.tar.gz 2>/dev/null | sed 's/.*\///' | sed 's/.tar.gz//' || echo "  (нет доступных бекапов)"

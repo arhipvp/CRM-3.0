@@ -72,10 +72,10 @@ python scripts/automated_backup.py
 cd /path/to/CRM\ 3.0
 
 # Сделать скрипт исполняемым (один раз)
-chmod +x backup.sh
+chmod +x scripts/backup.sh
 
 # Запустить бэкап
-./backup.sh
+./scripts/backup.sh
 ```
 
 **Результат:**
@@ -187,8 +187,8 @@ cd /path/to/CRM\ 3.0
 docker-compose up -d
 
 # Восстановить из бэкапа
-chmod +x restore.sh
-./restore.sh crm3_backup_20250111_153045
+chmod +x scripts/restore.sh
+./scripts/restore.sh crm3_backup_20250111_153045
 ```
 
 ### Способ 2: Windows (PowerShell)
@@ -332,7 +332,7 @@ http://localhost:8000/admin/
 - **Решение:** Нормально, база будет создана заново
 
 **Проблема:** `permission denied` при восстановлении
-- **Решение:** `chmod +x restore.sh` или запустить с `sudo`
+- **Решение:** `chmod +x scripts/restore.sh` или запустить с `sudo`
 
 **Проблема:** `psql: error: could not connect to server`
 - **Решение:** `docker-compose up -d && sleep 10` перед восстановлением
@@ -351,7 +351,7 @@ http://localhost:8000/admin/
 crontab -e
 
 # Строка:
-0 22 * * * cd /path/to/CRM\ 3.0 && ./backup.sh >> ./backups/backup.log 2>&1
+0 22 * * * cd /path/to/CRM\ 3.0 && ./scripts/backup.sh >> ./backups/backup.log 2>&1
 ```
 
 ### Windows Task Scheduler

@@ -48,7 +48,7 @@ Git branch: $(git rev-parse --abbrev-ref HEAD)
 - Configuration files
 - Backup info
 
-Для восстановления используйте: ./restore.sh $BACKUP_NAME
+Для восстановления используйте: ./scripts/restore.sh $BACKUP_NAME
 EOF
 
 # 5. Создаём архив
