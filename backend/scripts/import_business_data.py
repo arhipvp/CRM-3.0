@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import uuid
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from decimal import Decimal
@@ -55,6 +57,9 @@ class SheetSpec:
     field_map: Mapping[str, str]
     defaults: Mapping[str, Any] = field(default_factory=dict)
     post_process: Callable[[dict[str, Any], Mapping[str, Any]], None] | None = None
+    required_fields: Iterable[str] = field(default_factory=tuple)
+    references: Iterable[tuple[str, str]] = field(default_factory=tuple)
+    legacy_context: str | None = None
 
 
 def _parse_args() -> argparse.Namespace:
@@ -69,6 +74,9 @@ def _parse_args() -> argparse.Namespace:
         help="проверить и подсчитать записи, не сохраняя их в базу",
     )
     return parser.parse_args()
+
+
+INSERTED_RECORD_IDS: dict[str, set[Any]] = defaultdict(set)
 
 
 def _normalize_sheet_name(name: str) -> str:
@@ -94,7 +102,7 @@ def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
 
 
 def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
-    if value in (None, "", False):
+    if value is None or (isinstance(value, str) and not value.strip()):
         return None
 
     if isinstance(field, models.DecimalField):
@@ -121,7 +129,37 @@ def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
                 return False
         return bool(value)
 
-    return field.to_python(value)
+    return _truncate_charfield(field, field.to_python(value))
+
+
+def _truncate_charfield(field: models.Field, value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(field, models.CharField) and field.max_length:
+        text = str(value)
+        if len(text) > field.max_length:
+            return text[: field.max_length]
+    return value
+
+
+def _parse_uuid(value: Any) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def _legacy_pk_for_model(model: type[models.Model], legacy_id: Any, context: str | None = None) -> uuid.UUID | None:
+    if legacy_id in (None, "", False):
+        return None
+    text = str(legacy_id).strip()
+    if not text:
+        return None
+    existing_uuid = _parse_uuid(text)
+    if existing_uuid:
+        return existing_uuid
+    suffix = f"{context}:{text}" if context else text
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"{model._meta.label_lower}:{suffix}")
 
 
 def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
@@ -129,10 +167,16 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
         return None
 
     if isinstance(value, (int, float)):
+        legacy_pk = _legacy_pk_for_model(field.remote_field.model, value)
+        if legacy_pk:
+            return legacy_pk
         return int(value)
 
     text = str(value).strip()
     if text.isdigit():
+        legacy_pk = _legacy_pk_for_model(field.remote_field.model, text)
+        if legacy_pk:
+            return legacy_pk
         return int(text)
 
     related = field.remote_field.model
@@ -220,6 +264,18 @@ def _ensure_sign(prepared: dict[str, Any], positive: bool) -> None:
     prepared["amount"] = decimal_amount if positive else -abs(decimal_amount)
 
 
+def _truncate_prepared_values(model, prepared: dict[str, Any]) -> None:
+    for key, value in list(prepared.items()):
+        if value is None:
+            continue
+        field_name = key[:-3] if key.endswith("_id") else key
+        try:
+            field_obj = model._meta.get_field(field_name)
+        except FieldDoesNotExist:
+            continue
+        prepared[key] = _truncate_charfield(field_obj, value)
+
+
 SHEET_SPECS: Mapping[str, SheetSpec] = {
     "clients": SheetSpec(
         model_path="clients.Client",
@@ -228,6 +284,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "phone": "phone",
             "note": "notes",
         },
+        defaults={"notes": "", "phone": ""},
     ),
     "deals": SheetSpec(
         model_path="deals.Deal",
@@ -239,6 +296,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "start_date": "expected_close",
             "closed_reason": "loss_reason",
         },
+        defaults={"loss_reason": ""},
         post_process=_deals_post_process,
     ),
     "policies": SheetSpec(
@@ -258,6 +316,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "vehicle_vin": "vin",
             "note": "note",
         },
+        required_fields=("deal_id", "number", "insurance_company_id", "insurance_type_id"),
     ),
     "payments": SheetSpec(
         model_path="finances.Payment",
@@ -267,6 +326,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "payment_date": "scheduled_date",
             "actual_payment_date": "actual_date",
         },
+        references=(("policies.Policy", "policy_id"),),
     ),
     "incomes": SheetSpec(
         model_path="finances.FinancialRecord",
@@ -279,6 +339,8 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
         },
         defaults={"source": "income"},
         post_process=lambda prepared, _: _ensure_sign(prepared, positive=True),
+        references=(("finances.Payment", "payment_id"),),
+        legacy_context="incomes",
     ),
     "expenses": SheetSpec(
         model_path="finances.FinancialRecord",
@@ -291,6 +353,8 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
         },
         defaults={"source": "expense"},
         post_process=lambda prepared, _: _ensure_sign(prepared, positive=False),
+        references=(("finances.Payment", "payment_id"),),
+        legacy_context="expenses",
     ),
     "tasks": SheetSpec(
         model_path="tasks.Task",
@@ -312,6 +376,9 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 
     for row_index, payload in _iter_rows(sheet):
         prepared: dict[str, Any] = dict(spec.defaults)
+        legacy_pk = _legacy_pk_for_model(model, payload.get("id"), spec.legacy_context)
+        if legacy_pk:
+            prepared["id"] = legacy_pk
         for column, value in payload.items():
             target = spec.field_map.get(column)
             if not target:
@@ -322,13 +389,34 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
             except FieldDoesNotExist:
                 continue
             treat_as_id = target.endswith("_id") or isinstance(field_obj, models.ForeignKey)
-            prepared[target] = _coerce_value(field_obj, value, treat_as_id)
+            coerced = _coerce_value(field_obj, value, treat_as_id)
+            if coerced is None:
+                continue
+            prepared[target] = coerced
 
         if spec.post_process:
             spec.post_process(prepared, payload)
 
+        if spec.required_fields and any(prepared.get(field) is None for field in spec.required_fields):
+            continue
+
+        if spec.references:
+            missing_reference = False
+            for model_path, field_name in spec.references:
+                field_value = prepared.get(field_name)
+                if field_value is None:
+                    continue
+                existing_ids = INSERTED_RECORD_IDS.get(model_path)
+                if not existing_ids or field_value not in existing_ids:
+                    missing_reference = True
+                    break
+            if missing_reference:
+                continue
+
         if not prepared:
             continue
+
+        _truncate_prepared_values(model, prepared)
 
         instances.append(model(**prepared))
         processed += 1
@@ -338,6 +426,11 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 
     if not dry_run:
         model.objects.bulk_create(instances)
+        inserted_ids = {
+            getattr(instance, "id", None) for instance in instances if getattr(instance, "id", None) is not None
+        }
+        if inserted_ids:
+            INSERTED_RECORD_IDS[spec.model_path].update(inserted_ids)
 
     return {"processed": processed, "created": len(instances)}
 

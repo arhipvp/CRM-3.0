@@ -306,6 +306,7 @@ export interface FilterParams {
   page_size?: number;
   search?: string;
   ordering?: string;
+  show_deleted?: boolean;
   [key: string]: unknown;
 }
 
@@ -479,6 +480,7 @@ const mapDeal = (raw: Record<string, unknown>): Deal => {
     executor: toNullableString(raw.executor),
     sellerName: toNullableString(raw.seller_name),
     executorName: toNullableString(raw.executor_name),
+    deletedAt: raw.deleted_at === undefined ? null : toNullableString(raw.deleted_at),
   };
 };
 
@@ -716,10 +718,12 @@ export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
 }
 
 export async function fetchDealDriveFiles(
-  dealId: string
+  dealId: string,
+  includeDeleted = false
 ): Promise<DriveFilesResponse> {
+  const suffix = includeDeleted ? "?show_deleted=1" : "";
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
-    `/deals/${dealId}/drive-files/`
+    `/deals/${dealId}/drive-files/${suffix}`
   );
   const rawFiles = Array.isArray(payload?.files)
     ? (payload.files as Record<string, unknown>[])
@@ -788,13 +792,15 @@ export async function uploadKnowledgeDocument(
 
 export async function uploadDealDriveFile(
   dealId: string,
-  file: File
+  file: File,
+  includeDeleted = false
 ): Promise<DriveFile> {
   const formData = new FormData();
   formData.append('file', file);
 
+  const suffix = includeDeleted ? '?show_deleted=1' : '';
   const payload = await request<{ file?: unknown; folder_id?: string | null }>(
-    `/deals/${dealId}/drive-files/`,
+    `/deals/${dealId}/drive-files/${suffix}`,
     {
       method: 'POST',
       body: formData,
@@ -802,7 +808,7 @@ export async function uploadDealDriveFile(
   );
 
   if (!payload?.file) {
-    throw new Error('Не удалось загрузить файл в Google Drive');
+    throw new Error('Failed to attach file to Google Drive');
   }
 
   return mapDriveFile(payload.file as Record<string, unknown>);
@@ -1071,6 +1077,17 @@ export async function updateDeal(
   return mapDeal(payload);
 }
 
+export async function deleteDeal(id: string): Promise<void> {
+  await request(`/deals/${id}/`, { method: 'DELETE' });
+}
+
+export async function restoreDeal(id: string): Promise<Deal> {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/restore/`, {
+    method: 'POST',
+  });
+  return mapDeal(payload);
+}
+
 export async function updatePayment(
   id: string,
   data: Partial<{
@@ -1298,8 +1315,12 @@ export async function deleteFinancialRecord(id: string): Promise<void> {
   await request(`/financial_records/${id}/`, { method: 'DELETE' });
 }
 
-export async function fetchDealHistory(dealId: string): Promise<ActivityLog[]> {
-  const payload = await request(`/deals/${dealId}/history/`);
+export async function fetchDealHistory(
+  dealId: string,
+  includeDeleted = false
+): Promise<ActivityLog[]> {
+  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const payload = await request(`/deals/${dealId}/history/${suffix}`);
   if (!Array.isArray(payload)) {
     return [];
   }

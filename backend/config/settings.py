@@ -226,6 +226,12 @@ if not CORS_ALLOWED_ORIGINS:
     else:
         raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set when DEBUG is False.")
 
+# Control whether Django emits the Cross-Origin-Opener-Policy header so that
+# it can be disabled when serving over unsecured HTTP origins (e.g. local
+# dev machines). Set SECURE_CROSS_ORIGIN_OPENER_POLICY in production to enforce.
+raw_coop_policy = config("SECURE_CROSS_ORIGIN_OPENER_POLICY", default="")
+SECURE_CROSS_ORIGIN_OPENER_POLICY = raw_coop_policy or None
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 

@@ -37,6 +37,8 @@ import {
   deleteFinancialRecord,
   deleteQuote,
   deletePolicy,
+  deleteDeal,
+  restoreDeal,
   fetchChatMessages,
   createChatMessage,
   deleteChatMessage,
@@ -194,11 +196,13 @@ const AppContent: React.FC = () => {
     setDealExecutorFilter,
     dealSourceFilter,
     setDealSourceFilter,
-    dealExpectedCloseFrom,
-    setDealExpectedCloseFrom,
-    dealExpectedCloseTo,
-    setDealExpectedCloseTo,
-    filters: dealFilters,
+  dealExpectedCloseFrom,
+  setDealExpectedCloseFrom,
+  dealExpectedCloseTo,
+  setDealExpectedCloseTo,
+  dealShowDeleted,
+  setDealShowDeleted,
+  filters: dealFilters,
   } = useDealFilters();
   const searchInitialized = useRef(false);
   const location = useLocation();
@@ -423,6 +427,52 @@ const AppContent: React.FC = () => {
       setIsSyncing(false);
     }
   };
+  const handleDeleteDeal = useCallback(
+    async (dealId: string) => {
+      if (!confirm('Вы уверены, что хотите удалить эту сделку?')) {
+        return;
+      }
+
+      setIsSyncing(true);
+      try {
+        await deleteDeal(dealId);
+        await refreshDealsWithSelection(dealFilters);
+        setError(null);
+        addNotification('Сделка удалена', 'success', 4000);
+      } catch (err) {
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Ошибка доступа при удалении сделки', 'error', 4000);
+        } else {
+          setError(err instanceof Error ? err.message : 'Не удалось удалить сделку');
+        }
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [addNotification, dealFilters, refreshDealsWithSelection, setError, setIsSyncing]
+  );
+
+  const handleRestoreDeal = useCallback(
+    async (dealId: string) => {
+      setIsSyncing(true);
+      try {
+        const restored = await restoreDeal(dealId);
+        await refreshDealsWithSelection(dealFilters);
+        setSelectedDealId(restored.id);
+        setError(null);
+        addNotification('Сделка восстановлена', 'success', 4000);
+      } catch (err) {
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
+        } else {
+          setError(err instanceof Error ? err.message : 'Не удалось восстановить сделку');
+        }
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [addNotification, dealFilters, refreshDealsWithSelection, setError, setSelectedDealId]
+  );
 
   const handleAddQuote = async (dealId: string, values: QuoteFormValues) => {
     try {
@@ -883,6 +933,8 @@ const AppContent: React.FC = () => {
               onCreateTask={handleCreateTask}
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
+              onDeleteDeal={handleDeleteDeal}
+              onRestoreDeal={handleRestoreDeal}
               dealSearch={dealSearch}
               onDealSearchChange={setDealSearch}
               dealExecutorFilter={dealExecutorFilter}
@@ -893,6 +945,8 @@ const AppContent: React.FC = () => {
               onDealExpectedCloseFromChange={setDealExpectedCloseFrom}
               dealExpectedCloseTo={dealExpectedCloseTo}
               onDealExpectedCloseToChange={setDealExpectedCloseTo}
+              dealShowDeleted={dealShowDeleted}
+              onDealShowDeletedChange={setDealShowDeleted}
               onPolicyDraftReady={handlePolicyDraftReady}
             />
           }

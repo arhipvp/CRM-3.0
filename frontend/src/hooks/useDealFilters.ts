@@ -8,6 +8,7 @@ export const useDealFilters = () => {
   const [dealSourceFilter, setDealSourceFilter] = useState('');
   const [dealExpectedCloseFrom, setDealExpectedCloseFrom] = useState('');
   const [dealExpectedCloseTo, setDealExpectedCloseTo] = useState('');
+  const [dealShowDeleted, setDealShowDeleted] = useState(false);
 
   const filters = useMemo<FilterParams>(() => {
     const result: FilterParams = { ordering: 'next_contact_date' };
@@ -28,6 +29,9 @@ export const useDealFilters = () => {
     if (dealExpectedCloseTo) {
       result['expected_close_before'] = dealExpectedCloseTo;
     }
+    if (dealShowDeleted) {
+      result.show_deleted = true;
+    }
     return result;
   }, [
     dealSearch,
@@ -35,6 +39,7 @@ export const useDealFilters = () => {
     dealSourceFilter,
     dealExpectedCloseFrom,
     dealExpectedCloseTo,
+    dealShowDeleted,
   ]);
 
   return {
@@ -48,6 +53,8 @@ export const useDealFilters = () => {
     setDealExpectedCloseFrom,
     dealExpectedCloseTo,
     setDealExpectedCloseTo,
+    dealShowDeleted,
+    setDealShowDeleted,
     filters,
   };
 };

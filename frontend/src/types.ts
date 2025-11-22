@@ -149,6 +149,7 @@ export interface Deal {
   quotes: Quote[];
   documents: Document[];
   driveFolderId?: string | null;
+  deletedAt?: string | null;
   seller?: string | null;
   executor?: string | null;
   sellerName?: string | null;

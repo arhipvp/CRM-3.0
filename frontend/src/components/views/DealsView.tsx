@@ -113,7 +113,7 @@ const formatDriveDate = (value?: string | null) =>
 
 const formatDriveFileSize = (bytes?: number | null) => {
   if (bytes === undefined || bytes === null) {
-    return '—';
+    return '-';
   }
   if (bytes === 0) {
     return '0 Б';
@@ -126,6 +126,9 @@ const formatDriveFileSize = (bytes?: number | null) => {
   );
   return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
 };
+
+const formatDeletedAt = (value?: string | null) =>
+  value ? new Date(value).toLocaleString('ru-RU') : '-';
 
 const getUserDisplayName = (user: User) => {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
@@ -208,10 +211,12 @@ interface DealsViewProps {
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<void>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
-  onFetchDealHistory: (dealId: string) => Promise<ActivityLog[]>;
+  onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
+  onDeleteDeal: (dealId: string) => Promise<void>;
+  onRestoreDeal: (dealId: string) => Promise<void>;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   dealExecutorFilter: string;
@@ -222,6 +227,8 @@ interface DealsViewProps {
   onDealExpectedCloseFromChange: (value: string) => void;
   dealExpectedCloseTo: string;
   onDealExpectedCloseToChange: (value: string) => void;
+  dealShowDeleted: boolean;
+  onDealShowDeletedChange: (value: boolean) => void;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -236,6 +243,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onSelectDeal,
   onUpdateStatus,
   onUpdateDeal,
+  onDeleteDeal,
+  onRestoreDeal,
   onRequestAddQuote,
   onRequestEditQuote,
   onRequestAddPolicy,
@@ -266,11 +275,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDealExpectedCloseFromChange,
   dealExpectedCloseTo,
   onDealExpectedCloseToChange,
+  dealShowDeleted,
+  onDealShowDeletedChange,
   currentUser,
 }) => {
   // Сортируем сделки по дате следующего контакта (ближайшие сверху)
   const sortedDeals = useMemo(() => {
     return [...deals].sort((a, b) => {
+      const deletedA = Boolean(a.deletedAt);
+      const deletedB = Boolean(b.deletedAt);
+      if (deletedA !== deletedB) {
+        return deletedA ? 1 : -1;
+      }
       const dateA = a.nextContactDate ? new Date(a.nextContactDate).getTime() : Infinity;
       const dateB = b.nextContactDate ? new Date(b.nextContactDate).getTime() : Infinity;
       return dateA - dateB;
@@ -296,6 +312,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
     ? getUserDisplayName(executorUser)
     : selectedDeal?.executorName || '—';
   const headerExpectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
+  const isSelectedDealDeleted = Boolean(selectedDeal?.deletedAt);
 
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -363,14 +380,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
     setIsActivityLoading(true);
     try {
-      const logs = await onFetchDealHistory(dealId);
+      const logs = await onFetchDealHistory(dealId, Boolean(selectedDeal?.deletedAt));
       setActivityLogs(logs);
     } catch (err) {
       console.error('Ошибка загрузки истории:', err);
     } finally {
       setIsActivityLoading(false);
     }
-  }, [onFetchDealHistory, selectedDeal?.id]);
+  }, [onFetchDealHistory, selectedDeal?.id, selectedDeal?.deletedAt]);
 
   // Reload activity log when the "history" tab becomes active
   useEffect(() => {
@@ -517,7 +534,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
     setIsDriveLoading(true);
     try {
-      const { files, folderId } = await fetchDealDriveFiles(selectedDeal.id);
+      const includeDeleted = Boolean(selectedDeal.deletedAt);
+      const { files, folderId } = await fetchDealDriveFiles(selectedDeal.id, includeDeleted);
       setDriveFiles(files);
       setDriveError(null);
       if (folderId && folderId !== selectedDeal.driveFolderId) {
@@ -1216,10 +1234,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
         <FileUploadManager
           onUpload={async (file) => {
-            await uploadDealDriveFile(selectedDeal.id, file);
+            await uploadDealDriveFile(selectedDeal.id, file, isSelectedDealDeleted);
             await loadDriveFiles();
           }}
-          disabled={disableUpload}
+          disabled={disableUpload || isSelectedDealDeleted}
         />
 
         <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -1664,23 +1682,44 @@ export const DealsView: React.FC<DealsViewProps> = ({
               />
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="dealShowDeleted"
+              type="checkbox"
+              checked={dealShowDeleted}
+              onChange={(event) => onDealShowDeletedChange(event.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            <label
+              htmlFor="dealShowDeleted"
+              className="text-xs font-semibold text-slate-500"
+            >
+              Показать удалённые сделки
+            </label>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-{sortedDeals.map((deal) => {
+          {sortedDeals.map((deal) => {
             const isOverdue = deal.nextContactDate
               ? new Date(deal.nextContactDate) < new Date()
               : false;
             const deadlineTone = getDeadlineTone(deal.expectedClose);
+            const isDeleted = Boolean(deal.deletedAt);
             return (
               <button
                 key={deal.id}
                 onClick={() => onSelectDeal(deal.id)}
                 className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
                   selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
-                }`}
+                } ${isDeleted ? 'opacity-60' : ''}`}
               >
                 <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
                 <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
+                {isDeleted && (
+                  <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                    Удалена: {formatDeletedAt(deal.deletedAt)}
+                  </p>
+                )}
                 <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'}</p>
                 <p className={`text-xs mt-1 ${deadlineTone}`}>
                   Застраховать не позднее чем: {formatDate(deal.expectedClose)}
@@ -1708,6 +1747,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
       <section className="xl:col-span-3 space-y-6">
         {selectedDeal ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-6">
+            {isSelectedDealDeleted && (
+              <div className="flex flex-col gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700">
+                <div>Сделка удалена: {formatDeletedAt(selectedDeal.deletedAt)}</div>
+                <button
+                  type="button"
+                  onClick={() => onRestoreDeal(selectedDeal.id)}
+                  className="self-start rounded-lg border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                >
+                  Восстановить
+                </button>
+              </div>
+            )}
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <p className="text-sm text-slate-500">Сделка</p>
@@ -1746,7 +1797,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   onChange={(event) =>
                     onUpdateStatus(selectedDeal.id, event.target.value as DealStatus)
                   }
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  disabled={isSelectedDealDeleted}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
                   {Object.entries(statusLabels).map(([value, label]) => (
                     <option value={value} key={value}>
@@ -1755,11 +1807,22 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   ))}
                 </select>
                 <button
+                  type="button"
                   onClick={() => setIsEditingDeal(true)}
-                  className="px-3 py-2 text-sm font-medium text-sky-600 hover:bg-sky-50 rounded-lg border border-sky-200"
+                  disabled={isSelectedDealDeleted}
+                  className="px-3 py-2 text-sm font-medium text-sky-600 hover:bg-sky-50 rounded-lg border border-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  ✎ Редактировать
+                  Редактировать
                 </button>
+                {!isSelectedDealDeleted && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteDeal(selectedDeal.id)}
+                    className="px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200"
+                  >
+                    Удалить сделку
+                  </button>
+                )}
               </div>
             </div>
             {renderHeaderDates()}

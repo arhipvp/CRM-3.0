@@ -90,9 +90,10 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     owner_field = "seller"
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
-    def _base_queryset(self):
+    def _base_queryset(self, include_deleted=False):
+        manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
         queryset = (
-            Deal.objects.select_related("client")
+            manager.select_related("client")
             .prefetch_related("quotes")
             .all()
             .order_by(
@@ -114,6 +115,12 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             ),
         )
 
+    def _include_deleted_flag(self):
+        raw_value = self.request.query_params.get("show_deleted")
+        if raw_value is None:
+            return False
+        return str(raw_value).lower() in ("1", "true", "yes", "on")
+
     def get_queryset(self):
         """
         Фильтровать сделки в зависимости от роли пользователя:
@@ -122,7 +129,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         Сортировка: по дате следующего контакта (ближайшие сверху), затем по дате следующего обзора, затем по дате создания.
         """
         user = self.request.user
-        queryset = self._base_queryset()
+        queryset = self._base_queryset(include_deleted=self._include_deleted_flag())
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:
@@ -179,6 +186,19 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             reverse=True,
         )
         return Response(timeline)
+
+    @action(detail=True, methods=["post"], url_path="restore")
+    def restore(self, request, pk=None):
+        queryset = self._base_queryset(include_deleted=True)
+        deal = get_object_or_404(queryset, pk=pk)
+        if not self._can_modify(request.user, deal):
+            return Response(
+                {"detail": "Недостаточно прав для восстановления сделки."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        deal.restore()
+        serializer = self.get_serializer(deal)
+        return Response(serializer.data)
 
     def _collect_related_ids(self, deal: Deal) -> dict:
         def _prefetched_ids(attr: str, fallback):
