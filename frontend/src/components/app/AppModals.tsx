@@ -137,6 +137,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
       <Modal title="Добавить полис" onClose={() => setPolicyDealId(null)} size="xl">
         <AddPolicyForm
           salesChannels={salesChannels}
+          clients={clients}
           initialValues={policyPrefill?.values}
           initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
           initialInsuranceTypeName={policyPrefill?.insuranceTypeName}

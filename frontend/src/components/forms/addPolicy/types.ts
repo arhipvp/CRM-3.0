@@ -17,6 +17,7 @@ export interface PaymentDraft {
 
 export interface PolicyFormValues {
   number: string;
+  clientId: string;
   insuranceCompanyId: string;
   insuranceTypeId: string;
   isVehicle: boolean;

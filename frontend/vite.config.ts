@@ -5,18 +5,28 @@ import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url));
+const publicDir = fileURLToPath(new URL('./public', import.meta.url));
+
+const DEV_SERVER_PORT = Number(process.env.VITE_DEV_SERVER_PORT ?? 5173);
+const HMR_PROTOCOL = (process.env.VITE_HMR_PROTOCOL as 'ws' | 'wss' | undefined) ?? 'ws';
+const HMR_HOST = process.env.VITE_HMR_HOST ?? 'localhost';
+const HMR_PORT = Number(process.env.VITE_HMR_PORT ?? DEV_SERVER_PORT);
+const HMR_CLIENT_PORT = Number(process.env.VITE_HMR_CLIENT_PORT ?? DEV_SERVER_PORT);
 
 const config: UserConfigExport & { test?: VitestUserConfig } = {
   root: rootDir,
-  publicDir: fileURLToPath(new URL('./public', import.meta.url)),
+  publicDir,
   plugins: [react(), tailwindcss()],
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: DEV_SERVER_PORT,
     strictPort: true,
-    // HMR disabled for development - use page reload instead
-    hmr: false,
-    // Важно: не использовать proxy в Docker, так как nginx уже проксирует запросы
+    hmr: {
+      protocol: HMR_PROTOCOL,
+      host: HMR_HOST,
+      port: HMR_PORT,
+      clientPort: HMR_CLIENT_PORT,
+    },
     proxy: {
       '/api': {
         target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:8000',
@@ -25,7 +35,6 @@ const config: UserConfigExport & { test?: VitestUserConfig } = {
     },
     middlewareMode: false,
   },
-  // Убеждаемся, что base path правильный
   base: '/',
   test: {
     environment: 'jsdom',

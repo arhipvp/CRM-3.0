@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
-import type { InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
+import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
 import type { FinancialRecordDraft } from './addPolicy/types';
 import {
   createEmptyPayment,
@@ -15,6 +15,7 @@ interface AddPolicyFormProps {
   onSubmit: (values: PolicyFormValues) => Promise<void>;
   onCancel: () => void;
   salesChannels: SalesChannel[];
+  clients: Client[];
   initialValues?: PolicyFormValues;
   initialInsuranceCompanyName?: string;
   initialInsuranceTypeName?: string;
@@ -24,11 +25,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onSubmit,
   onCancel,
   salesChannels,
+  clients,
   initialValues,
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
 }) => {
   const [number, setNumber] = useState('');
+  const [clientId, setClientId] = useState('');
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
   const [insuranceTypeId, setInsuranceTypeId] = useState('');
   const [isVehicle, setIsVehicle] = useState(false);
@@ -85,9 +88,11 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setStartDate('');
       setEndDate('');
       setPayments([]);
+      setClientId('');
       return;
     }
     setNumber(initialValues.number || '');
+    setClientId(initialValues.clientId || '');
     setInsuranceCompanyId(initialValues.insuranceCompanyId);
     setInsuranceTypeId(initialValues.insuranceTypeId);
     setIsVehicle(initialValues.isVehicle);
@@ -216,10 +221,99 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     );
   };
 
+  const suggestedExpenseDescriptionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const trimmedCounterparty = counterparty.trim();
+    if (!trimmedCounterparty) {
+      if (!suggestedExpenseDescriptionRef.current || !payments.length) {
+        suggestedExpenseDescriptionRef.current = null;
+        return;
+      }
+
+      const descriptionToRemove = suggestedExpenseDescriptionRef.current;
+      setPayments((prev) => {
+        if (!prev.length) {
+          return prev;
+        }
+        const firstPayment = prev[0];
+        const filteredExpenses = firstPayment.expenses.filter(
+          (record) =>
+            !(
+              record.amount === '0' &&
+              record.description === descriptionToRemove
+            )
+        );
+        if (filteredExpenses.length === firstPayment.expenses.length) {
+          return prev;
+        }
+        return [
+          { ...firstPayment, expenses: filteredExpenses },
+          ...prev.slice(1),
+        ];
+      });
+      suggestedExpenseDescriptionRef.current = null;
+      return;
+    }
+
+    const expectedDescription = `выплата ${trimmedCounterparty}`;
+
+    if (!payments.length) {
+      suggestedExpenseDescriptionRef.current = expectedDescription;
+      return;
+    }
+
+    setPayments((prev) => {
+      if (!prev.length) {
+        return prev;
+      }
+      const firstPayment = prev[0];
+      const alreadyHasSuggestedExpense = firstPayment.expenses.some(
+        (record) =>
+          record.amount === '0' && record.description === expectedDescription
+      );
+      if (alreadyHasSuggestedExpense) {
+        suggestedExpenseDescriptionRef.current = expectedDescription;
+        return prev;
+      }
+
+      const previousDescription = suggestedExpenseDescriptionRef.current;
+      const expensesWithoutPreviousSuggestion = previousDescription
+        ? firstPayment.expenses.filter(
+            (record) =>
+              !(
+                record.amount === '0' &&
+                record.description === previousDescription
+              )
+          )
+        : firstPayment.expenses;
+
+      const suggestedExpense = {
+        ...createEmptyRecord(),
+        amount: '0',
+        description: expectedDescription,
+      };
+
+      return [
+        {
+          ...firstPayment,
+          expenses: [...expensesWithoutPreviousSuggestion, suggestedExpense],
+        },
+        ...prev.slice(1),
+      ];
+    });
+    suggestedExpenseDescriptionRef.current = expectedDescription;
+  }, [counterparty, payments.length]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
       setError('Заполните обязательные поля номера и справочников');
+      return;
+    }
+
+    if (!clientId) {
+      setError('Р’С‹Р±РµСЂРёС‚Рµ РєР»РёРµРЅС‚Р°');
       return;
     }
 
@@ -234,6 +328,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     try {
       await onSubmit({
         number: number.trim(),
+        clientId,
         insuranceCompanyId,
         insuranceTypeId,
         isVehicle,
@@ -287,6 +382,28 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             ))}
           </select>
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700">РљР»РёРµРЅС‚*</label>
+        <select
+          value={clientId}
+          onChange={(event) => setClientId(event.target.value)}
+          disabled={!clients.length}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+        >
+          <option value="">Р’С‹Р±РµСЂРёС‚Рµ РєР»РёРµРЅС‚Р°</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </select>
+        {!clients.length && (
+          <p className="text-xs text-slate-500 mt-1">
+            РќРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РєР»РёРµРЅС‚РѕРІ. Р”РѕР±Р°РІСЊС‚Рµ РєР»РёРµРЅС‚Р° РІ РІРєР»Р°РґРєРµ "РљР»РёРµРЅС‚С‹".
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

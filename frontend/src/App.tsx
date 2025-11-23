@@ -90,6 +90,7 @@ const buildPolicyDraftFromRecognition = (
 
   return {
     number: normalizeStringValue(policy.policy_number),
+    clientId: '',
     insuranceCompanyId: '',
     insuranceTypeId: '',
     isVehicle: Boolean(policy.vehicle_brand || policy.vehicle_model || policy.vehicle_vin),
@@ -210,8 +211,15 @@ const AppContent: React.FC = () => {
       const matchedChannel = salesChannels.find(
         (channel) => channel.name.toLowerCase() === recognizedSalesChannel.toLowerCase()
       );
+      const recognizedClientName = normalizeStringValue(parsed.client_name);
+      const matchedClient = recognizedClientName
+        ? clients.find(
+            (client) => client.name.toLowerCase() === recognizedClientName.toLowerCase()
+          )
+        : undefined;
       const values = {
         ...draft,
+        clientId: matchedClient?.id ?? draft.clientId,
         salesChannelId: matchedChannel?.id,
       };
       setPolicyDealId(dealId);
@@ -221,7 +229,7 @@ const AppContent: React.FC = () => {
         insuranceTypeName: normalizeStringValue(policyObj.insurance_type),
       });
     },
-    [salesChannels]
+    [salesChannels, clients]
   );
 
   const debouncedDealFilters = useDebouncedValue(dealFilters, 300);
@@ -528,6 +536,7 @@ const AppContent: React.FC = () => {
   const handleAddPolicy = async (dealId: string, values: PolicyFormValues) => {
     const {
       number,
+      clientId,
       insuranceCompanyId,
       insuranceTypeId,
       isVehicle,
@@ -539,9 +548,6 @@ const AppContent: React.FC = () => {
       salesChannelId,
       payments: paymentDrafts = [],
     } = values;
-    const deal = deals.find((item) => item.id === dealId);
-    const clientId = deal?.clientId;
-
     try {
       const created = await createPolicy({
         dealId,

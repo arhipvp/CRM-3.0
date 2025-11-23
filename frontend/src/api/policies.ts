@@ -35,7 +35,7 @@ export async function createPolicy(data: {
   number: string;
   insuranceCompanyId: string;
   insuranceTypeId: string;
-  clientId?: string;
+  clientId: string;
   isVehicle: boolean;
   brand?: string;
   model?: string;
@@ -60,7 +60,7 @@ export async function createPolicy(data: {
       sales_channel: data.salesChannelId || null,
       start_date: data.startDate || null,
       end_date: data.endDate || null,
-      client: data.clientId || null,
+      client: data.clientId,
     }),
   });
   return mapPolicy(payload);

@@ -113,18 +113,3 @@ class Policy(SoftDeleteModel):
         client_suffix = f" - {client_name}" if client_name else ""
         return f"Policy {self.number} ({type_name} - {company}){client_suffix}"
 
-    def save(self, *args, **kwargs):
-        if self.deal_id and not self.client_id:
-            client_id = getattr(self.deal, "client_id", None)
-            if not client_id:
-                from apps.deals.models import Deal
-
-                client_id = (
-                    Deal.objects.filter(pk=self.deal_id)
-                    .values_list("client_id", flat=True)
-                    .first()
-                )
-            if client_id:
-                self.client_id = client_id
-
-        super().save(*args, **kwargs)

@@ -1,9 +1,11 @@
 from rest_framework import serializers
 
+from apps.clients.models import Client
 from .models import Policy
 
 
 class PolicySerializer(serializers.ModelSerializer):
+    client = serializers.PrimaryKeyRelatedField(queryset=Client.objects.alive())
     insurance_company_name = serializers.CharField(
         source="insurance_company.name", read_only=True
     )
@@ -59,3 +61,6 @@ class PolicySerializer(serializers.ModelSerializer):
             "payments_paid",
             "payments_total",
         )
+        extra_kwargs = {
+            "client": {"required": True},
+        }
