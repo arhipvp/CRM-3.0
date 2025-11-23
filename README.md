@@ -24,6 +24,7 @@ API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 - Одновременно скрипт копирует содержимое `GOOGLE_DRIVE_ROOT_FOLDER_ID` (все клиентские/сделочные вложения) в подпапку `drive-files`, так что ничего не теряется при резервировании.
 - Для создания SQL-файла требуется `pg_dump` (он рассчитывает на настройки `DJANGO_DB_*` из `.env`/`backend/.env`). Excel-отчёт формируется через `openpyxl`: каждая таблица схемы `public` получает свой лист.
 - Необходимые переменные окружения: `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, а также `DJANGO_DB_HOST/PORT/NAME/USER/PASSWORD`. Скрипт читает значения из `.env`, `backend/.env` и дополнительных `--env-file`.
+- Если умеешь подключаться к базе через `localhost`/другой хост вне Docker-сети, задай `BACKUP_DB_FALLBACK_HOST` — при невозможности резолва `DJANGO_DB_HOST` скрипт переключится на fallback и попробует сделать дамп через PG-CLI.
 - Запуск: `python scripts/backup_project_to_drive.py` (опционально `--project-root`, `--env-file`). Каждая сессия создаёт папку по шаблону `crm3-backup-YYYYMMDD-HHMMSS` и загружает внутрь `project-repo`, `database-dumps` (sql + xlsx) и `drive-files`.
 
 ## Frontend

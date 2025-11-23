@@ -21,6 +21,7 @@ from google.oauth2 import service_account
 from openpyxl import Workbook
 import psycopg
 from psycopg.sql import Identifier, SQL
+import socket
 
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -130,11 +131,29 @@ def _sanitize_sheet_name(name: str) -> str:
     return trimmed[:31]
 
 
+def _resolve_host(host: str, fallback: Optional[str]) -> str:
+    """Try to resolve host; if it fails, fall back to supplied alternative."""
+
+    try:
+        socket.gethostbyname(host)
+        return host
+    except OSError:
+        if fallback:
+            logger.warning("%s cannot be resolved, falling back to %s", host, fallback)
+            return fallback
+        logger.warning("%s cannot be resolved; using localhost", host)
+        return "localhost"
+
+
 def build_db_config(env: dict[str, str]) -> dict[str, str]:
     """Gather Postgres credentials from the environment."""
 
+    host = ensure_required_var(env, "DJANGO_DB_HOST")
+    fallback_host = os.environ.get("BACKUP_DB_FALLBACK_HOST") or env.get("BACKUP_DB_FALLBACK_HOST")
+    resolved_host = _resolve_host(host, fallback_host)
+
     return {
-        "host": ensure_required_var(env, "DJANGO_DB_HOST"),
+        "host": resolved_host,
         "port": ensure_required_var(env, "DJANGO_DB_PORT"),
         "name": ensure_required_var(env, "DJANGO_DB_NAME"),
         "user": ensure_required_var(env, "DJANGO_DB_USER"),
