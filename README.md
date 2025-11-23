@@ -21,7 +21,7 @@ API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 ## Автоматический бэкап на Google Drive
 
 - Скрипт `scripts/backup_project_to_drive.py` проходит по репозиторию, упаковывает файлы (без `.git`, `node_modules`, виртуальных окружений и сборок) в zip-архив `project-repo` и отправляет его, а также SQL-дамп Postgres и Excel-снимок бизнес-таблиц (`database-dumps`) в новую подпапку `crm3-backup-YYYYMMDD-HHMMSS` внутри `GOOGLE_DRIVE_BACKUP_FOLDER_ID`.
-- Одновременно скрипт копирует содержимое `GOOGLE_DRIVE_ROOT_FOLDER_ID` (все клиентские/сделочные вложения) напрямую в `CRM 3.0 Backup/Media/`; существующие файлы не перезаписываются, а недостающие добавляются, так что папка всегда отражает накопленные медиа.
+- Одновременно скрипт копирует содержимое `GOOGLE_DRIVE_ROOT_FOLDER_ID` (все клиентские/сделочные вложения) напрямую в `CRM 3.0 Backup/Media/latest/`; существующие файлы остаются нетронутыми, а новые добавляются, так что папка всегда отражает актуальное состояние медиа.
 - Для создания SQL-файла требуется `pg_dump` (он рассчитывает на настройки `DJANGO_DB_*` из `.env`/`backend/.env`). Excel-отчёт формируется через `openpyxl`: каждая таблица схемы `public` получает свой лист.
 - Необходимые переменные окружения: `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, а также `DJANGO_DB_HOST/PORT/NAME/USER/PASSWORD`. Скрипт читает значения из `.env`, `backend/.env` и дополнительных `--env-file`.
 - Если умеешь подключаться к базе через `localhost`/другой хост вне Docker-сети, задай `BACKUP_DB_FALLBACK_HOST` — при невозможности резолва `DJANGO_DB_HOST` скрипт переключится на fallback и попробует сделать дамп через PG-CLI.

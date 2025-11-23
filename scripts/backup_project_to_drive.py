@@ -408,6 +408,7 @@ class DriveBackup:
         destination_folder_id: str,
         *,
         skip_folder_ids: set[str] | None = None,
+        allow_existing: bool = False,
     ) -> None:
         if skip_folder_ids is None:
             skip_folder_ids = set()
@@ -435,7 +436,7 @@ class DriveBackup:
                 )
             else:
                 existing = destination_children.get(name)
-                if existing and existing["mimeType"] != FOLDER_MIME_TYPE:
+                if existing and existing["mimeType"] != FOLDER_MIME_TYPE and not allow_existing:
                     logger.debug("Skipping already backed-up file %s", name)
                     continue
                 try:
@@ -502,7 +503,10 @@ def main() -> None:
     if drive_root:
         media_root_id = backup_client.ensure_folder("Media", backup_root)
         skip_ids = {backup_root, media_root_id}
-        backup_client.copy_folder_tree(drive_root, media_root_id, skip_folder_ids=skip_ids)
+        latest_id = backup_client.ensure_folder("latest", media_root_id)
+        backup_client.copy_folder_tree(
+            drive_root, latest_id, skip_folder_ids=skip_ids, allow_existing=False
+        )
     else:
         logger.warning("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured; skipping Drive files backup.")
 
