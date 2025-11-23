@@ -503,9 +503,8 @@ def main() -> None:
     if drive_root:
         media_root_id = backup_client.ensure_folder("Media", backup_root)
         skip_ids = {backup_root, media_root_id}
-        latest_id = backup_client.ensure_folder("latest", media_root_id)
         backup_client.copy_folder_tree(
-            drive_root, latest_id, skip_folder_ids=skip_ids, allow_existing=False
+            drive_root, media_root_id, skip_folder_ids=skip_ids, allow_existing=False
         )
     else:
         logger.warning("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured; skipping Drive files backup.")
