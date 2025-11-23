@@ -6,10 +6,11 @@ import argparse
 import logging
 import os
 import shutil
+import socket
 import subprocess
 import tempfile
 import zipfile
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from pathlib import Path
 from typing import Iterator, Optional
 from urllib.parse import quote_plus
@@ -21,7 +22,6 @@ from google.oauth2 import service_account
 from openpyxl import Workbook
 import psycopg
 from psycopg.sql import Identifier, SQL
-import socket
 
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -129,6 +129,14 @@ def _sanitize_sheet_name(name: str) -> str:
     if not trimmed:
         return "sheet"
     return trimmed[:31]
+
+
+def _normalize_cell_value(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float, bool, str, datetime, date, time)):
+        return value
+    return str(value)
 
 
 def _resolve_host(host: str, fallback: Optional[str]) -> str:
@@ -262,7 +270,8 @@ def export_database_to_excel(
                     if columns:
                         sheet.append(columns)
                         for row in cursor:
-                            sheet.append(list(row))
+                            normalized = [_normalize_cell_value(value) for value in row]
+                            sheet.append(normalized)
 
                 workbook_sheet_index += 1
 
