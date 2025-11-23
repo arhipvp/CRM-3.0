@@ -19,7 +19,16 @@ load_env "backend/.env"
 TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
 BACKUP_DIR="$PROJECT_ROOT/backups"
 BACKUP_NAME="crm3_backup_${TIMESTAMP}"
-GDRIVE_PATH="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-CRM3_Backups}"
+GDRIVE_FOLDER_PATH="${GOOGLE_DRIVE_BACKUP_FOLDER_PATH:-}"
+GDRIVE_FOLDER_ID="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-}"
+if [ -n "$GDRIVE_FOLDER_PATH" ]; then
+    GDRIVE_TARGET="$GDRIVE_FOLDER_PATH"
+elif [ -n "$GDRIVE_FOLDER_ID" ]; then
+    GDRIVE_TARGET="$GDRIVE_FOLDER_ID"
+else
+    GDRIVE_TARGET="CRM3_Backups"
+fi
+GDRIVE_DISPLAY_PATH="${GDRIVE_FOLDER_PATH:-${GDRIVE_FOLDER_ID:-CRM3_Backups}}"
 
 ensure_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -55,7 +64,7 @@ Date: $(date -u)
 Git commit: $(git rev-parse --short HEAD)
 Git branch: $(git rev-parse --abbrev-ref HEAD)
 
-Google Drive path: $GDRIVE_PATH/$BACKUP_NAME
+Google Drive path: $GDRIVE_DISPLAY_PATH/$BACKUP_NAME
 
 Contents:
 - database dump (database.sql)
@@ -70,17 +79,17 @@ tar -czf "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" -C "$BACKUP_DIR" "$BACKUP_NAME"
 FILE_SIZE="$(du -h "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" | cut -f1)"
 echo "✅ Archive ready ($FILE_SIZE)"
 
-echo "☁️ Uploading archive to Google Drive ($GDRIVE_PATH/${BACKUP_NAME}.tar.gz)..."
-rclone copy "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" "gdrive:$GDRIVE_PATH/"
+echo "☁️ Uploading archive to Google Drive ($GDRIVE_DISPLAY_PATH/${BACKUP_NAME}.tar.gz)..."
+rclone copy "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" "gdrive:$GDRIVE_TARGET/"
 
 if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
     echo "☁️ Uploading unpacked contents..."
-    rclone copy "$BACKUP_DIR/$BACKUP_NAME/" "gdrive:$GDRIVE_PATH/$BACKUP_NAME/"
+    rclone copy "$BACKUP_DIR/$BACKUP_NAME/" "gdrive:$GDRIVE_TARGET/$BACKUP_NAME/"
     rm -rf "$BACKUP_DIR/$BACKUP_NAME"
 fi
 
 echo "🧾 Target folder snapshot:"
-rclone lsf "gdrive:$GDRIVE_PATH" | tail -n 5
+rclone lsf "gdrive:$GDRIVE_TARGET" | tail -n 5
 
 SHARE_EMAIL="arhipvp@gmail.com"
 if [ -n "${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-}" ]; then
@@ -138,4 +147,4 @@ rm -rf "$BACKUP_DIR"
 
 echo ""
 echo "📦 Google Drive listing:"
-rclone ls "gdrive:$GDRIVE_PATH/" | tail -5
+rclone ls "gdrive:$GDRIVE_TARGET/" | tail -5
