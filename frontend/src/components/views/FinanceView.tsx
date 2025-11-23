@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Payment, FinancialRecord } from '../../types';
+import { SummaryCards, FinanceStats } from './financeView/SummaryCards';
+import { FiltersSection } from './financeView/FiltersSection';
+import { RecordsTable } from './financeView/RecordsTable';
 
 type FinanceFilterType = 'all' | 'income' | 'expense';
 
@@ -7,7 +10,6 @@ interface FinanceViewProps {
   payments: Payment[];
   financialRecords?: FinancialRecord[];
   onAddRecord?: () => void;
-  onUpdateRecord?: (id: string, data: Partial<FinancialRecord>) => Promise<void>;
   onDeleteRecord?: (id: string) => Promise<void>;
 }
 
@@ -22,9 +24,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
-  const stats = useMemo(() => {
+  const stats = useMemo<FinanceStats>(() => {
     const paid = payments.filter((p) => Boolean(p.actualDate));
-
     const incomes = financialRecords.filter((r) => parseFloat(r.amount) >= 0);
     const expenses = financialRecords.filter((r) => parseFloat(r.amount) < 0);
 
@@ -47,28 +48,26 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     let result = financialRecords;
 
     if (filterType !== 'all') {
-      if (filterType === 'income') {
-        result = result.filter((r) => parseFloat(r.amount) >= 0);
-      } else if (filterType === 'expense') {
-        result = result.filter((r) => parseFloat(r.amount) < 0);
-      }
+      result = result.filter((record) =>
+        filterType === 'income' ? parseFloat(record.amount) >= 0 : parseFloat(record.amount) < 0
+      );
     }
 
     if (filterDateFrom) {
-      result = result.filter((r) => r.date && new Date(r.date) >= new Date(filterDateFrom));
+      result = result.filter((record) => record.date && new Date(record.date) >= new Date(filterDateFrom));
     }
 
     if (filterDateTo) {
-      result = result.filter((r) => r.date && new Date(r.date) <= new Date(filterDateTo));
+      result = result.filter((record) => record.date && new Date(record.date) <= new Date(filterDateTo));
     }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
-        (r) =>
-          r.description?.toLowerCase().includes(query) ||
-          r.source?.toLowerCase().includes(query) ||
-          r.note?.toLowerCase().includes(query)
+        (record) =>
+          record.description?.toLowerCase().includes(query) ||
+          record.source?.toLowerCase().includes(query) ||
+          record.note?.toLowerCase().includes(query)
       );
     }
 
@@ -79,161 +78,38 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     });
   }, [financialRecords, filterType, filterDateFrom, filterDateTo, searchQuery]);
 
-  const formatRub = (value: number) =>
-    value.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
-
-  const formatDate = (date?: string | null) => {
-    return date ? new Date(date).toLocaleDateString('ru-RU') : '—';
-  };
-
-  const getRecordTypeDisplay = (amount: string) => {
-    return parseFloat(amount) >= 0 ? 'Доход' : 'Расход';
-  };
-
-  const getRecordTypeClass = (amount: string) => {
-    return parseFloat(amount) >= 0 ? 'record-income' : 'record-expense';
+  const resetFilters = () => {
+    setFilterType('all');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    setSearchQuery('');
   };
 
   return (
     <div className="finance-view">
-      {/* Summary Cards */}
-      <div className="summary-cards">
-        <div className="stat-card">
-          <p className="stat-label">Доходы</p>
-          <p className="stat-value income">{formatRub(stats.totalIncome)}</p>
-        </div>
-        <div className="stat-card">
-          <p className="stat-label">Расходы</p>
-          <p className="stat-value expense">{formatRub(stats.totalExpense)}</p>
-        </div>
-        <div className="stat-card">
-          <p className="stat-label">Баланс</p>
-          <p className={`stat-value ${stats.netBalance >= 0 ? 'positive' : 'negative'}`}>
-            {formatRub(stats.netBalance)}
-          </p>
-        </div>
-        <div className="stat-card">
-          <p className="stat-label">Оплачено платежей</p>
-          <p className="stat-value">{formatRub(stats.paidPayments)}</p>
-        </div>
-      </div>
+      <SummaryCards stats={stats} />
+      <FiltersSection
+        searchQuery={searchQuery}
+        filterType={filterType}
+        filterDateFrom={filterDateFrom}
+        filterDateTo={filterDateTo}
+        onSearchChange={setSearchQuery}
+        onFilterTypeChange={(value) => setFilterType(value as FinanceFilterType)}
+        onFilterDateFromChange={setFilterDateFrom}
+        onFilterDateToChange={setFilterDateTo}
+        onReset={resetFilters}
+      />
 
-      {/* Filters */}
-      <div className="filters-section">
-        <div className="filter-group">
-          <input
-            type="text"
-            placeholder="Поиск по описанию, источнику, категории..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
-        </div>
-
-        <div className="filters-row">
-          <div className="filter-group">
-            <label>Тип</label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as FinanceFilterType)}
-            >
-              <option value="all">Все</option>
-              <option value="income">Доходы</option>
-              <option value="expense">Расходы</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label>С даты</label>
-            <input
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-            />
-          </div>
-
-          <div className="filter-group">
-            <label>По дату</label>
-            <input
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-            />
-          </div>
-
-          <button
-            onClick={() => {
-              setFilterType('all');
-              setFilterDateFrom('');
-              setFilterDateTo('');
-              setSearchQuery('');
-            }}
-            className="btn-reset"
-          >
-            Сброс фильтров
+      <div className="table-header">
+        <h3>Записи ({filteredRecords.length})</h3>
+        {onAddRecord && (
+          <button onClick={onAddRecord} className="btn-primary btn-sm">
+            Добавить запись
           </button>
-        </div>
-      </div>
-
-      {/* Records Table */}
-      <div className="records-table-section">
-        <div className="table-header">
-          <h3>Финансовые записи ({filteredRecords.length})</h3>
-          {onAddRecord && (
-            <button onClick={onAddRecord} className="btn-primary btn-sm">
-              Добавить запись
-            </button>
-          )}
-        </div>
-
-        {filteredRecords.length > 0 ? (
-          <table className="records-table">
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Тип</th>
-                <th>Описание</th>
-                <th>Сумма</th>
-                <th>Источник</th>
-                <th>Примечание</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.map((record) => (
-                <tr key={record.id} className={getRecordTypeClass(record.amount)}>
-                  <td className="date">{formatDate(record.date)}</td>
-                  <td className="type">{getRecordTypeDisplay(record.amount)}</td>
-                  <td className="description">{record.description || '—'}</td>
-                  <td className="amount">
-                    <strong>{formatRub(Math.abs(Number(record.amount)))}</strong>
-                  </td>
-                  <td className="source">{record.source || '—'}</td>
-                  <td className="note">{record.note || '—'}</td>
-                  <td className="actions">
-                    {onDeleteRecord && (
-                      <button
-                        onClick={() => {
-                          if (confirm('Вы уверены?')) {
-                            onDeleteRecord(record.id);
-                          }
-                        }}
-                        className="btn-delete btn-sm"
-                      >
-                        Удалить
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="empty-state">
-            <p>Нет записей по выбранным фильтрам</p>
-          </div>
         )}
       </div>
+
+      <RecordsTable records={filteredRecords} onDeleteRecord={onDeleteRecord} />
 
       <style>{`
         .finance-view {
@@ -334,58 +210,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           background: #e2e8f0;
         }
 
-        .records-table-section {
-          background: white;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          overflow: hidden;
-        }
-
-        .table-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 15px;
-          border-bottom: 1px solid #e2e8f0;
-        }
-
-        .table-header h3 {
-          margin: 0;
-          font-size: 16px;
-          font-weight: 600;
-        }
-
-        .btn-sm {
-          padding: 6px 12px;
-          font-size: 13px;
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-
-        .btn-primary:hover {
-          background: #2563eb;
-        }
-
-        .btn-delete {
-          background: #fee2e2;
-          color: #dc2626;
-          border: none;
-          border-radius: 4px;
-          padding: 4px 8px;
-          cursor: pointer;
-          font-size: 12px;
-        }
-
-        .btn-delete:hover {
-          background: #fecaca;
-        }
-
         .records-table {
           width: 100%;
           border-collapse: collapse;
@@ -451,6 +275,54 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
         .actions {
           text-align: right;
+        }
+
+        .table-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 15px;
+          border-bottom: 1px solid #e2e8f0;
+          background: white;
+          margin-bottom: 15px;
+          border-radius: 8px 8px 0 0;
+        }
+
+        .table-header h3 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .btn-sm {
+          padding: 6px 12px;
+          font-size: 13px;
+        }
+
+        .btn-primary {
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .btn-primary:hover {
+          background: #2563eb;
+        }
+
+        .btn-delete {
+          background: #fee2e2;
+          color: #dc2626;
+          border: none;
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        .btn-delete:hover {
+          background: #fecaca;
         }
       `}</style>
     </div>
