@@ -134,7 +134,16 @@ def _sanitize_sheet_name(name: str) -> str:
 def _normalize_cell_value(value):
     if value is None:
         return None
-    if isinstance(value, (int, float, bool, str, datetime, date, time)):
+    if isinstance(value, datetime):
+        if value.tzinfo:
+            value = value.astimezone(timezone.utc)
+        value = value.replace(tzinfo=None)
+        return value
+    if isinstance(value, time):
+        if value.tzinfo:
+            value = value.replace(tzinfo=None)
+        return value
+    if isinstance(value, (int, float, bool, str, date)):
         return value
     return str(value)
 
@@ -393,15 +402,42 @@ class DriveBackup:
         )
         return response["id"]
 
-    def copy_folder_tree(self, source_folder_id: str, destination_folder_id: str) -> None:
+    def copy_folder_tree(
+        self,
+        source_folder_id: str,
+        destination_folder_id: str,
+        *,
+        skip_folder_ids: set[str] | None = None,
+    ) -> None:
+        if skip_folder_ids is None:
+            skip_folder_ids = set()
+
+        if source_folder_id in skip_folder_ids:
+            logger.debug("Skipping folder %s because it is excluded from backup", source_folder_id)
+            return
+
         children = self.list_children(source_folder_id)
+        destination_children = {item["name"]: item for item in self.list_children(destination_folder_id)}
         logger.info("Copying %d Drive items from %s", len(children), source_folder_id)
+
         for child in children:
             name = child["name"]
             if child["mimeType"] == FOLDER_MIME_TYPE:
-                new_folder_id = self.create_folder(name, destination_folder_id)
-                self.copy_folder_tree(child["id"], new_folder_id)
+                existing = destination_children.get(name)
+                if existing and existing["mimeType"] == FOLDER_MIME_TYPE:
+                    new_folder_id = existing["id"]
+                else:
+                    new_folder_id = self.create_folder(name, destination_folder_id)
+                self.copy_folder_tree(
+                    child["id"],
+                    new_folder_id,
+                    skip_folder_ids=skip_folder_ids,
+                )
             else:
+                existing = destination_children.get(name)
+                if existing and existing["mimeType"] != FOLDER_MIME_TYPE:
+                    logger.debug("Skipping already backed-up file %s", name)
+                    continue
                 try:
                     self.copy_file(child["id"], name, destination_folder_id)
                 except HttpError as exc:
@@ -465,8 +501,8 @@ def main() -> None:
 
     if drive_root:
         media_root_id = backup_client.ensure_folder("Media", backup_root)
-        media_session_id = backup_client.create_folder(f"drive-mirror-{timestamp_label}", media_root_id)
-        backup_client.copy_folder_tree(drive_root, media_session_id)
+        skip_ids = {backup_root, media_root_id}
+        backup_client.copy_folder_tree(drive_root, media_root_id, skip_folder_ids=skip_ids)
     else:
         logger.warning("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured; skipping Drive files backup.")
 
