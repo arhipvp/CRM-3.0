@@ -12,7 +12,7 @@ import tempfile
 import zipfile
 from datetime import date, datetime, time, timezone
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Set
 from urllib.parse import quote_plus
 
 from googleapiclient.discovery import build
@@ -25,6 +25,7 @@ from psycopg.sql import Identifier, SQL
 
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+DEFAULT_EXCLUDED_TABLES = ("users_auditlog",)
 
 ROOT_ENV_FILES = (".env", "backend/.env")
 EXCLUDE_DIRS = {
@@ -85,6 +86,14 @@ def should_exclude(path: Path, root: Path) -> bool:
     relative = path.relative_to(root)
     parts = relative.parts
     return any(part in EXCLUDE_DIRS for part in parts)
+
+
+def get_excluded_tables(env: dict[str, str]) -> set[str]:
+    """Return normalized list of tables that should be skipped during database exports."""
+
+    raw = os.environ.get("BACKUP_DB_EXCLUDE_TABLES") or env.get("BACKUP_DB_EXCLUDE_TABLES", "")
+    extras = {table.strip() for table in raw.split(",") if table.strip()}
+    return {table.lower() for table in (*DEFAULT_EXCLUDED_TABLES, *extras)}
 
 
 def iter_files(root: Path) -> Iterator[Path]:
@@ -199,6 +208,7 @@ def dump_database(
     destination: Path,
     label: str,
     pg_dump_path: Optional[str],
+    exclude_tables: Set[str],
 ) -> Optional[Path]:
     """Run pg_dump and store a plain SQL file."""
 
@@ -219,6 +229,8 @@ def dump_database(
         "-f",
         str(filename),
     ]
+    for table in sorted(exclude_tables):
+        cmd.extend(["--exclude-table", f"public.{table}"])
     env = os.environ.copy()
     env["PGPASSWORD"] = config["password"]
     logger.info("Dumping Postgres database to %s", filename.name)
@@ -234,6 +246,7 @@ def export_database_to_excel(
     config: dict[str, str],
     destination: Path,
     label: str,
+    exclude_tables: Set[str],
 ) -> Optional[Path]:
     """Export every public table into separate sheets of one workbook."""
 
@@ -251,7 +264,11 @@ def export_database_to_excel(
         with psycopg.connect(_build_db_dsn(config)) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(query_tables)
-                tables = [row[0] for row in cursor.fetchall()]
+                tables = [
+                    row[0]
+                    for row in cursor.fetchall()
+                    if row[0] and row[0].lower() not in exclude_tables
+                ]
 
             workbook = Workbook()
             workbook_sheet_index = 0
@@ -474,6 +491,7 @@ def main() -> None:
     backup_root = ensure_required_var(env, "GOOGLE_DRIVE_BACKUP_FOLDER_ID")
     drive_root = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID") or env.get("GOOGLE_DRIVE_ROOT_FOLDER_ID")
     db_config = build_db_config(env)
+    excluded_tables = get_excluded_tables(env)
 
     timestamp_label = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
@@ -491,8 +509,12 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
         archive = create_archive(args.project_root, temp_dir_path)
-        sql_dump = dump_database(db_config, temp_dir_path, timestamp_label, pg_dump_path)
-        excel_dump = export_database_to_excel(db_config, temp_dir_path, timestamp_label)
+        sql_dump = dump_database(
+            db_config, temp_dir_path, timestamp_label, pg_dump_path, excluded_tables
+        )
+        excel_dump = export_database_to_excel(
+            db_config, temp_dir_path, timestamp_label, excluded_tables
+        )
 
         backup_client.upload_file(archive, repo_subfolder_id)
         if sql_dump:
