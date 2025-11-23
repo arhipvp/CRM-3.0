@@ -24,8 +24,6 @@ import {
   restoreNote,
   recognizeDealPolicies,
 } from '../../api';
-import { FileUploadManager } from '../FileUploadManager';
-import { ChatBox } from '../ChatBox';
 import { ActivityTimeline } from '../ActivityTimeline';
 import { UserBadge } from '../common/UserBadge';
 import { EditDealForm, EditDealFormValues } from '../forms/EditDealForm';
@@ -35,145 +33,27 @@ import {
   AddFinancialRecordForm,
   AddFinancialRecordFormValues,
 } from '../forms/AddFinancialRecordForm';
-
-const statusLabels: Record<DealStatus, string> = {
-  open: 'В работе',
-  won: 'Выиграна',
-  lost: 'Закрыта (проиграна)',
-  on_hold: 'На паузе',
-};
-
-const DEAL_TABS = [
-  { id: 'overview', label: 'Обзор' },
-  { id: 'tasks', label: 'Задачи' },
-  { id: 'quotes', label: 'Расчеты' },
-  { id: 'policies', label: 'Полисы' },
-  { id: 'payments', label: 'Платежи' },
-  { id: 'chat', label: 'Чат' },
-  { id: 'files', label: 'Файлы' },
-  { id: 'history', label: 'История' },
-] as const;
-
-type DealTabId = (typeof DEAL_TABS)[number]['id'];
-
-type FinancialRecordCreationContext = {
-  paymentId: string;
-  recordType: 'income' | 'expense';
-};
-
-const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
-
-const QUICK_NEXT_CONTACT_OPTIONS = [
-  { label: 'Завтра', days: 1 },
-  { label: 'Через 2 дня', days: 2 },
-  { label: 'Через 5 дней', days: 5 },
-] as const;
-
-
-const getDatePlusDays = (days: number) => {
-  const target = new Date();
-  target.setDate(target.getDate() + days);
-  const year = target.getFullYear();
-  const month = String(target.getMonth() + 1).padStart(2, '0');
-  const day = String(target.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const getDeadlineTone = (value?: string | null) => {
-  if (!value) {
-    return 'text-slate-400';
-  }
-  const today = new Date();
-  const deadline = new Date(value);
-  const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays <= 0) {
-    return 'text-red-700';
-  }
-  if (diffDays <= 3) {
-    return 'text-red-600';
-  }
-  if (diffDays <= 7) {
-    return 'text-orange-600';
-  }
-  if (diffDays <= 14) {
-    return 'text-orange-500';
-  }
-  return 'text-slate-500';
-};
-
-const formatCurrency = (value?: string) => {
-  const amount = Number(value ?? 0);
-  return amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
-};
-
-const formatDriveDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('ru-RU') : '—';
-
-const formatDriveFileSize = (bytes?: number | null) => {
-  if (bytes === undefined || bytes === null) {
-    return '-';
-  }
-  if (bytes === 0) {
-    return '0 Б';
-  }
-  const k = 1024;
-  const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(k)),
-    sizes.length - 1
-  );
-  return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
-};
-
-const formatDeletedAt = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('ru-RU') : '-';
-
-const getUserDisplayName = (user: User) => {
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-  return fullName || user.username;
-};
-
-const getDriveItemIcon = (isFolder: boolean) => (isFolder ? '📁' : '📄');
-
-type PolicySortKey =
-  | 'number'
-  | 'insuranceCompany'
-  | 'insuranceType'
-  | 'client'
-  | 'salesChannel'
-  | 'startDate'
-  | 'endDate'
-  | 'transport';
-
-const getPolicyTransportSummary = (policy: Policy) =>
-  policy.isVehicle
-    ? `${policy.brand || '—'} / ${policy.model || '—'} / ${policy.vin || '—'}`
-    : 'Не транспортное';
-
-const getPolicySortValue = (policy: Policy, key: PolicySortKey) => {
-  switch (key) {
-    case 'number':
-      return policy.number ?? '';
-    case 'insuranceCompany':
-      return policy.insuranceCompany ?? '';
-    case 'insuranceType':
-      return policy.insuranceType ?? '';
-    case 'client':
-      return policy.clientName ?? policy.clientId ?? '';
-    case 'salesChannel':
-      return policy.salesChannelName ?? policy.salesChannel ?? '';
-    case 'startDate':
-      return policy.startDate ? new Date(policy.startDate).getTime() : 0;
-    case 'endDate':
-      return policy.endDate ? new Date(policy.endDate).getTime() : 0;
-    case 'transport':
-      return getPolicyTransportSummary(policy);
-    default:
-      return '';
-  }
-};
+import {
+  DEAL_TABS,
+  DealTabId,
+  FinancialRecordCreationContext,
+  formatCurrency,
+  formatDate,
+  formatDeletedAt,
+  getDatePlusDays,
+  getDeadlineTone,
+  getPolicySortValue,
+  getUserDisplayName,
+  QUICK_NEXT_CONTACT_OPTIONS,
+  PolicySortKey,
+  statusLabels,
+} from './dealsView/helpers';
+import { TasksTab } from './dealsView/tabs/TasksTab';
+import { PoliciesTab } from './dealsView/tabs/PoliciesTab';
+import { PaymentsTab } from './dealsView/tabs/PaymentsTab';
+import { QuotesTab } from './dealsView/tabs/QuotesTab';
+import { FilesTab } from './dealsView/tabs/FilesTab';
+import { ChatTab } from './dealsView/tabs/ChatTab';
 
 interface DealsViewProps {
   deals: Deal[];
@@ -373,6 +253,30 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
   }, [onFetchChatMessages, selectedDeal?.id]);
 
+  const handleChatSendMessage = useCallback(
+    async (body: string) => {
+      const dealId = selectedDeal?.id;
+      if (!dealId) {
+        return;
+      }
+      await onSendChatMessage(dealId, body);
+      await loadChatMessages();
+    },
+    [onSendChatMessage, selectedDeal?.id, loadChatMessages]
+  );
+
+  const handleChatDelete = useCallback(
+    async (messageId: string) => {
+      const dealId = selectedDeal?.id;
+      if (!dealId) {
+        return;
+      }
+      await onDeleteChatMessage(messageId);
+      await loadChatMessages();
+    },
+    [onDeleteChatMessage, loadChatMessages, selectedDeal?.id]
+  );
+
   const loadActivityLogs = useCallback(async () => {
     const dealId = selectedDeal?.id;
     if (!dealId) {
@@ -554,6 +458,16 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
   }, [selectedDeal, onDriveFolderCreated]);
 
+  const handleDriveFileUpload = useCallback(
+    async (file: File) => {
+      if (!selectedDeal) {
+        return;
+      }
+      await uploadDealDriveFile(selectedDeal.id, file, isSelectedDealDeleted);
+    },
+    [selectedDeal, isSelectedDealDeleted]
+  );
+
   useEffect(() => {
     if (activeTab === 'files') {
       void loadDriveFiles();
@@ -699,677 +613,71 @@ export const DealsView: React.FC<DealsViewProps> = ({
     });
   }, [driveFiles]);
 
-  const renderTasksTab = () => {
-    if (!selectedDeal) {
-      return null;
-    }
-
-    if (!relatedTasks.length) {
-      return (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500">Задачи еще не созданы.</p>
-          <button
-            onClick={() => setIsCreatingTask(true)}
-            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
-          >
-            Создать задачу
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-base font-semibold text-slate-800">Задачи</h3>
-          <button
-            onClick={() => setIsCreatingTask(true)}
-            className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
-          >
-            + Создать задачу
-          </button>
-        </div>
-        <ul className="divide-y divide-slate-100">
-          {displayedTasks.map((task) => (
-            <li key={task.id} className="py-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <p
-                    className={`font-semibold text-sm ${
-                      task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-900'
-                    }`}
-                  >
-                    {task.title}
-                  </p>
-                  {task.description && (
-                    <p
-                      className={`text-sm mt-1 ${
-                        task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-500'
-                      }`}
-                    >
-                      {task.description}
-                    </p>
-                  )}
-                  <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-4">
-                    <span>Статус: {task.status}</span>
-                    {task.dueAt && <span>Срок: {formatDate(task.dueAt)}</span>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {task.priority && (
-                    <span className="text-xs font-semibold text-slate-500 uppercase bg-slate-100 rounded-full px-2 py-1 whitespace-nowrap">
-                      {task.priority}
-                    </span>
-                  )}
-                  {task.status !== 'done' && (
-                    <button
-                      onClick={() => handleMarkTaskDone(task.id)}
-                      disabled={completingTaskIds.includes(task.id)}
-                      className="text-xs text-emerald-600 hover:text-emerald-800 whitespace-nowrap"
-                    >
-                      {completingTaskIds.includes(task.id) ? 'Сохраняем...' : 'Сделано'}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setEditingTaskId(task.id)}
-                    className="text-xs text-slate-400 hover:text-sky-600 whitespace-nowrap"
-                  >
-                    ✎ Редактировать
-                  </button>
-                  <button
-                    onClick={() => onDeleteTask(task.id).catch(() => undefined)}
-                    className="text-xs text-slate-400 hover:text-red-500 whitespace-nowrap"
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
-
-  const renderPolicyHeaderCell = (label: string, key: PolicySortKey) => (
-    <th
-      scope="col"
-      className="px-4 py-3 cursor-pointer select-none text-left text-xs font-semibold uppercase tracking-wide text-slate-500 transition hover:text-slate-700"
-      onClick={() => handlePolicySort(key)}
-      aria-sort={
-        policySortKey === key ? (policySortOrder === 'asc' ? 'ascending' : 'descending') : 'none'
-      }
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        <span className="text-[0.55rem] text-slate-400">
-          {policySortKey === key ? (policySortOrder === 'asc' ? '▲' : '▼') : '↕'}
-        </span>
-      </span>
-    </th>
+  const renderTasksTab = () => (
+    <TasksTab
+      selectedDeal={selectedDeal}
+      displayedTasks={displayedTasks}
+      relatedTasks={relatedTasks}
+      onCreateTaskClick={() => setIsCreatingTask(true)}
+      onEditTaskClick={(taskId) => setEditingTaskId(taskId)}
+      onMarkTaskDone={handleMarkTaskDone}
+      onDeleteTask={onDeleteTask}
+      completingTaskIds={completingTaskIds}
+    />
   );
 
-  const renderPoliciesTab = () => {
-    if (!selectedDeal) {
-      return null;
-    }
-
-    if (!relatedPolicies.length) {
-      return (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500">Для сделки пока нет полисов.</p>
-          <button
-            onClick={() => onRequestAddPolicy(selectedDeal.id)}
-            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
-          >
-            Создать полис
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-base font-semibold text-slate-800">Полисы</h3>
-          <button
-            onClick={() => onRequestAddPolicy(selectedDeal.id)}
-            className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
-          >
-            + Создать полис
-          </button>
-        </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <tr>
-                {renderPolicyHeaderCell('Номер', 'number')}
-                {renderPolicyHeaderCell('Компания', 'insuranceCompany')}
-                {renderPolicyHeaderCell('Клиент', 'client')}
-                {renderPolicyHeaderCell('Канал продаж', 'salesChannel')}
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Сумма
-                </th>
-                {renderPolicyHeaderCell('Тип', 'insuranceType')}
-                {renderPolicyHeaderCell('Начало', 'startDate')}
-                {renderPolicyHeaderCell('Окончание', 'endDate')}
-                {renderPolicyHeaderCell('Транспорт', 'transport')}
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Действие
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {sortedPolicies.map((policy) => (
-                <tr
-                  key={policy.id}
-                  className="transition hover:bg-slate-50 focus-within:bg-slate-50"
-                >
-                  <td className="px-4 py-3 font-semibold text-slate-900">{policy.number}</td>
-                  <td className="px-4 py-3">{policy.insuranceCompany || '—'}</td>
-                  <td className="px-4 py-3">{policy.clientName || '—'}</td>
-                  <td className="px-4 py-3">{policy.salesChannel || '—'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="font-semibold text-slate-900">
-                      {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
-                    </div>
-                    <div className="text-[11px] text-slate-400">оплачено / начислено</div>
-                  </td>
-                  <td className="px-4 py-3">{policy.insuranceType || '—'}</td>
-                  <td className="px-4 py-3">{formatDate(policy.startDate)}</td>
-                  <td className="px-4 py-3">{formatDate(policy.endDate)}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {getPolicyTransportSummary(policy)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      className="text-xs font-semibold text-slate-400 transition hover:text-red-500"
-                      onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                    >
-                      Удалить
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  const renderPaymentsByPoliciesTab = () => {
-    if (!selectedDeal) {
-      return null;
-    }
-
-    if (!relatedPolicies.length) {
-      return (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500">
-            Для сделки пока нет полисов, добавьте их на вкладке «Полисы».
-          </p>
-          <button
-            onClick={() => onRequestAddPolicy(selectedDeal.id)}
-            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
-          >
-            Создать полис
-          </button>
-        </div>
-      );
-    }
-
-    const paymentsByPolicy = relatedPolicies.map((policy) => ({
-      policy,
-      payments: relatedPayments.filter((p) => p.policyId === policy.id),
-    }));
-
-    const renderRecordRows = (records: FinancialRecord[], recordType: 'income' | 'expense') => {
-      if (!records.length) {
-        return (
-          <tr>
-            <td colSpan={4} className="px-4 py-2 text-[11px] text-center text-slate-400">
-              Записей нет
-            </td>
-          </tr>
-        );
-      }
-
-      return records.map((record) => {
-        const amountValue = Math.abs(Number(record.amount) || 0);
-        const sign = recordType === 'income' ? '+' : '-';
-
-        return (
-          <tr key={record.id} className="border-t border-slate-100">
-            <td className="px-4 py-2 text-xs text-slate-600">{record.description || 'Без описания'}</td>
-            <td className="px-4 py-2 text-xs text-slate-600">{formatDate(record.date)}</td>
-            <td className="px-4 py-2 text-right font-semibold text-sm text-slate-900">
-              <span className={recordType === 'income' ? 'text-emerald-600' : 'text-red-600'}>
-                {sign}
-                {formatCurrency(amountValue.toString())}
-              </span>
-            </td>
-            <td className="px-4 py-2 text-right text-xs text-slate-600 space-x-2">
-              <button
-                onClick={() => setEditingFinancialRecordId(record.id)}
-                className="text-xs text-sky-600 hover:text-sky-800 font-semibold"
-              >
-                Редактировать
-              </button>
-              <button
-                onClick={() => onDeleteFinancialRecord(record.id).catch(() => undefined)}
-                className="text-xs text-red-500 hover:text-red-700 font-semibold"
-              >
-                Удалить
-              </button>
-            </td>
-          </tr>
-        );
-      });
-    };
-
-    return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold text-slate-800">Платежи</h3>
-          <p className="text-sm text-slate-500">
-            Платежи полиса с доходами и расходами по каждому из них.
-          </p>
-        </div>
-
-        <div className="space-y-5">
-          {paymentsByPolicy.map(({ policy, payments }) => (
-            <section
-              key={policy.id}
-              className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    Полис №{policy.number || policy.id}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {policy.insuranceType || '—'} · {policy.clientName || '—'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400">{policy.status || '—'}</span>
-                  <button
-                    onClick={() => {
-                      setEditingPaymentId('new');
-                      setCreatingPaymentPolicyId(policy.id);
-                    }}
-                    className="px-3 py-2 text-xs font-semibold text-sky-600 hover:text-sky-800"
-                  >
-                    + Создать платеж
-                  </button>
-                </div>
-              </div>
-
-              {payments.length === 0 ? (
-                <p className="text-sm text-slate-500">Платежей по этому полису ещё нет.</p>
-              ) : (
-                <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-slate-50">
-                  <table className="min-w-full text-sm text-left text-slate-600">
-                    <thead className="bg-slate-100 text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3 text-right">Сумма</th>
-                        <th className="px-4 py-3">План</th>
-                        <th className="px-4 py-3">Факт</th>
-                        <th className="px-4 py-3 text-right">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
-                      {payments.map((payment) => {
-                        const incomes =
-                          payment.financialRecords?.filter((record) => record.recordType === 'Доход') || [];
-                        const expenses =
-                          payment.financialRecords?.filter((record) => record.recordType === 'Расход') || [];
-
-                        return (
-                          <React.Fragment key={payment.id}>
-                            <tr className="group hover:bg-slate-50">
-                              <td className="px-4 py-4 text-right">
-                                <p className="text-lg font-semibold text-slate-900">
-                                  {formatCurrency(payment.amount)}
-                                </p>
-                                <p className="text-[11px] text-slate-500 mt-1">
-                                  {payment.note || payment.description || 'Нет примечания'}
-                                </p>
-                              </td>
-                              <td className="px-4 py-4 text-slate-600">
-                                {formatDate(payment.scheduledDate)}
-                              </td>
-                              <td className="px-4 py-4 text-slate-600">
-                                {formatDate(payment.actualDate)}
-                              </td>
-                              <td className="px-4 py-4 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    onClick={() => {
-                                      setCreatingPaymentPolicyId(null);
-                                      setEditingPaymentId(payment.id);
-                                    }}
-                                    className="text-xs text-sky-600 hover:text-sky-800 font-medium"
-                                  >
-                                    Редактировать
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                            <tr className="bg-slate-50">
-                              <td colSpan={6} className="px-4 py-4">
-                                <div className="grid gap-5 md:grid-cols-2">
-                                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                                      <span>Доходы</span>
-                                      <button
-                                        onClick={() =>
-                                          setCreatingFinancialRecordContext({
-                                            paymentId: payment.id,
-                                            recordType: 'income',
-                                          })
-                                        }
-                                        className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
-                                      >
-                                        Добавить
-                                      </button>
-                                    </div>
-                                    <div className="mt-3 overflow-x-auto">
-                                      <table className="min-w-full text-[11px] text-slate-600">
-                                        <thead>
-                                          <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
-                                            <th className="px-3 py-2 text-left">Описание</th>
-                                            <th className="px-3 py-2 text-left">Дата</th>
-                                            <th className="px-3 py-2 text-right">Сумма</th>
-                                            <th className="px-3 py-2 text-right">Действия</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>{renderRecordRows(incomes, 'income')}</tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                                      <span>Расходы</span>
-                                      <button
-                                        onClick={() =>
-                                          setCreatingFinancialRecordContext({
-                                            paymentId: payment.id,
-                                            recordType: 'expense',
-                                          })
-                                        }
-                                        className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
-                                      >
-                                        Добавить
-                                      </button>
-                                    </div>
-                                    <div className="mt-3 overflow-x-auto">
-                                      <table className="min-w-full text-[11px] text-slate-600">
-                                        <thead>
-                                          <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
-                                            <th className="px-3 py-2 text-left">Описание</th>
-                                            <th className="px-3 py-2 text-left">Дата</th>
-                                            <th className="px-3 py-2 text-right">Сумма</th>
-                                            <th className="px-3 py-2 text-right">Действия</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>{renderRecordRows(expenses, 'expense')}</tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-          ))}
-        </div>
-      </div>
-    );
-  };
-  const renderQuotesTab = () => {
-    if (!selectedDeal) {
-      return null;
-    }
-
-    const hasQuotes = quotes.length > 0;
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-base font-semibold text-slate-800">Предложенные продукты</h3>
-          <button
-            onClick={() => onRequestAddQuote(selectedDeal.id)}
-            className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
-          >
-            + Добавить расчет
-          </button>
-        </div>
-        {!hasQuotes ? (
-          <p className="text-sm text-slate-500">Расчетов пока нет.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
-            <table className="min-w-full text-sm text-left">
-              <thead className="text-[10px] uppercase tracking-[0.2em] text-slate-500 bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3">Тип</th>
-                  <th className="px-4 py-3">Компания</th>
-                  <th className="px-4 py-3">Сумма</th>
-                  <th className="px-4 py-3">Премия</th>
-                  <th className="px-4 py-3">Франшиза</th>
-                  <th className="px-4 py-3">Комментарии</th>
-                  <th className="px-4 py-3">Добавлен</th>
-                  <th className="px-4 py-3 text-right">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {quotes.map((quote) => (
-                  <tr key={quote.id} className="odd:bg-white even:bg-slate-50">
-                    <td className="px-4 py-3 font-semibold text-slate-900">{quote.insuranceType}</td>
-                    <td className="px-4 py-3 text-slate-600">{quote.insuranceCompany || '—'}</td>
-                    <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.sumInsured))}</td>
-                    <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.premium))}</td>
-                    <td className="px-4 py-3 text-slate-900">{quote.deductible || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{quote.comments || '—'}</td>
-                    <td className="px-4 py-3 text-slate-400">{formatDate(quote.createdAt)}</td>
-                    <td className="px-4 py-3 text-right space-x-3">
-                      <button
-                        className="text-xs font-semibold text-sky-600 hover:text-sky-800"
-                        onClick={() => onRequestEditQuote(quote)}
-                        type="button"
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        className="text-xs font-semibold text-rose-500 hover:text-rose-600"
-                        onClick={() =>
-                          onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(() => undefined)
-                        }
-                        type="button"
-                      >
-                        Удалить
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    );
-  };
-  const renderFilesTab = () => {
-    if (!selectedDeal) {
-      return null;
-    }
-
-    const disableUpload = !selectedDeal.driveFolderId;
-
-    return (
-      <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Файлы Google Drive</p>
-            <p className="text-xs text-slate-500">
-              Контент читается прямо из папки, привязанной к этой сделке.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={loadDriveFiles}
-            disabled={!selectedDeal.driveFolderId || isDriveLoading}
-            className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isDriveLoading ? 'Обновляю...' : 'Обновить'}
-          </button>
-        </div>
-
-        <FileUploadManager
-          onUpload={async (file) => {
-            await uploadDealDriveFile(selectedDeal.id, file, isSelectedDealDeleted);
-            await loadDriveFiles();
-          }}
-          disabled={disableUpload || isSelectedDealDeleted}
-        />
-
-        <div className="flex flex-wrap items-center gap-2 pt-2">
-          <button
-            type="button"
-            onClick={handleRecognizePolicies}
-            disabled={
-              isRecognizing ||
-              !selectedDeal.driveFolderId ||
-              selectedDriveFileIds.length === 0 ||
-              !!driveError
-            }
-            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            {isRecognizing ? 'Распознаем...' : 'Распознать выделенные'}
-          </button>
-          <p className="text-xs text-slate-500">
-            {selectedDriveFileIds.length
-              ? `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
-              : 'Выберите файлы для распознавания'}
-          </p>
-        </div>
-
-        {recognitionMessage && (
-          <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
-            {recognitionMessage}
-          </p>
-        )}
-
-        {recognitionResults.length > 0 && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3 text-xs">
-            {recognitionResults.map((result) => (
-              <div key={`${result.fileId}-${result.status}`} className="space-y-1">
-                <p className="font-semibold text-slate-900">
-                  {result.fileName ?? result.fileId}
-                </p>
-                <p
-                  className={`text-[11px] ${
-                    result.status === 'error'
-                      ? 'text-rose-600'
-                      : result.status === 'exists'
-                      ? 'text-amber-600'
-                      : 'text-slate-500'
-                  }`}
-                >
-                  {formatRecognitionSummary(result)}
-                </p>
-                {result.transcript && (
-                  <details className="text-[10px] text-slate-400">
-                    <summary>Показать транскрипт</summary>
-                    <pre className="whitespace-pre-wrap text-[11px] leading-snug">
-                      {result.transcript}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {driveError && (
-          <p className="text-xs text-rose-500 bg-rose-50 p-3 rounded-lg">{driveError}</p>
-        )}
-
-        {!driveError && !selectedDeal.driveFolderId && (
-          <p className="text-xs text-slate-500">
-            Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.
-          </p>
-        )}
-
-        <div className="space-y-3 border-t border-slate-100 pt-4">
-          {!driveError && selectedDeal.driveFolderId && isDriveLoading && (
-            <p className="text-sm text-slate-500">Загружаю файлы...</p>
-          )}
-
-          {!driveError &&
-            selectedDeal.driveFolderId &&
-            !isDriveLoading &&
-            sortedDriveFiles.length === 0 && (
-              <p className="text-sm text-slate-500">Папка пуста.</p>
-            )}
-
-          {!driveError && sortedDriveFiles.length > 0 && (
-            <div className="space-y-2">
-              {sortedDriveFiles.map((file) => {
-                const isSelected = selectedDriveFileIds.includes(file.id);
-                const canSelect = !file.isFolder && !isDriveLoading;
-                return (
-                  <div
-                    key={file.id}
-                    className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        disabled={!canSelect}
-                        onChange={() => toggleDriveFileSelection(file.id)}
-                        className="h-4 w-4 rounded-sm border border-slate-300 text-sky-600 focus:ring-0"
-                      />
-                      <span className="text-xl">{getDriveItemIcon(file.isFolder)}</span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 break-all">
-                          {file.name}
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
-                          <span>{formatDriveFileSize(file.size)}</span>
-                          <span>{formatDriveDate(file.modifiedAt ?? file.createdAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {file.webViewLink ? (
-                      <a
-                        href={file.webViewLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-semibold text-sky-600 hover:text-sky-800"
-                      >
-                        Открыть
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-400">—</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-      </div>
-    </section>
+  const renderPoliciesTab = () => (
+    <PoliciesTab
+      selectedDeal={selectedDeal}
+      sortedPolicies={sortedPolicies}
+      policySortKey={policySortKey}
+      policySortOrder={policySortOrder}
+      onRequestAddPolicy={onRequestAddPolicy}
+      onDeletePolicy={onDeletePolicy}
+      onSortChange={handlePolicySort}
+    />
   );
-};
+
+  const renderPaymentsByPoliciesTab = () => (
+    <PaymentsTab
+      selectedDeal={selectedDeal}
+      relatedPolicies={relatedPolicies}
+      relatedPayments={relatedPayments}
+      setEditingPaymentId={setEditingPaymentId}
+      setCreatingPaymentPolicyId={setCreatingPaymentPolicyId}
+      setCreatingFinancialRecordContext={setCreatingFinancialRecordContext}
+      setEditingFinancialRecordId={setEditingFinancialRecordId}
+      onDeleteFinancialRecord={onDeleteFinancialRecord}
+    />
+  );
+
+  const renderQuotesTab = () => (
+    <QuotesTab
+      selectedDeal={selectedDeal}
+      quotes={quotes}
+      onRequestAddQuote={onRequestAddQuote}
+      onRequestEditQuote={onRequestEditQuote}
+      onDeleteQuote={onDeleteQuote}
+    />
+  );
+
+  const renderFilesTab = () => (
+    <FilesTab
+      selectedDeal={selectedDeal}
+      isDriveLoading={isDriveLoading}
+      loadDriveFiles={loadDriveFiles}
+      onUploadDriveFile={handleDriveFileUpload}
+      isSelectedDealDeleted={isSelectedDealDeleted}
+      selectedDriveFileIds={selectedDriveFileIds}
+      toggleDriveFileSelection={toggleDriveFileSelection}
+      handleRecognizePolicies={handleRecognizePolicies}
+      isRecognizing={isRecognizing}
+      recognitionResults={recognitionResults}
+      recognitionMessage={recognitionMessage}
+      driveError={driveError}
+      sortedDriveFiles={sortedDriveFiles}
+    />
+  );
 
   const renderNotesSection = () => {
     if (!selectedDeal) {
@@ -1482,30 +790,16 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   };
 
-  const renderChatTab = () => {
-    if (!selectedDeal) {
-      return null;
-    }
-
-    if (isChatLoading) {
-      return <p className="text-sm text-slate-500">Загружаем сообщения...</p>;
-    }
-
-    return (
-      <ChatBox
-        messages={chatMessages}
-        currentUser={currentUser}
-        onSendMessage={async (body) => {
-          await onSendChatMessage(selectedDeal.id, body);
-          await loadChatMessages();
-        }}
-        onDeleteMessage={async (messageId) => {
-          await onDeleteChatMessage(messageId);
-          await loadChatMessages();
-        }}
-      />
-    );
-  };
+  const renderChatTab = () => (
+    <ChatTab
+      selectedDeal={selectedDeal}
+      chatMessages={chatMessages}
+      isChatLoading={isChatLoading}
+      currentUser={currentUser}
+      onSendMessage={handleChatSendMessage}
+      onDeleteMessage={handleChatDelete}
+    />
+  );
 
   const renderActivityTab = () => {
     return <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />;
