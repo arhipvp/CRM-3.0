@@ -18,6 +18,14 @@ API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 - The Drive folder into which uploads land is configured via `GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID` (in addition to the existing `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`/`GOOGLE_DRIVE_ROOT_FOLDER_ID` settings).
 - All users can read and upload documents; only admins can update or delete entries (the endpoint already enforces the role check).
 
+## Автоматический бэкап на Google Drive
+
+- Скрипт `scripts/backup_project_to_drive.py` проходит по репозиторию, упаковывает файлы (без `.git`, `node_modules`, виртуальных окружений и сборок) в zip-архив `project-repo` и отправляет его, а также SQL-дамп Postgres и Excel-снимок бизнес-таблиц (`database-dumps`) в новую подпапку `crm3-backup-YYYYMMDD-HHMMSS` внутри `GOOGLE_DRIVE_BACKUP_FOLDER_ID`.
+- Одновременно скрипт копирует содержимое `GOOGLE_DRIVE_ROOT_FOLDER_ID` (все клиентские/сделочные вложения) в подпапку `drive-files`, так что ничего не теряется при резервировании.
+- Для создания SQL-файла требуется `pg_dump` (он рассчитывает на настройки `DJANGO_DB_*` из `.env`/`backend/.env`). Excel-отчёт формируется через `openpyxl`: каждая таблица схемы `public` получает свой лист.
+- Необходимые переменные окружения: `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, а также `DJANGO_DB_HOST/PORT/NAME/USER/PASSWORD`. Скрипт читает значения из `.env`, `backend/.env` и дополнительных `--env-file`.
+- Запуск: `python scripts/backup_project_to_drive.py` (опционально `--project-root`, `--env-file`). Каждая сессия создаёт папку по шаблону `crm3-backup-YYYYMMDD-HHMMSS` и загружает внутрь `project-repo`, `database-dumps` (sql + xlsx) и `drive-files`.
+
 ## Frontend
 1. `cd frontend`
 2. `npm install`
