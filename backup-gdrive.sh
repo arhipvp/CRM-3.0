@@ -94,6 +94,7 @@ echo "✅ Архив готов: $FILE_SIZE"
 
 # 6. Загружаем на Google Drive
 echo "☁️  Загружаем на Google Drive..."
+echo "GDRIVE_PATH=$GDRIVE_PATH"
 rclone copy "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" "gdrive:$GDRIVE_PATH/"
 
 echo ""
