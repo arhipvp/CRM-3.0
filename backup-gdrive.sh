@@ -94,6 +94,7 @@ echo "✅ Архив готов: $FILE_SIZE"
 # 6. Загружаем на Google Drive
 echo "☁️  Загружаем на Google Drive..."
 echo "GDRIVE_PATH=$GDRIVE_PATH"
+echo "rclone target archive: gdrive:$GDRIVE_PATH/${BACKUP_NAME}.tar.gz"
 rclone copy "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" "gdrive:$GDRIVE_PATH/"
 
 if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
@@ -101,6 +102,9 @@ if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
     rclone copy "$BACKUP_DIR/$BACKUP_NAME/" "gdrive:$GDRIVE_PATH/$BACKUP_NAME/"
     rm -rf "$BACKUP_DIR/$BACKUP_NAME"
 fi
+
+echo "☁️  Проверка содержимого целевой папки..."
+rclone lsf "gdrive:$GDRIVE_PATH" | tail -n 5
 
 echo ""
 echo "✅ Бэкап успешно загружен на Google Drive!"
