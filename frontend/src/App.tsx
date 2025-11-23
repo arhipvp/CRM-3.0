@@ -1,18 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import { NotificationDisplay } from './components/NotificationDisplay';
-import { DealsView } from './components/views/DealsView';
-import { ClientsView } from './components/views/ClientsView';
-import { PoliciesView } from './components/views/PoliciesView';
-import { PaymentsView } from './components/views/PaymentsView';
-import { FinanceView } from './components/views/FinanceView';
-import { TasksView } from './components/views/TasksView';
-import { SettingsView } from './components/views/SettingsView';
-import { KnowledgeDocumentsView } from './components/views/KnowledgeDocumentsView';
 import { AppModals } from './components/app/AppModals';
+import { AppRoutes } from './components/app/AppRoutes';
 import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
@@ -881,123 +874,61 @@ const AppContent: React.FC = () => {
       currentUser={currentUser || undefined}
       onLogout={handleLogout}
     >
-      <Routes>
-        <Route
-          path="/deals"
-          element={
-            <DealsView
-              deals={deals}
-              clients={clients}
-              policies={policies}
-              payments={payments}
-              financialRecords={financialRecords}
-              tasks={tasks}
-              users={users}
-              currentUser={currentUser as User}
-              selectedDealId={selectedDealId}
-              onSelectDeal={setSelectedDealId}
-              onUpdateStatus={handleStatusChange}
-              onUpdateDeal={handleUpdateDeal}
-              onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
-              onRequestEditQuote={handleRequestEditQuote}
-              onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
-              onDeleteQuote={handleDeleteQuote}
-              onDeletePolicy={handleDeletePolicy}
-              onAddPayment={async (values) => {
-                if (selectedDealId) await handleAddPayment({ ...values, dealId: selectedDealId });
-              }}
-              onUpdatePayment={handleUpdatePayment}
-              onAddFinancialRecord={handleAddFinancialRecord}
-              onUpdateFinancialRecord={handleUpdateFinancialRecord}
-              onDeleteFinancialRecord={handleDeleteFinancialRecord}
-              onDriveFolderCreated={handleDriveFolderCreated}
-              onFetchChatMessages={handleFetchChatMessages}
-              onSendChatMessage={handleSendChatMessage}
-              onDeleteChatMessage={handleDeleteChatMessage}
-              onFetchDealHistory={fetchDealHistory}
-              onCreateTask={handleCreateTask}
-              onUpdateTask={handleUpdateTask}
-              onDeleteTask={handleDeleteTask}
-              onDeleteDeal={handleDeleteDeal}
-              onRestoreDeal={handleRestoreDeal}
-              dealSearch={dealSearch}
-              onDealSearchChange={setDealSearch}
-              dealExecutorFilter={dealExecutorFilter}
-              onDealExecutorFilterChange={setDealExecutorFilter}
-              dealSourceFilter={dealSourceFilter}
-              onDealSourceFilterChange={setDealSourceFilter}
-              dealExpectedCloseFrom={dealExpectedCloseFrom}
-              onDealExpectedCloseFromChange={setDealExpectedCloseFrom}
-              dealExpectedCloseTo={dealExpectedCloseTo}
-              onDealExpectedCloseToChange={setDealExpectedCloseTo}
-              dealShowDeleted={dealShowDeleted}
-              onDealShowDeletedChange={setDealShowDeleted}
-              onPolicyDraftReady={handlePolicyDraftReady}
-            />
-          }
-        />
-        <Route
-          path="/clients"
-          element={
-            <ClientsView
-              clients={clients}
-              deals={deals}
-              onClientEdit={handleEditClient}
-            />
-          }
-        />
-        <Route
-          path="/policies"
-          element={
-            <PoliciesView
-              policies={policies}
-              deals={deals}
-            />
-          }
-        />
-        <Route
-          path="/payments"
-          element={
-            <PaymentsView
-              payments={payments}
-              deals={deals}
-              onMarkPaid={handleMarkPayment}
-            />
-          }
-        />
-        <Route
-          path="/finance"
-          element={
-            <FinanceView
-              financialRecords={financialRecords}
-              payments={payments}
-            />
-          }
-        />
-        <Route
-          path="/tasks"
-          element={
-            <TasksView
-              tasks={tasks}
-              deals={deals}
-            />
-          }
-        />
-        <Route
-          path="/knowledge"
-          element={
-            <KnowledgeDocumentsView
-              documents={knowledgeDocs}
-              isLoading={knowledgeLoading}
-              disabled={knowledgeUploading}
-              error={knowledgeError}
-              onUpload={handleKnowledgeUpload}
-            />
-          }
-        />
-        <Route path="/settings" element={<SettingsView />} />
-        <Route path="*" element={<Navigate to="/deals" replace />} />
-      </Routes>
+      <AppRoutes
+        deals={deals}
+        clients={clients}
+        policies={policies}
+        payments={payments}
+        financialRecords={financialRecords}
+        tasks={tasks}
+        users={users}
+        currentUser={currentUser}
+        selectedDealId={selectedDealId}
+        onSelectDeal={setSelectedDealId}
+        onUpdateStatus={handleStatusChange}
+        onUpdateDeal={handleUpdateDeal}
+        onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
+        onRequestEditQuote={handleRequestEditQuote}
+        onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
+        onDeleteQuote={handleDeleteQuote}
+        onDeletePolicy={handleDeletePolicy}
+        onAddPayment={handleAddPayment}
+        onUpdatePayment={handleUpdatePayment}
+        onAddFinancialRecord={handleAddFinancialRecord}
+        onUpdateFinancialRecord={handleUpdateFinancialRecord}
+        onDeleteFinancialRecord={handleDeleteFinancialRecord}
+        onDriveFolderCreated={handleDriveFolderCreated}
+        onFetchChatMessages={handleFetchChatMessages}
+        onSendChatMessage={handleSendChatMessage}
+        onDeleteChatMessage={handleDeleteChatMessage}
+        onFetchDealHistory={fetchDealHistory}
+        onCreateTask={handleCreateTask}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
+        onDeleteDeal={handleDeleteDeal}
+        onRestoreDeal={handleRestoreDeal}
+        dealSearch={dealSearch}
+        onDealSearchChange={setDealSearch}
+        dealExecutorFilter={dealExecutorFilter}
+        onDealExecutorFilterChange={setDealExecutorFilter}
+        dealSourceFilter={dealSourceFilter}
+        onDealSourceFilterChange={setDealSourceFilter}
+        dealExpectedCloseFrom={dealExpectedCloseFrom}
+        onDealExpectedCloseFromChange={setDealExpectedCloseFrom}
+        dealExpectedCloseTo={dealExpectedCloseTo}
+        onDealExpectedCloseToChange={setDealExpectedCloseTo}
+        dealShowDeleted={dealShowDeleted}
+        onDealShowDeletedChange={setDealShowDeleted}
+        onPolicyDraftReady={handlePolicyDraftReady}
+        onClientEdit={handleEditClient}
+        handleMarkPayment={handleMarkPayment}
+        knowledgeDocs={knowledgeDocs}
+        knowledgeLoading={knowledgeLoading}
+        knowledgeUploading={knowledgeUploading}
+        knowledgeError={knowledgeError}
+        handleKnowledgeUpload={handleKnowledgeUpload}
+      />
+
 
       <AppModals
         modal={modal}
