@@ -55,6 +55,44 @@ import { QuotesTab } from './dealsView/tabs/QuotesTab';
 import { FilesTab } from './dealsView/tabs/FilesTab';
 import { ChatTab } from './dealsView/tabs/ChatTab';
 
+const dateInputBaseClass =
+  'appearance-none w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pl-10 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-50';
+
+interface DateInputFieldProps {
+  id?: string;
+  value?: string | null;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  containerClassName?: string;
+}
+
+const DateInputField: React.FC<DateInputFieldProps> = ({
+  id,
+  value,
+  onChange,
+  disabled,
+  containerClassName,
+}) => (
+  <div className={`relative ${containerClassName ?? ''}`}>
+    <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-slate-400">📅</div>
+    <input
+      id={id}
+      type="date"
+      value={value ?? ''}
+      onChange={(event) => onChange(event.target.value)}
+      disabled={disabled}
+      className={dateInputBaseClass}
+    />
+  </div>
+);
+
+const SummaryField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div className="space-y-1">
+    <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">{label}</p>
+    <div className="text-base font-semibold text-slate-900 leading-tight">{value}</div>
+  </div>
+);
+
 interface DealsViewProps {
   deals: Deal[];
   clients: Client[];
