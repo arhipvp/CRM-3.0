@@ -9,9 +9,9 @@ import shutil
 import subprocess
 import tempfile
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Optional
 from urllib.parse import quote_plus
 
 from googleapiclient.discovery import build
@@ -104,7 +104,8 @@ def iter_files(root: Path) -> Iterator[Path]:
 def create_archive(root: Path, destination: Path) -> Path:
     """Create a zip archive of the repository in the given destination path."""
 
-    name = f"crm3-repo-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.zip"
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    name = f"crm3-repo-{timestamp}.zip"
     archive_path = destination / name
     logger.info("Creating project archive %s", archive_path.name)
 
@@ -141,6 +142,15 @@ def build_db_config(env: dict[str, str]) -> dict[str, str]:
     }
 
 
+def locate_pg_dump() -> Optional[str]:
+    """Return the path to `pg_dump` if it exists."""
+
+    path = shutil.which("pg_dump")
+    if not path:
+        logger.warning("`pg_dump` was not found; SQL dump will be skipped.")
+    return path
+
+
 def _build_db_dsn(config: dict[str, str]) -> str:
     return (
         f"postgresql://{quote_plus(config['user'])}:{quote_plus(config['password'])}"
@@ -148,16 +158,20 @@ def _build_db_dsn(config: dict[str, str]) -> str:
     )
 
 
-def dump_database(config: dict[str, str], destination: Path, label: str) -> Path:
+def dump_database(
+    config: dict[str, str],
+    destination: Path,
+    label: str,
+    pg_dump_path: Optional[str],
+) -> Optional[Path]:
     """Run pg_dump and store a plain SQL file."""
 
-    pg_dump = shutil.which("pg_dump")
-    if not pg_dump:
-        raise SystemExit("`pg_dump` is required but was not found in PATH.")
+    if not pg_dump_path:
+        return None
 
     filename = destination / f"crm3-db-{label}.sql"
     cmd = [
-        pg_dump,
+        pg_dump_path,
         "-h",
         config["host"],
         "-p",
@@ -175,11 +189,16 @@ def dump_database(config: dict[str, str], destination: Path, label: str) -> Path
     result = subprocess.run(cmd, env=env, capture_output=True, text=True)
     if result.returncode:
         logger.error("pg_dump failed: %s", result.stderr.strip())
-        raise SystemExit("pg_dump exited with an error.")
+        logger.warning("SQL dump could not be created due to pg_dump failure.")
+        return None
     return filename
 
 
-def export_database_to_excel(config: dict[str, str], destination: Path, label: str) -> Path:
+def export_database_to_excel(
+    config: dict[str, str],
+    destination: Path,
+    label: str,
+) -> Optional[Path]:
     """Export every public table into separate sheets of one workbook."""
 
     excel_path = destination / f"crm3-db-{label}.xlsx"
@@ -234,7 +253,8 @@ def export_database_to_excel(config: dict[str, str], destination: Path, label: s
             workbook.save(excel_path)
     except Exception as exc:
         logger.exception("Failed to export tables to Excel")
-        raise SystemExit("Unable to export DB tables to Excel.") from exc
+        logger.warning("Excel export could not be created; proceeding without it.")
+        return None
 
     return excel_path
 
@@ -363,7 +383,7 @@ def main() -> None:
     drive_root = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID") or env.get("GOOGLE_DRIVE_ROOT_FOLDER_ID")
     db_config = build_db_config(env)
 
-    timestamp_label = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp_label = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
     if not service_account_path.exists():
         raise SystemExit(f"Service account file {service_account_path} does not exist.")
@@ -375,15 +395,18 @@ def main() -> None:
 
     db_folder_id = backup_client.create_folder("database-dumps", session_folder_id)
 
+    pg_dump_path = locate_pg_dump()
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
         archive = create_archive(args.project_root, temp_dir_path)
-        sql_dump = dump_database(db_config, temp_dir_path, timestamp_label)
+        sql_dump = dump_database(db_config, temp_dir_path, timestamp_label, pg_dump_path)
         excel_dump = export_database_to_excel(db_config, temp_dir_path, timestamp_label)
 
         backup_client.upload_file(archive, repo_subfolder_id)
-        backup_client.upload_file(sql_dump, db_folder_id)
-        backup_client.upload_file(excel_dump, db_folder_id)
+        if sql_dump:
+            backup_client.upload_file(sql_dump, db_folder_id)
+        if excel_dump:
+            backup_client.upload_file(excel_dump, db_folder_id)
 
     if drive_root:
         drive_subfolder_id = backup_client.create_folder("drive-files", session_folder_id)
