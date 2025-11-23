@@ -25,8 +25,18 @@ API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
 - Для создания SQL-файла требуется `pg_dump` (он рассчитывает на настройки `DJANGO_DB_*` из `.env`/`backend/.env`). Excel-отчёт формируется через `openpyxl`: каждая таблица схемы `public` получает свой лист.
 - Необходимые переменные окружения: `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, а также `DJANGO_DB_HOST/PORT/NAME/USER/PASSWORD`. Скрипт читает значения из `.env`, `backend/.env` и дополнительных `--env-file`.
 - Чтобы избежать лишних данных, добавь `BACKUP_DB_EXCLUDE_TABLES` (например `users_auditlog`) — указанные таблицы не будут попадать в SQL-дамп и Excel-отчёт. По умолчанию исключаются `users_auditlog`, но ты можешь перечислить другие структуры через запятую.
+- Параметр `BACKUP_MAX_SESSIONS` (по умолчанию `2000`) гарантирует, что в папке `GOOGLE_DRIVE_BACKUP_FOLDER_ID` сохраняется только указанное число старых сессий; остальные удаляются автоматом после создания нового каталога.
 - Если умеешь подключаться к базе через `localhost`/другой хост вне Docker-сети, задай `BACKUP_DB_FALLBACK_HOST` — при невозможности резолва `DJANGO_DB_HOST` скрипт переключится на fallback и попробует сделать дамп через PG-CLI.
 - Запуск: `python scripts/backup_project_to_drive.py` (опционально `--project-root`, `--env-file`). Каждая сессия создаёт папку по шаблону `crm3-backup-YYYYMMDD-HHMMSS` и загружает внутрь `project-repo`, `database-dumps` (sql + xlsx) и `drive-files`.
+- **Автоматизация:** на сервере лучше использовать systemd timer с шаблоном `systemd/crm3-drive-backup.{service,timer}`. Скопируй оба файла в `/etc/systemd/system/`, отредактируй переменные окружения (если пути отличаются), затем:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable --now crm3-drive-backup.timer
+```
+
+Таймер с `OnCalendar=00,06,12,18:00:00` запускает скрипт каждые 6 часов и логирует всё в `/root/crm3/cron-backup.log`.  
+Если предпочитаешь cron, можно оставить прежний пример `0 3 * * * ...` и запустить из `crontab -e`.
 
 ## Frontend
 1. `cd frontend`

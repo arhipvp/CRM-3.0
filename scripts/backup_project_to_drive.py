@@ -26,6 +26,8 @@ from psycopg.sql import Identifier, SQL
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 DEFAULT_EXCLUDED_TABLES = ("users_auditlog",)
+DEFAULT_BACKUP_MAX_SESSIONS = 2000
+DEFAULT_EXCLUDED_TABLES = ("users_auditlog",)
 
 ROOT_ENV_FILES = (".env", "backend/.env")
 EXCLUDE_DIRS = {
@@ -94,6 +96,18 @@ def get_excluded_tables(env: dict[str, str]) -> set[str]:
     raw = os.environ.get("BACKUP_DB_EXCLUDE_TABLES") or env.get("BACKUP_DB_EXCLUDE_TABLES", "")
     extras = {table.strip() for table in raw.split(",") if table.strip()}
     return {table.lower() for table in (*DEFAULT_EXCLUDED_TABLES, *extras)}
+
+
+def get_backup_session_limit(env: dict[str, str]) -> int:
+    raw = os.environ.get("BACKUP_MAX_SESSIONS") or env.get("BACKUP_MAX_SESSIONS")
+    if not raw:
+        return DEFAULT_BACKUP_MAX_SESSIONS
+    try:
+        value = int(raw)
+        return max(0, value)
+    except ValueError:
+        logger.warning("BACKUP_MAX_SESSIONS=%r is not an integer, defaulting to %s", raw, DEFAULT_BACKUP_MAX_SESSIONS)
+        return DEFAULT_BACKUP_MAX_SESSIONS
 
 
 def iter_files(root: Path) -> Iterator[Path]:
@@ -461,6 +475,61 @@ class DriveBackup:
                 except HttpError as exc:
                     logger.warning("Failed to copy %s (%s): %s", name, child["id"], exc)
 
+    def prune_old_backups(
+        self,
+        parent_id: str,
+        keep_limit: int,
+        skip_ids: set[str] | None = None,
+    ) -> None:
+        if keep_limit <= 0:
+            return
+
+        if skip_ids is None:
+            skip_ids = set()
+
+        candidates = []
+        page_token: str | None = None
+        while True:
+            response = (
+                self.service.files()
+                .list(
+                    q=" and ".join(
+                        (
+                            f"'{parent_id}' in parents",
+                            f"mimeType = '{FOLDER_MIME_TYPE}'",
+                            "trashed = false",
+                        )
+                    ),
+                    spaces="drive",
+                    fields="nextPageToken, files(id, name, createdTime)",
+                    orderBy="createdTime",
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                    pageSize=200,
+                )
+                .execute()
+            )
+            for item in response.get("files", []):
+                if item["id"] in skip_ids:
+                    continue
+                candidates.append(item)
+
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+
+        if len(candidates) <= keep_limit:
+            return
+
+        to_remove = candidates[: len(candidates) - keep_limit]
+        logger.info("Pruning %d old backup folders", len(to_remove))
+        for outdated in to_remove:
+            try:
+                self.service.files().delete(fileId=outdated["id"], supportsAllDrives=True).execute()
+                logger.info("Removed old backup folder %s (%s)", outdated["name"], outdated["id"])
+            except HttpError as exc:
+                logger.warning("Failed to delete %s (%s): %s", outdated["name"], outdated["id"], exc)
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Backup CRM sources and Drive files.")
@@ -492,6 +561,7 @@ def main() -> None:
     drive_root = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID") or env.get("GOOGLE_DRIVE_ROOT_FOLDER_ID")
     db_config = build_db_config(env)
     excluded_tables = get_excluded_tables(env)
+    session_limit = get_backup_session_limit(env)
 
     timestamp_label = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
@@ -528,6 +598,9 @@ def main() -> None:
         skip_ids = {backup_root, media_root_id}
         backup_client.copy_folder_tree(
             drive_root, media_root_id, skip_folder_ids=skip_ids, allow_existing=False
+        )
+        backup_client.prune_old_backups(
+            backup_root, session_limit, skip_ids={*skip_ids, media_root_id}
         )
     else:
         logger.warning("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured; skipping Drive files backup.")
