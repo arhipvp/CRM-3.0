@@ -1,12 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
-import { Modal } from './components/Modal';
 import { LoginPage } from './components/LoginPage';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import { NotificationDisplay } from './components/NotificationDisplay';
-import { ClientForm } from './components/forms/ClientForm';
-import { DealForm } from './components/forms/DealForm';
 import { DealsView } from './components/views/DealsView';
 import { ClientsView } from './components/views/ClientsView';
 import { PoliciesView } from './components/views/PoliciesView';
@@ -15,15 +12,14 @@ import { FinanceView } from './components/views/FinanceView';
 import { TasksView } from './components/views/TasksView';
 import { SettingsView } from './components/views/SettingsView';
 import { KnowledgeDocumentsView } from './components/views/KnowledgeDocumentsView';
-import { AddQuoteForm, QuoteFormValues } from './components/forms/AddQuoteForm';
-import { AddPolicyForm, PolicyFormValues } from './components/forms/AddPolicyForm';
-import { AddPaymentForm, AddPaymentFormValues } from './components/forms/AddPaymentForm';
-import {
-  AddFinancialRecordForm,
-  AddFinancialRecordFormValues,
-} from './components/forms/AddFinancialRecordForm';
+import { AppModals } from './components/app/AppModals';
+import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
+import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
+import type { PolicyFormValues } from './components/forms/AddPolicyForm';
+import type { QuoteFormValues } from './components/forms/AddQuoteForm';
+import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
 import {
   createClient,
   updateClient,
@@ -59,6 +55,7 @@ import { Client, DealStatus, FinancialRecord, Payment, Quote, User } from './typ
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
+import type { FinancialRecordModalState, PaymentModalState } from './components/app/types';
 
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
@@ -130,18 +127,6 @@ const mapApiUser = (userData: CurrentUserResponse): User => ({
   firstName: userData.first_name ?? undefined,
   lastName: userData.last_name ?? undefined,
 });
-
-type ModalType = null | 'client' | 'deal';
-
-interface PaymentModalState {
-  policyId?: string;
-  paymentId?: string;
-}
-
-interface FinancialRecordModalState {
-  paymentId?: string;
-  recordId?: string;
-}
 
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
@@ -1014,105 +999,36 @@ const AppContent: React.FC = () => {
         <Route path="*" element={<Navigate to="/deals" replace />} />
       </Routes>
 
-      {/* Modals */}
-      {modal === 'client' && (
-        <Modal
-          title="Новый клиент"
-          onClose={() => setModal(null)}
-        >
-          <ClientForm onSubmit={handleAddClient} />
-        </Modal>
-      )}
-
-      {editingClient && (
-        <Modal
-          title="Редактирование клиента"
-          onClose={() => setEditingClient(null)}
-        >
-          <ClientForm
-            initial={editingClient}
-            onSubmit={(data) => handleUpdateClient(editingClient.id, data)}
-          />
-        </Modal>
-      )}
-
-      {modal === 'deal' && (
-        <Modal
-          title="Новая сделка"
-          onClose={() => setModal(null)}
-        >
-          <DealForm
-            clients={clients}
-            users={users}
-            onSubmit={handleAddDeal}
-          />
-        </Modal>
-      )}
-
-      {quoteDealId && (
-        <Modal title="Добавить расчет" onClose={() => setQuoteDealId(null)}>
-          <AddQuoteForm
-            onSubmit={(values) => handleAddQuote(quoteDealId, values)}
-            onCancel={() => setQuoteDealId(null)}
-          />
-        </Modal>
-      )}
-
-      {editingQuote && (
-        <Modal title="Редактировать расчет" onClose={() => setEditingQuote(null)}>
-          <AddQuoteForm
-            initialValues={editingQuote}
-            onSubmit={(values) => handleUpdateQuote(values)}
-            onCancel={() => setEditingQuote(null)}
-          />
-        </Modal>
-      )}
-
-      {policyDealId && (
-        <Modal title="Добавить полис" onClose={() => setPolicyDealId(null)} size="xl">
-          <AddPolicyForm
-            salesChannels={salesChannels}
-            initialValues={policyPrefill?.values}
-            initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
-            initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
-            onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-            onCancel={() => {
-              setPolicyDealId(null);
-              setPolicyPrefill(null);
-            }}
-          />
-        </Modal>
-      )}
-
-      {paymentModal && (
-        <Modal
-          title="Редактировать платеж"
-          onClose={() => setPaymentModal(null)}
-        >
-          <AddPaymentForm
-            payment={payments.find((p) => p.id === paymentModal.paymentId)}
-            onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
-            onCancel={() => setPaymentModal(null)}
-          />
-        </Modal>
-      )}
-
-      {financialRecordModal && (
-        <Modal
-          title="Редактировать запись"
-          onClose={() => setFinancialRecordModal(null)}
-        >
-          <AddFinancialRecordForm
-            paymentId={financialRecordModal.paymentId!}
-            record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
-            onSubmit={(values) =>
-              handleUpdateFinancialRecord(financialRecordModal.recordId!, values)
-            }
-            onCancel={() => setFinancialRecordModal(null)}
-          />
-        </Modal>
-      )}
-
+      <AppModals
+        modal={modal}
+        setModal={setModal}
+        editingClient={editingClient}
+        setEditingClient={setEditingClient}
+        clients={clients}
+        users={users}
+        handleAddClient={handleAddClient}
+        handleUpdateClient={handleUpdateClient}
+        handleAddDeal={handleAddDeal}
+        quoteDealId={quoteDealId}
+        setQuoteDealId={setQuoteDealId}
+        handleAddQuote={handleAddQuote}
+        editingQuote={editingQuote}
+        handleUpdateQuote={handleUpdateQuote}
+        policyDealId={policyDealId}
+        setPolicyDealId={setPolicyDealId}
+        policyPrefill={policyPrefill}
+        setPolicyPrefill={setPolicyPrefill}
+        salesChannels={salesChannels}
+        handleAddPolicy={handleAddPolicy}
+        paymentModal={paymentModal}
+        setPaymentModal={setPaymentModal}
+        handleUpdatePayment={handleUpdatePayment}
+        payments={payments}
+        financialRecordModal={financialRecordModal}
+        setFinancialRecordModal={setFinancialRecordModal}
+        handleUpdateFinancialRecord={handleUpdateFinancialRecord}
+        financialRecords={financialRecords}
+      />
       <NotificationDisplay />
 
       {error && (
