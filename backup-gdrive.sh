@@ -1,129 +1,141 @@
 #!/bin/bash
 
-# CRM 3.0 Backup to Google Drive Script
-# Требует установленный rclone с настроенным Google Drive
+set -euo pipefail
 
-set -e
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_ROOT"
 
-# Load local env overrides so we can reuse the same folder IDs.
-if [ -f .env ]; then
-    set -o allexport
-    source .env
-    set +o allexport
-fi
+load_env() {
+    if [ -f "$1" ]; then
+        set -o allexport
+        source "$1"
+        set +o allexport
+    fi
+}
 
-if [ -f backend/.env ]; then
-    set -o allexport
-    source backend/.env
-    set +o allexport
-fi
+load_env ".env"
+load_env "backend/.env"
 
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_DIR="./backups"
+TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
+BACKUP_DIR="$PROJECT_ROOT/backups"
 BACKUP_NAME="crm3_backup_${TIMESTAMP}"
-GDRIVE_PATH="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-CRM3_Backups}"  # Папка на Google Drive
+GDRIVE_PATH="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-CRM3_Backups}"
 
-# Проверка установки rclone
-if ! command -v rclone &> /dev/null; then
-    echo "❌ rclone не установлен!"
-    echo ""
-    echo "Установите rclone:"
-    echo "  Linux/macOS:  brew install rclone"
-    echo "  Windows:      choco install rclone"
-    echo "  Или скачайте с https://rclone.org/downloads/"
-    exit 1
-fi
+ensure_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "Command '$1' is required but not installed."
+        exit 1
+    fi
+}
 
-# Проверка настройки Google Drive в rclone
-if ! rclone listremotes | grep -q "gdrive"; then
-    echo "❌ Google Drive не настроен в rclone!"
-    echo ""
-    echo "Выполните:"
-    echo "  rclone config"
-    echo ""
-    echo "Затем выберите 'n' (new remote) и следуйте инструкциям для Google Drive"
-    exit 1
-fi
+ensure_command docker-compose
+ensure_command rclone
 
-echo "🔄 Начинаем бэкап CRM 3.0 на Google Drive..."
-mkdir -p "$BACKUP_DIR"
-
-# 1. Бэкап PostgreSQL БД
-echo "📦 Создаём dump базы данных..."
+echo "🔄 Starting CRM 3.0 backup"
 mkdir -p "$BACKUP_DIR/$BACKUP_NAME"
-docker-compose exec -T db pg_dump -U crm3 crm3 > "$BACKUP_DIR/$BACKUP_NAME/database.sql"
 
-# 2. Бэкап загруженных файлов
-if [ -d "./backend/media" ]; then
-    echo "📄 Копируем загруженные файлы..."
-    cp -r ./backend/media "$BACKUP_DIR/$BACKUP_NAME/" 2>/dev/null || true
+echo "📦 Dumping PostgreSQL database..."
+docker-compose exec -T db pg_dump -U crm3 crm3 >"$BACKUP_DIR/$BACKUP_NAME/database.sql"
+
+if [ -d "backend/media" ]; then
+    echo "📄 Copying media files..."
+    cp -r "backend/media" "$BACKUP_DIR/$BACKUP_NAME/" >/dev/null 2>&1 || true
 fi
 
-# 3. Копируем конфиги
-echo "⚙️  Копируем конфигурацию..."
+echo "⚙️ Copying configuration snapshots..."
 mkdir -p "$BACKUP_DIR/$BACKUP_NAME/config"
-[ -f "./backend/.env" ] && cp ./backend/.env "$BACKUP_DIR/$BACKUP_NAME/config/.env.backend" || true
-[ -f "./frontend/.env" ] && cp ./frontend/.env "$BACKUP_DIR/$BACKUP_NAME/config/.env.frontend" || true
-[ -f "./.env" ] && cp ./.env "$BACKUP_DIR/$BACKUP_NAME/config/.env.root" || true
+[ -f "backend/.env" ] && cp "backend/.env" "$BACKUP_DIR/$BACKUP_NAME/config/.env.backend" || true
+[ -f "frontend/.env" ] && cp "frontend/.env" "$BACKUP_DIR/$BACKUP_NAME/config/.env.frontend" || true
+[ -f ".env" ] && cp ".env" "$BACKUP_DIR/$BACKUP_NAME/config/.env.root" || true
 
-# 4. Сохраняем информацию
-echo "📋 Сохраняем информацию о системе..."
-cat > "$BACKUP_DIR/$BACKUP_NAME/backup_info.txt" << EOF
+cat <<EOF >"$BACKUP_DIR/$BACKUP_NAME/backup_info.txt"
 CRM 3.0 Backup Information
 ==========================
-Дата создания: $(date)
-Git commit: $(git log -1 --oneline)
+Date: $(date -u)
+Git commit: $(git rev-parse --short HEAD)
 Git branch: $(git rev-parse --abbrev-ref HEAD)
 
-Загружено на Google Drive: $GDRIVE_PATH/$BACKUP_NAME
+Google Drive path: $GDRIVE_PATH/$BACKUP_NAME
 
-Включено в бэкап:
-- Database dump (database.sql)
-- Media files (if any)
-- Configuration files
-- Backup info
+Contents:
+- database dump (database.sql)
+- media directory (if present)
+- configuration snapshots (.env files)
+- this info file
 EOF
 
-# 5. Архивируем
-echo "🗜️  Архивируем бэкап..."
+echo "🗜️ Archiving backup..."
 tar -czf "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" -C "$BACKUP_DIR" "$BACKUP_NAME"
 
-FILE_SIZE=$(du -h "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" | cut -f1)
-echo "✅ Архив готов: $FILE_SIZE"
+FILE_SIZE="$(du -h "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" | cut -f1)"
+echo "✅ Archive ready ($FILE_SIZE)"
 
-# 6. Загружаем на Google Drive
-echo "☁️  Загружаем на Google Drive..."
-echo "GDRIVE_PATH=$GDRIVE_PATH"
-echo "rclone target archive: gdrive:$GDRIVE_PATH/${BACKUP_NAME}.tar.gz"
+echo "☁️ Uploading archive to Google Drive ($GDRIVE_PATH/${BACKUP_NAME}.tar.gz)..."
 rclone copy "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" "gdrive:$GDRIVE_PATH/"
 
 if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
-    echo "☁️  Загружаем распакованный бэкап..."
+    echo "☁️ Uploading unpacked contents..."
     rclone copy "$BACKUP_DIR/$BACKUP_NAME/" "gdrive:$GDRIVE_PATH/$BACKUP_NAME/"
     rm -rf "$BACKUP_DIR/$BACKUP_NAME"
 fi
 
-echo "☁️  Проверка содержимого целевой папки..."
+echo "🧾 Target folder snapshot:"
 rclone lsf "gdrive:$GDRIVE_PATH" | tail -n 5
 
-echo ""
-echo "✅ Бэкап успешно загружен на Google Drive!"
-echo "📍 Файл: $BACKUP_DIR/${BACKUP_NAME}.tar.gz"
-echo "☁️  Google Drive: $GDRIVE_PATH/${BACKUP_NAME}.tar.gz"
-echo "📊 Размер: $FILE_SIZE"
-echo ""
+SHARE_EMAIL="arhipvp@gmail.com"
+if [ -n "${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-}" ]; then
+    echo ""
+    echo "🔐 Granting read access for $SHARE_EMAIL..."
+    VENV_DIR="$PROJECT_ROOT/.backup-gdrive-venv"
+    if [ ! -d "$VENV_DIR" ]; then
+        python3 -m venv "$VENV_DIR"
+    fi
+    "$VENV_DIR/bin/pip" install --upgrade pip google-auth google-api-python-client >/dev/null
+    "$VENV_DIR/bin/python" <<'PY'
+import os
 
-# Удаляем локальный архив (опционально)
-read -p "Удалить локальный бэкап? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    rm "$BACKUP_DIR/${BACKUP_NAME}.tar.gz"
-    echo "✓ Локальный бэкап удалён"
-else
-    echo "✓ Локальный бэкап сохранён в $BACKUP_DIR/"
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+keyfile = os.getenv("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "credentials.json")
+if not os.path.isabs(keyfile):
+    keyfile = os.path.abspath(keyfile)
+if not os.path.exists(keyfile) and os.path.exists("credentials.json"):
+    keyfile = os.path.abspath("credentials.json")
+
+folder_id = os.getenv("GOOGLE_DRIVE_BACKUP_FOLDER_ID")
+email = os.getenv("SHARE_EMAIL", "arhipvp@gmail.com")
+scopes = ["https://www.googleapis.com/auth/drive"]
+
+creds = service_account.Credentials.from_service_account_file(
+    keyfile, scopes=scopes
+)
+service = build("drive", "v3", credentials=creds, cache_discovery=False)
+try:
+    service.permissions().create(
+        fileId=folder_id,
+        body={
+            "type": "user",
+            "role": "reader",
+            "emailAddress": email,
+        },
+        fields="id",
+        sendNotificationEmail=False,
+    ).execute()
+    print(f"✅ Shared folder with {email}")
+except HttpError as exc:
+    if exc.resp.status == 409:
+        print(f"ℹ️ {email} already has access")
+    else:
+        raise
+PY
 fi
 
-# Проверить загруженные файлы на Google Drive
 echo ""
-echo "Бэкапы на Google Drive:"
+echo "🧹 Cleaning up local files..."
+rm -rf "$BACKUP_DIR"
+
+echo ""
+echo "📦 Google Drive listing:"
 rclone ls "gdrive:$GDRIVE_PATH/" | tail -5
