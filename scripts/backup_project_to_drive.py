@@ -314,6 +314,33 @@ class DriveBackup:
         ).execute()
         return response["id"]
 
+    def ensure_folder(self, name: str, parent_id: str) -> str:
+        logger.debug("Looking for folder %s under %s", name, parent_id)
+        escaped_name = name.replace("'", "\\'")
+        query = " and ".join(
+            (
+                f"name = '{escaped_name}'",
+                f"'{parent_id}' in parents",
+                f"mimeType = '{FOLDER_MIME_TYPE}'",
+                "trashed = false",
+            )
+        )
+        response = (
+            self.service.files()
+            .list(
+                q=query,
+                spaces="drive",
+                fields="files(id, name)",
+                pageSize=1,
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+        files = response.get("files") or []
+        if files:
+            return files[0]["id"]
+        return self.create_folder(name, parent_id)
+
     def upload_file(self, path: Path, parent_id: str) -> str:
         logger.info("Uploading %s to Drive", path.name)
         request = self.service.files().create(
@@ -437,8 +464,9 @@ def main() -> None:
             backup_client.upload_file(excel_dump, db_folder_id)
 
     if drive_root:
-        drive_subfolder_id = backup_client.create_folder("drive-files", session_folder_id)
-        backup_client.copy_folder_tree(drive_root, drive_subfolder_id)
+        media_root_id = backup_client.ensure_folder("Media", backup_root)
+        media_session_id = backup_client.create_folder(f"drive-mirror-{timestamp_label}", media_root_id)
+        backup_client.copy_folder_tree(drive_root, media_session_id)
     else:
         logger.warning("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured; skipping Drive files backup.")
 
