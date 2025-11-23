@@ -22,6 +22,8 @@ interface FilesTabProps {
   recognitionMessage: string | null;
   driveError: string | null;
   sortedDriveFiles: DriveFile[];
+  onDeleteDriveFile: (fileId: string) => Promise<void>;
+  deletingDriveFileIds: string[];
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({
@@ -37,6 +39,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   recognitionResults,
   recognitionMessage,
   driveError,
+  onDeleteDriveFile,
+  deletingDriveFileIds,
   sortedDriveFiles,
 }) => {
   if (!selectedDeal) {
@@ -165,18 +169,34 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                       </div>
                     </div>
                   </div>
-                  {file.webViewLink ? (
-                    <a
-                      href={file.webViewLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
-                    >
-                      Открыть
-                    </a>
-                  ) : (
-                    <span className="text-xs text-slate-400">—</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {file.webViewLink ? (
+                      <a
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      >
+                        Открыть
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                    {!file.isFolder && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteDriveFile(file.id)}
+                        disabled={
+                          isDriveLoading ||
+                          isSelectedDealDeleted ||
+                          deletingDriveFileIds.includes(file.id)
+                        }
+                        className="rounded-full border border-rose-200 px-3 py-1.5 text-[11px] font-semibold text-rose-600 transition hover:border-rose-400 hover:text-rose-700 disabled:cursor-not-allowed disabled:border-rose-200 disabled:text-rose-400"
+                      >
+                        {deletingDriveFileIds.includes(file.id) ? 'Удаляю...' : 'Удалить'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}

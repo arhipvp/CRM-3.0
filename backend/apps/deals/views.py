@@ -4,6 +4,8 @@ from apps.common.services import manage_drive_files
 from apps.common.drive import (
     DriveError,
     ensure_deal_folder,
+    ensure_deleted_files_folder,
+    move_drive_file_to_folder,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.documents.models import Document
@@ -168,6 +170,35 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 uploaded_file=uploaded_file,
             )
             return Response(result)
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+    @action(detail=True, methods=["post"], url_path="drive-files/delete")
+    def delete_drive_file(self, request, pk=None):
+        queryset = self.filter_queryset(self.get_queryset())
+        deal = get_object_or_404(queryset, pk=pk)
+        file_id = request.data.get("file_id")
+
+        if not file_id:
+            return Response(
+                {"detail": "Идентификатор файла не передан"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
+            if not folder_id:
+                return Response(
+                    {"detail": "Папка Google Drive не найдена"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            deleted_folder_id = ensure_deleted_files_folder(folder_id)
+            moved_file = move_drive_file_to_folder(file_id, deleted_folder_id, folder_id)
+            return Response({"file_id": moved_file["id"]})
         except DriveError as exc:
             return Response(
                 {"detail": str(exc)},

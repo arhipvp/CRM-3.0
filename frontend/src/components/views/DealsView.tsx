@@ -18,6 +18,7 @@ import {
 import {
   fetchDealDriveFiles,
   uploadDealDriveFile,
+  deleteDealDriveFile,
   fetchDealNotes,
   createNote,
   archiveNote,
@@ -57,6 +58,8 @@ import { ChatTab } from './dealsView/tabs/ChatTab';
 
 const dateInputBaseClass =
   'appearance-none w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pl-10 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-500 focus:ring focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-50';
+
+const DELETED_FILES_FOLDER_NAME = 'Удаленные файлы';
 
 interface DateInputFieldProps {
   id?: string;
@@ -255,6 +258,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isDriveLoading, setIsDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
   const [selectedDriveFileIds, setSelectedDriveFileIds] = useState<string[]>([]);
+  const [deletingDriveFileIds, setDeletingDriveFileIds] = useState<string[]>([]);
   const [isRecognizing, setRecognizing] = useState(false);
   const [recognitionResults, setRecognitionResults] = useState<PolicyRecognitionResult[]>([]);
   const [recognitionMessage, setRecognitionMessage] = useState<string | null>(null);
@@ -273,6 +277,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setSelectedDriveFileIds([]);
     setRecognitionResults([]);
     setRecognitionMessage(null);
+    setDeletingDriveFileIds([]);
   }, [selectedDeal?.id]);
 
   const loadChatMessages = useCallback(async () => {
@@ -522,6 +527,25 @@ export const DealsView: React.FC<DealsViewProps> = ({
     );
   }, []);
 
+  const handleDriveFileDelete = useCallback(
+    async (fileId: string) => {
+      if (!selectedDeal) {
+        return;
+      }
+      setDeletingDriveFileIds((prev) => [...prev, fileId]);
+      try {
+        await deleteDealDriveFile(selectedDeal.id, fileId);
+        setSelectedDriveFileIds((prev) => prev.filter((id) => id !== fileId));
+        await loadDriveFiles();
+      } catch (error) {
+        console.error('Ошибка удаления файла Google Drive:', error);
+      } finally {
+        setDeletingDriveFileIds((prev) => prev.filter((id) => id !== fileId));
+      }
+    },
+    [selectedDeal, loadDriveFiles, deleteDealDriveFile]
+  );
+
   const handleRecognizePolicies = useCallback(async () => {
     if (!selectedDeal) {
       return;
@@ -643,7 +667,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   }, [relatedTasks]);
 
   const sortedDriveFiles = useMemo(() => {
-    return [...driveFiles].sort((a, b) => {
+    const visibleFiles = driveFiles.filter((file) => file.name !== DELETED_FILES_FOLDER_NAME);
+    return [...visibleFiles].sort((a, b) => {
       if (a.isFolder !== b.isFolder) {
         return a.isFolder ? -1 : 1;
       }
@@ -714,6 +739,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
       recognitionMessage={recognitionMessage}
       driveError={driveError}
       sortedDriveFiles={sortedDriveFiles}
+      onDeleteDriveFile={handleDriveFileDelete}
+      deletingDriveFileIds={deletingDriveFileIds}
     />
   );
 

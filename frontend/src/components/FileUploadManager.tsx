@@ -30,21 +30,15 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
     };
   }, []);
 
-  const uploadFile = async (file: File, resetInput?: () => void) => {
-    if (isUploading || disabled) return;
-
+  const uploadSingleFile = async (file: File) => {
     const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
-      setError('Размер файла не должен превышать 100 МБ');
-      return;
+      throw new Error('Размер файла не должен превышать 100 МБ');
     }
 
-    setError(null);
-    setUploading(true);
     setUploadProgress(0);
 
     let progressInterval: ReturnType<typeof setInterval> | null = null;
-
     try {
       progressInterval = setInterval(() => {
         setUploadProgress((prev) => Math.min(prev + Math.random() * 30, 90));
@@ -58,28 +52,38 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
       }
 
       setUploadProgress(100);
-      setTimeout(() => setUploadProgress(0), 500);
-    } catch (err) {
-      if (progressInterval) {
-        clearInterval(progressInterval);
-        progressInterval = null;
-      }
-      setUploadProgress(0);
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } finally {
       if (progressInterval) {
         clearInterval(progressInterval);
       }
+      setUploadProgress(0);
+    }
+  };
+
+  const uploadFiles = async (files: File[] | FileList, resetInput?: () => void) => {
+    const fileArray = Array.from(files ?? []);
+    if (!fileArray.length || isUploading || disabled) {
+      return;
+    }
+
+    setError(null);
+    setUploading(true);
+
+    try {
+      for (const file of fileArray) {
+        await uploadSingleFile(file);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
+    } finally {
       setUploading(false);
       resetInput?.();
     }
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    await uploadFile(file, () => {
+    await uploadFiles(event.target.files ?? [], () => {
       event.target.value = '';
     });
   };
@@ -111,10 +115,10 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
     if (isUploading || disabled) return;
     setDragActive(false);
 
-    const droppedFile = event.dataTransfer.files?.[0];
-    if (!droppedFile) return;
+    const droppedFiles = event.dataTransfer.files ?? [];
+    if (!droppedFiles.length) return;
 
-    await uploadFile(droppedFile);
+    await uploadFiles(droppedFiles);
   };
 
   const dropAreaClasses = [
@@ -135,14 +139,15 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
         <div className={dropAreaClasses}>
           <input
             type="file"
+            multiple
             onChange={handleFileSelect}
             disabled={isUploading || disabled}
             className="hidden"
           />
           <div className="text-center">
-            <p className="text-3xl mb-2">📁</p>
+            <p className="text-3xl mb-2">📂</p>
             <p className="text-sm font-medium text-slate-700">
-              {isUploading ? 'Загружаем файл...' : 'Нажмите или перетащите файл сюда'}
+              {isUploading ? 'Загружаем файлы...' : 'Нажмите или перетащите файлы сюда'}
             </p>
             <p className="text-xs text-slate-500 mt-1">Максимум 100 МБ</p>
           </div>

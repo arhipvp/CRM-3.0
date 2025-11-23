@@ -90,6 +90,13 @@ export async function uploadDealDriveFile(
   return mapDriveFile(payload.file as Record<string, unknown>);
 }
 
+export async function deleteDealDriveFile(dealId: string, fileId: string): Promise<void> {
+  await request(`/deals/${dealId}/drive-files/delete/`, {
+    method: 'POST',
+    body: JSON.stringify({ file_id: fileId }),
+  });
+}
+
 export async function uploadClientDriveFile(clientId: string, file: File): Promise<DriveFile> {
   const formData = new FormData();
   formData.append('file', file);

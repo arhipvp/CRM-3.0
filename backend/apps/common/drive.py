@@ -11,6 +11,8 @@ from django.db import models
 
 logger = logging.getLogger(__name__)
 
+DELETED_FILES_FOLDER_NAME = "Удаленные файлы"
+
 try:
     from googleapiclient.discovery import build as _gdrive_build
     from googleapiclient.errors import HttpError as _GDriveHttpError
@@ -289,6 +291,55 @@ def ensure_policy_folder(policy) -> Optional[str]:
     folder_id = _ensure_folder(name, deal_folder)
     _update_instance_folder(policy, folder_id)
     return folder_id
+
+
+def ensure_deleted_files_folder(parent_id: str) -> str:
+    """Ensure the special deleted files folder exists inside the provided folder."""
+
+    return _ensure_folder(DELETED_FILES_FOLDER_NAME, parent_id)
+
+
+def move_drive_file_to_folder(
+    file_id: str,
+    destination_folder_id: str,
+    source_folder_id: Optional[str] = None,
+) -> DriveFileInfo:
+    """Move a Drive file into another folder by updating its parents."""
+
+    if not file_id:
+        raise DriveOperationError("File ID must be provided to move the file.")
+
+    if not destination_folder_id:
+        raise DriveOperationError("Destination folder ID must be provided.")
+
+    service = _get_drive_service()
+    kwargs = {
+        "fileId": file_id,
+        "addParents": destination_folder_id,
+        "supportsAllDrives": True,
+        "fields": "id, name, mimeType, size, createdTime, modifiedTime, webViewLink",
+    }
+    if source_folder_id:
+        kwargs["removeParents"] = source_folder_id
+
+    try:
+        updated = service.files().update(**kwargs).execute()
+    except Exception as exc:
+        logger.exception("Error while moving Drive file to deleted folder")
+        raise DriveOperationError("Unable to move the file on Google Drive.") from exc
+
+    size_value = updated.get("size")
+    size = _safe_int(size_value)
+    return DriveFileInfo(
+        id=updated["id"],
+        name=updated["name"],
+        mime_type=updated.get("mimeType", ""),
+        size=size,
+        created_at=updated.get("createdTime"),
+        modified_at=updated.get("modifiedTime"),
+        web_view_link=updated.get("webViewLink"),
+        is_folder=updated.get("mimeType") == FOLDER_MIME_TYPE,
+    )
 
 
 def get_document_library_folder_id() -> str:
