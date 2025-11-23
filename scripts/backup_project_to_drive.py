@@ -90,7 +90,11 @@ def iter_files(root: Path) -> Iterator[Path]:
     """Yield files under the root excluding ignorable directories."""
 
     for item in root.rglob("*"):
-        if item.is_dir():
+        try:
+            if item.is_dir():
+                continue
+        except OSError:
+            logger.warning("Skipping %s because it cannot be accessed", item)
             continue
         if should_exclude(item, root):
             continue
