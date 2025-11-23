@@ -684,14 +684,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
       return null;
     }
 
-    const filterOptions: { value: 'active' | 'archived'; label: string }[] = [
+    const filterOptions = [
       { value: 'active', label: 'Активные' },
       { value: 'archived', label: 'Показать удаленные заметки' },
     ];
 
     return (
-      <section className="space-y-6">
-        <div className="space-y-3">
+      <section className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Заметки</p>
+            <p className="text-xs text-slate-500">Оставьте комментарий по сделке — увидят все участники</p>
+          </div>
           <div className="flex flex-wrap gap-2">
             {filterOptions.map((option) => (
               <button
@@ -701,61 +705,55 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 onClick={() => setNotesFilter(option.value)}
                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                   notesFilter === option.value
-                    ? 'bg-slate-900 text-white border border-slate-900'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                    ? 'bg-slate-900 text-white'
+                    : 'border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-900'
                 }`}
               >
                 {option.label}
               </button>
             ))}
           </div>
-          {notesError && (
-            <p className="text-xs text-rose-500">{notesError}</p>
-          )}
-          {notesFilter === 'active' && (
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-              <textarea
-                rows={4}
-                value={noteDraft}
-                onChange={(event) => setNoteDraft(event.target.value)}
-                placeholder="Заметка к сделке"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-inner focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
-              />
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-slate-400">Все заметки видны всем участникам</p>
-                <button
-                  type="button"
-                  onClick={handleAddNote}
-                  disabled={notesAction === 'create'}
-                  className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                >
-                  {notesAction === 'create' ? 'Сохраняем...' : 'Добавить заметку'}
-                </button>
-              </div>
-            </div>
-          )}
+        </div>
+
+        {notesError && <p className="text-xs text-rose-500">{notesError}</p>}
+
+        <div className="rounded-2xl border border-slate-200 bg-[#FAFAFA] px-5 py-4 shadow-sm">
+          <div className="relative">
+            <textarea
+              rows={4}
+              value={noteDraft}
+              onChange={(event) => setNoteDraft(event.target.value)}
+              placeholder="Оставьте комментарий по сделке — увидят все участники"
+              className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-32 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            />
+            <button
+              type="button"
+              onClick={handleAddNote}
+              disabled={notesAction === 'create'}
+              className="absolute right-4 bottom-4 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white shadow-lg transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {notesAction === 'create' ? 'Сохраняем...' : 'Добавить заметку'}
+            </button>
+          </div>
         </div>
 
         {notesLoading ? (
           <p className="text-sm text-slate-500">Загрузка заметок...</p>
         ) : notes.length ? (
-          <div className="columns-1 gap-4 space-y-4 sm:columns-2 xl:columns-3 2xl:columns-4">
+          <div className="grid gap-4 lg:grid-cols-2">
             {notes.map((note) => (
               <article
                 key={note.id}
-                className="relative mb-4 overflow-hidden rounded-[28px] border border-amber-200 bg-amber-50 p-4 pb-5 text-slate-900 shadow-[0_20px_40px_rgba(245,158,11,0.25)] transition hover:-translate-y-1 break-inside-avoid-column"
+                className="relative rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:-translate-y-0.5"
               >
-                <div className="absolute top-2 right-4 h-3 w-12 rounded-full bg-amber-300 opacity-80 shadow-[0_4px_15px_rgba(245,158,11,0.5)]" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
                   {note.authorName || '—'}
                 </p>
-                <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
+                <p className="mt-3 text-sm leading-relaxed text-slate-900 whitespace-pre-line break-words">
                   {note.body || '—'}
                 </p>
                 <div className="mt-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  <span className="text-[11px] font-normal text-slate-500">
-                    {formatDate(note.createdAt)}
-                  </span>
+                  <span>{formatDate(note.createdAt)}</span>
                   {notesFilter === 'active' ? (
                     <button
                       type="button"
@@ -763,7 +761,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       onClick={() => handleArchiveNote(note.id)}
                       className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
                     >
-                      {notesAction === note.id ? 'Удаляем...' : 'Удалить'}
+                      {notesAction === note.id ? 'Удаляем...' : 'Архив'}
                     </button>
                   ) : (
                     <button
@@ -772,7 +770,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       onClick={() => handleRestoreNote(note.id)}
                       className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
                     >
-                      {notesAction === note.id ? 'Сохраняем...' : 'Восстановить'}
+                      {notesAction === note.id ? 'Восстанавливаем...' : 'Вернуть'}
                     </button>
                   )}
                 </div>
@@ -780,10 +778,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 px-5 py-4 text-sm text-slate-500">
             {notesFilter === 'active'
               ? 'Заметок пока нет — добавьте первую, чтобы зафиксировать важное.'
-              : 'Удаленные заметки пусты — вы еще не удаляли заметки.'}
+              : 'Архив пуст — переключитесь на активные заметки, чтобы их увидеть.'}
           </div>
         )}
       </section>
@@ -811,25 +809,23 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
 
     return (
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-          <div className="mt-1 space-y-2">
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="space-y-3">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400">Следующий контакт</p>
+          <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <input
-                type="date"
-                value={selectedDeal.nextContactDate ?? ''}
-                onChange={(event) =>
-                  handleInlineDateChange('nextContactDate', event.target.value)
-                }
+              <DateInputField
+                id="dealNextContact"
+                value={selectedDeal.nextContactDate}
+                onChange={(value) => handleInlineDateChange('nextContactDate', value)}
                 disabled={savingDateField === 'nextContactDate'}
-                className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+                containerClassName="max-w-[220px]"
               />
               {savingDateField === 'nextContactDate' && (
                 <span className="text-xs text-slate-500">Сохраняем...</span>
               )}
             </div>
-            <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+            <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
               {QUICK_NEXT_CONTACT_OPTIONS.map((option) => (
                 <button
                   key={option.label}
@@ -844,17 +840,17 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
           </div>
         </div>
-        <div>
-          <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
+        <div className="space-y-3">
+          <p className={`text-[11px] uppercase tracking-[0.3em] ${headerExpectedCloseTone}`}>
             Застраховать не позднее чем
           </p>
-          <div className="mt-1 flex items-center gap-3">
-            <input
-              type="date"
-              value={selectedDeal.expectedClose ?? ''}
-              onChange={(event) => handleInlineDateChange('expectedClose', event.target.value)}
+          <div className="flex items-center gap-3">
+            <DateInputField
+              id="dealExpectedClose"
+              value={selectedDeal.expectedClose}
+              onChange={(value) => handleInlineDateChange('expectedClose', value)}
               disabled={savingDateField === 'expectedClose'}
-              className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+              containerClassName="max-w-[220px]"
             />
             {savingDateField === 'expectedClose' && (
               <span className="text-xs text-slate-500">Сохраняем...</span>
@@ -895,276 +891,260 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-full">
-      <section className="xl:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
-            <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
-          </div>
-        </div>
-        <div className="px-5 py-3 border-b border-slate-100 space-y-3">
-          <div>
-            <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
-              Поиск
-            </label>
-            <input
-              id="dealSearch"
-              type="search"
-              value={dealSearch}
-              onChange={(event) => onDealSearchChange(event.target.value)}
-              placeholder="Поиск по сделкам"
-              className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-            />
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+    <div className="min-h-full bg-slate-100 py-6">
+      <div className="mx-auto flex w-full max-w-[1280px] gap-6 px-4 pb-6">
+        <section className="flex w-[320px] flex-col gap-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
             <div>
-              <label htmlFor="dealExecutor" className="text-xs font-semibold text-slate-500 mb-1 block">
-                Ответственный
-              </label>
-              <select
-                id="dealExecutor"
-                value={dealExecutorFilter}
-                onChange={(event) => onDealExecutorFilterChange(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-              >
-                <option value="">Все</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {getUserDisplayName(user)}
-                  </option>
-                ))}
-              </select>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
+              <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
             </div>
             <div>
-              <label htmlFor="dealSource" className="text-xs font-semibold text-slate-500 mb-1 block">
-                Источник
+              <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Поиск
               </label>
               <input
-                id="dealSource"
-                type="text"
-                value={dealSourceFilter}
-                onChange={(event) => onDealSourceFilterChange(event.target.value)}
-                placeholder="Например, реклама, рефералы"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                id="dealSearch"
+                type="search"
+                value={dealSearch}
+                onChange={(event) => onDealSearchChange(event.target.value)}
+                placeholder="Поиск по сделкам"
+                className="h-10 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:ring focus:ring-sky-100"
               />
             </div>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <label htmlFor="dealExpectedCloseFrom" className="text-xs font-semibold text-slate-500 mb-1 block">
-                Дата закрытия с
-              </label>
-              <input
-                id="dealExpectedCloseFrom"
-                type="date"
-                value={dealExpectedCloseFrom}
-                onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-              />
-            </div>
-            <div>
-              <label htmlFor="dealExpectedCloseTo" className="text-xs font-semibold text-slate-500 mb-1 block">
-                Дата закрытия по
-              </label>
-              <input
-                id="dealExpectedCloseTo"
-                type="date"
-                value={dealExpectedCloseTo}
-                onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="dealShowDeleted"
-              type="checkbox"
-              checked={dealShowDeleted}
-              onChange={(event) => onDealShowDeletedChange(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-            />
-            <label
-              htmlFor="dealShowDeleted"
-              className="text-xs font-semibold text-slate-500"
-            >
-              Показать удалённые сделки
-            </label>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {sortedDeals.map((deal) => {
-            const isOverdue = deal.nextContactDate
-              ? new Date(deal.nextContactDate) < new Date()
-              : false;
-            const deadlineTone = getDeadlineTone(deal.expectedClose);
-            const isDeleted = Boolean(deal.deletedAt);
-            return (
-              <button
-                key={deal.id}
-                onClick={() => onSelectDeal(deal.id)}
-                className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
-                  selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
-                } ${isDeleted ? 'opacity-60' : ''}`}
-              >
-                <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-                <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
-                {isDeleted && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1">
-                    Удалена: {formatDeletedAt(deal.deletedAt)}
-                  </p>
-                )}
-                <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'}</p>
-                <p className={`text-xs mt-1 ${deadlineTone}`}>
-                  Застраховать не позднее чем: {formatDate(deal.expectedClose)}
-                </p>
-                <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
-                  <span>Контакт: {formatDate(deal.nextContactDate)}</span>
-                  {deal.nextContactDate && (
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        isOverdue ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                      }`}
-                    >
-                      {isOverdue ? '⚠ ' : ''}
-                      {formatDate(deal.nextContactDate)}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-          {!sortedDeals.length && <p className="p-6 text-sm text-slate-500">Сделок пока нет</p>}
-        </div>
-      </section>
-
-      <section className="xl:col-span-3 space-y-6">
-        {selectedDeal ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-6">
-            {isSelectedDealDeleted && (
-              <div className="flex flex-col gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700">
-                <div>Сделка удалена: {formatDeletedAt(selectedDeal.deletedAt)}</div>
-                <button
-                  type="button"
-                  onClick={() => onRestoreDeal(selectedDeal.id)}
-                  className="self-start rounded-lg border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
-                >
-                  Восстановить
-                </button>
-              </div>
-            )}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <p className="text-sm text-slate-500">Сделка</p>
-                <h2 className="text-2xl font-semibold text-slate-900">{selectedDeal.title}</h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  {selectedClient?.name || 'Клиент не выбран'}
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400">
-                      Продавец
-                    </span>
-                    <UserBadge
-                      username={sellerUser?.username ?? selectedDeal.sellerName ?? '—'}
-                      displayName={sellerDisplayName}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400">
-                      Исполнитель
-                    </span>
-                    <UserBadge
-                      username={executorUser?.username ?? selectedDeal.executorName ?? '—'}
-                      displayName={executorDisplayName}
-                    />
-                  </div>
-                </div>
-                <p className="text-sm text-slate-500 mt-1 max-w-3xl whitespace-pre-line">
-                  {selectedDeal.description || 'Описание сделки не заполнено.'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <label className="text-sm text-slate-600">Статус</label>
+                <label htmlFor="dealExecutor" className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500 mb-1 block">
+                  Ответственный
+                </label>
                 <select
-                  value={selectedDeal.status}
-                  onChange={(event) =>
-                    onUpdateStatus(selectedDeal.id, event.target.value as DealStatus)
-                  }
-                  disabled={isSelectedDealDeleted}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+                  id="dealExecutor"
+                  value={dealExecutorFilter}
+                  onChange={(event) => onDealExecutorFilterChange(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100"
                 >
-                  {Object.entries(statusLabels).map(([value, label]) => (
-                    <option value={value} key={value}>
-                      {label}
+                  <option value="">Все</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {getUserDisplayName(user)}
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingDeal(true)}
-                  disabled={isSelectedDealDeleted}
-                  className="px-3 py-2 text-sm font-medium text-sky-600 hover:bg-sky-50 rounded-lg border border-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Редактировать
-                </button>
-                {!isSelectedDealDeleted && (
+              </div>
+              <div>
+                <label htmlFor="dealSource" className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500 mb-1 block">
+                  Источник
+                </label>
+                <input
+                  id="dealSource"
+                  type="text"
+                  value={dealSourceFilter}
+                  onChange={(event) => onDealSourceFilterChange(event.target.value)}
+                  placeholder="Например, реклама или рефералы"
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label htmlFor="dealExpectedCloseFrom" className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500 mb-1 block">
+                  Дата закрытия с
+                </label>
+                <DateInputField
+                  id="dealExpectedCloseFrom"
+                  value={dealExpectedCloseFrom}
+                  onChange={onDealExpectedCloseFromChange}
+                  containerClassName="w-full"
+                />
+              </div>
+              <div>
+                <label htmlFor="dealExpectedCloseTo" className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500 mb-1 block">
+                  Дата закрытия по
+                </label>
+                <DateInputField
+                  id="dealExpectedCloseTo"
+                  value={dealExpectedCloseTo}
+                  onChange={onDealExpectedCloseToChange}
+                  containerClassName="w-full"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="dealShowDeleted"
+                type="checkbox"
+                checked={dealShowDeleted}
+                onChange={(event) => onDealShowDeletedChange(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              />
+              <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
+                Показать удаленные сделки
+              </label>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col divide-y divide-slate-100">
+              {sortedDeals.map((deal) => {
+                const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
+                const deadlineTone = getDeadlineTone(deal.expectedClose);
+                const isDeleted = Boolean(deal.deletedAt);
+                return (
                   <button
-                    type="button"
-                    onClick={() => onDeleteDeal(selectedDeal.id)}
-                    className="px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200"
+                    key={deal.id}
+                    onClick={() => onSelectDeal(deal.id)}
+                    className={`w-full text-left px-5 py-4 transition ${selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'} ${isDeleted ? 'opacity-60' : ''}`}
                   >
-                    Удалить сделку
+                    <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
+                    <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
+                    {isDeleted && (
+                      <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                        Удалена: {formatDeletedAt(deal.deletedAt)}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'} </p>
+                    <p className={`text-xs mt-1 ${deadlineTone}`}>
+                      Застраховать не позже: {formatDate(deal.expectedClose)}
+                    </p>
+                    <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+                      <span>Контакт: {formatDate(deal.nextContactDate)}</span>
+                      {deal.nextContactDate && (
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            isOverdue ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
+                          {isOverdue ? 'Просрочено' : 'В срок'}
+                        </span>
+                      )}
+                    </div>
                   </button>
+                );
+              })}
+              {!sortedDeals.length && (
+                <p className="p-6 text-sm text-slate-500">Сделок пока нет</p>
+              )}
+            </div>
+          </div>
+        </section>
+        <div className="flex-1 flex flex-col gap-4">
+          {selectedDeal ? (
+            <>
+              <div className="rounded-2xl border border-slate-200/70 bg-white px-6 py-6 shadow-sm space-y-5">
+                {isSelectedDealDeleted && (
+                  <div className="flex flex-col gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700">
+                    <div>Сделка удалена: {formatDeletedAt(selectedDeal.deletedAt)}</div>
+                    <button
+                      type="button"
+                      onClick={() => onRestoreDeal(selectedDeal.id)}
+                      className="self-start rounded-lg border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                    >
+                      Восстановить
+                    </button>
+                  </div>
                 )}
-              </div>
-            </div>
-            {renderHeaderDates()}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-slate-500">Источник</p>
-                <p className="text-lg font-semibold">{selectedDeal.source || '—'}</p>
-              </div>
-              <div>
-                <p className="text-slate-500">Создана</p>
-                <p className="text-lg font-semibold">{formatDate(selectedDeal.createdAt)}</p>
-              </div>
-              <div>
-                <p className="text-slate-500">Сумма</p>
-                <div className="text-lg font-semibold">
-                  {formatCurrency(selectedDeal.paymentsPaid)} /{' '}
-                  {formatCurrency(selectedDeal.paymentsTotal)}
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Сделка</p>
+                    <h2 className="text-2xl font-semibold text-slate-900">{selectedDeal.title}</h2>
+                    <p className="text-sm text-slate-500">{selectedClient?.name || 'Клиент не выбран'}</p>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400">Статус</span>
+                      <select
+                        value={selectedDeal.status}
+                        onChange={(event) => onUpdateStatus(selectedDeal.id, event.target.value as DealStatus)}
+                        disabled={isSelectedDealDeleted}
+                        className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-slate-50"
+                      >
+                        {Object.entries(statusLabels).map(([value, label]) => (
+                          <option value={value} key={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingDeal(true)}
+                        disabled={isSelectedDealDeleted}
+                        className="rounded-full border border-sky-200 px-4 py-2 text-sm font-semibold text-sky-600 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Редактировать
+                      </button>
+                      {!isSelectedDealDeleted && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteDeal(selectedDeal.id)}
+                          className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                        >
+                          Удалить сделку
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-400">оплачено / начислено</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <SummaryField label="Продавец" value={<UserBadge username={sellerUser?.username ?? selectedDeal.sellerName ?? '—'} displayName={sellerDisplayName} />} />
+                  <SummaryField label="Исполнитель" value={<UserBadge username={executorUser?.username ?? selectedDeal.executorName ?? '—'} displayName={executorDisplayName} />} />
+                  <SummaryField label="Источник" value={selectedDeal.source || '—'} />
+                  <SummaryField label="Создано" value={formatDate(selectedDeal.createdAt)} />
+                  <SummaryField
+                    label="Сумма"
+                    value={
+                      <div className="space-y-1">
+                        <div className="text-base font-semibold text-slate-900">
+                          {formatCurrency(selectedDeal.paymentsPaid)} / {formatCurrency(selectedDeal.paymentsTotal)}
+                        </div>
+                        <p className="text-[11px] text-slate-400">оплачено / начислено</p>
+                      </div>
+                    }
+                  />
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  {selectedDeal.description ? (
+                    selectedDeal.description
+                  ) : (
+                    <span className="text-slate-400 italic">
+                      Опишите сделку, чтобы команда могла быстрее сориентироваться.
+                    </span>
+                  )}
+                </p>
+                {renderHeaderDates()}
               </div>
-            </div>
-
-            <div>
-              <div className="flex flex-wrap gap-2 border-b border-slate-200">
-                {DEAL_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-white text-sky-600 border border-b-white border-slate-200'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-[#F9FAFC] shadow-sm">
+                <div className="flex flex-wrap gap-2 border-b border-slate-200 px-6 pt-5 pb-3">
+                  {DEAL_TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`relative rounded-full px-4 py-2 text-sm transition ${
+                        activeTab === tab.id
+                          ? 'bg-slate-900 text-white font-semibold'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {tab.label}
+                      {activeTab === tab.id && (
+                        <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-sky-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex-1 overflow-y-auto px-6 py-6">
+                  {renderTabContent()}
+                </div>
               </div>
-              <div className="pt-6">{renderTabContent()}</div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+              Выберите сделку, чтобы увидеть подробности.
             </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">
-            Выберите сделку, чтобы увидеть подробности.
-          </div>
-        )}
-      </section>
-
+          )}
+        </div>
+      </div>
+    );
       {/* Edit Deal Modal */}
       {isEditingDeal && selectedDeal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
