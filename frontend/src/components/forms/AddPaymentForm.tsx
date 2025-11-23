@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Payment, Policy } from '../../types';
+import { PaymentMetadata } from './addPayment/PaymentMetadata';
+import { PolicyField } from './addPayment/PolicyField';
+import { DealField } from './addPayment/DealField';
+import { DatesFields } from './addPayment/DatesFields';
+import { FormActions } from './addPayment/FormActions';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -37,36 +42,27 @@ export function AddPaymentForm({
     scheduledDate: payment?.scheduledDate || '',
     actualDate: payment?.actualDate || '',
   });
+
   const dealDisplayValue = dealTitle || dealId || formData.dealId || '';
   const dealIsFixed = Boolean(dealId);
   const policyOptions = policies ?? [];
-  const hasPolicyOptions = policyOptions.length > 0;
   const fixedPolicy = fixedPolicyId
     ? policyOptions.find((policy) => policy.id === fixedPolicyId)
     : undefined;
   const fixedPolicyDisplay =
-    fixedPolicy?.number ||
-    fixedPolicy?.id ||
-    fixedPolicyId ||
-    '';
+    fixedPolicy?.number || fixedPolicy?.id || fixedPolicyId || '';
+
   useEffect(() => {
     if (!dealId) {
       return;
     }
-
-    setFormData((prev) => {
-      if (prev.dealId === dealId) {
-        return prev;
-      }
-      return { ...prev, dealId };
-    });
+    setFormData((prev) => (prev.dealId === dealId ? prev : { ...prev, dealId }));
   }, [dealId]);
 
   useEffect(() => {
     if (!fixedPolicyId) {
       return;
     }
-
     setFormData((prev) =>
       prev.policyId === fixedPolicyId ? prev : { ...prev, policyId: fixedPolicyId }
     );
@@ -92,7 +88,7 @@ export function AddPaymentForm({
 
     try {
       if (!formData.amount) {
-        throw new Error('Сумма платежа обязательна');
+        throw new Error('Сумма платёжного поручения обязательна');
       }
       if (!formData.policyId) {
         throw new Error('Выберите полис');
@@ -105,7 +101,7 @@ export function AddPaymentForm({
 
       await onSubmit(submission);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при сохранении платежа');
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить платёж');
     } finally {
       setLoading(false);
     }
@@ -115,107 +111,26 @@ export function AddPaymentForm({
     <form onSubmit={handleSubmit} className="add-payment-form">
       {error && <div className="error-message">{error}</div>}
 
-      {payment && (
-        <div className="technical-fields">
-          <div className="tech-field">
-            <span className="tech-label">ID:</span>
-            <span className="tech-value">{payment.id}</span>
-          </div>
-          <div className="tech-field">
-            <span className="tech-label">Создано:</span>
-            <span className="tech-value">{payment.createdAt}</span>
-          </div>
-          {payment.updatedAt && (
-            <div className="tech-field">
-              <span className="tech-label">Обновлено:</span>
-              <span className="tech-value">{payment.updatedAt}</span>
-            </div>
-          )}
-          {payment.deletedAt && (
-            <div className="tech-field">
-              <span className="tech-label">Удалено:</span>
-              <span className="tech-value">{payment.deletedAt}</span>
-            </div>
-          )}
-        </div>
-      )}
+      {payment && <PaymentMetadata payment={payment} />}
 
-      {fixedPolicyId ? (
-        <div className="form-group">
-          <label htmlFor="policyId">Полис *</label>
-          <input
-            type="text"
-            id="policyId"
-            name="policyId"
-            value={fixedPolicyDisplay}
-            disabled
-            required
-          />
-          {fixedPolicy && fixedPolicy.insuranceType && (
-            <p className="text-xs text-slate-500 mt-1">{fixedPolicy.insuranceType}</p>
-          )}
-        </div>
-      ) : hasPolicyOptions ? (
-        <div className="form-group">
-          <label htmlFor="policyId">Полис *</label>
-          <select
-            id="policyId"
-            name="policyId"
-            value={formData.policyId || ''}
-            onChange={handleChange}
-            disabled={loading}
-            required
-          >
-            <option value="">Выберите полис</option>
-            {policyOptions.map((policy) => (
-              <option key={policy.id} value={policy.id}>
-                {policy.number || policy.id}
-                {policy.insuranceType ? ` — ${policy.insuranceType}` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : (
-        <div className="form-group">
-          <label htmlFor="policyId">Полис *</label>
-          <input
-            type="text"
-            id="policyId"
-            name="policyId"
-            value={formData.policyId || ''}
-            onChange={handleChange}
-            placeholder="ID полиса"
-            disabled={loading}
-            required
-          />
-        </div>
-      )}
+      <PolicyField
+        policyId={formData.policyId || ''}
+        onChange={handleChange}
+        policyOptions={policyOptions}
+        loading={loading}
+        fixedPolicyId={fixedPolicyId}
+        fixedPolicyDisplay={fixedPolicyDisplay}
+        fixedPolicy={fixedPolicy}
+      />
 
-      {dealIsFixed ? (
-        <div className="form-group">
-          <label htmlFor="dealId">Сделка</label>
-          <input
-            type="text"
-            id="dealId"
-            name="dealId"
-            value={dealDisplayValue}
-            disabled
-          />
-        </div>
-      ) : (
-        <div className="form-group">
-          <label htmlFor="dealId">Сделка (опционально)</label>
-          <input
-            type="text"
-            id="dealId"
-            name="dealId"
-            value={formData.dealId || ''}
-            onChange={handleChange}
-            placeholder="ID сделки"
-            disabled={loading}
-          />
-        </div>
-      )}
+      <DealField
+        dealDisplayValue={dealDisplayValue}
+        dealId={dealId || formData.dealId || ''}
+        dealIsFixed={dealIsFixed}
+        loading={loading}
+        value={formData.dealId || ''}
+        onChange={(e) => setFormData((prev) => ({ ...prev, dealId: e.target.value || null }))}
+      />
 
       <div className="form-group">
         <label htmlFor="amount">Сумма (руб.) *</label>
@@ -233,52 +148,26 @@ export function AddPaymentForm({
       </div>
 
       <div className="form-group">
-        <label htmlFor="description">Примечание</label>
+        <label htmlFor="description">Комментарий</label>
         <textarea
           id="description"
           name="description"
           value={formData.description || ''}
           onChange={handleChange}
-          placeholder="Примечание к платежу"
+          placeholder="Комментарий к платёжному поручению"
           rows={3}
           disabled={loading}
         />
       </div>
 
-      <div className="form-row">
-        <div className="form-group">
-          <label htmlFor="scheduledDate">Запланированная дата</label>
-          <input
-            type="date"
-            id="scheduledDate"
-            name="scheduledDate"
-            value={formData.scheduledDate || ''}
-            onChange={handleChange}
-            disabled={loading}
-          />
-        </div>
+      <DatesFields
+        scheduledDate={formData.scheduledDate}
+        actualDate={formData.actualDate}
+        onChange={handleChange}
+        loading={loading}
+      />
 
-        <div className="form-group">
-          <label htmlFor="actualDate">Фактическая дата</label>
-          <input
-            type="date"
-            id="actualDate"
-            name="actualDate"
-            value={formData.actualDate || ''}
-            onChange={handleChange}
-            disabled={loading}
-          />
-        </div>
-      </div>
-
-      <div className="form-actions">
-        <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? 'Сохранение...' : payment ? 'Обновить' : 'Создать'}
-        </button>
-        <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
-          Отмена
-        </button>
-      </div>
+      <FormActions loading={loading} paymentExists={Boolean(payment)} onCancel={onCancel} />
 
       <style>{`
         .add-payment-form {
@@ -404,23 +293,18 @@ export function AddPaymentForm({
           background: #2563eb;
         }
 
-        .btn-primary:disabled {
-          background: #93c5fd;
-          cursor: not-allowed;
-        }
-
         .btn-secondary {
-          background: #f1f5f9;
-          color: #64748b;
-          border: 1px solid #e2e8f0;
+          background: #e2e8f0;
+          color: #1e293b;
         }
 
         .btn-secondary:hover:not(:disabled) {
-          background: #e2e8f0;
+          background: #cbd5f5;
         }
 
+        .btn-primary:disabled,
         .btn-secondary:disabled {
-          opacity: 0.5;
+          opacity: 0.6;
           cursor: not-allowed;
         }
       `}</style>
