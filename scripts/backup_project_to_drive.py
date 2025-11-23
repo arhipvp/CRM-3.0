@@ -500,8 +500,9 @@ def main() -> None:
         if excel_dump:
             backup_client.upload_file(excel_dump, db_folder_id)
 
+    media_root_id = backup_client.ensure_folder("Media", backup_root)
+    logger.info("Ensured Media folder ID %s under backup root %s", media_root_id, backup_root)
     if drive_root:
-        media_root_id = backup_client.ensure_folder("Media", backup_root)
         skip_ids = {backup_root, media_root_id}
         backup_client.copy_folder_tree(
             drive_root, media_root_id, skip_folder_ids=skip_ids, allow_existing=False
