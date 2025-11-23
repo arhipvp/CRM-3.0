@@ -87,7 +87,6 @@ EOF
 # 5. Архивируем
 echo "🗜️  Архивируем бэкап..."
 tar -czf "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" -C "$BACKUP_DIR" "$BACKUP_NAME"
-rm -rf "$BACKUP_DIR/$BACKUP_NAME"
 
 FILE_SIZE=$(du -h "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" | cut -f1)
 echo "✅ Архив готов: $FILE_SIZE"
@@ -96,6 +95,12 @@ echo "✅ Архив готов: $FILE_SIZE"
 echo "☁️  Загружаем на Google Drive..."
 echo "GDRIVE_PATH=$GDRIVE_PATH"
 rclone copy "$BACKUP_DIR/${BACKUP_NAME}.tar.gz" "gdrive:$GDRIVE_PATH/"
+
+if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
+    echo "☁️  Загружаем распакованный бэкап..."
+    rclone copy "$BACKUP_DIR/$BACKUP_NAME/" "gdrive:$GDRIVE_PATH/$BACKUP_NAME/"
+    rm -rf "$BACKUP_DIR/$BACKUP_NAME"
+fi
 
 echo ""
 echo "✅ Бэкап успешно загружен на Google Drive!"
