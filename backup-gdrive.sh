@@ -5,10 +5,23 @@
 
 set -e
 
+# Load local env overrides so we can reuse the same folder IDs.
+if [ -f .env ]; then
+    set -o allexport
+    source .env
+    set +o allexport
+fi
+
+if [ -f backend/.env ]; then
+    set -o allexport
+    source backend/.env
+    set +o allexport
+fi
+
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_DIR="./backups"
 BACKUP_NAME="crm3_backup_${TIMESTAMP}"
-GDRIVE_PATH="CRM3_Backups"  # Папка на Google Drive
+GDRIVE_PATH="${GOOGLE_DRIVE_BACKUP_FOLDER_ID:-CRM3_Backups}"  # Папка на Google Drive
 
 # Проверка установки rclone
 if ! command -v rclone &> /dev/null; then

@@ -16,7 +16,8 @@ import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timedelta
+import uuid
+from datetime import datetime, date, time, timedelta
 from pathlib import Path
 from typing import Iterable
 
@@ -160,12 +161,14 @@ def export_database_to_excel(db_params, output_path: Path):
             tables = [row["table_name"] for row in cursor.fetchall()]
             for table in tables:
                 cursor.execute(SQL("SELECT * FROM {}").format(Identifier(table)))
-                columns = cursor.column_names
+                columns = getattr(cursor, "column_names", None)
+                if columns is None:
+                    columns = [col.name for col in cursor.description] if cursor.description else []
                 sheet_title = sanitize_sheet_name(table, worksheet_names)
                 worksheet = workbook.create_sheet(title=sheet_title)
                 worksheet.append(columns or ["(no columns)"])
                 for record in cursor:
-                    worksheet.append([record[col] for col in columns])
+                    worksheet.append([normalize_value(record[col]) for col in columns])
 
     if workbook.sheetnames == ["Sheet"]:
         workbook.active.title = "data"
@@ -183,6 +186,24 @@ def sanitize_sheet_name(source: str, used: set[str]) -> str:
         counter += 1
     used.add(candidate)
     return candidate
+
+
+def normalize_value(value):
+    if value is None:
+        return value
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None) if value.tzinfo else value
+    if isinstance(value, time):
+        return value.replace(tzinfo=None) if value.tzinfo else value
+    if isinstance(value, date):
+        return value
+    if isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "ignore")
+    return str(value)
 
 
 def copy_new_project_files(source: Path, destination: Path):
