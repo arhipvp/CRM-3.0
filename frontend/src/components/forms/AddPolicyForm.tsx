@@ -2,38 +2,14 @@ import React, { useEffect, useState } from 'react';
 
 import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
 import type { InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
-
-interface FinancialRecordDraft {
-  amount: string;
-  date?: string;
-  description?: string;
-  source?: string;
-  note?: string;
-}
-
-interface PaymentDraft {
-  amount: string;
-  description?: string;
-  scheduledDate?: string;
-  actualDate?: string;
-  incomes: FinancialRecordDraft[];
-  expenses: FinancialRecordDraft[];
-}
-
-export interface PolicyFormValues {
-  number: string;
-  insuranceCompanyId: string;
-  insuranceTypeId: string;
-  isVehicle: boolean;
-  brand?: string;
-  model?: string;
-  vin?: string;
-  counterparty?: string;
-  salesChannelId?: string;
-  startDate?: string | null;
-  endDate?: string | null;
-  payments: PaymentDraft[];
-}
+import type { FinancialRecordDraft } from './addPolicy/types';
+import {
+  createEmptyPayment,
+  createEmptyRecord,
+  PaymentDraft,
+  PolicyFormValues,
+} from './addPolicy/types';
+import { PaymentSection } from './addPolicy/components/PaymentSection';
 
 interface AddPolicyFormProps {
   onSubmit: (values: PolicyFormValues) => Promise<void>;
@@ -43,23 +19,6 @@ interface AddPolicyFormProps {
   initialInsuranceCompanyName?: string;
   initialInsuranceTypeName?: string;
 }
-
-const createEmptyRecord = (): FinancialRecordDraft => ({
-  amount: '',
-  date: '',
-  description: '',
-  source: '',
-  note: '',
-});
-
-const createEmptyPayment = (): PaymentDraft => ({
-  amount: '',
-  description: '',
-  scheduledDate: '',
-  actualDate: '',
-  incomes: [],
-  expenses: [],
-});
 
 export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onSubmit,
@@ -257,73 +216,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     );
   };
 
-  const renderRecordInputs = (paymentIndex: number, type: 'incomes' | 'expenses', records: FinancialRecordDraft[]) =>
-    records.map((record, recordIndex) => (
-      <div key={`${type}-${recordIndex}`} className="border border-slate-200 rounded-lg p-3 space-y-2">
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-semibold text-slate-900">
-            {type === 'incomes' ? 'Доход' : 'Расход'} #{recordIndex + 1}
-          </span>
-          <button
-            type="button"
-            className="text-xs text-red-500 hover:underline"
-            onClick={() => removeRecord(paymentIndex, type, recordIndex)}
-          >
-            Удалить
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Сумма, ₽</label>
-            <input
-              type="number"
-              value={record.amount}
-              onChange={(e) => updateRecordField(paymentIndex, type, recordIndex, 'amount', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Дата</label>
-            <input
-              type="date"
-              value={record.date || ''}
-              onChange={(e) => updateRecordField(paymentIndex, type, recordIndex, 'date', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Описание</label>
-            <input
-              type="text"
-              value={record.description || ''}
-              onChange={(e) => updateRecordField(paymentIndex, type, recordIndex, 'description', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Источник</label>
-            <input
-              type="text"
-              value={record.source || ''}
-              onChange={(e) => updateRecordField(paymentIndex, type, recordIndex, 'source', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Применение</label>
-            <input
-              type="text"
-              value={record.note || ''}
-              onChange={(e) => updateRecordField(paymentIndex, type, recordIndex, 'note', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-            />
-          </div>
-        </div>
-      </div>
-    ));
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
@@ -360,49 +252,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const renderTabsForPayment = (paymentIndex: number) => (
-    <div className="flex gap-2">
-      {(['incomes', 'expenses'] as const).map((tab) => (
-        <button
-          key={tab}
-          type="button"
-          className={`px-3 py-1 text-xs font-medium rounded-full border ${
-            getActiveTab(paymentIndex) === tab
-              ? 'border-sky-600 text-sky-600 bg-sky-50'
-              : 'border-slate-200 text-slate-500'
-          }`}
-          onClick={() => setActiveRecordTab((prev) => ({ ...prev, [paymentIndex]: tab }))}
-        >
-          {tab === 'incomes' ? 'Доходы' : 'Расходы'}
-        </button>
-      ))}
-    </div>
-  );
-
-  const renderRecordSection = (paymentIndex: number) => {
-    const activeTab = getActiveTab(paymentIndex);
-    const label = activeTab === 'incomes' ? 'Доходы' : 'Расходы';
-    const records = payments[paymentIndex][activeTab];
-
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-xs font-semibold text-slate-700">{label}</h4>
-          <button
-            type="button"
-            className="text-xs text-sky-600 hover:underline"
-            onClick={() => addRecord(paymentIndex, activeTab)}
-          >
-            + Добавить {activeTab === 'incomes' ? 'доход' : 'расход'}
-          </button>
-        </div>
-        {records.length ? renderRecordInputs(paymentIndex, activeTab, records) : (
-          <p className="text-xs text-slate-500">Пока нет {label.toLowerCase()}</p>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -581,67 +430,20 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
         <div className="space-y-4">
           {payments.map((payment, paymentIndex) => (
-            <div key={paymentIndex} className="border border-slate-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-900">Платеж #{paymentIndex + 1}</span>
-                <button
-                  type="button"
-                  className="text-xs text-red-500 hover:underline"
-                  onClick={() => handleRemovePayment(paymentIndex)}
-                >
-                  Удалить платеж
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">Сумма, ₽</label>
-                  <input
-                    type="number"
-                    value={payment.amount}
-                    onChange={(e) => updatePaymentField(paymentIndex, 'amount', e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">Дата плановая</label>
-                  <input
-                    type="date"
-                    value={payment.scheduledDate || ''}
-                    onChange={(e) => updatePaymentField(paymentIndex, 'scheduledDate', e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">Дата фактическая</label>
-                  <input
-                    type="date"
-                    value={payment.actualDate || ''}
-                    onChange={(e) => updatePaymentField(paymentIndex, 'actualDate', e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">Описание</label>
-                  <input
-                    type="text"
-                    value={payment.description || ''}
-                    onChange={(e) => updatePaymentField(paymentIndex, 'description', e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {renderTabsForPayment(paymentIndex)}
-                <div className="rounded-xl border border-slate-200 p-3">
-                  {renderRecordSection(paymentIndex)}
-                </div>
-              </div>
-            </div>
+            <PaymentSection
+              key={paymentIndex}
+              paymentIndex={paymentIndex}
+              payment={payment}
+              activeTab={getActiveTab(paymentIndex)}
+              onFieldChange={updatePaymentField}
+              onRemovePayment={handleRemovePayment}
+              onTabChange={(index, tab) =>
+                setActiveRecordTab((prev) => ({ ...prev, [index]: tab }))
+              }
+              onAddRecord={addRecord}
+              onUpdateRecord={updateRecordField}
+              onRemoveRecord={removeRecord}
+            />
           ))}
         </div>
       </div>
