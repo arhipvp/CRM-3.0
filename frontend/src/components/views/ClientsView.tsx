@@ -6,7 +6,7 @@ import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : 'вЂ”';
+  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
 const PAGE_SIZE = 20;
 
@@ -119,6 +119,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
           { value: '-name', label: 'Имя (Я-А)' },
         ]}
       />
+
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
