@@ -47,8 +47,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.apps import apps
+from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
-from django.db import models
+from django.db import IntegrityError, models
 
 
 @dataclass(frozen=True)
@@ -269,7 +270,7 @@ def _get_vova_user_id() -> uuid.UUID | None:
     global VOVA_USER_ID
     if VOVA_USER_ID:
         return VOVA_USER_ID
-    user_model = apps.get_model("users.User")
+    user_model = apps.get_model(settings.AUTH_USER_MODEL)
     VOVA_USER_ID = user_model.objects.filter(username="Vova").values_list("pk", flat=True).first()
     return VOVA_USER_ID
 
@@ -345,7 +346,8 @@ def _ensure_policy_deal(prepared: dict[str, Any], payload: Mapping[str, Any]) ->
     identity = _policy_identity(payload, prepared) or "без номера"
     description = f"Создана автоматически при импорте полиса {identity}"
 
-    deal_model.objects.create(
+    try:
+        deal_model.objects.create(
         id=final_id,
         title=title,
         description=description,
@@ -356,7 +358,9 @@ def _ensure_policy_deal(prepared: dict[str, Any], payload: Mapping[str, Any]) ->
         next_contact_date=next_contact,
         expected_close=next_contact,
         source="policies_import",
-    )
+        )
+    except IntegrityError:
+        return True
 
     return True
 
