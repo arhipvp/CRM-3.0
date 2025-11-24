@@ -64,8 +64,9 @@ for cols in rows:
     title_value = prepare_string(title)
     desc_value = prepare_string(full_description)
     status_value = prepare_string(status_value)
-    loss_reason_value = prepare_string(loss_reason)
+    loss_reason_value = prepare_string(loss_reason) or ""
     next_contact = next_contact_date if next_contact_date and next_contact_date != "\\N" else None
+    source_value = ""
     values = [
         deal_uuid,
         deleted_at,
@@ -81,7 +82,7 @@ for cols in rows:
         None,
         next_contact,
         None,
-        None,
+        source_value,
         loss_reason_value,
         None,
     ]
