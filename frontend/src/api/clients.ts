@@ -53,3 +53,37 @@ export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
   const payload = await request(`/users/${qs}`);
   return unwrapList<Record<string, unknown>>(payload).map(mapUser);
 }
+
+export async function createClient(data: {
+  name: string;
+  phone?: string;
+  birthDate?: string | null;
+  notes?: string | null;
+}): Promise<Client> {
+  const payload = await request<Record<string, unknown>>('/clients/', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: data.name,
+      phone: data.phone,
+      birth_date: data.birthDate || null,
+      notes: data.notes ?? '',
+    }),
+  });
+  return mapClient(payload);
+}
+
+export async function updateClient(
+  id: string,
+  data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }
+): Promise<Client> {
+  const payload = await request<Record<string, unknown>>(`/clients/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      name: data.name,
+      phone: data.phone,
+      birth_date: data.birthDate || null,
+      notes: data.notes ?? '',
+    }),
+  });
+  return mapClient(payload);
+}

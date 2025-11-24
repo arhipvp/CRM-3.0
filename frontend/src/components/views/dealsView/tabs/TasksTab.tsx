@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import type { Deal, Task } from '../../../types';
+import type { Deal, Task } from '../../../../types';
 import { formatDate } from '../helpers';
 
 interface TasksTabProps {

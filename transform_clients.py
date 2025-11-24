@@ -27,14 +27,15 @@ def escape(value):
     return value.replace("'", "''") if value else None
 
 for cols in rows:
-    _, name, phone, email, _, note, drive_path, drive_link, is_deleted = cols
+    client_id, name, phone, email, _, note, drive_path, drive_link, is_deleted = cols
     name = clean(name)
     phone = clean(phone)
     email = clean(email)
+    legacy_id = client_id
     note = clean(note)
     drive_path = clean(drive_path)
     drive_link = clean(drive_link)
-    meta = {}
+    meta = {"legacy_client_id": legacy_id}
     if drive_path:
         meta["drive_folder_path"] = drive_path
     if drive_link:

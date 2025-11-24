@@ -1,4 +1,4 @@
-﻿import type { Deal, DealStatus, Policy, PolicyRecognitionResult } from '../../../types';
+import type { DealStatus, Policy, PolicyRecognitionResult } from '../../../types';
 
 export const statusLabels: Record<DealStatus, string> = {
   open: 'В работе',
@@ -110,7 +110,7 @@ export type PolicySortKey =
   | 'endDate'
   | 'transport';
 
-export const getPolicyTransportSummary = (policy: Pick<Policy, 'brand' | 'model' | 'vin' | 'isVehicle'>) =>
+export const getPolicyTransportSummary = (policy: Policy) =>
   policy.isVehicle
     ? `${policy.brand || '—'} / ${policy.model || '—'} / ${policy.vin || '—'}`
     : 'Без транспорта';

@@ -8,7 +8,7 @@ import { FormActions } from './addPayment/FormActions';
 
 export interface AddPaymentFormValues {
   policyId?: string;
-  dealId?: string;
+  dealId?: string | null;
   amount: string;
   description?: string;
   scheduledDate?: string | null;

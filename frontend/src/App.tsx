@@ -10,7 +10,7 @@ import type { AddFinancialRecordFormValues } from './components/forms/AddFinanci
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
-import type { PolicyFormValues } from './components/forms/AddPolicyForm';
+import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
 import {
@@ -43,13 +43,11 @@ import {
   APIError,
   uploadKnowledgeDocument,
 } from './api';
-import type { CurrentUserResponse } from './api';
+import type { CurrentUserResponse, FilterParams } from './api';
 import { Client, DealStatus, FinancialRecord, Payment, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
-import type { FinancialRecordModalState, PaymentModalState } from './components/app/types';
-
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
 
@@ -721,7 +719,7 @@ const AppContent: React.FC = () => {
     try {
       const created = await createPayment({
         policyId: values.policyId,
-        dealId: values.dealId,
+        dealId: values.dealId ?? undefined,
         amount: parseFloat(values.amount),
         description: values.description,
         scheduledDate: values.scheduledDate || null,
@@ -751,7 +749,7 @@ const AppContent: React.FC = () => {
     try {
       const updated = await updatePayment(paymentId, {
         policyId: values.policyId,
-        dealId: values.dealId,
+        dealId: values.dealId ?? undefined,
         amount: parseFloat(values.amount),
         description: values.description,
         scheduledDate: values.scheduledDate || null,
@@ -944,6 +942,7 @@ const AppContent: React.FC = () => {
         setQuoteDealId={setQuoteDealId}
         handleAddQuote={handleAddQuote}
         editingQuote={editingQuote}
+        setEditingQuote={setEditingQuote}
         handleUpdateQuote={handleUpdateQuote}
         policyDealId={policyDealId}
         setPolicyDealId={setPolicyDealId}

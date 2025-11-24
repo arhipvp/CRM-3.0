@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import type { Deal, Policy } from '../../../types';
+import type { Deal, Policy } from '../../../../types';
 import { formatCurrency, formatDate, getPolicyTransportSummary, PolicySortKey } from '../helpers';
 
 interface PoliciesTabProps {

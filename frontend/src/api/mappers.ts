@@ -45,7 +45,7 @@ const ACTIVITY_ACTION_TYPES: ActivityActionType[] = [
   'comment_added',
   'custom',
 ];
-const FINANCIAL_RECORD_TYPES: FinancialRecordType[] = ['debit', 'credit'];
+const FINANCIAL_RECORD_TYPES: FinancialRecordType[] = ['Доход', 'Расход'];
 
 const resolveStringUnion = <T extends string>(
   value: unknown,

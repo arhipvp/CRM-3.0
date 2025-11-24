@@ -46,7 +46,6 @@ export interface AppRoutesProps {
   onClientEdit: (client: Client) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
-  onClientEdit: (client: Client) => void;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
@@ -84,8 +83,10 @@ export interface AppRoutesProps {
   knowledgeLoading: boolean;
   knowledgeUploading: boolean;
   knowledgeError: string | null;
-  handleKnowledgeUpload: (file: File) => Promise<void>;
-  handleMarkPayment: (paymentId: string) => Promise<void>;
+  handleKnowledgeUpload: (
+    file: File,
+    metadata: { title?: string; description?: string }
+  ) => Promise<void>;
 }
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({

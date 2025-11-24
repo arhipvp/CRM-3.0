@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import type { Deal, FinancialRecord, Payment, Policy } from '../../../types';
+import type { Deal, FinancialRecord, Payment, Policy } from '../../../../types';
 import { FinancialRecordCreationContext, formatCurrency, formatDate } from '../helpers';
 
 interface PaymentsTabProps {

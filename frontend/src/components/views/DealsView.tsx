@@ -524,16 +524,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
     selectedDriveFileIds,
   ]);
 
-  const formatRecognitionSummary = useCallback(
-    (result: PolicyRecognitionResult) => {
-      if (result.status === 'parsed') {
-        return 'Полис распознан, откройте форму для проверки';
-      }
-      return result.message ?? 'Ошибка при распознавании';
-    },
-    []
-  );
-
   const loadNotes = useCallback(
     async (filter: 'active' | 'archived') => {
       const dealId = selectedDeal?.id;

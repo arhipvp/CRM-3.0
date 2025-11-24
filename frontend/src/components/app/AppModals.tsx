@@ -3,7 +3,7 @@ import { Modal } from '../Modal';
 import { ClientForm } from '../forms/ClientForm';
 import { DealForm } from '../forms/DealForm';
 import { AddQuoteForm, QuoteFormValues } from '../forms/AddQuoteForm';
-import { AddPolicyForm, PolicyFormValues } from '../forms/AddPolicyForm';
+import { AddPolicyForm } from '../forms/AddPolicyForm';
 import { AddPaymentForm, AddPaymentFormValues } from '../forms/AddPaymentForm';
 import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import type {
@@ -19,6 +19,7 @@ import type {
   ModalType,
   PaymentModalState,
 } from './types';
+import type { PolicyFormValues } from '../forms/addPolicy/types';
 
 interface PolicyPrefill {
   values: PolicyFormValues;
@@ -55,6 +56,7 @@ interface AppModalsProps {
   setFinancialRecordModal: React.Dispatch<React.SetStateAction<FinancialRecordModalState | null>>;
   handleUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
   financialRecords: FinancialRecord[];
+  setEditingQuote: React.Dispatch<React.SetStateAction<Quote | null>>;
 }
 
 export const AppModals: React.FC<AppModalsProps> = ({
@@ -86,6 +88,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
   setFinancialRecordModal,
   handleUpdateFinancialRecord,
   financialRecords,
+  setEditingQuote,
 }) => (
   <>
     {modal === 'client' && (

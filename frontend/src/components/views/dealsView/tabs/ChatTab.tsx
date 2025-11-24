@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { ChatBox } from '../../../ChatBox';
-import type { ChatMessage, Deal, User } from '../../../types';
+import type { ChatMessage, Deal, User } from '../../../../types';
 
 interface ChatTabProps {
   selectedDeal: Deal | null;
