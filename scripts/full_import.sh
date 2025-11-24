@@ -42,16 +42,16 @@ echo "===> truncating clients+related (cascade)"
 run_sql "TRUNCATE TABLE clients_client CASCADE;"
 
 echo "===> loading clients"
-run_file backend/client_import.sql
+run_file /app/client_import.sql
 
 echo "===> loading deals"
-run_file backend/deal_import.sql
+run_file /app/deal_import.sql
 
 echo "===> truncating policies"
 run_sql "TRUNCATE TABLE policies_policy CASCADE;"
 
 echo "===> importing policies from Excel"
-docker compose exec -e PGPASSWORD="$DB_PASS" backend python scripts/import_business_data.py "$BACKUP_XLSX" --sheet policies
+docker compose exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet policies"
 
 echo "===> verification"
 run_sql "SELECT COUNT(*) AS clients FROM clients_client;"

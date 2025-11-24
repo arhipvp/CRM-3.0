@@ -142,4 +142,5 @@ nginx.conf
 
 # Excel temp artifacts
 scripts/templates/~$*
+~$*.xlsx
 backup_2025-11-24_15-20.xlsx

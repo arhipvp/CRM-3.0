@@ -43,6 +43,7 @@ def quote(value):
     return f"'{value}'"
 
 lines = []
+note_lines = []
 for cols in rows:
     deal_legacy_id, client_id, start_date, status, description, calculations, reminder_date, is_closed, closed_reason, drive_path, drive_link, is_deleted = cols
     client_uuid = client_map.get(client_id)
@@ -50,8 +51,6 @@ for cols in rows:
         continue
     title = description.strip() if description else f"Deal #{client_id}"
     description_parts = [description] if description else []
-    if calculations and calculations != "\\N":
-        description_parts.append(f"Calculations:\n{calculations}")
     drive_meta = {}
     if drive_path and drive_path != "\\N":
         drive_meta["drive_folder_path"] = drive_path
@@ -128,4 +127,33 @@ for cols in rows:
         + ");"
     )
 
-Path("deal_import.sql").write_text("\n".join(lines), encoding="utf-8")
+    if calculations and calculations != "\\N":
+        note_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"notes.note:{deal_legacy_id}"))
+        note_body = prepare_string(f"Calculations:\n{calculations}")
+        note_columns = [
+            "id",
+            "deleted_at",
+            "created_at",
+            "updated_at",
+            "deal_id",
+            "body",
+            "author_name",
+        ]
+        note_values = [
+            quote(note_id),
+            "NULL",
+            quote(now),
+            quote(now),
+            quote(deal_uuid),
+            quote(note_body),
+            quote("Vova"),
+        ]
+        note_lines.append(
+            "INSERT INTO notes_note ("
+            + ", ".join(note_columns)
+            + ") VALUES ("
+            + ", ".join(note_values)
+            + ");"
+        )
+
+Path("deal_import.sql").write_text("\n".join(lines + note_lines), encoding="utf-8")
