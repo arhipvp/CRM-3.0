@@ -53,9 +53,9 @@ for cols in rows:
         now,
         "(SELECT id FROM auth_user WHERE username = 'Vova' LIMIT 1)",
         escape(name),
-        "" if phone is None else escape(phone),
+        escape(phone) if phone else "+7 000 000 00 00",
         escape(notes_value),
-        "" if email is None else escape(email),
+        escape(email) if email else "email@email.email",
     ]
     sql_values = []
     for idx, val in enumerate(values):
