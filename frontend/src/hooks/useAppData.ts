@@ -6,7 +6,7 @@ import {
   fetchFinancialRecords,
   fetchKnowledgeDocuments,
   fetchPayments,
-  fetchPolicies,
+  fetchPoliciesWithPagination,
   fetchSalesChannels,
   fetchTasks,
   fetchUsers,
@@ -87,8 +87,20 @@ export const useAppData = () => {
   }, [setAppData]);
 
   const refreshPolicies = useCallback(async () => {
-    const payload = await fetchPolicies();
-    setAppData({ policies: payload });
+    const PAGE_SIZE = 200;
+    let page = 1;
+    const retrieved: Policy[] = [];
+
+    while (true) {
+      const payload = await fetchPoliciesWithPagination({ page, page_size: PAGE_SIZE });
+      retrieved.push(...payload.results);
+      if (!payload.next) {
+        break;
+      }
+      page += 1;
+    }
+
+    setAppData({ policies: retrieved });
   }, [setAppData]);
 
   const refreshKnowledgeDocuments = useCallback(async () => {
