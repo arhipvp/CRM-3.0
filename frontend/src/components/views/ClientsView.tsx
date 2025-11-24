@@ -113,25 +113,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
         onFilterChange={handleFilterChange}
         searchPlaceholder="Поиск по имени или телефону..."
         sortOptions={[
-        sortOptions=[{
           { value: '-created_at', label: 'Новые' },
           { value: 'created_at', label: 'Старые' },
           { value: 'name', label: 'Имя (А-Я)' },
           { value: '-name', label: 'Имя (Я-А)' },
         ]}
       />
-
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
             <tr>
-              <th className="px-5 py-3">РРјСЏ</th>
-              <th className="px-5 py-3">РўРµР»РµС„РѕРЅ</th>
-              <th className="px-5 py-3">Р”Р°С‚Р° СЂРѕР¶РґРµРЅРёСЏ</th>
-              <th className="px-5 py-3">РЎРѕР·РґР°РЅ</th>
-              <th className="px-5 py-3 text-right">РЎРґРµР»РѕРє</th>
-              <th className="px-5 py-3 text-right">Р¤Р°Р№Р»С‹</th>
-              <th className="px-5 py-3 text-right">Р”РµР№СЃС‚РІРёСЏ</th>
+              <th className="px-5 py-3">Имя</th>
+              <th className="px-5 py-3">Телефон</th>
+              <th className="px-5 py-3">Дата рождения</th>
+              <th className="px-5 py-3">Создан</th>
+              <th className="px-5 py-3 text-right">Сделок</th>
+              <th className="px-5 py-3 text-right">Файлы</th>
+              <th className="px-5 py-3 text-right">Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -153,7 +151,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
                         {client.phone}
                       </a>
                     ) : (
-                      'вЂ”'
+                      '—'
                     )}
                   </td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(client.birthDate)}</td>
@@ -166,7 +164,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
                       onClick={() => setFilesModalClient(client)}
                       className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
                     >
-                      рџ“Ѓ Р¤Р°Р№Р»С‹
+                      Файлы
                     </button>
                   </td>
                   <td className="px-5 py-4 text-right">
@@ -176,10 +174,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
                         onClick={() => onClientEdit(client)}
                         className="text-sm font-semibold text-sky-600 hover:text-sky-800"
                       >
-                        Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ
+                        Редактировать
                       </button>
                     ) : (
-                      <span className="text-xs uppercase tracking-wide text-slate-400">вЂ”</span>
+                      <span className="text-xs uppercase tracking-wide text-slate-400">—</span>
                     )}
                   </td>
                 </tr>
@@ -188,7 +186,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
             {!paginatedClients.length && (
               <tr>
                 <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
-                  РљР»РёРµРЅС‚РѕРІ РїРѕРєР° РЅРµС‚
+                  Клиентов пока нет
                 </td>
               </tr>
             )}
@@ -211,7 +209,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
           onClose={() => setFilesModalClient(null)}
           entityId={filesModalClient.id}
           entityType="client"
-          title={`Р¤Р°Р№Р»С‹ РєР»РёРµРЅС‚Р°: ${filesModalClient.name}`}
+          title={`Файлы клиента: ${filesModalClient.name}`}
         />
       )}
     </div>

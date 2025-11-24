@@ -18,6 +18,7 @@ for line in block[1:]:
     rows.append(parts[:9])
 
 lines = []
+client_map = {}
 now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
 def clean(value):
@@ -47,8 +48,10 @@ for cols in rows:
         notes.append(json.dumps(meta, ensure_ascii=False))
     notes_value = "\n".join(notes) if notes else None
     deleted_at = now if is_deleted == "t" else None
+    row_uuid = str(uuid.uuid4())
+    client_map[str(legacy_id)] = row_uuid
     values = [
-        f"{uuid.uuid4()}",
+        row_uuid,
         deleted_at,
         now,
         now,
@@ -73,3 +76,4 @@ for cols in rows:
     )
 
 Path("client_import.sql").write_text("\n".join(lines), encoding="utf-8")
+Path("client_mapping.json").write_text(json.dumps(client_map, ensure_ascii=False), encoding="utf-8")
