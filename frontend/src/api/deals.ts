@@ -135,6 +135,11 @@ export async function createQuote(data: {
   return mapQuote(payload);
 }
 
+export async function fetchDeal(id: string): Promise<Deal> {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/`);
+  return mapDeal(payload);
+}
+
 export async function updateQuote(
   id: string,
   data: {

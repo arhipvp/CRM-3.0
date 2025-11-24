@@ -35,6 +35,7 @@ import {
   updateDeal,
   updatePayment,
   fetchDealHistory,
+  fetchDeal,
   createTask,
   updateTask,
   deleteTask,
@@ -537,8 +538,25 @@ const AppContent: React.FC = () => {
       salesChannelId,
       payments: paymentDrafts = [],
     } = values;
-    const deal = deals.find((item) => item.id === dealId);
-    const clientId = deal?.clientId;
+    let deal = deals.find((item) => item.id === dealId);
+    let clientId = deal?.clientId;
+    if (!clientId) {
+      try {
+        const fetchedDeal = await fetchDeal(dealId);
+        deal = fetchedDeal;
+        clientId = fetchedDeal.clientId;
+        updateAppData((prev) => ({
+          deals: prev.deals.some((item) => item.id === dealId)
+            ? prev.deals
+            : [fetchedDeal, ...prev.deals],
+        }));
+      } catch (err) {
+        const message =
+          err instanceof APIError ? err.message : err instanceof Error ? err.message : 'Ошибка при получении сделки';
+        setError(message);
+        throw err;
+      }
+    }
 
     try {
       const created = await createPolicy({
