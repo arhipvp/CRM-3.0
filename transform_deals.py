@@ -67,6 +67,8 @@ for cols in rows:
         status_value = "closed"
         if not loss_reason:
             loss_reason = "Closed in import"
+    if is_deleted == "t":
+        continue
     deleted_at = now if is_deleted == "t" else None
     deal_uuid = str(uuid.uuid4())
     title_value = prepare_string(title)
