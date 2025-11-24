@@ -23,6 +23,17 @@ now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 def clean(value):
     return None if value == "\\N" else value
 
+def prepare_string(value):
+    if value is None:
+        return None
+    safe = value.replace("'", "''")
+    return safe.replace("\n", "\\n")
+
+def quote(value):
+    if value is None:
+        return "NULL"
+    return f"'{value}'"
+
 lines = []
 for cols in rows:
     _, client_id, start_date, status, description, calculations, reminder_date, is_closed, closed_reason, drive_path, drive_link, is_deleted = cols
@@ -50,24 +61,29 @@ for cols in rows:
             loss_reason = "Closed in import"
     deleted_at = now if is_deleted == "t" else None
     deal_uuid = str(uuid.uuid4())
+    title_value = prepare_string(title)
+    desc_value = prepare_string(full_description)
+    status_value = prepare_string(status_value)
+    loss_reason_value = prepare_string(loss_reason)
+    next_contact = next_contact_date if next_contact_date and next_contact_date != "\\N" else None
     values = [
         deal_uuid,
         deleted_at,
         now,
         now,
-        title.replace("'", "''"),
-        full_description.replace("'", "''") if full_description else None,
+        title_value,
+        desc_value,
         client_uuid,
-        "NULL",
-        "NULL",
-        status_value.replace("'", "''"),
+        None,
+        None,
+        status_value if status_value else "open",
         "",
-        "NULL",
-        next_contact_date if next_contact_date and next_contact_date != "\\N" else None,
-        "NULL",
-        "",
-        loss_reason.replace("'", "''") if loss_reason else None,
-        "NULL",
+        None,
+        next_contact,
+        None,
+        None,
+        loss_reason_value,
+        None,
     ]
     columns = [
         "id",
@@ -90,18 +106,13 @@ for cols in rows:
     ]
     sql_values = []
     for idx, val in enumerate(values):
-        if val is None or val == "NULL":
-            sql_values.append("NULL")
-        elif isinstance(val, str) and val.startswith("NULL"):
-            sql_values.append("NULL")
-        else:
-            sql_values.append(f"'{val}'")
+        sql_values.append(quote(val))
     lines.append(
         "INSERT INTO deals_deal ("
         + ", ".join(columns)
         + ") VALUES ("
         + ", ".join(sql_values)
-        + ";"
+        + ");"
     )
 
 Path("deal_import.sql").write_text("\n".join(lines), encoding="utf-8")
