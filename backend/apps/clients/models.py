@@ -17,6 +17,7 @@ class Client(SoftDeleteModel):
 
     name = models.CharField(max_length=255, help_text="Имя клиента")
     phone = models.CharField(max_length=20, blank=True, help_text="Контактный телефон")
+    email = models.EmailField(blank=True, help_text="Client email address")
     birth_date = models.DateField(null=True, blank=True, help_text="Дата рождения")
     notes = models.TextField(blank=True, help_text="Примечание о клиенте")
     drive_folder_id = models.CharField(

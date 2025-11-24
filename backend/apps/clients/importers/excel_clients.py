@@ -13,6 +13,10 @@ HEADER_TO_FIELD = {
     "phone": "phone",
     "phone number": "phone",
     "mobile": "phone",
+    "email": "email",
+    "e-mail": "email",
+    "email address": "email",
+    "contact email": "email",
     "birth date": "birth_date",
     "birthday": "birth_date",
     "date of birth": "birth_date",
@@ -90,6 +94,10 @@ def build_client_payload(data: Mapping[str, object], creator) -> dict[str, objec
     birth_value = data.get("birth_date")
     if birth_value not in (None, "", False):
         payload["birth_date"] = _parse_date(birth_value)
+
+    email_value = str(data.get("email", "") or "").strip()
+    if email_value:
+        payload["email"] = email_value
 
     if creator:
         payload["created_by"] = creator

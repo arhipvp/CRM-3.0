@@ -12,7 +12,7 @@ class ClientAdminForm(forms.ModelForm):
 
     class Meta:
         model = Client
-        fields = ("name", "phone", "birth_date", "notes")
+        fields = ("name", "phone", "email", "birth_date", "notes")
 
     def clean_name(self):
         name = self.cleaned_data.get("name", "").strip()
@@ -44,6 +44,7 @@ class ClientAdminForm(forms.ModelForm):
         cleaned_data = super().clean()
         name = cleaned_data.get("name", "").strip()
         phone = cleaned_data.get("phone", "").strip()
-        if not name and not phone:
-            raise ValidationError("Нужно заполнить хотя бы имя или телефон клиента.")
+        email = cleaned_data.get("email", "").strip()
+        if not name and not (phone or email):
+            raise ValidationError("Provide at least a phone number or an email address.")
         return cleaned_data

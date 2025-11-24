@@ -24,6 +24,10 @@ class ClientFilterSet(django_filters.FilterSet):
         field_name="phone", lookup_expr="icontains", label="Phone (contains)"
     )
 
+    email = django_filters.CharFilter(
+        field_name="email", lookup_expr="icontains", label="Email (contains)"
+    )
+
     ordering = django_filters.OrderingFilter(
         fields=(
             ("created_at", "created_at"),
@@ -35,4 +39,4 @@ class ClientFilterSet(django_filters.FilterSet):
 
     class Meta:
         model = Client
-        fields = ("name", "phone")
+        fields = ("name", "phone", "email")
