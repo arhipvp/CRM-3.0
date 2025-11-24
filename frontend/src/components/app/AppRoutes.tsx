@@ -200,13 +200,10 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       path="/clients"
       element={<ClientsView clients={clients} deals={deals} onClientEdit={onClientEdit} />}
     />
-    <Route path="/policies" element={<PoliciesView policies={policies} deals={deals} />} />
-    <Route
-      path="/payments"
-      element={<PaymentsView payments={payments} deals={deals} onMarkPaid={handleMarkPayment} />}
-    />
+    <Route path="/policies" element={<PoliciesView policies={policies} />} />
+    <Route path="/payments" element={<PaymentsView payments={payments} onMarkPaid={handleMarkPayment} />} />
     <Route path="/finance" element={<FinanceView financialRecords={financialRecords} payments={payments} />} />
-    <Route path="/tasks" element={<TasksView tasks={tasks} deals={deals} />} />
+    <Route path="/tasks" element={<TasksView tasks={tasks} />} />
     <Route
       path="/knowledge"
       element={

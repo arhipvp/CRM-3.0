@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Deal, Policy } from '../../types';
+import { Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
@@ -68,10 +68,9 @@ const getPolicySortValue = (policy: Policy, key: PolicySortKey): number | string
 
 interface PoliciesViewProps {
   policies: Policy[];
-  deals: Deal[];
 }
 
-export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) => {
+export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies }) => {
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
 
@@ -91,6 +90,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
       result = result.filter((policy) => {
         const haystack = [
           policy.number,
+          policy.dealTitle,
           policy.clientName,
           policy.insuranceCompany,
           policy.insuranceType,
@@ -160,7 +160,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
           </thead>
           <tbody>
             {filteredPolicies.map((policy) => {
-              const deal = deals.find((d) => d.id === policy.dealId);
+              const dealTitle = policy.dealTitle || '—';
               return (
                 <tr key={policy.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-5 py-4 font-semibold text-slate-900">{policy.number}</td>
@@ -176,7 +176,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, deals }) =
                       </div>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-slate-600">{deal?.title || '—'}</td>
+                  <td className="px-5 py-4 text-slate-600">{dealTitle}</td>
                   <td className="px-5 py-4 text-slate-600">{policy.salesChannel || '—'}</td>
                   <td className="px-5 py-4 text-slate-600">
                     <div className="font-semibold text-slate-900">

@@ -166,6 +166,7 @@ export interface Policy {
   insuranceTypeId: string;
   insuranceType: string;
   dealId: string;
+  dealTitle?: string;
   clientId?: string;
   clientName?: string;
   isVehicle: boolean;
@@ -205,6 +206,7 @@ export interface Payment {
   id: string;
   dealId?: string;
   dealTitle?: string;
+  dealClientName?: string;
   policyId?: string;
   policyNumber?: string;
   policyInsuranceType?: string;
@@ -257,6 +259,8 @@ export interface Task {
   title: string;
   description?: string;
   dealId?: string;
+  dealTitle?: string;
+  clientName?: string;
   assignee?: string | null;
   assigneeName?: string | null;
   status: TaskStatus;

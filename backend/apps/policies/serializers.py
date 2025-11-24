@@ -14,6 +14,9 @@ class PolicySerializer(serializers.ModelSerializer):
     sales_channel_name = serializers.CharField(
         source="sales_channel.name", read_only=True, allow_null=True
     )
+    deal_title = serializers.CharField(
+        source="deal.title", read_only=True, allow_null=True
+    )
     payments_total = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
@@ -30,8 +33,9 @@ class PolicySerializer(serializers.ModelSerializer):
             "insurance_company_name",
             "insurance_type",
             "insurance_type_name",
-            "deal",
-            "client",
+        "deal",
+        "deal_title",
+        "client",
             "client_name",
             "sales_channel_name",
             "is_vehicle",
@@ -50,12 +54,13 @@ class PolicySerializer(serializers.ModelSerializer):
             "deleted_at",
         )
         read_only_fields = (
-            "id",
-            "created_at",
-            "updated_at",
-            "deleted_at",
-            "client_name",
-            "sales_channel_name",
-            "payments_paid",
-            "payments_total",
-        )
+        "id",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "client_name",
+        "sales_channel_name",
+        "payments_paid",
+        "payments_total",
+        "deal_title",
+    )

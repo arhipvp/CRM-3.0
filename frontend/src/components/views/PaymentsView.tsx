@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Deal, Payment } from '../../types';
+import { Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 
@@ -36,11 +36,10 @@ const formatDate = (value?: string | null) =>
 
 interface PaymentsViewProps {
   payments: Payment[];
-  deals: Deal[];
   onMarkPaid: (paymentId: string) => Promise<void>;
 }
 
-export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onMarkPaid }) => {
+export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid }) => {
   const [filters, setFilters] = useState<FilterParams>({});
 
   const filteredPayments = useMemo(() => {
@@ -49,10 +48,9 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
     const search = (filters.search ?? '').toString().toLowerCase().trim();
     if (search) {
       result = result.filter((payment) => {
-        const deal = payment.dealId ? deals.find((d) => d.id === payment.dealId) : null;
         const haystack = [
-          deal?.title,
-          deal?.clientName,
+          payment.dealTitle,
+          payment.dealClientName,
           payment.policyNumber,
           payment.description,
           payment.note,
@@ -76,7 +74,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
 
     result.sort((a, b) => (getPaymentSortValue(a, field) - getPaymentSortValue(b, field)) * direction);
     return result;
-  }, [deals, filters, payments]);
+  }, [filters, payments]);
 
   return (
     <div className="space-y-4">
@@ -106,12 +104,13 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, deals, onM
           </thead>
           <tbody>
             {filteredPayments.map((payment) => {
-              const deal = payment.dealId ? deals.find((d) => d.id === payment.dealId) : null;
+              const dealTitle = payment.dealTitle || '—';
+              const clientName = payment.dealClientName || '—';
               return (
                 <tr key={payment.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-5 py-4">
-                    <p className="font-semibold text-slate-900">{deal?.title || '—'}</p>
-                    <p className="text-xs text-slate-500">{deal?.clientName || '—'}</p>
+                    <p className="font-semibold text-slate-900">{dealTitle}</p>
+                    <p className="text-xs text-slate-500">{clientName}</p>
                   </td>
                   <td className="px-5 py-4 text-slate-600">
                     {Number(payment.amount).toLocaleString('ru-RU', {

@@ -26,6 +26,9 @@ class PaymentSerializer(serializers.ModelSerializer):
     deal_title = serializers.CharField(
         source="deal.title", read_only=True, allow_null=True
     )
+    deal_client_name = serializers.CharField(
+        source="deal.client.name", read_only=True, allow_null=True
+    )
     policy_number = serializers.CharField(
         source="policy.number", read_only=True, allow_null=True
     )

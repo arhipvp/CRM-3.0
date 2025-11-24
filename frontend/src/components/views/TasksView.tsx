@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Deal, Task, TaskPriority } from '../../types';
+import { Task, TaskPriority } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 
@@ -60,10 +60,9 @@ const formatDate = (value?: string | null) =>
 
 interface TasksViewProps {
   tasks: Task[];
-  deals: Deal[];
 }
 
-export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
+export const TasksView: React.FC<TasksViewProps> = ({ tasks }) => {
   const [filters, setFilters] = useState<FilterParams>({});
 
   const filteredTasks = useMemo(() => {
@@ -72,12 +71,11 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
     const search = (filters.search ?? '').toString().toLowerCase().trim();
     if (search) {
       result = result.filter((task) => {
-        const deal = task.dealId ? deals.find((d) => d.id === task.dealId) : null;
         const haystack = [
           task.title,
           task.description,
-          deal?.title,
-          deal?.clientName,
+          task.dealTitle,
+          task.clientName,
         ]
           .filter(Boolean)
           .join(' ')
@@ -100,7 +98,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
 
     result.sort((a, b) => (getTaskSortValue(a, field) - getTaskSortValue(b, field)) * direction);
     return result;
-  }, [deals, filters, tasks]);
+  }, [filters, tasks]);
 
   return (
     <div className="space-y-4">
@@ -136,7 +134,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
           </thead>
           <tbody>
             {filteredTasks.map((task) => {
-              const deal = task.dealId ? deals.find((d) => d.id === task.dealId) : null;
+              const dealTitle = task.dealTitle || '—';
               return (
                 <tr key={task.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-5 py-4">
@@ -147,7 +145,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, deals }) => {
                   </td>
                   <td className="px-5 py-4 text-slate-600">{STATUS_LABELS[task.status] || task.status}</td>
                   <td className="px-5 py-4 text-slate-600">{PRIORITY_LABELS[task.priority]}</td>
-                  <td className="px-5 py-4 text-slate-600">{deal?.title || '—'}</td>
+                  <td className="px-5 py-4 text-slate-600">{dealTitle}</td>
                   <td className="px-5 py-4 text-slate-600">{formatDate(task.dueAt)}</td>
                 </tr>
               );
