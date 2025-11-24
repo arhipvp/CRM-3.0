@@ -48,7 +48,7 @@ for cols in rows:
         notes.append(json.dumps(meta, ensure_ascii=False))
     notes_value = "\n".join(notes) if notes else None
     deleted_at = now if is_deleted == "t" else None
-    row_uuid = str(uuid.uuid4())
+    row_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"clients.client:{legacy_id}"))
     client_map[str(legacy_id)] = row_uuid
     values = [
         row_uuid,

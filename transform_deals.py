@@ -44,7 +44,7 @@ def quote(value):
 
 lines = []
 for cols in rows:
-    _, client_id, start_date, status, description, calculations, reminder_date, is_closed, closed_reason, drive_path, drive_link, is_deleted = cols
+    deal_legacy_id, client_id, start_date, status, description, calculations, reminder_date, is_closed, closed_reason, drive_path, drive_link, is_deleted = cols
     client_uuid = client_map.get(client_id)
     if not client_uuid:
         continue
@@ -69,8 +69,8 @@ for cols in rows:
             loss_reason = "Closed in import"
     if is_deleted == "t":
         continue
-    deleted_at = now if is_deleted == "t" else None
-    deal_uuid = str(uuid.uuid4())
+    deleted_at = now if is_deleted == "t" or is_closed == "t" else None
+    deal_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"deals.deal:{deal_legacy_id}"))
     title_value = prepare_string(title)
     desc_value = prepare_string(full_description)
     status_value = prepare_string(status_value)

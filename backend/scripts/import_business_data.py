@@ -317,6 +317,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "note": "note",
         },
         required_fields=("deal_id", "number", "insurance_company_id", "insurance_type_id"),
+        references=(("deals.Deal", "deal_id"), ("clients.Client", "client_id")),
     ),
     "payments": SheetSpec(
         model_path="finances.Payment",
@@ -407,7 +408,10 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
                 if field_value is None:
                     continue
                 existing_ids = INSERTED_RECORD_IDS.get(model_path)
-                if not existing_ids or field_value not in existing_ids:
+                ref_model = apps.get_model(model_path)
+                if existing_ids and field_value in existing_ids:
+                    continue
+                if not ref_model.objects.filter(pk=field_value).exists():
                     missing_reference = True
                     break
             if missing_reference:
