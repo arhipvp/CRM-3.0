@@ -23,15 +23,23 @@ now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 def clean(value):
     return None if value == "\\N" else value
 
+
+class RawSQL(str):
+    """Строки, которые нельзя заключать в кавычки при вставке."""
+
+
 def prepare_string(value):
     if value is None:
         return None
     safe = value.replace("'", "''")
     return safe.replace("\n", "\\n")
 
+
 def quote(value):
     if value is None:
         return "NULL"
+    if isinstance(value, RawSQL):
+        return str(value)
     return f"'{value}'"
 
 lines = []
@@ -67,6 +75,8 @@ for cols in rows:
     loss_reason_value = prepare_string(loss_reason) or ""
     next_contact = next_contact_date if next_contact_date and next_contact_date != "\\N" else None
     source_value = ""
+    seller_value = RawSQL("(SELECT id FROM auth_user WHERE username = 'Vova' LIMIT 1)")
+    executor_value = RawSQL("(SELECT id FROM auth_user WHERE username = 'Vova' LIMIT 1)")
     values = [
         deal_uuid,
         deleted_at,
@@ -75,8 +85,8 @@ for cols in rows:
         title_value,
         desc_value,
         client_uuid,
-        None,
-        None,
+        seller_value,
+        executor_value,
         status_value if status_value else "open",
         "",
         None,
