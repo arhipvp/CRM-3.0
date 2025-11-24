@@ -53,8 +53,23 @@ run_sql "TRUNCATE TABLE policies_policy CASCADE;"
 echo "===> importing policies from Excel"
 docker compose exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet policies"
 
+echo "===> truncating payments and financial records"
+run_sql "TRUNCATE TABLE finances_financialrecord CASCADE;"
+run_sql "TRUNCATE TABLE finances_payment CASCADE;"
+
+echo "===> importing payments from Excel"
+docker compose exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet payments"
+
+echo "===> importing incomes from Excel"
+docker compose exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet incomes"
+
+echo "===> importing expenses from Excel"
+docker compose exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet expenses"
+
 echo "===> verification"
 run_sql "SELECT COUNT(*) AS clients FROM clients_client;"
 run_sql "SELECT COUNT(*) AS active_deals FROM deals_deal WHERE deleted_at IS NULL;"
 run_sql "SELECT COUNT(*) AS hidden_deals FROM deals_deal WHERE deleted_at IS NOT NULL;"
 run_sql "SELECT COUNT(*) AS policies FROM policies_policy;"
+run_sql "SELECT COUNT(*) AS payments FROM finances_payment;"
+run_sql "SELECT COUNT(*) AS financial_records FROM finances_financialrecord;"
