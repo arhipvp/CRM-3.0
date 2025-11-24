@@ -96,27 +96,28 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <p className="text-sm text-slate-500">РљР»РёРµРЅС‚РѕРІ</p>
+          <p className="text-sm text-slate-500">Клиентов</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.clients}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <p className="text-sm text-slate-500">РђРєС‚РёРІРЅС‹С… СЃРґРµР»РѕРє</p>
+          <p className="text-sm text-slate-500">Активных сделок</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.active}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <p className="text-sm text-slate-500">РќРѕРІС‹С… Р·Р° 30 РґРЅРµР№</p>
+          <p className="text-sm text-slate-500">Новых за 30 дней</p>
           <p className="text-3xl font-semibold text-slate-900">{newClientsCount}</p>
         </div>
       </div>
 
       <FilterBar
         onFilterChange={handleFilterChange}
-        searchPlaceholder="РџРѕРёСЃРє РїРѕ РёРјРµРЅРё РёР»Рё С‚РµР»РµС„РѕРЅСѓ..."
+        searchPlaceholder="Поиск по имени или телефону..."
         sortOptions={[
-          { value: '-created_at', label: 'РќРѕРІС‹Рµ' },
-          { value: 'created_at', label: 'РЎС‚Р°СЂС‹Рµ' },
-          { value: 'name', label: 'РРјСЏ (Рђ-РЇ)' },
-          { value: '-name', label: 'РРјСЏ (РЇ-Рђ)' },
+        sortOptions=[{
+          { value: '-created_at', label: 'Новые' },
+          { value: 'created_at', label: 'Старые' },
+          { value: 'name', label: 'Имя (А-Я)' },
+          { value: '-name', label: 'Имя (Я-А)' },
         ]}
       />
 
