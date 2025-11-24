@@ -6,7 +6,7 @@ import sys
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
@@ -77,6 +77,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 INSERTED_RECORD_IDS: dict[str, set[Any]] = defaultdict(set)
+VOVA_USER_ID: uuid.UUID | None = None
 
 
 def _normalize_sheet_name(name: str) -> str:
@@ -264,6 +265,102 @@ def _ensure_sign(prepared: dict[str, Any], positive: bool) -> None:
     prepared["amount"] = decimal_amount if positive else -abs(decimal_amount)
 
 
+def _get_vova_user_id() -> uuid.UUID | None:
+    global VOVA_USER_ID
+    if VOVA_USER_ID:
+        return VOVA_USER_ID
+    user_model = apps.get_model("users.User")
+    VOVA_USER_ID = user_model.objects.filter(username="Vova").values_list("pk", flat=True).first()
+    return VOVA_USER_ID
+
+
+def _compute_policy_contact_date(payload: Mapping[str, Any]) -> date | None:
+    end_date = payload.get("end_date") or payload.get("endDate")
+    if end_date:
+        try:
+            base_date = _parse_date(end_date)
+        except ValueError:
+            base_date = None
+    else:
+        base_date = None
+    if base_date is None:
+        start_date = payload.get("start_date") or payload.get("startDate")
+        if start_date:
+            try:
+                base_date = _parse_date(start_date)
+            except ValueError:
+                base_date = None
+    if base_date is None:
+        return None
+    return base_date - timedelta(days=60)
+
+def _policy_identity(payload: Mapping[str, Any], prepared: Mapping[str, Any]) -> str | None:
+    for key in ("policy_number", "number"):
+        value = payload.get(key)
+        if value:
+            return str(value).strip()
+    value = prepared.get("number")
+    if value:
+        return str(value).strip()
+    value = payload.get("id")
+    if value:
+        return str(value).strip()
+    return None
+
+
+def _policy_auto_deal_id(payload: Mapping[str, Any], prepared: Mapping[str, Any], deal_model: type[models.Model]) -> uuid.UUID | None:
+    identity = _policy_identity(payload, prepared)
+    if not identity:
+        return None
+    return _legacy_pk_for_model(deal_model, identity, context="policy_auto")
+
+
+def _policy_auto_deal_title(payload: Mapping[str, Any], prepared: Mapping[str, Any]) -> str:
+    identity = _policy_identity(payload, prepared)
+    if identity:
+        return f"Автоматически созданная сделка из полиса {identity}"
+    return "Автоматически созданная сделка из полиса"
+
+
+def _ensure_policy_deal(prepared: dict[str, Any], payload: Mapping[str, Any]) -> bool:
+    deal_model = apps.get_model("deals.Deal")
+    final_id = prepared.get("deal_id")
+    if not final_id:
+        auto_id = _policy_auto_deal_id(payload, prepared, deal_model)
+        if not auto_id:
+            return False
+        final_id = auto_id
+        prepared["deal_id"] = final_id
+
+    if deal_model.objects.filter(pk=final_id).exists():
+        return True
+
+    client_id = prepared.get("client_id")
+    if client_id is None:
+        return False
+
+    vova_id = _get_vova_user_id()
+    next_contact = _compute_policy_contact_date(payload)
+    title = _policy_auto_deal_title(payload, prepared)
+    identity = _policy_identity(payload, prepared) or "без номера"
+    description = f"Создана автоматически при импорте полиса {identity}"
+
+    deal_model.objects.create(
+        id=final_id,
+        title=title,
+        description=description,
+        client_id=client_id,
+        seller_id=vova_id,
+        executor_id=vova_id,
+        status="open",
+        next_contact_date=next_contact,
+        expected_close=next_contact,
+        source="policies_import",
+    )
+
+    return True
+
+
 def _truncate_prepared_values(model, prepared: dict[str, Any]) -> None:
     for key, value in list(prepared.items()):
         if value is None:
@@ -400,6 +497,10 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 
         if spec.required_fields and any(prepared.get(field) is None for field in spec.required_fields):
             continue
+
+        if spec.model_path == "policies.Policy":
+            if not _ensure_policy_deal(prepared, payload):
+                continue
 
         if spec.references:
             missing_reference = False
