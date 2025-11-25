@@ -97,6 +97,9 @@ interface DealsViewProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
+  onLoadMoreDeals: () => Promise<void>;
+  dealsHasMore: boolean;
+  isLoadingMoreDeals: boolean;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   dealExecutorFilter: string;
@@ -125,6 +128,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onUpdateDeal,
   onDeleteDeal,
   onRestoreDeal,
+  onLoadMoreDeals,
+  dealsHasMore,
+  isLoadingMoreDeals,
   onRequestAddQuote,
   onRequestEditQuote,
   onRequestAddPolicy,
@@ -1021,9 +1027,21 @@ export const DealsView: React.FC<DealsViewProps> = ({
                     </span>
                   )}
                 </div>
+                </button>
+              );
+            })}
+          {dealsHasMore && (
+            <div className="px-5 py-4 border-t border-slate-100 text-center">
+              <button
+                type="button"
+                onClick={onLoadMoreDeals}
+                disabled={isLoadingMoreDeals}
+                className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
+              >
+                {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
               </button>
-            );
-          })}
+            </div>
+          )}
           {!sortedDeals.length && <p className="p-6 text-sm text-slate-500">Сделок пока нет</p>}
         </div>
       </section>

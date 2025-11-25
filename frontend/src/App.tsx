@@ -145,6 +145,9 @@ const AppContent: React.FC = () => {
     refreshKnowledgeDocuments,
     updateAppData,
     setAppData,
+    loadMoreDeals,
+    dealsHasMore,
+    isLoadingMoreDeals,
     isLoading,
     isSyncing,
     setIsSyncing,
@@ -943,6 +946,9 @@ const AppContent: React.FC = () => {
         knowledgeUploading={knowledgeUploading}
         knowledgeError={knowledgeError}
         handleKnowledgeUpload={handleKnowledgeUpload}
+        onLoadMoreDeals={loadMoreDeals}
+        dealsHasMore={dealsHasMore}
+        isLoadingMoreDeals={isLoadingMoreDeals}
       />
 
 

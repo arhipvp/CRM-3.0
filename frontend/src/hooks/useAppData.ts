@@ -2,7 +2,7 @@ import { useCallback, useReducer, useState } from 'react';
 
 import {
   fetchClients,
-  fetchDeals,
+  fetchDealsWithPagination,
   fetchFinancialRecords,
   fetchKnowledgeDocuments,
   fetchPayments,
@@ -39,6 +39,8 @@ interface AppDataState {
   knowledgeUploading: boolean;
 }
 
+const DEALS_PAGE_SIZE = 20;
+
 const INITIAL_APP_DATA_STATE: AppDataState = {
   clients: [],
   deals: [],
@@ -70,6 +72,9 @@ export const useAppData = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
+  const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
+  const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
 
   const setAppData = useCallback((payload: Partial<AppDataState>) => {
     dispatch({ type: 'assign', payload });
@@ -81,10 +86,38 @@ export const useAppData = () => {
 
   const refreshDeals = useCallback(async (filters?: FilterParams) => {
     const resolvedFilters = { ordering: 'next_contact_date', ...(filters ?? {}) };
-    const payload = await fetchDeals(resolvedFilters);
-    setAppData({ deals: payload });
-    return payload;
+    const payload = await fetchDealsWithPagination({
+      ...resolvedFilters,
+      page: 1,
+      page_size: DEALS_PAGE_SIZE,
+    });
+    setAppData({ deals: payload.results });
+    setDealsFilters(resolvedFilters);
+    setDealsNextPage(payload.next ? 2 : null);
+    return payload.results;
   }, [setAppData]);
+
+  const loadMoreDeals = useCallback(async () => {
+    if (!dealsNextPage || isLoadingMoreDeals) {
+      return;
+    }
+    setIsLoadingMoreDeals(true);
+    try {
+      const payload = await fetchDealsWithPagination({
+        ...dealsFilters,
+        page: dealsNextPage,
+        page_size: DEALS_PAGE_SIZE,
+      });
+      setAppData((prev) => ({
+        deals: [...prev.deals, ...payload.results],
+      }));
+      setDealsNextPage(payload.next ? dealsNextPage + 1 : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить сделки');
+    } finally {
+      setIsLoadingMoreDeals(false);
+    }
+  }, [dealsFilters, dealsNextPage, isLoadingMoreDeals, setAppData, setError]);
 
   const refreshPolicies = useCallback(async () => {
     const PAGE_SIZE = 200;
@@ -151,6 +184,8 @@ export const useAppData = () => {
     }
   }, [refreshDeals, refreshPolicies, setAppData]);
 
+  const dealsHasMore = Boolean(dealsNextPage);
+
   return {
     dataState,
     loadData,
@@ -158,10 +193,13 @@ export const useAppData = () => {
     refreshKnowledgeDocuments,
     updateAppData,
     setAppData,
+    loadMoreDeals,
+    dealsHasMore,
     isLoading,
     isSyncing,
     setIsSyncing,
     error,
     setError,
+    isLoadingMoreDeals,
   };
 };

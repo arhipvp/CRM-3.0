@@ -79,6 +79,9 @@ export interface AppRoutesProps {
     fileName?: string | null
   ) => void;
   handleMarkPayment: (paymentId: string) => Promise<void>;
+  onLoadMoreDeals: () => Promise<void>;
+  dealsHasMore: boolean;
+  isLoadingMoreDeals: boolean;
   knowledgeDocs: KnowledgeDocument[];
   knowledgeLoading: boolean;
   knowledgeUploading: boolean;
@@ -137,6 +140,9 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onDealShowDeletedChange,
   onPolicyDraftReady,
   handleMarkPayment,
+  onLoadMoreDeals,
+  dealsHasMore,
+  isLoadingMoreDeals,
   knowledgeDocs,
   knowledgeLoading,
   knowledgeUploading,
@@ -190,10 +196,13 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDealExpectedCloseFromChange={onDealExpectedCloseFromChange}
           dealExpectedCloseTo={dealExpectedCloseTo}
           onDealExpectedCloseToChange={onDealExpectedCloseToChange}
-          dealShowDeleted={dealShowDeleted}
-          onDealShowDeletedChange={onDealShowDeletedChange}
-          onPolicyDraftReady={onPolicyDraftReady}
-        />
+            dealShowDeleted={dealShowDeleted}
+            onDealShowDeletedChange={onDealShowDeletedChange}
+            onPolicyDraftReady={onPolicyDraftReady}
+            onLoadMoreDeals={onLoadMoreDeals}
+            dealsHasMore={dealsHasMore}
+            isLoadingMoreDeals={isLoadingMoreDeals}
+          />
       }
     />
     <Route
