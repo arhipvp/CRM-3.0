@@ -11,6 +11,7 @@ import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
+import type { PolicyEditFormValues } from './components/forms/editPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
 import {
@@ -20,6 +21,7 @@ import {
   createQuote,
   updateQuote,
   createPolicy,
+  updatePolicy,
   createPayment,
   createFinancialRecord,
   updateFinancialRecord,
@@ -136,6 +138,7 @@ const AppContent: React.FC = () => {
     insuranceCompanyName?: string;
     insuranceTypeName?: string;
   } | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
     useState<FinancialRecordModalState | null>(null);
@@ -681,6 +684,33 @@ const AppContent: React.FC = () => {
       throw err;
     }
   };
+  const handleRequestEditPolicy = (policy: Policy) => {
+    setModal(null);
+    setPolicyDealId(null);
+    setPolicyPrefill(null);
+    setEditingPolicy(policy);
+  };
+  const handleUpdatePolicy = async (policyId: string, values: PolicyEditFormValues) => {
+    setIsSyncing(true);
+    try {
+      const updated = await updatePolicy(policyId, values);
+      updateAppData((prev) => ({
+        policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
+      }));
+      setEditingPolicy(null);
+    } catch (err) {
+      const message =
+        err instanceof APIError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Не удалось обновить полис.';
+      setError(message);
+      throw err;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   const handleDeletePolicy = async (policyId: string) => {
     try {
       await deletePolicy(policyId);
@@ -940,6 +970,7 @@ const AppContent: React.FC = () => {
         onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
         onRequestEditQuote={handleRequestEditQuote}
         onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
+        onRequestEditPolicy={handleRequestEditPolicy}
         onDeleteQuote={handleDeleteQuote}
         onDeletePolicy={handleDeletePolicy}
         onAddPayment={handleAddPayment}
@@ -1004,8 +1035,11 @@ const AppContent: React.FC = () => {
         setPolicyDealId={setPolicyDealId}
         policyPrefill={policyPrefill}
         setPolicyPrefill={setPolicyPrefill}
+        editingPolicy={editingPolicy}
+        setEditingPolicy={setEditingPolicy}
         salesChannels={salesChannels}
         handleAddPolicy={handleAddPolicy}
+        handleUpdatePolicy={handleUpdatePolicy}
         paymentModal={paymentModal}
         setPaymentModal={setPaymentModal}
         handleUpdatePayment={handleUpdatePayment}

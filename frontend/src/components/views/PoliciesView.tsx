@@ -3,6 +3,7 @@ import { Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
+import { VehicleDetails } from '../common/VehicleDetails';
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('ru-RU') : '—';
@@ -68,9 +69,10 @@ const getPolicySortValue = (policy: Policy, key: PolicySortKey): number | string
 
 interface PoliciesViewProps {
   policies: Policy[];
+  onRequestEditPolicy?: (policy: Policy) => void;
 }
 
-export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies }) => {
+export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, onRequestEditPolicy }) => {
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
 
@@ -147,15 +149,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies }) => {
           <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
             <tr>
               <th className="px-5 py-3">№ полиса</th>
-              <th className="px-5 py-3">Компания</th>
+              <th className="px-5 py-3">Страховая компания</th>
               <th className="px-5 py-3">Клиент</th>
               <th className="px-5 py-3">Тип</th>
               <th className="px-5 py-3">Сделка</th>
               <th className="px-5 py-3">Канал продаж</th>
-              <th className="px-5 py-3">Сумма</th>
-              <th className="px-5 py-3">Период</th>
+              <th className="px-5 py-3">Платежи</th>
+              <th className="px-5 py-3">Сроки</th>
+              <th className="px-5 py-3">Автомобиль</th>
               <th className="px-5 py-3">Статус</th>
-              <th className="px-5 py-3 text-right">Файлы</th>
+              <th className="px-5 py-3 text-right">Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -166,16 +169,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies }) => {
                   <td className="px-5 py-4 font-semibold text-slate-900">{policy.number}</td>
                   <td className="px-5 py-4 text-slate-600">{policy.insuranceCompany}</td>
                   <td className="px-5 py-4 text-slate-600">{policy.clientName || '—'}</td>
-                  <td className="px-5 py-4 text-slate-600">
-                    {policy.insuranceType}
-                    {policy.isVehicle && (
-                      <div className="text-[11px] text-slate-400 mt-2 space-y-1">
-                        <div>Марка: {policy.brand || '—'}</div>
-                        <div>Модель: {policy.model || '—'}</div>
-                        <div>VIN: {policy.vin || '—'}</div>
-                      </div>
-                    )}
-                  </td>
+                  <td className="px-5 py-4 text-slate-600">{policy.insuranceType || '—'}</td>
                   <td className="px-5 py-4 text-slate-600">{dealTitle}</td>
                   <td className="px-5 py-4 text-slate-600">{policy.salesChannel || '—'}</td>
                   <td className="px-5 py-4 text-slate-600">
@@ -187,9 +181,27 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies }) => {
                   <td className="px-5 py-4 text-slate-600">
                     {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
                   </td>
+                  <td className="px-5 py-4 text-slate-600">
+                    <VehicleDetails
+                      brand={policy.brand}
+                      model={policy.model}
+                      vin={policy.vin}
+                      placeholder="—"
+                    />
+                  </td>
                   <td className="px-5 py-4 text-slate-600">{policy.status || '—'}</td>
-                  <td className="px-5 py-4 text-right">
+                  <td className="px-5 py-4 text-right space-x-3">
+                    {onRequestEditPolicy && (
+                      <button
+                        type="button"
+                        onClick={() => onRequestEditPolicy(policy)}
+                        className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
+                      >
+                        Редактировать
+                      </button>
+                    )}
                     <button
+                      type="button"
                       onClick={() => setFilesModalPolicy(policy)}
                       className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
                     >
@@ -201,7 +213,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies }) => {
             })}
             {!filteredPolicies.length && (
               <tr>
-                <td colSpan={9} className="px-5 py-6 text-center text-slate-500">
+                <td colSpan={11} className="px-5 py-6 text-center text-slate-500">
                   Полисов пока нет
                 </td>
               </tr>

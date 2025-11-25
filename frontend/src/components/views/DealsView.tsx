@@ -71,6 +71,7 @@ interface DealsViewProps {
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;
+  onRequestEditPolicy: (policy: Policy) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRefreshPolicies?: () => Promise<void>;
@@ -136,6 +137,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onRequestAddQuote,
   onRequestEditQuote,
   onRequestAddPolicy,
+  onRequestEditPolicy,
   onDeleteQuote,
   onDeletePolicy,
   onRefreshPolicies,
@@ -680,15 +682,16 @@ export const DealsView: React.FC<DealsViewProps> = ({
   );
 
   const renderPoliciesTab = () => (
-    <PoliciesTab
-      selectedDeal={selectedDeal}
-      sortedPolicies={sortedPolicies}
-      policySortKey={policySortKey}
-      policySortOrder={policySortOrder}
-      onRequestAddPolicy={onRequestAddPolicy}
-      onDeletePolicy={onDeletePolicy}
-      onSortChange={handlePolicySort}
-    />
+      <PoliciesTab
+        selectedDeal={selectedDeal}
+        sortedPolicies={sortedPolicies}
+        policySortKey={policySortKey}
+        policySortOrder={policySortOrder}
+        onRequestAddPolicy={onRequestAddPolicy}
+        onDeletePolicy={onDeletePolicy}
+        onRequestEditPolicy={onRequestEditPolicy}
+        onSortChange={handlePolicySort}
+      />
   );
 
   const renderPaymentsByPoliciesTab = () => (

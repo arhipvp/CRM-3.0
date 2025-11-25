@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import type { Deal, Policy } from '../../../../types';
-import { formatCurrency, formatDate, getPolicyTransportSummary, PolicySortKey } from '../helpers';
+import { formatCurrency, formatDate, PolicySortKey } from '../helpers';
+import { VehicleDetails } from '../../../common/VehicleDetails';
 
 interface PoliciesTabProps {
   selectedDeal: Deal | null;
@@ -9,6 +10,7 @@ interface PoliciesTabProps {
   policySortOrder: 'asc' | 'desc';
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onRequestEditPolicy: (policy: Policy) => void;
   onSortChange: (key: PolicySortKey) => void;
 }
 
@@ -82,7 +84,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               {renderPolicyHeaderCell('Тип', 'insuranceType')}
               {renderPolicyHeaderCell('Начало', 'startDate')}
               {renderPolicyHeaderCell('Окончание', 'endDate')}
-              {renderPolicyHeaderCell('Транспорт', 'transport')}
+              {renderPolicyHeaderCell('Автомобиль', 'transport')}
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Действие
               </th>
@@ -104,12 +106,25 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 <td className="px-4 py-3">{policy.insuranceType || '—'}</td>
                 <td className="px-4 py-3">{formatDate(policy.startDate)}</td>
                 <td className="px-4 py-3">{formatDate(policy.endDate)}</td>
-                <td className="px-4 py-3 text-xs text-slate-500">
-                  {getPolicyTransportSummary(policy)}
+                <td className="px-4 py-3 text-slate-600">
+                  <VehicleDetails
+                    brand={policy.brand}
+                    model={policy.model}
+                    vin={policy.vin}
+                    placeholder="—"
+                  />
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right space-x-3">
                   <button
-                    className="text-xs font-semibold text-slate-400 transition hover:text-red-500"
+                    type="button"
+                    className="text-xs font-semibold text-slate-400 transition hover:text-sky-600"
+                    onClick={() => onRequestEditPolicy(policy)}
+                  >
+                    Редактировать
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-rose-500 hover:text-rose-600 transition"
                     onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
                   >
                     Удалить

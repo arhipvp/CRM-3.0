@@ -102,3 +102,36 @@ export async function recognizeDealPolicies(
     }),
   };
 }
+interface PolicyUpdatePayload {
+  number: string;
+  insuranceCompanyId: string;
+  insuranceTypeId: string;
+  isVehicle: boolean;
+  brand?: string;
+  model?: string;
+  vin?: string;
+  counterparty?: string;
+  salesChannelId?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promise<Policy> {
+  const payload = await request<Record<string, unknown>>(`/policies/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      number: data.number,
+      insurance_company: data.insuranceCompanyId,
+      insurance_type: data.insuranceTypeId,
+      is_vehicle: data.isVehicle,
+      brand: data.brand || '',
+      model: data.model || '',
+      vin: data.vin || '',
+      counterparty: data.counterparty || '',
+      sales_channel: data.salesChannelId || null,
+      start_date: data.startDate || null,
+      end_date: data.endDate || null,
+    }),
+  });
+  return mapPolicy(payload);
+}
