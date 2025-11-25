@@ -21,6 +21,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   policySortOrder,
   onRequestAddPolicy,
   onDeletePolicy,
+  onRequestEditPolicy,
   onSortChange,
 }) => {
   if (!selectedDeal) {
