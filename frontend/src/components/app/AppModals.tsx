@@ -6,7 +6,6 @@ import { AddQuoteForm, QuoteFormValues } from '../forms/AddQuoteForm';
 import { AddPolicyForm } from '../forms/AddPolicyForm';
 import { AddPaymentForm, AddPaymentFormValues } from '../forms/AddPaymentForm';
 import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
-import { EditPolicyForm } from '../forms/EditPolicyForm';
 import type {
   Client,
   FinancialRecord,
@@ -22,27 +21,27 @@ import type {
   PaymentModalState,
 } from './types';
 import type { PolicyFormValues } from '../forms/addPolicy/types';
-import type { PolicyEditFormValues } from '../forms/editPolicy/types';
-
-const buildPolicyEditValues = (policy: Policy): PolicyEditFormValues => ({
-  number: policy.number,
-  insuranceCompanyId: policy.insuranceCompanyId,
-  insuranceTypeId: policy.insuranceTypeId,
-  isVehicle: policy.isVehicle,
-  brand: policy.brand || undefined,
-  model: policy.model || undefined,
-  vin: policy.vin || undefined,
-  counterparty: policy.counterparty || undefined,
-  salesChannelId: policy.salesChannelId || undefined,
-  startDate: policy.startDate ?? undefined,
-  endDate: policy.endDate ?? undefined,
-});
 
 interface PolicyPrefill {
   values: PolicyFormValues;
   insuranceCompanyName?: string;
   insuranceTypeName?: string;
 }
+
+const buildPolicyFormValues = (policy: Policy): PolicyFormValues => ({
+  number: policy.number,
+  insuranceCompanyId: policy.insuranceCompanyId,
+  insuranceTypeId: policy.insuranceTypeId,
+  isVehicle: policy.isVehicle,
+  brand: policy.brand,
+  model: policy.model,
+  vin: policy.vin,
+  counterparty: policy.counterparty,
+  salesChannelId: policy.salesChannelId,
+  startDate: policy.startDate,
+  endDate: policy.endDate,
+  payments: [],
+});
 
 interface AppModalsProps {
   modal: ModalType;
@@ -67,7 +66,7 @@ interface AppModalsProps {
   setEditingPolicy: React.Dispatch<React.SetStateAction<Policy | null>>;
   salesChannels: SalesChannel[];
   handleAddPolicy: (dealId: string, values: PolicyFormValues) => Promise<void>;
-  handleUpdatePolicy: (policyId: string, values: PolicyEditFormValues) => Promise<void>;
+  handleUpdatePolicy: (policyId: string, values: PolicyFormValues) => Promise<void>;
   paymentModal: PaymentModalState | null;
   setPaymentModal: React.Dispatch<React.SetStateAction<PaymentModalState | null>>;
   handleUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
@@ -177,9 +176,11 @@ export const AppModals: React.FC<AppModalsProps> = ({
 
     {editingPolicy && (
       <Modal title="Редактировать полис" onClose={() => setEditingPolicy(null)} size="xl">
-        <EditPolicyForm
+        <AddPolicyForm
           salesChannels={salesChannels}
-          initialValues={buildPolicyEditValues(editingPolicy)}
+          initialValues={buildPolicyFormValues(editingPolicy)}
+          initialInsuranceCompanyName={editingPolicy.insuranceCompany}
+          initialInsuranceTypeName={editingPolicy.insuranceType}
           onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
           onCancel={() => setEditingPolicy(null)}
         />

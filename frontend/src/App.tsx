@@ -11,7 +11,6 @@ import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
-import type { PolicyEditFormValues } from './components/forms/editPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
 import {
@@ -690,10 +689,35 @@ const AppContent: React.FC = () => {
     setPolicyPrefill(null);
     setEditingPolicy(policy);
   };
-  const handleUpdatePolicy = async (policyId: string, values: PolicyEditFormValues) => {
+  const handleUpdatePolicy = async (policyId: string, values: PolicyFormValues) => {
     setIsSyncing(true);
     try {
-      const updated = await updatePolicy(policyId, values);
+      const {
+        number,
+        insuranceCompanyId,
+        insuranceTypeId,
+        isVehicle,
+        brand,
+        model,
+        vin,
+        counterparty,
+        salesChannelId,
+        startDate,
+        endDate,
+      } = values;
+      const updated = await updatePolicy(policyId, {
+        number,
+        insuranceCompanyId,
+        insuranceTypeId,
+        isVehicle,
+        brand,
+        model,
+        vin,
+        counterparty,
+        salesChannelId,
+        startDate,
+        endDate,
+      });
       updateAppData((prev) => ({
         policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
       }));
