@@ -143,3 +143,27 @@ class DealSerializer(serializers.ModelSerializer):
             return None
         full_name = f"{user.first_name} {user.last_name}".strip()
         return full_name or user.username
+
+
+class DealMergeSerializer(serializers.Serializer):
+    """Валидация данных для объединения сделок."""
+
+    target_deal_id = serializers.UUIDField(
+        help_text="ID сделки, в которую перенесутся все связанные записи."
+    )
+    source_deal_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        help_text="Список ID сделок, которые будут объединены в целевую.",
+    )
+
+    def validate(self, attrs):
+        target_id = attrs["target_deal_id"]
+        source_ids = attrs["source_deal_ids"]
+        if target_id in source_ids:
+            raise serializers.ValidationError(
+                "Целевая сделка не может быть частью списка исходных."
+            )
+        if len(source_ids) != len(set(source_ids)):
+            raise serializers.ValidationError("Список исходных сделок содержит дубликаты.")
+        return attrs

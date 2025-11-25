@@ -33,6 +33,7 @@ import {
   deleteChatMessage,
   updateDealStatus,
   updateDeal,
+  mergeDeals,
   updatePayment,
   fetchDealHistory,
   fetchDeal,
@@ -452,6 +453,36 @@ const AppContent: React.FC = () => {
       }
     },
     [addNotification, dealFilters, refreshDealsWithSelection, setError, setSelectedDealId]
+  );
+
+  const handleMergeDeals = useCallback(
+    async (targetDealId: string, sourceDealIds: string[]) => {
+      setIsSyncing(true);
+      try {
+        const result = await mergeDeals({ targetDealId, sourceDealIds });
+        updateAppData((prev) => ({
+          deals: prev.deals
+            .filter((deal) => !result.mergedDealIds.includes(deal.id))
+            .map((deal) => (deal.id === result.targetDeal.id ? result.targetDeal : deal)),
+        }));
+        setSelectedDealId(result.targetDeal.id);
+        setError(null);
+        addNotification('Сделки объединены', 'success', 4000);
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof APIError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Ошибка объединения сделок';
+        setError(message);
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [addNotification, mergeDeals, setError, setSelectedDealId, updateAppData]
   );
 
   const handleAddQuote = async (dealId: string, values: QuoteFormValues) => {
@@ -926,6 +957,7 @@ const AppContent: React.FC = () => {
         onDeleteTask={handleDeleteTask}
         onDeleteDeal={handleDeleteDeal}
         onRestoreDeal={handleRestoreDeal}
+        onMergeDeals={handleMergeDeals}
         dealSearch={dealSearch}
         onDealSearchChange={setDealSearch}
         dealExecutorFilter={dealExecutorFilter}

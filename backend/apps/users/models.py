@@ -120,6 +120,7 @@ class AuditLog(models.Model):
     ACTION_CHOICES = [
         ("create", "Создание"),
         ("update", "Редактирование"),
+        ("merge", "Слияние"),
         ("delete", "Удаление"),
         ("assign", "Назначение"),
         ("revoke", "Отзыв"),

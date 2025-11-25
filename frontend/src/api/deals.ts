@@ -1,7 +1,7 @@
 ﻿import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapActivityLog, mapDeal, mapQuote } from './mappers';
-import type { ActivityLog, Deal, DealStatus, Quote } from '../types';
+import type { ActivityLog, Deal, DealMergeResponse, DealStatus, Quote } from '../types';
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
   const qs = buildQueryString(filters);
@@ -167,4 +167,33 @@ export async function updateQuote(
 
 export async function deleteQuote(id: string): Promise<void> {
   await request(`/quotes/${id}/`, { method: 'DELETE' });
+}
+
+export async function mergeDeals(data: {
+  targetDealId: string;
+  sourceDealIds: string[];
+}): Promise<DealMergeResponse> {
+  const payload = await request<Record<string, unknown>>('/deals/merge/', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_deal_id: data.targetDealId,
+      source_deal_ids: data.sourceDealIds,
+    }),
+  });
+
+  const targetPayload = payload.target_deal as Record<string, unknown>;
+  if (!targetPayload) {
+    throw new Error('Ответ API не содержит данные целевой сделки');
+  }
+
+  const mergedDealIds = Array.isArray(payload.merged_deal_ids)
+    ? payload.merged_deal_ids.map((value) => String(value))
+    : [];
+  const movedCounts = (payload.moved_counts ?? {}) as Record<string, number>;
+
+  return {
+    targetDeal: mapDeal(targetPayload),
+    mergedDealIds,
+    movedCounts,
+  };
 }

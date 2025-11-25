@@ -97,6 +97,7 @@ interface DealsViewProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
+  onMergeDeals: (targetDealId: string, sourceDealIds: string[]) => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   isLoadingMoreDeals: boolean;
@@ -128,6 +129,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onUpdateDeal,
   onDeleteDeal,
   onRestoreDeal,
+  onMergeDeals,
   onLoadMoreDeals,
   dealsHasMore,
   isLoadingMoreDeals,
@@ -200,6 +202,22 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const headerExpectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
   const isSelectedDealDeleted = Boolean(selectedDeal?.deletedAt);
 
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [mergeSources, setMergeSources] = useState<string[]>([]);
+  const [mergeError, setMergeError] = useState<string | null>(null);
+  const [isMerging, setIsMerging] = useState(false);
+  const mergeCandidates = useMemo(() => {
+    if (!selectedDeal) {
+      return [];
+    }
+    return deals.filter(
+      (deal) =>
+        deal.clientId === selectedDeal.clientId &&
+        deal.id !== selectedDeal.id &&
+        !deal.deletedAt
+    );
+  }, [deals, selectedDeal?.clientId, selectedDeal?.id]);
+
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -243,6 +261,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setRecognitionMessage(null);
   }, [selectedDeal?.id]);
 
+  useEffect(() => {
+    if (!isMergeModalOpen) {
+      setMergeSources([]);
+      setMergeError(null);
+    }
+  }, [isMergeModalOpen]);
+
+  useEffect(() => {
+    setMergeSources([]);
+    setMergeError(null);
+  }, [selectedDeal?.id]);
+
   const loadChatMessages = useCallback(async () => {
     const dealId = selectedDeal?.id;
     if (!dealId) {
@@ -282,6 +312,33 @@ export const DealsView: React.FC<DealsViewProps> = ({
     },
     [onDeleteChatMessage, loadChatMessages, selectedDeal?.id]
   );
+
+  const toggleMergeSource = useCallback((dealId: string) => {
+    setMergeSources((prev) =>
+      prev.includes(dealId) ? prev.filter((id) => id !== dealId) : [...prev, dealId]
+    );
+    setMergeError(null);
+  }, []);
+
+  const handleMergeSubmit = useCallback(async () => {
+    if (!selectedDeal) {
+      return;
+    }
+    if (!mergeSources.length) {
+      setMergeError('Выберите хотя бы одну сделку для объединения.');
+      return;
+    }
+    setIsMerging(true);
+    setMergeError(null);
+    try {
+      await onMergeDeals(selectedDeal.id, mergeSources);
+      setIsMergeModalOpen(false);
+    } catch (err) {
+      setMergeError(err instanceof Error ? err.message : 'Не удалось объединить сделки.');
+    } finally {
+      setIsMerging(false);
+    }
+  }, [mergeSources, onMergeDeals, selectedDeal?.id]);
 
   const loadActivityLogs = useCallback(async () => {
     const dealId = selectedDeal?.id;
@@ -1116,6 +1173,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 >
                   Редактировать
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMergeModalOpen(true)}
+                  disabled={isSelectedDealDeleted || mergeCandidates.length === 0}
+                  title={!mergeCandidates.length ? 'Нет других сделок для объединения' : undefined}
+                  className="px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg border border-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Объединить
+                </button>
                 {!isSelectedDealDeleted && (
                   <button
                     type="button"
@@ -1349,6 +1415,79 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   setCreatingFinancialRecordContext(null);
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+      {isMergeModalOpen && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-slate-900">Объединить сделки</h3>
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Целевая сделка</p>
+                <p className="text-base font-semibold text-slate-900">{selectedDeal.title}</p>
+                <p className="text-xs text-slate-500">
+                  Клиент: {selectedClient?.name || selectedDeal.clientName || '—'}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-slate-700">Выберите сделки для переноса</p>
+                {mergeCandidates.length ? (
+                  mergeCandidates.map((deal) => (
+                    <label
+                      key={deal.id}
+                      className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={mergeSources.includes(deal.id)}
+                        onChange={() => toggleMergeSource(deal.id)}
+                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
+                        <p className="text-[11px] text-slate-500">
+                          Стадия: {deal.stageName || '—'} · Статус: {statusLabels[deal.status]}
+                        </p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    Нет других активных сделок у клиента.
+                  </p>
+                )}
+              </div>
+              {mergeError && (
+                <p className="text-sm font-medium text-rose-600">{mergeError}</p>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(false)}
+                className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleMergeSubmit}
+                disabled={isMerging || !mergeSources.length}
+                className="px-3 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isMerging ? 'Объединяем...' : 'Объединить сделки'}
+              </button>
             </div>
           </div>
         </div>

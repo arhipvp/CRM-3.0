@@ -158,6 +158,12 @@ export interface Deal {
   paymentsTotal?: string;
 }
 
+export interface DealMergeResponse {
+  targetDeal: Deal;
+  mergedDealIds: string[];
+  movedCounts: Record<string, number>;
+}
+
 export interface Policy {
   id: string;
   number: string;

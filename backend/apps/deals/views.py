@@ -17,6 +17,7 @@ from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -24,11 +25,13 @@ from .filters import DealFilterSet
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 from .serializers import (
     DealSerializer,
+    DealMergeSerializer,
     InsuranceCompanySerializer,
     InsuranceTypeSerializer,
     QuoteSerializer,
     SalesChannelSerializer,
 )
+from .services import DealMergeService
 
 
 def _is_admin_user(user) -> bool:
@@ -308,6 +311,85 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             serializer.save(seller=self.request.user)
         else:
             serializer.save()
+
+    @action(detail=False, methods=["post"], url_path="merge")
+    def merge(self, request):
+        serializer = DealMergeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        target_id = str(serializer.validated_data["target_deal_id"])
+        source_ids = [str(value) for value in serializer.validated_data["source_deal_ids"]]
+        combined_ids = {target_id, *source_ids}
+
+        deals = (
+            Deal.objects.with_deleted()
+            .select_related("client")
+            .filter(id__in=combined_ids)
+        )
+        if deals.count() != len(combined_ids):
+            found_ids = {str(deal.id) for deal in deals}
+            missing = sorted(combined_ids - found_ids)
+            raise ValidationError(
+                {"detail": f"Сделки не найдены: {', '.join(missing)}"}
+            )
+
+        deals_by_id = {str(deal.id): deal for deal in deals}
+        target_deal = deals_by_id.get(target_id)
+        if not target_deal:
+            raise ValidationError({"target_deal_id": "Целевая сделка не найдена."})
+        if target_deal.deleted_at is not None:
+            raise ValidationError({"target_deal_id": "Целевая сделка удалена."})
+
+        source_deals = [deals_by_id[source_id] for source_id in source_ids]
+        client_id = target_deal.client_id
+        for deal in source_deals:
+            if deal.client_id != client_id:
+                raise ValidationError("Все сделки должны принадлежать одному клиенту.")
+            if deal.deleted_at is not None:
+                raise ValidationError(
+                    {"source_deal_ids": "Исходная сделка уже удалена."}
+                )
+
+        for deal in (target_deal, *source_deals):
+            if not self._can_modify(request.user, deal):
+                raise PermissionDenied("Недостаточно прав для объединения сделки.")
+
+        actor = request.user if request.user and request.user.is_authenticated else None
+        merge_result = DealMergeService(
+            target_deal=target_deal,
+            source_deals=source_deals,
+            actor=actor,
+        ).merge()
+
+        source_titles = sorted({deal.title for deal in source_deals})
+        AuditLog.objects.create(
+            actor=actor,
+            object_type="deal",
+            object_id=str(target_deal.id),
+            object_name=target_deal.title,
+            action="merge",
+            description=(
+                f"Слияние сделок ({', '.join(source_titles)}) в '{target_deal.title}'"
+            ),
+            new_value={
+                "merged_deals": merge_result["merged_deal_ids"],
+                "moved_counts": merge_result["moved_counts"],
+            },
+        )
+
+        refreshed_target = (
+            self._base_queryset()
+            .filter(pk=target_deal.pk)
+            .first()
+        )
+        target_instance = refreshed_target or target_deal
+        return Response(
+            {
+                "target_deal": self.get_serializer(target_instance).data,
+                "merged_deal_ids": merge_result["merged_deal_ids"],
+                "moved_counts": merge_result["moved_counts"],
+            }
+        )
 
 
 class QuoteViewSet(viewsets.ModelViewSet):

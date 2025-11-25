@@ -61,6 +61,7 @@ export interface AppRoutesProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
+  onMergeDeals: (targetDealId: string, sourceDealIds: string[]) => Promise<void>;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   dealExecutorFilter: string;
@@ -126,6 +127,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onDeleteTask,
   onDeleteDeal,
   onRestoreDeal,
+  onMergeDeals,
   dealSearch,
   onDealSearchChange,
   dealExecutorFilter,
@@ -186,6 +188,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDeleteTask={onDeleteTask}
           onDeleteDeal={onDeleteDeal}
           onRestoreDeal={onRestoreDeal}
+          onMergeDeals={onMergeDeals}
           dealSearch={dealSearch}
           onDealSearchChange={onDealSearchChange}
           dealExecutorFilter={dealExecutorFilter}
