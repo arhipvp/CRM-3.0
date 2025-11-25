@@ -171,14 +171,14 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
     if isinstance(value, (int, float)):
         legacy_pk = _legacy_pk_for_model(field.remote_field.model, value)
         if legacy_pk:
-            return legacy_pk
+            return _ensure_related_instance(field.remote_field.model, legacy_pk, str(value))
         return int(value)
 
     text = str(value).strip()
     if text.isdigit():
         legacy_pk = _legacy_pk_for_model(field.remote_field.model, text)
         if legacy_pk:
-            return legacy_pk
+            return _ensure_related_instance(field.remote_field.model, legacy_pk, text)
         return int(text)
 
     related = field.remote_field.model
@@ -192,7 +192,7 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
     if created_pk:
         return created_pk
 
-    raise ValueError(f"Не удалось найти {related._meta.verbose_name} по значению '{value}'")
+    raise ValueError(f"????????? ?????? {related._meta.verbose_name} ?? ??????? ('{value}')")
 
 
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:
@@ -207,6 +207,23 @@ def _auto_create_related(related: type[models.Model], text: str) -> int | None:
     defaults = config.get("defaults", {}) if config else {}
     obj, _ = related.objects.get_or_create(**{attr: text}, defaults=defaults)
     return obj.pk
+
+
+def _ensure_related_instance(related: type[models.Model], pk: Any, display: str | None) -> Any:
+    if not pk:
+        return pk
+    if related.objects.filter(pk=pk).exists():
+        return pk
+    defaults: dict[str, Any] = {}
+    for field_name in ("name", "title", "number"):
+        if field_name in {field.name for field in related._meta.fields}:
+            defaults[field_name] = display or f"Legacy {related._meta.verbose_name}"
+            break
+    try:
+        related.objects.create(pk=pk, **defaults)
+    except IntegrityError:
+        pass
+    return pk
 
 
 _AUTO_CREATE_MAPPING = {
@@ -417,7 +434,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "vehicle_vin": "vin",
             "note": "note",
         },
-        required_fields=("deal_id", "number", "insurance_company_id", "insurance_type_id"),
+        required_fields=("client_id", "number", "insurance_company_id", "insurance_type_id"),
         references=(("deals.Deal", "deal_id"), ("clients.Client", "client_id")),
     ),
     "payments": SheetSpec(
