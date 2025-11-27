@@ -144,3 +144,4 @@ nginx.conf
 scripts/templates/~$*
 ~$*.xlsx
 backup_2025-11-24_15-20.xlsx
+nginx.conf
