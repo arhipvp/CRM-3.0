@@ -91,10 +91,12 @@ Thumbs.db
 # Docker / Deployment
 # -------------------------
 docker-compose.override.yml
+docker-compose.yml
 docker-data/
 docker-volumes/
 tmp/
 *.pid
+nginx.conf
 
 # Local overrides (do not push server configs)
 stack.local.yml
@@ -138,10 +140,12 @@ frontend/.env
 credentials.json
 backup_2025-11-12_16-11.xlsx
 deploy.sh
-nginx.conf
+*nginx.conf*
 
 # Excel temp artifacts
 scripts/templates/~$*
 ~$*.xlsx
 backup_2025-11-24_15-20.xlsx
+*nginx.conf*
 nginx.conf
+docker-compose.yml

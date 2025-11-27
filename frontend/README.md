@@ -13,7 +13,7 @@ npm run dev
 Создайте `.env` из шаблона:
 
 ```
-VITE_API_URL=http://localhost:8000/api/v1
+VITE_API_URL=/api/v1
 ```
 
 ## Структура
