@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const srcDir = resolve(__dirname, '../src');
@@ -16,11 +16,11 @@ describe('frontend encoding', () => {
       if (!next) {
         continue;
       }
-      const entries = require('node:fs')
-        .readdirSync(next, { withFileTypes: true })
-        .map((entry) => resolve(next, entry.name));
+      const entries = readdirSync(next, { withFileTypes: true }).map((entry) =>
+        resolve(next, entry.name)
+      );
       for (const entryPath of entries) {
-        const stat = require('node:fs').statSync(entryPath);
+        const stat = statSync(entryPath);
         if (stat.isDirectory()) {
           queue.push(entryPath);
           continue;
