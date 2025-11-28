@@ -236,8 +236,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [savingDateField, setSavingDateField] = useState<
     'nextContactDate' | 'expectedClose' | null
   >(null);
-  const [policySortKey, setPolicySortKey] = useState<PolicySortKey>('startDate');
-  const [policySortOrder, setPolicySortOrder] = useState<'asc' | 'desc'>('asc');
+  const [policySortKey] = useState<PolicySortKey>('startDate');
+  const [policySortOrder] = useState<'asc' | 'desc'>('asc');
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
@@ -484,15 +484,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
   };
 
-  const handlePolicySort = (key: PolicySortKey) => {
-    if (policySortKey === key) {
-      setPolicySortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-    setPolicySortKey(key);
-    setPolicySortOrder('asc');
-  };
-
   const loadDriveFiles = useCallback(async () => {
     if (!selectedDeal) {
       setDriveFiles([]);
@@ -689,7 +680,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
         onRequestAddPolicy={onRequestAddPolicy}
         onDeletePolicy={onDeletePolicy}
         onRequestEditPolicy={onRequestEditPolicy}
-        onSortChange={handlePolicySort}
         relatedPayments={relatedPayments}
         setEditingPaymentId={setEditingPaymentId}
         setCreatingPaymentPolicyId={setCreatingPaymentPolicyId}
