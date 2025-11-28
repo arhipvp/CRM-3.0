@@ -210,7 +210,14 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     <Route
       path="/policies"
       element={
-        <PoliciesView policies={policies} payments={payments} onRequestEditPolicy={onRequestEditPolicy} />
+        <PoliciesView
+          policies={policies}
+          payments={payments}
+          onRequestEditPolicy={onRequestEditPolicy}
+          onAddFinancialRecord={onAddFinancialRecord}
+          onUpdateFinancialRecord={onUpdateFinancialRecord}
+          onDeleteFinancialRecord={onDeleteFinancialRecord}
+        />
       }
     />
     <Route path="/payments" element={<Navigate to="/policies" replace />} />

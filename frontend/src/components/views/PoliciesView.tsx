@@ -3,7 +3,12 @@ import { Policy, Payment, FinancialRecord } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
-import { formatCurrency, formatDate } from './dealsView/helpers';
+import {
+  formatCurrency,
+  formatDate,
+  FinancialRecordCreationContext,
+} from './dealsView/helpers';
+import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 
 type PolicySortKey =
   | 'startDate'
@@ -54,15 +59,24 @@ interface PoliciesViewProps {
   policies: Policy[];
   payments: Payment[];
   onRequestEditPolicy?: (policy: Policy) => void;
+  onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  onDeleteFinancialRecord: (recordId: string) => Promise<void>;
 }
 
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policies,
   payments,
   onRequestEditPolicy,
+  onAddFinancialRecord,
+  onUpdateFinancialRecord,
+  onDeleteFinancialRecord,
 }) => {
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
+  const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
+  const [creatingFinancialRecordContext, setCreatingFinancialRecordContext] =
+    useState<FinancialRecordCreationContext | null>(null);
 
   const statusOptions = useMemo(() => {
     const unique = Array.from(new Set(policies.map((policy) => policy.status).filter(Boolean)));
@@ -133,6 +147,20 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     [filteredPolicies, payments]
   );
 
+  const allFinancialRecords = useMemo(
+    () => payments.flatMap((payment) => payment.financialRecords ?? []),
+    [payments]
+  );
+
+  const editingFinancialRecord = editingFinancialRecordId
+    ? allFinancialRecords.find((record) => record.id === editingFinancialRecordId)
+    : undefined;
+
+  const closeFinancialRecordModal = () => {
+    setCreatingFinancialRecordContext(null);
+    setEditingFinancialRecordId(null);
+  };
+
   const renderRecordRows = (records: FinancialRecord[], recordType: 'income' | 'expense') => {
     if (!records.length) {
       return (
@@ -144,27 +172,43 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       );
     }
 
-    return records.map((record) => {
-      const amountValue = Math.abs(Number(record.amount) || 0);
-      const sign = recordType === 'income' ? '+' : '-';
+      return records.map((record) => {
+        const amountValue = Math.abs(Number(record.amount) || 0);
+        const sign = recordType === 'income' ? '+' : '-';
 
-      return (
-        <tr key={record.id}>
-          <td className="px-2 py-1 text-[11px] text-slate-600">{record.description || '—'}</td>
-          <td className="px-2 py-1 text-[11px] text-slate-600">{formatDate(record.date)}</td>
-          <td className="px-2 py-1 text-right text-[11px] font-semibold">
-            <span className={recordType === 'income' ? 'text-emerald-600' : 'text-red-600'}>
-              {sign}
-              {formatCurrency(amountValue.toString())}
-            </span>
-          </td>
-        </tr>
-      );
-    });
+        return (
+          <tr key={record.id}>
+            <td className="px-2 py-1 text-[11px] text-slate-600">{record.description || '—'}</td>
+            <td className="px-2 py-1 text-[11px] text-slate-600">{formatDate(record.date)}</td>
+            <td className="px-2 py-1 text-right text-[11px] font-semibold">
+              <span className={recordType === 'income' ? 'text-emerald-600' : 'text-red-600'}>
+                {sign}
+                {formatCurrency(amountValue.toString())}
+              </span>
+            </td>
+            <td className="px-2 py-1 text-right text-[11px] text-slate-600 space-x-2">
+              <button
+                onClick={() => setEditingFinancialRecordId(record.id)}
+                className="text-[11px] text-sky-600 hover:text-sky-800 font-semibold"
+              >
+                Изменить
+              </button>
+              <button
+                onClick={() =>
+                  onDeleteFinancialRecord(record.id).catch(() => undefined)
+                }
+                className="text-[11px] text-rose-500 hover:text-rose-600 font-semibold"
+              >
+                Удалить
+              </button>
+            </td>
+          </tr>
+        );
+      });
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <FilterBar
         onFilterChange={setFilters}
         searchPlaceholder="Поиск по номеру, клиенту или компании..."
@@ -177,12 +221,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           {paymentsByPolicy.map(({ policy, payments }) => (
             <section
               key={policy.id}
-              className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
+              className="space-y-2 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="grid gap-3 px-3 py-3 text-[11px] text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_1fr]">
+              <div className="grid gap-2 px-3 py-2 text-[10px] text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_1fr]">
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Номер</p>
-                  <p className="font-semibold text-slate-900">{policy.number || '—'}</p>
+                  <p className="text-lg font-semibold text-slate-900">{policy.number || '—'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Компания</p>
@@ -283,16 +327,29 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           </div>
                           <div className="mt-3 grid gap-3 md:grid-cols-2">
                             <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-                              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                                Доходы
+                              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                                <span>Доходы</span>
+                                <button
+                                  onClick={() => {
+                                    setCreatingFinancialRecordContext({
+                                      paymentId: payment.id,
+                                      recordType: 'income',
+                                    });
+                                    setEditingFinancialRecordId(null);
+                                  }}
+                                  className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
+                                >
+                                  Добавить
+                                </button>
                               </div>
                               <div className="overflow-x-auto">
                                 <table className="min-w-full text-[11px] text-slate-600">
                                   <thead>
-                                    <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
+                                  <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
                                       <th className="px-2 py-1 text-left">Описание</th>
                                       <th className="px-2 py-1 text-left">Дата</th>
                                       <th className="px-2 py-1 text-right">Сумма</th>
+                                      <th className="px-2 py-1 text-right">Действия</th>
                                     </tr>
                                   </thead>
                                   <tbody>{renderRecordRows(incomes, 'income')}</tbody>
@@ -300,8 +357,20 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                               </div>
                             </div>
                             <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-                              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                                Расходы
+                              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                                <span>Расходы</span>
+                                <button
+                                  onClick={() => {
+                                    setCreatingFinancialRecordContext({
+                                      paymentId: payment.id,
+                                      recordType: 'expense',
+                                    });
+                                    setEditingFinancialRecordId(null);
+                                  }}
+                                  className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
+                                >
+                                  Добавить
+                                </button>
                               </div>
                               <div className="overflow-x-auto">
                                 <table className="min-w-full text-[11px] text-slate-600">
@@ -310,6 +379,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                       <th className="px-2 py-1 text-left">Описание</th>
                                       <th className="px-2 py-1 text-left">Дата</th>
                                       <th className="px-2 py-1 text-right">Сумма</th>
+                                      <th className="px-2 py-1 text-right">Действия</th>
                                     </tr>
                                   </thead>
                                   <tbody>{renderRecordRows(expenses, 'expense')}</tbody>
@@ -340,6 +410,43 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           entityType="policy"
           title={`Файлы полиса: ${filesModalPolicy.number}`}
         />
+      )}
+      {(creatingFinancialRecordContext || editingFinancialRecordId) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {editingFinancialRecordId ? 'Изменить запись' : 'Добавить запись'}
+              </h3>
+              <button
+                onClick={closeFinancialRecordModal}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <AddFinancialRecordForm
+                paymentId={
+                  creatingFinancialRecordContext?.paymentId ||
+                  editingFinancialRecord?.paymentId ||
+                  ''
+                }
+                defaultRecordType={creatingFinancialRecordContext?.recordType}
+                record={editingFinancialRecord}
+                onSubmit={async (values) => {
+                  if (editingFinancialRecordId) {
+                    await onUpdateFinancialRecord(editingFinancialRecordId, values);
+                  } else {
+                    await onAddFinancialRecord(values);
+                  }
+                  closeFinancialRecordModal();
+                }}
+                onCancel={closeFinancialRecordModal}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
