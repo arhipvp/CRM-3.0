@@ -76,7 +76,18 @@ class DealMergeServiceTestCase(TestCase):
         self.assertEqual(Document.objects.filter(deal=self.target).count(), 1)
         self.assertTrue(Deal.objects.with_deleted().get(pk=self.source.pk).is_deleted())
         self.assertEqual(result["merged_deal_ids"], [str(self.source.id)])
-        self.assertIn("tasks", result["moved_counts"])
+        self.assertEqual(
+            result["moved_counts"],
+            {
+                "tasks": 1,
+                "notes": 1,
+                "documents": 1,
+                "policies": 1,
+                "payments": 1,
+                "quotes": 1,
+                "chat_messages": 1,
+            },
+        )
 
 
 class DealMergeAPITestCase(APITestCase):

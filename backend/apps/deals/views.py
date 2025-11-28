@@ -108,8 +108,8 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def _base_queryset(self, include_deleted=False):
         manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
         queryset = (
-            manager.select_related("client")
-            .prefetch_related("quotes")
+            manager.select_related("client", "seller", "executor")
+            .prefetch_related("quotes", "documents")
             .all()
             .order_by(
                 F("next_contact_date").asc(nulls_last=True),
@@ -371,12 +371,13 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         ]
         combined_ids = {target_id, *source_ids}
 
-        deals = (
+        deals_qs = (
             Deal.objects.with_deleted()
             .select_related("client")
             .filter(id__in=combined_ids)
         )
-        if deals.count() != len(combined_ids):
+        deals = list(deals_qs)
+        if len(deals) != len(combined_ids):
             found_ids = {str(deal.id) for deal in deals}
             missing = sorted(combined_ids - found_ids)
             raise ValidationError(
