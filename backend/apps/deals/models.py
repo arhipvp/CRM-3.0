@@ -140,7 +140,7 @@ class Quote(SoftDeleteModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="�������",
+        help_text="Продавец",
     )
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
