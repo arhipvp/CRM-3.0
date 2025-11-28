@@ -244,11 +244,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 <div className="space-y-3">
                   {payments.map((payment) => {
                     const incomes =
-                      payment.financialRecords?.filter((record) => record.recordType === 'income') ||
-                      [];
+                      payment.financialRecords?.filter(
+                        (record) => record.recordType === 'Доход'
+                      ) || [];
                     const expenses =
-                      payment.financialRecords?.filter((record) => record.recordType === 'expense') ||
-                      [];
+                      payment.financialRecords?.filter(
+                        (record) => record.recordType === 'Расход'
+                      ) || [];
 
                     return (
                       <article
