@@ -41,8 +41,8 @@ describe('frontend encoding', () => {
   it('renders current form labels correctly without replacement characters', () => {
     const policyFormPath = resolve(srcDir, 'components/forms/AddPolicyForm.tsx');
     const content = readUtf8(policyFormPath);
-    expect(content).toContain('Контрагент');
-    expect(content).toContain('Доходы');
+    expect(content).toContain('Номер полиса');
+    expect(content).toContain('Канал продаж');
     expect(content).not.toContain('\uFFFD');
   });
 });
