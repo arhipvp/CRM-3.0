@@ -91,3 +91,9 @@ class DealHistoryUtilsTestCase(TestCase):
             payload["description"],
             self.audit_log.description or self.audit_log.object_name,
         )
+
+    def test_collect_related_ids_is_cached(self):
+        first = collect_related_ids(self.target)
+        second = collect_related_ids(self.target)
+        self.assertIs(first, second)
+        self.assertIs(self.target._history_related_ids, first)

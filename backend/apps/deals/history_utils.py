@@ -61,6 +61,10 @@ def _format_value(value):
 
 
 def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
+    cached = getattr(deal, "_history_related_ids", None)
+    if cached is not None:
+        return cached
+
     def _prefetched_ids(attr: str, fallback):
         items = getattr(deal, attr, None)
         if items is None:
@@ -88,7 +92,7 @@ def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
             .values_list("id", flat=True)
         ]
 
-    return {
+    related_ids = {
         "task": _prefetched_ids(
             "_history_tasks",
             Task.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
@@ -121,6 +125,8 @@ def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
             Quote.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
         ),
     }
+    deal._history_related_ids = related_ids
+    return related_ids
 
 
 def get_related_audit_logs(deal: Deal, related_ids=None):
