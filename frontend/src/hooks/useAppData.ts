@@ -1,4 +1,4 @@
-import { useCallback, useReducer, useState } from 'react';
+import { useCallback, useReducer, useRef, useState } from 'react';
 
 import {
   fetchClients,
@@ -67,6 +67,13 @@ const dataReducer = (state: AppDataState, action: AppDataAction): AppDataState =
   return { ...state, ...action.updater(state) };
 };
 
+export const buildDealsCacheKey = (filters: FilterParams): string => {
+  const normalized = Object.entries(filters ?? {})
+    .filter(([, value]) => value !== undefined)
+    .sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(normalized);
+};
+
 export const useAppData = () => {
   const [dataState, dispatch] = useReducer(dataReducer, INITIAL_APP_DATA_STATE);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,6 +82,9 @@ export const useAppData = () => {
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
+  const dealsCacheRef = useRef(
+    new Map<string, { results: Deal[]; nextPage: number | null }>()
+  );
 
   const setAppData = useCallback((payload: Partial<AppDataState>) => {
     dispatch({ type: 'assign', payload });
@@ -84,40 +94,70 @@ export const useAppData = () => {
     dispatch({ type: 'update', updater });
   }, []);
 
-  const refreshDeals = useCallback(async (filters?: FilterParams) => {
-    const resolvedFilters = { ordering: 'next_contact_date', ...(filters ?? {}) };
-    const payload = await fetchDealsWithPagination({
-      ...resolvedFilters,
-      page: 1,
-      page_size: DEALS_PAGE_SIZE,
-    });
-    setAppData({ deals: payload.results });
-    setDealsFilters(resolvedFilters);
-    setDealsNextPage(payload.next ? 2 : null);
-    return payload.results;
-  }, [setAppData]);
+  const refreshDeals = useCallback(
+    async (filters?: FilterParams, options?: { force?: boolean }) => {
+      const resolvedFilters = { ordering: 'next_contact_date', ...(filters ?? {}) };
+      const cacheKey = buildDealsCacheKey(resolvedFilters);
+      const force = options?.force ?? false;
+      if (!force) {
+        const cached = dealsCacheRef.current.get(cacheKey);
+        if (cached) {
+          setAppData({ deals: cached.results });
+          setDealsFilters(resolvedFilters);
+          setDealsNextPage(cached.nextPage);
+          return cached.results;
+        }
+      }
+      const payload = await fetchDealsWithPagination({
+        ...resolvedFilters,
+        page: 1,
+        page_size: DEALS_PAGE_SIZE,
+      });
+      const results = payload.results;
+      const nextPage = payload.next ? 2 : null;
+      dealsCacheRef.current.set(cacheKey, { results, nextPage });
+      setAppData({ deals: results });
+      setDealsFilters(resolvedFilters);
+      setDealsNextPage(nextPage);
+      return results;
+    },
+    [setAppData]
+  );
 
   const loadMoreDeals = useCallback(async () => {
     if (!dealsNextPage || isLoadingMoreDeals) {
       return;
     }
     setIsLoadingMoreDeals(true);
+    const cacheKey = buildDealsCacheKey(dealsFilters);
     try {
       const payload = await fetchDealsWithPagination({
         ...dealsFilters,
         page: dealsNextPage,
         page_size: DEALS_PAGE_SIZE,
       });
-      updateAppData((prev) => ({
-        deals: [...prev.deals, ...payload.results],
-      }));
+      updateAppData((prev) => {
+        const extended = [...prev.deals, ...payload.results];
+        dealsCacheRef.current.set(cacheKey, {
+          results: extended,
+          nextPage: payload.next ? dealsNextPage + 1 : null,
+        });
+        return { deals: extended };
+      });
       setDealsNextPage(payload.next ? dealsNextPage + 1 : null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить сделки');
+      setError(err instanceof Error ? err.message : 'Error loading more deals');
     } finally {
       setIsLoadingMoreDeals(false);
     }
-  }, [dealsFilters, dealsNextPage, isLoadingMoreDeals, setError, updateAppData]);
+  }, [
+    dealsFilters,
+    dealsNextPage,
+    isLoadingMoreDeals,
+    setError,
+    setAppData,
+  ]);
+
 
   const refreshPolicies = useCallback(async () => {
     const PAGE_SIZE = 200;

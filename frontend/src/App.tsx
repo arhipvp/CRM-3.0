@@ -216,8 +216,8 @@ const AppContent: React.FC = () => {
   const location = useLocation();
 
   const refreshDealsWithSelection = useCallback(
-    async (filters?: FilterParams) => {
-      const dealsData = await refreshDeals(filters);
+    async (filters?: FilterParams, options?: { force?: boolean }) => {
+      const dealsData = await refreshDeals(filters, options);
       setSelectedDealId((prev) => {
         if (prev && dealsData.some((deal) => deal.id === prev)) {
           return prev;
@@ -428,7 +428,7 @@ const AppContent: React.FC = () => {
       setIsSyncing(true);
       try {
         await deleteDeal(dealId);
-        await refreshDealsWithSelection(dealFilters);
+        await refreshDealsWithSelection(dealFilters, { force: true });
         setError(null);
         addNotification('Сделка удалена', 'success', 4000);
       } catch (err) {
@@ -449,7 +449,7 @@ const AppContent: React.FC = () => {
       setIsSyncing(true);
       try {
         const restored = await restoreDeal(dealId);
-        await refreshDealsWithSelection(dealFilters);
+        await refreshDealsWithSelection(dealFilters, { force: true });
         setSelectedDealId(restored.id);
         setError(null);
         addNotification('Сделка восстановлена', 'success', 4000);
