@@ -51,6 +51,8 @@ HISTORY_PREFETCHES = [
     ),
 ]
 
+HISTORY_LOG_LIMIT = 250
+
 
 def _format_value(value):
     if value is None:
@@ -135,9 +137,12 @@ def get_related_audit_logs(deal: Deal, related_ids=None):
     for object_type, ids in related_ids.items():
         if ids:
             filters |= Q(object_type=object_type, object_id__in=ids)
-    return (
+    queryset = (
         AuditLog.objects.filter(filters).select_related("actor").order_by("-created_at")
     )
+    if HISTORY_LOG_LIMIT:
+        queryset = queryset[:HISTORY_LOG_LIMIT]
+    return queryset
 
 
 def map_audit_log_entry(audit_log: AuditLog, deal_id):

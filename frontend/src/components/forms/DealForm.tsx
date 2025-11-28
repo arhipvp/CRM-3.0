@@ -35,6 +35,13 @@ export const DealForm: React.FC<DealFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const clientsById = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients.forEach((client) => {
+      map.set(client.id, client);
+    });
+    return map;
+  }, [clients]);
 
   useEffect(() => {
     if (!clients.length) {
@@ -42,7 +49,7 @@ export const DealForm: React.FC<DealFormProps> = ({
       setClientQuery('');
       return;
     }
-    const selectedClient = clients.find((client) => client.id === clientId);
+    const selectedClient = clientsById.get(clientId);
     if (selectedClient) {
       return;
     }

@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from apps.clients.models import Client
 from apps.deals.history_utils import (
+    HISTORY_LOG_LIMIT,
     collect_related_ids,
     get_related_audit_logs,
     map_audit_log_entry,
@@ -97,3 +98,15 @@ class DealHistoryUtilsTestCase(TestCase):
         second = collect_related_ids(self.target)
         self.assertIs(first, second)
         self.assertIs(self.target._history_related_ids, first)
+
+    def test_get_related_audit_logs_limits_results(self):
+        related_ids = collect_related_ids(self.target)
+        for _ in range(HISTORY_LOG_LIMIT + 10):
+            AuditLog.objects.create(
+                object_type="note",
+                object_id=str(self.note.id),
+                action="update",
+                object_name=str(self.note.id),
+            )
+        logs = get_related_audit_logs(self.target, related_ids=related_ids)
+        self.assertEqual(len(logs), HISTORY_LOG_LIMIT)
