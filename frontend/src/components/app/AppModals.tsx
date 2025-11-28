@@ -135,7 +135,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
 
     {modal === 'deal' && (
       <Modal title="Новая сделка" onClose={() => setModal(null)}>
-        <DealForm clients={clients} users={users} onSubmit={handleAddDeal} />
+        <DealForm
+          clients={clients}
+          users={users}
+          onSubmit={handleAddDeal}
+          onRequestAddClient={() => setModal('client')}
+        />
       </Modal>
     )}
 
