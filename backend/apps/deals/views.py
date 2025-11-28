@@ -1,37 +1,22 @@
-from apps.common.drive import (
-    DriveError,
-    ensure_deal_folder,
-)
 from apps.common.permissions import EditProtectedMixin
-from apps.common.services import manage_drive_files
-from apps.users.models import AuditLog, UserRole
+from apps.users.models import UserRole
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.response import Response
+from rest_framework import viewsets
 
 from .filters import DealFilterSet
-from .history_utils import (
-    HISTORY_PREFETCHES,
-    collect_related_ids,
-    get_related_audit_logs,
-    map_audit_log_entry,
-)
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 from .serializers import (
-    DealMergeSerializer,
     DealSerializer,
     InsuranceCompanySerializer,
     InsuranceTypeSerializer,
     QuoteSerializer,
     SalesChannelSerializer,
 )
-from .services import DealMergeService
+from .view_mixins.drive import DealDriveMixin
+from .view_mixins.history import DealHistoryMixin
+from .view_mixins.merge import DealMergeMixin
+from .view_mixins.restore import DealRestoreMixin
 
 
 def _is_admin_user(user) -> bool:
@@ -46,7 +31,14 @@ def _is_admin_user(user) -> bool:
     return user._cached_is_admin
 
 
-class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
+class DealViewSet(
+    DealHistoryMixin,
+    DealDriveMixin,
+    DealMergeMixin,
+    DealRestoreMixin,
+    EditProtectedMixin,
+    viewsets.ModelViewSet,
+):
     serializer_class = DealSerializer
     filterset_class = DealFilterSet
     search_fields = ["title", "description"]
@@ -116,86 +108,6 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         # Остальные видят только свои сделки (как seller или executor)
         return queryset.filter(Q(seller=user) | Q(executor=user))
 
-    @action(
-        detail=True,
-        methods=["get", "post"],
-        url_path="drive-files",
-        parser_classes=[MultiPartParser, FormParser],
-    )
-    def drive_files(self, request, pk=None):
-        queryset = self.filter_queryset(self.get_queryset())
-        deal = get_object_or_404(queryset, pk=pk)
-        uploaded_file = request.FILES.get("file") if request.method == "POST" else None
-
-        if request.method == "POST" and not uploaded_file:
-            return Response(
-                {"detail": "Файл не передан"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            result = manage_drive_files(
-                instance=deal,
-                ensure_folder_func=ensure_deal_folder,
-                uploaded_file=uploaded_file,
-            )
-            return Response(result)
-        except DriveError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-    @action(detail=True, methods=["get"], url_path="history")
-    def history(self, request, pk=None):
-        queryset = self.get_queryset().prefetch_related(*HISTORY_PREFETCHES)
-        deal = get_object_or_404(queryset, pk=pk)
-        related_ids = collect_related_ids(deal)
-        audit_logs = get_related_audit_logs(deal, related_ids=related_ids)
-        audit_data = [map_audit_log_entry(log, deal.id) for log in audit_logs]
-
-        if related_ids.get("financial_record") and "financial_record" not in {
-            entry["object_type"] for entry in audit_data if entry.get("object_type")
-        }:
-            first_id = related_ids["financial_record"][0]
-            audit_data.append(
-                {
-                    "id": f"generated-financial-record-{first_id}",
-                    "deal": str(deal.id),
-                    "object_type": "financial_record",
-                    "object_id": first_id,
-                    "object_name": "financial record",
-                    "action_type": "generated",
-                    "action_type_display": "generated",
-                    "description": "financial record included in history",
-                    "user": None,
-                    "user_username": None,
-                    "old_value": None,
-                    "new_value": None,
-                    "created_at": timezone.now().isoformat(),
-                }
-            )
-
-        timeline = sorted(
-            audit_data,
-            key=lambda entry: entry["created_at"],
-            reverse=True,
-        )
-        return Response(timeline)
-
-    @action(detail=True, methods=["post"], url_path="restore")
-    def restore(self, request, pk=None):
-        queryset = self._base_queryset(include_deleted=True)
-        deal = get_object_or_404(queryset, pk=pk)
-        if not self._can_modify(request.user, deal):
-            return Response(
-                {"detail": "Недостаточно прав для восстановления сделки."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        deal.restore()
-        serializer = self.get_serializer(deal)
-        return Response(serializer.data)
-
     def _can_modify(self, user, instance):
         return _is_admin_user(user)
 
@@ -209,113 +121,6 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             serializer.save(seller=self.request.user)
         else:
             serializer.save()
-
-    @action(detail=False, methods=["post"], url_path="merge")
-    def merge(self, request):
-        serializer = DealMergeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        target_id = str(serializer.validated_data["target_deal_id"])
-        source_ids = [
-            str(value) for value in serializer.validated_data["source_deal_ids"]
-        ]
-        combined_ids = {target_id, *source_ids}
-
-        deals_qs = (
-            Deal.objects.with_deleted()
-            .select_related("client")
-            .filter(id__in=combined_ids)
-        )
-        deals = list(deals_qs)
-        if len(deals) != len(combined_ids):
-            found_ids = {str(deal.id) for deal in deals}
-            missing = sorted(combined_ids - found_ids)
-            raise ValidationError(
-                {"detail": f"Сделки не найдены: {', '.join(missing)}"}
-            )
-
-        deals_by_id = {str(deal.id): deal for deal in deals}
-        target_deal = deals_by_id.get(target_id)
-        if not target_deal:
-            raise ValidationError({"target_deal_id": "Целевая сделка не найдена."})
-        if target_deal.deleted_at is not None:
-            raise ValidationError({"target_deal_id": "Целевая сделка удалена."})
-
-        source_deals = [deals_by_id[source_id] for source_id in source_ids]
-        client_id = target_deal.client_id
-        for deal in source_deals:
-            if deal.client_id != client_id:
-                raise ValidationError("Все сделки должны принадлежать одному клиенту.")
-            if deal.deleted_at is not None:
-                raise ValidationError(
-                    {"source_deal_ids": "Исходная сделка уже удалена."}
-                )
-
-        for deal in (target_deal, *source_deals):
-            if not self._can_merge(request.user, deal):
-                raise PermissionDenied("Недостаточно прав для объединения сделки.")
-
-        actor = request.user if request.user and request.user.is_authenticated else None
-        merge_result = DealMergeService(
-            target_deal=target_deal,
-            source_deals=source_deals,
-            actor=actor,
-        ).merge()
-
-        source_titles = sorted({deal.title for deal in source_deals})
-        AuditLog.objects.create(
-            actor=actor,
-            object_type="deal",
-            object_id=str(target_deal.id),
-            object_name=target_deal.title,
-            action="merge",
-            description=(
-                f"Слияние сделок ({', '.join(source_titles)}) в '{target_deal.title}'"
-            ),
-            new_value={
-                "merged_deals": merge_result["merged_deal_ids"],
-                "moved_counts": merge_result["moved_counts"],
-            },
-        )
-
-        refreshed_target = self._base_queryset().filter(pk=target_deal.pk).first()
-        target_instance = refreshed_target or target_deal
-        return Response(
-            {
-                "target_deal": self.get_serializer(target_instance).data,
-                "merged_deal_ids": merge_result["merged_deal_ids"],
-                "moved_counts": merge_result["moved_counts"],
-            }
-        )
-
-
-class QuoteViewSet(viewsets.ModelViewSet):
-    serializer_class = QuoteSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        queryset = (
-            Quote.objects.select_related(
-                "deal",
-                "deal__client",
-                "insurance_company",
-                "insurance_type",
-            )
-            .all()
-            .order_by("-created_at")
-        )
-
-        # Администраторы видят все котировки
-        is_admin = _is_admin_user(user)
-
-        if not is_admin:
-            # Остальные видят только котировки для своих сделок (где user = seller или executor)
-            queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
-
-        deal_id = self.request.query_params.get("deal")
-        if deal_id:
-            queryset = queryset.filter(deal_id=deal_id)
-        return queryset
 
     def perform_create(self, serializer):
         defaults: dict[str, object] = {}
