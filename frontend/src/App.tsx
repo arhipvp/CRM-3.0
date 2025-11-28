@@ -47,7 +47,7 @@ import {
   uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { DealStatus, FinancialRecord, Payment, Policy, Quote, User } from './types';
+import { Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
