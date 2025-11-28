@@ -1,26 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Policy } from '../../types';
+import { Policy, Payment, FinancialRecord } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
-import { VehicleDetails } from '../common/VehicleDetails';
-
-const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
-
-const formatCurrency = (value?: string | number | null) => {
-  if (value === null || value === undefined) {
-    return '—';
-  }
-  const amount = Number(value);
-  if (Number.isNaN(amount)) {
-    return '—';
-  }
-  return amount.toLocaleString('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-  });
-};
+import { formatCurrency, formatDate } from './dealsView/helpers';
 
 type PolicySortKey =
   | 'startDate'
@@ -31,12 +14,12 @@ type PolicySortKey =
   | 'status';
 
 const POLICY_SORT_OPTIONS = [
-  { value: '-startDate', label: 'Дата начала (новые)' },
-  { value: 'startDate', label: 'Дата начала (старые)' },
-  { value: '-endDate', label: 'Дата окончания (новые)' },
-  { value: 'endDate', label: 'Дата окончания (старые)' },
-  { value: '-number', label: 'Номер полиса (Z → A)' },
-  { value: 'number', label: 'Номер полиса (A → Z)' },
+  { value: '-startDate', label: 'Начало (убывание)' },
+  { value: 'startDate', label: 'Начало (возрастание)' },
+  { value: '-endDate', label: 'Окончание (убывание)' },
+  { value: 'endDate', label: 'Окончание (возрастание)' },
+  { value: '-number', label: 'Номер (Z → A)' },
+  { value: 'number', label: 'Номер (A → Z)' },
   { value: '-clientName', label: 'Клиент (Z → A)' },
   { value: 'clientName', label: 'Клиент (A → Z)' },
 ];
@@ -69,10 +52,15 @@ const getPolicySortValue = (policy: Policy, key: PolicySortKey): number | string
 
 interface PoliciesViewProps {
   policies: Policy[];
+  payments: Payment[];
   onRequestEditPolicy?: (policy: Policy) => void;
 }
 
-export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, onRequestEditPolicy }) => {
+export const PoliciesView: React.FC<PoliciesViewProps> = ({
+  policies,
+  payments,
+  onRequestEditPolicy,
+}) => {
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
 
@@ -127,14 +115,53 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, onRequestE
 
   const customFilters = statusOptions.length
     ? [
-      {
-        key: 'status',
-        label: 'Статус',
-        type: 'select' as const,
-        options: statusOptions,
-      },
-    ]
+        {
+          key: 'status',
+          label: 'Статус',
+          type: 'select' as const,
+          options: statusOptions,
+        },
+      ]
     : [];
+
+  const paymentsByPolicy = useMemo(
+    () =>
+      filteredPolicies.map((policy) => ({
+        policy,
+        payments: payments.filter((payment) => payment.policyId === policy.id),
+      })),
+    [filteredPolicies, payments]
+  );
+
+  const renderRecordRows = (records: FinancialRecord[], recordType: 'income' | 'expense') => {
+    if (!records.length) {
+      return (
+        <tr>
+          <td colSpan={3} className="px-2 py-2 text-[11px] text-center text-slate-400">
+            Записей нет
+          </td>
+        </tr>
+      );
+    }
+
+    return records.map((record) => {
+      const amountValue = Math.abs(Number(record.amount) || 0);
+      const sign = recordType === 'income' ? '+' : '-';
+
+      return (
+        <tr key={record.id}>
+          <td className="px-2 py-1 text-[11px] text-slate-600">{record.description || '—'}</td>
+          <td className="px-2 py-1 text-[11px] text-slate-600">{formatDate(record.date)}</td>
+          <td className="px-2 py-1 text-right text-[11px] font-semibold">
+            <span className={recordType === 'income' ? 'text-emerald-600' : 'text-red-600'}>
+              {sign}
+              {formatCurrency(amountValue.toString())}
+            </span>
+          </td>
+        </tr>
+      );
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -144,83 +171,166 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ policies, onRequestE
         sortOptions={POLICY_SORT_OPTIONS}
         customFilters={customFilters}
       />
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
-            <tr>
-              <th className="px-5 py-3">№ полиса</th>
-              <th className="px-5 py-3">Страховая компания</th>
-              <th className="px-5 py-3">Клиент</th>
-              <th className="px-5 py-3">Тип</th>
-              <th className="px-5 py-3">Сделка</th>
-              <th className="px-5 py-3">Канал продаж</th>
-              <th className="px-5 py-3">Платежи</th>
-              <th className="px-5 py-3">Сроки</th>
-              <th className="px-5 py-3">Автомобиль</th>
-              <th className="px-5 py-3">Статус</th>
-              <th className="px-5 py-3 text-right">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPolicies.map((policy) => {
-              const dealTitle = policy.dealTitle || '—';
-              return (
-                <tr key={policy.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-5 py-4 font-semibold text-slate-900">{policy.number}</td>
-                  <td className="px-5 py-4 text-slate-600">{policy.insuranceCompany}</td>
-                  <td className="px-5 py-4 text-slate-600">{policy.clientName || '—'}</td>
-                  <td className="px-5 py-4 text-slate-600">{policy.insuranceType || '—'}</td>
-                  <td className="px-5 py-4 text-slate-600">{dealTitle}</td>
-                  <td className="px-5 py-4 text-slate-600">{policy.salesChannel || '—'}</td>
-                  <td className="px-5 py-4 text-slate-600">
-                    <div className="font-semibold text-slate-900">
-                      {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
-                    </div>
-                    <div className="text-[11px] text-slate-400">оплачено / начислено</div>
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">
-                    {formatDate(policy.startDate)} — {formatDate(policy.endDate)}
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">
-                    <VehicleDetails
-                      brand={policy.brand}
-                      model={policy.model}
-                      vin={policy.vin}
-                      placeholder="—"
-                    />
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">{policy.status || '—'}</td>
-                  <td className="px-5 py-4 text-right space-x-3">
+
+      {filteredPolicies.length ? (
+        <div className="space-y-4">
+          {paymentsByPolicy.map(({ policy, payments }) => (
+            <section
+              key={policy.id}
+              className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
+            >
+              <div className="grid gap-3 px-3 py-3 text-[11px] text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_1fr]">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Номер</p>
+                  <p className="font-semibold text-slate-900">{policy.number || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Компания</p>
+                  <p className="font-semibold text-slate-800">{policy.insuranceCompany || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Клиент</p>
+                  <p className="font-semibold text-slate-800">{policy.clientName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Канал</p>
+                  <p className="font-semibold text-slate-800">{policy.salesChannel || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Сумма</p>
+                  <p className="font-semibold text-slate-900">
+                    {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Действия</p>
+                  <div className="flex items-center justify-end gap-3">
                     {onRequestEditPolicy && (
                       <button
                         type="button"
+                        className="text-xs font-semibold text-slate-400 hover:text-sky-600"
                         onClick={() => onRequestEditPolicy(policy)}
-                        className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
                       >
-                        Редактировать
+                        Ред.
                       </button>
                     )}
                     <button
                       type="button"
+                      className="text-xs font-semibold text-slate-400 hover:text-sky-600"
                       onClick={() => setFilesModalPolicy(policy)}
-                      className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
                     >
-                      📁 Файлы
+                      Файлы
                     </button>
-                  </td>
-                </tr>
-              );
-            })}
-            {!filteredPolicies.length && (
-              <tr>
-                <td colSpan={11} className="px-5 py-6 text-center text-slate-500">
-                  Полисов пока нет
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500 sm:flex sm:items-center sm:justify-between">
+                <div className="flex flex-wrap text-sm text-slate-600 gap-4">
+                  <span>Тип: {policy.insuranceType || '—'}</span>
+                  <span>Марка: {policy.brand || '—'}</span>
+                  <span>Модель: {policy.model || '—'}</span>
+                  <span>VIN: {policy.vin || '—'}</span>
+                </div>
+                <div className="flex flex-wrap gap-4 text-[11px] text-slate-500">
+                  <span>Начало: {formatDate(policy.startDate)}</span>
+                  <span>Окончание: {formatDate(policy.endDate)}</span>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 bg-slate-50 px-3 py-3">
+                <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
+                  <div>Платежи</div>
+                </div>
+                {payments.length === 0 ? (
+                  <p className="mt-2 text-xs text-slate-500">Платежей пока нет.</p>
+                ) : (
+                  <div className="mt-2 space-y-2 text-[11px] text-slate-600">
+                    {payments.map((payment) => {
+                      const incomes =
+                        payment.financialRecords?.filter((record) => record.recordType === 'Доход') ||
+                        [];
+                      const expenses =
+                        payment.financialRecords?.filter((record) => record.recordType === 'Расход') ||
+                        [];
+
+                      return (
+                        <div
+                          key={payment.id}
+                          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-slate-900 text-sm">
+                                {formatCurrency(payment.amount)}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {payment.note || payment.description || '—'}
+                              </p>
+                            </div>
+                            <div className="flex gap-4 text-[11px] text-slate-500">
+                              <div>
+                                <p className="uppercase tracking-[0.3em]">План</p>
+                                <p className="font-semibold text-slate-900">
+                                  {formatDate(payment.scheduledDate)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="uppercase tracking-[0.3em]">Факт</p>
+                                <p className="font-semibold text-slate-900">
+                                  {formatDate(payment.actualDate)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
+                              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                                Доходы
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full text-[11px] text-slate-600">
+                                  <thead>
+                                    <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
+                                      <th className="px-2 py-1 text-left">Описание</th>
+                                      <th className="px-2 py-1 text-left">Дата</th>
+                                      <th className="px-2 py-1 text-right">Сумма</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>{renderRecordRows(incomes, 'income')}</tbody>
+                                </table>
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
+                              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                                Расходы
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full text-[11px] text-slate-600">
+                                  <thead>
+                                    <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
+                                      <th className="px-2 py-1 text-left">Описание</th>
+                                      <th className="px-2 py-1 text-left">Дата</th>
+                                      <th className="px-2 py-1 text-right">Сумма</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>{renderRecordRows(expenses, 'expense')}</tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 px-5 py-6 text-center text-sm text-slate-500">
+          Нет полисов для отображения
+        </div>
+      )}
 
       {filesModalPolicy && (
         <DriveFilesModal
