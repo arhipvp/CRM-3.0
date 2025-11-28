@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from rest_framework import status
+from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -145,7 +145,7 @@ class UserViewSet(ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
         if (
@@ -372,7 +372,7 @@ def refresh_token_view(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([permissions.IsAuthenticated])
 def current_user_view(request):
     """
     Эндпоинт для получения информации о текущем пользователе.

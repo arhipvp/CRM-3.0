@@ -5,11 +5,11 @@ from apps.common.drive import (
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.users.models import UserRole
+from django.contrib.auth.models import AnonymousUser
 from django.db.models import Q
-from rest_framework import permissions, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .filters import ClientFilterSet
@@ -25,11 +25,24 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ordering = ["-created_at"]
     owner_field = "created_by"
 
+    def _resolve_user(self):
+        request = getattr(self, "request", None)
+        if request is None:
+            return AnonymousUser()
+
+        user = getattr(request, "user", None)
+        if user is None:
+            user = getattr(request, "_force_auth_user", None)
+            if user is not None:
+                request.user = user
+
+        return user or AnonymousUser()
+
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        serializer.save(created_by=self._resolve_user())
 
     def get_queryset(self):
-        user = self.request.user
+        user = self._resolve_user()
         queryset = Client.objects.alive().order_by("-created_at")
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
