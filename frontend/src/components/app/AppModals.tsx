@@ -46,8 +46,6 @@ const buildPolicyFormValues = (policy: Policy): PolicyFormValues => ({
 interface AppModalsProps {
   modal: ModalType;
   setModal: React.Dispatch<React.SetStateAction<ModalType>>;
-  editingClient: Client | null;
-  setEditingClient: React.Dispatch<React.SetStateAction<Client | null>>;
   clients: Client[];
   users: User[];
   openClientModal: (afterModal?: ModalType | null) => void;
@@ -59,16 +57,6 @@ interface AppModalsProps {
     notes?: string | null;
     email?: string | null;
   }) => Promise<void>;
-  handleUpdateClient: (
-    id: string,
-    data: {
-      name: string;
-      phone?: string;
-      birthDate?: string | null;
-      notes?: string | null;
-      email?: string | null;
-    }
-  ) => Promise<void>;
   handleAddDeal: (data: { title: string; description?: string; clientId: string; expectedClose?: string | null; executorId?: string | null; source?: string }) => Promise<void>;
   quoteDealId: string | null;
   setQuoteDealId: React.Dispatch<React.SetStateAction<string | null>>;
@@ -98,14 +86,11 @@ interface AppModalsProps {
 export const AppModals: React.FC<AppModalsProps> = ({
   modal,
   setModal,
-  editingClient,
-  setEditingClient,
   clients,
   users,
   openClientModal,
   closeClientModal,
   handleAddClient,
-  handleUpdateClient,
   handleAddDeal,
   quoteDealId,
   setQuoteDealId,

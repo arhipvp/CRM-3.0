@@ -1071,9 +1071,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   </p>
                 )}
                 <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'}</p>
-                <p className={`text-xs mt-1 ${deadlineTone}`}>
-                  Застраховать не позднее чем: {formatDate(deal.expectedClose)}
-                </p>
+                {deal.expectedClose ? (
+                  <p className={`text-xs mt-1 ${deadlineTone}`}>
+                    Застраховать не позднее чем: {formatDate(deal.expectedClose)}
+                  </p>
+                ) : (
+                  <p className="text-xs mt-1 text-rose-500 font-semibold">
+                    Заполните дату, чтобы не пропустить сроки
+                  </p>
+                )}
                 <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
                   <span>Контакт: {formatDate(deal.nextContactDate)}</span>
                   {deal.nextContactDate && (

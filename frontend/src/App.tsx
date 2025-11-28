@@ -130,7 +130,6 @@ const AppContent: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [modal, setModal] = useState<ModalType>(null);
   const [pendingModalAfterClient, setPendingModalAfterClient] = useState<ModalType>(null);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const openClientModal = (afterModal: ModalType | null = null) => {
     setPendingModalAfterClient(afterModal);
     setModal('client');
@@ -317,31 +316,6 @@ const AppContent: React.FC = () => {
     const nextModal = pendingModalAfterClient;
     setPendingModalAfterClient(null);
     setModal(nextModal ?? null);
-  };
-
-  const handleEditClient = (client: Client) => {
-    setModal(null);
-    setEditingClient(client);
-  };
-
-  const handleUpdateClient = async (
-    clientId: string,
-    data: {
-      name: string;
-      phone?: string;
-      birthDate?: string | null;
-      notes?: string | null;
-      email?: string | null;
-    }
-  ) => {
-    const updated = await updateClient(clientId, data);
-    updateAppData((prev) => ({
-      clients: prev.clients.map((client) => (client.id === updated.id ? updated : client)),
-      deals: prev.deals.map((deal) =>
-        deal.clientId === updated.id ? { ...deal, clientName: updated.name } : deal
-      ),
-    }));
-    setEditingClient(null);
   };
 
   const handleAddDeal = async (data: {
@@ -1041,7 +1015,6 @@ const AppContent: React.FC = () => {
         dealShowDeleted={dealShowDeleted}
         onDealShowDeletedChange={setDealShowDeleted}
         onPolicyDraftReady={handlePolicyDraftReady}
-        onClientEdit={handleEditClient}
         handleMarkPayment={handleMarkPayment}
         knowledgeDocs={knowledgeDocs}
         knowledgeLoading={knowledgeLoading}
@@ -1059,12 +1032,9 @@ const AppContent: React.FC = () => {
         setModal={setModal}
         openClientModal={openClientModal}
         closeClientModal={closeClientModal}
-        editingClient={editingClient}
-        setEditingClient={setEditingClient}
         clients={clients}
         users={users}
         handleAddClient={handleAddClient}
-        handleUpdateClient={handleUpdateClient}
         handleAddDeal={handleAddDeal}
         quoteDealId={quoteDealId}
         setQuoteDealId={setQuoteDealId}

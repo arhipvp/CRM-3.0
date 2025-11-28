@@ -44,7 +44,6 @@ export interface AppRoutesProps {
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
-  onClientEdit: (client: Client) => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
@@ -111,7 +110,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onRequestEditQuote,
   onRequestAddPolicy,
   onRequestEditPolicy,
-  onClientEdit,
   onDeleteQuote,
   onDeletePolicy,
   onAddPayment,
@@ -211,10 +209,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           />
       }
     />
-    <Route
-      path="/clients"
-      element={<ClientsView clients={clients} deals={deals} onClientEdit={onClientEdit} />}
-    />
+    <Route path="/clients" element={<ClientsView clients={clients} deals={deals} />} />
     <Route path="/policies" element={<PoliciesView policies={policies} onRequestEditPolicy={onRequestEditPolicy} />} />
     <Route path="/payments" element={<PaymentsView payments={payments} onMarkPaid={handleMarkPayment} />} />
     <Route path="/finance" element={<FinanceView financialRecords={financialRecords} payments={payments} />} />
