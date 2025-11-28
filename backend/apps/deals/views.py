@@ -37,6 +37,8 @@ from .services import DealMergeService
 def _is_admin_user(user) -> bool:
     if not user or not user.is_authenticated:
         return False
+    if user.is_superuser:
+        return True
     if not hasattr(user, "_cached_is_admin"):
         user._cached_is_admin = UserRole.objects.filter(
             user=user, role__name="Admin"
@@ -98,7 +100,8 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         "next_contact_date",
     ]
     ordering = ["next_contact_date", "-created_at"]
-    owner_field = "seller"
+    owner_field = None
+    pagination_class = None
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
     def _base_queryset(self, include_deleted=False):

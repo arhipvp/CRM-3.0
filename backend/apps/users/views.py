@@ -146,6 +146,7 @@ class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
 
     def get_serializer_class(self):
         if (
@@ -240,6 +241,7 @@ class AuditLogViewSet(ModelViewSet):
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
 
     def get_queryset(self):
         """Админы видят все логи, остальные видят логи только своих действий"""
