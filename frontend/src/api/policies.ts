@@ -102,6 +102,17 @@ export async function recognizeDealPolicies(
     }),
   };
 }
+
+export async function fetchVehicleBrands(): Promise<string[]> {
+  const payload = await request('/policies/vehicle-brands/');
+  return unwrapList<string>(payload);
+}
+
+export async function fetchVehicleModels(brand?: string): Promise<string[]> {
+  const query = brand ? `?brand=${encodeURIComponent(brand)}` : '';
+  const payload = await request(`/policies/vehicle-models/${query}`);
+  return unwrapList<string>(payload);
+}
 interface PolicyUpdatePayload {
   number: string;
   insuranceCompanyId: string;

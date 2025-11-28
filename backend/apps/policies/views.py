@@ -223,6 +223,26 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         return Response({"results": results})
 
+    @action(detail=False, methods=["get"], url_path="vehicle-brands")
+    def vehicle_brands(self, request):
+        brands = (
+            Policy.objects.filter(brand__isnull=False)
+            .exclude(brand__exact="")
+            .order_by("brand")
+            .values_list("brand", flat=True)
+            .distinct()
+        )
+        return Response({"results": list(brands)})
+
+    @action(detail=False, methods=["get"], url_path="vehicle-models")
+    def vehicle_models(self, request):
+        queryset = Policy.objects.filter(model__isnull=False).exclude(model__exact="")
+        brand = request.query_params.get("brand")
+        if brand:
+            queryset = queryset.filter(brand__iexact=brand)
+        models = queryset.order_by("model").values_list("model", flat=True).distinct()
+        return Response({"results": list(models)})
+
     def _user_can_modify(self, deal: Deal, user) -> bool:
         if not user or not user.is_authenticated:
             return False

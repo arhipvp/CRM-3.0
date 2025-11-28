@@ -51,6 +51,7 @@ import { DealStatus, FinancialRecord, Payment, Policy, Quote, User } from './typ
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
+import { getUserDisplayName } from './components/views/dealsView/helpers';
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
 
@@ -147,6 +148,13 @@ const AppContent: React.FC = () => {
     insuranceCompanyName?: string;
     insuranceTypeName?: string;
   } | null>(null);
+  const [policyDefaultCounterparty, setPolicyDefaultCounterparty] = useState<string | undefined>(undefined);
+
+  const closePolicyModal = useCallback(() => {
+    setPolicyDealId(null);
+    setPolicyPrefill(null);
+    setPolicyDefaultCounterparty(undefined);
+  }, []);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
@@ -230,6 +238,7 @@ const AppContent: React.FC = () => {
         salesChannelId: matchedChannel?.id,
       };
       setPolicyDealId(dealId);
+      setPolicyDefaultCounterparty(undefined);
       setPolicyPrefill({
         values,
         insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
@@ -238,6 +247,16 @@ const AppContent: React.FC = () => {
     },
     [salesChannels]
   );
+
+  const handleRequestAddPolicy = (dealId: string) => {
+    const deal = deals.find((item) => item.id === dealId);
+    const executorUser = deal?.executor ? users.find((user) => user.id === deal.executor) : null;
+    const counterpartyName =
+      executorUser ? getUserDisplayName(executorUser) : deal?.executorName ?? '';
+    setPolicyDefaultCounterparty(counterpartyName || undefined);
+    setPolicyPrefill(null);
+    setPolicyDealId(dealId);
+  };
 
   const debouncedDealFilters = useDebouncedValue(dealFilters, 300);
 
@@ -664,8 +683,7 @@ const AppContent: React.FC = () => {
         }));
       }
 
-      setPolicyDealId(null);
-      setPolicyPrefill(null);
+      closePolicyModal();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить полис');
       throw err;
@@ -673,8 +691,7 @@ const AppContent: React.FC = () => {
   };
   const handleRequestEditPolicy = (policy: Policy) => {
     setModal(null);
-    setPolicyDealId(null);
-    setPolicyPrefill(null);
+    closePolicyModal();
     setEditingPolicy(policy);
   };
   const handleUpdatePolicy = async (policyId: string, values: PolicyFormValues) => {
@@ -981,7 +998,7 @@ const AppContent: React.FC = () => {
         onUpdateDeal={handleUpdateDeal}
         onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
         onRequestEditQuote={handleRequestEditQuote}
-        onRequestAddPolicy={(dealId) => setPolicyDealId(dealId)}
+        onRequestAddPolicy={handleRequestAddPolicy}
         onRequestEditPolicy={handleRequestEditPolicy}
         onDeleteQuote={handleDeleteQuote}
         onDeletePolicy={handleDeletePolicy}
@@ -1042,9 +1059,9 @@ const AppContent: React.FC = () => {
         setEditingQuote={setEditingQuote}
         handleUpdateQuote={handleUpdateQuote}
         policyDealId={policyDealId}
-        setPolicyDealId={setPolicyDealId}
+        policyDefaultCounterparty={policyDefaultCounterparty}
+        closePolicyModal={closePolicyModal}
         policyPrefill={policyPrefill}
-        setPolicyPrefill={setPolicyPrefill}
         editingPolicy={editingPolicy}
         setEditingPolicy={setEditingPolicy}
         salesChannels={salesChannels}

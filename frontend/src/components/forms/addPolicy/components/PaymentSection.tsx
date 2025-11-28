@@ -5,10 +5,8 @@ import type { FinancialRecordDraft, PaymentDraft } from '../types';
 interface PaymentSectionProps {
   paymentIndex: number;
   payment: PaymentDraft;
-  activeTab: 'incomes' | 'expenses';
   onFieldChange: (index: number, field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>, value: string) => void;
   onRemovePayment: (index: number) => void;
-  onTabChange: (index: number, tab: 'incomes' | 'expenses') => void;
   onAddRecord: (index: number, type: 'incomes' | 'expenses') => void;
   onUpdateRecord: (
     paymentIndex: number,
@@ -23,15 +21,13 @@ interface PaymentSectionProps {
 export const PaymentSection: React.FC<PaymentSectionProps> = ({
   paymentIndex,
   payment,
-  activeTab,
   onFieldChange,
   onRemovePayment,
-  onTabChange,
   onAddRecord,
   onUpdateRecord,
   onRemoveRecord,
 }) => (
-  <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+  <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-semibold text-slate-900">Платёж #{paymentIndex + 1}</p>
@@ -84,43 +80,51 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       </div>
     </div>
 
-    <div className="flex gap-2">
-      {(['incomes', 'expenses'] as const).map((tab) => (
-        <button
-          key={tab}
-          type="button"
-          className={`px-3 py-1 text-xs font-medium rounded-full border ${
-            activeTab === tab
-              ? 'border-sky-600 text-sky-600 bg-sky-50'
-              : 'border-slate-200 text-slate-500'
-          }`}
-          onClick={() => onTabChange(paymentIndex, tab)}
-        >
-          {tab === 'incomes' ? 'Доходы' : 'Расходы'}
-        </button>
-      ))}
-    </div>
-
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-slate-700">
-          {activeTab === 'incomes' ? 'Доходы' : 'Расходы'}
-        </h4>
-        <button
-          type="button"
-          className="text-xs text-sky-600 hover:underline"
-          onClick={() => onAddRecord(paymentIndex, activeTab)}
-        >
-          + Добавить {activeTab === 'incomes' ? 'источник дохода' : 'расход'}
-        </button>
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
+          <button
+            type="button"
+            className="text-xs text-sky-600 hover:underline"
+            onClick={() => onAddRecord(paymentIndex, 'incomes')}
+          >
+            + Добавить доход
+          </button>
+        </div>
+        {payment.incomes.length === 0 && (
+          <p className="text-xs text-slate-500">Добавьте доход, чтобы привязать поступление к этому платежу.</p>
+        )}
+        <FinancialRecordInputs
+          paymentIndex={paymentIndex}
+          type="incomes"
+          records={payment.incomes}
+          onUpdateRecord={onUpdateRecord}
+          onRemoveRecord={onRemoveRecord}
+        />
       </div>
-      <FinancialRecordInputs
-        paymentIndex={paymentIndex}
-        type={activeTab}
-        records={payment[activeTab]}
-        onUpdateRecord={onUpdateRecord}
-        onRemoveRecord={onRemoveRecord}
-      />
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Расходы</h4>
+          <button
+            type="button"
+            className="text-xs text-sky-600 hover:underline"
+            onClick={() => onAddRecord(paymentIndex, 'expenses')}
+          >
+            + Добавить расход
+          </button>
+        </div>
+        {payment.expenses.length === 0 && (
+          <p className="text-xs text-slate-500">Добавьте расход, чтобы контролировать связанные списания.</p>
+        )}
+        <FinancialRecordInputs
+          paymentIndex={paymentIndex}
+          type="expenses"
+          records={payment.expenses}
+          onUpdateRecord={onUpdateRecord}
+          onRemoveRecord={onRemoveRecord}
+        />
+      </div>
     </div>
   </section>
 );

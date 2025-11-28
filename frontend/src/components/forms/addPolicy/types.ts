@@ -31,7 +31,7 @@ export interface PolicyFormValues {
 }
 
 export const createEmptyRecord = (): FinancialRecordDraft => ({
-  amount: '',
+  amount: '0',
   date: '',
   description: '',
   source: '',
@@ -39,7 +39,7 @@ export const createEmptyRecord = (): FinancialRecordDraft => ({
 });
 
 export const createEmptyPayment = (): PaymentDraft => ({
-  amount: '',
+  amount: '0',
   description: '',
   scheduledDate: '',
   actualDate: '',

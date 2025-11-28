@@ -24,10 +24,10 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
 }) => (
   <>
     {records.map((record, recordIndex) => (
-      <div key={`${type}-${recordIndex}`} className="border border-slate-200 rounded-lg p-3 space-y-2">
+      <div key={`${type}-${recordIndex}`} className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white">
         <div className="flex justify-between items-center">
           <span className="text-sm font-semibold text-slate-900">
-            {type === 'incomes' ? 'Доход №' : 'Расход №'} {recordIndex + 1}
+            {type === 'incomes' ? 'Доход' : 'Расход'} #{recordIndex + 1}
           </span>
           <button
             type="button"
@@ -43,12 +43,14 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             <input
               type="number"
               value={record.amount}
-              onChange={(e) => onUpdateRecord(paymentIndex, type, recordIndex, 'amount', e.target.value)}
+              onChange={(e) =>
+                onUpdateRecord(paymentIndex, type, recordIndex, 'amount', e.target.value)
+              }
               className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600">Дата</label>
+            <label className="block text-xs font-medium text-slate-600">Фактическая дата</label>
             <input
               type="date"
               value={record.date || ''}
@@ -74,7 +76,9 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             <input
               type="text"
               value={record.source || ''}
-              onChange={(e) => onUpdateRecord(paymentIndex, type, recordIndex, 'source', e.target.value)}
+              onChange={(e) =>
+                onUpdateRecord(paymentIndex, type, recordIndex, 'source', e.target.value)
+              }
               className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
             />
           </div>
@@ -83,7 +87,9 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             <input
               type="text"
               value={record.note || ''}
-              onChange={(e) => onUpdateRecord(paymentIndex, type, recordIndex, 'note', e.target.value)}
+              onChange={(e) =>
+                onUpdateRecord(paymentIndex, type, recordIndex, 'note', e.target.value)
+              }
               className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
             />
           </div>

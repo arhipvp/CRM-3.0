@@ -64,9 +64,9 @@ interface AppModalsProps {
   editingQuote: Quote | null;
   handleUpdateQuote: (values: QuoteFormValues) => Promise<void>;
   policyDealId: string | null;
-  setPolicyDealId: React.Dispatch<React.SetStateAction<string | null>>;
+  policyDefaultCounterparty?: string;
+  closePolicyModal: () => void;
   policyPrefill: PolicyPrefill | null;
-  setPolicyPrefill: React.Dispatch<React.SetStateAction<PolicyPrefill | null>>;
   editingPolicy: Policy | null;
   setEditingPolicy: React.Dispatch<React.SetStateAction<Policy | null>>;
   salesChannels: SalesChannel[];
@@ -98,9 +98,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
   editingQuote,
   handleUpdateQuote,
   policyDealId,
-  setPolicyDealId,
+  policyDefaultCounterparty,
+  closePolicyModal,
   policyPrefill,
-  setPolicyPrefill,
   editingPolicy,
   setEditingPolicy,
   salesChannels,
@@ -153,17 +153,15 @@ export const AppModals: React.FC<AppModalsProps> = ({
     )}
 
     {policyDealId && (
-      <Modal title="Добавить полис" onClose={() => setPolicyDealId(null)} size="xl">
+      <Modal title="Добавить полис" onClose={closePolicyModal} size="xl">
         <AddPolicyForm
           salesChannels={salesChannels}
           initialValues={policyPrefill?.values}
           initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
           initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+          defaultCounterparty={policyDefaultCounterparty}
           onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-          onCancel={() => {
-            setPolicyDealId(null);
-            setPolicyPrefill(null);
-          }}
+          onCancel={closePolicyModal}
         />
       </Modal>
     )}
