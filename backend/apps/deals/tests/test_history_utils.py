@@ -1,21 +1,20 @@
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
 from uuid import uuid4
 
 from apps.clients.models import Client
-from apps.documents.models import Document
-from apps.finances.models import FinancialRecord, Payment
-from apps.notes.models import Note
-from apps.policies.models import Policy
-from apps.tasks.models import Task
-from apps.users.models import AuditLog
-
 from apps.deals.history_utils import (
     collect_related_ids,
     get_related_audit_logs,
     map_audit_log_entry,
 )
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType, Quote
+from apps.documents.models import Document
+from apps.finances.models import FinancialRecord, Payment
+from apps.notes.models import Note
+from apps.policies.models import Policy
+from apps.tasks.models import Task
+from apps.users.models import AuditLog
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
 
 
 class DealHistoryUtilsTestCase(TestCase):

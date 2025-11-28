@@ -1,16 +1,14 @@
 import json
 
-from django.db.models import Prefetch, Q
-
 from apps.documents.models import Document
 from apps.finances.models import FinancialRecord, Payment
 from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import AuditLog
+from django.db.models import Prefetch, Q
 
 from .models import Deal, Quote
-
 
 HISTORY_PREFETCHES = [
     Prefetch(
