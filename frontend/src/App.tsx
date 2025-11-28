@@ -16,7 +16,6 @@ import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
 import {
   createClient,
-  updateClient,
   createDeal,
   createQuote,
   updateQuote,
@@ -48,7 +47,7 @@ import {
   uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Client, DealStatus, FinancialRecord, Payment, Policy, Quote, User } from './types';
+import { DealStatus, FinancialRecord, Payment, Policy, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';

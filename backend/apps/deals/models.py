@@ -133,6 +133,14 @@ class Quote(SoftDeleteModel):
     deal = models.ForeignKey(
         "deals.Deal", related_name="quotes", on_delete=models.CASCADE
     )
+    seller = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="quotes",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="�������",
+    )
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
         related_name="quotes",

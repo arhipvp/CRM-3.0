@@ -1,10 +1,19 @@
 import datetime
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 
+User = get_user_model()
+
 
 class QuoteSerializer(serializers.ModelSerializer):
+    seller = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    seller_name = serializers.SerializerMethodField(read_only=True)
     insurance_company_name = serializers.CharField(
         source="insurance_company.name", read_only=True
     )
@@ -17,6 +26,7 @@ class QuoteSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "deal",
+            "seller",
             "insurance_company",
             "insurance_type",
             "insurance_company_name",
@@ -25,11 +35,19 @@ class QuoteSerializer(serializers.ModelSerializer):
             "premium",
             "deductible",
             "comments",
+            "seller_name",
             "created_at",
             "updated_at",
             "deleted_at",
         )
         read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+
+    def get_seller_name(self, obj):
+        seller = getattr(obj, "seller", None)
+        if not seller:
+            return None
+        full_name = f"{seller.first_name} {seller.last_name}".strip()
+        return full_name or seller.username
 
 
 class InsuranceCompanySerializer(serializers.ModelSerializer):
