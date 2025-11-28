@@ -82,6 +82,7 @@ jobs:
           DJANGO_DB_USER: crm3
           DJANGO_DB_PASSWORD: crm3
           DJANGO_SECRET_KEY: test-secret-key
+          ALLOWED_HOSTS: localhost,127.0.0.1
         run: |
           cd backend
           python manage.py migrate --no-input
@@ -96,6 +97,7 @@ jobs:
           DJANGO_DB_USER: crm3
           DJANGO_DB_PASSWORD: crm3
           DJANGO_SECRET_KEY: test-secret-key
+          ALLOWED_HOSTS: localhost,127.0.0.1
         run: |
           cd backend
           pytest -v --cov=. --cov-report=xml
