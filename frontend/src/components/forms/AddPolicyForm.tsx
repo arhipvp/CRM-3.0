@@ -4,8 +4,8 @@ import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
 import type { InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
 import type { FinancialRecordDraft } from './addPolicy/types';
 import {
-  createEmptyPayment,
   createEmptyRecord,
+  createPaymentWithDefaultIncome,
   PaymentDraft,
   PolicyFormValues,
 } from './addPolicy/types';
@@ -39,7 +39,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [salesChannelId, setSalesChannelId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [payments, setPayments] = useState<PaymentDraft[]>([]);
+  const [payments, setPayments] = useState<PaymentDraft[]>(() => [createPaymentWithDefaultIncome()]);
+  const [hasManualEndDate, setHasManualEndDate] = useState(false);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
   const [types, setTypes] = useState<InsuranceType[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -84,7 +85,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setSalesChannelId('');
       setStartDate('');
       setEndDate('');
-      setPayments([]);
+      setHasManualEndDate(false);
+      setPayments([createPaymentWithDefaultIncome()]);
       return;
     }
     setNumber(initialValues.number || '');
@@ -98,6 +100,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setSalesChannelId(initialValues.salesChannelId || '');
     setStartDate(initialValues.startDate || '');
     setEndDate(initialValues.endDate || '');
+    setHasManualEndDate(!!initialValues.endDate);
     const initialPayments = initialValues.payments || [];
     setPayments(
       initialPayments.map((payment) => ({
@@ -132,10 +135,78 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     }
   }, [initialInsuranceTypeName, types]);
 
+  const getDefaultEndDate = (value: string) => {
+    if (!value) {
+      return '';
+    }
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return '';
+    }
+    const nextDate = new Date(parsedDate);
+    nextDate.setFullYear(nextDate.getFullYear() + 1);
+    nextDate.setDate(nextDate.getDate() - 1);
+    return nextDate.toISOString().split('T')[0];
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    if (!value || hasManualEndDate) {
+      return;
+    }
+    const defaultEnd = getDefaultEndDate(value);
+    if (defaultEnd) {
+      setEndDate(defaultEnd);
+    }
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    setHasManualEndDate(true);
+  };
+
+  const handleCounterpartyBlur = () => {
+    const trimmed = counterparty.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setPayments((prev) => {
+      if (prev.length === 0) {
+        return [
+          {
+            ...createPaymentWithDefaultIncome(),
+            expenses: [{ ...createEmptyRecord(), description: trimmed }],
+          },
+        ];
+      }
+
+      const firstPayment = prev[0];
+      const alreadyHasExpense = firstPayment.expenses.some(
+        (expense) =>
+          (expense.description || '').trim().toLowerCase() === trimmed.toLowerCase()
+      );
+      if (alreadyHasExpense) {
+        return prev;
+      }
+
+      return [
+        {
+          ...firstPayment,
+          expenses: [
+            ...firstPayment.expenses,
+            { ...createEmptyRecord(), description: trimmed },
+          ],
+        },
+        ...prev.slice(1),
+      ];
+    });
+  };
+
   const getActiveTab = (paymentIndex: number) => activeRecordTab[paymentIndex] || 'incomes';
 
   const handleAddPayment = () => {
-    setPayments((prev) => [...prev, createEmptyPayment()]);
+    setPayments((prev) => [...prev, createPaymentWithDefaultIncome()]);
   };
 
   const handleRemovePayment = (index: number) => {
@@ -312,6 +383,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             type="text"
             value={counterparty}
             onChange={(event) => setCounterparty(event.target.value)}
+            onBlur={handleCounterpartyBlur}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
             placeholder="Компания / физлицо"
           />
@@ -360,7 +432,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => handleStartDateChange(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
             />
           </div>
@@ -369,7 +441,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => handleEndDateChange(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
             />
           </div>
@@ -468,3 +540,4 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     </form>
   );
 };
+  const [hasManualEndDate, setHasManualEndDate] = useState(false);

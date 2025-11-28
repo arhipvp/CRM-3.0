@@ -46,3 +46,8 @@ export const createEmptyPayment = (): PaymentDraft => ({
   incomes: [],
   expenses: [],
 });
+
+export const createPaymentWithDefaultIncome = (): PaymentDraft => ({
+  ...createEmptyPayment(),
+  incomes: [createEmptyRecord()],
+});
