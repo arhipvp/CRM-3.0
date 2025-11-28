@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
@@ -205,6 +205,13 @@ const AppContent: React.FC = () => {
   setDealShowDeleted,
   filters: dealFilters,
   } = useDealFilters();
+  const dealsById = useMemo(() => {
+    const map = new Map<string, Deal>();
+    deals.forEach((deal) => {
+      map.set(deal.id, deal);
+    });
+    return map;
+  }, [deals]);
   const searchInitialized = useRef(false);
   const location = useLocation();
 
@@ -249,7 +256,7 @@ const AppContent: React.FC = () => {
   );
 
   const handleRequestAddPolicy = (dealId: string) => {
-    const deal = deals.find((item) => item.id === dealId);
+    const deal = dealsById.get(dealId);
     const executorUser = deal?.executor ? users.find((user) => user.id === deal.executor) : null;
     const counterpartyName =
       executorUser ? getUserDisplayName(executorUser) : deal?.executorName ?? '';
@@ -575,7 +582,7 @@ const AppContent: React.FC = () => {
       salesChannelId,
       payments: paymentDrafts = [],
     } = values;
-    let deal = deals.find((item) => item.id === dealId);
+    let deal = dealsById.get(dealId);
     let clientId = deal?.clientId;
     if (!clientId) {
       try {
