@@ -1,12 +1,11 @@
 from typing import Any, Callable, Dict, Optional, Protocol, Union
 
-from django.core.files.uploadedfile import UploadedFile
-
 from apps.common.drive import (
     DriveFileInfo,
     list_drive_folder_contents,
     upload_file_to_drive,
 )
+from django.core.files.uploadedfile import UploadedFile
 
 
 class DriveFolderOwner(Protocol):

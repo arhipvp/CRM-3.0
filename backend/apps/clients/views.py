@@ -1,21 +1,20 @@
-from apps.common.permissions import EditProtectedMixin
-from apps.users.models import UserRole
-from django.db.models import Q
-from rest_framework import permissions, viewsets
-from rest_framework.permissions import AllowAny
-
-from .filters import ClientFilterSet
-from .models import Client
-from apps.common.services import manage_drive_files
 from apps.common.drive import (
     DriveError,
     ensure_client_folder,
 )
-from .serializers import ClientSerializer
-from rest_framework.parsers import FormParser, MultiPartParser
+from apps.common.permissions import EditProtectedMixin
+from apps.common.services import manage_drive_files
+from apps.users.models import UserRole
+from django.db.models import Q
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework import status
+
+from .filters import ClientFilterSet
+from .models import Client
+from .serializers import ClientSerializer
 
 
 class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):

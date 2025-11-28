@@ -2,10 +2,10 @@ from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework import viewsets
 
 from .models import Note
 from .serializers import NoteSerializer

@@ -1,11 +1,10 @@
-from django.contrib.auth.models import User
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.test import APIClient, APITestCase
-
 from apps.clients.models import Client
 from apps.deals.models import Deal
 from apps.notes.models import Note
+from django.contrib.auth.models import User
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class NoteCreationPermissionsTests(APITestCase):

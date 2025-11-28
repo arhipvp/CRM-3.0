@@ -12,11 +12,11 @@ from django.db import models
 logger = logging.getLogger(__name__)
 
 try:
+    from google.oauth2 import service_account as _service_account
     from googleapiclient.discovery import build as _gdrive_build
     from googleapiclient.errors import HttpError as _GDriveHttpError
     from googleapiclient.http import MediaIoBaseDownload as _MediaIoBaseDownload
     from googleapiclient.http import MediaIoBaseUpload as _MediaIoBaseUpload
-    from google.oauth2 import service_account as _service_account
 except ImportError as exc:  # pragma: no cover - requires optional dependency
     _gdrive_build = None
     _GDriveHttpError = None

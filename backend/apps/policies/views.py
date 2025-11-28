@@ -1,14 +1,6 @@
 import logging
 from typing import List
 
-from django.db.models import DecimalField, Q, Sum, Value
-from django.db.models.functions import Coalesce
-from rest_framework import serializers, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.response import Response
-
-from apps.common.services import manage_drive_files
 from apps.common.drive import (
     DriveError,
     download_drive_file,
@@ -17,9 +9,17 @@ from apps.common.drive import (
     list_drive_folder_contents,
 )
 from apps.common.permissions import EditProtectedMixin
+from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany
 from apps.finances.models import Payment
 from apps.users.models import UserRole
+from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models.functions import Coalesce
+from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+
 from .ai_service import PolicyRecognitionError, recognize_policy_from_bytes
 from .filters import PolicyFilterSet
 from .models import Policy

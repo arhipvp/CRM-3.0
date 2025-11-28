@@ -1,12 +1,10 @@
-from django.contrib.auth.models import User
-from django.test import TestCase
-
-from rest_framework.test import APIRequestFactory, force_authenticate
-
 from apps.clients.models import Client
 from apps.clients.serializers import ClientSerializer
 from apps.clients.views import ClientViewSet
 from apps.deals.models import Deal
+from django.contrib.auth.models import User
+from django.test import TestCase
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 
 class ClientOwnershipTests(TestCase):

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from io import BytesIO
 import json
 import logging
+from io import BytesIO
 from typing import Callable, List, Tuple
 
 import openai
-from PyPDF2 import PdfReader
 from django.conf import settings
+from PyPDF2 import PdfReader
 
 logger = logging.getLogger(__name__)
 

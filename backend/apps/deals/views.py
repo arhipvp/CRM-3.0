@@ -1,11 +1,11 @@
 import json
 
-from apps.common.services import manage_drive_files
 from apps.common.drive import (
     DriveError,
     ensure_deal_folder,
 )
 from apps.common.permissions import EditProtectedMixin
+from apps.common.services import manage_drive_files
 from apps.documents.models import Document
 from apps.finances.models import FinancialRecord, Payment
 from apps.notes.models import Note
@@ -24,8 +24,8 @@ from rest_framework.response import Response
 from .filters import DealFilterSet
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 from .serializers import (
-    DealSerializer,
     DealMergeSerializer,
+    DealSerializer,
     InsuranceCompanySerializer,
     InsuranceTypeSerializer,
     QuoteSerializer,

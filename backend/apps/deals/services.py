@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from django.db import transaction
-
 from apps.chat.models import ChatMessage
 from apps.documents.models import Document
 from apps.finances.models import Payment
@@ -11,6 +9,7 @@ from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import User
+from django.db import transaction
 
 from .models import Deal, Quote
 

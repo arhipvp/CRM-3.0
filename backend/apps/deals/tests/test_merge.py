@@ -1,10 +1,3 @@
-from django.contrib.auth.models import User
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.test import APIClient, APITestCase
-
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
 from apps.deals.models import (
@@ -19,6 +12,12 @@ from apps.finances.models import Payment
 from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
+from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class DealMergeServiceTestCase(TestCase):
