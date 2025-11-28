@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Iterable
 
@@ -8,7 +7,11 @@ from django.test import TestCase
 def iter_source_files() -> Iterable[Path]:
     root = Path(__file__).resolve().parent.parent
     for path in root.rglob("*.py"):
-        if ".venv" in path.parts or "migrations" in path.parts or "__pycache__" in path.parts:
+        if (
+            ".venv" in path.parts
+            or "migrations" in path.parts
+            or "__pycache__" in path.parts
+        ):
             continue
         yield path
 

@@ -99,6 +99,42 @@ class DealViewSet(
         if not user.is_authenticated:
             return queryset
 
+
+class QuoteViewSet(viewsets.ModelViewSet):
+    serializer_class = QuoteSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = (
+            Quote.objects.select_related(
+                "deal",
+                "deal__client",
+                "insurance_company",
+                "insurance_type",
+            )
+            .all()
+            .order_by("-created_at")
+        )
+
+        is_admin = _is_admin_user(user)
+
+        if not is_admin:
+            queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+
+        deal_id = self.request.query_params.get("deal")
+        if deal_id:
+            queryset = queryset.filter(deal_id=deal_id)
+        return queryset
+
+    def perform_create(self, serializer):
+        defaults: dict[str, object] = {}
+        if (
+            self.request.user.is_authenticated
+            and "seller" not in serializer.validated_data
+        ):
+            defaults["seller"] = self.request.user
+        serializer.save(**defaults)
+
         # Администраторы видят все
         is_admin = _is_admin_user(user)
 
