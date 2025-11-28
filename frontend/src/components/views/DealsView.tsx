@@ -50,7 +50,6 @@ import {
 } from './dealsView/helpers';
 import { TasksTab } from './dealsView/tabs/TasksTab';
 import { PoliciesTab } from './dealsView/tabs/PoliciesTab';
-import { PaymentsTab } from './dealsView/tabs/PaymentsTab';
 import { QuotesTab } from './dealsView/tabs/QuotesTab';
 import { FilesTab } from './dealsView/tabs/FilesTab';
 import { ChatTab } from './dealsView/tabs/ChatTab';
@@ -691,20 +690,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
         onDeletePolicy={onDeletePolicy}
         onRequestEditPolicy={onRequestEditPolicy}
         onSortChange={handlePolicySort}
+        relatedPayments={relatedPayments}
+        setEditingPaymentId={setEditingPaymentId}
+        setCreatingPaymentPolicyId={setCreatingPaymentPolicyId}
+        setCreatingFinancialRecordContext={setCreatingFinancialRecordContext}
+        setEditingFinancialRecordId={setEditingFinancialRecordId}
+        onDeleteFinancialRecord={onDeleteFinancialRecord}
       />
-  );
-
-  const renderPaymentsByPoliciesTab = () => (
-    <PaymentsTab
-      selectedDeal={selectedDeal}
-      relatedPolicies={relatedPolicies}
-      relatedPayments={relatedPayments}
-      setEditingPaymentId={setEditingPaymentId}
-      setCreatingPaymentPolicyId={setCreatingPaymentPolicyId}
-      setCreatingFinancialRecordContext={setCreatingFinancialRecordContext}
-      setEditingFinancialRecordId={setEditingFinancialRecordId}
-      onDeleteFinancialRecord={onDeleteFinancialRecord}
-    />
   );
 
   const renderQuotesTab = () => (
@@ -934,8 +926,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
         return renderTasksTab();
       case 'policies':
         return renderPoliciesTab();
-      case 'payments':
-        return renderPaymentsByPoliciesTab();
       case 'quotes':
         return renderQuotesTab();
       case 'files':
