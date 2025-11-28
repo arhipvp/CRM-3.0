@@ -88,4 +88,7 @@ class DealHistoryUtilsTestCase(TestCase):
         payload = map_audit_log_entry(self.audit_log, self.target.id)
         self.assertEqual(payload["object_type"], "deal")
         self.assertEqual(payload["object_id"], str(self.target.id))
-        self.assertEqual(payload["description"], self.audit_log.description or self.audit_log.object_name)
+        self.assertEqual(
+            payload["description"],
+            self.audit_log.description or self.audit_log.object_name,
+        )

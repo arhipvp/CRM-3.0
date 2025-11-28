@@ -93,9 +93,7 @@ def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
     return {
         "task": _prefetched_ids(
             "_history_tasks",
-            Task.objects.with_deleted()
-            .filter(deal=deal)
-            .values_list("id", flat=True),
+            Task.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
         ),
         "document": _prefetched_ids(
             "_history_documents",
@@ -112,9 +110,7 @@ def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
         "financial_record": _financial_record_ids(),
         "note": _prefetched_ids(
             "_history_notes",
-            Note.objects.with_deleted()
-            .filter(deal=deal)
-            .values_list("id", flat=True),
+            Note.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
         ),
         "policy": _prefetched_ids(
             "_history_policies",
@@ -124,9 +120,7 @@ def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
         ),
         "quote": _prefetched_ids(
             "_history_quotes",
-            Quote.objects.with_deleted()
-            .filter(deal=deal)
-            .values_list("id", flat=True),
+            Quote.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
         ),
     }
 
@@ -138,9 +132,7 @@ def get_related_audit_logs(deal: Deal, related_ids=None):
         if ids:
             filters |= Q(object_type=object_type, object_id__in=ids)
     return (
-        AuditLog.objects.filter(filters)
-        .select_related("actor")
-        .order_by("-created_at")
+        AuditLog.objects.filter(filters).select_related("actor").order_by("-created_at")
     )
 
 
