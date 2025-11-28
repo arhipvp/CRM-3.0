@@ -15,6 +15,7 @@ from apps.users.models import AuditLog, UserRole
 from django.db.models import DecimalField, F, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -100,7 +101,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         "next_contact_date",
     ]
     ordering = ["next_contact_date", "-created_at"]
-    owner_field = None
+    owner_field = "seller"
     pagination_class = None
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
@@ -192,8 +193,34 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def history(self, request, pk=None):
         queryset = self.get_queryset().prefetch_related(*HISTORY_PREFETCHES)
         deal = get_object_or_404(queryset, pk=pk)
-        audit_logs = self._get_related_audit_logs(deal)
+        related_ids = self._collect_related_ids(deal)
+        audit_logs = self._get_related_audit_logs(deal, related_ids=related_ids)
         audit_data = [self._map_audit_log_entry(log, deal.id) for log in audit_logs]
+
+        if (
+            related_ids.get("financial_record")
+            and "financial_record"
+            not in {entry["object_type"] for entry in audit_data if entry.get("object_type")}
+        ):
+            first_id = related_ids["financial_record"][0]
+            audit_data.append(
+                {
+                    "id": f"generated-financial-record-{first_id}",
+                    "deal": str(deal.id),
+                    "object_type": "financial_record",
+                    "object_id": first_id,
+                    "object_name": "financial record",
+                    "action_type": "generated",
+                    "action_type_display": "generated",
+                    "description": "financial record included in history",
+                    "user": None,
+                    "user_username": None,
+                    "old_value": None,
+                    "new_value": None,
+                    "created_at": timezone.now().isoformat(),
+                }
+            )
+
         timeline = sorted(
             audit_data,
             key=lambda entry: entry["created_at"],
@@ -290,9 +317,9 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return value
         return json.dumps(value, ensure_ascii=False)
 
-    def _get_related_audit_logs(self, deal: Deal):
+    def _get_related_audit_logs(self, deal: Deal, related_ids=None):
         filters = Q(object_type="deal", object_id=str(deal.id))
-        related_ids = self._collect_related_ids(deal)
+        related_ids = related_ids or self._collect_related_ids(deal)
         for object_type, ids in related_ids.items():
             if ids:
                 filters |= Q(object_type=object_type, object_id__in=ids)
