@@ -169,6 +169,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
   currentUser,
 }) => {
   // Сортируем сделки по дате следующего контакта (ближайшие сверху)
+  const clientsById = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients.forEach((client) => map.set(client.id, client));
+    return map;
+  }, [clients]);
+
+  const usersById = useMemo(() => {
+    const map = new Map<string, User>();
+    users.forEach((user) => map.set(user.id, user));
+    return map;
+  }, [users]);
+
   const sortedDeals = useMemo(() => {
     return [...deals].sort((a, b) => {
       const deletedA = Boolean(a.deletedAt);
@@ -184,15 +196,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const selectedDeal = selectedDealId
     ? (sortedDeals.find((deal) => deal.id === selectedDealId) ?? null)
-    : (sortedDeals[0] ?? null);
+    : sortedDeals[0] ?? null;
   const selectedClient = selectedDeal
-    ? (clients.find((client) => client.id === selectedDeal.clientId) ?? null)
+    ? clientsById.get(selectedDeal.clientId) ?? null
     : null;
-  const sellerUser = selectedDeal
-    ? users.find((user) => user.id === selectedDeal.seller)
-    : undefined;
+  const sellerUser = selectedDeal ? usersById.get(selectedDeal.seller ?? '') : undefined;
   const executorUser = selectedDeal
-    ? users.find((user) => user.id === selectedDeal.executor)
+    ? usersById.get(selectedDeal.executor ?? '')
     : undefined;
   const sellerDisplayName = sellerUser
     ? getUserDisplayName(sellerUser)
