@@ -540,4 +540,3 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     </form>
   );
 };
-  const [hasManualEndDate, setHasManualEndDate] = useState(false);
