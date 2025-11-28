@@ -7,7 +7,6 @@ export type View =
   | 'deals'
   | 'clients'
   | 'policies'
-  | 'payments'
   | 'finance'
   | 'tasks'
   | 'knowledge'
@@ -22,12 +21,11 @@ interface MainLayoutProps {
 }
 
 const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
-  { path: '/deals', label: 'Сделки', icon: '📋' },
+  { path: '/deals', label: 'Сделки', icon: '📝' },
   { path: '/clients', label: 'Клиенты', icon: '👥' },
   { path: '/policies', label: 'Полисы', icon: '📄' },
-  { path: '/payments', label: 'Платежи', icon: '💳' },
-  { path: '/finance', label: 'Финансы', icon: '📊' },
-  { path: '/tasks', label: 'Задачи', icon: '✅' },
+  { path: '/finance', label: 'Финансы', icon: '🏦' },
+  { path: '/tasks', label: 'Задачи', icon: '🗂️' },
   { path: '/knowledge', label: 'Библиотека', icon: '📚' },
   { path: '/settings', label: 'Настройки', icon: '⚙️' },
 ];
@@ -53,9 +51,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 <NavLink
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                      ? 'bg-sky-100 text-sky-700'
-                      : 'text-slate-600 hover:bg-slate-100'
+                    `flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
                     }`
                   }
                 >
@@ -71,13 +68,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             onClick={onAddDeal}
             className="w-full bg-sky-600 text-white rounded-lg py-2 text-sm font-semibold hover:bg-sky-700"
           >
-            + Новая сделка
+            + Добавить сделку
           </button>
           <button
             onClick={onAddClient}
             className="w-full border border-slate-300 text-slate-700 rounded-lg py-2 text-sm font-semibold hover:bg-slate-50"
           >
-            + Новый клиент
+            + Добавить клиента
           </button>
           {currentUser && (
             <div className="pt-2 border-t border-slate-200 space-y-2">
@@ -86,7 +83,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 <p className="text-slate-500 text-xs">
                   {currentUser.roles && currentUser.roles.length > 0
                     ? currentUser.roles.join(', ')
-                    : 'Нет ролей'}
+                    : 'Нет роли'}
                 </p>
               </div>
               {onLogout && (
@@ -94,7 +91,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   onClick={onLogout}
                   className="w-full bg-red-50 text-red-600 rounded-lg py-2 text-sm font-semibold hover:bg-red-100"
                 >
-                  Выход
+                  Выйти
                 </button>
               )}
             </div>

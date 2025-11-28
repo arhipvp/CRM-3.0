@@ -357,12 +357,6 @@ const AppContent: React.FC = () => {
     setModal(null);
   };
 
-  const handleMarkPayment = async (paymentId: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    const updated = await updatePayment(paymentId, { actualDate: today });
-    updateAppData((prev) => ({ payments: prev.payments.map((payment) => (payment.id === updated.id ? updated : payment)) }));
-  };
-
   const handleKnowledgeUpload = useCallback(
     async (file: File, metadata: { title?: string; description?: string }) => {
       setAppData({ knowledgeUploading: true });
@@ -1031,7 +1025,6 @@ const AppContent: React.FC = () => {
         dealShowDeleted={dealShowDeleted}
         onDealShowDeletedChange={setDealShowDeleted}
         onPolicyDraftReady={handlePolicyDraftReady}
-        handleMarkPayment={handleMarkPayment}
         knowledgeDocs={knowledgeDocs}
         knowledgeLoading={knowledgeLoading}
         knowledgeUploading={knowledgeUploading}

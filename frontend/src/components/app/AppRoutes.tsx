@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { DealsView } from '../views/DealsView';
 import { ClientsView } from '../views/ClientsView';
 import { PoliciesView } from '../views/PoliciesView';
-import { PaymentsView } from '../views/PaymentsView';
 import { FinanceView } from '../views/FinanceView';
 import { TasksView } from '../views/TasksView';
 import { SettingsView } from '../views/SettingsView';
@@ -79,7 +78,6 @@ export interface AppRoutesProps {
     parsed: Record<string, unknown>,
     fileName?: string | null
   ) => void;
-  handleMarkPayment: (paymentId: string) => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   isLoadingMoreDeals: boolean;
@@ -141,7 +139,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   dealShowDeleted,
   onDealShowDeletedChange,
   onPolicyDraftReady,
-  handleMarkPayment,
   onLoadMoreDeals,
   dealsHasMore,
   isLoadingMoreDeals,
@@ -211,7 +208,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     />
     <Route path="/clients" element={<ClientsView clients={clients} deals={deals} />} />
     <Route path="/policies" element={<PoliciesView policies={policies} onRequestEditPolicy={onRequestEditPolicy} />} />
-    <Route path="/payments" element={<PaymentsView payments={payments} onMarkPaid={handleMarkPayment} />} />
+    <Route path="/payments" element={<Navigate to="/policies" replace />} />
     <Route path="/finance" element={<FinanceView financialRecords={financialRecords} payments={payments} />} />
     <Route path="/tasks" element={<TasksView tasks={tasks} />} />
     <Route
