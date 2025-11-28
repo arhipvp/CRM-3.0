@@ -5,9 +5,7 @@ from django.db import models
 class Policy(SoftDeleteModel):
     """Insurance policy bound to a deal."""
 
-    number = models.CharField(
-        max_length=50, help_text="Policy number", unique=True
-    )
+    number = models.CharField(max_length=50, help_text="Policy number", unique=True)
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
         related_name="policies",

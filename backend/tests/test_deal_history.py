@@ -39,7 +39,9 @@ def test_deal_history_includes_related_entities():
         created_by=admin,
     )
 
-    doc_file = SimpleUploadedFile("contract.pdf", b"pdf-data", content_type="application/pdf")
+    doc_file = SimpleUploadedFile(
+        "contract.pdf", b"pdf-data", content_type="application/pdf"
+    )
     Document.objects.create(
         deal=deal,
         title="Agreement",
@@ -73,7 +75,9 @@ def test_deal_history_includes_related_entities():
     response = api_client.get(f"/api/v1/deals/{deal.id}/history/")
     assert response.status_code == 200
     data = response.json()
-    object_types = {entry.get("object_type") for entry in data if entry.get("object_type")}
+    object_types = {
+        entry.get("object_type") for entry in data if entry.get("object_type")
+    }
     expected_object_types = {
         "deal",
         "task",

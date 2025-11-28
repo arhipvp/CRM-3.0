@@ -8,14 +8,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clients', '0006_client_drive_folder_id'),
+        ("clients", "0006_client_drive_folder_id"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='client',
-            name='created_by',
-            field=models.ForeignKey(blank=True, help_text='Пользователь, создавший клиента', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_clients', to=settings.AUTH_USER_MODEL),
+            model_name="client",
+            name="created_by",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Пользователь, создавший клиента",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="created_clients",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

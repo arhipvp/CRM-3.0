@@ -101,9 +101,9 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save(
-            owner=request.user
-            if request.user and request.user.is_authenticated
-            else None,
+            owner=(
+                request.user if request.user and request.user.is_authenticated else None
+            ),
             file_name=file_obj.name,
             drive_file_id=upload_info["id"],
             web_view_link=upload_info["web_view_link"] or "",
@@ -111,7 +111,9 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
             file_size=upload_info["size"] or file_obj.size,
         )
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
 
 class DocumentRecognitionView(APIView):

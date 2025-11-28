@@ -17,7 +17,9 @@ def populate_insurance_refs(apps, schema_editor):
     default_type = "Не указано"
 
     for policy in Policy.objects.all().iterator():
-        company_key = (getattr(policy, "insurance_company_text", "") or "").strip() or default_company
+        company_key = (
+            getattr(policy, "insurance_company_text", "") or ""
+        ).strip() or default_company
         company_id = company_cache.get(company_key)
         if company_id is None:
             company = InsuranceCompany.objects.get_or_create(name=company_key)[0]
@@ -25,7 +27,9 @@ def populate_insurance_refs(apps, schema_editor):
             company_cache[company_key] = company_id
         policy.insurance_company_temp = company_id
 
-        type_key = (getattr(policy, "insurance_type_text", "") or "").strip() or default_type
+        type_key = (
+            getattr(policy, "insurance_type_text", "") or ""
+        ).strip() or default_type
         type_id = type_cache.get(type_key)
         if type_id is None:
             insurance_type = InsuranceType.objects.get_or_create(name=type_key)[0]
@@ -146,9 +150,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="policy",
             name="end_date",
-            field=models.DateField(
-                blank=True, help_text="Policy end date", null=True
-            ),
+            field=models.DateField(blank=True, help_text="Policy end date", null=True),
         ),
         migrations.AlterField(
             model_name="policy",

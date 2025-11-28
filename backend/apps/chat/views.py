@@ -32,7 +32,9 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         # Если пользователь авторизован, сохранить его как author
         user = self.request.user
         if not user or not user.is_authenticated:
-            raise PermissionDenied("Только авторизованные пользователи могут отправлять сообщения.")
+            raise PermissionDenied(
+                "Только авторизованные пользователи могут отправлять сообщения."
+            )
 
         full_name = (user.get_full_name() or "").strip()
         author_name = full_name or user.username

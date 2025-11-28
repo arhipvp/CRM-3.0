@@ -7,38 +7,56 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0010_add_insurance_references'),
+        ("deals", "0010_add_insurance_references"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='insurancecompany',
-            name='description',
-            field=models.TextField(blank=True, help_text='Дополнительная информация о компании'),
+            model_name="insurancecompany",
+            name="description",
+            field=models.TextField(
+                blank=True, help_text="Дополнительная информация о компании"
+            ),
         ),
         migrations.AlterField(
-            model_name='insurancecompany',
-            name='name',
-            field=models.CharField(help_text='Название страховой компании', max_length=255, unique=True),
+            model_name="insurancecompany",
+            name="name",
+            field=models.CharField(
+                help_text="Название страховой компании", max_length=255, unique=True
+            ),
         ),
         migrations.AlterField(
-            model_name='insurancetype',
-            name='description',
-            field=models.TextField(blank=True, help_text='Дополнительное описание типа страхования'),
+            model_name="insurancetype",
+            name="description",
+            field=models.TextField(
+                blank=True, help_text="Дополнительное описание типа страхования"
+            ),
         ),
         migrations.AlterField(
-            model_name='insurancetype',
-            name='name',
-            field=models.CharField(help_text='Наименование вида страхования', max_length=255, unique=True),
+            model_name="insurancetype",
+            name="name",
+            field=models.CharField(
+                help_text="Наименование вида страхования", max_length=255, unique=True
+            ),
         ),
         migrations.AlterField(
-            model_name='quote',
-            name='insurance_company',
-            field=models.ForeignKey(help_text='Страховая компания', on_delete=django.db.models.deletion.PROTECT, related_name='quotes', to='deals.insurancecompany'),
+            model_name="quote",
+            name="insurance_company",
+            field=models.ForeignKey(
+                help_text="Страховая компания",
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="quotes",
+                to="deals.insurancecompany",
+            ),
         ),
         migrations.AlterField(
-            model_name='quote',
-            name='insurance_type',
-            field=models.ForeignKey(help_text='Тип страхования', on_delete=django.db.models.deletion.PROTECT, related_name='quotes', to='deals.insurancetype'),
+            model_name="quote",
+            name="insurance_type",
+            field=models.ForeignKey(
+                help_text="Тип страхования",
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="quotes",
+                to="deals.insurancetype",
+            ),
         ),
     ]

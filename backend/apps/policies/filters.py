@@ -56,4 +56,11 @@ class PolicyFilterSet(django_filters.FilterSet):
 
     class Meta:
         model = Policy
-        fields = ("insurance_company", "insurance_type", "status", "deal", "is_vehicle", "sales_channel")
+        fields = (
+            "insurance_company",
+            "insurance_type",
+            "status",
+            "deal",
+            "is_vehicle",
+            "sales_channel",
+        )

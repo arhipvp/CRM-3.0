@@ -60,9 +60,7 @@ def read_client_rows(sheet: Worksheet) -> list[tuple[int, Mapping[str, object]]]
         normalized = _normalize_header(raw)
         headers.append(normalized or "")
 
-    mapped_headers: list[str] = [
-        HEADER_TO_FIELD.get(header, "") for header in headers
-    ]
+    mapped_headers: list[str] = [HEADER_TO_FIELD.get(header, "") for header in headers]
 
     parsed: list[tuple[int, Mapping[str, object]]] = []
     for idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):

@@ -38,7 +38,9 @@ def _is_admin_user(user) -> bool:
     if not user or not user.is_authenticated:
         return False
     if not hasattr(user, "_cached_is_admin"):
-        user._cached_is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
+        user._cached_is_admin = UserRole.objects.filter(
+            user=user, role__name="Admin"
+        ).exists()
     return user._cached_is_admin
 
 
@@ -88,7 +90,13 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = DealSerializer
     filterset_class = DealFilterSet
     search_fields = ["title", "description"]
-    ordering_fields = ["created_at", "updated_at", "title", "expected_close", "next_contact_date"]
+    ordering_fields = [
+        "created_at",
+        "updated_at",
+        "title",
+        "expected_close",
+        "next_contact_date",
+    ]
     ordering = ["next_contact_date", "-created_at"]
     owner_field = "seller"
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
@@ -102,7 +110,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .order_by(
                 F("next_contact_date").asc(nulls_last=True),
                 F("next_review_date").desc(nulls_last=True),
-                "-created_at"
+                "-created_at",
             )
         )
         return queryset.annotate(
@@ -234,7 +242,9 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         return {
             "task": _prefetched_ids(
                 "_history_tasks",
-                Task.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
+                Task.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True),
             ),
             "document": _prefetched_ids(
                 "_history_documents",
@@ -251,7 +261,9 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "financial_record": _financial_record_ids(),
             "note": _prefetched_ids(
                 "_history_notes",
-                Note.objects.with_deleted().filter(deal=deal).values_list("id", flat=True),
+                Note.objects.with_deleted()
+                .filter(deal=deal)
+                .values_list("id", flat=True),
             ),
             "policy": _prefetched_ids(
                 "_history_policies",
@@ -318,7 +330,9 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         target_id = str(serializer.validated_data["target_deal_id"])
-        source_ids = [str(value) for value in serializer.validated_data["source_deal_ids"]]
+        source_ids = [
+            str(value) for value in serializer.validated_data["source_deal_ids"]
+        ]
         combined_ids = {target_id, *source_ids}
 
         deals = (
@@ -377,11 +391,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             },
         )
 
-        refreshed_target = (
-            self._base_queryset()
-            .filter(pk=target_deal.pk)
-            .first()
-        )
+        refreshed_target = self._base_queryset().filter(pk=target_deal.pk).first()
         target_instance = refreshed_target or target_deal
         return Response(
             {
@@ -422,8 +432,11 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         defaults: dict[str, object] = {}
-        if self.request.user.is_authenticated and 'seller' not in serializer.validated_data:
-            defaults['seller'] = self.request.user
+        if (
+            self.request.user.is_authenticated
+            and "seller" not in serializer.validated_data
+        ):
+            defaults["seller"] = self.request.user
         serializer.save(**defaults)
 
 

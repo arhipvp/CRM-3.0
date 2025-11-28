@@ -12,6 +12,7 @@ class EditProtectedMixin:
     Миксин для ограничения редактирования только Admin пользователям.
     Добавить в ViewSet: class MyViewSet(EditProtectedMixin, viewsets.ModelViewSet)
     """
+
     owner_field = None
 
     def _is_admin(self, user):
@@ -70,7 +71,9 @@ class EditProtectedMixin:
                 f"User: {username} (ID: {user_id}) | Fields: {list(request.data.keys())}"
             )
             return Response(
-                {"detail": "Только администратор или владелец может редактировать данные"},
+                {
+                    "detail": "Только администратор или владелец может редактировать данные"
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -93,7 +96,9 @@ class EditProtectedMixin:
                 f"User: {username} (ID: {user_id}) | Fields: {list(request.data.keys())}"
             )
             return Response(
-                {"detail": "Только администратор или владелец может редактировать данные"},
+                {
+                    "detail": "Только администратор или владелец может редактировать данные"
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 

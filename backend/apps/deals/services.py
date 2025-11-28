@@ -49,9 +49,9 @@ class DealMergeService:
 
         with transaction.atomic():
             for alias, model in self._RELATED_MODELS:
-                moved_counts[alias] = model.objects.filter(deal_id__in=self._source_ids).update(
-                    deal=self.target_deal
-                )
+                moved_counts[alias] = model.objects.filter(
+                    deal_id__in=self._source_ids
+                ).update(deal=self.target_deal)
 
             for deal in self.source_deals:
                 if self.actor:

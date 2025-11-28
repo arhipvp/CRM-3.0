@@ -47,7 +47,14 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         "insurance_type__name",
         "sales_channel__name",
     ]
-    ordering_fields = ["created_at", "updated_at", "start_date", "end_date", "brand", "model"]
+    ordering_fields = [
+        "created_at",
+        "updated_at",
+        "start_date",
+        "end_date",
+        "brand",
+        "model",
+    ]
     ordering = ["-created_at"]
 
     def get_queryset(self):

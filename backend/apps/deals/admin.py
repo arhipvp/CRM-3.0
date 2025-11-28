@@ -28,8 +28,8 @@ class DealResource(resources.ModelResource):
             "expected_close",
             "next_review_date",
             "source",
-        "loss_reason",
-        "created_at",
+            "loss_reason",
+            "created_at",
             "updated_at",
             "deleted_at",
         )
@@ -79,6 +79,7 @@ class QuoteResource(resources.ModelResource):
             "updated_at",
             "deleted_at",
         )
+
 
 class TaskInline(admin.TabularInline):
     model = Task
@@ -223,7 +224,6 @@ class DealAdmin(SoftDeleteImportExportAdmin):
 
     status_badge.short_description = "Статус"
 
-
     def mark_as_won(self, request, queryset):
         updated = queryset.update(status="won")
         self.message_user(request, f"{updated} сделок переведено в статус 'выиграна'")
@@ -307,6 +307,7 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
         self.message_user(request, f"Восстановлено {restored} расчётов")
 
     restore_quotes.short_description = "✓ Восстановить выбранные расчёты"
+
 
 @admin.register(InsuranceCompany)
 class InsuranceCompanyAdmin(SoftDeleteImportExportAdmin):

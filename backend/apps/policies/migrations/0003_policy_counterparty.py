@@ -6,13 +6,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('policies', '0002_alter_policy_options_and_more'),
+        ("policies", "0002_alter_policy_options_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='policy',
-            name='counterparty',
-            field=models.CharField(blank=True, help_text='Контрагент полиса (физическое или юридическое лицо)', max_length=255),
+            model_name="policy",
+            name="counterparty",
+            field=models.CharField(
+                blank=True,
+                help_text="Контрагент полиса (физическое или юридическое лицо)",
+                max_length=255,
+            ),
         ),
     ]

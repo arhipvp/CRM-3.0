@@ -6,12 +6,16 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0008_add_next_contact_date'),
+        ("deals", "0008_add_next_contact_date"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='deal',
-            options={'ordering': ['next_contact_date', '-next_review_date', '-created_at'], 'verbose_name': 'Сделка', 'verbose_name_plural': 'Сделки'},
+            name="deal",
+            options={
+                "ordering": ["next_contact_date", "-next_review_date", "-created_at"],
+                "verbose_name": "Сделка",
+                "verbose_name_plural": "Сделки",
+            },
         ),
     ]

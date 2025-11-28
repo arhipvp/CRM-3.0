@@ -42,9 +42,7 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         if not is_admin:
             queryset = queryset.filter(
-                Q(created_by=user)
-                | Q(deals__seller=user)
-                | Q(deals__executor=user)
+                Q(created_by=user) | Q(deals__seller=user) | Q(deals__executor=user)
             ).distinct()
 
         return queryset

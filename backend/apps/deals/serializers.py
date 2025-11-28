@@ -133,8 +133,12 @@ class DealSerializer(serializers.ModelSerializer):
     next_contact_date = DateOrDateTimeField(required=False, allow_null=True)
     expected_close = DateOrDateTimeField(required=False, allow_null=True)
     next_review_date = DateOrDateTimeField(required=False, allow_null=True)
-    payments_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    payments_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    payments_total = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
+    payments_paid = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = Deal
@@ -183,5 +187,7 @@ class DealMergeSerializer(serializers.Serializer):
                 "Целевая сделка не может быть частью списка исходных."
             )
         if len(source_ids) != len(set(source_ids)):
-            raise serializers.ValidationError("Список исходных сделок содержит дубликаты.")
+            raise serializers.ValidationError(
+                "Список исходных сделок содержит дубликаты."
+            )
         return attrs

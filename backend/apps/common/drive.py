@@ -74,7 +74,9 @@ def _get_drive_service():
 
     keyfile = getattr(settings, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "").strip()
     if not keyfile:
-        raise DriveConfigurationError("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is not configured.")
+        raise DriveConfigurationError(
+            "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is not configured."
+        )
 
     try:
         credentials = _service_account.Credentials.from_service_account_file(
@@ -86,7 +88,9 @@ def _get_drive_service():
         return _service_resource
     except Exception as exc:  # pragma: no cover - relies on third-party errors
         logger.exception("Failed to initialize Google Drive client")
-        raise DriveConfigurationError("Unable to initialize Google Drive client.") from exc
+        raise DriveConfigurationError(
+            "Unable to initialize Google Drive client."
+        ) from exc
 
 
 def _escape_name(value: str) -> str:
@@ -341,23 +345,24 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
                 except (TypeError, ValueError):
                     size = None
             results.append(
-            DriveFileInfo(
-                id=item["id"],
-                name=item["name"],
-                mime_type=item.get("mimeType", ""),
-                size=size,
-                created_at=item.get("createdTime"),
-                modified_at=item.get("modifiedTime"),
-                web_view_link=item.get("webViewLink"),
-                is_folder=item.get("mimeType") == FOLDER_MIME_TYPE,
+                DriveFileInfo(
+                    id=item["id"],
+                    name=item["name"],
+                    mime_type=item.get("mimeType", ""),
+                    size=size,
+                    created_at=item.get("createdTime"),
+                    modified_at=item.get("modifiedTime"),
+                    web_view_link=item.get("webViewLink"),
+                    is_folder=item.get("mimeType") == FOLDER_MIME_TYPE,
+                )
             )
-        )
 
         page_token = response.get("nextPageToken")
         if not page_token:
             break
 
     return results
+
 
 def download_drive_file(file_id: str) -> bytes:
     """Скачать файл из Google Drive и вернуть байты."""

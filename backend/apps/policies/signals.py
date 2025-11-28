@@ -81,7 +81,9 @@ def log_policy_change(sender, instance, created, **kwargs):
     try:
         ensure_policy_folder(instance)
     except DriveError:
-        logger.exception("Failed to sync Google Drive folder for policy %s", instance.pk)
+        logger.exception(
+            "Failed to sync Google Drive folder for policy %s", instance.pk
+        )
 
 
 @receiver(post_delete, sender=Policy)

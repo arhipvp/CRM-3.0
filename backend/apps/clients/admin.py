@@ -68,9 +68,9 @@ class ClientAdmin(SoftDeleteImportExportAdmin):
     fieldsets = (
         (
             "Основные данные",
-                {
-                    "fields": ("id", "name", "phone", "email", "birth_date", "notes"),
-                },
+            {
+                "fields": ("id", "name", "phone", "email", "birth_date", "notes"),
+            },
         ),
         (
             "Сделки",

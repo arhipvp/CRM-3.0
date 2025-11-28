@@ -7,16 +7,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0014_merge'),
+        ("deals", "0014_merge"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='quote',
-            name='insurance_company',
-            field=models.ForeignKey(help_text='Страховая компания', on_delete=django.db.models.deletion.PROTECT, related_name='quotes', to='deals.insurancecompany'),
+            model_name="quote",
+            name="insurance_company",
+            field=models.ForeignKey(
+                help_text="Страховая компания",
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="quotes",
+                to="deals.insurancecompany",
+            ),
         ),
         migrations.DeleteModel(
-            name='ActivityLog',
+            name="ActivityLog",
         ),
     ]

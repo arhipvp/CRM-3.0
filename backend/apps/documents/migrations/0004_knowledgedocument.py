@@ -9,31 +9,82 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('documents', '0003_alter_document_status'),
+        ("documents", "0003_alter_document_status"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='KnowledgeDocument',
+            name="KnowledgeDocument",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('deleted_at', models.DateTimeField(blank=True, default=None, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('title', models.CharField(help_text='Название файла', max_length=255)),
-                ('description', models.TextField(blank=True, help_text='Краткое описание')),
-                ('file_name', models.CharField(help_text='Оригинальное имя файла', max_length=255)),
-                ('drive_file_id', models.CharField(help_text='ID файла в Google Drive', max_length=128, unique=True)),
-                ('web_view_link', models.URLField(blank=True, help_text='Ссылка для просмотра файла', max_length=512)),
-                ('mime_type', models.CharField(blank=True, help_text='MIME тип файла', max_length=120)),
-                ('file_size', models.PositiveBigIntegerField(blank=True, help_text='Размер файла в байтах', null=True)),
-                ('owner', models.ForeignKey(blank=True, help_text='Пользователь, загрузивший документ', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='knowledge_documents', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, default=None, null=True),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("title", models.CharField(help_text="Название файла", max_length=255)),
+                (
+                    "description",
+                    models.TextField(blank=True, help_text="Краткое описание"),
+                ),
+                (
+                    "file_name",
+                    models.CharField(
+                        help_text="Оригинальное имя файла", max_length=255
+                    ),
+                ),
+                (
+                    "drive_file_id",
+                    models.CharField(
+                        help_text="ID файла в Google Drive", max_length=128, unique=True
+                    ),
+                ),
+                (
+                    "web_view_link",
+                    models.URLField(
+                        blank=True,
+                        help_text="Ссылка для просмотра файла",
+                        max_length=512,
+                    ),
+                ),
+                (
+                    "mime_type",
+                    models.CharField(
+                        blank=True, help_text="MIME тип файла", max_length=120
+                    ),
+                ),
+                (
+                    "file_size",
+                    models.PositiveBigIntegerField(
+                        blank=True, help_text="Размер файла в байтах", null=True
+                    ),
+                ),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Пользователь, загрузивший документ",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="knowledge_documents",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Библиотечный документ',
-                'verbose_name_plural': 'Библиотечные документы',
-                'ordering': ['-created_at'],
+                "verbose_name": "Библиотечный документ",
+                "verbose_name_plural": "Библиотечные документы",
+                "ordering": ["-created_at"],
             },
         ),
     ]

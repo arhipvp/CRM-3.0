@@ -79,7 +79,9 @@ def log_client_change(sender, instance, created, **kwargs):
     try:
         ensure_client_folder(instance)
     except DriveError:
-        logger.exception("Failed to sync Google Drive folder for client %s", instance.pk)
+        logger.exception(
+            "Failed to sync Google Drive folder for client %s", instance.pk
+        )
 
 
 @receiver(post_delete, sender=Client)

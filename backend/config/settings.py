@@ -32,7 +32,9 @@ SECRET_KEY = config("DJANGO_SECRET_KEY", default=None)
 if not SECRET_KEY:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set to a non-empty value.")
 if SECRET_KEY == "unsafe-dev-key":
-    raise ImproperlyConfigured("The unsafe-dev-key placeholder must be replaced in production.")
+    raise ImproperlyConfigured(
+        "The unsafe-dev-key placeholder must be replaced in production."
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default="False").lower() in ("true", "1", "yes")
@@ -40,16 +42,22 @@ DEBUG = config("DEBUG", default="False").lower() in ("true", "1", "yes")
 raw_allowed_hosts = config("ALLOWED_HOSTS", default="")
 ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(",") if host.strip()]
 if any(host == "*" for host in ALLOWED_HOSTS):
-    raise ImproperlyConfigured("Use specific ALLOWED_HOSTS entries instead of '*' for hardening.")
+    raise ImproperlyConfigured(
+        "Use specific ALLOWED_HOSTS entries instead of '*' for hardening."
+    )
 if not DEBUG:
     if not ALLOWED_HOSTS:
-        raise ImproperlyConfigured("ALLOWED_HOSTS must be populated when DEBUG is False.")
+        raise ImproperlyConfigured(
+            "ALLOWED_HOSTS must be populated when DEBUG is False."
+        )
 else:
     if not ALLOWED_HOSTS:
         ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
+
 def _bool_env(var: str, default: str) -> bool:
     return config(var, default=default).strip().lower() in ("true", "1", "yes")
+
 
 CSRF_TRUSTED_ORIGINS = [
     origin for origin in config("CSRF_TRUSTED_ORIGINS", default="").split(",") if origin
@@ -173,7 +181,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = config("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default="")
+GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = config(
+    "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default=""
+)
 GOOGLE_DRIVE_ROOT_FOLDER_ID = config("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
 GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID = config(
     "GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID", default=""
@@ -215,7 +225,9 @@ SIMPLE_JWT = {
 
 CORS_ALLOW_ALL_ORIGINS = _bool_env("CORS_ALLOW_ALL_ORIGINS", "False")
 if CORS_ALLOW_ALL_ORIGINS:
-    raise ImproperlyConfigured("CORS_ALLOW_ALL_ORIGINS=True is not allowed; configure CORS_ALLOWED_ORIGINS.")
+    raise ImproperlyConfigured(
+        "CORS_ALLOW_ALL_ORIGINS=True is not allowed; configure CORS_ALLOWED_ORIGINS."
+    )
 
 CORS_ALLOWED_ORIGINS = [
     origin for origin in config("CORS_ALLOWED_ORIGINS", default="").split(",") if origin
@@ -224,7 +236,9 @@ if not CORS_ALLOWED_ORIGINS:
     if DEBUG:
         CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
     else:
-        raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set when DEBUG is False.")
+        raise ImproperlyConfigured(
+            "CORS_ALLOWED_ORIGINS must be set when DEBUG is False."
+        )
 
 # Control whether Django emits the Cross-Origin-Opener-Policy header so that
 # it can be disabled when serving over unsecured HTTP origins (e.g. local

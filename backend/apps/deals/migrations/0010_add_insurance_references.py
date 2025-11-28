@@ -22,8 +22,8 @@ def _populate_insurance_references(apps, schema_editor):
         quote.insurance_company_temp_id = company.id
 
         type_key = (
-            (getattr(quote, "insurance_type_text", None) or "").strip() or default_type
-        )
+            getattr(quote, "insurance_type_text", None) or ""
+        ).strip() or default_type
         insurance_type = type_cache.get(type_key)
         if insurance_type is None:
             insurance_type = InsuranceType.objects.create(name=type_key)
@@ -46,7 +46,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.UUIDField(
-                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
                     ),
                 ),
                 (
@@ -70,7 +73,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.UUIDField(
-                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
                     ),
                 ),
                 (

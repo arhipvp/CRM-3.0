@@ -11,6 +11,7 @@ from apps.common.drive import (
 
 class DriveFolderOwner(Protocol):
     """Protocol for objects that have a drive_folder_id."""
+
     drive_folder_id: Optional[str]
 
 

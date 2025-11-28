@@ -68,30 +68,14 @@ class DealMergeServiceTestCase(TestCase):
             target_deal=self.target, source_deals=[self.source], actor=self.user
         ).merge()
 
-        self.assertEqual(
-            Task.objects.filter(deal=self.target).count(), 1
-        )
-        self.assertEqual(
-            Payment.objects.filter(deal=self.target).count(), 1
-        )
-        self.assertEqual(
-            ChatMessage.objects.filter(deal=self.target).count(), 1
-        )
-        self.assertEqual(
-            Note.objects.filter(deal=self.target).count(), 1
-        )
-        self.assertEqual(
-            Policy.objects.filter(deal=self.target).count(), 1
-        )
-        self.assertEqual(
-            Quote.objects.filter(deal=self.target).count(), 1
-        )
-        self.assertEqual(
-            Document.objects.filter(deal=self.target).count(), 1
-        )
-        self.assertTrue(
-            Deal.objects.with_deleted().get(pk=self.source.pk).is_deleted()
-        )
+        self.assertEqual(Task.objects.filter(deal=self.target).count(), 1)
+        self.assertEqual(Payment.objects.filter(deal=self.target).count(), 1)
+        self.assertEqual(ChatMessage.objects.filter(deal=self.target).count(), 1)
+        self.assertEqual(Note.objects.filter(deal=self.target).count(), 1)
+        self.assertEqual(Policy.objects.filter(deal=self.target).count(), 1)
+        self.assertEqual(Quote.objects.filter(deal=self.target).count(), 1)
+        self.assertEqual(Document.objects.filter(deal=self.target).count(), 1)
+        self.assertTrue(Deal.objects.with_deleted().get(pk=self.source.pk).is_deleted())
         self.assertEqual(result["merged_deal_ids"], [str(self.source.id)])
         self.assertIn("tasks", result["moved_counts"])
 
@@ -144,9 +128,7 @@ class DealMergeAPITestCase(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.data["target_deal"]["id"], str(self.target.id)
-        )
+        self.assertEqual(response.data["target_deal"]["id"], str(self.target.id))
         self.assertEqual(len(response.data["merged_deal_ids"]), 2)
         self.assertEqual(Task.objects.filter(deal=self.target).count(), 1)
         self.assertEqual(Payment.objects.filter(deal=self.target).count(), 1)
@@ -170,7 +152,9 @@ class DealMergeAPITestCase(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Все сделки должны принадлежать одному клиенту.", str(response.data))
+        self.assertIn(
+            "Все сделки должны принадлежать одному клиенту.", str(response.data)
+        )
 
     def test_merge_requires_owner(self):
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.other_token}")

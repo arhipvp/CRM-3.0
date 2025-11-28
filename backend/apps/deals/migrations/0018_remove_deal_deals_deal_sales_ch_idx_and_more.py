@@ -6,17 +6,17 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0017_remove_channel'),
-        ('policies', '0008_sales_channel_catalog'),
+        ("deals", "0017_remove_channel"),
+        ("policies", "0008_sales_channel_catalog"),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='deal',
-            name='deals_deal_sales_ch_idx',
+            model_name="deal",
+            name="deals_deal_sales_ch_idx",
         ),
         migrations.RemoveField(
-            model_name='deal',
-            name='sales_channel',
+            model_name="deal",
+            name="sales_channel",
         ),
     ]

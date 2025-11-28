@@ -35,8 +35,8 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
-        deal = serializer.validated_data.get('deal')
-        assignee_provided = 'assignee' in serializer.validated_data
+        deal = serializer.validated_data.get("deal")
+        assignee_provided = "assignee" in serializer.validated_data
         if not assignee_provided and deal and deal.executor:
             serializer.save(created_by=user, assignee=deal.executor)
             return

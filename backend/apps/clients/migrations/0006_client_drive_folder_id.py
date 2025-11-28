@@ -6,13 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clients', '0005_alter_client_name_alter_client_phone'),
+        ("clients", "0005_alter_client_name_alter_client_phone"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='client',
-            name='drive_folder_id',
-            field=models.CharField(blank=True, help_text='Google Drive folder ID', max_length=255, null=True),
+            model_name="client",
+            name="drive_folder_id",
+            field=models.CharField(
+                blank=True,
+                help_text="Google Drive folder ID",
+                max_length=255,
+                null=True,
+            ),
         ),
     ]

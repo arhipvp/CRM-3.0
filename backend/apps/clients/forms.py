@@ -46,5 +46,7 @@ class ClientAdminForm(forms.ModelForm):
         phone = cleaned_data.get("phone", "").strip()
         email = cleaned_data.get("email", "").strip()
         if not name and not (phone or email):
-            raise ValidationError("Provide at least a phone number or an email address.")
+            raise ValidationError(
+                "Provide at least a phone number or an email address."
+            )
         return cleaned_data

@@ -86,9 +86,7 @@ class KnowledgeDocument(SoftDeleteModel):
         blank=True,
         help_text="Ссылка для просмотра файла",
     )
-    mime_type = models.CharField(
-        max_length=120, blank=True, help_text="MIME тип файла"
-    )
+    mime_type = models.CharField(max_length=120, blank=True, help_text="MIME тип файла")
     file_size = models.PositiveBigIntegerField(
         null=True, blank=True, help_text="Размер файла в байтах"
     )

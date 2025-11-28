@@ -6,13 +6,24 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0002_auditlog'),
+        ("users", "0002_auditlog"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='auditlog',
-            name='action',
-            field=models.CharField(choices=[('create', 'Создание'), ('update', 'Редактирование'), ('merge', 'Слияние'), ('delete', 'Удаление'), ('assign', 'Назначение'), ('revoke', 'Отзыв')], help_text='Тип действия', max_length=50),
+            model_name="auditlog",
+            name="action",
+            field=models.CharField(
+                choices=[
+                    ("create", "Создание"),
+                    ("update", "Редактирование"),
+                    ("merge", "Слияние"),
+                    ("delete", "Удаление"),
+                    ("assign", "Назначение"),
+                    ("revoke", "Отзыв"),
+                ],
+                help_text="Тип действия",
+                max_length=50,
+            ),
         ),
     ]

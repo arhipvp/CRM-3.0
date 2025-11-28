@@ -6,13 +6,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('documents', '0002_alter_document_options_remove_document_client_and_more'),
+        ("documents", "0002_alter_document_options_remove_document_client_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='document',
-            name='status',
-            field=models.CharField(choices=[('draft', 'Черновик'), ('pending', 'Ожидание'), ('completed', 'Завершено'), ('error', 'Ошибка')], default='draft', help_text='Статус', max_length=50),
+            model_name="document",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("draft", "Черновик"),
+                    ("pending", "Ожидание"),
+                    ("completed", "Завершено"),
+                    ("error", "Ошибка"),
+                ],
+                default="draft",
+                help_text="Статус",
+                max_length=50,
+            ),
         ),
     ]

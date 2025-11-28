@@ -18,4 +18,10 @@ class NoteSerializer(serializers.ModelSerializer):
             "updated_at",
             "deleted_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at", "deleted_at", "deal_title")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+            "deal_title",
+        )

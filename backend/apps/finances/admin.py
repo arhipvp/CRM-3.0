@@ -138,11 +138,11 @@ class PaymentAdmin(ImportExportModelAdmin):
         from datetime import date
 
         updated = queryset.update(actual_date=date.today())
-        self.message_user(request, f"{updated} платежей получили актуальную дату оплаты")
+        self.message_user(
+            request, f"{updated} платежей получили актуальную дату оплаты"
+        )
 
     mark_as_paid.short_description = "✓ Отметить как оплачено"
-
-
 
     def restore_payments(self, request, queryset):
         restored = 0

@@ -203,7 +203,9 @@ def _extract_text_from_bytes(content: bytes, filename: str) -> str:
 
     if filename.lower().endswith(".pdf"):
         try:
-            reader = PdfReader(content if hasattr(content, "read") else BytesIO(content))
+            reader = PdfReader(
+                content if hasattr(content, "read") else BytesIO(content)
+            )
             text = "\n".join(page.extract_text() or "" for page in reader.pages)
             if text:
                 return text
@@ -321,7 +323,9 @@ def recognize_policy_interactive(
         except json.JSONDecodeError as exc:
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)
-                raise PolicyRecognitionError(f"Не удалось разобрать JSON: {exc}", transcript)
+                raise PolicyRecognitionError(
+                    f"Не удалось разобрать JSON: {exc}", transcript
+                )
             if progress_cb:
                 progress_cb("user", REMINDER)
             messages.append({"role": "user", "content": REMINDER})
@@ -329,7 +333,9 @@ def recognize_policy_interactive(
         except ValidationError as exc:
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)
-                raise PolicyRecognitionError(f"Ошибка валидации схемы: {exc}", transcript)
+                raise PolicyRecognitionError(
+                    f"Ошибка валидации схемы: {exc}", transcript
+                )
             if progress_cb:
                 progress_cb("user", REMINDER)
             messages.append({"role": "user", "content": REMINDER})
@@ -348,7 +354,9 @@ def recognize_policy_from_text(
 ) -> Tuple[dict, str]:
     """Распознать полис по тексту."""
 
-    data, transcript, _ = recognize_policy_interactive(text, extra_companies=extra_companies)
+    data, transcript, _ = recognize_policy_interactive(
+        text, extra_companies=extra_companies
+    )
     return data, transcript
 
 

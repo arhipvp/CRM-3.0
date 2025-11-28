@@ -6,13 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('policies', '0005_alter_policy_client'),
+        ("policies", "0005_alter_policy_client"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='policy',
-            name='drive_folder_id',
-            field=models.CharField(blank=True, help_text='Google Drive folder ID', max_length=255, null=True),
+            model_name="policy",
+            name="drive_folder_id",
+            field=models.CharField(
+                blank=True,
+                help_text="Google Drive folder ID",
+                max_length=255,
+                null=True,
+            ),
         ),
     ]

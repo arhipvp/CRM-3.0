@@ -19,7 +19,9 @@ class ClientOwnershipTests(TestCase):
         client_owned = Client.objects.create(name="Owned", created_by=self.user)
         client_for_deal = Client.objects.create(name="Deal client")
         Deal.objects.create(title="Deal", client=client_for_deal, seller=self.user)
-        client_other = Client.objects.create(name="Other client", created_by=self.other_user)
+        client_other = Client.objects.create(
+            name="Other client", created_by=self.other_user
+        )
 
         request = self.factory.get("/clients/")
         force_authenticate(request, user=self.user)
