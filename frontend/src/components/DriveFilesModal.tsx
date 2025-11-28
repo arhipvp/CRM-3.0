@@ -73,14 +73,10 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
     }, [isOpen, loadFiles]);
 
     const handleUpload = async (file: File) => {
-        try {
-            const uploader =
-                entityType === 'client' ? uploadClientDriveFile : uploadPolicyDriveFile;
-            await uploader(entityId, file);
-            await loadFiles();
-        } catch (err) {
-            throw err;
-        }
+        const uploader =
+            entityType === 'client' ? uploadClientDriveFile : uploadPolicyDriveFile;
+        await uploader(entityId, file);
+        await loadFiles();
     };
 
     const sortedFiles = [...files].sort((a, b) => {

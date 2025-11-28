@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
-import { NotificationProvider, useNotification } from './contexts/NotificationContext';
+import { NotificationProvider } from './contexts/NotificationProvider';
+import { useNotification } from './contexts/NotificationContext';
 import { NotificationDisplay } from './components/NotificationDisplay';
 import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
@@ -47,7 +48,7 @@ import {
   uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Client, DealStatus, FinancialRecord, Payment, Quote, User } from './types';
+import { Client, DealStatus, FinancialRecord, Payment, Policy, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
@@ -128,7 +129,17 @@ const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [modal, setModal] = useState<ModalType>(null);
+  const [pendingModalAfterClient, setPendingModalAfterClient] = useState<ModalType>(null);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const openClientModal = (afterModal: ModalType | null = null) => {
+    setPendingModalAfterClient(afterModal);
+    setModal('client');
+  };
+
+  const closeClientModal = () => {
+    setModal(null);
+    setPendingModalAfterClient(null);
+  };
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
@@ -298,10 +309,13 @@ const AppContent: React.FC = () => {
     phone?: string;
     birthDate?: string | null;
     notes?: string | null;
+    email?: string | null;
   }) => {
     const created = await createClient(data);
     updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
-    setModal(null);
+    const nextModal = pendingModalAfterClient;
+    setPendingModalAfterClient(null);
+    setModal(nextModal ?? null);
   };
 
   const handleEditClient = (client: Client) => {
@@ -316,6 +330,7 @@ const AppContent: React.FC = () => {
       phone?: string;
       birthDate?: string | null;
       notes?: string | null;
+      email?: string | null;
     }
   ) => {
     const updated = await updateClient(clientId, data);
@@ -454,7 +469,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, dealFilters, refreshDealsWithSelection, setError, setSelectedDealId]
+    [addNotification, dealFilters, refreshDealsWithSelection, setError, setSelectedDealId, setIsSyncing]
   );
 
   const handleMergeDeals = useCallback(
@@ -470,7 +485,6 @@ const AppContent: React.FC = () => {
         setSelectedDealId(result.targetDeal.id);
         setError(null);
         addNotification('Сделки объединены', 'success', 4000);
-        return result;
       } catch (err) {
         const message =
           err instanceof APIError
@@ -484,7 +498,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, mergeDeals, setError, setSelectedDealId, updateAppData]
+    [addNotification, setError, setSelectedDealId, setIsSyncing, updateAppData]
   );
 
   const handleAddQuote = async (dealId: string, values: QuoteFormValues) => {
@@ -974,7 +988,7 @@ const AppContent: React.FC = () => {
   return (
     <MainLayout
       onAddDeal={() => setModal('deal')}
-      onAddClient={() => setModal('client')}
+      onAddClient={() => openClientModal()}
       currentUser={currentUser || undefined}
       onLogout={handleLogout}
     >
@@ -1042,6 +1056,8 @@ const AppContent: React.FC = () => {
       <AppModals
         modal={modal}
         setModal={setModal}
+        openClientModal={openClientModal}
+        closeClientModal={closeClientModal}
         editingClient={editingClient}
         setEditingClient={setEditingClient}
         clients={clients}

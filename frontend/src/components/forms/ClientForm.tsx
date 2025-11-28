@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 
 interface ClientFormProps {
-  initial?: { name: string; phone?: string; birthDate?: string | null; notes?: string | null };
+  initial?: { name: string; phone?: string; email?: string; birthDate?: string | null; notes?: string | null };
   onSubmit: (data: {
     name: string;
     phone?: string;
+    email?: string | null;
     birthDate?: string | null;
     notes?: string | null;
   }) => Promise<void>;
@@ -18,6 +19,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
 }) => {
   const [name, setName] = useState(initial?.name ?? '');
   const [phone, setPhone] = useState(initial?.phone ?? '');
+  const [email, setEmail] = useState(initial?.email ?? '');
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
       await onSubmit({
         name: name.trim(),
         phone: phone.trim() || undefined,
+        email: email.trim() || null,
         birthDate: birthDate || null,
         notes: notes.trim() || undefined,
       });
@@ -56,6 +59,16 @@ export const ClientForm: React.FC<ClientFormProps> = ({
           onChange={(e) => setName(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
           placeholder="Имя и фамилия"
+      />
+    </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700">E-mail</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          placeholder="client@example.ru"
         />
       </div>
       <div>

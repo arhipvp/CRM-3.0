@@ -78,6 +78,7 @@ export const mapClient = (raw: Record<string, unknown>): Client => ({
   id: toStringValue(raw.id),
   name: toStringValue(raw.name),
   phone: toOptionalString(raw.phone),
+  email: toNullableString(raw.email),
   birthDate: toNullableString(raw.birth_date ?? raw.birthDate),
   notes: toNullableString(raw.notes),
   createdAt: toStringValue(raw.created_at),

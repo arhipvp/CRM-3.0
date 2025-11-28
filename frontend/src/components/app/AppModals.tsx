@@ -50,8 +50,25 @@ interface AppModalsProps {
   setEditingClient: React.Dispatch<React.SetStateAction<Client | null>>;
   clients: Client[];
   users: User[];
-  handleAddClient: (data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }) => Promise<void>;
-  handleUpdateClient: (id: string, data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }) => Promise<void>;
+  openClientModal: (afterModal?: ModalType | null) => void;
+  closeClientModal: () => void;
+  handleAddClient: (data: {
+    name: string;
+    phone?: string;
+    birthDate?: string | null;
+    notes?: string | null;
+    email?: string | null;
+  }) => Promise<void>;
+  handleUpdateClient: (
+    id: string,
+    data: {
+      name: string;
+      phone?: string;
+      birthDate?: string | null;
+      notes?: string | null;
+      email?: string | null;
+    }
+  ) => Promise<void>;
   handleAddDeal: (data: { title: string; description?: string; clientId: string; expectedClose?: string | null; executorId?: string | null; source?: string }) => Promise<void>;
   quoteDealId: string | null;
   setQuoteDealId: React.Dispatch<React.SetStateAction<string | null>>;
@@ -85,6 +102,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
   setEditingClient,
   clients,
   users,
+  openClientModal,
+  closeClientModal,
   handleAddClient,
   handleUpdateClient,
   handleAddDeal,
@@ -114,36 +133,21 @@ export const AppModals: React.FC<AppModalsProps> = ({
 }) => (
   <>
     {modal === 'client' && (
-      <Modal title="Новый клиент" onClose={() => setModal(null)}>
+      <Modal title="Новый клиент" onClose={closeClientModal}>
         <ClientForm onSubmit={handleAddClient} />
       </Modal>
     )}
 
-    {editingClient && (
-      <Modal title="Редактировать клиента" onClose={() => setEditingClient(null)}>
-        <ClientForm
-          initial={{
-            name: editingClient.name,
-            phone: editingClient.phone ?? undefined,
-            birthDate: editingClient.birthDate ?? undefined,
-            notes: editingClient.notes ?? undefined,
-          }}
-          onSubmit={(data) => handleUpdateClient(editingClient.id, data)}
-        />
-      </Modal>
-    )}
-
     {modal === 'deal' && (
-      <Modal title="Новая сделка" onClose={() => setModal(null)}>
+      <Modal title="Новая сделка" onClose={() => setModal(null)} closeOnOverlayClick={false}>
         <DealForm
           clients={clients}
           users={users}
           onSubmit={handleAddDeal}
-          onRequestAddClient={() => setModal('client')}
+          onRequestAddClient={() => openClientModal('deal')}
         />
       </Modal>
     )}
-
     {quoteDealId && (
       <Modal title="Добавить расчёт" onClose={() => setQuoteDealId(null)}>
         <AddQuoteForm

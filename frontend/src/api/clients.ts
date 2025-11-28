@@ -59,6 +59,7 @@ export async function createClient(data: {
   phone?: string;
   birthDate?: string | null;
   notes?: string | null;
+  email?: string | null;
 }): Promise<Client> {
   const payload = await request<Record<string, unknown>>('/clients/', {
     method: 'POST',
@@ -66,6 +67,7 @@ export async function createClient(data: {
       name: data.name,
       phone: data.phone,
       birth_date: data.birthDate || null,
+      email: data.email?.trim() || null,
       notes: data.notes ?? '',
     }),
   });
@@ -74,7 +76,7 @@ export async function createClient(data: {
 
 export async function updateClient(
   id: string,
-  data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null }
+  data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null; email?: string | null }
 ): Promise<Client> {
   const payload = await request<Record<string, unknown>>(`/clients/${id}/`, {
     method: 'PATCH',
@@ -82,6 +84,7 @@ export async function updateClient(
       name: data.name,
       phone: data.phone,
       birth_date: data.birthDate || null,
+      email: data.email?.trim() || null,
       notes: data.notes ?? '',
     }),
   });

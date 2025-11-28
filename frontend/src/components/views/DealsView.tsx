@@ -218,7 +218,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
         deal.id !== selectedDeal.id &&
         !deal.deletedAt
     );
-  }, [deals, selectedDeal?.clientId, selectedDeal?.id]);
+  }, [deals, selectedDeal]);
 
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -340,7 +340,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
     } finally {
       setIsMerging(false);
     }
-  }, [mergeSources, onMergeDeals, selectedDeal?.id]);
+  }, [mergeSources, onMergeDeals, selectedDeal]);
 
   const loadActivityLogs = useCallback(async () => {
     const dealId = selectedDeal?.id;

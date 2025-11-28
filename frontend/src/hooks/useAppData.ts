@@ -108,7 +108,7 @@ export const useAppData = () => {
         page: dealsNextPage,
         page_size: DEALS_PAGE_SIZE,
       });
-      setAppData((prev) => ({
+      updateAppData((prev) => ({
         deals: [...prev.deals, ...payload.results],
       }));
       setDealsNextPage(payload.next ? dealsNextPage + 1 : null);
@@ -117,7 +117,7 @@ export const useAppData = () => {
     } finally {
       setIsLoadingMoreDeals(false);
     }
-  }, [dealsFilters, dealsNextPage, isLoadingMoreDeals, setAppData, setError]);
+  }, [dealsFilters, dealsNextPage, isLoadingMoreDeals, setError, updateAppData]);
 
   const refreshPolicies = useCallback(async () => {
     const PAGE_SIZE = 200;
