@@ -197,11 +197,9 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         audit_logs = self._get_related_audit_logs(deal, related_ids=related_ids)
         audit_data = [self._map_audit_log_entry(log, deal.id) for log in audit_logs]
 
-        if (
-            related_ids.get("financial_record")
-            and "financial_record"
-            not in {entry["object_type"] for entry in audit_data if entry.get("object_type")}
-        ):
+        if related_ids.get("financial_record") and "financial_record" not in {
+            entry["object_type"] for entry in audit_data if entry.get("object_type")
+        }:
             first_id = related_ids["financial_record"][0]
             audit_data.append(
                 {
@@ -309,6 +307,14 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             ),
         }
 
+    def _can_modify(self, user, instance):
+        return _is_admin_user(user)
+
+    def _can_merge(self, user, deal):
+        if _is_admin_user(user):
+            return True
+        return bool(user and user.is_authenticated and deal.seller_id == user.id)
+
     @staticmethod
     def _format_value(value):
         if value is None:
@@ -395,7 +401,7 @@ class DealViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
 
         for deal in (target_deal, *source_deals):
-            if not self._can_modify(request.user, deal):
+            if not self._can_merge(request.user, deal):
                 raise PermissionDenied("Недостаточно прав для объединения сделки.")
 
         actor = request.user if request.user and request.user.is_authenticated else None
