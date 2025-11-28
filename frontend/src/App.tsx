@@ -137,8 +137,9 @@ const AppContent: React.FC = () => {
   };
 
   const closeClientModal = () => {
-    setModal(null);
+    const nextModal = pendingModalAfterClient;
     setPendingModalAfterClient(null);
+    setModal(nextModal ?? null);
   };
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
