@@ -59,9 +59,9 @@ def get_changed_fields(instance, old_values: Optional[Dict] = None) -> Dict[str,
         new_value = getattr(instance, field_name, None)
 
         # Преобразовать DateTime/Date значения в строку для сравнения
-        if hasattr(old_value, "isoformat"):
+        if old_value is not None and hasattr(old_value, "isoformat"):
             old_value = old_value.isoformat()
-        if hasattr(new_value, "isoformat"):
+        if new_value is not None and hasattr(new_value, "isoformat"):
             new_value = new_value.isoformat()
 
         # Добавить только если значение действительно изменилось
