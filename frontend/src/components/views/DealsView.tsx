@@ -53,6 +53,7 @@ import { PoliciesTab } from './dealsView/tabs/PoliciesTab';
 import { QuotesTab } from './dealsView/tabs/QuotesTab';
 import { FilesTab } from './dealsView/tabs/FilesTab';
 import { ChatTab } from './dealsView/tabs/ChatTab';
+import { useSelectedDeal } from '../../hooks/useSelectedDeal';
 
 interface DealsViewProps {
   deals: Deal[];
@@ -169,41 +170,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
   currentUser,
 }) => {
   // Сортируем сделки по дате следующего контакта (ближайшие сверху)
-  const clientsById = useMemo(() => {
-    const map = new Map<string, Client>();
-    clients.forEach((client) => map.set(client.id, client));
-    return map;
-  }, [clients]);
-
-  const usersById = useMemo(() => {
-    const map = new Map<string, User>();
-    users.forEach((user) => map.set(user.id, user));
-    return map;
-  }, [users]);
-
-  const sortedDeals = useMemo(() => {
-    return [...deals].sort((a, b) => {
-      const deletedA = Boolean(a.deletedAt);
-      const deletedB = Boolean(b.deletedAt);
-      if (deletedA !== deletedB) {
-        return deletedA ? 1 : -1;
-      }
-      const dateA = a.nextContactDate ? new Date(a.nextContactDate).getTime() : Infinity;
-      const dateB = b.nextContactDate ? new Date(b.nextContactDate).getTime() : Infinity;
-      return dateA - dateB;
-    });
-  }, [deals]);
-
-  const selectedDeal = selectedDealId
-    ? (sortedDeals.find((deal) => deal.id === selectedDealId) ?? null)
-    : sortedDeals[0] ?? null;
-  const selectedClient = selectedDeal
-    ? clientsById.get(selectedDeal.clientId) ?? null
-    : null;
-  const sellerUser = selectedDeal ? usersById.get(selectedDeal.seller ?? '') : undefined;
-  const executorUser = selectedDeal
-    ? usersById.get(selectedDeal.executor ?? '')
-    : undefined;
+  const {
+    sortedDeals,
+    selectedDeal,
+    selectedClient,
+    sellerUser,
+    executorUser,
+  } = useSelectedDeal({ deals, clients, users, selectedDealId });
   const sellerDisplayName = sellerUser
     ? getUserDisplayName(sellerUser)
     : selectedDeal?.sellerName || '—';
