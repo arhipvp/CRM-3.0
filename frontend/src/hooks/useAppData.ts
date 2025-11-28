@@ -155,7 +155,6 @@ export const useAppData = () => {
     dealsNextPage,
     isLoadingMoreDeals,
     setError,
-    setAppData,
     updateAppData,
   ]);
 

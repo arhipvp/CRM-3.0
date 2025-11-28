@@ -55,7 +55,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     }
     setClientId(clients[0].id);
     setClientQuery(clients[0].name);
-  }, [clients, clientId]);
+  }, [clients, clientsById, clientId]);
 
   const filteredClients = useMemo(() => {
     const normalized = clientQuery.trim().toLowerCase();
