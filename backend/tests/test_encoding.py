@@ -27,6 +27,6 @@ class SourceEncodingTestCase(TestCase):
                 failures.append(str(path))
         if failures:
             self.fail(
-                "Found unicode replacement character '�' in source files:\n"
+                f"Found unicode replacement character '{self.REPLACEMENT_CHAR}' in source files:\n"
                 + "\n".join(failures)
             )

@@ -21,7 +21,7 @@ class DealDriveMixin:
 
         if request.method == "POST" and not uploaded_file:
             return Response(
-                {"detail": "�������> �?�� ����?��?���?"},
+                {"detail": "No file provided for upload."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

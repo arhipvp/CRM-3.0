@@ -11,9 +11,7 @@ class DealRestoreMixin:
         deal = get_object_or_404(queryset, pk=pk)
         if not self._can_modify(request.user, deal):
             return Response(
-                {
-                    "detail": "�?��?�?�?�'���'�?�ؐ?�? ���?���? �?�>�? �?�?�?�?�'���?�?�?�>��?��? �?�?��>���."
-                },
+                {"detail": "Only admin users can restore deals."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         deal.restore()

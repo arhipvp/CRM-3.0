@@ -99,6 +99,13 @@ class DealViewSet(
         if not user.is_authenticated:
             return queryset
 
+        is_admin = _is_admin_user(user)
+
+        if is_admin:
+            return queryset
+
+        return queryset.filter(Q(seller=user) | Q(executor=user))
+
 
 class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
@@ -117,6 +124,10 @@ class QuoteViewSet(viewsets.ModelViewSet):
         )
 
         is_admin = _is_admin_user(user)
+        if is_admin:
+            return queryset
+
+        return queryset.filter(Q(seller=user) | Q(executor=user))
 
         if not is_admin:
             queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
@@ -125,24 +136,6 @@ class QuoteViewSet(viewsets.ModelViewSet):
         if deal_id:
             queryset = queryset.filter(deal_id=deal_id)
         return queryset
-
-    def perform_create(self, serializer):
-        defaults: dict[str, object] = {}
-        if (
-            self.request.user.is_authenticated
-            and "seller" not in serializer.validated_data
-        ):
-            defaults["seller"] = self.request.user
-        serializer.save(**defaults)
-
-        # Администраторы видят все
-        is_admin = _is_admin_user(user)
-
-        if is_admin:
-            return queryset
-
-        # Остальные видят только свои сделки (как seller или executor)
-        return queryset.filter(Q(seller=user) | Q(executor=user))
 
     def _can_modify(self, user, instance):
         return _is_admin_user(user)
@@ -157,15 +150,6 @@ class QuoteViewSet(viewsets.ModelViewSet):
             serializer.save(seller=self.request.user)
         else:
             serializer.save()
-
-    def perform_create(self, serializer):
-        defaults: dict[str, object] = {}
-        if (
-            self.request.user.is_authenticated
-            and "seller" not in serializer.validated_data
-        ):
-            defaults["seller"] = self.request.user
-        serializer.save(**defaults)
 
 
 class InsuranceCompanyViewSet(viewsets.ReadOnlyModelViewSet):

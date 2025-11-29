@@ -15,9 +15,7 @@ class DealMergeMixin:
         serializer.is_valid(raise_exception=True)
 
         target_id = str(serializer.validated_data["target_deal_id"])
-        source_ids = [
-            str(value) for value in serializer.validated_data["source_deal_ids"]
-        ]
+        source_ids = [str(value) for value in serializer.validated_data["source_deal_ids"]]
         combined_ids = {target_id, *source_ids}
 
         deals_qs = (
@@ -30,39 +28,29 @@ class DealMergeMixin:
             found_ids = {str(deal.id) for deal in deals}
             missing = sorted(combined_ids - found_ids)
             raise ValidationError(
-                {"detail": f"���?��>��� �?�� �?�����?��?�<: {', '.join(missing)}"}
+                {"detail": f"Some deals were not found: {', '.join(missing)}"}
             )
 
         deals_by_id = {str(deal.id): deal for deal in deals}
         target_deal = deals_by_id.get(target_id)
         if not target_deal:
-            raise ValidationError(
-                {"target_deal_id": "����>��?���? �?�?��>��� �?�� �?�����?��?��."}
-            )
+            raise ValidationError({"target_deal_id": "Target deal not found."})
         if target_deal.deleted_at is not None:
-            raise ValidationError(
-                {"target_deal_id": "����>��?���? �?�?��>��� �?�?���>��?��."}
-            )
+            raise ValidationError({"target_deal_id": "Target deal is deleted."})
 
         source_deals = [deals_by_id[source_id] for source_id in source_ids]
         client_id = target_deal.client_id
         for deal in source_deals:
             if deal.client_id != client_id:
-                raise ValidationError(
-                    "�'�?�� �?�?��>��� �?�?�>��?�< ���?��?���?�>�����'�? �?�?�?�?�?�? ��>���?�'�?."
-                )
+                raise ValidationError("All merged deals must belong to the same client.")
             if deal.deleted_at is not None:
                 raise ValidationError(
-                    {
-                        "source_deal_ids": "�?�?�:�?�?�?���? �?�?��>��� �?��� �?�?���>��?��."
-                    }
+                    {"source_deal_ids": "Source deals must not be deleted."}
                 )
 
         for deal in (target_deal, *source_deals):
-            if not self._can_merge(request.user, deal):
-                raise PermissionDenied(
-                    "�?��?�?�?�'���'�?�ؐ?�? ���?���? �?�>�? �?�+�?��?��?��?��? �?�?��>���."
-                )
+            if not hasattr(self, "_can_merge") or not self._can_merge(request.user, deal):
+                raise PermissionDenied("Only deal owner or admin can merge deals.")
 
         actor = request.user if request.user and request.user.is_authenticated else None
         merge_result = DealMergeService(
@@ -79,7 +67,7 @@ class DealMergeMixin:
             object_name=target_deal.title,
             action="merge",
             description=(
-                f"���>��?�?��� �?�?��>�?�� ({', '.join(source_titles)}) �? '{target_deal.title}'"
+                f"Merged deals ({', '.join(source_titles)}) into '{target_deal.title}'"
             ),
             new_value={
                 "merged_deals": merge_result["merged_deal_ids"],
