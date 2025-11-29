@@ -64,7 +64,9 @@ def _parse_args() -> argparse.Namespace:
         description="??????????? CRM-?????? ?? Excel-??????? (?? ??????? scripts/templates/business_data_template_new.xlsx)."
     )
     parser.add_argument("path", help="???? ?? Excel-????? (.xlsx)")
-    parser.add_argument("--sheet", help="???????????? ?????? ????????? ???? (??????? ?? ?????)")
+    parser.add_argument(
+        "--sheet", help="???????????? ?????? ????????? ???? (??????? ?? ?????)"
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -78,7 +80,6 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-
 def _normalize_sheet_name(name: str) -> str:
     return name.strip().lower()
 
@@ -87,7 +88,9 @@ def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
     header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
     headers = [str(cell).strip().lower() if cell else "" for cell in header_row]
 
-    for row_index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+    for row_index, row in enumerate(
+        sheet.iter_rows(min_row=2, values_only=True), start=2
+    ):
         if all(cell in (None, "", False) for cell in row):
             continue
 
@@ -112,7 +115,9 @@ def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
     if isinstance(field, models.DecimalField):
         return Decimal(str(value))
 
-    if isinstance(field, models.DateField) and not isinstance(field, models.DateTimeField):
+    if isinstance(field, models.DateField) and not isinstance(
+        field, models.DateTimeField
+    ):
         return _parse_date(value)
 
     if isinstance(field, models.DateTimeField):
@@ -211,9 +216,17 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:
     key = related._meta.label_lower
     config = _AUTO_CREATE_MAPPING.get(key)
-    attr = config["attr"] if config else next(
-        (field.name for field in related._meta.fields if field.name in {"name", "title", "number"}),
-        None,
+    attr = (
+        config["attr"]
+        if config
+        else next(
+            (
+                field.name
+                for field in related._meta.fields
+                if field.name in {"name", "title", "number"}
+            ),
+            None,
+        )
     )
     if not attr:
         return None
@@ -375,7 +388,9 @@ def _parse_datetime(value: Any) -> datetime:
 
 def _deals_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) -> None:
     title = payload.get("calculations") or payload.get("description")
-    prepared.setdefault("title", str(title).strip() if title else f"Deal {payload.get('id') or 'row'}")
+    prepared.setdefault(
+        "title", str(title).strip() if title else f"Deal {payload.get('id') or 'row'}"
+    )
     if payload.get("is_closed") and prepared.get("status") != "closed":
         prepared["status"] = "closed"
     if not prepared.get("loss_reason"):
@@ -500,7 +515,9 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
                 field_obj = model._meta.get_field(field_name)
             except FieldDoesNotExist:
                 continue
-            treat_as_id = target.endswith("_id") or isinstance(field_obj, models.ForeignKey)
+            treat_as_id = target.endswith("_id") or isinstance(
+                field_obj, models.ForeignKey
+            )
             prepared[target] = _coerce_value(field_obj, value, treat_as_id)
 
         if spec.post_process:
@@ -541,7 +558,9 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 def main() -> None:
     args = _parse_args()
     requested_path = Path(args.path)
-    workbook_path = requested_path if requested_path.is_absolute() else BASE_DIR / requested_path
+    workbook_path = (
+        requested_path if requested_path.is_absolute() else BASE_DIR / requested_path
+    )
     workbook = load_workbook(filename=workbook_path, data_only=True)
     selected = _normalize_sheet_name(args.sheet) if args.sheet else None
     summary = []
@@ -566,7 +585,9 @@ def main() -> None:
         return
 
     for title, result in summary:
-        print(f"{title}: обработано строк {result['processed']}, создано объектов {result['created']}")
+        print(
+            f"{title}: обработано строк {result['processed']}, создано объектов {result['created']}"
+        )
 
     if args.dry_run:
         print("Dry run — записи не выполнялись.")
