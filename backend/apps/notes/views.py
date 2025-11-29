@@ -55,6 +55,13 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             author_name = full_name or user.username
         serializer.save(author_name=author_name or "")
 
+    def _is_deal_seller(self, user, instance):
+        """Разрешить действия над заметкой только её продавцу."""
+        if not user or not user.is_authenticated or not instance:
+            return False
+        deal = getattr(instance, "deal", None)
+        return bool(deal and deal.seller_id == user.id)
+
     def _ensure_user_is_deal_seller(self, deal):
         user = self.request.user
         if not user or not user.is_authenticated or not deal:
@@ -66,6 +73,11 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             raise PermissionDenied(
                 "Только владелец сделки (продавец) может создавать заметки."
             )
+
+    def _can_modify(self, user, instance):
+        if self._is_admin(user):
+            return True
+        return self._is_deal_seller(user, instance)
 
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):

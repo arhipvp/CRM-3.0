@@ -59,3 +59,25 @@ class NoteCreationPermissionsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("владелец сделки", response.data["detail"])
         self.assertEqual(Note.objects.filter(deal=self.deal).count(), 0)
+
+    def test_seller_can_delete_note(self):
+        note = Note.objects.create(
+            deal=self.deal, body="deletable note", author_name="Seller"
+        )
+        self._auth(self.seller_token)
+
+        response = self.api_client.delete(f"/api/v1/notes/{note.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        deleted_note = Note.objects.with_deleted().get(id=note.id)
+        self.assertIsNotNone(deleted_note.deleted_at)
+
+    def test_non_seller_cannot_delete_note(self):
+        note = Note.objects.create(
+            deal=self.deal, body="other user note", author_name="Seller"
+        )
+        self._auth(self.other_token)
+
+        response = self.api_client.delete(f"/api/v1/notes/{note.id}/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIsNone(Note.objects.with_deleted().get(id=note.id).deleted_at)
