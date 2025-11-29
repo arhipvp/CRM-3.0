@@ -106,6 +106,22 @@ class DealViewSet(
 
         return queryset.filter(Q(seller=user) | Q(executor=user))
 
+    def _can_modify(self, user, instance):
+        if not user or not user.is_authenticated:
+            return False
+        return _is_admin_user(user)
+
+    def _can_merge(self, user, deal):
+        if not user or not user.is_authenticated:
+            return False
+        return _is_admin_user(user) or deal.seller_id == user.id
+
+    def perform_create(self, serializer):
+        if self.request.user and self.request.user.is_authenticated:
+            serializer.save(seller=self.request.user)
+        else:
+            serializer.save()
+
 
 class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
@@ -127,29 +143,21 @@ class QuoteViewSet(viewsets.ModelViewSet):
         if is_admin:
             return queryset
 
-        return queryset.filter(Q(seller=user) | Q(executor=user))
-
-        if not is_admin:
-            queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+        queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
 
         deal_id = self.request.query_params.get("deal")
         if deal_id:
             queryset = queryset.filter(deal_id=deal_id)
         return queryset
 
-    def _can_modify(self, user, instance):
-        return _is_admin_user(user)
-
-    def _can_merge(self, user, deal):
-        if _is_admin_user(user):
-            return True
-        return bool(user and user.is_authenticated and deal.seller_id == user.id)
-
     def perform_create(self, serializer):
-        if self.request.user and self.request.user.is_authenticated:
-            serializer.save(seller=self.request.user)
-        else:
-            serializer.save()
+        defaults: dict[str, object] = {}
+        if (
+            self.request.user.is_authenticated
+            and "seller" not in serializer.validated_data
+        ):
+            defaults["seller"] = self.request.user
+        serializer.save(**defaults)
 
 
 class InsuranceCompanyViewSet(viewsets.ReadOnlyModelViewSet):

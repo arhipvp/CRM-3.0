@@ -15,7 +15,9 @@ class DealMergeMixin:
         serializer.is_valid(raise_exception=True)
 
         target_id = str(serializer.validated_data["target_deal_id"])
-        source_ids = [str(value) for value in serializer.validated_data["source_deal_ids"]]
+        source_ids = [
+            str(value) for value in serializer.validated_data["source_deal_ids"]
+        ]
         combined_ids = {target_id, *source_ids}
 
         deals_qs = (
@@ -42,14 +44,16 @@ class DealMergeMixin:
         client_id = target_deal.client_id
         for deal in source_deals:
             if deal.client_id != client_id:
-                raise ValidationError("All merged deals must belong to the same client.")
+                raise ValidationError("Все сделки должны принадлежать одному клиенту.")
             if deal.deleted_at is not None:
                 raise ValidationError(
                     {"source_deal_ids": "Source deals must not be deleted."}
                 )
 
         for deal in (target_deal, *source_deals):
-            if not hasattr(self, "_can_merge") or not self._can_merge(request.user, deal):
+            if not hasattr(self, "_can_merge") or not self._can_merge(
+                request.user, deal
+            ):
                 raise PermissionDenied("Only deal owner or admin can merge deals.")
 
         actor = request.user if request.user and request.user.is_authenticated else None
