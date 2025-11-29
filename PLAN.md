@@ -50,6 +50,7 @@
     - ✅ Обновил админку `ChatMessage` с export/import, кастомными столбцами и button для восстановления.
   - [x] Verify typing, environment settings, and available tests/documentation where applicable.
     - ✅ Тексты, badges и fieldsets на английском, типы/стили нет смысла менять.
+    - 🧹 Обновлён порядок импортов с помощью `isort` (прошёл `isort --check-only`).
 - `backend/apps/chat/apps.py`
   - [x] Describe the file's purpose and key dependencies.
     - ✅ AppConfig теперь включает докстринг и названия, указывающие на чат-модуль.
@@ -574,6 +575,7 @@
 - `backend/apps/users/views.py`
   - [ ] Describe the file's purpose and key dependencies.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+    - 🧹 `isort` выровнял импорты (прошёл `python -m isort --check-only apps` и отредактировал).
 - `backend/config/__init__.py`
   - [ ] Describe the file's purpose and key dependencies.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
