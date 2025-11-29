@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
+import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
-import json
-import uuid
 
 import django
 from openpyxl import load_workbook
@@ -48,7 +48,7 @@ django.setup()
 
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
-from django.db import models, connection
+from django.db import connection, models
 
 
 @dataclass(frozen=True)
