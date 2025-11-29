@@ -3,13 +3,13 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import uuid
-from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import datetime, date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
+import json
+import uuid
 
 import django
 from openpyxl import load_workbook
@@ -47,9 +47,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.apps import apps
-from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
-from django.db import IntegrityError, models
+from django.db import models, connection
 
 
 @dataclass(frozen=True)
@@ -58,29 +57,26 @@ class SheetSpec:
     field_map: Mapping[str, str]
     defaults: Mapping[str, Any] = field(default_factory=dict)
     post_process: Callable[[dict[str, Any], Mapping[str, Any]], None] | None = None
-    required_fields: Iterable[str] = field(default_factory=tuple)
-    references: Iterable[tuple[str, str]] = field(default_factory=tuple)
-    legacy_context: str | None = None
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Импортирует CRM-данные из Excel-таблицы backup_*.xlsx."
+        description="??????????? CRM-?????? ?? Excel-??????? (?? ??????? scripts/templates/business_data_template_new.xlsx)."
     )
-    parser.add_argument("path", help="путь до Excel-файла (.xlsx)")
-    parser.add_argument(
-        "--sheet", help="обрабатывать только указанный лист (регистр не важен)"
-    )
+    parser.add_argument("path", help="???? ?? Excel-????? (.xlsx)")
+    parser.add_argument("--sheet", help="???????????? ?????? ????????? ???? (??????? ?? ?????)")
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="проверить и подсчитать записи, не сохраняя их в базу",
+        help="????????? ? ?????????? ??????, ?? ???????? ?? ? ????",
+    )
+    parser.add_argument(
+        "--clear",
+        action="store_true",
+        help="??????????? ??????? ??????????? ??????????? ??????????? ?????? ? ????????? ? ???????",
     )
     return parser.parse_args()
 
-
-INSERTED_RECORD_IDS: dict[str, set[Any]] = defaultdict(set)
-VOVA_USER_ID: uuid.UUID | None = None
 
 
 def _normalize_sheet_name(name: str) -> str:
@@ -91,9 +87,7 @@ def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
     header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
     headers = [str(cell).strip().lower() if cell else "" for cell in header_row]
 
-    for row_index, row in enumerate(
-        sheet.iter_rows(min_row=2, values_only=True), start=2
-    ):
+    for row_index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
         if all(cell in (None, "", False) for cell in row):
             continue
 
@@ -108,15 +102,17 @@ def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
 
 
 def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
-    if value is None or (isinstance(value, str) and not value.strip()):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and not value.strip():
         return None
 
     if isinstance(field, models.DecimalField):
         return Decimal(str(value))
 
-    if isinstance(field, models.DateField) and not isinstance(
-        field, models.DateTimeField
-    ):
+    if isinstance(field, models.DateField) and not isinstance(field, models.DateTimeField):
         return _parse_date(value)
 
     if isinstance(field, models.DateTimeField):
@@ -137,61 +133,68 @@ def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
                 return False
         return bool(value)
 
-    return _truncate_charfield(field, field.to_python(value))
+    return field.to_python(value)
 
 
-def _truncate_charfield(field: models.Field, value: Any) -> Any:
-    if value is None:
-        return None
-    if isinstance(field, models.CharField) and field.max_length:
-        text = str(value)
-        if len(text) > field.max_length:
-            return text[: field.max_length]
-    return value
+CLEAR_MODEL_ORDER = [
+    "tasks.Task",
+    "finances.FinancialRecord",
+    "finances.Payment",
+    "policies.Policy",
+    "documents.Document",
+    "notes.Note",
+    "chat.ChatMessage",
+    "deals.Quote",
+    "deals.Deal",
+    "clients.Client",
+]
 
 
-def _parse_uuid(value: Any) -> uuid.UUID | None:
-    try:
-        return uuid.UUID(str(value))
-    except (ValueError, AttributeError, TypeError):
-        return None
-
-
-def _legacy_pk_for_model(
-    model: type[models.Model], legacy_id: Any, context: str | None = None
-) -> uuid.UUID | None:
-    if legacy_id in (None, "", False):
-        return None
-    text = str(legacy_id).strip()
-    if not text:
-        return None
-    existing_uuid = _parse_uuid(text)
-    if existing_uuid:
-        return existing_uuid
-    suffix = f"{context}:{text}" if context else text
-    return uuid.uuid5(uuid.NAMESPACE_URL, f"{model._meta.label_lower}:{suffix}")
+def _clear_tables() -> None:
+    """Удаляет данные из ключевых моделей в правильном порядке зависимости."""
+    with connection.cursor() as cursor:
+        for model_path in CLEAR_MODEL_ORDER:
+            model = apps.get_model(model_path)
+            table = connection.ops.quote_name(model._meta.db_table)
+            cursor.execute(f"DELETE FROM {table};")
 
 
 def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
-    if value in (None, "", False):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and not value.strip():
         return None
 
+    related = field.remote_field.model
+    if related._meta.label_lower == "clients.client":
+        mapped = _map_to_client_uuid(value)
+        if mapped:
+            return mapped
+
+    if related._meta.label_lower == "deals.deal":
+        mapped = _map_to_deal_uuid(value)
+        if mapped:
+            return mapped
+
+    if related._meta.label_lower == "policies.policy":
+        mapped = _map_to_policy_uuid(value)
+        if mapped:
+            return mapped
+
+    if related._meta.label_lower == "finances.payment":
+        mapped = _map_to_payment_uuid(value)
+        if mapped:
+            return mapped
+
     if isinstance(value, (int, float)):
-        legacy_pk = _legacy_pk_for_model(field.remote_field.model, value)
-        if legacy_pk:
-            return _ensure_related_instance(
-                field.remote_field.model, legacy_pk, str(value)
-            )
         return int(value)
 
     text = str(value).strip()
     if text.isdigit():
-        legacy_pk = _legacy_pk_for_model(field.remote_field.model, text)
-        if legacy_pk:
-            return _ensure_related_instance(field.remote_field.model, legacy_pk, text)
         return int(text)
 
-    related = field.remote_field.model
     for attr in ("name", "title", "number"):
         if hasattr(related, attr):
             lookup = {attr: text}
@@ -202,25 +205,15 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
     if created_pk:
         return created_pk
 
-    raise ValueError(
-        f"????????? ?????? {related._meta.verbose_name} ?? ??????? ('{value}')"
-    )
+    raise ValueError(f"Не найдено {related._meta.verbose_name} '{value}'")
 
 
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:
     key = related._meta.label_lower
     config = _AUTO_CREATE_MAPPING.get(key)
-    attr = (
-        config["attr"]
-        if config
-        else next(
-            (
-                field.name
-                for field in related._meta.fields
-                if field.name in {"name", "title", "number"}
-            ),
-            None,
-        )
+    attr = config["attr"] if config else next(
+        (field.name for field in related._meta.fields if field.name in {"name", "title", "number"}),
+        None,
     )
     if not attr:
         return None
@@ -229,30 +222,124 @@ def _auto_create_related(related: type[models.Model], text: str) -> int | None:
     return obj.pk
 
 
-def _ensure_related_instance(
-    related: type[models.Model], pk: Any, display: str | None
-) -> Any:
-    if not pk:
-        return pk
-    if related.objects.filter(pk=pk).exists():
-        return pk
-    defaults: dict[str, Any] = {}
-    for field_name in ("name", "title", "number"):
-        if field_name in {field.name for field in related._meta.fields}:
-            defaults[field_name] = display or f"Legacy {related._meta.verbose_name}"
-            break
-    try:
-        related.objects.create(pk=pk, **defaults)
-    except IntegrityError:
-        pass
-    return pk
-
-
 _AUTO_CREATE_MAPPING = {
     "deals.insurancecompany": {"attr": "name"},
     "deals.insurancetype": {"attr": "name"},
     "deals.saleschannel": {"attr": "name"},
 }
+
+CLIENT_MAPPING_FILE = BASE_DIR / "client_mapping.json"
+
+
+def _load_client_mapping() -> dict[str, str]:
+    if not CLIENT_MAPPING_FILE.exists():
+        return {}
+    try:
+        data = json.loads(CLIENT_MAPPING_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return {str(key): str(value) for key, value in data.items()}
+
+
+CLIENT_ID_OVERRIDES: dict[str, str] = _load_client_mapping()
+
+
+def _normalize_legacy_key(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    key = str(value).strip()
+    if not key:
+        return None
+    return key
+
+
+def _map_to_client_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return CLIENT_ID_OVERRIDES.get(key)
+
+
+DEAL_ID_OVERRIDES: dict[str, str] = {}
+
+
+def _map_to_deal_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return DEAL_ID_OVERRIDES.get(key)
+
+
+def _ensure_deal_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = DEAL_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    DEAL_ID_OVERRIDES[key] = mapped
+    return mapped
+
+
+POLICY_ID_OVERRIDES: dict[str, str] = {}
+
+
+def _map_to_policy_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return POLICY_ID_OVERRIDES.get(key)
+
+
+def _ensure_policy_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = POLICY_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    POLICY_ID_OVERRIDES[key] = mapped
+    return mapped
+
+
+PAYMENT_ID_OVERRIDES: dict[str, str] = {}
+
+
+def _map_to_payment_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return PAYMENT_ID_OVERRIDES.get(key)
+
+
+def _ensure_payment_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = PAYMENT_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    PAYMENT_ID_OVERRIDES[key] = mapped
+    return mapped
+
+
+def _ensure_client_uuid_for_legacy(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = CLIENT_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    CLIENT_ID_OVERRIDES[key] = mapped
+    return mapped
 
 
 def _parse_date(value: Any) -> date:
@@ -278,16 +365,21 @@ def _parse_datetime(value: Any) -> datetime:
             return datetime.strptime(text, fmt)
         except ValueError:
             continue
+    for fmt in ("%Y-%m-%d",):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
     raise ValueError(f"Не удалось разобрать дату/время: {value}")
 
 
 def _deals_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) -> None:
     title = payload.get("calculations") or payload.get("description")
-    prepared.setdefault(
-        "title", str(title).strip() if title else f"Deal {payload.get('id') or 'row'}"
-    )
+    prepared.setdefault("title", str(title).strip() if title else f"Deal {payload.get('id') or 'row'}")
     if payload.get("is_closed") and prepared.get("status") != "closed":
         prepared["status"] = "closed"
+    if not prepared.get("loss_reason"):
+        prepared["loss_reason"] = ""
 
 
 def _tasks_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) -> None:
@@ -307,128 +399,6 @@ def _ensure_sign(prepared: dict[str, Any], positive: bool) -> None:
     prepared["amount"] = decimal_amount if positive else -abs(decimal_amount)
 
 
-def _get_vova_user_id() -> uuid.UUID | None:
-    global VOVA_USER_ID
-    if VOVA_USER_ID:
-        return VOVA_USER_ID
-    user_model = apps.get_model(settings.AUTH_USER_MODEL)
-    VOVA_USER_ID = (
-        user_model.objects.filter(username="Vova").values_list("pk", flat=True).first()
-    )
-    return VOVA_USER_ID
-
-
-def _compute_policy_contact_date(payload: Mapping[str, Any]) -> date | None:
-    end_date = payload.get("end_date") or payload.get("endDate")
-    if end_date:
-        try:
-            base_date = _parse_date(end_date)
-        except ValueError:
-            base_date = None
-    else:
-        base_date = None
-    if base_date is None:
-        start_date = payload.get("start_date") or payload.get("startDate")
-        if start_date:
-            try:
-                base_date = _parse_date(start_date)
-            except ValueError:
-                base_date = None
-    if base_date is None:
-        return None
-    return base_date - timedelta(days=60)
-
-
-def _policy_identity(
-    payload: Mapping[str, Any], prepared: Mapping[str, Any]
-) -> str | None:
-    for key in ("policy_number", "number"):
-        value = payload.get(key)
-        if value:
-            return str(value).strip()
-    value = prepared.get("number")
-    if value:
-        return str(value).strip()
-    value = payload.get("id")
-    if value:
-        return str(value).strip()
-    return None
-
-
-def _policy_auto_deal_id(
-    payload: Mapping[str, Any],
-    prepared: Mapping[str, Any],
-    deal_model: type[models.Model],
-) -> uuid.UUID | None:
-    identity = _policy_identity(payload, prepared)
-    if not identity:
-        return None
-    return _legacy_pk_for_model(deal_model, identity, context="policy_auto")
-
-
-def _policy_auto_deal_title(
-    payload: Mapping[str, Any], prepared: Mapping[str, Any]
-) -> str:
-    identity = _policy_identity(payload, prepared)
-    if identity:
-        return f"Автоматически созданная сделка из полиса {identity}"
-    return "Автоматически созданная сделка из полиса"
-
-
-def _ensure_policy_deal(prepared: dict[str, Any], payload: Mapping[str, Any]) -> bool:
-    deal_model = apps.get_model("deals.Deal")
-    final_id = prepared.get("deal_id")
-    if not final_id:
-        auto_id = _policy_auto_deal_id(payload, prepared, deal_model)
-        if not auto_id:
-            return False
-        final_id = auto_id
-        prepared["deal_id"] = final_id
-
-    if deal_model.objects.filter(pk=final_id).exists():
-        return True
-
-    client_id = prepared.get("client_id")
-    if client_id is None:
-        return False
-
-    vova_id = _get_vova_user_id()
-    next_contact = _compute_policy_contact_date(payload)
-    title = _policy_auto_deal_title(payload, prepared)
-    identity = _policy_identity(payload, prepared) or "без номера"
-    description = f"Создана автоматически при импорте полиса {identity}"
-
-    try:
-        deal_model.objects.create(
-            id=final_id,
-            title=title,
-            description=description,
-            client_id=client_id,
-            seller_id=vova_id,
-            executor_id=vova_id,
-            status="open",
-            next_contact_date=next_contact,
-            expected_close=next_contact,
-            source="policies_import",
-        )
-    except IntegrityError:
-        return True
-
-    return True
-
-
-def _truncate_prepared_values(model, prepared: dict[str, Any]) -> None:
-    for key, value in list(prepared.items()):
-        if value is None:
-            continue
-        field_name = key[:-3] if key.endswith("_id") else key
-        try:
-            field_obj = model._meta.get_field(field_name)
-        except FieldDoesNotExist:
-            continue
-        prepared[key] = _truncate_charfield(field_obj, value)
-
-
 SHEET_SPECS: Mapping[str, SheetSpec] = {
     "clients": SheetSpec(
         model_path="clients.Client",
@@ -437,7 +407,6 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "phone": "phone",
             "note": "notes",
         },
-        defaults={"notes": "", "phone": ""},
     ),
     "deals": SheetSpec(
         model_path="deals.Deal",
@@ -449,7 +418,6 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "start_date": "expected_close",
             "closed_reason": "loss_reason",
         },
-        defaults={"loss_reason": ""},
         post_process=_deals_post_process,
     ),
     "policies": SheetSpec(
@@ -469,13 +437,6 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "vehicle_vin": "vin",
             "note": "note",
         },
-        required_fields=(
-            "client_id",
-            "number",
-            "insurance_company_id",
-            "insurance_type_id",
-        ),
-        references=(("deals.Deal", "deal_id"), ("clients.Client", "client_id")),
     ),
     "payments": SheetSpec(
         model_path="finances.Payment",
@@ -485,7 +446,6 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "payment_date": "scheduled_date",
             "actual_payment_date": "actual_date",
         },
-        references=(("policies.Policy", "policy_id"),),
     ),
     "incomes": SheetSpec(
         model_path="finances.FinancialRecord",
@@ -498,8 +458,6 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
         },
         defaults={"source": "income"},
         post_process=lambda prepared, _: _ensure_sign(prepared, positive=True),
-        references=(("finances.Payment", "payment_id"),),
-        legacy_context="incomes",
     ),
     "expenses": SheetSpec(
         model_path="finances.FinancialRecord",
@@ -512,8 +470,6 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
         },
         defaults={"source": "expense"},
         post_process=lambda prepared, _: _ensure_sign(prepared, positive=False),
-        references=(("finances.Payment", "payment_id"),),
-        legacy_context="expenses",
     ),
     "tasks": SheetSpec(
         model_path="tasks.Task",
@@ -535,9 +491,6 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 
     for row_index, payload in _iter_rows(sheet):
         prepared: dict[str, Any] = dict(spec.defaults)
-        legacy_pk = _legacy_pk_for_model(model, payload.get("id"), spec.legacy_context)
-        if legacy_pk:
-            prepared["id"] = legacy_pk
         for column, value in payload.items():
             target = spec.field_map.get(column)
             if not target:
@@ -547,46 +500,31 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
                 field_obj = model._meta.get_field(field_name)
             except FieldDoesNotExist:
                 continue
-            treat_as_id = target.endswith("_id") or isinstance(
-                field_obj, models.ForeignKey
-            )
-            coerced = _coerce_value(field_obj, value, treat_as_id)
-            if coerced is None:
-                continue
-            prepared[target] = coerced
+            treat_as_id = target.endswith("_id") or isinstance(field_obj, models.ForeignKey)
+            prepared[target] = _coerce_value(field_obj, value, treat_as_id)
 
         if spec.post_process:
             spec.post_process(prepared, payload)
 
-        if spec.required_fields and any(
-            prepared.get(field) is None for field in spec.required_fields
-        ):
-            continue
-
-        if spec.model_path == "policies.Policy":
-            if not _ensure_policy_deal(prepared, payload):
-                continue
-
-        if spec.references:
-            missing_reference = False
-            for model_path, field_name in spec.references:
-                field_value = prepared.get(field_name)
-                if field_value is None:
-                    continue
-                existing_ids = INSERTED_RECORD_IDS.get(model_path)
-                ref_model = apps.get_model(model_path)
-                if existing_ids and field_value in existing_ids:
-                    continue
-                if not ref_model.objects.filter(pk=field_value).exists():
-                    missing_reference = True
-                    break
-            if missing_reference:
-                continue
-
         if not prepared:
             continue
 
-        _truncate_prepared_values(model, prepared)
+        if spec.model_path == "clients.Client":
+            client_uuid = _ensure_client_uuid_for_legacy(payload.get("id"))
+            if client_uuid:
+                prepared["id"] = client_uuid
+        elif spec.model_path == "deals.Deal":
+            deal_uuid = _ensure_deal_uuid(payload.get("id"))
+            if deal_uuid:
+                prepared["id"] = deal_uuid
+        elif spec.model_path == "policies.Policy":
+            policy_uuid = _ensure_policy_uuid(payload.get("id"))
+            if policy_uuid:
+                prepared["id"] = policy_uuid
+        elif spec.model_path == "finances.Payment":
+            payment_uuid = _ensure_payment_uuid(payload.get("id"))
+            if payment_uuid:
+                prepared["id"] = payment_uuid
 
         instances.append(model(**prepared))
         processed += 1
@@ -596,13 +534,6 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 
     if not dry_run:
         model.objects.bulk_create(instances)
-        inserted_ids = {
-            getattr(instance, "id", None)
-            for instance in instances
-            if getattr(instance, "id", None) is not None
-        }
-        if inserted_ids:
-            INSERTED_RECORD_IDS[spec.model_path].update(inserted_ids)
 
     return {"processed": processed, "created": len(instances)}
 
@@ -610,12 +541,13 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 def main() -> None:
     args = _parse_args()
     requested_path = Path(args.path)
-    workbook_path = (
-        requested_path if requested_path.is_absolute() else BASE_DIR / requested_path
-    )
+    workbook_path = requested_path if requested_path.is_absolute() else BASE_DIR / requested_path
     workbook = load_workbook(filename=workbook_path, data_only=True)
     selected = _normalize_sheet_name(args.sheet) if args.sheet else None
     summary = []
+    if args.clear:
+        print("Очистка связанных таблиц перед импортом...")
+        _clear_tables()
 
     for sheet in workbook.worksheets:
         normalized = _normalize_sheet_name(sheet.title)
@@ -634,9 +566,7 @@ def main() -> None:
         return
 
     for title, result in summary:
-        print(
-            f"{title}: обработано строк {result['processed']}, создано объектов {result['created']}"
-        )
+        print(f"{title}: обработано строк {result['processed']}, создано объектов {result['created']}")
 
     if args.dry_run:
         print("Dry run — записи не выполнялись.")

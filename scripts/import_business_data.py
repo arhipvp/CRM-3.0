@@ -8,6 +8,8 @@ from datetime import datetime, date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
+import json
+import uuid
 
 import django
 from openpyxl import load_workbook
@@ -46,7 +48,7 @@ django.setup()
 
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
-from django.db import models
+from django.db import models, connection
 
 
 @dataclass(frozen=True)
@@ -100,7 +102,11 @@ def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
 
 
 def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
-    if value in (None, "", False):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and not value.strip():
         return None
 
     if isinstance(field, models.DecimalField):
@@ -135,6 +141,10 @@ CLEAR_MODEL_ORDER = [
     "finances.FinancialRecord",
     "finances.Payment",
     "policies.Policy",
+    "documents.Document",
+    "notes.Note",
+    "chat.ChatMessage",
+    "deals.Quote",
     "deals.Deal",
     "clients.Client",
 ]
@@ -142,14 +152,41 @@ CLEAR_MODEL_ORDER = [
 
 def _clear_tables() -> None:
     """Удаляет данные из ключевых моделей в правильном порядке зависимости."""
-    for model_path in CLEAR_MODEL_ORDER:
-        model = apps.get_model(model_path)
-        model.objects.all().delete()
+    with connection.cursor() as cursor:
+        for model_path in CLEAR_MODEL_ORDER:
+            model = apps.get_model(model_path)
+            table = connection.ops.quote_name(model._meta.db_table)
+            cursor.execute(f"DELETE FROM {table};")
 
 
 def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
-    if value in (None, "", False):
+    if value is None:
         return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+
+    related = field.remote_field.model
+    if related._meta.label_lower == "clients.client":
+        mapped = _map_to_client_uuid(value)
+        if mapped:
+            return mapped
+
+    if related._meta.label_lower == "deals.deal":
+        mapped = _map_to_deal_uuid(value)
+        if mapped:
+            return mapped
+
+    if related._meta.label_lower == "policies.policy":
+        mapped = _map_to_policy_uuid(value)
+        if mapped:
+            return mapped
+
+    if related._meta.label_lower == "finances.payment":
+        mapped = _map_to_payment_uuid(value)
+        if mapped:
+            return mapped
 
     if isinstance(value, (int, float)):
         return int(value)
@@ -158,7 +195,6 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
     if text.isdigit():
         return int(text)
 
-    related = field.remote_field.model
     for attr in ("name", "title", "number"):
         if hasattr(related, attr):
             lookup = {attr: text}
@@ -169,7 +205,7 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
     if created_pk:
         return created_pk
 
-    raise ValueError(f"Не удалось найти {related._meta.verbose_name} по значению '{value}'")
+    raise ValueError(f"Не найдено {related._meta.verbose_name} '{value}'")
 
 
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:
@@ -191,6 +227,119 @@ _AUTO_CREATE_MAPPING = {
     "deals.insurancetype": {"attr": "name"},
     "deals.saleschannel": {"attr": "name"},
 }
+
+CLIENT_MAPPING_FILE = BASE_DIR / "client_mapping.json"
+
+
+def _load_client_mapping() -> dict[str, str]:
+    if not CLIENT_MAPPING_FILE.exists():
+        return {}
+    try:
+        data = json.loads(CLIENT_MAPPING_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return {str(key): str(value) for key, value in data.items()}
+
+
+CLIENT_ID_OVERRIDES: dict[str, str] = _load_client_mapping()
+
+
+def _normalize_legacy_key(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    key = str(value).strip()
+    if not key:
+        return None
+    return key
+
+
+def _map_to_client_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return CLIENT_ID_OVERRIDES.get(key)
+
+
+DEAL_ID_OVERRIDES: dict[str, str] = {}
+
+
+def _map_to_deal_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return DEAL_ID_OVERRIDES.get(key)
+
+
+def _ensure_deal_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = DEAL_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    DEAL_ID_OVERRIDES[key] = mapped
+    return mapped
+
+
+POLICY_ID_OVERRIDES: dict[str, str] = {}
+
+
+def _map_to_policy_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return POLICY_ID_OVERRIDES.get(key)
+
+
+def _ensure_policy_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = POLICY_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    POLICY_ID_OVERRIDES[key] = mapped
+    return mapped
+
+
+PAYMENT_ID_OVERRIDES: dict[str, str] = {}
+
+
+def _map_to_payment_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    return PAYMENT_ID_OVERRIDES.get(key)
+
+
+def _ensure_payment_uuid(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = PAYMENT_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    PAYMENT_ID_OVERRIDES[key] = mapped
+    return mapped
+
+
+def _ensure_client_uuid_for_legacy(value: Any) -> str | None:
+    key = _normalize_legacy_key(value)
+    if not key:
+        return None
+    mapped = CLIENT_ID_OVERRIDES.get(key)
+    if mapped:
+        return mapped
+    mapped = str(uuid.uuid4())
+    CLIENT_ID_OVERRIDES[key] = mapped
+    return mapped
 
 
 def _parse_date(value: Any) -> date:
@@ -216,6 +365,11 @@ def _parse_datetime(value: Any) -> datetime:
             return datetime.strptime(text, fmt)
         except ValueError:
             continue
+    for fmt in ("%Y-%m-%d",):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
     raise ValueError(f"Не удалось разобрать дату/время: {value}")
 
 
@@ -224,6 +378,8 @@ def _deals_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) ->
     prepared.setdefault("title", str(title).strip() if title else f"Deal {payload.get('id') or 'row'}")
     if payload.get("is_closed") and prepared.get("status") != "closed":
         prepared["status"] = "closed"
+    if not prepared.get("loss_reason"):
+        prepared["loss_reason"] = ""
 
 
 def _tasks_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) -> None:
@@ -352,6 +508,23 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 
         if not prepared:
             continue
+
+        if spec.model_path == "clients.Client":
+            client_uuid = _ensure_client_uuid_for_legacy(payload.get("id"))
+            if client_uuid:
+                prepared["id"] = client_uuid
+        elif spec.model_path == "deals.Deal":
+            deal_uuid = _ensure_deal_uuid(payload.get("id"))
+            if deal_uuid:
+                prepared["id"] = deal_uuid
+        elif spec.model_path == "policies.Policy":
+            policy_uuid = _ensure_policy_uuid(payload.get("id"))
+            if policy_uuid:
+                prepared["id"] = policy_uuid
+        elif spec.model_path == "finances.Payment":
+            payment_uuid = _ensure_payment_uuid(payload.get("id"))
+            if payment_uuid:
+                prepared["id"] = payment_uuid
 
         instances.append(model(**prepared))
         processed += 1
