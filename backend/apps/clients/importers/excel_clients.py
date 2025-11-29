@@ -79,7 +79,9 @@ def read_client_rows(sheet: Worksheet) -> list[tuple[int, Mapping[str, Any]]]:
     return parsed
 
 
-def build_client_payload(data: Mapping[str, Any], creator: models.Model | None) -> dict[str, Any]:
+def build_client_payload(
+    data: Mapping[str, Any], creator: models.Model | None
+) -> dict[str, Any]:
     name = data.get("name")
     if not name or not str(name).strip():
         raise ValueError("поле 'Name' обязательно для заполнения")
