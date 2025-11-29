@@ -68,6 +68,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="????????? ? ?????????? ??????, ?? ???????? ?? ? ????",
     )
+    parser.add_argument(
+        "--clear",
+        action="store_true",
+        help="??????????? ??????? ??????????? ??????????? ??????????? ?????? ? ????????? ? ???????",
+    )
     return parser.parse_args()
 
 
@@ -123,6 +128,23 @@ def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
         return bool(value)
 
     return field.to_python(value)
+
+
+CLEAR_MODEL_ORDER = [
+    "tasks.Task",
+    "finances.FinancialRecord",
+    "finances.Payment",
+    "policies.Policy",
+    "deals.Deal",
+    "clients.Client",
+]
+
+
+def _clear_tables() -> None:
+    """Удаляет данные из ключевых моделей в правильном порядке зависимости."""
+    for model_path in CLEAR_MODEL_ORDER:
+        model = apps.get_model(model_path)
+        model.objects.all().delete()
 
 
 def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
@@ -350,6 +372,9 @@ def main() -> None:
     workbook = load_workbook(filename=workbook_path, data_only=True)
     selected = _normalize_sheet_name(args.sheet) if args.sheet else None
     summary = []
+    if args.clear:
+        print("Очистка связанных таблиц перед импортом...")
+        _clear_tables()
 
     for sheet in workbook.worksheets:
         normalized = _normalize_sheet_name(sheet.title)
