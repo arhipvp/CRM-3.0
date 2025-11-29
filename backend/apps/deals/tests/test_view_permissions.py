@@ -57,7 +57,7 @@ class DealUpdatePermissionsTests(APITestCase):
     def test_non_seller_cannot_update_deal(self):
         response = self._patch_expected_close(self.other_token, date(2025, 12, 31))
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.deal.refresh_from_db()
         self.assertIsNone(self.deal.expected_close)
 
