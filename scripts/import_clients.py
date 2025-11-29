@@ -8,7 +8,7 @@ from pathlib import Path
 import django
 from openpyxl import load_workbook
 
-# Ensure the backend can be imported by adjusting sys.path before Django setup.
+# Adjust paths so Django can be configured even when the script runs from elsewhere.
 BASE_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = BASE_DIR / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
@@ -26,8 +26,11 @@ from apps.clients.models import Client
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Создаёт клиентов из Excel-файла.")
-    parser.add_argument("path", help="путь до Excel-файла (.xlsx)")
-    parser.add_argument("--sheet", help="имя листа (по умолчанию первый)")
+    parser.add_argument("path", help="Путь до Excel-файла (.xlsx)")
+    parser.add_argument(
+        "--sheet",
+        help="Имя листа (по умолчанию первый)",
+    )
     parser.add_argument(
         "--created-by",
         help="id/email/username пользователя, который станет создателем клиента",
@@ -35,9 +38,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="проверить данные без записи в базу",
+        help="Прогон импорта без сохранения строк в базу",
     )
     return parser.parse_args()
+
+
+def _resolve_path(raw: str) -> Path:
+    candidate = Path(raw)
+    return candidate if candidate.is_absolute() else BASE_DIR / candidate
 
 
 def main() -> None:
@@ -48,10 +56,11 @@ def main() -> None:
         try:
             creator = resolve_creator(args.created_by)
         except ValueError as exc:
-            print(f"ошибка с created_by: {exc}")
+            print(f"Ошибка с created_by: {exc}")
             sys.exit(1)
 
-    workbook = load_workbook(filename=args.path, data_only=True)
+    workbook_path = _resolve_path(args.path)
+    workbook = load_workbook(filename=workbook_path, data_only=True)
     sheet = workbook[args.sheet] if args.sheet else workbook.active
     rows = read_client_rows(sheet)
 
@@ -59,7 +68,7 @@ def main() -> None:
         print("Файл не содержит данных для импорта.")
         return
 
-    instances = []
+    instances: list[Client] = []
     for row_number, row_data in rows:
         try:
             payload = build_client_payload(row_data, creator)
@@ -69,10 +78,12 @@ def main() -> None:
 
         instances.append(Client(**payload))
 
-    print(f"Загружено строк: {len(rows)}; подготовлено объектов: {len(instances)}.")
+    print(
+        f"Загружено строк: {len(rows)}; создано объектов: {len(instances)}."
+    )
 
     if args.dry_run:
-        print("Dry run — ничего не сохраняю.")
+        print("Dry run — записи не сохранены.")
         return
 
     Client.objects.bulk_create(instances)

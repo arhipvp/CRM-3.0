@@ -4,63 +4,31 @@
 - `backend/`: Django 5 + DRF, applications under `apps/*`, shared config, and management scripts.
 - `frontend/`: React 19 + Vite + TypeScript; focus on `src/`, `public/`, and configuration (`eslint`, `tailwind`, `vite`).
 - `scripts/`: import and backup helpers that need clearer typing and documentation.
-- Documentation (`README.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, etc.) must describe actual commands, environment variables, and duties.
+- Documentation files must describe current commands, environment settings, and responsibilities accurately.
 
 ## 2. Common tasks
 - Identify sections lacking annotations and add typing so `mypy` and IDEs understand contracts.
 - Update instructions for running/testing backend, frontend, docker, CI/CD, and backups.
 - Record which tests or checks apply to each area (e.g., `python manage.py test`, `npm run lint`).
+- Review documentation files (`README.md`, backend/README.md, scripts docs, etc.) to ensure they reflect the current behavior and configuration.
 
 ## 3. Files and checklists
 
-- `.claude/settings.local.json`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.dockerignore`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.env.production.example`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.flake8`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.github/SECRETS_SETUP.md`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.github/workflows/ci.yml`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.github/workflows/deploy.yml`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.github/workflows/test.txt`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.gitignore`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `.isort.cfg`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `AGENTS.md`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `CLAUDE.md`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
-- `GEMINI.md`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
 - `README.md`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Сводка по backend/fronted, общим скриптам и инфраструктуре (CI, backup, deploy).
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавлены ссылки на env-файлы, описаны тесты и команды, уточнены параметры `backup_project_to_drive.py` и `scripts/full_import.sh`.
 - `backend/.dockerignore`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Исключает `.venv`, `__pycache__`, `*.pyc`, `db.sqlite3`, `.env`, `*.log`, `media`, `static` из Docker-контекста.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Простая фильтрация; ничего дополнительного для типов/тестов не нужно.
 - `backend/Dockerfile`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Многоступенчатый образ: builder для pip и gunicorn, финальный содержит runtime с нужными утилитами, healthcheck и entrypoint.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Комментарии на русском заменены на английские, описание healthcheck/entrypoint понятное, типы не применимы.
 - `backend/README.md`
   - [ ] Describe the file's purpose and key dependencies.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
@@ -111,7 +79,9 @@
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
 - `backend/apps/clients/importers/excel_clients.py`
   - [ ] Describe the file's purpose and key dependencies.
+    - ✅ Documented Excel importer, clarified payload builder and creator resolver.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Added `Any`/`models.Model` annotations to helper functions to align with backend typing.
 - `backend/apps/clients/migrations/0001_initial.py`
   - [ ] Describe the file's purpose and key dependencies.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
@@ -627,7 +597,9 @@
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
 - `backend/scripts/import_business_data.py`
   - [ ] Describe the file's purpose and key dependencies.
+    - ✅ Backend-specific import script mirrors shared logic; documented defaults and sheet mappings.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Confirmed same typing additions (`Worksheet`, trimming) and default behavior as shared script.
 - `backend/scripts/populate_test_data.sh`
   - [ ] Describe the file's purpose and key dependencies.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
@@ -998,92 +970,157 @@
   - [ ] Describe the file's purpose and key dependencies.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
 - `scripts/backup_project_to_drive.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Сценарий архивирует репозиторий и дампы Postgres/Drive, требует переменных `GOOGLE_DRIVE_*` и `DJANGO_DB_*`.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Удалил дублирующую константу `DEFAULT_EXCLUDED_TABLES` и добавил `Any`-типизацию для `_normalize_cell_value`.
 - `scripts/fix_mojibake.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Небольшой утилитный скрипт, который рекурсивно исправляет mojibake в файлах `.ts/.tsx/.js/.jsx` с помощью `ftfy`.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✏️ Добавил CLI-параметры `--root` и `--extensions`, нормализацию расширений и более явную типизацию обхода файлов.
 - `scripts/full_import.sh`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Главный импортный bash-сценарий, который очищает таблицы, перезаписывает SQL/Excel дампы и вызывает `scripts/import_business_data.py`.
+    - ⚠️ Требует наличия SQL/Excel файлов, пароля `DJANGO_DB_PASSWORD` и Docker-контейнера `backend`.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавил параметры `--backup-sql`, `--backup-xlsx` и `--env-file`, документацию и проверку существования `.env`.
 - `scripts/import_business_data.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Annotated Excel importer, noted `SheetSpec` mapping and legacy UUID helpers.
+    - 📝 Обновлены русскоязычные описания аргументов и уточнён порядок очистки таблиц.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Added `Worksheet` types, checked coercion logic, and documented defaults/trim logic.
 - `scripts/import_clients.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Выяснил, что это простой импорт клиентов из Excel, добавил пояснения аргументов и входного пути.
+    - ⭐ Уточнил помощь по `--sheet`/`--dry-run`, чтобы нельзя было промахнуться при запуске.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавил `_resolve_path` для относительных путей и типизацию списка `Client` в основном цикле для IDE.
 - `scripts/templates/business_data_template.xlsx`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Стандартный Excel-шаблон с листами `Clients`, `Insurance Companies`, `Insurance Types`, `Sales Channels`, `Deals`, `Policies`, `Payments`, `Financial Records`, `Tasks`, `Notes`.
+    - ⚠️ Первые столбцы листа `Clients` — `Name`, `Description`, несколько пустых служат описанием шаблона, не меняются при импорте.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Подтвердил структуру через `openpyxl`, шаблон читается без ошибок.
 - `scripts/templates/business_data_template_new.xlsx`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Простой набор листов (`clients`, `deals`, `policies`, `payments`, `incomes`, `expenses`, `tasks`), используемый `scripts/import_business_data.py`.
+    - 🔍 Первый лист начинается с заголовков `id`, `is_deleted`, `name`, `phone`, `email`, `is_company`, `note`, `drive_folder_path`, `drive_folder_link`.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Пока описание не совпадает с кодом — уточнил, что `SheetSpec` актуален для новых названий.
 - `scripts/vendor/ftfy/__init__.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/bad_codecs/__init__.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/bad_codecs/sloppy.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/bad_codecs/utf8_variants.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/badness.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/chardata.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/cli.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/fixes.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/formatting.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/ftfy/py.typed`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `ftfy`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/wcwidth/__init__.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `wcwidth`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/wcwidth/table_vs16.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `wcwidth`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/wcwidth/table_wide.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `wcwidth`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/wcwidth/table_zero.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `wcwidth`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/wcwidth/unicode_versions.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `wcwidth`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `scripts/vendor/wcwidth/wcwidth.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - NOTE: Vendored `wcwidth`, leave as shipped.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - OK: third-party dependency; no edits.
 - `setup_vps_docker.sh`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Скрипт развертывания Docker на VPS, требующий root-доступа, apt и публичного ключа.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Переписан под `set -euo pipefail`, добавлены функции логгирования, апдейт apt, sudoers, deploy-юзер и поясняющие сообщения.
 - `show_charset.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Утилита для проверки секции SQL-дампа; параметризуется путь, шаблон и длина вывода.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавлены `argparse`, проверка существования файла и экранирование спецсимволов `\n`/`\r`.
 - `show_deal_model.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Вспомогательный скрипт для вывода порции `backend/apps/deals/models.py`; принимает путь, начало и длину.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавил `argparse` с проверкой файла и параметрами `--start`/`--count`.
 - `systemd/crm3-drive-backup.service`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Systemd-сервис, запускающий `scripts/backup_project_to_drive.py` с нужной рабочей директорией и переменными.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавлены `EnvironmentFile`, отдельные переменные и вывод в лог через `StandardOutput`, больше не используется `bash -lc`.
 - `systemd/crm3-drive-backup.timer`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Системный таймер для запуска каждые 6 часов; добавлены `Unit` и `AccuracySec`.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавил `AccuracySec=1m` для точности и привязал к сервису `crm3-drive-backup.service`.
 - `transform_clients.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Читает SQL-дамп, клонирует таблицу клиентов и выдаёт `client_import.sql` + `client_mapping.json` с UUID.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавил CLI с параметрами входного файла, имени пользователя и кодогенерацию вставок с `json`/`uuid`.
 - `transform_deals.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Трансформирует секцию `COPY public.deal` в SQL/заметки, опираясь на `client_mapping.json`.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Добавил CLI с параметрами дампа, маппинга и пользователя, избавился от глобального состояния и оформили генерацию заметок.

@@ -12,7 +12,7 @@ import tempfile
 import zipfile
 from datetime import date, datetime, time, timezone
 from pathlib import Path
-from typing import Iterator, Optional, Set
+from typing import Any, Iterator, Optional, Set
 from urllib.parse import quote_plus
 
 from googleapiclient.discovery import build
@@ -27,7 +27,6 @@ DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 DEFAULT_EXCLUDED_TABLES = ("users_auditlog",)
 DEFAULT_BACKUP_MAX_SESSIONS = 2000
-DEFAULT_EXCLUDED_TABLES = ("users_auditlog",)
 
 ROOT_ENV_FILES = (".env", "backend/.env")
 EXCLUDE_DIRS = {
@@ -154,7 +153,7 @@ def _sanitize_sheet_name(name: str) -> str:
     return trimmed[:31]
 
 
-def _normalize_cell_value(value):
+def _normalize_cell_value(value: Any) -> Any:
     if value is None:
         return None
     if isinstance(value, datetime):

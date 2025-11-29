@@ -1,67 +1,84 @@
-п»ї# CRM 3.0 Skeleton
+# CRM 3.0 Skeleton
 
-Monorepo СЃ backend РЅР° Django + DRF Рё frontend РЅР° React + Vite.
+Monorepo с Django 5 + DRF в `backend/` и React 19 + Vite в `frontend/`. `scripts/` содержит вспомогательные задачи (импорт данных, преобразования, бэкапы).
 
 ## Backend
+
 1. `cd backend`
-2. `python -m venv .venv && .venv\Scripts\activate`
+2. `python -m venv .venv` и `.venv\Scripts\activate` (Windows) или `source .venv/bin/activate` (Unix)
 3. `pip install -r requirements.txt`
 4. `cp .env.example .env`
-5. `python manage.py migrate`
-6. `python manage.py runserver`
+5. Установите значения переменных (`DJANGO_SECRET_KEY`, `DJANGO_DB_*`, `GOOGLE_DRIVE_*` и т.п.)
+6. `python manage.py migrate`
+7. `python manage.py runserver`
 
-API РґРѕСЃС‚СѓРїРЅРѕ РїРѕ Р°РґСЂРµСЃСѓ `http://localhost:8000/api/v1/`, `GET /health/` РїСЂРѕРІРµСЂСЏРµС‚ СЃРѕСЃС‚РѕСЏРЅРёРµ СЃРµСЂРІРµСЂР°.
+API доступно по `http://localhost:8000/api/v1`. `GET /health/` проверяет состояние сервера, `docs/` и `redoc/` дают доступ к OpenAPI.
 
-## РћР±С‰Р°СЏ Р±РёР±Р»РёРѕС‚РµРєР° Р·РЅР°РЅРёР№
-- `POST /api/v1/knowledge_documents/` (multipart/form-data) РїСЂРёРЅРёРјР°РµС‚ С„Р°Р№Р», РїРѕР»Рµ `title`/`description`, Р·Р°РіСЂСѓР¶Р°РµС‚ РґРѕРєСѓРјРµРЅС‚ РІ Google Drive Рё РІРѕР·РІСЂР°С‰Р°РµС‚ РјРµС‚Р°РґР°РЅРЅС‹Рµ `web_view_link`, СЂР°Р·РјРµСЂС‹ Рё СЃС‚Р°С‚РёСЃС‚РёРєСѓ.
-- Р—Р°РіСЂСѓР¶Р°РµРјС‹Рµ С„Р°Р№Р»С‹ СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ РІ РїР°РїРєСѓ РёР· `GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID`, РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕ РЅСѓР¶РЅС‹ `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` Рё `GOOGLE_DRIVE_ROOT_FOLDER_ID`.
-- Р’СЃРµ РїРѕР»СЊР·РѕРІР°С‚РµР»Рё РјРѕРіСѓС‚ С‡РёС‚Р°С‚СЊ Рё РїСЂРёРєСЂРµРїР»СЏС‚СЊ РґРѕРєСѓРјРµРЅС‚С‹; С‚РѕР»СЊРєРѕ Р°РґРјРёРЅС‹ РёРјРµСЋС‚ РїСЂР°РІРѕ РѕР±РЅРѕРІР»СЏС‚СЊ Рё СѓРґР°Р»СЏС‚СЊ Р·Р°РїРёСЃРё, РїСЂРѕРІРµСЂРєР° СЂРѕР»Рё СѓР¶Рµ РІСЃС‚СЂРѕРµРЅР°.
+### Примеры команд
 
-## РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ Р±РµРєР°Рї РЅР° Google Drive
-- `scripts/backup_project_to_drive.py` СЃРѕР±РёСЂР°РµС‚ СЂРµРїРѕР·РёС‚РѕСЂРёР№ (Р±РµР· `.git`, `node_modules`, СЃРёСЃС‚РµРјРЅС‹С… РґРёСЂРµРєС‚РѕСЂРёР№) РІ Р°СЂС…РёРІ `project-repo`, СЃРµР»СЊСЃРєРѕС…РѕР·СЏР№СЃС‚РІРµРЅРЅС‹Рµ РґР°РјРїС‹ Postgres Рё Excel-С‚Р°Р±Р»РёС†С‹ (`database-dumps`), Р° С‚Р°РєР¶Рµ РєРѕРїРёСЂСѓРµС‚ `public`. Р’СЃРµ СѓРїР°РєРѕРІРєРё РїРѕРјРµС‰Р°СЋС‚СЃСЏ РІ РїР°РїРєСѓ РІРёРґР° `crm3-backup-YYYYMMDD-HHMMSS` РІРЅСѓС‚СЂРё `GOOGLE_DRIVE_BACKUP_FOLDER_ID`.
-- РЎРєСЂРёРїС‚ РєРѕРїРёСЂСѓРµС‚ СЃРѕРґРµСЂР¶РёРјРѕРµ `GOOGLE_DRIVE_ROOT_FOLDER_ID` РІ РїРѕРґРґРёСЂРµРєС‚РѕСЂРёСЋ `CRM 3.0 Backup/Media/` (С‚РµРєСѓС‰РёРµ С„Р°Р№Р»С‹ РЅРµ СѓРґР°Р»СЏСЋС‚СЃСЏ, РЅРѕРІС‹Рµ РґРѕР±Р°РІР»СЏСЋС‚СЃСЏ СЂСЏРґРѕРј).
-- SQL-РґР°РјРїС‹ СЃРѕР·РґР°СЋС‚СЃСЏ `pg_dump` РЅР° РѕСЃРЅРѕРІРµ РїРµСЂРµРјРµРЅРЅС‹С… `DJANGO_DB_*` РёР· `.env`/`backend/.env`, Excel-С‚Р°Р±Р»РёС†С‹ С„РѕСЂРјРёСЂСѓСЋС‚СЃСЏ С‡РµСЂРµР· `openpyxl`, РєР°Р¶РґР°СЏ С‚Р°Р±Р»РёС†Р° РїРѕР»СѓС‡Р°РµС‚ С„Р°Р№Р» `public`.
-- РСЃРєР»СЋС‡РµРЅРёСЏ С‚Р°Р±Р»РёС† Р·Р°РґР°СЋС‚СЃСЏ С‡РµСЂРµР· `BACKUP_DB_EXCLUDE_TABLES` (РЅР°РїСЂРёРјРµСЂ `users_auditlog`), РѕРЅРё РЅРµ РїРѕРїР°РґР°СЋС‚ РІ SQL-РґР°РјРїС‹ Рё Excel-СЃРїРёСЃРєРё.
-- РџР°СЂР°РјРµС‚СЂ `BACKUP_MAX_SESSIONS` (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ `2000`) РѕРіСЂР°РЅРёС‡РёРІР°РµС‚ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµСЃСЃРёР№, Р·Р°РІРѕСЂР°С‡РёРІР°РµРјС‹С… РІ `GOOGLE_DRIVE_BACKUP_FOLDER_ID` РґРѕ Р°РєС‚СѓР°Р»СЊРЅРѕРіРѕ СЃРїРёСЃРєР°.
-- Р’ Р°РІР°СЂРёР№РЅРѕР№ СЃРёС‚СѓР°С†РёРё `BACKUP_DB_FALLBACK_HOST` РїРѕР·РІРѕР»СЏРµС‚ РїРѕРїСЂРѕР±РѕРІР°С‚СЊ РїРѕРґРєР»СЋС‡РёС‚СЊСЃСЏ Рє Р±Р°Р·Рµ С‡РµСЂРµР· pgcli, РµСЃР»Рё РѕСЃРЅРѕРІРЅРѕР№ `DJANGO_DB_HOST` РЅРµРґРѕСЃС‚СѓРїРµРЅ.
-- Р—Р°РїСѓСЃРє: `python scripts/backup_project_to_drive.py` (СЃРѕРІРјРµСЃС‚РёРјРѕ СЃ `--project-root` Рё `--env-file`). РЎРєСЂРёРїС‚ СЃРѕР·РґР°С‘С‚ РїРѕРґРїР°РїРєРё `project-repo`, `database-dumps` (sql + xlsx) Рё `drive-files`.
-- Р”Р»СЏ СЂРµРіСѓР»СЏСЂРЅРѕРіРѕ РІС‹РїРѕР»РЅРµРЅРёСЏ СѓСЃС‚Р°РЅРѕРІРёС‚Рµ unit `/etc/systemd/system/crm3-drive-backup.{service,timer}` Рё Р·Р°С„РёРєСЃРёСЂСѓР№С‚Рµ РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ:
-
-```
-sudo systemctl daemon-reload
-sudo systemctl enable --now crm3-drive-backup.timer
-```
-
-РўР°Р№РјРµСЂ СЃ `OnCalendar=00,06,12,18:00:00` Р·Р°РїСѓСЃРєР°РµС‚ СЃР±РѕСЂ РєР°Р¶РґС‹Рµ 6 С‡Р°СЃРѕРІ Рё Р»РѕРіРёСЂСѓРµС‚ РІ `/root/crm3/cron-backup.log`. РђР»СЊС‚РµСЂРЅР°С‚РёРІР° вЂ” cron-Р·Р°РїРёСЃСЊ `0 3 * * * ...` С‡РµСЂРµР· `crontab -e`.
+- `python manage.py test apps/clients`
+- `python manage.py check --deploy`
+- `python manage.py loaddata ...` для фикстур
 
 ## Frontend
+
 1. `cd frontend`
 2. `npm install`
 3. `cp .env.example .env`
-4. `npm run dev`
+4. Установите `VITE_API_URL=http://localhost:8000/api/v1/`
+5. `npm run dev` (Vite на `http://localhost:5173`)
 
-РРЅС‚РµСЂС„РµР№СЃ РґРѕСЃС‚СѓРїРµРЅ РїРѕ `http://localhost:5173/`, Р·Р°РїСЂРѕСЃС‹ РЅР°РїСЂР°РІР»СЏСЋС‚СЃСЏ РЅР° `VITE_API_URL`.
+Для сборки: `npm run build`. Линтинг выполняется через `npm run lint` (`eslint.config.js`).
 
 ## Docker Compose
-1. РЈР±РµРґРёС‚РµСЃСЊ, С‡С‚Рѕ РІ `backend/.env` СЃРѕС…СЂР°РЅС‘РЅ РЅРµСЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РїРѕСЂС‚ `DJANGO_DB_PORT=5435`.
+
+1. Убедитесь, что `backend/.env` содержит `DJANGO_DB_PORT=5435`.
 2. `docker compose up --build`
 
-РЎРµСЂРІРёСЃС‹:
-- Postgres: `5435`
+Контейнеры:
+- Postgres: порт `5435`
 - Backend: `http://localhost:8000/`
-- Frontend (Vite): `http://localhost:5173/`
+- Frontend: `http://localhost:5173/` (Vite проксирует API через `VITE_API_URL`)
 
-## CI/CD: GitHub Actions
-- `.github/workflows/deploy.yml` РїСЂРё push РІ РІРµС‚РєСѓ `master` РїРѕРґРєР»СЋС‡Р°РµС‚СЃСЏ Рє VPS РїРѕ SSH (СЃРµРєСЂРµС‚С‹ РЅРёР¶Рµ), РІС‹РїРѕР»РЅСЏРµС‚ `git reset --hard origin/master`, Р·Р°С‚РµРј `docker compose -f docker-compose.prod.yml --env-file .env.production pull` Рё `up --build -d`.
-- РџРѕСЃР»Рµ РґРµРїР»РѕСЏ workflow РѕСЃС‚Р°С‘С‚СЃСЏ Р°РєС‚РёРІРЅРѕ, С‡С‚РѕР±С‹ РёСЃРєР»СЋС‡РёС‚СЊ СЂР°Р±РѕС‚Сѓ СЃ Р»РѕРєР°Р»СЊРЅС‹РјРё СЃРєСЂРёРїС‚Р°РјРё.
+## Общие скрипты
 
-### Р§С‚Рѕ РЅСѓР¶РЅРѕ РЅР°СЃС‚СЂРѕРёС‚СЊ РґР»СЏ РґРµРїР»РѕСЏ:
-1. Р’ СЂРµРїРѕР·РёС‚РѕСЂРёРё GitHub РїРµСЂРµР№РґРёС‚Рµ РІ **Settings в†’ Secrets and variables в†’ Actions** Рё РґРѕР±Р°РІСЊС‚Рµ:
-   - `VPS_SSH_KEY` (РїСЂРёРІР°С‚РЅС‹Р№ РєР»СЋС‡ РґР»СЏ РґРѕСЃС‚СѓРїР° Рє VPS).
-   - `VPS_USER` (`root` РёР»Рё РЅСѓР¶РЅС‹Р№ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ).
-   - `VPS_HOST` (`173.249.7.183`).
-   - `VPS_PATH` (`/root/crm3`).
-2. РќР° СЃРµСЂРІРµСЂРµ СѓР±РµРґРёС‚РµСЃСЊ, С‡С‚Рѕ СЂРµРїРѕР·РёС‚РѕСЂРёР№ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ (`/root/crm3`), `.env.production` СЃРѕРґРµСЂР¶РёС‚ РґРµР№СЃС‚РІРёС‚РµР»СЊРЅС‹Рµ СЃРµРєСЂРµС‚С‹, Рё `git remote` СѓРєР°Р·С‹РІР°РµС‚ РЅР° РїСЂР°РІРёР»СЊРЅС‹Р№ origin.
-3. Р•СЃР»Рё РЅСѓР¶РЅРѕ РґРµРїР»РѕРёС‚СЊ РёР· РґСЂСѓРіРѕР№ РІРµС‚РєРё, РѕР±РЅРѕРІРёС‚Рµ С‚СЂРёРіРіРµСЂС‹ workflow (`on.push.branches`) Рё РєРѕРЅС‚СЂРѕР»РёСЂСѓР№С‚Рµ РєРѕРјР°РЅРґС‹ `git reset --hard origin/...`.
+- `scripts/import_business_data.py`/`scripts/import_clients.py` — импорт клиентов/сделок/полисов из Excel; поддерживают `--sheet`, `--dry-run`, `--clear`.
+- `scripts/full_import.sh` — перезаливка клиентов, сделок, полисов, платежей из дампов `/transform_{clients,deals}.py` и Excel (принимает `--backup-sql`, `--backup-xlsx`, `--env-file`).
+- `scripts/backup_project_to_drive.py` — архив репозитория, дампы Postgres/Excel и копирование Google Drive.
+- `scripts/fix_mojibake.py` — исправление mojibake в `.ts/.tsx/.js/.jsx` файлах через `ftfy`.
+- `transform_clients.py`/`transform_deals.py` — генерация SQL/JSON по экспортам `COPY public.client` и `COPY public.deal`.
 
-РџРѕСЃР»Рµ РїСѓС€Р° РІ `master` (РёР»Рё РґСЂСѓРіРѕР№ Р°РєС‚РёРІРёСЂРѕРІР°РЅРЅС‹Р№ workflow) GitHub Actions Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РґРµР»Р°РµС‚ РґРµРїР»РѕР№, РЅРёРєР°РєРёС… РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹С… СЃРєСЂРёРїС‚РѕРІ Р·Р°РїСѓСЃРєР°С‚СЊ РЅРµ РЅСѓР¶РЅРѕ.
+## Автоматический бэкап на Google Drive
+
+- `scripts/backup_project_to_drive.py` архивирует проект (исключая `.git`, `node_modules`, `media`, `frontend/dist`), создаёт SQL и Excel дампы (`database-dumps`) и копирует `GOOGLE_DRIVE_ROOT_FOLDER_ID` в `drive-files`.
+- Настройте `.env`/`backend/.env` с `DJANGO_DB_*`, `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`.
+- Переменные:
+  - `BACKUP_DB_EXCLUDE_TABLES` (comma-separated, default `users_auditlog`)
+  - `BACKUP_MAX_SESSIONS` (default `2000`)
+  - `BACKUP_DB_FALLBACK_HOST` — fallback host при недоступности `DJANGO_DB_HOST`
+- Запуск: `python scripts/backup_project_to_drive.py [--project-root PATH] [--env-file PATH]`.
+- Для регулярной работы установите systemd unit/timer `crm3-drive-backup.{service,timer}` и выполните:
+  ```sh
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now crm3-drive-backup.timer
+  ```
+
+## CI/CD и деплой
+
+- `.github/workflows/deploy.yml` — на `master` подключается к VPS (`VPS_HOST`, `VPS_USER`), делает `git reset --hard origin/master`, `docker compose -f docker-compose.prod.yml --env-file .env.production pull && up --build -d`.
+- Перед деплоем добавьте секреты: `VPS_SSH_KEY`, `VPS_USER`, `VPS_HOST`, `VPS_PATH`.
+- На сервере: репозиторий в `/root/crm3`, `.env.production` содержит реальные секреты, `docker compose` запускается с `DJANGO_DB_PORT=5435`.
+- Для другой ветки обновите `on.push.branches` и целевой `git reset`.
+
+## Тесты и проверки
+
+- Backend: `python manage.py test`, `python manage.py check --deploy` перед релизом.
+- Frontend: `npm run lint`, `npm run build`, `npm run dev`.
+- Скрипты: `python scripts/backup_project_to_drive.py --help`, `python transform_clients.py --help` и т.д. — проверяют параметризацию.
+
+## Полезные ссылки
+
+- `.env.example` и `backend/.env.example` показывают нужные переменные.
+- `docker-compose.yml` поднимает Postgres (5435), backend и Vite.
+- `scripts/templates/business_data_template_new.xlsx` — шаблон для импорта клиентов/сделок/полисов/платежей.
+EOF

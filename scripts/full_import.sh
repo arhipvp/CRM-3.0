@@ -6,6 +6,43 @@ cd "$REPO_ROOT"
 
 BACKUP_SQL="backup_2025-11-24_15-20.sql"
 BACKUP_XLSX="backup_2025-11-24_15-20.xlsx"
+ENV_FILE=".env"
+
+usage() {
+  cat <<EOF
+Usage: $0 [--backup-sql PATH] [--backup-xlsx PATH] [--env-file PATH]
+
+  --backup-sql PATH    path to historical SQL dump (default: ${BACKUP_SQL})
+  --backup-xlsx PATH   path to Excel export (default: ${BACKUP_XLSX})
+  --env-file PATH      env file to source for DJANGO_DB_PASSWORD (default: ${ENV_FILE})
+EOF
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --backup-sql)
+      BACKUP_SQL=$2
+      shift 2
+      ;;
+    --backup-xlsx)
+      BACKUP_XLSX=$2
+      shift 2
+      ;;
+    --env-file)
+      ENV_FILE=$2
+      shift 2
+      ;;
+    --help|-h)
+      usage
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      ;;
+  esac
+done
+
 for path in "$BACKUP_SQL" "$BACKUP_XLSX"; do
   if [[ ! -f "$path" ]]; then
     echo "Missing required backup file: $path" >&2
@@ -13,9 +50,14 @@ for path in "$BACKUP_SQL" "$BACKUP_XLSX"; do
   fi
 done
 
-DB_PASS=$(grep -E '^DJANGO_DB_PASSWORD=' .env | cut -d'=' -f2-)
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Env file ${ENV_FILE} not found." >&2
+  exit 1
+fi
+
+DB_PASS=$(grep -E '^DJANGO_DB_PASSWORD=' "$ENV_FILE" | cut -d'=' -f2-)
 if [[ -z "$DB_PASS" ]]; then
-  echo "DJANGO_DB_PASSWORD not set in .env" >&2
+  echo "DJANGO_DB_PASSWORD not set in ${ENV_FILE}" >&2
   exit 1
 fi
 

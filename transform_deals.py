@@ -1,103 +1,95 @@
+from __future__ import annotations
+
+import argparse
 import json
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Iterable, Sequence
 
-client_map = json.loads(Path("client_mapping.json").read_text(encoding="utf-8"))
+DEAL_TEMPLATE = (
+    "INSERT INTO deals_deal ({cols}) VALUES ({vals});"
+)
+NOTE_TEMPLATE = "INSERT INTO notes_note ({cols}) VALUES ({vals});"
 
-text = Path("backup_2025-11-24_15-20.sql").read_text(encoding="utf-8")
-start = text.index("COPY public.deal")
-end = text.index("\n\\.", start)
-block = text[start:end].splitlines()
-rows = []
-for line in block[1:]:
-    if not line.strip():
-        continue
-    parts = line.split("\t")
-    if len(parts) < 12:
-        continue
-    rows.append(parts[:12])
 
-now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+def parse_args():
+    parser = argparse.ArgumentParser(description="Transform deal rows into INSERT statements.")
+    parser.add_argument(
+        "--dump",
+        type=Path,
+        default=Path("backup_2025-11-24_15-20.sql"),
+        help="SQL dump containing COPY for public.deal",
+    )
+    parser.add_argument(
+        "--client-map",
+        type=Path,
+        default=Path("client_mapping.json"),
+        help="JSON file mapping legacy client IDs to UUIDs",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("deal_import.sql"),
+        help="Target SQL file",
+    )
+    parser.add_argument(
+        "--created-by",
+        default="Vova",
+        help="Username to reference for seller/executor",
+    )
+    return parser.parse_args()
 
-def clean(value):
-    return None if value == "\\N" else value
+
+def clean(value: str | None) -> str | None:
+    if not value or value == "\N":
+        return None
+    return value
 
 
 class RawSQL(str):
-    """Строки, которые нельзя заключать в кавычки при вставке."""
+    pass
 
 
-def prepare_string(value):
+def escape(value: str | None) -> str | None:
     if value is None:
         return None
     safe = value.replace("'", "''")
-    return safe.replace("\n", "\\n")
+    return safe.replace("
+", "\n")
 
 
-def quote(value):
+def quote(value: str | RawSQL | None) -> str:
     if value is None:
         return "NULL"
     if isinstance(value, RawSQL):
         return str(value)
     return f"'{value}'"
 
-lines = []
-note_lines = []
-for cols in rows:
-    deal_legacy_id, client_id, start_date, status, description, calculations, reminder_date, is_closed, closed_reason, drive_path, drive_link, is_deleted = cols
-    client_uuid = client_map.get(client_id)
-    if not client_uuid:
-        continue
-    title = description.strip() if description else f"Deal #{client_id}"
-    description_parts = [description] if description else []
-    drive_meta = {}
-    if drive_path and drive_path != "\\N":
-        drive_meta["drive_folder_path"] = drive_path
-    if drive_link and drive_link != "\\N":
-        drive_meta["drive_folder_link"] = drive_link
-    if drive_meta:
-        description_parts.append(json.dumps(drive_meta, ensure_ascii=False))
-    full_description = "\n\n".join(part for part in description_parts if part)
-    next_contact_date = reminder_date if reminder_date and reminder_date != "\\N" else start_date
-    status_value = status if status and status != "\\N" else "open"
-    loss_reason = closed_reason if closed_reason and closed_reason != "\\N" else None
-    if is_closed == "t":
-        status_value = "closed"
-        if not loss_reason:
-            loss_reason = "Closed in import"
-    if is_deleted == "t":
-        continue
-    deleted_at = now if is_deleted == "t" or is_closed == "t" else None
-    deal_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"deals.deal:{deal_legacy_id}"))
-    title_value = prepare_string(title)
-    desc_value = prepare_string(full_description)
-    status_value = prepare_string(status_value)
-    loss_reason_value = prepare_string(loss_reason) or ""
-    next_contact = next_contact_date if next_contact_date and next_contact_date != "\\N" else None
-    source_value = ""
-    seller_value = RawSQL("(SELECT id FROM auth_user WHERE username = 'Vova' LIMIT 1)")
-    executor_value = RawSQL("(SELECT id FROM auth_user WHERE username = 'Vova' LIMIT 1)")
-    values = [
-        deal_uuid,
-        deleted_at,
-        now,
-        now,
-        title_value,
-        desc_value,
-        client_uuid,
-        seller_value,
-        executor_value,
-        status_value if status_value else "open",
-        "",
-        None,
-        next_contact,
-        None,
-        source_value,
-        loss_reason_value,
-        None,
-    ]
-    columns = [
+
+def extract_rows(content: str) -> Iterable[Sequence[str]]:
+    marker = "COPY public.deal"
+    start = content.index(marker)
+    end = content.index("
+\.", start)
+    block = content[start:end].splitlines()[1:]
+    for line in block:
+        if not line.strip():
+            continue
+        parts = line.split("	")
+        if len(parts) < 12:
+            continue
+        yield parts[:12]
+
+
+def build_queries(
+    rows: Iterable[Sequence[str]],
+    client_map: dict[str, str],
+    username: str,
+    now: str,
+) -> list[str]:
+    queries: list[str] = []
+    deal_columns = [
         "id",
         "deleted_at",
         "created_at",
@@ -116,44 +108,118 @@ for cols in rows:
         "loss_reason",
         "drive_folder_id",
     ]
-    sql_values = []
-    for idx, val in enumerate(values):
-        sql_values.append(quote(val))
-    lines.append(
-        "INSERT INTO deals_deal ("
-        + ", ".join(columns)
-        + ") VALUES ("
-        + ", ".join(sql_values)
-        + ");"
-    )
+    note_columns = [
+        "id",
+        "deleted_at",
+        "created_at",
+        "updated_at",
+        "deal_id",
+        "body",
+        "author_name",
+    ]
+    seller_ref = RawSQL(f"(SELECT id FROM auth_user WHERE username = '{username}' LIMIT 1)")
+    executor_ref = seller_ref
 
-    if calculations and calculations != "\\N":
-        note_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"notes.note:{deal_legacy_id}"))
-        note_body = prepare_string(f"Calculations:\n{calculations}")
-        note_columns = [
-            "id",
-            "deleted_at",
-            "created_at",
-            "updated_at",
-            "deal_id",
-            "body",
-            "author_name",
-        ]
-        note_values = [
-            quote(note_id),
-            "NULL",
-            quote(now),
-            quote(now),
-            quote(deal_uuid),
-            quote(note_body),
-            quote("Vova"),
-        ]
-        note_lines.append(
-            "INSERT INTO notes_note ("
-            + ", ".join(note_columns)
-            + ") VALUES ("
-            + ", ".join(note_values)
-            + ");"
-        )
+    for cols in rows:
+        (
+            legacy_id,
+            client_id,
+            start_date,
+            status,
+            description,
+            calculations,
+            reminder_date,
+            is_closed,
+            closed_reason,
+            drive_path,
+            drive_link,
+            is_deleted,
+        ) = cols
+        client_uuid = client_map.get(client_id)
+        if not client_uuid:
+            continue
+        title = description.strip() if description else f"Deal #{client_id}"
+        description_parts = [description] if description else []
+        drive_meta: dict[str, str] = {}
+        if drive_path and drive_path != "\N":
+            drive_meta["drive_folder_path"] = drive_path
+        if drive_link and drive_link != "\N":
+            drive_meta["drive_folder_link"] = drive_link
+        if drive_meta:
+            description_parts.append(json.dumps(drive_meta, ensure_ascii=False))
+        full_description = "
 
-Path("deal_import.sql").write_text("\n".join(lines + note_lines), encoding="utf-8")
+".join(part for part in description_parts if part)
+        next_contact_date = reminder_date if reminder_date and reminder_date != "\N" else start_date
+        status_value = status if status and status != "\N" else "open"
+        loss_reason = closed_reason if closed_reason and closed_reason != "\N" else None
+        if is_closed == "t":
+            status_value = "closed"
+            if not loss_reason:
+                loss_reason = "Closed in import"
+        if is_deleted == "t":
+            continue
+        deleted_at = now if is_closed == "t" else None
+        deal_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"deals.deal:{legacy_id}"))
+        title_value = escape(title)
+        desc_value = escape(full_description)
+        status_value = escape(status_value) or "open"
+        loss_reason_value = escape(loss_reason) or ""
+        next_contact = next_contact_date if next_contact_date and next_contact_date != "\N" else None
+        source_value = ""
+        values = [
+            deal_uuid,
+            deleted_at,
+            now,
+            now,
+            title_value,
+            desc_value,
+            client_uuid,
+            seller_ref,
+            executor_ref,
+            status_value,
+            "",
+            None,
+            next_contact,
+            None,
+            source_value,
+            loss_reason_value,
+            None,
+        ]
+        sql_values = ", ".join(quote(val) for val in values)
+        queries.append(DEAL_TEMPLATE.format(cols=", ".join(deal_columns), vals=sql_values))
+
+        if calculations and calculations != "\N":
+            note_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"notes.note:{legacy_id}"))
+            note_body = escape(f"Calculations:
+{calculations}")
+            note_values = ", ".join(
+                quote(val)
+                for val in [
+                    note_id,
+                    None,
+                    now,
+                    now,
+                    deal_uuid,
+                    note_body,
+                    username,
+                ]
+            )
+            queries.append(NOTE_TEMPLATE.format(cols=", ".join(note_columns), vals=note_values))
+
+    return queries
+
+
+def main() -> None:
+    args = parse_args()
+    client_map = json.loads(args.client_map.read_text(encoding="utf-8"))
+    content = args.dump.read_text(encoding="utf-8")
+    rows = extract_rows(content)
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    queries = build_queries(rows, client_map, args.created_by, now)
+    args.output.write_text("
+".join(queries), encoding="utf-8")
+
+
+if __name__ == "__main__":
+    main()
