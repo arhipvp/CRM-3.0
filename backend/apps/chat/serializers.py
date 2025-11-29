@@ -4,6 +4,8 @@ from .models import ChatMessage
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
+    """Serializer that exposes chat message fields and author info."""
+
     author_username = serializers.CharField(
         source="author.username", read_only=True, allow_null=True
     )

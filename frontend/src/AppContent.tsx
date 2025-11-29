@@ -41,6 +41,7 @@ import {
   updateTask,
   deleteTask,
   getCurrentUser,
+  hasStoredTokens,
   clearTokens,
   APIError,
   uploadKnowledgeDocument,
@@ -299,6 +300,11 @@ const AppContent: React.FC = () => {
 
   // Check authentication on app load
   useEffect(() => {
+    if (!hasStoredTokens()) {
+      setAuthLoading(false);
+      return;
+    }
+
     const checkAuth = async () => {
       try {
         console.log('Checking authentication...');

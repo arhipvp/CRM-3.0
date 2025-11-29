@@ -38,16 +38,16 @@ class Migration(migrations.Migration):
                     "author_name",
                     models.CharField(
                         default="Anonymous",
-                        help_text="Имя автора сообщения",
+                        help_text="Author display name",
                         max_length=255,
                     ),
                 ),
-                ("body", models.TextField(help_text="Текст сообщения")),
+                ("body", models.TextField(help_text="Message text")),
                 (
                     "author",
                     models.ForeignKey(
                         blank=True,
-                        help_text="Пользователь (опционально)",
+                        help_text="Optional user who posted the message",
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="chat_messages",
@@ -57,7 +57,7 @@ class Migration(migrations.Migration):
                 (
                     "deal",
                     models.ForeignKey(
-                        help_text="Сделка",
+                        help_text="Deal reference",
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="chat_messages",
                         to="deals.deal",
@@ -65,8 +65,8 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name": "Сообщение чата",
-                "verbose_name_plural": "Сообщения чата",
+                "verbose_name": "Chat message",
+                "verbose_name_plural": "Chat messages",
                 "ordering": ["created_at"],
             },
         ),

@@ -32,6 +32,10 @@ export function clearTokens(): void {
   }
 }
 
+export function hasStoredTokens(): boolean {
+  return Boolean(getAccessToken() || getRefreshToken());
+}
+
 interface RefreshResponse {
   access: string;
   refresh?: string;

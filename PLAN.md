@@ -30,35 +30,55 @@
   - [x] Verify typing, environment settings, and available tests/documentation where applicable.
     - ✅ Комментарии на русском заменены на английские, описание healthcheck/entrypoint понятное, типы не применимы.
 - `backend/README.md`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Быстрый старт, структура `apps/*`, Excel-импорт клиентов и мульти-табличный импорт из шаблона.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Обновил шаги запуска, команды `manage.py`, ссылку на `backend/.env`/настройки; типов не требуется.
 - `backend/apps/__init__.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Продлевает пространство имён, чтобы каждая подсекция могла быть частью пакета.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Просто расширение пути через `pkgutil`, ничего кроме комментария или сообщений не нужно.
 - `backend/apps/chat/__init__.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Комментарий описывает этот пакет как точку входа чат-приложения.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Ничего больше не требует типизации или тестов.
 - `backend/apps/chat/admin.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Обновил админку `ChatMessage` с export/import, кастомными столбцами и button для восстановления.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Тексты, badges и fieldsets на английском, типы/стили нет смысла менять.
 - `backend/apps/chat/apps.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ AppConfig теперь включает докстринг и названия, указывающие на чат-модуль.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Типы `AppConfig` стандартны, ничего дополнительно не было сделано.
 - `backend/apps/chat/migrations/0001_initial.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Миграция создаёт модель `ChatMessage` с полями для сделки, автора, тела и дат; всё документировано.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Русские подсказки заменены на английские, semantics не меняются.
 - `backend/apps/chat/migrations/__init__.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Докстринг поясняет это как пакет миграций для чат-аппа.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Нет логики — типы/тесты не требуются.
 - `backend/apps/chat/models.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Описал модель `ChatMessage`, поля (deal, author, body) и метаданные на английском.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Стандартные Django-поля; комментарий/хелпы достаточно, типы не требуются.
 - `backend/apps/chat/serializers.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ Добавлен комментарий, описывающий сериализатор с полем `author_username`.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Просто `ModelSerializer`, типы настроены автоматически.
 - `backend/apps/chat/views.py`
-  - [ ] Describe the file's purpose and key dependencies.
-  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+  - [x] Describe the file's purpose and key dependencies.
+    - ✅ ViewSet фильтрует по ролям и запрещает анонимам создание сообщений, комментарии на английском.
+  - [x] Verify typing, environment settings, and available tests/documentation where applicable.
+    - ✅ Стандартный `ModelViewSet`, типизации управляются DRF.
 - `backend/apps/clients/__init__.py`
   - [ ] Describe the file's purpose and key dependencies.
   - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
