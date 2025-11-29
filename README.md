@@ -1,4 +1,4 @@
-# CRM 3.0 Skeleton
+﻿# CRM 3.0 Skeleton
 
 Monorepo с backend на Django + DRF и frontend на React + Vite.
 
@@ -10,33 +10,29 @@ Monorepo с backend на Django + DRF и frontend на React + Vite.
 5. `python manage.py migrate`
 6. `python manage.py runserver`
 
-API: `http://localhost:8000/api/v1/`, health-check: `/health/`.
+API доступно по адресу `http://localhost:8000/api/v1/`, `GET /health/` проверяет состояние сервера.
 
-## Shared Documentation Library
+## Общая библиотека знаний
+- `POST /api/v1/knowledge_documents/` (multipart/form-data) принимает файл, поле `title`/`description`, загружает документ в Google Drive и возвращает метаданные `web_view_link`, размеры и статистику.
+- Загружаемые файлы сохраняются в папку из `GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID`, дополнительно нужны `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE` и `GOOGLE_DRIVE_ROOT_FOLDER_ID`.
+- Все пользователи могут читать и прикреплять документы; только админы имеют право обновлять и удалять записи, проверка роли уже встроена.
 
-- `GET` and `POST` `/api/v1/knowledge_documents/` expose the shared knowledge documents; `POST` accepts a `file` part (multi-part form) plus optional `title`/`description`, uploads the file to Google Drive, and returns metadata with `web_view_link` and file stats.
-- The Drive folder into which uploads land is configured via `GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID` (in addition to the existing `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`/`GOOGLE_DRIVE_ROOT_FOLDER_ID` settings).
-- All users can read and upload documents; only admins can update or delete entries (the endpoint already enforces the role check).
-
-## Автоматический бэкап на Google Drive
-
-- Скрипт `scripts/backup_project_to_drive.py` проходит по репозиторию, упаковывает файлы (без `.git`, `node_modules`, виртуальных окружений и сборок) в zip-архив `project-repo` и отправляет его, а также SQL-дамп Postgres и Excel-снимок бизнес-таблиц (`database-dumps`) в новую подпапку `crm3-backup-YYYYMMDD-HHMMSS` внутри `GOOGLE_DRIVE_BACKUP_FOLDER_ID`.
-- Одновременно скрипт копирует содержимое `GOOGLE_DRIVE_ROOT_FOLDER_ID` (все клиентские/сделочные вложения) напрямую в `CRM 3.0 Backup/Media/`; существующие файлы остаются нетронутыми, а новые добавляются в ту же папку, так что она отражает актуальное состояние медиа.
-- Для создания SQL-файла требуется `pg_dump` (он рассчитывает на настройки `DJANGO_DB_*` из `.env`/`backend/.env`). Excel-отчёт формируется через `openpyxl`: каждая таблица схемы `public` получает свой лист.
-- Необходимые переменные окружения: `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`, а также `DJANGO_DB_HOST/PORT/NAME/USER/PASSWORD`. Скрипт читает значения из `.env`, `backend/.env` и дополнительных `--env-file`.
-- Чтобы избежать лишних данных, добавь `BACKUP_DB_EXCLUDE_TABLES` (например `users_auditlog`) — указанные таблицы не будут попадать в SQL-дамп и Excel-отчёт. По умолчанию исключаются `users_auditlog`, но ты можешь перечислить другие структуры через запятую.
-- Параметр `BACKUP_MAX_SESSIONS` (по умолчанию `2000`) гарантирует, что в папке `GOOGLE_DRIVE_BACKUP_FOLDER_ID` сохраняется только указанное число старых сессий; остальные удаляются автоматом после создания нового каталога.
-- Если умеешь подключаться к базе через `localhost`/другой хост вне Docker-сети, задай `BACKUP_DB_FALLBACK_HOST` — при невозможности резолва `DJANGO_DB_HOST` скрипт переключится на fallback и попробует сделать дамп через PG-CLI.
-- Запуск: `python scripts/backup_project_to_drive.py` (опционально `--project-root`, `--env-file`). Каждая сессия создаёт папку по шаблону `crm3-backup-YYYYMMDD-HHMMSS` и загружает внутрь `project-repo`, `database-dumps` (sql + xlsx) и `drive-files`.
-- **Автоматизация:** на сервере лучше использовать systemd timer с шаблоном `systemd/crm3-drive-backup.{service,timer}`. Скопируй оба файла в `/etc/systemd/system/`, отредактируй переменные окружения (если пути отличаются), затем:
+## Автоматический бекап на Google Drive
+- `scripts/backup_project_to_drive.py` собирает репозиторий (без `.git`, `node_modules`, системных директорий) в архив `project-repo`, сельскохозяйственные дампы Postgres и Excel-таблицы (`database-dumps`), а также копирует `public`. Все упаковки помещаются в папку вида `crm3-backup-YYYYMMDD-HHMMSS` внутри `GOOGLE_DRIVE_BACKUP_FOLDER_ID`.
+- Скрипт копирует содержимое `GOOGLE_DRIVE_ROOT_FOLDER_ID` в поддиректорию `CRM 3.0 Backup/Media/` (текущие файлы не удаляются, новые добавляются рядом).
+- SQL-дампы создаются `pg_dump` на основе переменных `DJANGO_DB_*` из `.env`/`backend/.env`, Excel-таблицы формируются через `openpyxl`, каждая таблица получает файл `public`.
+- Исключения таблиц задаются через `BACKUP_DB_EXCLUDE_TABLES` (например `users_auditlog`), они не попадают в SQL-дампы и Excel-списки.
+- Параметр `BACKUP_MAX_SESSIONS` (по умолчанию `2000`) ограничивает количество сессий, заворачиваемых в `GOOGLE_DRIVE_BACKUP_FOLDER_ID` до актуального списка.
+- В аварийной ситуации `BACKUP_DB_FALLBACK_HOST` позволяет попробовать подключиться к базе через pgcli, если основной `DJANGO_DB_HOST` недоступен.
+- Запуск: `python scripts/backup_project_to_drive.py` (совместимо с `--project-root` и `--env-file`). Скрипт создаёт подпапки `project-repo`, `database-dumps` (sql + xlsx) и `drive-files`.
+- Для регулярного выполнения установите unit `/etc/systemd/system/crm3-drive-backup.{service,timer}` и зафиксируйте конфигурацию:
 
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable --now crm3-drive-backup.timer
 ```
 
-Таймер с `OnCalendar=00,06,12,18:00:00` запускает скрипт каждые 6 часов и логирует всё в `/root/crm3/cron-backup.log`.  
-Если предпочитаешь cron, можно оставить прежний пример `0 3 * * * ...` и запустить из `crontab -e`.
+Таймер с `OnCalendar=00,06,12,18:00:00` запускает сбор каждые 6 часов и логирует в `/root/crm3/cron-backup.log`. Альтернатива — cron-запись `0 3 * * * ...` через `crontab -e`.
 
 ## Frontend
 1. `cd frontend`
@@ -44,31 +40,28 @@ sudo systemctl enable --now crm3-drive-backup.timer
 3. `cp .env.example .env`
 4. `npm run dev`
 
-Приложение доступно на `http://localhost:5173/` и взаимодействует с backend через переменную `VITE_API_URL`.
+Интерфейс доступен по `http://localhost:5173/`, запросы направляются на `VITE_API_URL`.
 
 ## Docker Compose
-1. Убедитесь, что `backend/.env` содержит свободный `DJANGO_DB_PORT` (по умолчанию 5435).
-2. Выполните `docker compose up --build`.
+1. Убедитесь, что в `backend/.env` сохранён нестандартный порт `DJANGO_DB_PORT=5435`.
+2. `docker compose up --build`
 
 Сервисы:
-- Postgres: порт `5435`.
-- Backend: http://localhost:8000/
-- Frontend (Vite): http://localhost:5173/
+- Postgres: `5435`
+- Backend: `http://localhost:8000/`
+- Frontend (Vite): `http://localhost:5173/`
 
 ## CI/CD: GitHub Actions
+- `.github/workflows/deploy.yml` при push в ветку `master` подключается к VPS по SSH (секреты ниже), выполняет `git reset --hard origin/master`, затем `docker compose -f docker-compose.prod.yml --env-file .env.production pull` и `up --build -d`.
+- После деплоя workflow остаётся активно, чтобы исключить работу с локальными скриптами.
 
-Деплой теперь автоматизирован через `.github/workflows/deploy.yml`: при `push` в ветку `master` GitHub Actions подключается к VPS по SSH (секреты см. ниже), делает `git reset --hard origin/master`, а потом `docker compose -f docker-compose.prod.yml --env-file .env.production pull` и `up --build -d`. После сборки очищается неиспользуемая картинка.
-
-Перед тем как делать `push`, проверь, что `master` содержит актуальные изменения и что конфиг `.env.production` на сервере заполнен (пароли/ключи, `ALLOWED_HOSTS`, `VITE_API_URL`).
-
-### Что нужно сделать тебе:
-
-1. В репозитории на GitHub зайди в **Settings → Secrets and variables → Actions** и добавь:
-   - `VPS_SSH_KEY` (приватный ключ, которым можно зайти на сервер);
-   - `VPS_USER` (`root` или другой SSH-пользователь);
-   - `VPS_HOST` (`173.249.7.183`);
+### Что нужно настроить для деплоя:
+1. В репозитории GitHub перейдите в **Settings → Secrets and variables → Actions** и добавьте:
+   - `VPS_SSH_KEY` (приватный ключ для доступа к VPS).
+   - `VPS_USER` (`root` или нужный пользователь).
+   - `VPS_HOST` (`173.249.7.183`).
    - `VPS_PATH` (`/root/crm3`).
-2. Убедись, что на сервере уже есть репозиторий (`/root/crm3`), `.env.production` с секретами и что `git remote` правильно настроен (или сможешь вручную `git pull` оттуда).
-3. Если нужно деплоить из другой ветки — просто обнови `on.push.branches` в workflow (и, при необходимости, соответствующий путь в `git reset --hard origin/...`).
+2. На сервере убедитесь, что репозиторий уже существует (`/root/crm3`), `.env.production` содержит действительные секреты, и `git remote` указывает на правильный origin.
+3. Если нужно деплоить из другой ветки, обновите триггеры workflow (`on.push.branches`) и контролируйте команды `git reset --hard origin/...`.
 
-После этих настроек достаточно пуша в `master` (или другой ветку, если перепишешь workflow), и GitHub Actions сделает всё остальное — без локальных скриптов.
+После пуша в `master` (или другой активированный workflow) GitHub Actions автоматически делает деплой, никаких дополнительных скриптов запускать не нужно.

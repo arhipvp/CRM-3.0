@@ -1,0 +1,1089 @@
+# Repository Work Plan
+
+## 1. Inventory
+- `backend/`: Django 5 + DRF, applications under `apps/*`, shared config, and management scripts.
+- `frontend/`: React 19 + Vite + TypeScript; focus on `src/`, `public/`, and configuration (`eslint`, `tailwind`, `vite`).
+- `scripts/`: import and backup helpers that need clearer typing and documentation.
+- Documentation (`README.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, etc.) must describe actual commands, environment variables, and duties.
+
+## 2. Common tasks
+- Identify sections lacking annotations and add typing so `mypy` and IDEs understand contracts.
+- Update instructions for running/testing backend, frontend, docker, CI/CD, and backups.
+- Record which tests or checks apply to each area (e.g., `python manage.py test`, `npm run lint`).
+
+## 3. Files and checklists
+
+- `.claude/settings.local.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.dockerignore`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.env.production.example`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.flake8`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.github/SECRETS_SETUP.md`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.github/workflows/ci.yml`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.github/workflows/deploy.yml`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.github/workflows/test.txt`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.gitignore`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `.isort.cfg`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `AGENTS.md`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `CLAUDE.md`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `GEMINI.md`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `README.md`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/.dockerignore`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/Dockerfile`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/README.md`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/chat/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/filters.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/forms.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/importers/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/importers/excel_clients.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0002_remove_contact_client_remove_contact_owner_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0003_delete_contact.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0004_client_notes.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0005_alter_client_name_alter_client_phone.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0006_client_drive_folder_id.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0007_client_created_by.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/0008_client_email.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/tests.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/clients/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/audit_helpers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/drive.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/permissions.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/common/services.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/filters.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/history_utils.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0002_remove_deal_stage_remove_deal_pipeline_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0003_alter_deal_options_remove_deal_amount_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0004_alter_deal_options_deal_next_review_date.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0004_remove_probability.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0005_alter_deal_expected_close_alter_deal_loss_reason_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0006_activitylog.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0007_alter_deal_status.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0008_add_next_contact_date.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0009_alter_deal_options.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0010_add_insurance_references.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0011_alter_insurancecompany_description_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0011_quote_seller.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0012_deal_drive_folder_id.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0013_alter_quote_insurance_company.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0014_merge.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0015_alter_quote_insurance_company_delete_activitylog.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0016_sales_channel_catalog.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0017_remove_channel.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0018_remove_deal_deals_deal_sales_ch_idx_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/0019_merge_20251128_0437.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/services.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/tests/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/tests/test_history_utils.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/tests/test_merge.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/tests/test_view_permissions.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/view_mixins/drive.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/view_mixins/history.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/view_mixins/merge.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/view_mixins/restore.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/deals/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/migrations/0002_alter_document_options_remove_document_client_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/migrations/0003_alter_document_status.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/migrations/0004_knowledgedocument.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/tests.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/documents/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/filters.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/migrations/0002_alter_expense_options_alter_income_options_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/migrations/0003_financialtransaction.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/migrations/0004_payment_policy_alter_payment_deal.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/migrations/0005_remove_financialtransaction_deal_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/migrations/0006_remove_payment_status.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/tests.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/finances/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/migrations/0002_alter_note_options_remove_note_client_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/tests.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notes/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/migrations/0002_alter_notification_options_notification_deleted_at_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/tests.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/notifications/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/ai_service.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/filters.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0002_alter_policy_options_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0003_policy_counterparty.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0004_policy_client_policy_policies_po_client__7a77dc_idx.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0005_alter_policy_client.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0006_policy_drive_folder_id.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0007_alter_policy_insurance_company.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/0008_sales_channel_catalog.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/policies/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/filters.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/migrations/0002_alter_task_options_remove_task_client_and_more.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/tests.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/tests/test_view_permissions.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/tasks/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/apps.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/init_roles.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/migrations/0001_initial.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/migrations/0002_auditlog.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/migrations/0003_alter_auditlog_action.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/migrations/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/models.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/permissions.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/serializers.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/tests.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/apps/users/views.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/config/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/config/admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/config/api_router.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/config/asgi.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/config/settings.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/config/urls.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/config/wsgi.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/conftest.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/entrypoint.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/manage.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/origin_views.txt`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/populate_test_data.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/pytest.ini`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/requirements.txt`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/scripts/import_business_data.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/scripts/populate_test_data.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/scripts/reset_db.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/scripts/templates/business_data_template_new.xlsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/tests/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/tests/conftest.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/tests/test_admin.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/tests/test_deal_history.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/tests/test_encoding.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/tests/test_permissions.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `backend/tests/test_signals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `client_mapping.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `count_clients.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `debug-frontend.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `docker-compose.prod.yml`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `extract_deal_block.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/.env.example`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/.eslintrc.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/.gitignore`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/.prettierrc`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/Dockerfile`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/README.md`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/__tests__/encoding.test.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/eslint.config.js`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/index.html`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/package-lock.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/package.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/postcss.config.js`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/public/vite.svg`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/App.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/AppContent.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/__tests__/LoginPage.test.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/__tests__/hooks/useAppData.test.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/__tests__/hooks/useSelectedDeal.test.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/auth.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/catalogs.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/chat.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/clients.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/deals.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/drive.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/finance.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/helpers.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/mappers.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/notes.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/policies.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/request.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/api/tasks.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/ActivityTimeline.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/ChatBox.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/DriveFilesModal.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/FileUploadManager.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/FilterBar.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/LoginPage.css`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/LoginPage.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/MainLayout.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/Modal.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/NotificationDisplay.css`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/NotificationDisplay.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/Pagination.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/app/AppModals.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/app/AppRoutes.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/app/types.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/common/UserBadge.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/common/VehicleDetails.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/AddFinancialRecordForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/AddPaymentForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/AddPolicyForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/AddQuoteForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/AddTaskForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/ClientForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/DealForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/EditDealForm.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPayment/DatesFields.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPayment/DealField.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPayment/FormActions.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPayment/PaymentMetadata.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPayment/PolicyField.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPolicy/components/FinancialRecordInputs.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPolicy/components/PaymentSection.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/forms/addPolicy/types.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/ClientsView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/DealsView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/FinanceView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/KnowledgeDocumentsView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/PaymentsView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/PoliciesView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/SettingsView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/TasksView.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/dealsView/helpers.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/dealsView/tabs/ChatTab.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/dealsView/tabs/FilesTab.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/dealsView/tabs/PoliciesTab.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/dealsView/tabs/QuotesTab.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/dealsView/tabs/TasksTab.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/financeView/FiltersSection.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/financeView/RecordsTable.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/components/views/financeView/SummaryCards.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/contexts/NotificationContext.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/contexts/NotificationProvider.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/contexts/NotificationTypes.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/hooks/useAppData.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/hooks/useDealFilters.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/hooks/useDebouncedValue.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/hooks/useSelectedDeal.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/index.css`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/main.tsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/setupTests.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/types.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/types/index.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/src/utils/userColor.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/tailwind.config.js`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/tsconfig.app.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/tsconfig.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/tsconfig.node.json`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `frontend/vite.config.ts`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `inspect_deal_import.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `inspect_new_deal_import.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `locate_copy_end.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `mypy.ini`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `origin_views.txt`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `processes_lines.txt`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `run_client_import.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `run_deal_import.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/backup_project_to_drive.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/fix_mojibake.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/full_import.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/import_business_data.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/import_clients.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/templates/business_data_template.xlsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/templates/business_data_template_new.xlsx`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/bad_codecs/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/bad_codecs/sloppy.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/bad_codecs/utf8_variants.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/badness.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/chardata.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/cli.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/fixes.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/formatting.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/ftfy/py.typed`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/wcwidth/__init__.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/wcwidth/table_vs16.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/wcwidth/table_wide.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/wcwidth/table_zero.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/wcwidth/unicode_versions.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `scripts/vendor/wcwidth/wcwidth.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `setup_vps_docker.sh`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `show_charset.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `show_deal_model.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `systemd/crm3-drive-backup.service`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `systemd/crm3-drive-backup.timer`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `transform_clients.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.
+- `transform_deals.py`
+  - [ ] Describe the file's purpose and key dependencies.
+  - [ ] Verify typing, environment settings, and available tests/documentation where applicable.

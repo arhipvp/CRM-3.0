@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Iterable, Mapping, MutableMapping, Optional
+from typing import Any, Iterable, Mapping, MutableMapping, Optional
 
 from django.contrib.auth import get_user_model
+from django.db import models
 from openpyxl.worksheet.worksheet import Worksheet
 
 HEADER_TO_FIELD = {
@@ -30,7 +31,7 @@ def _normalize_header(header: Optional[str]) -> Optional[str]:
     return header.strip().lower() if isinstance(header, str) else None
 
 
-def _parse_date(value) -> Optional[date]:
+def _parse_date(value: Any) -> Optional[date]:
     if value is None or value == "":
         return None
 
@@ -53,7 +54,7 @@ def _parse_date(value) -> Optional[date]:
     raise ValueError(f"Не удалось разобрать дату: {text}")
 
 
-def read_client_rows(sheet: Worksheet) -> list[tuple[int, Mapping[str, object]]]:
+def read_client_rows(sheet: Worksheet) -> list[tuple[int, Mapping[str, Any]]]:
     header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
     headers: list[str] = []
     for raw in header_row:
@@ -64,7 +65,7 @@ def read_client_rows(sheet: Worksheet) -> list[tuple[int, Mapping[str, object]]]
 
     parsed: list[tuple[int, Mapping[str, object]]] = []
     for idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
-        row_dict: MutableMapping[str, object] = {}
+        row_dict: MutableMapping[str, Any] = {}
         any_value = False
         for header, value in zip(mapped_headers, row):
             if header:
@@ -78,7 +79,7 @@ def read_client_rows(sheet: Worksheet) -> list[tuple[int, Mapping[str, object]]]
     return parsed
 
 
-def build_client_payload(data: Mapping[str, object], creator) -> dict[str, object]:
+def build_client_payload(data: Mapping[str, Any], creator: models.Model | None) -> dict[str, Any]:
     name = data.get("name")
     if not name or not str(name).strip():
         raise ValueError("поле 'Name' обязательно для заполнения")
@@ -103,7 +104,7 @@ def build_client_payload(data: Mapping[str, object], creator) -> dict[str, objec
     return payload
 
 
-def resolve_creator(identifier: Optional[str]):
+def resolve_creator(identifier: Optional[str]) -> models.Model | None:
     if not identifier:
         return None
 

@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterable, Mapping
 
 import django
 from openpyxl import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 if (BASE_DIR / "backend").exists():
@@ -48,7 +49,7 @@ django.setup()
 
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
-from django.db import connection, models
+from django.db import DataError, connection, models
 
 
 @dataclass(frozen=True)
@@ -84,7 +85,7 @@ def _normalize_sheet_name(name: str) -> str:
     return name.strip().lower()
 
 
-def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
+def _iter_rows(sheet: Worksheet) -> Iterable[tuple[int, dict[str, Any]]]:
     header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
     headers = [str(cell).strip().lower() if cell else "" for cell in header_row]
 
@@ -106,10 +107,15 @@ def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
 
 def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
     if value is None:
-        return None
+        if isinstance(field, (models.CharField, models.TextField)) and not field.null:
+            value = ""
+        else:
+            return None
     if isinstance(value, bool):
         return None
     if isinstance(value, str) and not value.strip():
+        if isinstance(field, (models.CharField, models.TextField)) and not field.null:
+            return ""
         return None
 
     if isinstance(field, models.DecimalField):
@@ -138,7 +144,30 @@ def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
                 return False
         return bool(value)
 
-    return field.to_python(value)
+    result = field.to_python(value)
+    if (
+        isinstance(field, models.CharField)
+        and field.max_length
+        and isinstance(result, str)
+    ):
+        if len(result) > field.max_length:
+            print(
+                "trimming",
+                field.name,
+                "from",
+                len(result),
+                "to",
+                field.max_length,
+                "characters",
+            )
+            result = result[: field.max_length]
+    if (
+        result is None
+        and isinstance(field, (models.CharField, models.TextField))
+        and not field.null
+    ):
+        return ""
+    return result
 
 
 CLEAR_MODEL_ORDER = [
@@ -240,6 +269,11 @@ _AUTO_CREATE_MAPPING = {
     "deals.insurancetype": {"attr": "name"},
     "deals.saleschannel": {"attr": "name"},
 }
+
+
+CREATED_POLICY_IDS: set[str] = set()
+CREATED_PAYMENT_IDS: set[str] = set()
+
 
 CLIENT_MAPPING_FILE = BASE_DIR / "client_mapping.json"
 
@@ -395,6 +429,17 @@ def _deals_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) ->
         prepared["status"] = "closed"
     if not prepared.get("loss_reason"):
         prepared["loss_reason"] = ""
+    if prepared.get("title") and len(prepared["title"]) > 255:
+        prepared["title"] = prepared["title"][:255]
+    if not prepared.get("next_contact_date"):
+        fallback = prepared.get("expected_close")
+        if not fallback:
+            try:
+                fallback = _parse_date(payload.get("start_date"))
+            except ValueError:
+                fallback = None
+        if fallback:
+            prepared["next_contact_date"] = fallback
 
 
 def _tasks_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) -> None:
@@ -422,6 +467,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "phone": "phone",
             "note": "notes",
         },
+        defaults={"notes": "", "phone": "+7 000 000 00 00"},
     ),
     "deals": SheetSpec(
         model_path="deals.Deal",
@@ -499,7 +545,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
 }
 
 
-def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
+def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
     model = apps.get_model(spec.model_path)
     instances = []
     processed = 0
@@ -518,7 +564,10 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
             treat_as_id = target.endswith("_id") or isinstance(
                 field_obj, models.ForeignKey
             )
-            prepared[target] = _coerce_value(field_obj, value, treat_as_id)
+            coerced = _coerce_value(field_obj, value, treat_as_id)
+            if coerced is None and target in spec.defaults:
+                continue
+            prepared[target] = coerced
 
         if spec.post_process:
             spec.post_process(prepared, payload)
@@ -538,19 +587,60 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
             policy_uuid = _ensure_policy_uuid(payload.get("id"))
             if policy_uuid:
                 prepared["id"] = policy_uuid
+            if not prepared.get("deal_id"):
+                print(f"skip policy row {row_index} without deal_id")
+                continue
+            if not prepared.get("insurance_type_id"):
+                print(f"skip policy row {row_index} without insurance_type")
+                continue
+            if not prepared.get("insurance_company_id"):
+                print(f"skip policy row {row_index} without insurance_company")
+                continue
         elif spec.model_path == "finances.Payment":
             payment_uuid = _ensure_payment_uuid(payload.get("id"))
             if payment_uuid:
                 prepared["id"] = payment_uuid
 
+        if spec.model_path == "finances.Payment":
+            policy_id = prepared.get("policy_id")
+            if policy_id and policy_id not in CREATED_POLICY_IDS:
+                print(f"skip payment row {row_index} for missing policy {policy_id}")
+                continue
+        if spec.model_path == "finances.FinancialRecord":
+            payment_id = prepared.get("payment_id")
+            if payment_id and payment_id not in CREATED_PAYMENT_IDS:
+                print(
+                    f"skip financial record row {row_index} for missing payment {payment_id}"
+                )
+                continue
+
         instances.append(model(**prepared))
         processed += 1
+
+        if spec.model_path == "policies.Policy" and prepared.get("id"):
+            CREATED_POLICY_IDS.add(prepared["id"])
+        if spec.model_path == "finances.Payment" and prepared.get("id"):
+            CREATED_PAYMENT_IDS.add(prepared["id"])
 
     if not instances:
         return {"processed": 0, "created": 0}
 
     if not dry_run:
-        model.objects.bulk_create(instances)
+        print(f"bulk inserting {len(instances)} rows for {spec.model_path}")
+        try:
+            model.objects.bulk_create(instances)
+        except DataError as exc:
+            print("bulk insert failed", spec.model_path, exc)
+            for instance in instances:
+                try:
+                    instance.save()
+                    instance.delete()
+                except DataError as inner:
+                    print(
+                        "single row failed", spec.model_path, instance.__dict__, inner
+                    )
+                    raise
+            raise
 
     return {"processed": processed, "created": len(instances)}
 

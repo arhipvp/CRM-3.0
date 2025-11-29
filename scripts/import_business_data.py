@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterable, Mapping
 
 import django
 from openpyxl import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 if (BASE_DIR / "backend").exists():
@@ -48,7 +49,7 @@ django.setup()
 
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
-from django.db import connection, models
+from django.db import DataError, connection, models
 
 
 @dataclass(frozen=True)
@@ -64,7 +65,9 @@ def _parse_args() -> argparse.Namespace:
         description="??????????? CRM-?????? ?? Excel-??????? (?? ??????? scripts/templates/business_data_template_new.xlsx)."
     )
     parser.add_argument("path", help="???? ?? Excel-????? (.xlsx)")
-    parser.add_argument("--sheet", help="???????????? ?????? ????????? ???? (??????? ?? ?????)")
+    parser.add_argument(
+        "--sheet", help="???????????? ?????? ????????? ???? (??????? ?? ?????)"
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -78,16 +81,17 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-
 def _normalize_sheet_name(name: str) -> str:
     return name.strip().lower()
 
 
-def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
+def _iter_rows(sheet: Worksheet) -> Iterable[tuple[int, dict[str, Any]]]:
     header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
     headers = [str(cell).strip().lower() if cell else "" for cell in header_row]
 
-    for row_index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+    for row_index, row in enumerate(
+        sheet.iter_rows(min_row=2, values_only=True), start=2
+    ):
         if all(cell in (None, "", False) for cell in row):
             continue
 
@@ -103,16 +107,23 @@ def _iter_rows(sheet) -> Iterable[tuple[int, dict[str, Any]]]:
 
 def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
     if value is None:
-        return None
+        if isinstance(field, (models.CharField, models.TextField)) and not field.null:
+            value = ""
+        else:
+            return None
     if isinstance(value, bool):
         return None
     if isinstance(value, str) and not value.strip():
+        if isinstance(field, (models.CharField, models.TextField)) and not field.null:
+            return ""
         return None
 
     if isinstance(field, models.DecimalField):
         return Decimal(str(value))
 
-    if isinstance(field, models.DateField) and not isinstance(field, models.DateTimeField):
+    if isinstance(field, models.DateField) and not isinstance(
+        field, models.DateTimeField
+    ):
         return _parse_date(value)
 
     if isinstance(field, models.DateTimeField):
@@ -133,7 +144,30 @@ def _coerce_value(field: models.Field, value: Any, treat_as_id: bool) -> Any:
                 return False
         return bool(value)
 
-    return field.to_python(value)
+    result = field.to_python(value)
+    if (
+        isinstance(field, models.CharField)
+        and field.max_length
+        and isinstance(result, str)
+    ):
+        if len(result) > field.max_length:
+            print(
+                "trimming",
+                field.name,
+                "from",
+                len(result),
+                "to",
+                field.max_length,
+                "characters",
+            )
+            result = result[: field.max_length]
+    if (
+        result is None
+        and isinstance(field, (models.CharField, models.TextField))
+        and not field.null
+    ):
+        return ""
+    return result
 
 
 CLEAR_MODEL_ORDER = [
@@ -211,9 +245,17 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:
     key = related._meta.label_lower
     config = _AUTO_CREATE_MAPPING.get(key)
-    attr = config["attr"] if config else next(
-        (field.name for field in related._meta.fields if field.name in {"name", "title", "number"}),
-        None,
+    attr = (
+        config["attr"]
+        if config
+        else next(
+            (
+                field.name
+                for field in related._meta.fields
+                if field.name in {"name", "title", "number"}
+            ),
+            None,
+        )
     )
     if not attr:
         return None
@@ -227,6 +269,11 @@ _AUTO_CREATE_MAPPING = {
     "deals.insurancetype": {"attr": "name"},
     "deals.saleschannel": {"attr": "name"},
 }
+
+
+CREATED_POLICY_IDS: set[str] = set()
+CREATED_PAYMENT_IDS: set[str] = set()
+
 
 CLIENT_MAPPING_FILE = BASE_DIR / "client_mapping.json"
 
@@ -375,11 +422,24 @@ def _parse_datetime(value: Any) -> datetime:
 
 def _deals_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) -> None:
     title = payload.get("calculations") or payload.get("description")
-    prepared.setdefault("title", str(title).strip() if title else f"Deal {payload.get('id') or 'row'}")
+    prepared.setdefault(
+        "title", str(title).strip() if title else f"Deal {payload.get('id') or 'row'}"
+    )
     if payload.get("is_closed") and prepared.get("status") != "closed":
         prepared["status"] = "closed"
     if not prepared.get("loss_reason"):
         prepared["loss_reason"] = ""
+    if prepared.get("title") and len(prepared["title"]) > 255:
+        prepared["title"] = prepared["title"][:255]
+    if not prepared.get("next_contact_date"):
+        fallback = prepared.get("expected_close")
+        if not fallback:
+            try:
+                fallback = _parse_date(payload.get("start_date"))
+            except ValueError:
+                fallback = None
+        if fallback:
+            prepared["next_contact_date"] = fallback
 
 
 def _tasks_post_process(prepared: dict[str, Any], payload: Mapping[str, Any]) -> None:
@@ -407,6 +467,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
             "phone": "phone",
             "note": "notes",
         },
+        defaults={"notes": "", "phone": "+7 000 000 00 00"},
     ),
     "deals": SheetSpec(
         model_path="deals.Deal",
@@ -484,7 +545,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
 }
 
 
-def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
+def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
     model = apps.get_model(spec.model_path)
     instances = []
     processed = 0
@@ -500,8 +561,13 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
                 field_obj = model._meta.get_field(field_name)
             except FieldDoesNotExist:
                 continue
-            treat_as_id = target.endswith("_id") or isinstance(field_obj, models.ForeignKey)
-            prepared[target] = _coerce_value(field_obj, value, treat_as_id)
+            treat_as_id = target.endswith("_id") or isinstance(
+                field_obj, models.ForeignKey
+            )
+            coerced = _coerce_value(field_obj, value, treat_as_id)
+            if coerced is None and target in spec.defaults:
+                continue
+            prepared[target] = coerced
 
         if spec.post_process:
             spec.post_process(prepared, payload)
@@ -521,19 +587,60 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
             policy_uuid = _ensure_policy_uuid(payload.get("id"))
             if policy_uuid:
                 prepared["id"] = policy_uuid
+            if not prepared.get("deal_id"):
+                print(f"skip policy row {row_index} without deal_id")
+                continue
+            if not prepared.get("insurance_type_id"):
+                print(f"skip policy row {row_index} without insurance_type")
+                continue
+            if not prepared.get("insurance_company_id"):
+                print(f"skip policy row {row_index} without insurance_company")
+                continue
         elif spec.model_path == "finances.Payment":
             payment_uuid = _ensure_payment_uuid(payload.get("id"))
             if payment_uuid:
                 prepared["id"] = payment_uuid
 
+        if spec.model_path == "finances.Payment":
+            policy_id = prepared.get("policy_id")
+            if policy_id and policy_id not in CREATED_POLICY_IDS:
+                print(f"skip payment row {row_index} for missing policy {policy_id}")
+                continue
+        if spec.model_path == "finances.FinancialRecord":
+            payment_id = prepared.get("payment_id")
+            if payment_id and payment_id not in CREATED_PAYMENT_IDS:
+                print(
+                    f"skip financial record row {row_index} for missing payment {payment_id}"
+                )
+                continue
+
         instances.append(model(**prepared))
         processed += 1
+
+        if spec.model_path == "policies.Policy" and prepared.get("id"):
+            CREATED_POLICY_IDS.add(prepared["id"])
+        if spec.model_path == "finances.Payment" and prepared.get("id"):
+            CREATED_PAYMENT_IDS.add(prepared["id"])
 
     if not instances:
         return {"processed": 0, "created": 0}
 
     if not dry_run:
-        model.objects.bulk_create(instances)
+        print(f"bulk inserting {len(instances)} rows for {spec.model_path}")
+        try:
+            model.objects.bulk_create(instances)
+        except DataError as exc:
+            print("bulk insert failed", spec.model_path, exc)
+            for instance in instances:
+                try:
+                    instance.save()
+                    instance.delete()
+                except DataError as inner:
+                    print(
+                        "single row failed", spec.model_path, instance.__dict__, inner
+                    )
+                    raise
+            raise
 
     return {"processed": processed, "created": len(instances)}
 
@@ -541,7 +648,9 @@ def _import_sheet(sheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
 def main() -> None:
     args = _parse_args()
     requested_path = Path(args.path)
-    workbook_path = requested_path if requested_path.is_absolute() else BASE_DIR / requested_path
+    workbook_path = (
+        requested_path if requested_path.is_absolute() else BASE_DIR / requested_path
+    )
     workbook = load_workbook(filename=workbook_path, data_only=True)
     selected = _normalize_sheet_name(args.sheet) if args.sheet else None
     summary = []
@@ -566,7 +675,9 @@ def main() -> None:
         return
 
     for title, result in summary:
-        print(f"{title}: обработано строк {result['processed']}, создано объектов {result['created']}")
+        print(
+            f"{title}: обработано строк {result['processed']}, создано объектов {result['created']}"
+        )
 
     if args.dry_run:
         print("Dry run — записи не выполнялись.")
