@@ -58,7 +58,10 @@ class ChatMessageAdmin(ImportExportModelAdmin):
         ("Message info", {"fields": ("id", "deal", "author_name", "author")}),
         ("Content", {"fields": ("body",)}),
         ("Deletion status", {"fields": ("deleted_at",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+        (
+            "Timestamps",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
     )
 
     def author_display(self, obj):
