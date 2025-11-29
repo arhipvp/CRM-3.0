@@ -15,6 +15,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     search_fields = ["title", "description"]
     ordering_fields = ["created_at", "updated_at", "due_at"]
     ordering = ["-created_at"]
+    owner_field = "created_by"
 
     def get_queryset(self):
         user = self.request.user
@@ -41,3 +42,15 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             serializer.save(created_by=user, assignee=deal.executor)
             return
         serializer.save(created_by=user)
+
+    def _is_deal_seller(self, user, instance):
+        """Позволяет продавцу управлять задачами сделки."""
+        if not user or not user.is_authenticated or not instance:
+            return False
+        deal = getattr(instance, "deal", None)
+        return bool(deal and deal.seller_id == user.id)
+
+    def _can_modify(self, user, instance):
+        if super()._can_modify(user, instance):
+            return True
+        return self._is_deal_seller(user, instance)
