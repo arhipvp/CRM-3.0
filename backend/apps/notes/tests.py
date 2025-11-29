@@ -1,6 +1,7 @@
 from apps.clients.models import Client
 from apps.deals.models import Deal
 from apps.notes.models import Note
+from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -33,6 +34,14 @@ class NoteCreationPermissionsTests(APITestCase):
         self.api_client = APIClient()
         self.seller_token = str(RefreshToken.for_user(self.seller_user).access_token)
         self.other_token = str(RefreshToken.for_user(self.other_user).access_token)
+        self.admin_user = User.objects.create_user(
+            username="admin", password="strongpass"
+        )
+        admin_role, _ = Role.objects.get_or_create(
+            name="Admin", defaults={"description": "Default admin role"}
+        )
+        UserRole.objects.create(user=self.admin_user, role=admin_role)
+        self.admin_token = str(RefreshToken.for_user(self.admin_user).access_token)
 
     def _auth(self, token: str) -> None:
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
@@ -81,3 +90,13 @@ class NoteCreationPermissionsTests(APITestCase):
         response = self.api_client.delete(f"/api/v1/notes/{note.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIsNone(Note.objects.with_deleted().get(id=note.id).deleted_at)
+
+    def test_admin_can_delete_note(self):
+        note = Note.objects.create(
+            deal=self.deal, body="admin deletes this", author_name="Admin"
+        )
+        self._auth(self.admin_token)
+
+        response = self.api_client.delete(f"/api/v1/notes/{note.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIsNotNone(Note.objects.with_deleted().get(id=note.id).deleted_at)
