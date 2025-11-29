@@ -109,7 +109,12 @@ class DealViewSet(
     def _can_modify(self, user, instance):
         if not user or not user.is_authenticated:
             return False
-        return _is_admin_user(user)
+        if _is_admin_user(user):
+            return True
+        if not instance:
+            return False
+        owner_id = getattr(instance, "seller_id", None)
+        return owner_id == user.id
 
     def _can_merge(self, user, deal):
         if not user or not user.is_authenticated:
