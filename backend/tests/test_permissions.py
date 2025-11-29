@@ -78,7 +78,9 @@ class PermissionsTestCase(APITestCase):
 
     def test_1_unauthorized_user_cannot_update_deal(self):
         """Test 1: Non-admin user cannot update a deal (403 Forbidden)"""
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.seller_token}")
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {self.executor_token}"
+        )
 
         response = self.api_client.patch(
             f"/api/v1/deals/{self.deal_seller.id}/",
@@ -108,7 +110,9 @@ class PermissionsTestCase(APITestCase):
 
     def test_3_user_sees_only_their_deals(self):
         """Test 3: Seller sees only deals where they are seller or executor"""
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.seller_token}")
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {self.executor_token}"
+        )
 
         response = self.api_client.get("/api/v1/deals/", format="json")
 
