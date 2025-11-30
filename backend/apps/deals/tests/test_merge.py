@@ -167,7 +167,9 @@ class DealMergeAPITestCase(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["target_deal"]["client"], str(other_client.id))
+        self.assertEqual(
+            str(response.data["target_deal"]["client"]), str(other_client.id)
+        )
 
     def test_merge_requires_owner(self):
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.other_token}")
