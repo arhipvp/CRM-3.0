@@ -1,5 +1,5 @@
-from apps.common.permissions import EditProtectedMixin
 from apps.common.pagination import DealPageNumberPagination
+from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
