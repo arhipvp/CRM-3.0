@@ -476,3 +476,92 @@ def delete_drive_folder(folder_id: str) -> None:
     except Exception as exc:
         logger.exception("Error while deleting Drive folder")
         raise DriveOperationError("Unable to delete Drive folder.") from exc
+
+
+def move_drive_folder_to_parent(folder_id: str, target_parent_id: str) -> None:
+    """Move an existing Drive folder under a new parent folder."""
+
+    if not folder_id or not target_parent_id:
+        return
+
+    service = _get_drive_service()
+    try:
+        metadata = (
+            service.files()
+            .get(fileId=folder_id, fields="parents", supportsAllDrives=True)
+            .execute()
+        )
+        parents = metadata.get("parents") or []
+        remove_parents = ",".join([parent for parent in parents if parent != target_parent_id])
+
+        update_kwargs: dict[str, str] = {
+            "fileId": folder_id,
+            "addParents": target_parent_id,
+            "fields": "id",
+            "supportsAllDrives": True,
+        }
+        if remove_parents:
+            update_kwargs["removeParents"] = remove_parents
+        service.files().update(**update_kwargs).execute()
+    except Exception as exc:
+        logger.exception("Error while moving Drive folder to a new parent")
+        raise DriveOperationError("Unable to move Drive folder.") from exc
+
+
+def move_drive_folder_contents(source_folder_id: str, target_folder_id: str) -> None:
+    """Move the contents of one Drive folder into another folder."""
+
+    if not source_folder_id or not target_folder_id:
+        return
+
+    service = _get_drive_service()
+    page_token: Optional[str] = None
+
+    while True:
+        try:
+            response = (
+                service.files()
+                .list(
+                    q=f"'{source_folder_id}' in parents and trashed = false",
+                    spaces="drive",
+                    fields="nextPageToken, files(id)",
+                    pageSize=200,
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+        except Exception as exc:
+            logger.exception("Error while listing Drive folder contents")
+            raise DriveOperationError("Unable to list Drive folder contents.") from exc
+
+        for item in response.get("files", []):
+            try:
+                service.files().update(
+                    fileId=item["id"],
+                    addParents=target_folder_id,
+                    removeParents=source_folder_id,
+                    supportsAllDrives=True,
+                    fields="id",
+                ).execute()
+            except Exception as exc:
+                logger.exception("Error while moving Drive item to target folder")
+                raise DriveOperationError("Unable to move Drive file.") from exc
+
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+
+
+def delete_drive_folder(folder_id: str) -> None:
+    """Delete a Drive folder."""
+
+    if not folder_id:
+        return
+
+    service = _get_drive_service()
+    try:
+        service.files().delete(fileId=folder_id, supportsAllDrives=True).execute()
+    except Exception as exc:
+        logger.exception("Error while deleting Drive folder")
+        raise DriveOperationError("Unable to delete Drive folder.") from exc
