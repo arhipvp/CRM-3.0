@@ -113,7 +113,7 @@ class PermissionsTestCase(APITestCase):
         response = self.api_client.get("/api/v1/deals/", format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        deal_ids = [deal["id"] for deal in response.data]
+        deal_ids = self._extract_deal_ids(response)
 
         # Seller should see deal_seller (where they are seller)
         self.assertIn(str(self.deal_seller.id), deal_ids)
@@ -127,7 +127,7 @@ class PermissionsTestCase(APITestCase):
         response = self.api_client.get("/api/v1/deals/", format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        deal_ids = [deal["id"] for deal in response.data]
+        deal_ids = self._extract_deal_ids(response)
 
         # Admin should see both deals
         self.assertIn(str(self.deal_seller.id), deal_ids)
@@ -193,10 +193,16 @@ class PermissionsTestCase(APITestCase):
         response = self.api_client.get("/api/v1/deals/", format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        deal_ids = [deal["id"] for deal in response.data]
+        deal_ids = self._extract_deal_ids(response)
 
         # Executor should see deal_seller (where they are executor)
         self.assertIn(str(self.deal_seller.id), deal_ids)
+
+    def _extract_deal_ids(self, response):
+        data = response.data
+        if isinstance(data, dict):
+            data = data.get("results", [])
+        return [deal["id"] for deal in data]
 
 
 class ClientPermissionsTestCase(APITestCase):
