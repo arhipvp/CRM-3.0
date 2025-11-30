@@ -1,4 +1,5 @@
 from apps.common.permissions import EditProtectedMixin
+from apps.common.pagination import DealPageNumberPagination
 from apps.users.models import UserRole
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
@@ -51,7 +52,7 @@ class DealViewSet(
     ]
     ordering = ["next_contact_date", "-created_at"]
     owner_field = "seller"
-    pagination_class = None
+    pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
     def _base_queryset(self, include_deleted=False):

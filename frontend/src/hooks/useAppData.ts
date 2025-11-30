@@ -39,7 +39,7 @@ interface AppDataState {
   knowledgeUploading: boolean;
 }
 
-const DEALS_PAGE_SIZE = 20;
+const DEALS_PAGE_SIZE = 10;
 
 const INITIAL_APP_DATA_STATE: AppDataState = {
   clients: [],
