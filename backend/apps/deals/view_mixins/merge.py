@@ -1,8 +1,8 @@
+from apps.clients.models import Client
 from apps.deals.models import Deal
 from apps.deals.serializers import DealMergeSerializer
 from apps.deals.services import DealMergeService
 from apps.users.models import AuditLog
-from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -41,15 +41,17 @@ class DealMergeMixin:
             raise ValidationError({"target_deal_id": "Target deal is deleted."})
 
         source_deals = [deals_by_id[source_id] for source_id in source_ids]
-        client_id = target_deal.client_id
+        resulting_client_id = serializer.validated_data.get("resulting_client_id")
+        resulting_client = None
+        if resulting_client_id:
+            resulting_client = Client.objects.filter(id=resulting_client_id).first()
+            if not resulting_client:
+                raise ValidationError({"resulting_client_id": "Client not found."})
+        elif target_deal.client:
+            resulting_client = target_deal.client
         for deal in source_deals:
-            if deal.client_id != client_id:
-                raise ValidationError("Все сделки должны принадлежать одному клиенту.")
             if deal.deleted_at is not None:
-                raise ValidationError(
-                    {"source_deal_ids": "Source deals must not be deleted."}
-                )
-
+                raise ValidationError({"source_deal_ids": "Source deals must not be deleted."})
         for deal in (target_deal, *source_deals):
             if not hasattr(self, "_can_merge") or not self._can_merge(
                 request.user, deal
@@ -60,6 +62,7 @@ class DealMergeMixin:
         merge_result = DealMergeService(
             target_deal=target_deal,
             source_deals=source_deals,
+            resulting_client=resulting_client,
             actor=actor,
         ).merge()
 

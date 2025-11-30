@@ -180,6 +180,13 @@ class DealMergeSerializer(serializers.Serializer):
         help_text="Список ID сделок, которые будут объединены в целевую.",
     )
 
+    resulting_client_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="ID ???????, ??????? ????? ???????? ? ??????? ??????.",
+    )
+
+
     def validate(self, attrs):
         target_id = attrs["target_deal_id"]
         source_ids = attrs["source_deal_ids"]

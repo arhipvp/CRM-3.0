@@ -172,12 +172,14 @@ export async function deleteQuote(id: string): Promise<void> {
 export async function mergeDeals(data: {
   targetDealId: string;
   sourceDealIds: string[];
+  resultingClientId?: string;
 }): Promise<DealMergeResponse> {
   const payload = await request<Record<string, unknown>>('/deals/merge/', {
     method: 'POST',
     body: JSON.stringify({
       target_deal_id: data.targetDealId,
       source_deal_ids: data.sourceDealIds,
+      ...(data.resultingClientId ? { resulting_client_id: data.resultingClientId } : {}),
     }),
   });
 

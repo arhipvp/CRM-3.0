@@ -64,7 +64,10 @@ class DealMergeServiceTestCase(TestCase):
 
     def test_service_moves_related_records(self):
         result = DealMergeService(
-            target_deal=self.target, source_deals=[self.source], actor=self.user
+            target_deal=self.target,
+            source_deals=[self.source],
+            resulting_client=self.client_obj,
+            actor=self.user,
         ).merge()
 
         self.assertEqual(Task.objects.filter(deal=self.target).count(), 1)
@@ -123,11 +126,14 @@ class DealMergeAPITestCase(APITestCase):
         self.seller_token = str(RefreshToken.for_user(self.seller).access_token)
         self.other_token = str(RefreshToken.for_user(self.other_user).access_token)
 
-    def _payload(self, sources):
-        return {
+    def _payload(self, sources, resulting_client_id=None):
+        payload = {
             "target_deal_id": str(self.target.id),
             "source_deal_ids": [str(deal.id) for deal in sources],
         }
+        if resulting_client_id:
+            payload["resulting_client_id"] = resulting_client_id
+        return payload
 
     def test_merge_success(self):
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.seller_token}")
@@ -145,7 +151,7 @@ class DealMergeAPITestCase(APITestCase):
         self.assertFalse(Deal.objects.filter(id=self.source.id).exists())
         self.assertFalse(Deal.objects.filter(id=self.source_extra.id).exists())
 
-    def test_merge_requires_same_client(self):
+    def test_merge_allows_specifying_client(self):
         other_client = Client.objects.create(name="Other")
         other_source = Deal.objects.create(
             title="Foreign",
@@ -157,14 +163,11 @@ class DealMergeAPITestCase(APITestCase):
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.seller_token}")
         response = self.api_client.post(
             "/api/v1/deals/merge/",
-            self._payload([self.source, other_source]),
+            self._payload([self.source, other_source], resulting_client_id=str(other_client.id)),
             format="json",
         )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn(
-            "Все сделки должны принадлежать одному клиенту.", str(response.data)
-        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["target_deal"]["clientId"], str(other_client.id))
 
     def test_merge_requires_owner(self):
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.other_token}")

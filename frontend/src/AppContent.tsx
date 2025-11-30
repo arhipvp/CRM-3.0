@@ -472,10 +472,10 @@ const AppContent: React.FC = () => {
   );
 
   const handleMergeDeals = useCallback(
-    async (targetDealId: string, sourceDealIds: string[]) => {
+    async (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => {
       setIsSyncing(true);
       try {
-        const result = await mergeDeals({ targetDealId, sourceDealIds });
+        const result = await mergeDeals({ targetDealId, sourceDealIds, resultingClientId });
         updateAppData((prev) => ({
           deals: prev.deals
             .filter((deal) => !result.mergedDealIds.includes(deal.id))
