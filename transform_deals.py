@@ -214,8 +214,7 @@ def main() -> None:
     rows = extract_rows(content)
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     queries = build_queries(rows, client_map, args.created_by, now)
-    args.output.write_text("
-".join(queries), encoding="utf-8")
+    args.output.write_text("\n".join(queries), encoding="utf-8")
 
 
 if __name__ == "__main__":
