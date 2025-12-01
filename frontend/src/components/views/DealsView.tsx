@@ -33,7 +33,6 @@ import {
 } from '../../types';
 
 import {
-
   fetchDealDriveFiles,
 
   uploadDealDriveFile,
@@ -47,6 +46,8 @@ import {
   restoreNote,
 
   recognizeDealPolicies,
+
+  fetchDeals,
 
 } from '../../api';
 
@@ -377,6 +378,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isDeletingDeal, setIsDeletingDeal] = useState(false);
   const [isClosingDeal, setIsClosingDeal] = useState(false);
   const [mergeSearch, setMergeSearch] = useState('');
+  const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
+  const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
 
   const [mergeResultingClientId, setMergeResultingClientId] = useState<string | undefined>(undefined);
 
@@ -435,14 +438,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
     });
 
   }, [clients, mergeCandidates, selectedDeal]);
-
-  const filteredMergeCandidates = useMemo(() => {
-    const normalized = mergeSearch.trim().toLowerCase();
-    if (!normalized) {
-      return mergeCandidates;
-    }
-    return mergeCandidates.filter((deal) => (deal.title || '').toLowerCase().includes(normalized));
-  }, [mergeCandidates, mergeSearch]);
 
   useEffect(() => {
 
@@ -568,6 +563,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       setMergeSearch('');
 
+      setMergeSearchResults([]);
+
+      setIsMergeSearchLoading(false);
+
     }
 
   }, [isMergeModalOpen]);
@@ -582,7 +581,115 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
     setMergeSearch('');
 
+    setMergeSearchResults([]);
+
+    setIsMergeSearchLoading(false);
+
   }, [selectedDeal?.id]);
+
+
+
+  const mergeQuery = mergeSearch.trim();
+
+  useEffect(() => {
+
+    if (!mergeQuery) {
+
+      setMergeSearchResults([]);
+
+      setIsMergeSearchLoading(false);
+
+      return;
+
+    }
+
+
+
+    let isCancelled = false;
+
+
+
+    setIsMergeSearchLoading(true);
+
+
+
+    const handler = setTimeout(() => {
+
+      (async () => {
+
+        try {
+
+          const filters: Record<string, unknown> = {
+
+            search: mergeQuery,
+
+            page_size: 50,
+
+          };
+
+          if (currentUser?.id) {
+
+            filters.seller = currentUser.id;
+
+          }
+
+          const results = await fetchDeals(filters);
+
+          if (isCancelled) {
+
+            return;
+
+          }
+
+          const filtered = results.filter(
+
+            (deal) => deal.id !== selectedDeal?.id && !deal.deletedAt
+
+          );
+
+          setMergeSearchResults(filtered);
+
+        } catch (err) {
+
+          if (!isCancelled) {
+
+            console.error('Ошибка поиска сделок для объединения:', err);
+
+            setMergeSearchResults([]);
+
+          }
+
+        } finally {
+
+          if (!isCancelled) {
+
+            setIsMergeSearchLoading(false);
+
+          }
+
+        }
+
+      })();
+
+    }, 300);
+
+
+
+    return () => {
+
+      isCancelled = true;
+
+      clearTimeout(handler);
+
+    };
+
+  }, [currentUser?.id, mergeQuery, selectedDeal?.id]);
+
+
+
+  const isMergeSearchActive = Boolean(mergeQuery);
+
+  const mergeList = isMergeSearchActive ? mergeSearchResults : mergeCandidates;
 
 
 
@@ -2131,8 +2238,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   placeholder="Поиск по названию сделки"
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
                 />
-                {filteredMergeCandidates.length ? (
-                  filteredMergeCandidates.map((deal) => (
+                {mergeList.length ? (
+                  mergeList.map((deal) => (
                     <label
                       key={deal.id}
                       className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300"
@@ -2151,14 +2258,17 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       </div>
                     </label>
                   ))
-                ) : mergeCandidates.length ? (
-                  <p className="text-sm text-slate-500">
-                    По запросу "{mergeSearch.trim()}" ничего не найдено.
-                  </p>
                 ) : (
-                  <p className="text-sm text-slate-500">
-                    Нет других активных сделок у клиента.
-                  </p>
+                  !isMergeSearchLoading && (
+                    <p className="text-sm text-slate-500">
+                      {isMergeSearchActive
+                        ? `По запросу "${mergeQuery}" ничего не найдено.`
+                        : 'Нет других активных сделок у клиента.'}
+                    </p>
+                  )
+                )}
+                {isMergeSearchLoading && (
+                  <p className="text-sm text-slate-500">Поиск...</p>
                 )}
               </div>
               {mergeError && (
