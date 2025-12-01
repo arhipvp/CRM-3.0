@@ -141,7 +141,7 @@ class DealViewSet(
 
     @action(detail=True, methods=["post"], url_path="close")
     def close(self, request, pk=None):
-        queryset = self.get_queryset()
+        queryset = self._base_queryset(include_deleted=True)
         deal = get_object_or_404(queryset, pk=pk)
         if not self._is_deal_seller(request.user, deal):
             return Response(
@@ -178,7 +178,7 @@ class DealViewSet(
 
     @action(detail=True, methods=["post"], url_path="reopen")
     def reopen(self, request, pk=None):
-        queryset = self.get_queryset()
+        queryset = self._base_queryset(include_deleted=True)
         deal = get_object_or_404(queryset, pk=pk)
         if deal.status not in CLOSED_STATUSES:
             return Response(
