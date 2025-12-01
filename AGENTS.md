@@ -1,4 +1,7 @@
-﻿# Repository Guidelines
+﻿Отвечай на русском языке.
+Используй "-Encoding OEM" при работе с файлами.
+
+# Repository Guidelines
 
 ## Project Structure & Module Organization
 - `backend/` runs Django 5 + DRF; domain logic lives under `apps/*` (clients, deals, tasks, etc.), shared settings sit in `config/`, and generated media/static assets stay outside version control.

@@ -191,6 +191,9 @@ def _clear_tables() -> None:
             model = apps.get_model(model_path)
             table = connection.ops.quote_name(model._meta.db_table)
             cursor.execute(f"DELETE FROM {table};")
+    CREATED_POLICY_IDS.clear()
+    CREATED_PAYMENT_IDS.clear()
+    CREATED_DEAL_IDS.clear()
 
 
 def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
@@ -273,6 +276,7 @@ _AUTO_CREATE_MAPPING = {
 
 CREATED_POLICY_IDS: set[str] = set()
 CREATED_PAYMENT_IDS: set[str] = set()
+CREATED_DEAL_IDS: set[str] = set()
 
 
 CLIENT_MAPPING_FILE = BASE_DIR / "import/data" / "client_mapping.json"
@@ -545,6 +549,16 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
 }
 
 
+AUTO_CLEAR_SHEETS: set[str] = {"policies", "payments", "incomes", "expenses"}
+
+
+def _truncate_model(model_path: str) -> None:
+    model = apps.get_model(model_path)
+    table = connection.ops.quote_name(model._meta.db_table)
+    with connection.cursor() as cursor:
+        cursor.execute(f"TRUNCATE TABLE {table} CASCADE;")
+
+
 def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
     model = apps.get_model(spec.model_path)
     instances = []
@@ -590,6 +604,9 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             if not prepared.get("deal_id"):
                 print(f"skip policy row {row_index} without deal_id")
                 continue
+            if prepared["deal_id"] not in CREATED_DEAL_IDS:
+                print(f"skip policy row {row_index} for missing deal {prepared['deal_id']}")
+                continue
             if not prepared.get("insurance_type_id"):
                 print(f"skip policy row {row_index} without insurance_type")
                 continue
@@ -621,6 +638,8 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             CREATED_POLICY_IDS.add(prepared["id"])
         if spec.model_path == "finances.Payment" and prepared.get("id"):
             CREATED_PAYMENT_IDS.add(prepared["id"])
+        if spec.model_path == "deals.Deal" and prepared.get("id"):
+            CREATED_DEAL_IDS.add(prepared["id"])
 
     if not instances:
         return {"processed": 0, "created": 0}
@@ -658,6 +677,7 @@ def main() -> None:
         print("Очистка связанных таблиц перед импортом...")
         _clear_tables()
 
+    cleared: set[str] = set()
     for sheet in workbook.worksheets:
         normalized = _normalize_sheet_name(sheet.title)
         if selected and normalized != selected:
@@ -666,6 +686,10 @@ def main() -> None:
         if not spec:
             print(f"Пропускаю лист '{sheet.title}' — нет конфигурации.")
             continue
+        if normalized in AUTO_CLEAR_SHEETS and normalized not in cleared:
+            print(f"Clearing data for '{sheet.title}' before import")
+            _truncate_model(spec.model_path)
+            cleared.add(normalized)
 
         result = _import_sheet(sheet, spec, args.dry_run)
         summary.append((sheet.title, result))
