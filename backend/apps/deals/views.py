@@ -102,6 +102,9 @@ class DealViewSet(
         user = self.request.user
         queryset = self._base_queryset(include_deleted=self._include_deleted_flag())
 
+        if self.action in {"close", "reopen"}:
+            return queryset
+
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:
             return queryset
