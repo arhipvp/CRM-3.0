@@ -147,9 +147,7 @@ def build_queries(
             drive_meta["drive_folder_link"] = drive_link
         if drive_meta:
             description_parts.append(json.dumps(drive_meta, ensure_ascii=False))
-        full_description = "
-
-".join(part for part in description_parts if part)
+        full_description = "\n".join(part for part in description_parts if part)
         next_contact_date = reminder_date if reminder_date and reminder_date != "\N" else start_date
         status_value = status if status and status != "\N" else "open"
         loss_reason = closed_reason if closed_reason and closed_reason != "\N" else None
