@@ -44,7 +44,7 @@ def parse_args():
 
 
 def clean(value: str | None) -> str | None:
-    if not value or value == "\N":
+    if not value or value == r"\N":
         return None
     return value
 
@@ -141,16 +141,16 @@ def build_queries(
         title = description.strip() if description else f"Deal #{client_id}"
         description_parts = [description] if description else []
         drive_meta: dict[str, str] = {}
-        if drive_path and drive_path != "\N":
+        if drive_path and drive_path != r"\N":
             drive_meta["drive_folder_path"] = drive_path
-        if drive_link and drive_link != "\N":
+        if drive_link and drive_link != r"\N":
             drive_meta["drive_folder_link"] = drive_link
         if drive_meta:
             description_parts.append(json.dumps(drive_meta, ensure_ascii=False))
         full_description = "\n".join(part for part in description_parts if part)
-        next_contact_date = reminder_date if reminder_date and reminder_date != "\N" else start_date
-        status_value = status if status and status != "\N" else "open"
-        loss_reason = closed_reason if closed_reason and closed_reason != "\N" else None
+        next_contact_date = reminder_date if reminder_date and reminder_date != r"\N" else start_date
+        status_value = status if status and status != r"\N" else "open"
+        loss_reason = closed_reason if closed_reason and closed_reason != r"\N" else None
         if is_closed == "t":
             status_value = "closed"
             if not loss_reason:
@@ -163,7 +163,7 @@ def build_queries(
         desc_value = escape(full_description)
         status_value = escape(status_value) or "open"
         loss_reason_value = escape(loss_reason) or ""
-        next_contact = next_contact_date if next_contact_date and next_contact_date != "\N" else None
+        next_contact = next_contact_date if next_contact_date and next_contact_date != r"\N" else None
         source_value = ""
         values = [
             deal_uuid,
@@ -187,7 +187,7 @@ def build_queries(
         sql_values = ", ".join(quote(val) for val in values)
         queries.append(DEAL_TEMPLATE.format(cols=", ".join(deal_columns), vals=sql_values))
 
-        if calculations and calculations != "\N":
+        if calculations and calculations != r"\N":
             note_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"notes.note:{legacy_id}"))
             note_body = escape(f"Calculations:
 {calculations}")
