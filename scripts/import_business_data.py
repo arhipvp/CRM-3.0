@@ -193,7 +193,7 @@ def _clear_tables() -> None:
             cursor.execute(f"DELETE FROM {table};")
     CREATED_POLICY_IDS.clear()
     CREATED_PAYMENT_IDS.clear()
-    CREATED_DEAL_IDS.clear()
+    EXISTING_DEAL_IDS.clear()
 
 
 def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
@@ -224,6 +224,12 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
         mapped = _map_to_payment_uuid(value)
         if mapped:
             return mapped
+
+
+def _load_existing_deal_ids() -> None:
+    model = apps.get_model("deals.Deal")
+    EXISTING_DEAL_IDS.clear()
+    EXISTING_DEAL_IDS.update(str(pk) for pk in model.objects.values_list("id", flat=True))
 
     if isinstance(value, (int, float)):
         return int(value)
@@ -276,7 +282,7 @@ _AUTO_CREATE_MAPPING = {
 
 CREATED_POLICY_IDS: set[str] = set()
 CREATED_PAYMENT_IDS: set[str] = set()
-CREATED_DEAL_IDS: set[str] = set()
+EXISTING_DEAL_IDS: set[str] = set()
 
 
 CLIENT_MAPPING_FILE = BASE_DIR / "import/data" / "client_mapping.json"
@@ -604,8 +610,10 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             if not prepared.get("deal_id"):
                 print(f"skip policy row {row_index} without deal_id")
                 continue
-            if prepared["deal_id"] not in CREATED_DEAL_IDS:
-                print(f"skip policy row {row_index} for missing deal {prepared['deal_id']}")
+            deal_id_value = str(prepared["deal_id"])
+            prepared["deal_id"] = deal_id_value
+            if deal_id_value not in EXISTING_DEAL_IDS:
+                print(f"skip policy row {row_index} for missing deal {deal_id_value}")
                 continue
             if not prepared.get("insurance_type_id"):
                 print(f"skip policy row {row_index} without insurance_type")
@@ -639,7 +647,7 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
         if spec.model_path == "finances.Payment" and prepared.get("id"):
             CREATED_PAYMENT_IDS.add(prepared["id"])
         if spec.model_path == "deals.Deal" and prepared.get("id"):
-            CREATED_DEAL_IDS.add(prepared["id"])
+            EXISTING_DEAL_IDS.add(prepared["id"])
 
     if not instances:
         return {"processed": 0, "created": 0}
@@ -678,6 +686,7 @@ def main() -> None:
         _clear_tables()
 
     cleared: set[str] = set()
+    _load_existing_deal_ids()
     for sheet in workbook.worksheets:
         normalized = _normalize_sheet_name(sheet.title)
         if selected and normalized != selected:
