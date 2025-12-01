@@ -71,7 +71,7 @@ def quote(value: str | RawSQL | None) -> str:
 def extract_rows(content: str) -> Iterable[Sequence[str]]:
     marker = "COPY public.deal"
     start = content.index(marker)
-    end = content.index("\\n\\.", start)
+    end = content.index("\n\\.", start)
     block = content[start:end].splitlines()[1:]
     for line in block:
         if not line.strip():
