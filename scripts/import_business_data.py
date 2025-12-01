@@ -549,7 +549,7 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
 }
 
 
-AUTO_CLEAR_SHEETS: set[str] = {"policies", "payments", "incomes", "expenses"}
+AUTO_CLEAR_SHEETS: set[str] = {"clients", "policies", "payments", "incomes", "expenses"}
 
 
 def _truncate_model(model_path: str) -> None:
