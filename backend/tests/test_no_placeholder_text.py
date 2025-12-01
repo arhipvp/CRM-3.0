@@ -19,4 +19,6 @@ def test_serializers_no_placeholder_text():
 
 def test_scripts_no_placeholder_text():
     content = _read_text("scripts/import_business_data.py")
-    assert PLACEHOLDER not in content, "import_business_data.py contains placeholder text"
+    assert (
+        PLACEHOLDER not in content
+    ), "import_business_data.py contains placeholder text"
