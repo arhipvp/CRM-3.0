@@ -150,3 +150,4 @@ backup_2025-11-24_15-20.xlsx
 nginx.conf
 docker-compose.yml
 frontend/vite.config.ts
+run_client_import.sh
