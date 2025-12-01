@@ -76,7 +76,7 @@ export const buildDealsCacheKey = (filters: FilterParams): string => {
 
 export const useAppData = () => {
   const [dataState, dispatch] = useReducer(dataReducer, INITIAL_APP_DATA_STATE);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
