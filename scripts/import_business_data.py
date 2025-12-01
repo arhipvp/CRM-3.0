@@ -275,7 +275,7 @@ CREATED_POLICY_IDS: set[str] = set()
 CREATED_PAYMENT_IDS: set[str] = set()
 
 
-CLIENT_MAPPING_FILE = BASE_DIR / "client_mapping.json"
+CLIENT_MAPPING_FILE = BASE_DIR / "import/data" / "client_mapping.json"
 
 
 def _load_client_mapping() -> dict[str, str]:

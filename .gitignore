@@ -151,3 +151,4 @@ nginx.conf
 docker-compose.yml
 frontend/vite.config.ts
 run_client_import.sh
+import/

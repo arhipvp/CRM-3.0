@@ -12,25 +12,27 @@ INSERT_TEMPLATE = (
     "VALUES ({values});"
 )
 
+IMPORT_DATA_DIR = Path("import/data")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Transform backup clients to CRM inserts.")
     parser.add_argument(
         "--dump",
         type=Path,
-        default=Path("backup_2025-11-24_15-20.sql"),
+        default=IMPORT_DATA_DIR / "backup_2025-11-24_15-20.sql",
         help="SQL dump file containing COPY for public.client",
     )
     parser.add_argument(
         "--output-sql",
         type=Path,
-        default=Path("client_import.sql"),
+        default=IMPORT_DATA_DIR / "client_import.sql",
         help="Target SQL file with INSERTs",
     )
     parser.add_argument(
         "--output-map",
         type=Path,
-        default=Path("client_mapping.json"),
+        default=IMPORT_DATA_DIR / "client_mapping.json",
         help="JSON mapping from legacy IDs to UUIDs",
     )
     parser.add_argument(

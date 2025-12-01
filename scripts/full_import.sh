@@ -4,8 +4,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-BACKUP_SQL="backup_2025-11-24_15-20.sql"
-BACKUP_XLSX="backup_2025-11-24_15-20.xlsx"
+IMPORT_DATA_DIR="$REPO_ROOT/import/data"
+BACKUP_SQL="$IMPORT_DATA_DIR/backup_2025-11-24_15-20.sql"
+BACKUP_XLSX="$IMPORT_DATA_DIR/backup_2025-11-24_15-20.xlsx"
 ENV_FILE=".env"
 
 usage() {
@@ -64,9 +65,9 @@ fi
 python3 transform_clients.py
 python3 transform_deals.py
 
-cp -f client_import.sql backend/client_import.sql
-cp -f deal_import.sql backend/deal_import.sql
-cp -f client_mapping.json backend/client_mapping.json
+cp -f "$IMPORT_DATA_DIR/client_import.sql" backend/client_import.sql
+cp -f "$IMPORT_DATA_DIR/deal_import.sql" backend/deal_import.sql
+cp -f "$IMPORT_DATA_DIR/client_mapping.json" backend/client_mapping.json
 
 PG_CMD=(docker compose exec -e PGPASSWORD="$DB_PASS" backend psql -h db -U crm3 -d crm3)
 

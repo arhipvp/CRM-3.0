@@ -12,25 +12,27 @@ DEAL_TEMPLATE = (
 )
 NOTE_TEMPLATE = "INSERT INTO notes_note ({cols}) VALUES ({vals});"
 
+IMPORT_DATA_DIR = Path("import/data")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Transform deal rows into INSERT statements.")
     parser.add_argument(
         "--dump",
         type=Path,
-        default=Path("backup_2025-11-24_15-20.sql"),
+        default=IMPORT_DATA_DIR / "backup_2025-11-24_15-20.sql",
         help="SQL dump containing COPY for public.deal",
     )
     parser.add_argument(
         "--client-map",
         type=Path,
-        default=Path("client_mapping.json"),
+        default=IMPORT_DATA_DIR / "client_mapping.json",
         help="JSON file mapping legacy client IDs to UUIDs",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("deal_import.sql"),
+        default=IMPORT_DATA_DIR / "deal_import.sql",
         help="Target SQL file",
     )
     parser.add_argument(

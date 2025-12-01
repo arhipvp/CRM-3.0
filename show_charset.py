@@ -11,7 +11,7 @@ def parse_args():
     parser.add_argument(
         "--file",
         type=Path,
-        default=Path("backup_2025-11-24_15-20.sql"),
+        default=Path("import/data/backup_2025-11-24_15-20.sql"),
         help="SQL dump to inspect",
     )
     parser.add_argument(
