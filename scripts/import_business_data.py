@@ -687,7 +687,17 @@ def main() -> None:
 
     cleared: set[str] = set()
     _load_existing_deal_ids()
-    for sheet in workbook.worksheets:
+    order = ["clients", "deals", "policies", "payments", "incomes", "expenses", "tasks"]
+    indexed_sheets = [(idx, sheet) for idx, sheet in enumerate(workbook.worksheets)]
+    order_index = {name: idx for idx, name in enumerate(order)}
+    ordered_sheets = [
+        sheet
+        for _, sheet in sorted(
+            indexed_sheets,
+            key=lambda pair: (order_index.get(_normalize_sheet_name(pair[1].title), len(order)), pair[0]),
+        )
+    ]
+    for sheet in ordered_sheets:
         normalized = _normalize_sheet_name(sheet.title)
         if selected and normalized != selected:
             continue
