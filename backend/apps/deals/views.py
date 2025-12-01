@@ -187,9 +187,7 @@ class DealViewSet(
             )
         if not self._can_modify(request.user, deal):
             return Response(
-                {
-                    "detail": "Only administrators or the deal owner can reopen a deal."
-                },
+                {"detail": "Only administrators or the deal owner can reopen a deal."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         deal.status = "open"

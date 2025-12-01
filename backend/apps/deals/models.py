@@ -116,7 +116,9 @@ class Deal(SoftDeleteModel):
     loss_reason = models.CharField(
         max_length=255, blank=True, help_text="Причина проигрыша"
     )
-    closing_reason = models.TextField(blank=True, default="", help_text="Closing reason")
+    closing_reason = models.TextField(
+        blank=True, default="", help_text="Closing reason"
+    )
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
     )

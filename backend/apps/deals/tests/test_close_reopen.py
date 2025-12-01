@@ -69,7 +69,9 @@ class DealCloseReopenTests(APITestCase):
         self.deal.closing_reason = "Lost reason"
         self.deal.save()
         self._auth(self.seller_token)
-        response = self.client.post(f"/api/v1/deals/{self.deal.id}/reopen/", format="json")
+        response = self.client.post(
+            f"/api/v1/deals/{self.deal.id}/reopen/", format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.deal.refresh_from_db()
         self.assertEqual(self.deal.status, "open")
@@ -80,7 +82,9 @@ class DealCloseReopenTests(APITestCase):
         self.deal.closing_reason = "Won reason"
         self.deal.save()
         self._auth(self.other_token)
-        response = self.client.post(f"/api/v1/deals/{self.deal.id}/reopen/", format="json")
+        response = self.client.post(
+            f"/api/v1/deals/{self.deal.id}/reopen/", format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_can_reopen(self):
@@ -88,7 +92,9 @@ class DealCloseReopenTests(APITestCase):
         self.deal.closing_reason = "Lost reason"
         self.deal.save()
         self._auth(self.admin_token)
-        response = self.client.post(f"/api/v1/deals/{self.deal.id}/reopen/", format="json")
+        response = self.client.post(
+            f"/api/v1/deals/{self.deal.id}/reopen/", format="json"
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.deal.refresh_from_db()
         self.assertEqual(self.deal.status, "open")
