@@ -189,8 +189,7 @@ def build_queries(
 
         if calculations and calculations != r"\N":
             note_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"notes.note:{legacy_id}"))
-            note_body = escape(f"Calculations:
-{calculations}")
+            note_body = escape(f"Calculations:\n{calculations}")
             note_values = ", ".join(
                 quote(val)
                 for val in [
