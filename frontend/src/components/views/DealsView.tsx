@@ -358,6 +358,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const headerExpectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
 
   const isSelectedDealDeleted = Boolean(selectedDeal?.deletedAt);
+  const isDealClosedStatus = selectedDeal?.status === 'won' || selectedDeal?.status === 'lost';
 
 
 
@@ -368,6 +369,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [mergeError, setMergeError] = useState<string | null>(null);
 
   const [isMerging, setIsMerging] = useState(false);
+
+  const [isDeletingDeal, setIsDeletingDeal] = useState(false);
+  const [isClosingDeal, setIsClosingDeal] = useState(false);
 
   const [mergeResultingClientId, setMergeResultingClientId] = useState<string | undefined>(undefined);
 
@@ -705,6 +709,54 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
 
   }, [mergeClientOptions.length, mergeResultingClientId, mergeSources, onMergeDeals, selectedDeal]);
+
+
+
+  const handleEditDealClick = useCallback(() => {
+    if (!selectedDeal || isSelectedDealDeleted) {
+      return;
+    }
+
+    setIsEditingDeal(true);
+  }, [isSelectedDealDeleted, selectedDeal]);
+
+  const handleDeleteDealClick = useCallback(async () => {
+    if (!selectedDeal || isSelectedDealDeleted) {
+      return;
+    }
+
+    setIsDeletingDeal(true);
+    try {
+      await onDeleteDeal(selectedDeal.id);
+    } catch (err) {
+      console.error('Ошибка удаления сделки:', err);
+    } finally {
+      setIsDeletingDeal(false);
+    }
+  }, [isSelectedDealDeleted, onDeleteDeal, selectedDeal]);
+
+  const handleCloseDealClick = useCallback(async () => {
+    if (!selectedDeal || isSelectedDealDeleted || isDealClosedStatus) {
+      return;
+    }
+
+    setIsClosingDeal(true);
+    try {
+      await onUpdateStatus(selectedDeal.id, 'won');
+    } catch (err) {
+      console.error('Ошибка закрытия сделки:', err);
+    } finally {
+      setIsClosingDeal(false);
+    }
+  }, [isDealClosedStatus, isSelectedDealDeleted, onUpdateStatus, selectedDeal]);
+
+  const handleMergeClick = useCallback(() => {
+    if (!selectedDeal || isSelectedDealDeleted) {
+      return;
+    }
+
+    setIsMergeModalOpen(true);
+  }, [isSelectedDealDeleted, selectedDeal]);
 
 
 
@@ -1800,6 +1852,40 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   {selectedDeal.expectedClose ? formatDate(selectedDeal.expectedClose) : 'Нет срока'}
                 </span>
               </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleEditDealClick}
+                disabled={isSelectedDealDeleted}
+                className="px-4 py-1.5 text-sm font-semibold rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Редактировать
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteDealClick}
+                disabled={isSelectedDealDeleted || isDeletingDeal}
+                className="px-4 py-1.5 text-sm font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseDealClick}
+                disabled={isSelectedDealDeleted || isDealClosedStatus || isClosingDeal}
+                className="px-4 py-1.5 text-sm font-semibold rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
+              </button>
+              <button
+                type="button"
+                onClick={handleMergeClick}
+                disabled={isSelectedDealDeleted}
+                className="px-4 py-1.5 text-sm font-semibold rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Сцепить
+              </button>
             </div>
             {renderHeaderDates()}
             <div>
