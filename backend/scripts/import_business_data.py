@@ -14,12 +14,17 @@ from typing import Any, Callable, Iterable, Mapping
 import django
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from django.utils import timezone
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-if (BASE_DIR / "backend").exists():
-    BACKEND_DIR = BASE_DIR / "backend"
-else:
-    BACKEND_DIR = BASE_DIR
+BACKEND_DIR_CANDIDATES = (
+    BASE_DIR,
+    BASE_DIR / "backend",
+)
+BACKEND_DIR = next(
+    (candidate for candidate in BACKEND_DIR_CANDIDATES if (candidate / "config" / "settings.py").exists()),
+    BASE_DIR,
+)
 
 
 def _load_backend_env() -> None:
@@ -48,8 +53,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.apps import apps
+from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
 from django.db import DataError, connection, models
+from django.utils import timezone
+from django.utils import timezone
 
 
 @dataclass(frozen=True)
@@ -62,21 +70,21 @@ class SheetSpec:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Import CRM business data from the Excel template (scripts/templates/business_data_template_new.xlsx)."
+        description="Импортирует CRM-данные из Excel-шаблона (смотрите scripts/templates/business_data_template_new.xlsx)."
     )
-    parser.add_argument("path", help="Path to the business data Excel file (.xlsx)")
+    parser.add_argument("path", help="Путь к Excel-файлу (.xlsx)")
     parser.add_argument(
-        "--sheet", help="Worksheet name to import (defaults to matching sheets)"
+        "--sheet", help="Импортировать только указанный лист (по умолчанию все)"
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Validate the payload without writing to the database",
+        help="Прогон импорта без сохранения строк в базу",
     )
     parser.add_argument(
         "--clear",
         action="store_true",
-        help="Truncate dependent tables before importing new business data",
+        help="Очистить связанные таблицы перед импортом",
     )
     return parser.parse_args()
 
@@ -184,13 +192,24 @@ CLEAR_MODEL_ORDER = [
 ]
 
 
+CREATED_POLICY_IDS: set[str] = set()
+CREATED_PAYMENT_IDS: set[str] = set()
+EXISTING_DEAL_IDS: set[str] = set()
+
+
 def _clear_tables() -> None:
-    """Удаляет данные из ключевых моделей в правильном порядке зависимости."""
+    """Удаляет данные из таблиц в порядке, соответствующем зависимостям моделей."""
     with connection.cursor() as cursor:
         for model_path in CLEAR_MODEL_ORDER:
             model = apps.get_model(model_path)
             table = connection.ops.quote_name(model._meta.db_table)
             cursor.execute(f"DELETE FROM {table};")
+    CREATED_POLICY_IDS.clear()
+    CREATED_PAYMENT_IDS.clear()
+    EXISTING_DEAL_IDS.clear()
+    CREATED_POLICY_IDS.clear()
+    CREATED_PAYMENT_IDS.clear()
+    EXISTING_DEAL_IDS.clear()
 
 
 def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
@@ -241,6 +260,101 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
 
     raise ValueError(f"Не найдено {related._meta.verbose_name} '{value}'")
 
+def _ensure_placeholder_deal(client_uuid: str | None) -> str | None:
+    if not client_uuid:
+        return None
+    Deal = apps.get_model("deals.Deal")
+    User = apps.get_model(settings.AUTH_USER_MODEL)
+    user = User.objects.filter(is_active=True).first()
+    now_date = timezone.now().date()
+    deal_id = str(uuid.uuid4())
+    deal = Deal.objects.create(
+        id=deal_id,
+        title="Imported policy deal",
+        description="Auto-created placeholder for policy without deal",
+        client_id=client_uuid,
+        seller_id=user.pk if user else None,
+        executor_id=user.pk if user else None,
+        status="imported",
+        stage_name="import",
+        expected_close=now_date,
+        next_contact_date=now_date,
+        next_review_date=now_date,
+        source="import",
+        loss_reason="",
+        closing_reason="",
+    )
+    EXISTING_DEAL_IDS.add(deal_id)
+    return deal_id
+
+
+def _ensure_deal_exists(deal_id: str, client_uuid: str | None) -> str | None:
+    if not deal_id:
+        return None
+    if deal_id in EXISTING_DEAL_IDS:
+        return deal_id
+    Deal = apps.get_model("deals.Deal")
+    User = apps.get_model(settings.AUTH_USER_MODEL)
+    user = User.objects.filter(is_active=True).first()
+    now_date = timezone.now().date()
+    Deal.objects.create(
+        id=deal_id,
+        title="Imported policy deal",
+        description="Auto-created deal for policy referent",
+        client_id=client_uuid,
+        seller_id=user.pk if user else None,
+        executor_id=user.pk if user else None,
+        status="imported",
+        stage_name="policy import",
+        expected_close=now_date,
+        next_contact_date=now_date,
+        next_review_date=now_date,
+        source="policy-import",
+        loss_reason="",
+        closing_reason="",
+    )
+    EXISTING_DEAL_IDS.add(deal_id)
+    return deal_id
+
+def _create_deal_for_policy(client_uuid: str | None, policy_number: str | None) -> str | None:
+    if not client_uuid:
+        return None
+    Client = apps.get_model("clients.Client")
+    if not Client.objects.filter(id=client_uuid).exists():
+        print(f"skip policy for missing client {client_uuid}")
+        return None
+    Deal = apps.get_model("deals.Deal")
+    User = apps.get_model(settings.AUTH_USER_MODEL)
+    user = User.objects.filter(is_active=True).first()
+    now_date = timezone.now().date()
+    new_deal_id = str(uuid.uuid4())
+    title = f"Policy {policy_number or 'imported'}"
+    description = f"Auto deal for policy {policy_number or ''}".strip()
+    Deal.objects.create(
+        id=new_deal_id,
+        title=title,
+        description=description,
+        client_id=client_uuid,
+        seller_id=user.pk if user else None,
+        executor_id=user.pk if user else None,
+        status="imported",
+        stage_name="policy import",
+        expected_close=now_date,
+        next_contact_date=now_date,
+        next_review_date=now_date,
+        source="policy-import",
+        loss_reason="",
+        closing_reason="",
+    )
+    EXISTING_DEAL_IDS.add(new_deal_id)
+    return new_deal_id
+
+
+def _load_existing_deal_ids() -> None:
+    model = apps.get_model("deals.Deal")
+    EXISTING_DEAL_IDS.clear()
+    EXISTING_DEAL_IDS.update(str(pk) for pk in model.objects.values_list("id", flat=True))
+
 
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:
     key = related._meta.label_lower
@@ -273,6 +387,7 @@ _AUTO_CREATE_MAPPING = {
 
 CREATED_POLICY_IDS: set[str] = set()
 CREATED_PAYMENT_IDS: set[str] = set()
+EXISTING_DEAL_IDS: set[str] = set()
 
 
 CLIENT_MAPPING_FILE = BASE_DIR / "import/data" / "client_mapping.json"
@@ -545,6 +660,16 @@ SHEET_SPECS: Mapping[str, SheetSpec] = {
 }
 
 
+AUTO_CLEAR_SHEETS: set[str] = {"clients", "policies", "payments", "incomes", "expenses"}
+
+
+def _truncate_model(model_path: str) -> None:
+    model = apps.get_model(model_path)
+    table = connection.ops.quote_name(model._meta.db_table)
+    with connection.cursor() as cursor:
+        cursor.execute(f"TRUNCATE TABLE {table} CASCADE;")
+
+
 def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str, int]:
     model = apps.get_model(spec.model_path)
     instances = []
@@ -587,9 +712,20 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             policy_uuid = _ensure_policy_uuid(payload.get("id"))
             if policy_uuid:
                 prepared["id"] = policy_uuid
-            if not prepared.get("deal_id"):
-                print(f"skip policy row {row_index} without deal_id")
-                continue
+            deal_id_value = prepared.get("deal_id")
+            if not deal_id_value:
+                client_uuid = prepared.get("client_id")
+                if not client_uuid:
+                    print(f"skip policy row {row_index} without client_id")
+                    continue
+                policy_number = prepared.get("number")
+                generated_deal_id = _create_deal_for_policy(client_uuid, policy_number)
+                if not generated_deal_id:
+                    print(f"skip policy row {row_index} for missing deal")
+                    continue
+                deal_id_value = generated_deal_id
+            deal_id_value = str(deal_id_value)
+            prepared["deal_id"] = deal_id_value
             if not prepared.get("insurance_type_id"):
                 print(f"skip policy row {row_index} without insurance_type")
                 continue
@@ -621,6 +757,8 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             CREATED_POLICY_IDS.add(prepared["id"])
         if spec.model_path == "finances.Payment" and prepared.get("id"):
             CREATED_PAYMENT_IDS.add(prepared["id"])
+        if spec.model_path == "deals.Deal" and prepared.get("id"):
+            EXISTING_DEAL_IDS.add(prepared["id"])
 
     if not instances:
         return {"processed": 0, "created": 0}
@@ -658,7 +796,19 @@ def main() -> None:
         print("Очистка связанных таблиц перед импортом...")
         _clear_tables()
 
-    for sheet in workbook.worksheets:
+    cleared: set[str] = set()
+    _load_existing_deal_ids()
+    order = ["clients", "deals", "policies", "payments", "incomes", "expenses", "tasks"]
+    indexed_sheets = [(idx, sheet) for idx, sheet in enumerate(workbook.worksheets)]
+    order_index = {name: idx for idx, name in enumerate(order)}
+    ordered_sheets = [
+        sheet
+        for _, sheet in sorted(
+            indexed_sheets,
+            key=lambda pair: (order_index.get(_normalize_sheet_name(pair[1].title), len(order)), pair[0]),
+        )
+    ]
+    for sheet in ordered_sheets:
         normalized = _normalize_sheet_name(sheet.title)
         if selected and normalized != selected:
             continue
@@ -666,6 +816,10 @@ def main() -> None:
         if not spec:
             print(f"Пропускаю лист '{sheet.title}' — нет конфигурации.")
             continue
+        if normalized in AUTO_CLEAR_SHEETS and normalized not in cleared:
+            print(f"Clearing data for '{sheet.title}' before import")
+            _truncate_model(spec.model_path)
+            cleared.add(normalized)
 
         result = _import_sheet(sheet, spec, args.dry_run)
         summary.append((sheet.title, result))

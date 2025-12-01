@@ -17,10 +17,14 @@ from openpyxl.worksheet.worksheet import Worksheet
 from django.utils import timezone
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-if (BASE_DIR / "backend").exists():
-    BACKEND_DIR = BASE_DIR / "backend"
-else:
-    BACKEND_DIR = BASE_DIR
+BACKEND_DIR_CANDIDATES = (
+    BASE_DIR,
+    BASE_DIR / "backend",
+)
+BACKEND_DIR = next(
+    (candidate for candidate in BACKEND_DIR_CANDIDATES if (candidate / "config" / "settings.py").exists()),
+    BASE_DIR,
+)
 
 
 def _load_backend_env() -> None:
@@ -49,8 +53,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.apps import apps
+from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
 from django.db import DataError, connection, models
+from django.utils import timezone
 from django.utils import timezone
 
 
@@ -235,6 +241,25 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
         if mapped:
             return mapped
 
+    if isinstance(value, (int, float)):
+        return int(value)
+
+    text = str(value).strip()
+    if text.isdigit():
+        return int(text)
+
+    for attr in ("name", "title", "number"):
+        if hasattr(related, attr):
+            lookup = {attr: text}
+            result = related.objects.filter(**lookup).first()
+            if result:
+                return result.pk
+    created_pk = _auto_create_related(related, text)
+    if created_pk:
+        return created_pk
+
+    raise ValueError(f"Не найдено {related._meta.verbose_name} '{value}'")
+
 def _ensure_placeholder_deal(client_uuid: str | None) -> str | None:
     if not client_uuid:
         return None
@@ -262,8 +287,41 @@ def _ensure_placeholder_deal(client_uuid: str | None) -> str | None:
     EXISTING_DEAL_IDS.add(deal_id)
     return deal_id
 
+
+def _ensure_deal_exists(deal_id: str, client_uuid: str | None) -> str | None:
+    if not deal_id:
+        return None
+    if deal_id in EXISTING_DEAL_IDS:
+        return deal_id
+    Deal = apps.get_model("deals.Deal")
+    User = apps.get_model(settings.AUTH_USER_MODEL)
+    user = User.objects.filter(is_active=True).first()
+    now_date = timezone.now().date()
+    Deal.objects.create(
+        id=deal_id,
+        title="Imported policy deal",
+        description="Auto-created deal for policy referent",
+        client_id=client_uuid,
+        seller_id=user.pk if user else None,
+        executor_id=user.pk if user else None,
+        status="imported",
+        stage_name="policy import",
+        expected_close=now_date,
+        next_contact_date=now_date,
+        next_review_date=now_date,
+        source="policy-import",
+        loss_reason="",
+        closing_reason="",
+    )
+    EXISTING_DEAL_IDS.add(deal_id)
+    return deal_id
+
 def _create_deal_for_policy(client_uuid: str | None, policy_number: str | None) -> str | None:
     if not client_uuid:
+        return None
+    Client = apps.get_model("clients.Client")
+    if not Client.objects.filter(id=client_uuid).exists():
+        print(f"skip policy for missing client {client_uuid}")
         return None
     Deal = apps.get_model("deals.Deal")
     User = apps.get_model(settings.AUTH_USER_MODEL)
@@ -296,25 +354,6 @@ def _load_existing_deal_ids() -> None:
     model = apps.get_model("deals.Deal")
     EXISTING_DEAL_IDS.clear()
     EXISTING_DEAL_IDS.update(str(pk) for pk in model.objects.values_list("id", flat=True))
-
-    if isinstance(value, (int, float)):
-        return int(value)
-
-    text = str(value).strip()
-    if text.isdigit():
-        return int(text)
-
-    for attr in ("name", "title", "number"):
-        if hasattr(related, attr):
-            lookup = {attr: text}
-            result = related.objects.filter(**lookup).first()
-            if result:
-                return result.pk
-    created_pk = _auto_create_related(related, text)
-    if created_pk:
-        return created_pk
-
-    raise ValueError(f"Не найдено {related._meta.verbose_name} '{value}'")
 
 
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:

@@ -152,4 +152,8 @@ docker-compose.yml
 frontend/vite.config.ts
 run_client_import.sh
 import/
+scripts/*
+backend/client_mapping.json
+backend/scripts/import_business_data.py
+scripts/full_import.sh
 scripts/import_business_data.py

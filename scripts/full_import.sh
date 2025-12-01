@@ -68,6 +68,7 @@ python3 transform_deals.py
 cp -f "$IMPORT_DATA_DIR/client_import.sql" backend/client_import.sql
 cp -f "$IMPORT_DATA_DIR/deal_import.sql" backend/deal_import.sql
 cp -f "$IMPORT_DATA_DIR/client_mapping.json" backend/client_mapping.json
+cp -f scripts/import_business_data.py backend/scripts/import_business_data.py
 mkdir -p backend/import/data
 BACKUP_XLSX_FILENAME="$(basename "$BACKUP_XLSX")"
 cp -f "$BACKUP_XLSX" backend/import/data/"$BACKUP_XLSX_FILENAME"
@@ -84,6 +85,9 @@ run_file() {
   echo "+ ${PG_CMD[*]} -f $1"
   "${PG_CMD[@]}" -f "$1"
 }
+
+echo "===> ensuring schema (migrations)"
+docker compose -f docker-compose.prod.yml exec backend python manage.py migrate
 
 echo "===> truncating clients+related (cascade)"
 run_sql "TRUNCATE TABLE clients_client CASCADE;"
