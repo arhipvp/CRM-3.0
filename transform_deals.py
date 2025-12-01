@@ -57,8 +57,7 @@ def escape(value: str | None) -> str | None:
     if value is None:
         return None
     safe = value.replace("'", "''")
-    return safe.replace("
-", "\n")
+    return safe.replace("\\n", "\n")
 
 
 def quote(value: str | RawSQL | None) -> str:
@@ -72,8 +71,7 @@ def quote(value: str | RawSQL | None) -> str:
 def extract_rows(content: str) -> Iterable[Sequence[str]]:
     marker = "COPY public.deal"
     start = content.index(marker)
-    end = content.index("
-\.", start)
+    end = content.index("\\n\\.", start)
     block = content[start:end].splitlines()[1:]
     for line in block:
         if not line.strip():
