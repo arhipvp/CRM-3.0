@@ -376,6 +376,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const [isDeletingDeal, setIsDeletingDeal] = useState(false);
   const [isClosingDeal, setIsClosingDeal] = useState(false);
+  const [mergeSearch, setMergeSearch] = useState('');
 
   const [mergeResultingClientId, setMergeResultingClientId] = useState<string | undefined>(undefined);
 
@@ -434,6 +435,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
     });
 
   }, [clients, mergeCandidates, selectedDeal]);
+
+  const filteredMergeCandidates = useMemo(() => {
+    const normalized = mergeSearch.trim().toLowerCase();
+    if (!normalized) {
+      return mergeCandidates;
+    }
+    return mergeCandidates.filter((deal) => (deal.title || '').toLowerCase().includes(normalized));
+  }, [mergeCandidates, mergeSearch]);
 
   useEffect(() => {
 
@@ -557,6 +566,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       setMergeError(null);
 
+      setMergeSearch('');
+
     }
 
   }, [isMergeModalOpen]);
@@ -568,6 +579,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setMergeSources([]);
 
     setMergeError(null);
+
+    setMergeSearch('');
 
   }, [selectedDeal?.id]);
 
@@ -2111,8 +2124,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
               </div>
               <div className="space-y-3">
                 <p className="text-sm font-semibold text-slate-700">Выберите сделки для переноса</p>
-                {mergeCandidates.length ? (
-                  mergeCandidates.map((deal) => (
+                <input
+                  type="search"
+                  value={mergeSearch}
+                  onChange={(event) => setMergeSearch(event.target.value)}
+                  placeholder="Поиск по названию сделки"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                />
+                {filteredMergeCandidates.length ? (
+                  filteredMergeCandidates.map((deal) => (
                     <label
                       key={deal.id}
                       className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300"
@@ -2131,6 +2151,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       </div>
                     </label>
                   ))
+                ) : mergeCandidates.length ? (
+                  <p className="text-sm text-slate-500">
+                    По запросу "{mergeSearch.trim()}" ничего не найдено.
+                  </p>
                 ) : (
                   <p className="text-sm text-slate-500">
                     Нет других активных сделок у клиента.
