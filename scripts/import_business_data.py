@@ -262,6 +262,35 @@ def _ensure_placeholder_deal(client_uuid: str | None) -> str | None:
     EXISTING_DEAL_IDS.add(deal_id)
     return deal_id
 
+def _create_deal_for_policy(client_uuid: str | None, policy_number: str | None) -> str | None:
+    if not client_uuid:
+        return None
+    Deal = apps.get_model("deals.Deal")
+    User = apps.get_model(settings.AUTH_USER_MODEL)
+    user = User.objects.filter(is_active=True).first()
+    now_date = timezone.now().date()
+    new_deal_id = str(uuid.uuid4())
+    title = f"Policy {policy_number or 'imported'}"
+    description = f"Auto deal for policy {policy_number or ''}".strip()
+    Deal.objects.create(
+        id=new_deal_id,
+        title=title,
+        description=description,
+        client_id=client_uuid,
+        seller_id=user.pk if user else None,
+        executor_id=user.pk if user else None,
+        status="imported",
+        stage_name="policy import",
+        expected_close=now_date,
+        next_contact_date=now_date,
+        next_review_date=now_date,
+        source="policy-import",
+        loss_reason="",
+        closing_reason="",
+    )
+    EXISTING_DEAL_IDS.add(new_deal_id)
+    return new_deal_id
+
 
 def _load_existing_deal_ids() -> None:
     model = apps.get_model("deals.Deal")
@@ -644,19 +673,16 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             policy_uuid = _ensure_policy_uuid(payload.get("id"))
             if policy_uuid:
                 prepared["id"] = policy_uuid
-            deal_id_value = prepared.get("deal_id")
-            if not deal_id_value:
-                deal_id_value = _ensure_placeholder_deal(prepared.get("client_id"))
-                if deal_id_value:
-                    prepared["deal_id"] = deal_id_value
-                else:
-                    print(f"skip policy row {row_index} without deal_id")
-                    continue
-            deal_id_value = str(deal_id_value)
-            prepared["deal_id"] = deal_id_value
-            if deal_id_value not in EXISTING_DEAL_IDS:
-                print(f"skip policy row {row_index} for missing deal {deal_id_value}")
+            client_uuid = prepared.get("client_id")
+            if not client_uuid:
+                print(f"skip policy row {row_index} without client_id")
                 continue
+            policy_number = prepared.get("number")
+            generated_deal_id = _create_deal_for_policy(client_uuid, policy_number)
+            if not generated_deal_id:
+                print(f"skip policy row {row_index} for missing deal")
+                continue
+            prepared["deal_id"] = generated_deal_id
             if not prepared.get("insurance_type_id"):
                 print(f"skip policy row {row_index} without insurance_type")
                 continue
