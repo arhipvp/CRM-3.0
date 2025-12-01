@@ -52,8 +52,6 @@ import {
 
 import { ActivityTimeline } from '../ActivityTimeline';
 
-import { UserBadge } from '../common/UserBadge';
-
 import { EditDealForm, EditDealFormValues } from '../forms/EditDealForm';
 
 import { AddTaskForm, AddTaskFormValues } from '../forms/AddTaskForm';
@@ -76,13 +74,10 @@ import {
 
   FinancialRecordCreationContext,
 
-  formatCurrency,
-
   formatDate,
 
   formatDeletedAt,
 
-  getDatePlusDays,
 
   getDeadlineTone,
 
@@ -90,7 +85,6 @@ import {
 
   getUserDisplayName,
 
-  QUICK_NEXT_CONTACT_OPTIONS,
 
   PolicySortKey,
 
@@ -254,14 +248,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   onSelectDeal,
 
-  onUpdateStatus,
-
   onUpdateDeal,
-
-  onDeleteDeal,
-
-  onRestoreDeal,
-
   onMergeDeals,
 
   onLoadMoreDeals,
@@ -502,12 +489,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const [creatingPaymentPolicyId, setCreatingPaymentPolicyId] = useState<string | null>(null);
 
-  const [savingDateField, setSavingDateField] = useState<
-
-    'nextContactDate' | 'expectedClose' | null
-
-  >(null);
-
   const [policySortKey] = useState<PolicySortKey>('startDate');
 
   const [policySortOrder] = useState<'asc' | 'desc'>('asc');
@@ -676,13 +657,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   }, []);
 
-
-
-  const handleResultingClientChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-
-    setMergeResultingClientId(event.target.value || undefined);
-
-  }, []);
 
 
 
@@ -858,8 +832,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
 
-    setSavingDateField(field);
-
     try {
 
       await onUpdateDeal(selectedDeal.id, payload);
@@ -880,25 +852,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       console.error('Ошибка обновления даты сделки:', err);
 
-    } finally {
-
-      setSavingDateField(null);
-
     }
 
   };
 
-
-
-  const handleQuickNextContact = async (days: number) => {
-
-    await handleInlineDateChange('nextContactDate', getDatePlusDays(days), {
-
-      selectTopDeal: true,
-
-    });
-
-  };
 
 
 
@@ -1486,91 +1443,634 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
 
+
+
   const renderNotesSection = () => {
     if (!selectedDeal) {
       return null;
     }
+
     const filterOptions: { value: 'active' | 'archived'; label: string }[] = [
-      { value: 'active', label: '????????' },
-      { value: 'archived', label: '???????? ????????' },
+      { value: 'active', label: 'Активные' },
+      { value: 'archived', label: 'Показать удаленные заметки' },
     ];
+
     return (
       <section className="space-y-6">
         <div className="space-y-4">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-slate-700">?????? ???????????? ??????</p>
-            <select
-              value={mergeResultingClientId ?? ""}
-              onChange={handleResultingClientChange}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
-              disabled={!mergeClientOptions.length}
-            >
-              {mergeClientOptions.length ? (
-                mergeClientOptions.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">??? ????????? ????????</option>
-              )}
-            </select>
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                disabled={notesLoading}
+                onClick={() => setNotesFilter(option.value)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  notesFilter === option.value
+                    ? 'bg-slate-900 text-white border border-slate-900'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-slate-700">??????, ??????? ????? ??????????</p>
-            {mergeCandidates.length ? (
-              mergeCandidates.map((deal) => {
-                const clientName =
-                  clients.find((client) => client.id === deal.clientId)?.name ??
-                  deal.clientName ??
-                  "?";
-                return (
-                  <label
-                    key={deal.id}
-                    className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={mergeSources.includes(deal.id)}
-                      onChange={() => toggleMergeSource(deal.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-                      <p className="text-[11px] text-slate-500">
-                        ??????: {clientName} ? ??????: {deal.stageName || "?"} ??????????: {statusLabels[deal.status]}
-                      </p>
-                    </div>
-                  </label>
-                );
-              })
-            ) : (
-              <p className="text-sm text-slate-500">?????? ??? ??????????? ???? ???.</p>
-            )}
-          </div>
+          {notesError && <p className="text-xs text-rose-500">{notesError}</p>}
+          {notesFilter === 'active' && (
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+              <textarea
+                rows={4}
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                placeholder="Заметка к сделке"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-inner focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-slate-400">Все заметки видны всем участникам</p>
+                <button
+                  type="button"
+                  onClick={handleAddNote}
+                  disabled={notesAction === 'create'}
+                  className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                >
+                  {notesAction === 'create' ? 'Сохраняем...' : 'Добавить заметку'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-        {mergeError && (
-          <p className="text-sm font-medium text-rose-600">{mergeError}</p>
+
+        {notesLoading ? (
+          <p className="text-sm text-slate-500">Загрузка заметок...</p>
+        ) : notes.length ? (
+          <div className="columns-1 gap-4 space-y-4 sm:columns-2 xl:columns-3 2xl:columns-4">
+            {notes.map((note) => (
+              <article
+                key={note.id}
+                className="relative mb-4 overflow-hidden rounded-[28px] border border-amber-200 bg-amber-50 p-4 pb-5 text-slate-900 shadow-[0_20px_40px_rgba(245,158,11,0.25)] transition hover:-translate-y-1 break-inside-avoid-column"
+              >
+                <div className="absolute top-2 right-4 h-3 w-12 rounded-full bg-amber-300 opacity-80 shadow-[0_4px_15px_rgba(245,158,11,0.5)]" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                  {note.authorName || '—'}
+                </p>
+                <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
+                  {note.body || '—'}
+                </p>
+                <div className="mt-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <span className="text-[11px] font-normal text-slate-500">
+                    {formatDate(note.createdAt)}
+                  </span>
+                  {notesFilter === 'active' ? (
+                    <button
+                      type="button"
+                      disabled={notesAction === note.id}
+                      onClick={() => handleArchiveNote(note.id)}
+                      className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
+                    >
+                      {notesAction === note.id ? 'Удаляем...' : 'Удалить'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={notesAction === note.id}
+                      onClick={() => handleRestoreNote(note.id)}
+                      className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
+                    >
+                      {notesAction === note.id ? 'Сохраняем...' : 'Восстановить'}
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500">
+            {notesFilter === 'active'
+              ? 'Заметок пока нет — добавьте первую, чтобы зафиксировать важное.'
+              : 'Удаленные заметки пусты — вы еще не удаляли заметки.'}
+          </div>
         )}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-          <button
-            type="button"
-            onClick={() => setIsMergeModalOpen(false)}
-            className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200"
-          >
-            ������
-          </button>
-          <button
-            type="button"
-            onClick={handleMergeSubmit}
-            disabled={isMerging || !mergeSources.length}
-            className="px-3 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isMerging ? '����������...' : '���������� ������'}
-          </button>
-        </div>
       </section>
     );
   };
 
+  const renderChatTab = () => (
+    <ChatTab
+      selectedDeal={selectedDeal}
+      chatMessages={chatMessages}
+      isChatLoading={isChatLoading}
+      currentUser={currentUser}
+      onSendMessage={handleChatSendMessage}
+      onDeleteMessage={handleChatDelete}
+    />
+  );
 
+  const renderActivityTab = () => (
+    <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
+  );
+
+  const renderHeaderDates = () => {
+    if (!selectedDeal) {
+      return null;
+    }
+
+    return (
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
+          <input
+            type="date"
+            value={selectedDeal.nextContactDate ?? ''}
+            onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
+            className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+          />
+        </div>
+        <div>
+          <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
+            Застраховать не позднее чем
+          </p>
+          <input
+            type="date"
+            value={selectedDeal.expectedClose ?? ''}
+            onChange={(event) => handleInlineDateChange('expectedClose', event.target.value)}
+            className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview': {
+        return (
+          <div className="space-y-6">
+            {renderNotesSection()}
+          </div>
+        );
+      }
+      case 'tasks':
+        return renderTasksTab();
+      case 'policies':
+        return renderPoliciesTab();
+      case 'quotes':
+        return renderQuotesTab();
+      case 'files':
+        return renderFilesTab();
+      case 'chat':
+        return renderChatTab();
+      case 'history':
+        return renderActivityTab();
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-full">
+      <section className="xl:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
+            <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
+          </div>
+        </div>
+        <div className="px-5 py-3 border-b border-slate-100 space-y-3">
+          <div>
+            <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
+              Поиск
+            </label>
+            <input
+              id="dealSearch"
+              type="search"
+              value={dealSearch}
+              onChange={(event) => onDealSearchChange(event.target.value)}
+              placeholder="Поиск по сделкам"
+              className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label htmlFor="dealExecutor" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Ответственный
+              </label>
+              <select
+                id="dealExecutor"
+                value={dealExecutorFilter}
+                onChange={(event) => onDealExecutorFilterChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              >
+                <option value="">Все</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {getUserDisplayName(user)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="dealSource" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Источник
+              </label>
+              <input
+                id="dealSource"
+                type="text"
+                value={dealSourceFilter}
+                onChange={(event) => onDealSourceFilterChange(event.target.value)}
+                placeholder="Например, реклама, рефералы"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label htmlFor="dealExpectedCloseFrom" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Дата закрытия с
+              </label>
+              <input
+                id="dealExpectedCloseFrom"
+                type="date"
+                value={dealExpectedCloseFrom}
+                onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              />
+            </div>
+            <div>
+              <label htmlFor="dealExpectedCloseTo" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Дата закрытия по
+              </label>
+              <input
+                id="dealExpectedCloseTo"
+                type="date"
+                value={dealExpectedCloseTo}
+                onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="dealShowDeleted"
+              type="checkbox"
+              checked={dealShowDeleted}
+              onChange={(event) => onDealShowDeletedChange(event.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
+              Показать удалённые сделки
+            </label>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {sortedDeals.map((deal) => {
+            const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
+            const deadlineTone = getDeadlineTone(deal.expectedClose);
+            const isDeleted = Boolean(deal.deletedAt);
+            return (
+              <button
+                key={deal.id}
+                onClick={() => onSelectDeal(deal.id)}
+                className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
+                  selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
+                } ${isDeleted ? 'opacity-60' : ''}`}
+              >
+                <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
+                <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
+                {isDeleted && (
+                  <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                    Удалена: {formatDeletedAt(deal.deletedAt)}
+                  </p>
+                )}
+                <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'}</p>
+                {deal.expectedClose ? (
+                  <p className={`text-xs mt-1 ${deadlineTone}`}>
+                    Застраховать не позднее чем: {formatDate(deal.expectedClose)}
+                  </p>
+                ) : (
+                  <p className="text-xs mt-1 text-rose-500 font-semibold">
+                    Заполните дату, чтобы не пропустить сроки
+                  </p>
+                )}
+                <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+                  <span>Контакт: {formatDate(deal.nextContactDate)}</span>
+                  {deal.nextContactDate && (
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        isOverdue ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {isOverdue ? '⚠ ' : ''}
+                      {formatDate(deal.nextContactDate)}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+          {dealsHasMore && (
+            <div className="px-5 py-4 border-t border-slate-100 text-center">
+              <button
+                type="button"
+                onClick={onLoadMoreDeals}
+                disabled={isLoadingMoreDeals}
+                className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
+              >
+                {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+      <section className="xl:col-span-3 space-y-6">
+        {selectedDeal ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm text-slate-500">Клиент</p>
+                <p className="text-xl font-semibold text-slate-900">{selectedClient?.name || selectedDeal.clientName || '-'}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Ответственный: {sellerDisplayName} · Исполнитель: {executorDisplayName}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-slate-900">
+                  {statusLabels[selectedDeal.status]}
+                </span>
+                <span className={`text-sm font-semibold ${headerExpectedCloseTone}`}>
+                  {selectedDeal.expectedClose ? formatDate(selectedDeal.expectedClose) : 'Нет срока'}
+                </span>
+              </div>
+            </div>
+            {renderHeaderDates()}
+            <div>
+              <div className="flex flex-wrap gap-2 border-b border-slate-200">
+                {DEAL_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                      activeTab === tab.id
+                        ? 'bg-white text-sky-600 border border-b-white border-slate-200'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <div className="pt-6">{renderTabContent()}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">
+            Выберите сделку, чтобы увидеть подробности.
+          </div>
+        )}
+      </section>
+      {isEditingDeal && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Редактировать сделку</h3>
+              <button
+                onClick={() => setIsEditingDeal(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <EditDealForm
+                deal={selectedDeal}
+                clients={clients}
+                users={users}
+                onSubmit={async (data) => {
+                  await onUpdateDeal(selectedDeal.id, data);
+                  setIsEditingDeal(false);
+                }}
+                onCancel={() => setIsEditingDeal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {isCreatingTask && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Новая задача</h3>
+              <button
+                onClick={() => setIsCreatingTask(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <AddTaskForm
+                dealId={selectedDeal.id}
+                users={users}
+                defaultAssigneeId={selectedDeal.executor ?? null}
+                onSubmit={async (data) => {
+                  await onCreateTask(selectedDeal.id, data);
+                  setIsCreatingTask(false);
+                }}
+                onCancel={() => setIsCreatingTask(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {editingTaskId && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Редактировать задачу</h3>
+              <button
+                onClick={() => setEditingTaskId(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              {relatedTasks.find((t) => t.id === editingTaskId) && (
+                <AddTaskForm
+                  dealId={selectedDeal.id}
+                  task={relatedTasks.find((t) => t.id === editingTaskId)}
+                  users={users}
+                  defaultAssigneeId={selectedDeal.executor ?? null}
+                  onSubmit={async (data) => {
+                    await onUpdateTask(editingTaskId, data);
+                    setEditingTaskId(null);
+                  }}
+                  onCancel={() => setEditingTaskId(null)}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {editingPaymentId && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {editingPaymentId === 'new' ? 'Создать платеж' : 'Редактировать платеж'}
+              </h3>
+              <button
+                onClick={() => setEditingPaymentId(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <AddPaymentForm
+                payment={
+                  editingPaymentId !== 'new'
+                    ? payments.find((p) => p.id === editingPaymentId)
+                    : undefined
+                }
+                dealId={selectedDeal.id}
+                dealTitle={selectedDeal.title}
+                policies={relatedPolicies}
+                fixedPolicyId={editingPaymentId === 'new' ? creatingPaymentPolicyId ?? undefined : undefined}
+                onSubmit={async (data) => {
+                  if (editingPaymentId === 'new') {
+                    await onAddPayment(data);
+                  } else {
+                    await onUpdatePayment(editingPaymentId, data);
+                  }
+                  setEditingPaymentId(null);
+                  setCreatingPaymentPolicyId(null);
+                }}
+                onCancel={() => {
+                  setEditingPaymentId(null);
+                  setCreatingPaymentPolicyId(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {(editingFinancialRecordId || creatingFinancialRecordContext) && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {editingFinancialRecordId ? 'Редактировать запись' : 'Новая финансовая запись'}
+              </h3>
+              <button
+                onClick={() => {
+                  setEditingFinancialRecordId(null);
+                  setCreatingFinancialRecordContext(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <AddFinancialRecordForm
+                paymentId={creatingFinancialRecordContext?.paymentId || ''}
+                defaultRecordType={creatingFinancialRecordContext?.recordType}
+                record={
+                  editingFinancialRecordId
+                    ? financialRecords.find((r) => r.id === editingFinancialRecordId)
+                    : undefined
+                }
+                onSubmit={async (data) => {
+                  if (editingFinancialRecordId) {
+                    await onUpdateFinancialRecord(editingFinancialRecordId, data);
+                  } else {
+                    await onAddFinancialRecord(data);
+                  }
+                  setEditingFinancialRecordId(null);
+                  setCreatingFinancialRecordContext(null);
+                }}
+                onCancel={() => {
+                  setEditingFinancialRecordId(null);
+                  setCreatingFinancialRecordContext(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {isMergeModalOpen && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-slate-900">Объединить сделки</h3>
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Целевая сделка</p>
+                <p className="text-base font-semibold text-slate-900">{selectedDeal.title}</p>
+                <p className="text-xs text-slate-500">
+                  Клиент: {selectedClient?.name || selectedDeal.clientName || '—'}
+                </p>
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-slate-700">Выберите сделки для переноса</p>
+                {mergeCandidates.length ? (
+                  mergeCandidates.map((deal) => (
+                    <label
+                      key={deal.id}
+                      className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={mergeSources.includes(deal.id)}
+                        onChange={() => toggleMergeSource(deal.id)}
+                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
+                        <p className="text-[11px] text-slate-500">
+                          Стадия: {deal.stageName || '—'} · Статус: {statusLabels[deal.status]}
+                        </p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    Нет других активных сделок у клиента.
+                  </p>
+                )}
+              </div>
+              {mergeError && (
+                <p className="text-sm font-medium text-rose-600">{mergeError}</p>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(false)}
+                className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleMergeSubmit}
+                disabled={isMerging || !mergeSources.length}
+                className="px-3 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isMerging ? 'Объединяем...' : 'Объединить сделки'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
