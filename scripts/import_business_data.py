@@ -673,16 +673,20 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             policy_uuid = _ensure_policy_uuid(payload.get("id"))
             if policy_uuid:
                 prepared["id"] = policy_uuid
-            client_uuid = prepared.get("client_id")
-            if not client_uuid:
-                print(f"skip policy row {row_index} without client_id")
-                continue
-            policy_number = prepared.get("number")
-            generated_deal_id = _create_deal_for_policy(client_uuid, policy_number)
-            if not generated_deal_id:
-                print(f"skip policy row {row_index} for missing deal")
-                continue
-            prepared["deal_id"] = generated_deal_id
+            deal_id_value = prepared.get("deal_id")
+            if not deal_id_value:
+                client_uuid = prepared.get("client_id")
+                if not client_uuid:
+                    print(f"skip policy row {row_index} without client_id")
+                    continue
+                policy_number = prepared.get("number")
+                generated_deal_id = _create_deal_for_policy(client_uuid, policy_number)
+                if not generated_deal_id:
+                    print(f"skip policy row {row_index} for missing deal")
+                    continue
+                deal_id_value = generated_deal_id
+            deal_id_value = str(deal_id_value)
+            prepared["deal_id"] = deal_id_value
             if not prepared.get("insurance_type_id"):
                 print(f"skip policy row {row_index} without insurance_type")
                 continue
