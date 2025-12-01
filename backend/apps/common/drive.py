@@ -403,7 +403,9 @@ def move_drive_folder_to_parent(folder_id: str, target_parent_id: str) -> None:
             .execute()
         )
         parents = metadata.get("parents") or []
-        remove_parents = ",".join([parent for parent in parents if parent != target_parent_id])
+        remove_parents = ",".join(
+            [parent for parent in parents if parent != target_parent_id]
+        )
 
         update_kwargs: dict[str, str] = {
             "fileId": folder_id,
@@ -492,7 +494,9 @@ def move_drive_folder_to_parent(folder_id: str, target_parent_id: str) -> None:
             .execute()
         )
         parents = metadata.get("parents") or []
-        remove_parents = ",".join([parent for parent in parents if parent != target_parent_id])
+        remove_parents = ",".join(
+            [parent for parent in parents if parent != target_parent_id]
+        )
 
         update_kwargs: dict[str, str] = {
             "fileId": folder_id,

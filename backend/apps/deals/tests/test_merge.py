@@ -163,7 +163,9 @@ class DealMergeAPITestCase(APITestCase):
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.seller_token}")
         response = self.api_client.post(
             "/api/v1/deals/merge/",
-            self._payload([self.source, other_source], resulting_client_id=str(other_client.id)),
+            self._payload(
+                [self.source, other_source], resulting_client_id=str(other_client.id)
+            ),
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)

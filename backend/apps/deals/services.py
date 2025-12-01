@@ -64,7 +64,9 @@ class DealMergeService:
         """Merge related objects from source deals into the target deal."""
 
         moved_counts: dict[str, int] = {}
-        target_client = self.resulting_client or getattr(self.target_deal, "client", None)
+        target_client = self.resulting_client or getattr(
+            self.target_deal, "client", None
+        )
         if target_client and self.target_deal.client_id != target_client.id:
             self.target_deal.client = target_client
             self.target_deal.save(update_fields=["client"])
@@ -96,7 +98,9 @@ class DealMergeService:
         try:
             client_folder_id = ensure_client_folder(target_client)
         except DriveError:
-            logger.exception("Failed to ensure Drive folder for client %s", target_client.pk)
+            logger.exception(
+                "Failed to ensure Drive folder for client %s", target_client.pk
+            )
 
         if target_folder_id and client_folder_id:
             try:
@@ -111,7 +115,9 @@ class DealMergeService:
         try:
             ensure_deal_folder(self.target_deal)
         except DriveError:
-            logger.exception("Failed to ensure Drive folder for target deal %s", self.target_deal.pk)
+            logger.exception(
+                "Failed to ensure Drive folder for target deal %s", self.target_deal.pk
+            )
 
         target_folder_id = self.target_deal.drive_folder_id
         if not target_folder_id:

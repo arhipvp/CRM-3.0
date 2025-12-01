@@ -51,7 +51,9 @@ class DealMergeMixin:
             resulting_client = target_deal.client
         for deal in source_deals:
             if deal.deleted_at is not None:
-                raise ValidationError({"source_deal_ids": "Source deals must not be deleted."})
+                raise ValidationError(
+                    {"source_deal_ids": "Source deals must not be deleted."}
+                )
         for deal in (target_deal, *source_deals):
             if not hasattr(self, "_can_merge") or not self._can_merge(
                 request.user, deal
