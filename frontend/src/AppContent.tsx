@@ -31,7 +31,8 @@ import {
   fetchChatMessages,
   createChatMessage,
   deleteChatMessage,
-  updateDealStatus,
+  closeDeal,
+  reopenDeal,
   updateDeal,
   mergeDeals,
   updatePayment,
@@ -47,7 +48,7 @@ import {
   uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Deal, DealStatus, FinancialRecord, Payment, Policy, Quote, User } from './types';
+import { Deal, FinancialRecord, Payment, Policy, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
@@ -385,10 +386,13 @@ const AppContent: React.FC = () => {
     [refreshKnowledgeDocuments, setAppData]
   );
 
-  const handleStatusChange = async (dealId: string, status: DealStatus) => {
+  const handleCloseDeal = async (
+    dealId: string,
+    payload: { reason: string; status?: 'won' | 'lost' }
+  ) => {
     setIsSyncing(true);
     try {
-      const updated = await updateDealStatus(dealId, status);
+      const updated = await closeDeal(dealId, payload);
       updateAppData((prev) => ({
         deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
       }));
@@ -398,8 +402,26 @@ const AppContent: React.FC = () => {
           ? err.message
           : err instanceof Error
             ? err.message
-            : 'Ошибка при обновлении статуса сделки';
+            : 'Ошибка при закрытии сделки';
       setError(message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleReopenDeal = async (dealId: string) => {
+    setIsSyncing(true);
+    try {
+      const updated = await reopenDeal(dealId);
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
+      }));
+    } catch (err) {
+      if (err instanceof APIError && err.status === 403) {
+        addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
+      } else {
+        setError(err instanceof Error ? err.message : 'Ошибка при восстановлении сделки');
+      }
     } finally {
       setIsSyncing(false);
     }
@@ -1000,7 +1022,8 @@ const AppContent: React.FC = () => {
         currentUser={currentUser}
         selectedDealId={selectedDealId}
         onSelectDeal={setSelectedDealId}
-        onUpdateStatus={handleStatusChange}
+        onCloseDeal={handleCloseDeal}
+        onReopenDeal={handleReopenDeal}
         onUpdateDeal={handleUpdateDeal}
         onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
         onRequestEditQuote={handleRequestEditQuote}

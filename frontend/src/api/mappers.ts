@@ -134,6 +134,7 @@ export const mapDeal = (raw: Record<string, unknown>): Deal => {
       raw.next_contact_date === undefined ? undefined : toNullableString(raw.next_contact_date),
     source: toOptionalString(raw.source),
     lossReason: toOptionalString(raw.loss_reason),
+    closingReason: toOptionalString(raw.closing_reason),
     createdAt: toStringValue(raw.created_at),
     quotes: quoteList.map((quote) => mapQuote(quote as Record<string, unknown>)),
     documents: documentList.map((doc) => {

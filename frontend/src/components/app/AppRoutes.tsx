@@ -12,7 +12,6 @@ import type {
   ChatMessage,
   Client,
   Deal,
-  DealStatus,
   FinancialRecord,
   KnowledgeDocument,
   Payment,
@@ -37,7 +36,8 @@ export interface AppRoutesProps {
   currentUser: User | null;
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
-  onUpdateStatus: (dealId: string, status: DealStatus) => Promise<void>;
+  onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
+  onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: EditDealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
@@ -102,7 +102,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   currentUser,
   selectedDealId,
   onSelectDeal,
-  onUpdateStatus,
+  onCloseDeal,
+  onReopenDeal,
   onUpdateDeal,
   onRequestAddQuote,
   onRequestEditQuote,
@@ -160,10 +161,11 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           financialRecords={financialRecords}
           tasks={tasks}
           users={users}
-          currentUser={currentUser as User}
+          currentUser={currentUser}
           selectedDealId={selectedDealId}
           onSelectDeal={onSelectDeal}
-          onUpdateStatus={onUpdateStatus}
+          onCloseDeal={onCloseDeal}
+          onReopenDeal={onReopenDeal}
           onUpdateDeal={onUpdateDeal}
           onRequestAddQuote={onRequestAddQuote}
           onRequestEditQuote={onRequestEditQuote}

@@ -7,6 +7,8 @@ export const statusLabels: Record<DealStatus, string> = {
   on_hold: 'На паузе',
 };
 
+export const closedDealStatuses: DealStatus[] = ['won', 'lost'];
+
 export const DEAL_TABS = [
   { id: 'overview', label: 'Обзор' },
   { id: 'tasks', label: 'Задачи' },

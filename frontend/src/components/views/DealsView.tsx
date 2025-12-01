@@ -10,8 +10,6 @@ import {
 
   Deal,
 
-  DealStatus,
-
   DriveFile,
 
   FinancialRecord,
@@ -89,6 +87,8 @@ import {
 
   PolicySortKey,
 
+  closedDealStatuses,
+
   statusLabels,
 
 } from './dealsView/helpers';
@@ -123,13 +123,15 @@ interface DealsViewProps {
 
   users: User[];
 
-  currentUser: User;
+  currentUser: User | null;
 
   selectedDealId: string | null;
 
   onSelectDeal: (dealId: string) => void;
 
-  onUpdateStatus: (dealId: string, status: DealStatus) => Promise<void>;
+  onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
+
+  onReopenDeal: (dealId: string) => Promise<void>;
 
   onUpdateDeal: (dealId: string, data: EditDealFormValues) => Promise<void>;
 
@@ -249,7 +251,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   onSelectDeal,
 
-  onUpdateStatus,
+  onCloseDeal,
+
+  onReopenDeal,
 
   onUpdateDeal,
   onMergeDeals,
@@ -363,7 +367,16 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const headerExpectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
 
   const isSelectedDealDeleted = Boolean(selectedDeal?.deletedAt);
-  const isDealClosedStatus = selectedDeal?.status === 'won' || selectedDeal?.status === 'lost';
+  const isDealClosedStatus = Boolean(
+    selectedDeal && closedDealStatuses.includes(selectedDeal.status)
+  );
+  const isCurrentUserSeller = Boolean(
+    selectedDeal && currentUser && selectedDeal.seller === currentUser.id
+  );
+  const currentUserIsAdmin = Boolean(currentUser?.roles?.includes('Admin'));
+  const canReopenClosedDeal = Boolean(
+    selectedDeal && (isCurrentUserSeller || currentUserIsAdmin)
+  );
 
 
 
@@ -377,6 +390,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const [isDeletingDeal, setIsDeletingDeal] = useState(false);
   const [isClosingDeal, setIsClosingDeal] = useState(false);
+  const [isReopeningDeal, setIsReopeningDeal] = useState(false);
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
   const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
@@ -860,19 +874,45 @@ export const DealsView: React.FC<DealsViewProps> = ({
   }, [isSelectedDealDeleted, onDeleteDeal, selectedDeal]);
 
   const handleCloseDealClick = useCallback(async () => {
-    if (!selectedDeal || isSelectedDealDeleted || isDealClosedStatus) {
+    if (!selectedDeal || isSelectedDealDeleted || isDealClosedStatus || !isCurrentUserSeller) {
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const reason = window.prompt('Укажите причину закрытия сделки');
+    const trimmedReason = reason?.trim();
+    if (!trimmedReason) {
       return;
     }
 
     setIsClosingDeal(true);
+
     try {
-      await onUpdateStatus(selectedDeal.id, 'won');
+      await onCloseDeal(selectedDeal.id, { reason: trimmedReason, status: 'won' });
     } catch (err) {
       console.error('Ошибка закрытия сделки:', err);
     } finally {
-      setIsClosingDeal(false);
+    setIsClosingDeal(false);
     }
-  }, [isDealClosedStatus, isSelectedDealDeleted, onUpdateStatus, selectedDeal]);
+  }, [isCurrentUserSeller, isDealClosedStatus, isSelectedDealDeleted, onCloseDeal, selectedDeal]);
+
+  const handleReopenDealClick = useCallback(async () => {
+    if (!selectedDeal || !isDealClosedStatus || !canReopenClosedDeal) {
+      return;
+    }
+
+    setIsReopeningDeal(true);
+    try {
+      await onReopenDeal(selectedDeal.id);
+    } catch (err) {
+      console.error('Ошибка восстановления сделки:', err);
+    } finally {
+      setIsReopeningDeal(false);
+    }
+  }, [canReopenClosedDeal, isDealClosedStatus, onReopenDeal, selectedDeal]);
 
   const handleMergeClick = useCallback(() => {
     if (!selectedDeal || isSelectedDealDeleted) {
@@ -1976,6 +2016,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   {selectedDeal.expectedClose ? formatDate(selectedDeal.expectedClose) : 'Нет срока'}
                 </span>
               </div>
+              {selectedDeal.closingReason && (
+                <p className="text-xs text-slate-500 mt-2">
+                  Причина закрытия: {selectedDeal.closingReason}
+                </p>
+              )}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -1997,11 +2042,28 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <button
                 type="button"
                 onClick={handleCloseDealClick}
-                disabled={isSelectedDealDeleted || isDealClosedStatus || isClosingDeal}
+                disabled={
+                  isSelectedDealDeleted ||
+                  isDealClosedStatus ||
+                  isClosingDeal ||
+                  !isCurrentUserSeller
+                }
                 className="px-4 py-1.5 text-sm font-semibold rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
               </button>
+              {isDealClosedStatus && (
+                <button
+                  type="button"
+                  onClick={handleReopenDealClick}
+                  disabled={
+                    isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal
+                  }
+                  className="px-4 py-1.5 text-sm font-semibold rounded-full bg-amber-600 text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleMergeClick}

@@ -3,7 +3,10 @@ from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
-from rest_framework import viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from .filters import DealFilterSet
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
@@ -30,6 +33,9 @@ def _is_admin_user(user) -> bool:
             user=user, role__name="Admin"
         ).exists()
     return user._cached_is_admin
+
+
+CLOSED_STATUSES = {"won", "lost"}
 
 
 class DealViewSet(
@@ -117,6 +123,11 @@ class DealViewSet(
         owner_id = getattr(instance, "seller_id", None)
         return owner_id == user.id
 
+    def _is_deal_seller(self, user, deal):
+        if not user or not user.is_authenticated or not deal:
+            return False
+        return deal.seller_id == getattr(user, "id", None)
+
     def _can_merge(self, user, deal):
         if not user or not user.is_authenticated:
             return False
@@ -127,6 +138,65 @@ class DealViewSet(
             serializer.save(seller=self.request.user)
         else:
             serializer.save()
+
+    @action(detail=True, methods=["post"], url_path="close")
+    def close(self, request, pk=None):
+        queryset = self.get_queryset()
+        deal = get_object_or_404(queryset, pk=pk)
+        if not self._is_deal_seller(request.user, deal):
+            return Response(
+                {"detail": "Only the assigned seller can close this deal."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if deal.status in CLOSED_STATUSES:
+            return Response(
+                {"detail": "Deal is already closed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        status_value = str(request.data.get("status") or "won").lower()
+        if status_value not in CLOSED_STATUSES:
+            return Response(
+                {"status": "Status must be either 'won' or 'lost'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reason = request.data.get("reason")
+        if reason is None:
+            reason = ""
+        if not isinstance(reason, str):
+            reason = str(reason)
+        closing_reason = reason.strip()
+        if not closing_reason:
+            return Response(
+                {"reason": "Reason is required when closing a deal."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        deal.status = status_value
+        deal.closing_reason = closing_reason
+        deal.save(update_fields=["status", "closing_reason"])
+        serializer = self.get_serializer(deal)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="reopen")
+    def reopen(self, request, pk=None):
+        queryset = self.get_queryset()
+        deal = get_object_or_404(queryset, pk=pk)
+        if deal.status not in CLOSED_STATUSES:
+            return Response(
+                {"detail": "Only closed deals can be reopened."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not self._can_modify(request.user, deal):
+            return Response(
+                {
+                    "detail": "Only administrators or the deal owner can reopen a deal."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        deal.status = "open"
+        deal.closing_reason = ""
+        deal.save(update_fields=["status", "closing_reason"])
+        serializer = self.get_serializer(deal)
+        return Response(serializer.data)
 
 
 class QuoteViewSet(viewsets.ModelViewSet):

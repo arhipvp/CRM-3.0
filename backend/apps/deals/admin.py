@@ -1,4 +1,5 @@
-Ôªøfrom apps.common.admin import SoftDeleteImportExportAdmin
+# -*- coding: cp1251 -*-
+from apps.common.admin import SoftDeleteImportExportAdmin
 from apps.documents.models import Document
 from apps.finances.models import Payment
 from apps.notes.models import Note
@@ -29,6 +30,7 @@ class DealResource(resources.ModelResource):
             "next_review_date",
             "source",
             "loss_reason",
+            "closing_reason",
             "created_at",
             "updated_at",
             "deleted_at",
@@ -159,38 +161,38 @@ class DealAdmin(SoftDeleteImportExportAdmin):
 
     fieldsets = (
         (
-            "–û—Å–Ω–æ–≤–Ω—ã–µ –¥–∞–Ω–Ω—ã–µ",
+            "é·≠Æ¢≠Î• §†≠≠Î•",
             {
                 "fields": ("title", "description", "client"),
             },
         ),
         (
-            "–°—Ç–∞—Ç—É—Å",
+            "ë‚†‚„·",
             {
                 "fields": ("status", "stage_name"),
             },
         ),
         (
-            "–ü–ª–∞–Ω–∏—Ä–æ–≤–∞–Ω–∏–µ",
+            "è´†≠®‡Æ¢†≠®•",
             {
                 "fields": ("expected_close", "next_contact_date", "next_review_date"),
             },
         ),
         (
-            "–ö–æ–º–∞–Ω–¥–∞",
+            "äÆ¨†≠§†",
             {
                 "fields": ("seller", "executor"),
             },
         ),
         (
-            "–ò—Å—Ç–æ—á–Ω–∏–∫",
+            "à·‚ÆÁ≠®™",
             {
-                "fields": ("source", "loss_reason"),
+                "fields": ("source", "loss_reason", "closing_reason"),
                 "classes": ("collapse",),
             },
         ),
         (
-            "–°–ª—É–∂–µ–±–Ω–∞—è –∏–Ω—Ñ–æ—Ä–º–∞—Ü–∏—è",
+            "ë´„¶•°≠†Ô ®≠‰Æ‡¨†Ê®Ô",
             {
                 "fields": ("id", "created_at", "updated_at", "deleted_at"),
                 "classes": ("collapse",),
@@ -222,34 +224,34 @@ class DealAdmin(SoftDeleteImportExportAdmin):
             obj.status,
         )
 
-    status_badge.short_description = "–°—Ç–∞—Ç—É—Å"
+    status_badge.short_description = "ë‚†‚„·"
 
     def mark_as_won(self, request, queryset):
         updated = queryset.update(status="won")
-        self.message_user(request, f"{updated} —Å–¥–µ–ª–æ–∫ –ø–µ—Ä–µ–≤–µ–¥–µ–Ω–æ –≤ —Å—Ç–∞—Ç—É—Å '–≤—ã–∏–≥—Ä–∞–Ω–∞'")
+        self.message_user(request, f"{updated} ·§•´Æ™ Ø•‡•¢•§•≠Æ ¢ ·‚†‚„· '¢Î®£‡†≠†'")
 
-    mark_as_won.short_description = "–ü–µ—Ä–µ–≤–µ—Å—Ç–∏ –≤ –≤—ã–∏–≥—Ä–∞–Ω–Ω—ã–µ"
+    mark_as_won.short_description = "è•‡•¢•·‚® ¢ ¢Î®£‡†≠≠Î•"
 
     def mark_as_lost(self, request, queryset):
         updated = queryset.update(status="lost")
-        self.message_user(request, f"{updated} —Å–¥–µ–ª–æ–∫ –ø–µ—Ä–µ–≤–µ–¥–µ–Ω–æ –≤ —Å—Ç–∞—Ç—É—Å '–ø—Ä–æ–∏–≥—Ä–∞–Ω–∞'")
+        self.message_user(request, f"{updated} ·§•´Æ™ Ø•‡•¢•§•≠Æ ¢ ·‚†‚„· 'Ø‡Æ®£‡†≠†'")
 
-    mark_as_lost.short_description = "–ü–µ—Ä–µ–≤–µ—Å—Ç–∏ –≤ –ø—Ä–æ–∏–≥—Ä–∞–Ω–Ω—ã–µ"
+    mark_as_lost.short_description = "è•‡•¢•·‚® ¢ Ø‡Æ®£‡†≠≠Î•"
 
     def mark_as_on_hold(self, request, queryset):
         updated = queryset.update(status="on_hold")
-        self.message_user(request, f"{updated} —Å–¥–µ–ª–æ–∫ –ø–æ—Å—Ç–∞–≤–ª–µ–Ω–æ –Ω–∞ –ø–∞—É–∑—É")
+        self.message_user(request, f"{updated} ·§•´Æ™ ØÆ·‚†¢´•≠Æ ≠† Ø†„ß„")
 
-    mark_as_on_hold.short_description = "–ü–µ—Ä–µ–≤–µ—Å—Ç–∏ –Ω–∞ –ø–∞—É–∑—É"
+    mark_as_on_hold.short_description = "è•‡•¢•·‚® ≠† Ø†„ß„"
 
     def restore_deals(self, request, queryset):
         restored = 0
         for deal in queryset.filter(deleted_at__isnull=False):
             deal.restore()
             restored += 1
-        self.message_user(request, f"–í–æ—Å—Å—Ç–∞–Ω–æ–≤–ª–µ–Ω–æ {restored} —Å–¥–µ–ª–æ–∫")
+        self.message_user(request, f"ÇÆ··‚†≠Æ¢´•≠Æ {restored} ·§•´Æ™")
 
-    restore_deals.short_description = "‚úì –í–æ—Å—Å—Ç–∞–Ω–æ–≤–∏—Ç—å –≤—ã–±—Ä–∞–Ω–Ω—ã–µ —Å–¥–µ–ª–∫–∏"
+    restore_deals.short_description = "? ÇÆ··‚†≠Æ¢®‚Ï ¢Î°‡†≠≠Î• ·§•´™®"
 
 
 @admin.register(SalesChannel)
@@ -261,9 +263,9 @@ class SalesChannelAdmin(SoftDeleteImportExportAdmin):
     ordering = ("name",)
     list_filter = ("created_at", "deleted_at")
     fieldsets = (
-        ("–û—Å–Ω–æ–≤–Ω–∞—è –∏–Ω—Ñ–æ—Ä–º–∞—Ü–∏—è", {"fields": ("name", "description")}),
+        ("é·≠Æ¢≠†Ô ®≠‰Æ‡¨†Ê®Ô", {"fields": ("name", "description")}),
         (
-            "–ú–µ—Ç–∞–¥–∞–Ω–Ω—ã–µ",
+            "å•‚†§†≠≠Î•",
             {
                 "fields": ("id", "created_at", "updated_at", "deleted_at"),
                 "classes": ("collapse",),
@@ -291,12 +293,12 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
     actions = ["restore_quotes"]
 
     fieldsets = (
-        ("–û—Å–Ω–æ–≤–Ω–∞—è –∏–Ω—Ñ–æ—Ä–º–∞—Ü–∏—è", {"fields": ("id", "deal")}),
-        ("–°—Ç—Ä–∞—Ö–æ–≤–∞—è –∏–Ω—Ñ–æ—Ä–º–∞—Ü–∏—è", {"fields": ("insurance_type", "insurance_company")}),
-        ("–£—Å–ª–æ–≤–∏—è", {"fields": ("sum_insured", "premium", "deductible")}),
-        ("–ü—Ä–∏–º–µ—á–∞–Ω–∏—è", {"fields": ("comments",)}),
-        ("–°—Ç–∞—Ç—É—Å", {"fields": ("deleted_at",)}),
-        ("–í—Ä–µ–º—è", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+        ("é·≠Æ¢≠†Ô ®≠‰Æ‡¨†Ê®Ô", {"fields": ("id", "deal")}),
+        ("ë‚‡†ÂÆ¢†Ô ®≠‰Æ‡¨†Ê®Ô", {"fields": ("insurance_type", "insurance_company")}),
+        ("ì·´Æ¢®Ô", {"fields": ("sum_insured", "premium", "deductible")}),
+        ("è‡®¨•Á†≠®Ô", {"fields": ("comments",)}),
+        ("ë‚†‚„·", {"fields": ("deleted_at",)}),
+        ("Ç‡•¨Ô", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
     def restore_quotes(self, request, queryset):
@@ -304,9 +306,9 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
         for quote in queryset.filter(deleted_at__isnull=False):
             quote.restore()
             restored += 1
-        self.message_user(request, f"–í–æ—Å—Å—Ç–∞–Ω–æ–≤–ª–µ–Ω–æ {restored} —Ä–∞—Å—á—ë—Ç–æ–≤")
+        self.message_user(request, f"ÇÆ··‚†≠Æ¢´•≠Æ {restored} ‡†·ÁÒ‚Æ¢")
 
-    restore_quotes.short_description = "‚úì –í–æ—Å—Å—Ç–∞–Ω–æ–≤–∏—Ç—å –≤—ã–±—Ä–∞–Ω–Ω—ã–µ —Ä–∞—Å—á—ë—Ç—ã"
+    restore_quotes.short_description = "? ÇÆ··‚†≠Æ¢®‚Ï ¢Î°‡†≠≠Î• ‡†·ÁÒ‚Î"
 
 
 @admin.register(InsuranceCompany)

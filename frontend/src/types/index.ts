@@ -88,6 +88,7 @@ export interface Deal {
   nextContactDate?: string | null;
   source?: string;
   lossReason?: string;
+  closingReason?: string;
   createdAt: string;
   quotes?: Quote[];
   documents?: Document[];

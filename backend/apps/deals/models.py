@@ -1,81 +1,82 @@
-ï»¿from apps.common.models import SoftDeleteModel
+# -*- coding: cp1251 -*-
+from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
 
 class InsuranceCompany(SoftDeleteModel):
-    """Ð¡Ð¿Ñ€Ð°Ð²Ð¾Ñ‡Ð½Ð¸Ðº ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ñ‹Ñ… ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ð¹ Ð´Ð»Ñ Ñ€Ð°ÑÑ‡ÐµÑ‚Ð¾Ð²."""
+    """‘¯à ¢®ç­¨ª áâà å®¢ëå ª®¬¯ ­¨© ¤«ï à áç¥â®¢."""
 
     name = models.CharField(
         max_length=255,
         unique=True,
-        help_text="ÐÐ°Ð·Ð²Ð°Ð½Ð¸Ðµ ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð¾Ð¹ ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ð¸",
+        help_text=" §¢ ­¨¥ áâà å®¢®© ª®¬¯ ­¨¨",
     )
     description = models.TextField(
         blank=True,
-        help_text="Ð”Ð¾Ð¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð°Ñ Ð¸Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸Ñ Ð¾ ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ð¸",
+        help_text="„®¯®«­¨â¥«ì­ ï ¨­ä®à¬ æ¨ï ® ª®¬¯ ­¨¨",
     )
 
     class Meta:
         ordering = ["name"]
-        verbose_name = "Ð¡Ñ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ñ ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ñ"
-        verbose_name_plural = "Ð¡Ñ‚Ñ€Ð°Ñ…Ð¾Ð²Ñ‹Ðµ ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ð¸"
+        verbose_name = "‘âà å®¢ ï ª®¬¯ ­¨ï"
+        verbose_name_plural = "‘âà å®¢ë¥ ª®¬¯ ­¨¨"
 
     def __str__(self) -> str:
         return self.name
 
 
 class InsuranceType(SoftDeleteModel):
-    """Ð¡Ð¿Ñ€Ð°Ð²Ð¾Ñ‡Ð½Ð¸Ðº Ð²Ð¸Ð´Ð¾Ð² ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ð½Ð¸Ñ."""
+    """‘¯à ¢®ç­¨ª ¢¨¤®¢ áâà å®¢ ­¨ï."""
 
     name = models.CharField(
         max_length=255,
         unique=True,
-        help_text="ÐÐ°Ð¸Ð¼ÐµÐ½Ð¾Ð²Ð°Ð½Ð¸Ðµ Ð²Ð¸Ð´Ð° ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ð½Ð¸Ñ",
+        help_text=" ¨¬¥­®¢ ­¨¥ ¢¨¤  áâà å®¢ ­¨ï",
     )
     description = models.TextField(
         blank=True,
-        help_text="Ð”Ð¾Ð¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾Ðµ Ð¾Ð¿Ð¸ÑÐ°Ð½Ð¸Ðµ Ñ‚Ð¸Ð¿Ð° ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ð½Ð¸Ñ",
+        help_text="„®¯®«­¨â¥«ì­®¥ ®¯¨á ­¨¥ â¨¯  áâà å®¢ ­¨ï",
     )
 
     class Meta:
         ordering = ["name"]
-        verbose_name = "Ð’Ð¸Ð´ ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ð½Ð¸Ñ"
-        verbose_name_plural = "Ð’Ð¸Ð´Ñ‹ ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ð½Ð¸Ñ"
+        verbose_name = "‚¨¤ áâà å®¢ ­¨ï"
+        verbose_name_plural = "‚¨¤ë áâà å®¢ ­¨ï"
 
     def __str__(self) -> str:
         return self.name
 
 
 class SalesChannel(SoftDeleteModel):
-    """Ð¡Ð¿Ñ€Ð°Ð²Ð¾Ñ‡Ð½Ð¸Ðº ÐºÐ°Ð½Ð°Ð»Ð¾Ð² Ð¿Ñ€Ð¾Ð´Ð°Ð¶."""
+    """‘¯à ¢®ç­¨ª ª ­ «®¢ ¯à®¤ ¦."""
 
     name = models.CharField(
-        max_length=100, unique=True, help_text="ÐÐ°Ð·Ð²Ð°Ð½Ð¸Ðµ ÐºÐ°Ð½Ð°Ð»Ð° Ð¿Ñ€Ð¾Ð´Ð°Ð¶"
+        max_length=100, unique=True, help_text=" §¢ ­¨¥ ª ­ «  ¯à®¤ ¦"
     )
-    description = models.TextField(blank=True, help_text="Ð”Ð¾Ð¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ñ‹Ð¹ ÐºÐ¾Ð¼Ð¼ÐµÐ½Ñ‚Ð°Ñ€Ð¸Ð¹")
+    description = models.TextField(blank=True, help_text="„®¯®«­¨â¥«ì­ë© ª®¬¬¥­â à¨©")
 
     class Meta:
         ordering = ["name"]
-        verbose_name = "ÐšÐ°Ð½Ð°Ð» Ð¿Ñ€Ð¾Ð´Ð°Ð¶"
-        verbose_name_plural = "ÐšÐ°Ð½Ð°Ð»Ñ‹ Ð¿Ñ€Ð¾Ð´Ð°Ð¶"
+        verbose_name = "Š ­ « ¯à®¤ ¦"
+        verbose_name_plural = "Š ­ «ë ¯à®¤ ¦"
 
     def __str__(self) -> str:
         return self.name
 
 
 class Deal(SoftDeleteModel):
-    """Ð¡Ð´ÐµÐ»ÐºÐ° Ð¸ ÐµÑ‘ Ð¾ÑÐ½Ð¾Ð²Ð½Ñ‹Ðµ Ð°Ñ‚Ñ€Ð¸Ð±ÑƒÑ‚Ñ‹."""
+    """‘¤¥«ª  ¨ ¥ñ ®á­®¢­ë¥  âà¨¡ãâë."""
 
-    title = models.CharField(max_length=255, help_text="ÐÐ°Ð·Ð²Ð°Ð½Ð¸Ðµ ÑÐ´ÐµÐ»ÐºÐ¸")
-    description = models.TextField(blank=True, help_text="ÐžÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ ÑÐ´ÐµÐ»ÐºÐ¸")
+    title = models.CharField(max_length=255, help_text=" §¢ ­¨¥ á¤¥«ª¨")
+    description = models.TextField(blank=True, help_text="Ž¯¨á ­¨¥ á¤¥«ª¨")
 
     client = models.ForeignKey(
         "clients.Client",
         related_name="deals",
         on_delete=models.PROTECT,
-        help_text="ÐšÐ»Ð¸ÐµÐ½Ñ‚",
+        help_text="Š«¨¥­â",
     )
 
     seller = models.ForeignKey(
@@ -84,7 +85,7 @@ class Deal(SoftDeleteModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="ÐœÐµÐ½ÐµÐ´Ð¶ÐµÑ€",
+        help_text="Œ¥­¥¤¦¥à",
     )
     executor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -92,44 +93,45 @@ class Deal(SoftDeleteModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Ð˜ÑÐ¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒ",
+        help_text="ˆá¯®«­¨â¥«ì",
     )
 
     status = models.CharField(
-        max_length=50, default="open", help_text="Ð¡Ñ‚Ð°Ñ‚ÑƒÑ ÑÐ´ÐµÐ»ÐºÐ¸ (Ð¿Ñ€Ð¾Ð¸Ð·Ð²Ð¾Ð»ÑŒÐ½Ñ‹Ð¹ Ñ‚ÐµÐºÑÑ‚)"
+        max_length=50, default="open", help_text="‘â âãá á¤¥«ª¨ (¯à®¨§¢®«ì­ë© â¥ªáâ)"
     )
-    stage_name = models.CharField(max_length=120, blank=True, help_text="Ð¡Ñ‚Ð°Ð´Ð¸Ñ")
+    stage_name = models.CharField(max_length=120, blank=True, help_text="‘â ¤¨ï")
 
     expected_close = models.DateField(
-        null=True, blank=True, help_text="ÐŸÐ»Ð°Ð½Ð¾Ð²Ð°Ñ Ð´Ð°Ñ‚Ð° Ð·Ð°ÐºÑ€Ñ‹Ñ‚Ð¸Ñ"
+        null=True, blank=True, help_text="« ­®¢ ï ¤ â  § ªàëâ¨ï"
     )
     next_contact_date = models.DateField(
         default=timezone.now,
-        help_text="Ð”Ð°Ñ‚Ð° ÑÐ»ÐµÐ´ÑƒÑŽÑ‰ÐµÐ³Ð¾ ÐºÐ¾Ð½Ñ‚Ð°ÐºÑ‚Ð° (Ð¿Ð¾-ÑƒÐ¼Ð¾Ð»Ñ‡Ð°Ð½Ð¸ÑŽ - Ñ‚ÐµÐºÑƒÑ‰Ð°Ñ Ð´Ð°Ñ‚Ð°)",
+        help_text="„ â  á«¥¤ãîé¥£® ª®­â ªâ  (¯®-ã¬®«ç ­¨î - â¥ªãé ï ¤ â )",
     )
     next_review_date = models.DateField(
-        null=True, blank=True, help_text="Ð”Ð°Ñ‚Ð° ÑÐ»ÐµÐ´ÑƒÑŽÑ‰ÐµÐ³Ð¾ ÐºÐ¾Ð½Ñ‚Ð°ÐºÑ‚Ð°"
+        null=True, blank=True, help_text="„ â  á«¥¤ãîé¥£® ª®­â ªâ "
     )
 
-    source = models.CharField(max_length=100, blank=True, help_text="Ð˜ÑÑ‚Ð¾Ñ‡Ð½Ð¸Ðº")
+    source = models.CharField(max_length=100, blank=True, help_text="ˆáâ®ç­¨ª")
     loss_reason = models.CharField(
-        max_length=255, blank=True, help_text="ÐŸÑ€Ð¸Ñ‡Ð¸Ð½Ð° Ð¿Ñ€Ð¾Ð¸Ð³Ñ€Ñ‹ÑˆÐ°"
+        max_length=255, blank=True, help_text="à¨ç¨­  ¯à®¨£àëè "
     )
+    closing_reason = models.TextField(blank=True, default="", help_text="Closing reason")
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
     )
 
     class Meta:
         ordering = ["next_contact_date", "-next_review_date", "-created_at"]
-        verbose_name = "Ð¡Ð´ÐµÐ»ÐºÐ°"
-        verbose_name_plural = "Ð¡Ð´ÐµÐ»ÐºÐ¸"
+        verbose_name = "‘¤¥«ª "
+        verbose_name_plural = "‘¤¥«ª¨"
 
     def __str__(self) -> str:
         return self.title
 
 
 class Quote(SoftDeleteModel):
-    """Ð Ð°ÑÑ‡ÐµÑ‚ ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð¾Ð³Ð¾ Ð¿Ñ€Ð¾Ð´ÑƒÐºÑ‚Ð°, Ð¿Ð¾Ð´Ð³Ð¾Ñ‚Ð¾Ð²Ð»ÐµÐ½Ð½Ñ‹Ð¹ Ð¿Ð¾ ÑÐ´ÐµÐ»ÐºÐµ."""
+    """ áç¥â áâà å®¢®£® ¯à®¤ãªâ , ¯®¤£®â®¢«¥­­ë© ¯® á¤¥«ª¥."""
 
     deal = models.ForeignKey(
         "deals.Deal", related_name="quotes", on_delete=models.CASCADE
@@ -140,33 +142,33 @@ class Quote(SoftDeleteModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="ÐŸÑ€Ð¾Ð´Ð°Ð²ÐµÑ†",
+        help_text="à®¤ ¢¥æ",
     )
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
         related_name="quotes",
         on_delete=models.PROTECT,
-        help_text="Ð¡Ñ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ñ ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ñ",
+        help_text="‘âà å®¢ ï ª®¬¯ ­¨ï",
     )
     insurance_type = models.ForeignKey(
         "deals.InsuranceType",
         related_name="quotes",
         on_delete=models.PROTECT,
-        help_text="Ð¢Ð¸Ð¿ ÑÑ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ð½Ð¸Ñ",
+        help_text="’¨¯ áâà å®¢ ­¨ï",
     )
     sum_insured = models.DecimalField(
-        max_digits=14, decimal_places=2, help_text="Ð¡Ñ‚Ñ€Ð°Ñ…Ð¾Ð²Ð°Ñ ÑÑƒÐ¼Ð¼Ð°"
+        max_digits=14, decimal_places=2, help_text="‘âà å®¢ ï áã¬¬ "
     )
-    premium = models.DecimalField(max_digits=12, decimal_places=2, help_text="ÐŸÑ€ÐµÐ¼Ð¸Ñ")
-    deductible = models.CharField(max_length=255, blank=True, help_text="Ð¤Ñ€Ð°Ð½ÑˆÐ¸Ð·Ð°")
-    comments = models.TextField(blank=True, help_text="ÐšÐ¾Ð¼Ð¼ÐµÐ½Ñ‚Ð°Ñ€Ð¸Ð¹")
+    premium = models.DecimalField(max_digits=12, decimal_places=2, help_text="à¥¬¨ï")
+    deductible = models.CharField(max_length=255, blank=True, help_text="”à ­è¨§ ")
+    comments = models.TextField(blank=True, help_text="Š®¬¬¥­â à¨©")
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Ð Ð°ÑÑ‡ÐµÑ‚"
-        verbose_name_plural = "Ð Ð°ÑÑ‡ÐµÑ‚Ñ‹"
+        verbose_name = " áç¥â"
+        verbose_name_plural = " áç¥âë"
 
     def __str__(self) -> str:
-        type_name = self.insurance_type.name if self.insurance_type else "â€”"
-        company_name = self.insurance_company.name if self.insurance_company else "â€”"
-        return f"{type_name} â€” {company_name}"
+        type_name = self.insurance_type.name if self.insurance_type else "-"
+        company_name = self.insurance_company.name if self.insurance_company else "-"
+        return f"{type_name} - {company_name}"

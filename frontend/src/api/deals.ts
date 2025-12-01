@@ -1,7 +1,7 @@
 ﻿import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapActivityLog, mapDeal, mapQuote } from './mappers';
-import type { ActivityLog, Deal, DealMergeResponse, DealStatus, Quote } from '../types';
+import type { ActivityLog, Deal, DealMergeResponse, Quote } from '../types';
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
   const qs = buildQueryString(filters);
@@ -44,10 +44,25 @@ export async function createDeal(data: {
   return mapDeal(payload);
 }
 
-export async function updateDealStatus(id: string, status: DealStatus): Promise<Deal> {
-  const payload = await request<Record<string, unknown>>(`/deals/${id}/`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
+type DealCloseInput = {
+  reason: string;
+  status?: 'won' | 'lost';
+};
+
+export async function closeDeal(id: string, data: DealCloseInput): Promise<Deal> {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/close/`, {
+    method: 'POST',
+    body: JSON.stringify({
+      reason: data.reason,
+      status: data.status ?? 'won',
+    }),
+  });
+  return mapDeal(payload);
+}
+
+export async function reopenDeal(id: string): Promise<Deal> {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/reopen/`, {
+    method: 'POST',
   });
   return mapDeal(payload);
 }
