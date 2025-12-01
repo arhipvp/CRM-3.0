@@ -68,6 +68,10 @@ python3 transform_deals.py
 cp -f "$IMPORT_DATA_DIR/client_import.sql" backend/client_import.sql
 cp -f "$IMPORT_DATA_DIR/deal_import.sql" backend/deal_import.sql
 cp -f "$IMPORT_DATA_DIR/client_mapping.json" backend/client_mapping.json
+mkdir -p backend/import/data
+BACKUP_XLSX_FILENAME="$(basename "$BACKUP_XLSX")"
+cp -f "$BACKUP_XLSX" backend/import/data/"$BACKUP_XLSX_FILENAME"
+BACKUP_XLSX_CONTAINER="/app/import/data/${BACKUP_XLSX_FILENAME}"
 
 PG_CMD=(docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend psql -h db -U crm3 -d crm3)
 
@@ -94,20 +98,20 @@ echo "===> truncating policies"
 run_sql "TRUNCATE TABLE policies_policy CASCADE;"
 
 echo "===> importing policies from Excel"
-docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet policies"
+docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX_CONTAINER\" --sheet policies"
 
 echo "===> truncating payments and financial records"
 run_sql "TRUNCATE TABLE finances_financialrecord CASCADE;"
 run_sql "TRUNCATE TABLE finances_payment CASCADE;"
 
 echo "===> importing payments from Excel"
-docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet payments"
+docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX_CONTAINER\" --sheet payments"
 
 echo "===> importing incomes from Excel"
-docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet incomes"
+docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX_CONTAINER\" --sheet incomes"
 
 echo "===> importing expenses from Excel"
-docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX\" --sheet expenses"
+docker compose -f docker-compose.prod.yml exec -e PGPASSWORD="$DB_PASS" backend bash -c "cd /app && python scripts/import_business_data.py \"$BACKUP_XLSX_CONTAINER\" --sheet expenses"
 
 echo "===> verification"
 run_sql "SELECT COUNT(*) AS clients FROM clients_client;"

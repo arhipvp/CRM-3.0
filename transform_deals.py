@@ -106,6 +106,7 @@ def build_queries(
         "next_review_date",
         "source",
         "loss_reason",
+        "closing_reason",
         "drive_folder_id",
     ]
     note_columns = [
@@ -163,6 +164,7 @@ def build_queries(
         desc_value = escape(full_description)
         status_value = escape(status_value) or "open"
         loss_reason_value = escape(loss_reason) or ""
+        closing_reason_value = loss_reason_value
         next_contact = next_contact_date if next_contact_date and next_contact_date != r"\N" else None
         source_value = ""
         values = [
@@ -182,6 +184,7 @@ def build_queries(
             None,
             source_value,
             loss_reason_value,
+            closing_reason_value,
             None,
         ]
         sql_values = ", ".join(quote(val) for val in values)
