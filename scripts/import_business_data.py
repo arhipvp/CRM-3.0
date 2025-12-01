@@ -14,6 +14,7 @@ from typing import Any, Callable, Iterable, Mapping
 import django
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from django.utils import timezone
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 if (BASE_DIR / "backend").exists():
@@ -50,6 +51,7 @@ django.setup()
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
 from django.db import DataError, connection, models
+from django.utils import timezone
 
 
 @dataclass(frozen=True)
@@ -184,6 +186,11 @@ CLEAR_MODEL_ORDER = [
 ]
 
 
+CREATED_POLICY_IDS: set[str] = set()
+CREATED_PAYMENT_IDS: set[str] = set()
+EXISTING_DEAL_IDS: set[str] = set()
+
+
 def _clear_tables() -> None:
     """Удаляет данные из таблиц в порядке, соответствующем зависимостям моделей."""
     with connection.cursor() as cursor:
@@ -191,6 +198,9 @@ def _clear_tables() -> None:
             model = apps.get_model(model_path)
             table = connection.ops.quote_name(model._meta.db_table)
             cursor.execute(f"DELETE FROM {table};")
+    CREATED_POLICY_IDS.clear()
+    CREATED_PAYMENT_IDS.clear()
+    EXISTING_DEAL_IDS.clear()
     CREATED_POLICY_IDS.clear()
     CREATED_PAYMENT_IDS.clear()
     EXISTING_DEAL_IDS.clear()
@@ -224,6 +234,33 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
         mapped = _map_to_payment_uuid(value)
         if mapped:
             return mapped
+
+def _ensure_placeholder_deal(client_uuid: str | None) -> str | None:
+    if not client_uuid:
+        return None
+    Deal = apps.get_model("deals.Deal")
+    User = apps.get_model(settings.AUTH_USER_MODEL)
+    user = User.objects.filter(is_active=True).first()
+    now_date = timezone.now().date()
+    deal_id = str(uuid.uuid4())
+    deal = Deal.objects.create(
+        id=deal_id,
+        title="Imported policy deal",
+        description="Auto-created placeholder for policy without deal",
+        client_id=client_uuid,
+        seller_id=user.pk if user else None,
+        executor_id=user.pk if user else None,
+        status="imported",
+        stage_name="import",
+        expected_close=now_date,
+        next_contact_date=now_date,
+        next_review_date=now_date,
+        source="import",
+        loss_reason="",
+        closing_reason="",
+    )
+    EXISTING_DEAL_IDS.add(deal_id)
+    return deal_id
 
 
 def _load_existing_deal_ids() -> None:
@@ -607,10 +644,15 @@ def _import_sheet(sheet: Worksheet, spec: SheetSpec, dry_run: bool) -> dict[str,
             policy_uuid = _ensure_policy_uuid(payload.get("id"))
             if policy_uuid:
                 prepared["id"] = policy_uuid
-            if not prepared.get("deal_id"):
-                print(f"skip policy row {row_index} without deal_id")
-                continue
-            deal_id_value = str(prepared["deal_id"])
+            deal_id_value = prepared.get("deal_id")
+            if not deal_id_value:
+                deal_id_value = _ensure_placeholder_deal(prepared.get("client_id"))
+                if deal_id_value:
+                    prepared["deal_id"] = deal_id_value
+                else:
+                    print(f"skip policy row {row_index} without deal_id")
+                    continue
+            deal_id_value = str(deal_id_value)
             prepared["deal_id"] = deal_id_value
             if deal_id_value not in EXISTING_DEAL_IDS:
                 print(f"skip policy row {row_index} for missing deal {deal_id_value}")
