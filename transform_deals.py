@@ -89,6 +89,7 @@ def build_queries(
     now: str,
 ) -> list[str]:
     queries: list[str] = []
+    now_date = now.split(" ")[0]
     deal_columns = [
         "id",
         "deleted_at",
@@ -136,6 +137,8 @@ def build_queries(
             drive_link,
             is_deleted,
         ) = cols
+        start_date = clean(start_date)
+        reminder_date = clean(reminder_date)
         client_uuid = client_map.get(client_id)
         if not client_uuid:
             continue
@@ -149,7 +152,7 @@ def build_queries(
         if drive_meta:
             description_parts.append(json.dumps(drive_meta, ensure_ascii=False))
         full_description = "\n".join(part for part in description_parts if part)
-        next_contact_date = reminder_date if reminder_date and reminder_date != r"\N" else start_date
+        next_contact_date = reminder_date or start_date
         status_value = status if status and status != r"\N" else "open"
         loss_reason = closed_reason if closed_reason and closed_reason != r"\N" else None
         if is_closed == "t":
@@ -165,7 +168,8 @@ def build_queries(
         status_value = escape(status_value) or "open"
         loss_reason_value = escape(loss_reason) or ""
         closing_reason_value = loss_reason_value
-        next_contact = next_contact_date if next_contact_date and next_contact_date != r"\N" else None
+        fallback_contact = next_contact_date or now_date
+        next_contact = next_contact_date or fallback_contact
         source_value = ""
         values = [
             deal_uuid,

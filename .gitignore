@@ -157,3 +157,7 @@ backend/client_mapping.json
 backend/scripts/import_business_data.py
 scripts/full_import.sh
 scripts/import_business_data.py
+transform_deals.py
+docs/DATA_TRANSFER.md
+tools/run_full_import.ps1
+transform_deals.py
