@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { ChatBox } from '../../../ChatBox';
 import type { ChatMessage, Deal, User } from '../../../../types';
 
@@ -6,7 +6,7 @@ interface ChatTabProps {
   selectedDeal: Deal | null;
   chatMessages: ChatMessage[];
   isChatLoading: boolean;
-  currentUser: User;
+  currentUser: User | null;
   onSendMessage: (body: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
 }
@@ -24,7 +24,13 @@ export const ChatTab: React.FC<ChatTabProps> = ({
   }
 
   if (isChatLoading) {
-    return <p className="text-sm text-slate-500">Загружаем сообщения...</p>;
+    return <p className="text-sm text-slate-500">����㦠�� ᮮ�饭��...</p>;
+  }
+
+  if (!currentUser) {
+    return (
+      <p className="text-sm text-slate-500">Требуется авторизация для чата.</p>
+    );
   }
 
   return (
