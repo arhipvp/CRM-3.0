@@ -17,6 +17,7 @@ from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -249,3 +250,15 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if UserRole.objects.filter(user=user, role__name="Admin").exists():
             return True
         return deal.seller_id == user.id or deal.executor_id == user.id
+
+    def perform_create(self, serializer):
+        deal = serializer.validated_data.get("deal")
+        user = self.request.user
+
+        if not deal or not user or not user.is_authenticated:
+            raise PermissionDenied("Нет доступа к сделке.")
+
+        if deal.seller_id != user.id:
+            raise PermissionDenied("Только продавец сделки может добавить полис.")
+
+        serializer.save()
