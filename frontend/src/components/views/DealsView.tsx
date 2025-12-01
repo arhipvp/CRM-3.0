@@ -248,6 +248,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   onSelectDeal,
 
+  onUpdateStatus,
+
   onUpdateDeal,
   onMergeDeals,
 
@@ -298,6 +300,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onUpdateTask,
 
   onDeleteTask,
+
+  onDeleteDeal,
 
   dealSearch,
 
