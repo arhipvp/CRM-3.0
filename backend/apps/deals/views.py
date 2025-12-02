@@ -216,6 +216,9 @@ class QuoteViewSet(viewsets.ModelViewSet):
             .order_by("-created_at")
         )
 
+        if self.action == "destroy":
+            return queryset
+
         is_admin = _is_admin_user(user)
         if is_admin:
             return queryset
