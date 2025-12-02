@@ -165,7 +165,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     if (!records.length) {
       return (
         <tr>
-          <td colSpan={3} className="px-2 py-2 text-[11px] text-center text-slate-400">
+          <td colSpan={3} className="px-2 py-2 text-sm text-center text-slate-400">
             Записей нет
           </td>
         </tr>
@@ -178,18 +178,18 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
         return (
           <tr key={record.id}>
-            <td className="px-2 py-1 text-[11px] text-slate-600">{record.description || '—'}</td>
-            <td className="px-2 py-1 text-[11px] text-slate-600">{formatDate(record.date)}</td>
-            <td className="px-2 py-1 text-right text-[11px] font-semibold">
+            <td className="px-2 py-1 text-sm text-slate-600">{record.description || '—'}</td>
+            <td className="px-2 py-1 text-sm text-slate-600">{formatDate(record.date)}</td>
+            <td className="px-2 py-1 text-right text-sm font-semibold">
               <span className={recordType === 'income' ? 'text-emerald-600' : 'text-red-600'}>
                 {sign}
                 {formatCurrency(amountValue.toString())}
               </span>
             </td>
-            <td className="px-2 py-1 text-right text-[11px] text-slate-600 space-x-2">
+            <td className="px-2 py-1 text-right text-sm text-slate-600 space-x-2">
               <button
                 onClick={() => setEditingFinancialRecordId(record.id)}
-                className="text-[11px] text-sky-600 hover:text-sky-800 font-semibold"
+                className="text-sm text-sky-600 hover:text-sky-800 font-semibold"
               >
                 Изменить
               </button>
@@ -197,7 +197,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 onClick={() =>
                   onDeleteFinancialRecord(record.id).catch(() => undefined)
                 }
-                className="text-[11px] text-rose-500 hover:text-rose-600 font-semibold"
+                className="text-sm text-rose-500 hover:text-rose-600 font-semibold"
               >
                 Удалить
               </button>
@@ -223,36 +223,36 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
               key={policy.id}
               className="space-y-2 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="grid gap-2 px-3 py-2 text-[10px] text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_1fr]">
+              <div className="grid gap-4 px-5 py-4 text-sm text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.9fr_0.8fr_1fr]">
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Номер</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Номер</p>
                   <p className="text-lg font-semibold text-slate-900">{policy.number || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Компания</p>
-                  <p className="font-semibold text-slate-800">{policy.insuranceCompany || '—'}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Компания</p>
+                  <p className="text-base font-semibold text-slate-800">{policy.insuranceCompany || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Клиент</p>
-                  <p className="font-semibold text-slate-800">{policy.clientName || '—'}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Клиент</p>
+                  <p className="text-base font-semibold text-slate-800">{policy.clientName || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Канал</p>
-                  <p className="font-semibold text-slate-800">{policy.salesChannel || '—'}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Канал</p>
+                  <p className="text-base font-semibold text-slate-800">{policy.salesChannel || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Сумма</p>
-                  <p className="font-semibold text-slate-900">
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Сумма</p>
+                  <p className="text-lg font-semibold text-slate-900">
                     {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Действия</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Действия</p>
                   <div className="flex items-center justify-end gap-3">
                     {onRequestEditPolicy && (
                       <button
                         type="button"
-                        className="text-xs font-semibold text-slate-400 hover:text-sky-600"
+                        className="text-sm font-semibold text-slate-500 hover:text-sky-600"
                         onClick={() => onRequestEditPolicy(policy)}
                       >
                         Ред.
@@ -260,7 +260,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     )}
                     <button
                       type="button"
-                      className="text-xs font-semibold text-slate-400 hover:text-sky-600"
+                      className="text-sm font-semibold text-slate-500 hover:text-sky-600"
                       onClick={() => setFilesModalPolicy(policy)}
                     >
                       Файлы
@@ -268,26 +268,26 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500 sm:flex sm:items-center sm:justify-between">
-                <div className="flex flex-wrap text-sm text-slate-600 gap-4">
+              <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 sm:flex sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-6 text-sm text-slate-700">
                   <span>Тип: {policy.insuranceType || '—'}</span>
                   <span>Марка: {policy.brand || '—'}</span>
                   <span>Модель: {policy.model || '—'}</span>
                   <span>VIN: {policy.vin || '—'}</span>
                 </div>
-                <div className="flex flex-wrap gap-4 text-[11px] text-slate-500">
+                <div className="flex flex-wrap gap-5 text-sm text-slate-500">
                   <span>Начало: {formatDate(policy.startDate)}</span>
                   <span>Окончание: {formatDate(policy.endDate)}</span>
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-3 py-3">
+              <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-600">
                 <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
                   <div>Платежи</div>
                 </div>
                 {payments.length === 0 ? (
-                  <p className="mt-2 text-xs text-slate-500">Платежей пока нет.</p>
+                  <p className="mt-2 text-sm text-slate-500">Платежей пока нет.</p>
                 ) : (
-                  <div className="mt-2 space-y-2 text-[11px] text-slate-600">
+                  <div className="mt-2 space-y-3 text-sm text-slate-600">
                     {payments.map((payment) => {
                       const incomes =
                         payment.financialRecords?.filter((record) => record.recordType === 'Доход') ||
@@ -299,35 +299,35 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                       return (
                         <div
                           key={payment.id}
-                          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <p className="font-semibold text-slate-900 text-sm">
+                              <p className="font-semibold text-slate-900 text-lg">
                                 {formatCurrency(payment.amount)}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-sm text-slate-500">
                                 {payment.note || payment.description || '—'}
                               </p>
                             </div>
-                            <div className="flex gap-4 text-[11px] text-slate-500">
+                            <div className="flex gap-6 text-sm text-slate-500">
                               <div>
-                                <p className="uppercase tracking-[0.3em]">План</p>
+                                <p className="uppercase tracking-[0.2em]">План</p>
                                 <p className="font-semibold text-slate-900">
                                   {formatDate(payment.scheduledDate)}
                                 </p>
                               </div>
                               <div>
-                                <p className="uppercase tracking-[0.3em]">Факт</p>
+                                <p className="uppercase tracking-[0.2em]">Факт</p>
                                 <p className="font-semibold text-slate-900">
                                   {formatDate(payment.actualDate)}
                                 </p>
                               </div>
                             </div>
                           </div>
-                          <div className="mt-3 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-                              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                          <div className="mt-3 grid gap-4 md:grid-cols-2">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                                 <span>Доходы</span>
                                 <button
                                   onClick={() => {
@@ -337,15 +337,15 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                     });
                                     setEditingFinancialRecordId(null);
                                   }}
-                                  className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
+                                  className="text-xs font-semibold text-sky-600 hover:text-sky-800"
                                 >
                                   Добавить
                                 </button>
                               </div>
                               <div className="overflow-x-auto">
-                                <table className="min-w-full text-[11px] text-slate-600">
+                                <table className="min-w-full text-sm text-slate-600">
                                   <thead>
-                                  <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
+                                  <tr className="text-xs uppercase tracking-[0.25em] text-slate-400">
                                       <th className="px-2 py-1 text-left">Описание</th>
                                       <th className="px-2 py-1 text-left">Дата</th>
                                       <th className="px-2 py-1 text-right">Сумма</th>
@@ -356,8 +356,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                 </table>
                               </div>
                             </div>
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-                              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                                 <span>Расходы</span>
                                 <button
                                   onClick={() => {
@@ -367,15 +367,15 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                     });
                                     setEditingFinancialRecordId(null);
                                   }}
-                                  className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
+                                  className="text-xs font-semibold text-sky-600 hover:text-sky-800"
                                 >
                                   Добавить
                                 </button>
                               </div>
                               <div className="overflow-x-auto">
-                                <table className="min-w-full text-[11px] text-slate-600">
+                                <table className="min-w-full text-sm text-slate-600">
                                   <thead>
-                                    <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
+                                    <tr className="text-xs uppercase tracking-[0.25em] text-slate-400">
                                       <th className="px-2 py-1 text-left">Описание</th>
                                       <th className="px-2 py-1 text-left">Дата</th>
                                       <th className="px-2 py-1 text-right">Сумма</th>

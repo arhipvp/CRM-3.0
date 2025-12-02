@@ -98,7 +98,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           )}
         </div>
       </aside>
-      <main className="flex-1 min-h-screen ml-64">{children}</main>
+      <main className="flex-1 min-h-screen ml-64 bg-slate-100 px-4 py-6">
+        <div className="mx-auto w-full max-w-[1320px]">{children}</div>
+      </main>
     </div>
   );
 };
