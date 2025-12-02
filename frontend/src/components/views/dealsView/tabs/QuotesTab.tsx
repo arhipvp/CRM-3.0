@@ -46,6 +46,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 <th className="px-4 py-3">Франшиза</th>
                 <th className="px-4 py-3">Комментарии</th>
                 <th className="px-4 py-3">Добавлен</th>
+                <th className="px-4 py-3">??? ???????</th>
                 <th className="px-4 py-3 text-right">Действия</th>
               </tr>
             </thead>
@@ -58,6 +59,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.premium))}</td>
                   <td className="px-4 py-3 text-slate-900">{quote.deductible || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{quote.comments || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{quote.sellerName || quote.sellerId || '-'}</td>
                   <td className="px-4 py-3 text-slate-400">{formatDate(quote.createdAt)}</td>
                   <td className="px-4 py-3 text-right space-x-3">
                     <button

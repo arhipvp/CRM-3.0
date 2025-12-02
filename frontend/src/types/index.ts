@@ -23,6 +23,8 @@ export interface Client {
 export interface Quote {
   id: string;
   dealId: string;
+  sellerId?: string | null;
+  sellerName?: string | null;
   insuranceCompanyId: string;
   insuranceCompany: string;
   insuranceTypeId: string;

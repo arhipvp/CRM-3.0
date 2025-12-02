@@ -89,6 +89,8 @@ export const mapClient = (raw: Record<string, unknown>): Client => ({
 export const mapQuote = (raw: Record<string, unknown>): Quote => ({
   id: toStringValue(raw.id),
   dealId: toStringValue(raw.deal),
+  sellerId: toNullableString(raw.seller),
+  sellerName: toNullableString(raw.seller_name ?? raw.sellerName),
   insuranceCompanyId: toStringValue(raw.insurance_company),
   insuranceCompany: toStringValue(raw.insurance_company_name ?? raw.insurer ?? ''),
   insuranceTypeId: toStringValue(raw.insurance_type),
