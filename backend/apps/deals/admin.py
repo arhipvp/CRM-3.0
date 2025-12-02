@@ -10,6 +10,7 @@ from django.utils.html import format_html
 from import_export import resources
 
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
+
 RESTORE_DEALS_LABEL = (
     "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
     "\u0020"
@@ -25,7 +26,6 @@ RESTORE_QUOTES_LABEL = (
     "\u0020"
     "\u0440\u0430\u0441\u0447\u0451\u0442\u044b"
 )
-
 
 
 # ============ IMPORT/EXPORT RESOURCES ============
