@@ -1,13 +1,12 @@
-from django.contrib import admin as django_admin
-from django.test import TestCase
-
 from apps.deals.admin import (
-    DealAdmin,
-    QuoteAdmin,
     RESTORE_DEALS_LABEL,
     RESTORE_QUOTES_LABEL,
+    DealAdmin,
+    QuoteAdmin,
 )
 from apps.deals.models import Deal, Quote
+from django.contrib import admin as django_admin
+from django.test import TestCase
 
 
 class DealAdminLabelsTests(TestCase):
