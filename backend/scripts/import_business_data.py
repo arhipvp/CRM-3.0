@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
 import django
+from django.utils import timezone
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
-from django.utils import timezone
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR_CANDIDATES = (
@@ -56,7 +56,6 @@ from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
 from django.db import DataError, connection, models
-from django.utils import timezone
 from django.utils import timezone
 
 
