@@ -72,6 +72,13 @@ jobs:
           pip install -r backend/requirements.txt
           pip install pytest pytest-django pytest-cov
 
+      - name: Restore Google Drive credentials
+        env:
+          GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/drive-sa.json"
+          chmod 600 "$RUNNER_TEMP/drive-sa.json"
+
       - name: Run migrations
         env:
           DEBUG: 'False'
@@ -84,6 +91,8 @@ jobs:
           DJANGO_SECRET_KEY: test-secret-key
           ALLOWED_HOSTS: localhost,127.0.0.1
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+          GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
+          GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/drive-sa.json
         run: |
           cd backend
           python manage.py migrate --no-input
@@ -100,6 +109,8 @@ jobs:
           DJANGO_SECRET_KEY: test-secret-key
           ALLOWED_HOSTS: localhost,127.0.0.1
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+          GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
+          GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/drive-sa.json
         run: |
           cd backend
           pytest -v --cov=. --cov-report=xml
