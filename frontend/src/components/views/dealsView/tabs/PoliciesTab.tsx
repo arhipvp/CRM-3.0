@@ -6,6 +6,7 @@ import {
   formatDate,
   PolicySortKey,
 } from '../helpers';
+import { ColoredLabel } from '../../../common/ColoredLabel';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -145,7 +146,12 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Компания</p>
-                  <p className="font-semibold text-slate-800">{policy.insuranceCompany || '—'}</p>
+                  <ColoredLabel
+                    value={policy.insuranceCompany}
+                    fallback="—"
+                    showDot
+                    className="font-semibold text-slate-800"
+                  />
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Клиент</p>
@@ -153,7 +159,12 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Канал</p>
-                  <p className="font-semibold text-slate-800">{policy.salesChannel || '—'}</p>
+                  <ColoredLabel
+                    value={policy.salesChannel}
+                    fallback="—"
+                    showDot
+                    className="font-semibold text-slate-800"
+                  />
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Сумма</p>

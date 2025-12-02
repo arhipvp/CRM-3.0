@@ -9,6 +9,7 @@ import {
   FinancialRecordCreationContext,
 } from './dealsView/helpers';
 import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
+import { ColoredLabel } from '../common/ColoredLabel';
 
 type PolicySortKey =
   | 'startDate'
@@ -230,7 +231,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Компания</p>
-                  <p className="text-base font-semibold text-slate-800">{policy.insuranceCompany || '—'}</p>
+                  <ColoredLabel
+                    value={policy.insuranceCompany}
+                    fallback="—"
+                    showDot
+                    className="text-base font-semibold text-slate-800"
+                  />
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Клиент</p>
@@ -238,7 +244,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Канал</p>
-                  <p className="text-base font-semibold text-slate-800">{policy.salesChannel || '—'}</p>
+                  <ColoredLabel
+                    value={policy.salesChannel}
+                    fallback="—"
+                    showDot
+                    className="text-base font-semibold text-slate-800"
+                  />
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Сумма</p>

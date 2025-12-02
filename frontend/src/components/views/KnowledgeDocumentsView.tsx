@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FileUploadManager } from '../FileUploadManager';
+import { ColoredLabel } from '../common/ColoredLabel';
 import { KnowledgeDocument } from '../../types';
 
 const formatDate = (value?: string | null): string =>
@@ -141,7 +142,14 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
                 <span>Залит: {formatDate(doc.createdAt)}</span>
                 <span>
-                  Автор: {doc.ownerUsername || '—'}{doc.ownerId ? ` (${doc.ownerId})` : ''}
+                  Автор:{' '}
+                  <ColoredLabel
+                    value={doc.ownerUsername}
+                    fallback="—"
+                    showDot={false}
+                    className="text-xs text-slate-500"
+                  />
+                  {doc.ownerId ? ` (${doc.ownerId})` : ''}
                 </span>
                 <span>Тип: {doc.mimeType || '—'}</span>
               </div>

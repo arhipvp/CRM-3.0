@@ -65,6 +65,8 @@ import {
 
 } from '../forms/AddFinancialRecordForm';
 
+import { ColoredLabel } from '../common/ColoredLabel';
+
 import {
 
   DEAL_TABS,
@@ -1727,7 +1729,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
               >
                 <div className="absolute top-2 right-4 h-3 w-12 rounded-full bg-amber-300 opacity-80 shadow-[0_4px_15px_rgba(245,158,11,0.5)]" />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  {note.authorName || '—'}
+                  <ColoredLabel
+                    value={note.authorName}
+                    fallback="—"
+                    showDot={false}
+                    className="text-[11px] uppercase tracking-[0.3em]"
+                  />
                 </p>
                 <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
                   {note.body || '—'}
@@ -2005,7 +2012,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 <p className="text-sm text-slate-500">Клиент</p>
                 <p className="text-xl font-semibold text-slate-900">{selectedClient?.name || selectedDeal.clientName || '-'}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Ответственный: {sellerDisplayName} · Исполнитель: {executorDisplayName}
+                  Ответственный: <ColoredLabel value={sellerDisplayName !== '—' ? sellerDisplayName : undefined} fallback="—" showDot={false} className="text-slate-900 font-semibold" /> · Исполнитель: <ColoredLabel value={executorDisplayName !== '—' ? executorDisplayName : undefined} fallback="—" showDot={false} className="text-slate-900 font-semibold" />
                 </p>
               </div>
               <div className="flex items-center gap-3">

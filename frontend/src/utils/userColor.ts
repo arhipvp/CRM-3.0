@@ -1,4 +1,4 @@
-const USER_COLOR_PALETTE = [
+const ENTITY_COLOR_PALETTE = [
   '#2563eb',
   '#059669',
   '#db2777',
@@ -9,7 +9,7 @@ const USER_COLOR_PALETTE = [
   '#6366f1',
 ];
 
-export const getUserColor = (identifier?: string | null) => {
+const getColorFromIdentifier = (identifier?: string | null) => {
   if (!identifier) {
     return undefined;
   }
@@ -17,8 +17,11 @@ export const getUserColor = (identifier?: string | null) => {
   for (let i = 0; i < identifier.length; i += 1) {
     hash = (hash * 31 + identifier.charCodeAt(i)) >>> 0;
   }
-  return USER_COLOR_PALETTE[hash % USER_COLOR_PALETTE.length];
+  return ENTITY_COLOR_PALETTE[hash % ENTITY_COLOR_PALETTE.length];
 };
+
+export const getUserColor = getColorFromIdentifier;
+export const getEntityColor = getColorFromIdentifier;
 
 export const hexToRgba = (hex: string, alpha: number) => {
   const cleaned = hex.replace('#', '');

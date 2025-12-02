@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityLog } from '../types';
+import { ColoredLabel } from './common/ColoredLabel';
 
 interface ActivityTimelineProps {
   activities: ActivityLog[];
@@ -87,7 +88,15 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
             <div className="activity-header">
               <span className="activity-action">{activity.actionTypeDisplay}</span>
               {activity.userUsername && (
-                <span className="activity-user">— {activity.userUsername}</span>
+                <span className="activity-user">
+                  —{' '}
+                  <ColoredLabel
+                    value={activity.userUsername}
+                    fallback="—"
+                    showDot={false}
+                    className="text-slate-500"
+                  />
+                </span>
               )}
               <span className="activity-time">{formatDateTime(activity.createdAt)}</span>
             </div>

@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import type { Deal, Quote } from '../../../../types';
 import { formatCurrency, formatDate } from '../helpers';
+import { ColoredLabel } from '../../../common/ColoredLabel';
 
 interface QuotesTabProps {
   selectedDeal: Deal | null;
@@ -54,12 +55,26 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               {quotes.map((quote) => (
                 <tr key={quote.id} className="odd:bg-white even:bg-slate-50">
                   <td className="px-4 py-3 font-semibold text-slate-900">{quote.insuranceType}</td>
-                  <td className="px-4 py-3 text-slate-600">{quote.insuranceCompany || '—'}</td>
+                  <td className="px-4 py-3">
+                    <ColoredLabel
+                      value={quote.insuranceCompany}
+                      fallback="-"
+                      showDot
+                      className="text-slate-600"
+                    />
+                  </td>
                   <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.sumInsured))}</td>
                   <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.premium))}</td>
                   <td className="px-4 py-3 text-slate-900">{quote.deductible || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{quote.comments || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{quote.sellerName || quote.sellerId || '-'}</td>
+                  <td className="px-4 py-3">
+                    <ColoredLabel
+                      value={quote.sellerName || quote.sellerId}
+                      fallback="-"
+                      showDot={false}
+                      className="text-slate-600"
+                    />
+                  </td>
                   <td className="px-4 py-3 text-slate-400">{formatDate(quote.createdAt)}</td>
                   <td className="px-4 py-3 text-right space-x-3">
                     <button
