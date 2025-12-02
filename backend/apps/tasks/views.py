@@ -45,7 +45,9 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             completion_kwargs["completed_by"] = user
             completion_kwargs["completed_at"] = timezone.now()
         if not assignee_provided and deal and deal.executor:
-            serializer.save(created_by=user, assignee=deal.executor, **completion_kwargs)
+            serializer.save(
+                created_by=user, assignee=deal.executor, **completion_kwargs
+            )
             return
         serializer.save(created_by=user, **completion_kwargs)
 

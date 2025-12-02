@@ -58,7 +58,6 @@ class Task(SoftDeleteModel):
         help_text="Выполнено",
     )
 
-
     # Сроки
     due_at = models.DateTimeField(null=True, blank=True, help_text="Срок выполнения")
     remind_at = models.DateTimeField(
