@@ -236,6 +236,27 @@ class QuoteViewSet(viewsets.ModelViewSet):
             defaults["seller"] = self.request.user
         serializer.save(**defaults)
 
+    def _can_delete(self, user, quote: Quote) -> bool:
+        if _is_admin_user(user):
+            return True
+        if not user or not user.is_authenticated:
+            return False
+        if quote.seller_id == getattr(user, "id", None):
+            return True
+        deal = getattr(quote, "deal", None)
+        return bool(deal and deal.seller_id == getattr(user, "id", None))
+
+    def destroy(self, request, *args, **kwargs):
+        quote = self.get_object()
+        if not self._can_delete(request.user, quote):
+            return Response(
+                {
+                    "detail": "Удалять расчет может только его автор, продавец сделки или администратор."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
+
 
 class InsuranceCompanyViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InsuranceCompanySerializer

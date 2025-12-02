@@ -18,6 +18,8 @@ class TaskResource(resources.ModelResource):
             "deal",
             "assignee",
             "created_by",
+            "completed_by",
+            "completed_at",
             "due_at",
             "remind_at",
             "status",
@@ -34,6 +36,8 @@ class TaskResource(resources.ModelResource):
             "deal",
             "assignee",
             "created_by",
+            "completed_by",
+            "completed_at",
             "due_at",
             "remind_at",
             "status",
@@ -70,7 +74,14 @@ class TaskAdmin(ImportExportModelAdmin):
         "deleted_at",
         "assignee",
     )
-    readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    readonly_fields = (
+        "id",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "completed_by",
+        "completed_at",
+    )
     ordering = ("due_at", "-created_at")
     date_hierarchy = "due_at"
     actions = ["mark_as_done", "mark_as_in_progress", "mark_as_todo", "restore_tasks"]
@@ -80,6 +91,7 @@ class TaskAdmin(ImportExportModelAdmin):
         ("Статус и приоритет", {"fields": ("status", "priority")}),
         ("Сроки", {"fields": ("due_at", "remind_at")}),
         ("Исполнители", {"fields": ("assignee", "created_by")}),
+        ("Выполнено", {"fields": ("completed_by", "completed_at")}),
         ("Контрольный список", {"fields": ("checklist",)}),
         ("Статус удаления", {"fields": ("deleted_at",)}),
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),

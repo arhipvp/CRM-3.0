@@ -1,6 +1,7 @@
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import permissions, viewsets
 from rest_framework.permissions import AllowAny
 
@@ -38,10 +39,28 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         user = self.request.user if self.request.user.is_authenticated else None
         deal = serializer.validated_data.get("deal")
         assignee_provided = "assignee" in serializer.validated_data
+        completion_kwargs = {}
+        status = serializer.validated_data.get("status")
+        if status == Task.TaskStatus.DONE:
+            completion_kwargs["completed_by"] = user
+            completion_kwargs["completed_at"] = timezone.now()
         if not assignee_provided and deal and deal.executor:
-            serializer.save(created_by=user, assignee=deal.executor)
+            serializer.save(created_by=user, assignee=deal.executor, **completion_kwargs)
             return
-        serializer.save(created_by=user)
+        serializer.save(created_by=user, **completion_kwargs)
+
+    def perform_update(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        old_status = serializer.instance.status
+        new_status = serializer.validated_data.get("status", old_status)
+        completion_kwargs = {}
+        if new_status == Task.TaskStatus.DONE and old_status != Task.TaskStatus.DONE:
+            completion_kwargs["completed_by"] = user
+            completion_kwargs["completed_at"] = timezone.now()
+        elif new_status != Task.TaskStatus.DONE and old_status == Task.TaskStatus.DONE:
+            completion_kwargs["completed_by"] = None
+            completion_kwargs["completed_at"] = None
+        serializer.save(**completion_kwargs)
 
     def _is_deal_seller(self, user, instance):
         """Позволяет продавцу управлять задачами сделки."""

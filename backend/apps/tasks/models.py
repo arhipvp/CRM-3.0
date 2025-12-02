@@ -49,11 +49,23 @@ class Task(SoftDeleteModel):
         blank=True,
         help_text="Создано",
     )
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="completed_tasks",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Выполнено",
+    )
+
 
     # Сроки
     due_at = models.DateTimeField(null=True, blank=True, help_text="Срок выполнения")
     remind_at = models.DateTimeField(
         null=True, blank=True, help_text="Время напоминания"
+    )
+    completed_at = models.DateTimeField(
+        null=True, blank=True, help_text="Дата и время завершения"
     )
 
     # Статус и приоритет
