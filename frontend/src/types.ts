@@ -279,4 +279,6 @@ export interface Task {
   remindAt?: string | null;
   checklist: ChecklistItem[];
   createdAt: string;
+  completedAt?: string | null;
+  completedByName?: string | null;
 }

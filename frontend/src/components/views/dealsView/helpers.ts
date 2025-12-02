@@ -29,6 +29,9 @@ export type FinancialRecordCreationContext = {
 export const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
+export const formatDateTime = (value?: string | null) =>
+  value ? new Date(value).toLocaleString('ru-RU') : '—';
+
 export const QUICK_NEXT_CONTACT_OPTIONS = [
   { label: 'Завтра', days: 1 },
   { label: 'Через 2 дня', days: 2 },

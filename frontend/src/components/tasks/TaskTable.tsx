@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task } from '../../types';
-import { formatDate } from '../views/dealsView/helpers';
+import { formatDate, formatDateTime } from '../views/dealsView/helpers';
 import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
 
 interface TaskTableProps {
@@ -14,7 +14,7 @@ interface TaskTableProps {
   completingTaskIds?: string[];
 }
 
-const DEFAULT_EMPTY_MESSAGE = 'No tasks yet';
+const DEFAULT_EMPTY_MESSAGE = 'Пока нет задач';
 
 export const TaskTable: React.FC<TaskTableProps> = ({
   tasks,
@@ -41,17 +41,29 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
           <tr>
-            <th className="px-5 py-3">Task</th>
-            <th className="px-5 py-3">Status</th>
-            <th className="px-5 py-3">Priority</th>
-            {showDealColumn && <th className="px-5 py-3">Deal</th>}
-            <th className="px-5 py-3">Due Date</th>
-            {hasActions && <th className="px-5 py-3 text-right">Actions</th>}
+            <th className="px-5 py-3">Задача</th>
+            <th className="px-5 py-3">Статус</th>
+            <th className="px-5 py-3">Приоритет</th>
+            {showDealColumn && <th className="px-5 py-3">Сделка</th>}
+            <th className="px-5 py-3">Срок</th>
+            {hasActions && <th className="px-5 py-3 text-right">Действия</th>}
           </tr>
         </thead>
         <tbody>
           {tasks.map((task) => {
             const dealTitle = task.dealTitle || '-';
+            const completionInfoParts: string[] = [];
+            if (task.status === 'done') {
+              if (task.completedByName) {
+                completionInfoParts.push(`Закрыл: ${task.completedByName}`);
+              } else {
+                completionInfoParts.push('Завершено');
+              }
+              if (task.completedAt) {
+                completionInfoParts.push(`в ${formatDateTime(task.completedAt)}`);
+              }
+            }
+            const completionInfo = completionInfoParts.join(' ');
             return (
               <tr key={task.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-5 py-4">
@@ -65,7 +77,12 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   {PRIORITY_LABELS[task.priority] || task.priority}
                 </td>
                 {showDealColumn && <td className="px-5 py-4 text-slate-600">{dealTitle}</td>}
-                <td className="px-5 py-4 text-slate-600">{formatDate(task.dueAt)}</td>
+                <td className="px-5 py-4 text-slate-600">
+                  {formatDate(task.dueAt)}
+                  {completionInfo && (
+                    <p className="text-[11px] text-slate-400 mt-1">{completionInfo}</p>
+                  )}
+                </td>
                 {hasActions && (
                   <td className="px-5 py-4 text-right space-x-3 text-xs">
                     {onMarkTaskDone && task.status !== 'done' && (
@@ -75,7 +92,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         disabled={completingTaskIds.includes(task.id)}
                         className="text-emerald-600 font-semibold hover:text-emerald-800 whitespace-nowrap"
                       >
-                        {completingTaskIds.includes(task.id) ? 'Marking...' : 'Mark done'}
+                        {completingTaskIds.includes(task.id) ? 'Отмечаем...' : 'Пометить выполненной'}
                       </button>
                     )}
                     {onEditTask && (
@@ -84,7 +101,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         onClick={() => onEditTask(task.id)}
                         className="text-slate-400 hover:text-sky-600 whitespace-nowrap"
                       >
-                        Edit
+                        Изменить
                       </button>
                     )}
                     {onDeleteTask && (
@@ -93,7 +110,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         onClick={() => handleDelete(task.id)}
                         className="text-slate-400 hover:text-red-500 whitespace-nowrap"
                       >
-                        Delete
+                        Удалить
                       </button>
                     )}
                   </td>

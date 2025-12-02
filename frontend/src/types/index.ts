@@ -165,6 +165,8 @@ export interface Task {
   title: string;
   description?: string;
   dealId: string;
+  dealTitle?: string;
+  clientName?: string;
   assignee?: string | null;
   assigneeName?: string | null;
   status: string;
@@ -173,6 +175,8 @@ export interface Task {
   remindAt?: string | null;
   checklist?: unknown[];
   createdAt: string;
+  completedAt?: string | null;
+  completedByName?: string | null;
 }
 
 // Chat Message type

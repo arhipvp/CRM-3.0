@@ -30,13 +30,13 @@ export const TasksTab: React.FC<TasksTabProps> = ({
   if (!relatedTasks.length) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">There are no tasks for this deal yet.</p>
+        <p className="text-sm text-slate-500">Для этой сделки пока нет задач.</p>
         <button
           type="button"
           onClick={onCreateTaskClick}
           className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
         >
-          Create task
+          Создать задачу
         </button>
       </div>
     );
@@ -45,13 +45,13 @@ export const TasksTab: React.FC<TasksTabProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-base font-semibold text-slate-800">Tasks</h3>
+        <h3 className="text-base font-semibold text-slate-800">Задачи</h3>
         <button
           type="button"
           onClick={onCreateTaskClick}
           className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
         >
-          + Add task
+          + Добавить задачу
         </button>
       </div>
       <TaskTable
@@ -62,7 +62,7 @@ export const TasksTab: React.FC<TasksTabProps> = ({
         onEditTask={onEditTaskClick}
         onDeleteTask={onDeleteTask}
         completingTaskIds={completingTaskIds}
-        emptyMessage="No tasks"
+        emptyMessage="Задачи не найдены"
       />
     </div>
   );
