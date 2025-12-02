@@ -103,9 +103,7 @@ class PolicyCreationPermissionsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Policy.objects.filter(pk=policy.pk).exists())
-        self.assertTrue(
-            Policy.objects.with_deleted().filter(pk=policy.pk).exists()
-        )
+        self.assertTrue(Policy.objects.with_deleted().filter(pk=policy.pk).exists())
 
     def test_non_deal_owner_cannot_delete_policy(self):
         policy = self._create_policy_instance("POLICY-DELETE-OTHER")

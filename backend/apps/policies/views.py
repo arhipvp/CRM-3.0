@@ -81,6 +81,9 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset
 
+        if self.request.method == "DELETE":
+            return queryset
+
         is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
         if not is_admin:
             queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
