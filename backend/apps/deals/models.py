@@ -131,6 +131,10 @@ class Deal(SoftDeleteModel):
     def __str__(self) -> str:
         return self.title
 
+    def delete(self, *args, **kwargs):
+        self.tasks.all().delete()
+        return super().delete(*args, **kwargs)
+
 
 class Quote(SoftDeleteModel):
     """Расчет страхового продукта, подготовленный по сделке."""
