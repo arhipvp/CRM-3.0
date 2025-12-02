@@ -384,11 +384,6 @@ _AUTO_CREATE_MAPPING = {
 }
 
 
-CREATED_POLICY_IDS: set[str] = set()
-CREATED_PAYMENT_IDS: set[str] = set()
-EXISTING_DEAL_IDS: set[str] = set()
-
-
 CLIENT_MAPPING_FILE = BASE_DIR / "import/data" / "client_mapping.json"
 
 
