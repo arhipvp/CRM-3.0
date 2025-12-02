@@ -4,6 +4,12 @@ from .models import Client
 
 
 class ClientSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
+
     class Meta:
         model = Client
         fields = "__all__"

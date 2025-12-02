@@ -43,6 +43,12 @@ class ClientOwnershipTests(TestCase):
 
         self.assertEqual(serializer.instance.created_by, self.user)
 
+    def test_serializer_allows_null_email(self):
+        serializer = ClientSerializer(data={"name": "No email", "email": None})
+        self.assertTrue(serializer.is_valid())
+        client = serializer.save(created_by=self.user)
+        self.assertIsNone(client.email)
+
     def test_owner_can_modify(self):
         client = Client.objects.create(name="Owned", created_by=self.user)
         viewset = ClientViewSet()
