@@ -17,6 +17,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ordering_fields = ["created_at", "updated_at", "due_at"]
     ordering = ["-created_at"]
     owner_field = "created_by"
+    _allow_executor_status_update = False
 
     def get_queryset(self):
         user = self.request.user
@@ -71,7 +72,51 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         deal = getattr(instance, "deal", None)
         return bool(deal and deal.seller_id == user.id)
 
+    def _is_task_assignee(self, user, instance):
+        """Проверяет, является ли пользователь назначенным исполнителем."""
+        if not user or not user.is_authenticated or not instance:
+            return False
+        return getattr(instance, "assignee_id", None) == user.id
+
+    def _can_executor_update_status(self, request, instance):
+        """Разрешает исполнителю пометить задачу как выполненную."""
+        if not self._is_task_assignee(request.user, instance):
+            return False
+
+        status = request.data.get("status")
+        if status != Task.TaskStatus.DONE:
+            return False
+
+        if instance.status == Task.TaskStatus.DONE:
+            return False
+
+        requested_fields = set(request.data.keys())
+        return requested_fields.issubset({"status"})
+
     def _can_modify(self, user, instance):
+        if getattr(self, "_allow_executor_status_update", False):
+            return True
         if super()._can_modify(user, instance):
             return True
         return self._is_deal_seller(user, instance)
+
+    def _prepare_executor_status_update(self, request, instance):
+        self._allow_executor_status_update = self._can_executor_update_status(
+            request, instance
+        )
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self._prepare_executor_status_update(request, instance)
+        try:
+            return super().update(request, *args, **kwargs)
+        finally:
+            self._allow_executor_status_update = False
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self._prepare_executor_status_update(request, instance)
+        try:
+            return super().partial_update(request, *args, **kwargs)
+        finally:
+            self._allow_executor_status_update = False

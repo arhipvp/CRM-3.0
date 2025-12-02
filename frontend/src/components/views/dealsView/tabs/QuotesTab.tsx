@@ -46,7 +46,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 <th className="px-4 py-3">Франшиза</th>
                 <th className="px-4 py-3">Комментарии</th>
                 <th className="px-4 py-3">Добавлен</th>
-                <th className="px-4 py-3">??? ???????</th>
+                <th className="px-4 py-3">Дата</th>
                 <th className="px-4 py-3 text-right">Действия</th>
               </tr>
             </thead>

@@ -1,23 +1,32 @@
 from pathlib import Path
+from typing import Optional
 
-PLACEHOLDER = "????"
+PLACEHOLDER_CHECKS = [
+    ("backend/apps/deals/serializers.py", "????"),
+    ("scripts/import_business_data.py", "????"),
+    (
+        "frontend/src/components/views/dealsView/tabs/QuotesTab.tsx",
+        "??? ???????",
+    ),
+]
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 def _read_text(path: str) -> str:
-    # Try CP1251 first because some files still use legacy encoding.
-    try:
-        return Path(path).read_text(encoding="cp1251")
-    except UnicodeDecodeError:
-        return Path(path).read_text(encoding="latin-1")
+    last_error: Optional[UnicodeDecodeError] = None
+    for encoding in ("utf-8", "cp1251", "latin-1"):
+        try:
+            return (ROOT_DIR / path).read_text(encoding=encoding)
+        except UnicodeDecodeError as exc:
+            last_error = exc
+    assert last_error is not None  # for mypy
+    raise last_error
 
 
-def test_serializers_no_placeholder_text():
-    content = _read_text("apps/deals/serializers.py")
-    assert PLACEHOLDER not in content, "serializers.py contains placeholder text"
-
-
-def test_scripts_no_placeholder_text():
-    content = _read_text("scripts/import_business_data.py")
-    assert (
-        PLACEHOLDER not in content
-    ), "import_business_data.py contains placeholder text"
+def test_no_placeholder_text():
+    for path, placeholder in PLACEHOLDER_CHECKS:
+        content = _read_text(path)
+        assert (
+            placeholder not in content
+        ), f"{path} contains placeholder text {placeholder!r}"

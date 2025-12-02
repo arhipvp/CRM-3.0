@@ -30,11 +30,12 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
     };
   }, []);
 
-  const uploadFile = async (file: File, resetInput?: () => void) => {
-    if (isUploading || disabled) return;
+  const uploadFiles = async (files: File[], resetInput?: () => void) => {
+    if (isUploading || disabled || files.length === 0) return;
 
     const maxSize = 100 * 1024 * 1024;
-    if (file.size > maxSize) {
+    const oversizedFile = files.find((file) => file.size > maxSize);
+    if (oversizedFile) {
       setError('Размер файла не должен превышать 100 МБ');
       return;
     }
@@ -44,13 +45,17 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
     setUploadProgress(0);
 
     let progressInterval: ReturnType<typeof setInterval> | null = null;
+    const totalFiles = files.length;
 
     try {
       progressInterval = setInterval(() => {
         setUploadProgress((prev) => Math.min(prev + Math.random() * 30, 90));
       }, 200);
 
-      await onUpload(file);
+      for (let index = 0; index < totalFiles; index += 1) {
+        await onUpload(files[index]);
+        setUploadProgress(Math.round(((index + 1) / totalFiles) * 100));
+      }
 
       if (progressInterval) {
         clearInterval(progressInterval);
@@ -76,10 +81,10 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) return;
 
-    await uploadFile(file, () => {
+    await uploadFiles(files, () => {
       event.target.value = '';
     });
   };
@@ -111,10 +116,10 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
     if (isUploading || disabled) return;
     setDragActive(false);
 
-    const droppedFile = event.dataTransfer.files?.[0];
-    if (!droppedFile) return;
+    const droppedFiles = Array.from(event.dataTransfer.files ?? []);
+    if (!droppedFiles.length) return;
 
-    await uploadFile(droppedFile);
+    await uploadFiles(droppedFiles);
   };
 
   const dropAreaClasses = [
@@ -135,6 +140,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
         <div className={dropAreaClasses}>
           <input
             type="file"
+            multiple
             onChange={handleFileSelect}
             disabled={isUploading || disabled}
             className="hidden"

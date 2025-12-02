@@ -64,3 +64,21 @@ class TaskPermissionsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         deleted_task = Task.objects.with_deleted().get(id=self.task.id)
         self.assertIsNotNone(deleted_task.deleted_at)
+
+    def test_executor_can_mark_task_as_done(self):
+        self.task.assignee = self.executor
+        self.task.save(update_fields=["assignee"])
+
+        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.executor_token}")
+        response = self.api_client.patch(
+            f"/api/v1/tasks/{self.task.id}/",
+            {"status": Task.TaskStatus.DONE},
+            format="json",
+        )
+
+        self.task.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.task.status, Task.TaskStatus.DONE)
+        self.assertEqual(self.task.completed_by_id, self.executor.id)
+        self.assertIsNotNone(self.task.completed_at)

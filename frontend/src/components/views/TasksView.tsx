@@ -3,20 +3,8 @@ import { Task, TaskPriority } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 
-const STATUS_LABELS: Record<string, string> = {
-  todo: 'К выполнению',
-  in_progress: 'В работе',
-  done: 'Готово',
-  overdue: 'Просрочено',
-  canceled: 'Отменено',
-};
-
-const PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: 'Низкий',
-  normal: 'Средний',
-  high: 'Высокий',
-  urgent: 'Срочный',
-};
+import { STATUS_LABELS, PRIORITY_LABELS } from '../tasks/constants';
+import { TaskTable } from '../tasks/TaskTable';
 
 type TaskSortKey = 'dueAt' | 'priority' | 'createdAt';
 
@@ -54,9 +42,6 @@ const getTaskSortValue = (task: Task, key: TaskSortKey): number => {
       return task.dueAt ? new Date(task.dueAt).getTime() : 0;
   }
 };
-
-const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
 interface TasksViewProps {
   tasks: Task[];
@@ -121,45 +106,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks }) => {
           },
         ]}
       />
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
-            <tr>
-              <th className="px-5 py-3">Задача</th>
-              <th className="px-5 py-3">Статус</th>
-              <th className="px-5 py-3">Приоритет</th>
-              <th className="px-5 py-3">Сделка</th>
-              <th className="px-5 py-3">Дедлайн</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTasks.map((task) => {
-              const dealTitle = task.dealTitle || '—';
-              return (
-                <tr key={task.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-5 py-4">
-                    <p className="font-semibold text-slate-900">{task.title}</p>
-                    {task.description && (
-                      <p className="text-xs text-slate-500 mt-1">{task.description}</p>
-                    )}
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">{STATUS_LABELS[task.status] || task.status}</td>
-                  <td className="px-5 py-4 text-slate-600">{PRIORITY_LABELS[task.priority]}</td>
-                  <td className="px-5 py-4 text-slate-600">{dealTitle}</td>
-                  <td className="px-5 py-4 text-slate-600">{formatDate(task.dueAt)}</td>
-                </tr>
-              );
-            })}
-            {!filteredTasks.length && (
-              <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-slate-500">
-                  Задач пока нет
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <TaskTable tasks={filteredTasks} />
     </div>
   );
 };
