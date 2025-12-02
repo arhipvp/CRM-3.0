@@ -10,6 +10,23 @@ from django.utils.html import format_html
 from import_export import resources
 
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
+RESTORE_DEALS_LABEL = (
+    "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
+    "\u0020"
+    "\u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435"
+    "\u0020"
+    "\u0441\u0434\u0435\u043b\u043a\u0438"
+)
+
+RESTORE_QUOTES_LABEL = (
+    "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
+    "\u0020"
+    "\u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435"
+    "\u0020"
+    "\u0440\u0430\u0441\u0447\u0451\u0442\u044b"
+)
+
+
 
 # ============ IMPORT/EXPORT RESOURCES ============
 
@@ -251,7 +268,7 @@ class DealAdmin(SoftDeleteImportExportAdmin):
             restored += 1
         self.message_user(request, f"Восстановлено {restored} сделок")
 
-    restore_deals.short_description = "? Восстановить выбранные сделки"
+    restore_deals.short_description = RESTORE_DEALS_LABEL
 
 
 @admin.register(SalesChannel)
@@ -308,7 +325,7 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
             restored += 1
         self.message_user(request, f"Восстановлено {restored} расчётов")
 
-    restore_quotes.short_description = "? Восстановить выбранные расчёты"
+    restore_quotes.short_description = RESTORE_QUOTES_LABEL
 
 
 @admin.register(InsuranceCompany)
