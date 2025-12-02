@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from apps.common.drive import (
     DriveError,
@@ -244,11 +244,17 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         models = queryset.order_by("model").values_list("model", flat=True).distinct()
         return Response({"results": list(models)})
 
-    def _user_can_modify(self, deal: Deal, user) -> bool:
+    def _can_modify(self, user, instance):
+        deal = getattr(instance, "deal", None)
+        return self._user_can_modify(deal, user)
+
+    def _user_can_modify(self, deal: Optional[Deal], user) -> bool:
         if not user or not user.is_authenticated:
             return False
         if UserRole.objects.filter(user=user, role__name="Admin").exists():
             return True
+        if not deal:
+            return False
         return deal.seller_id == user.id or deal.executor_id == user.id
 
     def perform_create(self, serializer):
