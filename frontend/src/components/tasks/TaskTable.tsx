@@ -14,7 +14,7 @@ interface TaskTableProps {
   completingTaskIds?: string[];
 }
 
-const DEFAULT_EMPTY_MESSAGE = '-ø?ø‘Øñ ?ç ?øü?ç?‘<';
+const DEFAULT_EMPTY_MESSAGE = 'No tasks yet';
 
 export const TaskTable: React.FC<TaskTableProps> = ({
   tasks,
@@ -41,17 +41,17 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
           <tr>
-            <th className="px-5 py-3">-ø?ø‘Øø</th>
-            <th className="px-5 py-3">ö‘'ø‘'‘?‘?</th>
-            <th className="px-5 py-3">?‘?ñ?‘?ñ‘'ç‘'</th>
-            {showDealColumn && <th className="px-5 py-3">ö?ç>óø</th>}
-            <th className="px-5 py-3">ö‘??ó</th>
-            {hasActions && <th className="px-5 py-3 text-right">"çü‘?‘'?ñ‘?</th>}
+            <th className="px-5 py-3">Task</th>
+            <th className="px-5 py-3">Status</th>
+            <th className="px-5 py-3">Priority</th>
+            {showDealColumn && <th className="px-5 py-3">Deal</th>}
+            <th className="px-5 py-3">Due Date</th>
+            {hasActions && <th className="px-5 py-3 text-right">Actions</th>}
           </tr>
         </thead>
         <tbody>
           {tasks.map((task) => {
-            const dealTitle = task.dealTitle || '¢?"';
+            const dealTitle = task.dealTitle || '-';
             return (
               <tr key={task.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-5 py-4">
@@ -75,7 +75,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         disabled={completingTaskIds.includes(task.id)}
                         className="text-emerald-600 font-semibold hover:text-emerald-800 whitespace-nowrap"
                       >
-                        {completingTaskIds.includes(task.id) ? 'ö?‘:‘?ø?‘?‘?...' : '???ç‘'ñ‘'‘? óøó ?‘<õ?>?ç??'}
+                        {completingTaskIds.includes(task.id) ? 'Marking...' : 'Mark done'}
                       </button>
                     )}
                     {onEditTask && (
@@ -84,7 +84,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         onClick={() => onEditTask(task.id)}
                         className="text-slate-400 hover:text-sky-600 whitespace-nowrap"
                       >
-                        ÿç?øó‘'ñ‘???ø‘'‘?
+                        Edit
                       </button>
                     )}
                     {onDeleteTask && (
@@ -93,7 +93,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         onClick={() => handleDelete(task.id)}
                         className="text-slate-400 hover:text-red-500 whitespace-nowrap"
                       >
-                        ??ø>ñ‘'‘?
+                        Delete
                       </button>
                     )}
                   </td>
@@ -113,4 +113,3 @@ export const TaskTable: React.FC<TaskTableProps> = ({
     </div>
   );
 };
-
