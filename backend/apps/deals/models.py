@@ -153,8 +153,10 @@ class Quote(SoftDeleteModel):
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
         related_name="quotes",
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         help_text="Страховая компания",
+        null=True,
+        blank=True,
     )
     insurance_type = models.ForeignKey(
         "deals.InsuranceType",
