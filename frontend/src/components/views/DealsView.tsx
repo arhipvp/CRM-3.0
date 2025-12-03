@@ -157,7 +157,9 @@ interface DealsViewProps {
 
     parsed: Record<string, unknown>,
 
-    fileName?: string | null
+    fileName?: string | null,
+
+    fileId?: string | null
 
   ) => void;
 
@@ -1364,7 +1366,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       if (parsed && onPolicyDraftReady) {
 
-        onPolicyDraftReady(selectedDeal.id, parsed.data!, parsed.fileName ?? null);
+        onPolicyDraftReady(
+          selectedDeal.id,
+          parsed.data!,
+          parsed.fileName ?? null,
+          parsed.fileId ?? null
+        );
 
       }
 

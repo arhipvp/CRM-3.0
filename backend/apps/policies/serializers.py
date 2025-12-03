@@ -23,6 +23,9 @@ class PolicySerializer(serializers.ModelSerializer):
     payments_paid = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    source_file_id = serializers.CharField(
+        write_only=True, required=False, allow_blank=True
+    )
 
     class Meta:
         model = Policy
@@ -52,6 +55,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "deleted_at",
+            "source_file_id",
         )
         read_only_fields = (
             "id",

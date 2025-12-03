@@ -403,6 +403,10 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (currentStep < totalSteps) {
+      handleNextStep();
+      return;
+    }
     if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
       setError('Заполните номер полиса, страховую компанию и тип страхования.');
       return;

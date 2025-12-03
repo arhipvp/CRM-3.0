@@ -78,13 +78,13 @@ const buildPolicyDraftFromRecognition = (
   const payments =
     paymentsRaw.length > 0
       ? paymentsRaw.map((payment) => ({
-        amount: normalizeStringValue(payment.amount),
-        description: '',
-        scheduledDate: normalizeDateValue(payment.payment_date),
-        actualDate: normalizeDateValue(payment.actual_payment_date),
-        incomes: [],
-        expenses: [],
-      }))
+          amount: normalizeStringValue(payment.amount),
+          description: '',
+          scheduledDate: normalizeDateValue(payment.payment_date),
+          actualDate: normalizeDateValue(payment.actual_payment_date),
+          incomes: [],
+          expenses: [],
+        }))
       : [
         {
           amount: '',
@@ -155,11 +155,13 @@ const AppContent: React.FC = () => {
     insuranceTypeName?: string;
   } | null>(null);
   const [policyDefaultCounterparty, setPolicyDefaultCounterparty] = useState<string | undefined>(undefined);
+  const [policySourceFileId, setPolicySourceFileId] = useState<string | null>(null);
 
   const closePolicyModal = useCallback(() => {
     setPolicyDealId(null);
     setPolicyPrefill(null);
     setPolicyDefaultCounterparty(undefined);
+    setPolicySourceFileId(null);
   }, []);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
@@ -243,7 +245,12 @@ const AppContent: React.FC = () => {
   );
 
   const handlePolicyDraftReady = useCallback(
-    (dealId: string, parsed: Record<string, unknown>) => {
+    (
+      dealId: string,
+      parsed: Record<string, unknown>,
+      _fileName?: string | null,
+      fileId?: string | null
+    ) => {
       if (!parsed) {
         return;
       }
@@ -259,6 +266,7 @@ const AppContent: React.FC = () => {
       };
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
+      setPolicySourceFileId(fileId ?? null);
       setPolicyPrefill({
         values,
         insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
@@ -275,6 +283,7 @@ const AppContent: React.FC = () => {
       executorUser ? getUserDisplayName(executorUser) : deal?.executorName ?? '';
     setPolicyDefaultCounterparty(counterpartyName || undefined);
     setPolicyPrefill(null);
+    setPolicySourceFileId(null);
     setPolicyDealId(dealId);
   };
 
@@ -806,6 +815,7 @@ const AppContent: React.FC = () => {
       salesChannelId,
       payments: paymentDrafts = [],
     } = values;
+    const sourceFileId = policySourceFileId;
     let deal = dealsById.get(dealId);
     let clientId = deal?.clientId;
     if (!clientId) {
@@ -840,6 +850,7 @@ const AppContent: React.FC = () => {
         vin,
         startDate,
         endDate,
+        sourceFileId,
       });
       updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
 

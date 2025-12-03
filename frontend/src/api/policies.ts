@@ -44,6 +44,7 @@ export async function createPolicy(data: {
   salesChannelId?: string;
   startDate?: string | null;
   endDate?: string | null;
+  sourceFileId?: string | null;
 }): Promise<Policy> {
   const payload = await request<Record<string, unknown>>('/policies/', {
     method: 'POST',
@@ -61,6 +62,7 @@ export async function createPolicy(data: {
       start_date: data.startDate || null,
       end_date: data.endDate || null,
       client: data.clientId || null,
+      source_file_id: data.sourceFileId || null,
     }),
   });
   return mapPolicy(payload);

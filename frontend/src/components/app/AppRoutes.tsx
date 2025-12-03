@@ -79,7 +79,8 @@ export interface AppRoutesProps {
   onPolicyDraftReady?: (
     dealId: string,
     parsed: Record<string, unknown>,
-    fileName?: string | null
+    fileName?: string | null,
+    fileId?: string | null
   ) => void;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;

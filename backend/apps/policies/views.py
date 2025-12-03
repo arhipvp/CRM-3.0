@@ -7,6 +7,7 @@ from apps.common.drive import (
     ensure_deal_folder,
     ensure_policy_folder,
     list_drive_folder_contents,
+    move_drive_file_to_folder,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
@@ -272,6 +273,19 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return False
         return deal.seller_id == user.id or deal.executor_id == user.id
 
+    def _move_recognized_file_to_folder(self, policy: Policy, file_id: str) -> None:
+        if not file_id:
+            return
+        try:
+            folder_id = ensure_policy_folder(policy)
+            if not folder_id:
+                return
+            move_drive_file_to_folder(file_id, folder_id)
+        except DriveError:
+            logger.exception(
+                "Failed to move recognized Drive file %s into policy folder", file_id
+            )
+
     def perform_create(self, serializer):
         deal = serializer.validated_data.get("deal")
         user = self.request.user
@@ -282,4 +296,9 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if deal.seller_id != user.id:
             raise PermissionDenied("Только продавец сделки может добавить полис.")
 
-        serializer.save()
+        source_file_id = serializer.validated_data.pop("source_file_id", None)
+        if isinstance(source_file_id, str):
+            source_file_id = source_file_id.strip()
+        policy = serializer.save()
+        if source_file_id:
+            self._move_recognized_file_to_folder(policy, source_file_id)

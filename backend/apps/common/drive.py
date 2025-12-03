@@ -477,6 +477,38 @@ def move_drive_folder_to_parent(folder_id: str, target_parent_id: str) -> None:
         raise DriveOperationError("Unable to move Drive folder.") from exc
 
 
+def move_drive_file_to_folder(file_id: str, target_folder_id: str) -> None:
+    """Move an existing Drive file into another folder."""
+
+    if not file_id or not target_folder_id:
+        return
+
+    service = _get_drive_service()
+    try:
+        metadata = (
+            service.files()
+            .get(fileId=file_id, fields="parents", supportsAllDrives=True)
+            .execute()
+        )
+        parents = metadata.get("parents") or []
+        remove_parents = ",".join(
+            [parent for parent in parents if parent != target_folder_id]
+        )
+
+        update_kwargs: dict[str, Any] = {
+            "fileId": file_id,
+            "addParents": target_folder_id,
+            "fields": "id",
+            "supportsAllDrives": True,
+        }
+        if remove_parents:
+            update_kwargs["removeParents"] = remove_parents
+        service.files().update(**update_kwargs).execute()
+    except Exception as exc:
+        logger.exception("Error while moving Drive file to another folder")
+        raise DriveOperationError("Unable to move Drive file.") from exc
+
+
 def move_drive_folder_contents(source_folder_id: str, target_folder_id: str) -> None:
     """Move the contents of one Drive folder into another folder."""
 
