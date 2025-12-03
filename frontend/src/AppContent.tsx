@@ -915,7 +915,7 @@ const AppContent: React.FC = () => {
 
       for (const paymentDraft of paymentsToProcess) {
         const amount = parseNumericAmount(paymentDraft.amount);
-        if (!Number.isFinite(amount) || amount <= 0) {
+        if (!Number.isFinite(amount) || amount < 0) {
           continue;
         }
 
@@ -931,7 +931,7 @@ const AppContent: React.FC = () => {
 
         for (const income of paymentDraft.incomes) {
         const incomeAmount = parseNumericAmount(income.amount);
-          if (!Number.isFinite(incomeAmount) || incomeAmount <= 0) {
+          if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
             continue;
           }
 
@@ -948,7 +948,7 @@ const AppContent: React.FC = () => {
 
         for (const expense of paymentDraft.expenses) {
         const expenseAmount = parseNumericAmount(expense.amount);
-          if (!Number.isFinite(expenseAmount) || expenseAmount <= 0) {
+          if (!Number.isFinite(expenseAmount) || expenseAmount < 0) {
             continue;
           }
 
