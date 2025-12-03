@@ -153,7 +153,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
     )}
 
     {policyDealId && (
-      <Modal title="Добавить полис" onClose={closePolicyModal} size="xl">
+      <Modal
+        title="Добавить полис"
+        onClose={closePolicyModal}
+        size="xl"
+        closeOnOverlayClick={false}
+      >
         <AddPolicyForm
           salesChannels={salesChannels}
           initialValues={policyPrefill?.values}
@@ -167,7 +172,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
     )}
 
     {editingPolicy && (
-      <Modal title="Редактировать полис" onClose={() => setEditingPolicy(null)} size="xl">
+      <Modal
+        title="Редактировать полис"
+        onClose={() => setEditingPolicy(null)}
+        size="xl"
+        closeOnOverlayClick={false}
+      >
         <AddPolicyForm
           salesChannels={salesChannels}
           initialValues={buildPolicyFormValues(editingPolicy)}

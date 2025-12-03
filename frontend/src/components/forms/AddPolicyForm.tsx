@@ -723,7 +723,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Платёж #{paymentIndex + 1}</p>
-                    <p className="text-xs text-slate-500">Расписание и сумма уже заполнены</p>
+                    <p className="text-xs text-slate-500">
+                      Сумма {payment.amount || 'не указана'} · план {payment.scheduledDate || 'не указан'}
+                    </p>
                   </div>
                   <div className="flex gap-3">
                     <button
