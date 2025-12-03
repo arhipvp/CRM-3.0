@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   fetchInsuranceCompanies,
@@ -329,8 +329,11 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
   const handlePreviousStep = () => {
     setError(null);
+    finalSubmitIntent.current = false;
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
+
+  const finalSubmitIntent = useRef(false);
 
   const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
     if (event.key !== 'Enter' || currentStep !== totalSteps) {
@@ -341,6 +344,10 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       return;
     }
     event.preventDefault();
+  };
+
+  const markFinalSubmitIntent = () => {
+    finalSubmitIntent.current = true;
   };
 
   const updatePaymentField = (
@@ -415,9 +422,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (currentStep < totalSteps) {
+      finalSubmitIntent.current = false;
       handleNextStep();
       return;
     }
+    if (!finalSubmitIntent.current) {
+      return;
+    }
+    finalSubmitIntent.current = false;
     if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
       setError('Заполните номер полиса, страховую компанию и тип страхования.');
       return;
@@ -818,6 +830,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           ) : (
             <button
               type="submit"
+              onMouseDown={markFinalSubmitIntent}
+              onClick={markFinalSubmitIntent}
               className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
               disabled={isSubmitting}
             >
