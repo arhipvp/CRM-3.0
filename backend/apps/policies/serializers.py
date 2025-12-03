@@ -11,6 +11,9 @@ class PolicySerializer(serializers.ModelSerializer):
         source="insurance_type.name", read_only=True
     )
     client_name = serializers.CharField(source="client.name", read_only=True)
+    insured_client_name = serializers.CharField(
+        source="insured_client.name", read_only=True, allow_null=True
+    )
     sales_channel_name = serializers.CharField(
         source="sales_channel.name", read_only=True, allow_null=True
     )
@@ -40,6 +43,8 @@ class PolicySerializer(serializers.ModelSerializer):
             "deal_title",
             "client",
             "client_name",
+            "insured_client",
+            "insured_client_name",
             "sales_channel_name",
             "is_vehicle",
             "brand",
@@ -63,6 +68,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "updated_at",
             "deleted_at",
             "client_name",
+            "insured_client_name",
             "sales_channel_name",
             "payments_paid",
             "payments_total",

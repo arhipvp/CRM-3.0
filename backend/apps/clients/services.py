@@ -54,12 +54,31 @@ class ClientMergeService:
                 deals_moved = source_deal_qs.update(client=self.target_client)
                 moved_counts["deals"] += deals_moved
 
-                policies_moved = 0
+                updated_policy_ids: set[str] = set()
                 if source_deal_ids:
-                    policies_moved = Policy.objects.filter(
-                        deal_id__in=source_deal_ids
-                    ).update(client=self.target_client)
-                moved_counts["policies"] += policies_moved
+                    deal_policy_ids = list(
+                        Policy.objects.filter(deal_id__in=source_deal_ids).values_list(
+                            "id", flat=True
+                        )
+                    )
+                    if deal_policy_ids:
+                        Policy.objects.filter(id__in=deal_policy_ids).update(
+                            client=self.target_client
+                        )
+                        updated_policy_ids.update(deal_policy_ids)
+
+                insured_policy_ids = list(
+                    Policy.objects.filter(insured_client_id=source.id).values_list(
+                        "id", flat=True
+                    )
+                )
+                if insured_policy_ids:
+                    Policy.objects.filter(id__in=insured_policy_ids).update(
+                        insured_client=self.target_client
+                    )
+                    updated_policy_ids.update(insured_policy_ids)
+
+                moved_counts["policies"] += len(updated_policy_ids)
 
                 if target_folder_id and source.drive_folder_id:
                     try:

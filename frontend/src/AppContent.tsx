@@ -506,13 +506,24 @@ const AppContent: React.FC = () => {
         ),
         policies: prev.policies.map((policy) => {
           const policyClientId = policy.clientId ?? '';
-          if (!policyClientId || !mergedIds.has(policyClientId)) {
+          const insuredClientId = policy.insuredClientId ?? '';
+          const shouldUpdatePrimary = Boolean(policyClientId && mergedIds.has(policyClientId));
+          const shouldUpdateInsured = Boolean(
+            insuredClientId && mergedIds.has(insuredClientId)
+          );
+          if (!shouldUpdatePrimary && !shouldUpdateInsured) {
             return policy;
           }
           return {
             ...policy,
-            clientId: result.targetClient.id,
-            clientName: result.targetClient.name,
+            clientId: shouldUpdatePrimary ? result.targetClient.id : policy.clientId,
+            clientName: shouldUpdatePrimary ? result.targetClient.name : policy.clientName,
+            insuredClientId: shouldUpdateInsured
+              ? result.targetClient.id
+              : policy.insuredClientId,
+            insuredClientName: shouldUpdateInsured
+              ? result.targetClient.name
+              : policy.insuredClientName,
           };
         }),
       }));
@@ -810,19 +821,20 @@ const AppContent: React.FC = () => {
   };
 
   const handleAddPolicy = async (dealId: string, values: PolicyFormValues) => {
-    const {
-      number,
-      insuranceCompanyId,
-      insuranceTypeId,
-      isVehicle,
-      brand,
-      model,
-      vin,
-      startDate,
-      endDate,
-      salesChannelId,
-      payments: paymentDrafts = [],
-    } = values;
+  const {
+    number,
+    insuranceCompanyId,
+    insuranceTypeId,
+    isVehicle,
+    brand,
+    model,
+    vin,
+    startDate,
+    endDate,
+    salesChannelId,
+    insuredClientId,
+    payments: paymentDrafts = [],
+  } = values;
     const sourceFileId = policySourceFileId;
     let deal = dealsById.get(dealId);
     let clientId = deal?.clientId;
@@ -848,6 +860,7 @@ const AppContent: React.FC = () => {
       const created = await createPolicy({
         dealId,
         clientId,
+        insuredClientId,
         number,
         insuranceCompanyId,
         insuranceTypeId,
@@ -953,6 +966,7 @@ const AppContent: React.FC = () => {
         salesChannelId,
         startDate,
         endDate,
+        insuredClientId,
       } = values;
       const updated = await updatePolicy(policyId, {
         number,
@@ -966,6 +980,7 @@ const AppContent: React.FC = () => {
         salesChannelId,
         startDate,
         endDate,
+        insuredClientId,
       });
       updateAppData((prev) => ({
         policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),

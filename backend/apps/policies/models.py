@@ -40,6 +40,15 @@ class Policy(SoftDeleteModel):
         help_text="Client",
     )
 
+    insured_client = models.ForeignKey(
+        "clients.Client",
+        related_name="insured_policies",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        help_text="Страхователь",
+    )
+
     is_vehicle = models.BooleanField(
         default=False, help_text="True when the policy is for a vehicle"
     )
@@ -104,6 +113,7 @@ class Policy(SoftDeleteModel):
             models.Index(fields=["insurance_company"]),
             models.Index(fields=["insurance_type"]),
             models.Index(fields=["client"]),
+            models.Index(fields=["insured_client"]),
             models.Index(
                 fields=["sales_channel"], name="policies_po_sales_c_51cd4d_idx"
             ),
@@ -124,18 +134,20 @@ class Policy(SoftDeleteModel):
         return f"Policy {self.number} ({type_name} - {company}){client_suffix}"
 
     def save(self, *args, **kwargs):
-        if self.deal_id and not self.client_id:
-            client_id = getattr(self.deal, "client_id", None)
-            if not client_id:
-                from apps.deals.models import Deal
+        client_id = getattr(self.deal, "client_id", None)
+        if self.deal_id and not client_id:
+            from apps.deals.models import Deal
 
-                client_id = (
-                    Deal.objects.filter(pk=self.deal_id)
-                    .values_list("client_id", flat=True)
-                    .first()
-                )
-            if client_id:
+            client_id = (
+                Deal.objects.filter(pk=self.deal_id)
+                .values_list("client_id", flat=True)
+                .first()
+            )
+        if client_id:
+            if not self.client_id:
                 self.client_id = client_id
+            if not self.insured_client_id:
+                self.insured_client_id = client_id
 
         super().save(*args, **kwargs)
 

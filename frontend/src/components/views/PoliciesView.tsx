@@ -43,7 +43,7 @@ const getPolicySortValue = (policy: Policy, key: PolicySortKey): number | string
     case 'number':
       return policy.number ?? '';
     case 'clientName':
-      return policy.clientName ?? '';
+      return policy.insuredClientName ?? policy.clientName ?? '';
     case 'salesChannel':
       return policy.salesChannel ?? '';
     case 'status':
@@ -96,7 +96,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         const haystack = [
           policy.number,
           policy.dealTitle,
-          policy.clientName,
+          policy.insuredClientName ?? policy.clientName,
           policy.insuranceCompany,
           policy.insuranceType,
           policy.salesChannel,
@@ -240,7 +240,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Клиент</p>
-                  <p className="text-base font-semibold text-slate-800">{policy.clientName || '—'}</p>
+                  <p className="text-base font-semibold text-slate-800">
+                    {policy.insuredClientName ?? policy.clientName || '—'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Канал</p>

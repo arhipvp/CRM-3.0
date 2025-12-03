@@ -237,6 +237,8 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   dealTitle: toOptionalString(raw.deal_title ?? raw.dealTitle),
   clientId: toOptionalString(raw.client),
   clientName: toOptionalString(raw.client_name ?? raw.client),
+  insuredClientId: toOptionalString(raw.insured_client),
+  insuredClientName: toOptionalString(raw.insured_client_name ?? raw.insured_client),
   isVehicle: Boolean(raw.is_vehicle ?? raw.vehicle),
   brand: toOptionalString(raw.brand),
   model: toOptionalString(raw.model),

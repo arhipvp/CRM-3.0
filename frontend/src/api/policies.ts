@@ -36,6 +36,7 @@ export async function createPolicy(data: {
   insuranceCompanyId: string;
   insuranceTypeId: string;
   clientId?: string;
+  insuredClientId?: string;
   isVehicle: boolean;
   brand?: string;
   model?: string;
@@ -60,6 +61,7 @@ export async function createPolicy(data: {
     start_date: data.startDate || null,
     end_date: data.endDate || null,
     client: data.clientId || null,
+    insured_client: data.insuredClientId || null,
   };
   if (data.sourceFileId) {
     bodyPayload.source_file_id = data.sourceFileId;
@@ -130,6 +132,7 @@ interface PolicyUpdatePayload {
   salesChannelId?: string;
   startDate?: string | null;
   endDate?: string | null;
+  insuredClientId?: string;
 }
 
 export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promise<Policy> {
@@ -147,6 +150,7 @@ export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promi
       sales_channel: data.salesChannelId || null,
       start_date: data.startDate || null,
       end_date: data.endDate || null,
+      insured_client: data.insuredClientId || null,
     }),
   });
   return mapPolicy(payload);

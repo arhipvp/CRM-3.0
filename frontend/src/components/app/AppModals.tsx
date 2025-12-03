@@ -40,6 +40,7 @@ const buildPolicyFormValues = (policy: Policy): PolicyFormValues => ({
   salesChannelId: policy.salesChannelId,
   startDate: policy.startDate,
   endDate: policy.endDate,
+  insuredClientId: policy.insuredClientId,
   payments: [],
 });
 
@@ -165,6 +166,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
           initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
           initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
           defaultCounterparty={policyDefaultCounterparty}
+          clients={clients}
+          onRequestAddClient={() => openClientModal()}
           onSubmit={(values) => handleAddPolicy(policyDealId, values)}
           onCancel={closePolicyModal}
         />
@@ -183,6 +186,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
           initialValues={buildPolicyFormValues(editingPolicy)}
           initialInsuranceCompanyName={editingPolicy.insuranceCompany}
           initialInsuranceTypeName={editingPolicy.insuranceType}
+          clients={clients}
+          onRequestAddClient={() => openClientModal()}
           onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
           onCancel={() => setEditingPolicy(null)}
         />

@@ -6,7 +6,7 @@ import {
   fetchVehicleBrands,
   fetchVehicleModels,
 } from '../../api';
-import type { InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
+import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
 import type { FinancialRecordDraft } from './addPolicy/types';
 import {
   createEmptyRecord,
@@ -25,6 +25,8 @@ interface AddPolicyFormProps {
   initialInsuranceCompanyName?: string;
   initialInsuranceTypeName?: string;
   defaultCounterparty?: string;
+  clients: Client[];
+  onRequestAddClient: () => void;
 }
 
 export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
@@ -35,6 +37,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
   defaultCounterparty,
+  clients,
+  onRequestAddClient,
 }) => {
   const [number, setNumber] = useState('');
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
@@ -48,6 +52,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [salesChannelId, setSalesChannelId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [insuredClientId, setInsuredClientId] = useState('');
   const [payments, setPayments] = useState<PaymentDraft[]>(() => [createPaymentWithDefaultIncome()]);
   const [hasManualEndDate, setHasManualEndDate] = useState(false);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
@@ -107,6 +112,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setHasManualEndDate(false);
       setPayments([createPaymentWithDefaultIncome()]);
       setCurrentStep(1);
+      setInsuredClientId('');
       return;
     }
     setNumber(initialValues.number || '');
@@ -130,8 +136,20 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       }))
     );
     setCounterpartyTouched(Boolean(initialValues.counterparty));
+    setInsuredClientId(initialValues.insuredClientId || '');
     setCurrentStep(1);
   }, [initialValues]);
+
+  useEffect(() => {
+    if (!insuredClientId) {
+      return;
+    }
+    const selected = clients.find((client) => client.id === insuredClientId);
+    if (selected) {
+      setCounterparty(selected.name);
+      setCounterpartyTouched(true);
+    }
+  }, [insuredClientId, clients]);
 
 
   useEffect(() => {
@@ -454,6 +472,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         vin: isVehicle ? vin.trim() : undefined,
         counterparty: counterparty.trim() || undefined,
         salesChannelId: salesChannelId || undefined,
+        insuredClientId: insuredClientId || undefined,
         startDate: startDate || null,
         endDate: endDate || null,
         payments,
@@ -702,6 +721,30 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
       {currentStep === 3 && (
         <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Страхователь</label>
+            <div className="mt-1 flex gap-2 flex-wrap">
+              <select
+                value={insuredClientId}
+                onChange={(event) => setInsuredClientId(event.target.value)}
+                className="w-full md:w-auto flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+              >
+                <option value="">Выберите клиента</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={onRequestAddClient}
+                className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900"
+              >
+                + Добавить клиента
+              </button>
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">Контрагент</label>
             <input
