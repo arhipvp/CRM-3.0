@@ -73,6 +73,7 @@ interface AppModalsProps {
   salesChannels: SalesChannel[];
   handleAddPolicy: (dealId: string, values: PolicyFormValues) => Promise<void>;
   handleUpdatePolicy: (policyId: string, values: PolicyFormValues) => Promise<void>;
+  policyDealExecutorName?: string | null;
   paymentModal: PaymentModalState | null;
   setPaymentModal: React.Dispatch<React.SetStateAction<PaymentModalState | null>>;
   handleUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
@@ -107,6 +108,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
   salesChannels,
   handleAddPolicy,
   handleUpdatePolicy,
+  policyDealExecutorName,
   paymentModal,
   setPaymentModal,
   handleUpdatePayment,
@@ -166,6 +168,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
           initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
           initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
           defaultCounterparty={policyDefaultCounterparty}
+          executorName={policyDealExecutorName}
           clients={clients}
           onRequestAddClient={() => openClientModal()}
           onSubmit={(values) => handleAddPolicy(policyDealId, values)}

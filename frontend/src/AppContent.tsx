@@ -58,7 +58,6 @@ import { Client, Deal, FinancialRecord, Payment, Policy, Quote, User } from './t
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
-import { getUserDisplayName } from './components/views/dealsView/helpers';
 import { parseNumericAmount } from './utils/parseNumericAmount';
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
@@ -237,6 +236,9 @@ const AppContent: React.FC = () => {
     });
     return map;
   }, [deals]);
+  const policyDealExecutorName = policyDealId
+    ? dealsById.get(policyDealId)?.executorName ?? null
+    : null;
   const searchInitialized = useRef(false);
   const location = useLocation();
 
@@ -287,7 +289,6 @@ const AppContent: React.FC = () => {
   );
 
   const handleRequestAddPolicy = (dealId: string) => {
-    const deal = dealsById.get(dealId);
     setPolicyDefaultCounterparty(undefined);
     setPolicyPrefill(null);
     setPolicySourceFileId(null);
@@ -1338,6 +1339,7 @@ const AppContent: React.FC = () => {
         policyDefaultCounterparty={policyDefaultCounterparty}
         closePolicyModal={closePolicyModal}
         policyPrefill={policyPrefill}
+        policyDealExecutorName={policyDealExecutorName}
         editingPolicy={editingPolicy}
         setEditingPolicy={setEditingPolicy}
         salesChannels={salesChannels}

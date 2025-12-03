@@ -25,6 +25,7 @@ interface AddPolicyFormProps {
   initialInsuranceCompanyName?: string;
   initialInsuranceTypeName?: string;
   defaultCounterparty?: string;
+  executorName?: string | null;
   clients: Client[];
   onRequestAddClient: () => void;
 }
@@ -37,6 +38,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
   defaultCounterparty,
+  executorName,
   clients,
   onRequestAddClient,
 }) => {
@@ -282,42 +284,42 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       ? 'Дата первого платежа не совпадает с началом полиса. Проверьте расписание.'
       : null;
 
-  const handleCounterpartyBlur = () => {
-    const trimmed = counterparty.trim();
-    if (!trimmed) {
+  const appendExpenseToAllPayments = (note: string) => {
+    const normalizedNote = note.trim();
+    if (!normalizedNote) {
       return;
     }
 
-    setPayments((prev) => {
-      if (prev.length === 0) {
-        return [
-          {
-            ...createPaymentWithDefaultIncome(),
-            expenses: [{ ...createEmptyRecord(), description: trimmed }],
-          },
-        ];
-      }
+    setPayments((prev) =>
+      prev.map((payment) => {
+        const alreadyHasNote = payment.expenses.some(
+          (expense) => (expense.note ?? '').trim() === normalizedNote
+        );
+        if (alreadyHasNote) {
+          return payment;
+        }
+        return {
+          ...payment,
+          expenses: [...payment.expenses, { ...createEmptyRecord(), note: normalizedNote }],
+        };
+      })
+    );
+  };
 
-      const firstPayment = prev[0];
-      const alreadyHasExpense = firstPayment.expenses.some(
-        (expense) =>
-          (expense.description || '').trim().toLowerCase() === trimmed.toLowerCase()
-      );
-      if (alreadyHasExpense) {
-        return prev;
-      }
+  const handleAddCounterpartyExpenses = () => {
+    const name = counterparty.trim();
+    if (!name) {
+      return;
+    }
+    appendExpenseToAllPayments(`Расход контрагенту ${name}`);
+  };
 
-      return [
-        {
-          ...firstPayment,
-          expenses: [
-            ...firstPayment.expenses,
-            { ...createEmptyRecord(), description: trimmed },
-          ],
-        },
-        ...prev.slice(1),
-      ];
-    });
+  const handleAddExecutorExpenses = () => {
+    const name = executorName?.trim();
+    if (!name) {
+      return;
+    }
+    appendExpenseToAllPayments(`Расход исполнителю ${name}`);
   };
 
   const handleAddPayment = () => {
@@ -746,19 +748,49 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
       {currentStep === 3 && (
         <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Контрагент</label>
-            <input
-              type="text"
-              value={counterparty}
-              onChange={(event) => {
-                setCounterparty(event.target.value);
-                setCounterpartyTouched(true);
-              }}
-              onBlur={handleCounterpartyBlur}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-              placeholder="Компания / физлицо"
-            />
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Контрагент</label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                <input
+                  type="text"
+                  value={counterparty}
+                  onChange={(event) => {
+                    setCounterparty(event.target.value);
+                    setCounterpartyTouched(true);
+                  }}
+                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                  placeholder="Контрагент / организация"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCounterpartyExpenses}
+                  className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-900"
+                >
+                  + Расход
+                </button>
+              </div>
+            </div>
+            {executorName && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Исполнитель по сделке</label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    value={executorName}
+                    readOnly
+                    className="flex-1 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddExecutorExpenses}
+                    className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-900"
+                  >
+                    + Расход
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
