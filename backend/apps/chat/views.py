@@ -26,7 +26,12 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if self._is_admin(user):
             return queryset
 
-        return queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+        allowed_deal_ids = (
+            Deal.objects.with_deleted()
+            .filter(Q(seller=user) | Q(executor=user))
+            .values_list("id", flat=True)
+        )
+        return queryset.filter(deal_id__in=allowed_deal_ids)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -36,6 +41,10 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
         deal = serializer.validated_data.get("deal")
+        if not deal:
+            raise PermissionDenied("Сделка не указана.")
+        if deal.is_deleted():
+            raise PermissionDenied("Сделка удалена, чат недоступен")
         if not self._user_has_deal_access(user, deal):
             raise PermissionDenied("Нет доступа к выбранной сделке.")
 

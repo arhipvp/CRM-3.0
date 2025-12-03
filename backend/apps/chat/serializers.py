@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.deals.models import Deal
 from .models import ChatMessage
 
 
@@ -8,6 +9,10 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
     author_username = serializers.CharField(
         source="author.username", read_only=True, allow_null=True
+    )
+
+    deal = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.with_deleted()
     )
 
     class Meta:

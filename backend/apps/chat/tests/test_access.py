@@ -30,6 +30,14 @@ class ChatMessageAccessTests(APITestCase):
             status="open",
             stage_name="initial",
         )
+        self.deleted_deal = Deal.objects.create(
+            title="Deal Deleted",
+            client=self.client_record,
+            seller=self.seller,
+            executor=self.executor,
+            status="open",
+            stage_name="initial",
+        )
 
         ChatMessage.objects.create(
             deal=self.deal,
@@ -49,6 +57,13 @@ class ChatMessageAccessTests(APITestCase):
             author=self.seller,
             author_name="Seller",
         )
+        ChatMessage.objects.create(
+            deal=self.deleted_deal,
+            body="Deleted deal message",
+            author=self.seller,
+            author_name="Seller",
+        )
+        self.deleted_deal.delete()
 
         self.api_client = APIClient()
         self.seller_token = str(RefreshToken.for_user(self.seller).access_token)
@@ -89,3 +104,26 @@ class ChatMessageAccessTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_deleted_deal_chat_is_visible(self):
+        self._auth(self.seller_token)
+        response = self.api_client.get(
+            f"/api/v1/chat_messages/?deal={self.deleted_deal.id}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data
+        results = payload.get("results") if isinstance(payload, dict) else payload
+        self.assertEqual(len(results), 1)
+        self.assertTrue(
+            all(message["deal"] == str(self.deleted_deal.id) for message in results)
+        )
+
+    def test_cannot_create_message_for_deleted_deal(self):
+        self._auth(self.seller_token)
+        response = self.api_client.post(
+            "/api/v1/chat_messages/",
+            {"deal": str(self.deleted_deal.id), "body": "Hello deleted"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get("detail"), "Сделка удалена, чат недоступен")
