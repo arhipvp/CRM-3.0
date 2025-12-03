@@ -14,7 +14,8 @@ class SoftDeleteAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """По умолчанию показываем только активные объекты."""
         qs = super().get_queryset(request)
-        # Фильтруем только активные записи (deleted_at IS NULL)
+        if request.GET.get("show_deleted") == "true":
+            return self.model.objects.with_deleted()
         return qs.filter(deleted_at__isnull=True)
 
     def delete_model(self, request, obj):
@@ -49,25 +50,29 @@ class SoftDeleteAdmin(admin.ModelAdmin):
         return actions
 
     def changelist_view(self, request, extra_context=None):
-        """Добавляем фильтр для показа удалённых объектов."""
-        if request.GET.get("show_deleted") == "true":
-            # Показываем только удалённые
-            self.get_queryset = (
-                lambda r: super(SoftDeleteAdmin, self)
-                .get_queryset(r)
-                .filter(deleted_at__isnull=False)
-            )
-
+        """Передаём в шаблон метрики по удалённым объектам."""
         if extra_context is None:
             extra_context = {}
 
-        # Показываем кол-во удалённых объектов
-        deleted_count = (
-            super().get_queryset(request).filter(deleted_at__isnull=False).count()
-        )
+        deleted_count = self.model.objects.dead().count()
         extra_context["show_deleted_count"] = deleted_count
+        extra_context["show_deleted"] = request.GET.get("show_deleted") == "true"
 
         return super().changelist_view(request, extra_context)
+
+
+class ShowDeletedFilter(admin.SimpleListFilter):
+    title = "Показать удалённые"
+    parameter_name = "show_deleted"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("false", "Скрыть удалённые"),
+            ("true", "Показать удалённые"),
+        )
+
+    def queryset(self, request, queryset):
+        return queryset
 
 
 class SoftDeleteImportExportAdmin(SoftDeleteAdmin, ImportExportModelAdmin):

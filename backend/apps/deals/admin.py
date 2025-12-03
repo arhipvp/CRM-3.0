@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-from apps.common.admin import SoftDeleteImportExportAdmin
+from django import forms
+from django.core.exceptions import ValidationError
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+
+from apps.common.admin import ShowDeletedFilter, SoftDeleteImportExportAdmin
 from apps.documents.models import Document
 from apps.finances.models import Payment
 from apps.notes.models import Note
@@ -316,11 +321,39 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
 
 
 @admin.register(InsuranceCompany)
+class InsuranceCompanyAdminForm(forms.ModelForm):
+    class Meta:
+        model = InsuranceCompany
+        fields = "__all__"
+
+    def clean_name(self):
+        raw_name = self.cleaned_data["name"].strip()
+        qs = InsuranceCompany.objects.with_deleted().filter(name__iexact=raw_name)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if not qs.exists():
+            return raw_name
+
+        existing = qs.first()
+        message = "Страховая компания с таким названием уже существует."
+        if existing.deleted_at:
+            admin_url = reverse(
+                "admin:deals_insurancecompany_change", args=[existing.pk]
+            )
+            message = mark_safe(
+                f'{message} Можно <a href="{admin_url}?show_deleted=true">восстановить её</a>.'
+            )
+        raise ValidationError(message)
+
+
+@admin.register(InsuranceCompany)
 class InsuranceCompanyAdmin(SoftDeleteImportExportAdmin):
+    form = InsuranceCompanyAdminForm
     list_display = ("name", "description", "created_at")
     search_fields = ("name", "description")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("name",)
+    list_filter = (ShowDeletedFilter,)
 
 
 @admin.register(InsuranceType)
