@@ -1,4 +1,4 @@
-# -*- coding: cp1251 -*-
+# -*- coding: utf-8 -*-
 from apps.common.admin import SoftDeleteImportExportAdmin
 from apps.documents.models import Document
 from apps.finances.models import Payment
@@ -11,21 +11,8 @@ from import_export import resources
 
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 
-RESTORE_DEALS_LABEL = (
-    "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
-    "\u0020"
-    "\u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435"
-    "\u0020"
-    "\u0441\u0434\u0435\u043b\u043a\u0438"
-)
-
-RESTORE_QUOTES_LABEL = (
-    "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
-    "\u0020"
-    "\u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435"
-    "\u0020"
-    "\u0440\u0430\u0441\u0447\u0451\u0442\u044b"
-)
+RESTORE_DEALS_LABEL = "Восстановить выбранные сделки"
+RESTORE_QUOTES_LABEL = "Восстановить выбранные расчёты"
 
 
 # ============ IMPORT/EXPORT RESOURCES ============
@@ -178,38 +165,38 @@ class DealAdmin(SoftDeleteImportExportAdmin):
 
     fieldsets = (
         (
-            "�᭮��� �����",
+            "Основные данные",
             {
                 "fields": ("title", "description", "client"),
             },
         ),
         (
-            "�����",
+            "Статус",
             {
                 "fields": ("status", "stage_name"),
             },
         ),
         (
-            "�����஢����",
+            "Планирование",
             {
                 "fields": ("expected_close", "next_contact_date", "next_review_date"),
             },
         ),
         (
-            "�������",
+            "Команда",
             {
                 "fields": ("seller", "executor"),
             },
         ),
         (
-            "���筨�",
+            "Источник",
             {
                 "fields": ("source", "loss_reason", "closing_reason"),
                 "classes": ("collapse",),
             },
         ),
         (
-            "��㦥���� ���ଠ��",
+            "Служебная информация",
             {
                 "fields": ("id", "created_at", "updated_at", "deleted_at"),
                 "classes": ("collapse",),
@@ -241,32 +228,32 @@ class DealAdmin(SoftDeleteImportExportAdmin):
             obj.status,
         )
 
-    status_badge.short_description = "�����"
+    status_badge.short_description = "Статус"
 
     def mark_as_won(self, request, queryset):
         updated = queryset.update(status="won")
-        self.message_user(request, f"{updated} ᤥ��� ��ॢ����� � ����� '�먣࠭�'")
+        self.message_user(request, f"{updated} сделок переведено в статус 'выиграна'")
 
-    mark_as_won.short_description = "��ॢ��� � �먣࠭��"
+    mark_as_won.short_description = "Перевести в выигранные"
 
     def mark_as_lost(self, request, queryset):
         updated = queryset.update(status="lost")
-        self.message_user(request, f"{updated} ᤥ��� ��ॢ����� � ����� '�ந�࠭�'")
+        self.message_user(request, f"{updated} сделок переведено в статус 'проиграна'")
 
-    mark_as_lost.short_description = "��ॢ��� � �ந�࠭��"
+    mark_as_lost.short_description = "Перевести в проигранные"
 
     def mark_as_on_hold(self, request, queryset):
         updated = queryset.update(status="on_hold")
-        self.message_user(request, f"{updated} ᤥ��� ���⠢���� �� ����")
+        self.message_user(request, f"{updated} сделок поставлено на паузу")
 
-    mark_as_on_hold.short_description = "��ॢ��� �� ����"
+    mark_as_on_hold.short_description = "Перевести на паузу"
 
     def restore_deals(self, request, queryset):
         restored = 0
         for deal in queryset.filter(deleted_at__isnull=False):
             deal.restore()
             restored += 1
-        self.message_user(request, f"����⠭������ {restored} ᤥ���")
+        self.message_user(request, f"Восстановлено {restored} сделок")
 
     restore_deals.short_description = RESTORE_DEALS_LABEL
 
@@ -280,9 +267,9 @@ class SalesChannelAdmin(SoftDeleteImportExportAdmin):
     ordering = ("name",)
     list_filter = ("created_at", "deleted_at")
     fieldsets = (
-        ("�᭮���� ���ଠ��", {"fields": ("name", "description")}),
+        ("Основная информация", {"fields": ("name", "description")}),
         (
-            "��⠤����",
+            "Метаданные",
             {
                 "fields": ("id", "created_at", "updated_at", "deleted_at"),
                 "classes": ("collapse",),
@@ -310,12 +297,12 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
     actions = ["restore_quotes"]
 
     fieldsets = (
-        ("�᭮���� ���ଠ��", {"fields": ("id", "deal")}),
-        ("���客�� ���ଠ��", {"fields": ("insurance_type", "insurance_company")}),
-        ("�᫮���", {"fields": ("sum_insured", "premium", "deductible")}),
-        ("�ਬ�砭��", {"fields": ("comments",)}),
-        ("�����", {"fields": ("deleted_at",)}),
-        ("�६�", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+        ("Основная информация", {"fields": ("id", "deal")}),
+        ("Страховая информация", {"fields": ("insurance_type", "insurance_company")}),
+        ("Условия", {"fields": ("sum_insured", "premium", "deductible")}),
+        ("Примечания", {"fields": ("comments",)}),
+        ("Статус", {"fields": ("deleted_at",)}),
+        ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
     def restore_quotes(self, request, queryset):
@@ -323,7 +310,7 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
         for quote in queryset.filter(deleted_at__isnull=False):
             quote.restore()
             restored += 1
-        self.message_user(request, f"����⠭������ {restored} ����⮢")
+        self.message_user(request, f"Восстановлено {restored} расчётов")
 
     restore_quotes.short_description = RESTORE_QUOTES_LABEL
 
