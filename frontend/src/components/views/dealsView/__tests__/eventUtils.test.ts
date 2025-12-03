@@ -11,6 +11,7 @@ describe('eventUtils', () => {
     insuranceTypeId: 'it-1',
     insuranceType: 'ОСАГО',
     dealId: 'deal-1',
+    status: 'active',
     salesChannelId: 'channel-1',
     salesChannelName: 'ОСАГО Руль',
     isVehicle: true,
