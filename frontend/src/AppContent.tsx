@@ -11,7 +11,7 @@ import type { AddFinancialRecordFormValues } from './components/forms/AddFinanci
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
-import type { FinancialRecordDraft, PolicyFormValues } from './components/forms/addPolicy/types';
+import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
 import { Modal } from './components/Modal';
