@@ -95,6 +95,9 @@ import {
 
 } from './dealsView/helpers';
 
+import type { DealEvent } from './dealsView/eventUtils';
+import { buildDealEvents, buildEventWindow } from './dealsView/eventUtils';
+
 import { TasksTab } from './dealsView/tabs/TasksTab';
 
 import { PoliciesTab } from './dealsView/tabs/PoliciesTab';
@@ -233,19 +236,6 @@ interface DealsViewProps {
 
 }
 
-
-
-type DealEventType = 'payment' | 'policyExpiration';
-
-interface DealEvent {
-  id: string;
-  type: DealEventType;
-  date: string;
-  title: string;
-  description?: string;
-  policyNumber?: string;
-  amount?: number;
-}
 
 export const DealsView: React.FC<DealsViewProps> = ({
 
@@ -1568,110 +1558,17 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
 
-  const dealEvents = useMemo(() => {
+  const dealEvents = useMemo<DealEvent[]>(() => {
     if (!selectedDeal) {
       return [];
     }
-
-    const events: DealEvent[] = [];
-
-    relatedPolicies.forEach((policy) => {
-      if (!policy.endDate) {
-        return;
-      }
-      const descriptionParts = [
-        policy.number ? `Полис ${policy.number}` : undefined,
-        policy.insuranceCompany,
-      ].filter(Boolean);
-      events.push({
-        id: `policy-${policy.id}`,
-        type: 'policyExpiration',
-        date: policy.endDate,
-        title: 'Окончание полиса',
-        description: descriptionParts.join(' · ') || 'Окончание страхования',
-        policyNumber: policy.number,
-      });
+    return buildDealEvents({
+      policies: relatedPolicies,
+      payments: relatedPayments,
     });
+  }, [relatedPolicies, relatedPayments, selectedDeal?.id]);
 
-    relatedPayments.forEach((payment) => {
-      const eventDate = payment.scheduledDate ?? payment.actualDate;
-      if (!eventDate) {
-        return;
-      }
-      const descriptionParts = [
-        payment.description,
-        payment.policyNumber ? `по полису ${payment.policyNumber}` : undefined,
-      ].filter(Boolean);
-      if (payment.amount !== undefined && payment.amount !== null) {
-        descriptionParts.push(`Сумма ${payment.amount.toLocaleString('ru-RU')} ₽`);
-      }
-      events.push({
-        id: `payment-${payment.id}`,
-        type: 'payment',
-        date: eventDate,
-        title: 'Очередной платёж',
-        description: descriptionParts.join(' · ') || 'Платеж',
-        policyNumber: payment.policyNumber,
-        amount: payment.amount,
-      });
-    });
-
-    return events.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-  }, [relatedPayments, relatedPolicies, selectedDeal?.id]);
-
-  const eventWindow = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayMs = today.getTime();
-    if (!dealEvents.length) {
-      return {
-        upcomingEvents: [] as DealEvent[],
-        pastEvents: [] as DealEvent[],
-        nextEvent: null as DealEvent | null,
-        suggestedNextContactInput: null as string | null,
-      };
-    }
-
-    const upcoming: DealEvent[] = [];
-    const past: DealEvent[] = [];
-
-    dealEvents.forEach((event) => {
-      const eventDate = new Date(event.date);
-      if (Number.isNaN(eventDate.getTime())) {
-        return;
-      }
-      if (eventDate.getTime() >= todayMs) {
-        upcoming.push(event);
-      } else {
-        past.push(event);
-      }
-    });
-
-    const nextEvent = upcoming[0] ?? dealEvents[0];
-    if (!nextEvent) {
-      return {
-        upcomingEvents: upcoming,
-        pastEvents: past,
-        nextEvent: null,
-        suggestedNextContactInput: null,
-      };
-    }
-
-    const offsetDays = nextEvent.type === 'payment' ? 30 : 45;
-    const offsetDate = new Date(nextEvent.date);
-    offsetDate.setDate(offsetDate.getDate() - offsetDays);
-    const suggestedMs = Math.max(offsetDate.getTime(), todayMs);
-    const suggestedNextContactInput = new Date(suggestedMs).toISOString().split('T')[0];
-
-    return {
-      upcomingEvents: upcoming,
-      pastEvents: past,
-      nextEvent,
-      suggestedNextContactInput,
-    };
-  }, [dealEvents]);
+  const eventWindow = useMemo(() => buildEventWindow(dealEvents), [dealEvents]);
 
   const { upcomingEvents, pastEvents, nextEvent, suggestedNextContactInput } = eventWindow;
 
@@ -2498,8 +2395,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   <p className="text-sm text-slate-500">Нет доступных событий для расчёта.</p>
                 )}
               </div>
-              <div class="space-y-3">
-                <div class="flex items-center justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-700">Предстоящие события</p>
                   <span className="text-[11px] uppercase tracking-wide text-slate-400">
                     {upcomingEvents.length} найдено
@@ -2547,7 +2444,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   </details>
                 )}
               </div>
-              <div class="space-y-1">
+              <div className="space-y-1">
                 <p className="text-xs uppercase tracking-wide text-slate-400">Полисы в расчёте</p>
                 {policyBadgePreview.length ? (
                   <div className="flex flex-wrap gap-2">
@@ -2570,7 +2467,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 )}
               </div>
             </div>
-            <div class="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={() => setIsDelayModalOpen(false)}
