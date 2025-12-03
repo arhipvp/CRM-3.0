@@ -40,7 +40,12 @@ class SoftDeleteAdmin(admin.ModelAdmin):
         actions = super().get_actions(request)
         # Добавляем восстановление только если есть удалённые объекты
         if self.model.objects.dead().exists():
-            actions["restore_deleted"] = self.restore_deleted
+            action = self.restore_deleted
+            actions["restore_deleted"] = (
+                action,
+                action.__name__,
+                getattr(action, "short_description", action.__doc__),
+            )
         return actions
 
     def changelist_view(self, request, extra_context=None):
