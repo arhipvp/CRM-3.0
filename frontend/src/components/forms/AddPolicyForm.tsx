@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 
 import {
   fetchInsuranceCompanies,
@@ -30,6 +30,8 @@ interface AddPolicyFormProps {
   onRequestAddClient: () => void;
 }
 
+const MAX_INSURED_SUGGESTIONS = 5;
+
 export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onSubmit,
   onCancel,
@@ -56,6 +58,31 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [endDate, setEndDate] = useState('');
   const [insuredClientId, setInsuredClientId] = useState('');
   const [payments, setPayments] = useState<PaymentDraft[]>(() => [createPaymentWithDefaultIncome()]);
+  const [insuredQuery, setInsuredQuery] = useState('');
+  const [showInsuredSuggestions, setShowInsuredSuggestions] = useState(false);
+  const filteredInsuredClients = useMemo(() => {
+    const normalizedQuery = insuredQuery.trim().toLowerCase();
+    const candidates = normalizedQuery
+      ? clients.filter((client) =>
+          client.name.toLowerCase().includes(normalizedQuery)
+        )
+      : clients;
+    return candidates.slice(0, MAX_INSURED_SUGGESTIONS);
+  }, [clients, insuredQuery]);
+
+  const resolveInsuredFromQuery = () => {
+    const query = insuredQuery.trim().toLowerCase();
+    if (!query) {
+      return null;
+    }
+    return clients.find((client) => client.name.toLowerCase() === query) ?? null;
+  };
+
+  const handleInsuredSelect = (client: Client) => {
+    setInsuredClientId(client.id);
+    setInsuredQuery(client.name);
+    setShowInsuredSuggestions(false);
+  };
   const [hasManualEndDate, setHasManualEndDate] = useState(false);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
   const [types, setTypes] = useState<InsuranceType[]>([]);
@@ -115,6 +142,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setPayments([createPaymentWithDefaultIncome()]);
       setCurrentStep(1);
       setInsuredClientId('');
+      setInsuredQuery('');
       return;
     }
     setNumber(initialValues.number || '');
@@ -139,20 +167,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     );
     setCounterpartyTouched(Boolean(initialValues.counterparty));
     setInsuredClientId(initialValues.insuredClientId || '');
+    setInsuredQuery(initialValues.insuredClientName ?? '');
     setCurrentStep(1);
   }, [initialValues]);
-
-  useEffect(() => {
-    if (!insuredClientId) {
-      return;
-    }
-    const selected = clients.find((client) => client.id === insuredClientId);
-    if (selected) {
-      setCounterparty(selected.name);
-      setCounterpartyTouched(true);
-    }
-  }, [insuredClientId, clients]);
-
 
   useEffect(() => {
     if (initialValues) {
@@ -464,6 +481,15 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setSubmitting(true);
 
     try {
+      const resolvedInsured = resolveInsuredFromQuery();
+      const selectedInsuredId = resolvedInsured?.id || insuredClientId;
+      const selectedInsuredName =
+        resolvedInsured?.name ||
+        (selectedInsuredId
+          ? clients.find((client) => client.id === selectedInsuredId)?.name
+          : undefined) ||
+        (insuredQuery.trim() || undefined);
+
       await onSubmit({
         number: number.trim(),
         insuranceCompanyId,
@@ -474,7 +500,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         vin: isVehicle ? vin.trim() : undefined,
         counterparty: counterparty.trim() || undefined,
         salesChannelId: salesChannelId || undefined,
-        insuredClientId: insuredClientId || undefined,
+        insuredClientId: selectedInsuredId || undefined,
+        insuredClientName: selectedInsuredName,
         startDate: startDate || null,
         endDate: endDate || null,
         payments,
@@ -579,26 +606,54 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-slate-700">Страхователь</label>
-            <div className="mt-1 flex gap-2 flex-wrap">
-              <select
-                value={insuredClientId}
-                onChange={(event) => setInsuredClientId(event.target.value)}
-                className="w-full md:w-auto flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
-              >
-                <option value="">Выберите клиента</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={onRequestAddClient}
-                className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900"
-              >
-                + Добавить клиента
-              </button>
+            <div className="mt-1 flex flex-col gap-2 relative">
+              <div className="relative flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={insuredQuery}
+                    onFocus={() => setShowInsuredSuggestions(true)}
+                    onChange={(event) => {
+                      setInsuredQuery(event.target.value);
+                      setShowInsuredSuggestions(true);
+                      setInsuredClientId('');
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowInsuredSuggestions(false), 120);
+                    }}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                    placeholder="Начните вводить клиента"
+                  />
+                  {showInsuredSuggestions && (
+                    <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-44 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                      {filteredInsuredClients.length ? (
+                        filteredInsuredClients.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              handleInsuredSelect(client);
+                            }}
+                          >
+                            {client.name}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-slate-500">Клиенты не найдены</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={onRequestAddClient}
+                  className="whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  + Добавить клиента
+                </button>
+              </div>
             </div>
           </div>
 
@@ -771,26 +826,25 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 </button>
               </div>
             </div>
-            {executorName && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Исполнитель по сделке</label>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  <input
-                    type="text"
-                    value={executorName}
-                    readOnly
-                    className="flex-1 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddExecutorExpenses}
-                    className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-900"
-                  >
-                    + Расход
-                  </button>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Исполнитель по сделке</label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                <input
+                  type="text"
+                  value={executorName ?? 'отсутствует'}
+                  readOnly
+                  className="flex-1 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddExecutorExpenses}
+                  disabled={!executorName?.trim()}
+                  className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
+                >
+                  + Расход
+                </button>
               </div>
-            )}
+            </div>
           </div>
 
           <div className="space-y-4">

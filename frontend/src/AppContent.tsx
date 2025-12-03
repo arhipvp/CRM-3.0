@@ -236,9 +236,13 @@ const AppContent: React.FC = () => {
     });
     return map;
   }, [deals]);
-  const policyDealExecutorName = policyDealId
-    ? dealsById.get(policyDealId)?.executorName ?? null
-    : null;
+  const getDealExecutorName = useCallback(
+    (dealId: string | null) =>
+      dealId ? dealsById.get(dealId)?.executorName ?? null : null,
+    [dealsById]
+  );
+  const policyDealExecutorName = getDealExecutorName(policyDealId);
+  const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const searchInitialized = useRef(false);
   const location = useLocation();
 
@@ -272,9 +276,28 @@ const AppContent: React.FC = () => {
       const matchedChannel = salesChannels.find(
         (channel) => channel.name.toLowerCase() === recognizedSalesChannel.toLowerCase()
       );
+
+      const recognizedInsuredName = normalizeStringValue(
+        policyObj.insured_client_name ??
+          policyObj.client_name ??
+          policyObj.client ??
+          policyObj.insured_client ??
+          policyObj.contractor
+      );
+      const matchedInsuredClient =
+        recognizedInsuredName?.length
+          ? clients.find(
+              (client) => client.name.toLowerCase() === recognizedInsuredName.toLowerCase()
+            )
+          : undefined;
+
       const values = {
         ...draft,
         salesChannelId: matchedChannel?.id,
+        insuredClientId: matchedInsuredClient?.id ?? undefined,
+        insuredClientName:
+          matchedInsuredClient?.name ??
+          (recognizedInsuredName || undefined),
       };
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
@@ -285,7 +308,7 @@ const AppContent: React.FC = () => {
         insuranceTypeName: normalizeStringValue(policyObj.insurance_type),
       });
     },
-    [salesChannels]
+    [salesChannels, clients]
   );
 
   const handleRequestAddPolicy = (dealId: string) => {
@@ -1335,12 +1358,13 @@ const AppContent: React.FC = () => {
         editingQuote={editingQuote}
         setEditingQuote={setEditingQuote}
         handleUpdateQuote={handleUpdateQuote}
-        policyDealId={policyDealId}
-        policyDefaultCounterparty={policyDefaultCounterparty}
-        closePolicyModal={closePolicyModal}
-        policyPrefill={policyPrefill}
-        policyDealExecutorName={policyDealExecutorName}
-        editingPolicy={editingPolicy}
+      policyDealId={policyDealId}
+      policyDefaultCounterparty={policyDefaultCounterparty}
+      closePolicyModal={closePolicyModal}
+      policyPrefill={policyPrefill}
+      policyDealExecutorName={policyDealExecutorName}
+      editingPolicyExecutorName={editingPolicyExecutorName}
+      editingPolicy={editingPolicy}
         setEditingPolicy={setEditingPolicy}
         salesChannels={salesChannels}
         handleAddPolicy={handleAddPolicy}
