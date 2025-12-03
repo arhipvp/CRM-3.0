@@ -21,3 +21,9 @@ class ChatMessageSerializer(serializers.ModelSerializer):
             "author",
             "author_name",
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get("deal") is not None:
+            data["deal"] = str(data["deal"])
+        return data
