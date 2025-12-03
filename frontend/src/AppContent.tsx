@@ -522,6 +522,7 @@ const AppContent: React.FC = () => {
     mergeSources,
     setIsMergingClients,
     setIsSyncing,
+    setError,
     updateAppData,
   ]);
 
