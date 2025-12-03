@@ -31,7 +31,9 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if not user or not user.is_authenticated:
-            raise PermissionDenied("Только авторизованные пользователи могут создавать сообщения.")
+            raise PermissionDenied(
+                "Только авторизованные пользователи могут создавать сообщения."
+            )
 
         deal = serializer.validated_data.get("deal")
         if not self._user_has_deal_access(user, deal):

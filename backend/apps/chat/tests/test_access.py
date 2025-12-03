@@ -63,14 +63,14 @@ class ChatMessageAccessTests(APITestCase):
 
     def test_messages_are_scoped_to_deal(self):
         self._auth(self.seller_token)
-        response = self.api_client.get(
-            f"/api/v1/chat_messages/?deal={self.deal.id}"
-        )
+        response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = response.data
         results = payload.get("results") if isinstance(payload, dict) else payload
         self.assertEqual(len(results), 2)
-        self.assertTrue(all(message["deal"] == str(self.deal.id) for message in results))
+        self.assertTrue(
+            all(message["deal"] == str(self.deal.id) for message in results)
+        )
 
     def test_non_participant_cannot_create_message(self):
         self._auth(self.other_token)
