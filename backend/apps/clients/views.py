@@ -1,10 +1,10 @@
+from apps.clients.services import ClientMergeService
 from apps.common.drive import (
     DriveError,
     ensure_client_folder,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
-from apps.clients.services import ClientMergeService
 from apps.users.models import AuditLog, UserRole
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Q
