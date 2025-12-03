@@ -332,6 +332,17 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
 
+  const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter' || currentStep !== totalSteps) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target instanceof HTMLButtonElement) {
+      return;
+    }
+    event.preventDefault();
+  };
+
   const updatePaymentField = (
     index: number,
     field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>,
@@ -444,7 +455,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-4">
       {(error || optionsError) && (
         <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error || optionsError}</p>
       )}

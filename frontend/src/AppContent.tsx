@@ -81,7 +81,7 @@ const buildPolicyDraftFromRecognition = (
           amount: normalizeStringValue(payment.amount),
           description: '',
           scheduledDate: normalizeDateValue(payment.payment_date),
-          actualDate: normalizeDateValue(payment.actual_payment_date),
+          actualDate: '',
           incomes: [],
           expenses: [],
         }))

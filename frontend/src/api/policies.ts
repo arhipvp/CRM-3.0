@@ -46,24 +46,27 @@ export async function createPolicy(data: {
   endDate?: string | null;
   sourceFileId?: string | null;
 }): Promise<Policy> {
+  const bodyPayload: Record<string, unknown> = {
+    deal: data.dealId,
+    number: data.number,
+    insurance_company: data.insuranceCompanyId,
+    insurance_type: data.insuranceTypeId,
+    is_vehicle: data.isVehicle,
+    brand: data.brand || '',
+    model: data.model || '',
+    vin: data.vin || '',
+    counterparty: data.counterparty || '',
+    sales_channel: data.salesChannelId || null,
+    start_date: data.startDate || null,
+    end_date: data.endDate || null,
+    client: data.clientId || null,
+  };
+  if (data.sourceFileId) {
+    bodyPayload.source_file_id = data.sourceFileId;
+  }
   const payload = await request<Record<string, unknown>>('/policies/', {
     method: 'POST',
-    body: JSON.stringify({
-      deal: data.dealId,
-      number: data.number,
-      insurance_company: data.insuranceCompanyId,
-      insurance_type: data.insuranceTypeId,
-      is_vehicle: data.isVehicle,
-      brand: data.brand || '',
-      model: data.model || '',
-      vin: data.vin || '',
-      counterparty: data.counterparty || '',
-      sales_channel: data.salesChannelId || null,
-      start_date: data.startDate || null,
-      end_date: data.endDate || null,
-      client: data.clientId || null,
-      source_file_id: data.sourceFileId || null,
-    }),
+    body: JSON.stringify(bodyPayload),
   });
   return mapPolicy(payload);
 }
