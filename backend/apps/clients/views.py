@@ -77,6 +77,19 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        try:
+            result = manage_drive_files(
+                instance=client,
+                ensure_folder_func=ensure_client_folder,
+                uploaded_file=uploaded_file,
+            )
+            return Response(result)
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
     @action(detail=False, methods=["post"], url_path="merge")
     def merge(self, request):
         serializer = ClientMergeSerializer(data=request.data)
@@ -152,16 +165,3 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "moved_counts": merge_result["moved_counts"],
             }
         )
-
-        try:
-            result = manage_drive_files(
-                instance=client,
-                ensure_folder_func=ensure_client_folder,
-                uploaded_file=uploaded_file,
-            )
-            return Response(result)
-        except DriveError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
