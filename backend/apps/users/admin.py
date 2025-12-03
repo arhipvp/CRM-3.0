@@ -1,10 +1,9 @@
+from apps.common.admin import SoftDeleteImportExportAdmin
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
-
-from apps.common.admin import SoftDeleteImportExportAdmin
 
 from .models import AuditLog, Permission, Role, RolePermission, UserRole
 

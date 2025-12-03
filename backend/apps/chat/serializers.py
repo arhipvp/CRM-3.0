@@ -1,6 +1,6 @@
+from apps.deals.models import Deal
 from rest_framework import serializers
 
-from apps.deals.models import Deal
 from .models import ChatMessage
 
 
