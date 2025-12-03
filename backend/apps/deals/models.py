@@ -159,8 +159,10 @@ class Quote(SoftDeleteModel):
     insurance_type = models.ForeignKey(
         "deals.InsuranceType",
         related_name="quotes",
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         help_text="Тип страхования",
+        null=True,
+        blank=True,
     )
     sum_insured = models.DecimalField(
         max_digits=14, decimal_places=2, help_text="Страховая сумма"
