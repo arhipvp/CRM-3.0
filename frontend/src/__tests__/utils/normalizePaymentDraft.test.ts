@@ -36,3 +36,5 @@ describe('normalizePaymentDraft', () => {
     const result = normalizePaymentDraft(samplePayment, false);
     expect(result.expenses).toHaveLength(0);
   });
+
+});
