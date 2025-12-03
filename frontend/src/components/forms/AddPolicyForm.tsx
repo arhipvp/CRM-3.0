@@ -523,16 +523,18 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       <div className="space-y-2">
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
           {steps.map((step, stepIndex) => (
-            <span
+            <button
               key={step.title}
-              className={`px-3 py-1 rounded-full border ${
+              type="button"
+              onClick={() => setCurrentStep(stepIndex + 1)}
+              className={`px-3 py-1 rounded-full border transition-colors ${
                 currentStep === stepIndex + 1
                   ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                  : 'bg-slate-100 text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'
               }`}
             >
               {step.title}
-            </span>
+            </button>
           ))}
         </div>
         <p className="text-xs text-slate-500">{steps[currentStep - 1].description}</p>
