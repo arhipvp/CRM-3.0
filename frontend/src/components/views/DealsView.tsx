@@ -1566,7 +1566,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
       policies: relatedPolicies,
       payments: relatedPayments,
     });
-  }, [relatedPolicies, relatedPayments, selectedDeal?.id]);
+  }, [relatedPolicies, relatedPayments, selectedDeal?.id, selectedDeal]);
 
   const eventWindow = useMemo(() => buildEventWindow(dealEvents), [dealEvents]);
 

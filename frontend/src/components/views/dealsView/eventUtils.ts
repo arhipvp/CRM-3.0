@@ -15,22 +15,24 @@ export interface DealEvent {
 const buildPolicyDescription = (policy: Policy) => {
   const parts: string[] = [];
   if (policy.number) {
-    parts.push(`╨Я╨╛╨╗╨╕╤Б ${policy.number}`);
+    parts.push(`Полис ${policy.number}`);
   }
   if (policy.insuranceCompany) {
     parts.push(policy.insuranceCompany);
   }
   if (parts.length) {
-    return parts.join(' ┬╖ ');
+    return parts.join(' · ');
   }
-  return '╨Ю╨║╨╛╨╜╤З╨░╨╜╨╕╨╡ ╤Б╤В╤А╨░╤Е╨╛╨▓╨░╨╜╨╕╤П';
+  return 'Окончание страхования';
 };
 
-const formatAmount = (amount: number) =>
-  `${amount.toLocaleString('ru-RU')} тВ╜`;
+const formatAmount = (amount: number) => `${amount.toLocaleString('ru-RU')} ₽`;
 
 const normalizeAmount = (value: Payment['amount']) => {
-  const parsed = typeof value === 'number' ? value : Number(value);
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
@@ -42,19 +44,19 @@ const buildPaymentDescription = (
     parts.push(payment.description);
   }
   if (payment.policyNumber) {
-    parts.push(`╨┐╨╛ ╨┐╨╛╨╗╨╕╤Б╤Г ${payment.policyNumber}`);
+    parts.push(`по полису ${payment.policyNumber}`);
   }
-  const numericAmount = normalizeAmount(payment.amount);
-  if (numericAmount !== null) {
-    parts.push(`╨б╤Г╨╝╨╝╨░ ${formatAmount(numericAmount)}`);
+  const amount = normalizeAmount(payment.amount);
+  if (amount !== null) {
+    parts.push(`Сумма ${formatAmount(amount)}`);
   }
   if (parts.length) {
     return {
-      description: parts.join(' ┬╖ '),
-      amount: numericAmount,
+      description: parts.join(' · '),
+      amount,
     };
   }
-  return { description: '╨Я╨╗╨░╤В╨╡╨╢', amount: numericAmount };
+  return { description: 'Платёж', amount };
 };
 
 export const buildDealEvents = ({
@@ -74,7 +76,7 @@ export const buildDealEvents = ({
       id: `policy-${policy.id}`,
       type: 'policyExpiration',
       date: policy.endDate,
-      title: '╨Ю╨║╨╛╨╜╤З╨░╨╜╨╕╨╡ ╨┐╨╛╨╗╨╕╤Б╨░',
+      title: 'Окончание полиса',
       description: buildPolicyDescription(policy),
       policyNumber: policy.number,
     });
@@ -90,7 +92,7 @@ export const buildDealEvents = ({
       id: `payment-${payment.id}`,
       type: 'payment',
       date: eventDate,
-      title: '╨Ю╤З╨╡╤А╨╡╨┤╨╜╨╛╨╣ ╨┐╨╗╨░╤В╤С╨╢',
+      title: 'Очередной платёж',
       description,
       policyNumber: payment.policyNumber,
       amount: amount ?? undefined,
