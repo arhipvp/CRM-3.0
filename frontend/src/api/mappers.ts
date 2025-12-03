@@ -313,6 +313,10 @@ export const mapTask = (raw: Record<string, unknown>): Task => {
     dealId: toOptionalString(raw.deal),
     dealTitle: toOptionalString(raw.deal_title ?? raw.dealTitle),
     clientName: toOptionalString(raw.client_name ?? raw.clientName),
+    createdByName:
+      raw.created_by_name === undefined
+        ? undefined
+        : toNullableString(raw.created_by_name),
     assignee: toNullableString(raw.assignee),
     assigneeName: toNullableString(raw.assignee_name ?? raw.assignee_username),
     status: resolveTaskStatus(raw.status ?? raw.state),

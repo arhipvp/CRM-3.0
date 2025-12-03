@@ -71,6 +71,9 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   {task.description && (
                     <p className="text-xs text-slate-500 mt-1">{task.description}</p>
                   )}
+                  {task.createdByName && (
+                    <p className="text-[11px] text-slate-400 mt-1">Поставил: {task.createdByName}</p>
+                  )}
                 </td>
                 <td className="px-5 py-4 text-slate-600">{STATUS_LABELS[task.status] || task.status}</td>
                 <td className="px-5 py-4 text-slate-600">

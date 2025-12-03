@@ -167,6 +167,7 @@ export interface Task {
   dealId: string;
   dealTitle?: string;
   clientName?: string;
+  createdByName?: string | null;
   assignee?: string | null;
   assigneeName?: string | null;
   status: string;
