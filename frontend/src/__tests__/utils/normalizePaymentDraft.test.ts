@@ -12,9 +12,10 @@ const samplePayment = {
 
 describe('normalizePaymentDraft', () => {
   it('fills an income record when none exist', () => {
-    const result = normalizePaymentDraft(samplePayment, false);
+    const result = normalizePaymentDraft(samplePayment, false, { autoIncomeNote: 'ожидаемое КВ' });
     expect(result.incomes).toHaveLength(1);
     expect(result.incomes[0].amount).toBe('0');
+    expect(result.incomes[0].note).toBe('ожидаемое КВ');
   });
 
   it('keeps existing incomes', () => {
@@ -27,9 +28,12 @@ describe('normalizePaymentDraft', () => {
   });
 
   it('adds default expense when ensureExpenses=true and none provided', () => {
-    const result = normalizePaymentDraft(samplePayment, true);
+    const result = normalizePaymentDraft(samplePayment, true, {
+      autoExpenseNote: 'Расход контрагенту Клиент',
+    });
     expect(result.expenses).toHaveLength(1);
     expect(result.expenses[0].amount).toBe('0');
+    expect(result.expenses[0].note).toBe('Расход контрагенту Клиент');
   });
 
   it('does not add expense when ensureExpenses=false', () => {

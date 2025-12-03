@@ -255,7 +255,7 @@ const AppContent: React.FC = () => {
   );
 
   const handlePolicyDraftReady = useCallback(
-    async (
+    (
       dealId: string,
       parsed: Record<string, unknown>,
       _fileName?: string | null,
@@ -270,31 +270,9 @@ const AppContent: React.FC = () => {
       const matchedChannel = salesChannels.find(
         (channel) => channel.name.toLowerCase() === recognizedSalesChannel.toLowerCase()
       );
-      const candidateInsuredName = normalizeStringValue(
-        parsed.client_name ?? policyObj.contractor
-      ).trim();
-      let matchedInsured =
-        candidateInsuredName.length > 0
-          ? clients.find(
-              (client) =>
-                client.name.trim().toLowerCase() === candidateInsuredName.toLowerCase()
-            )
-          : undefined;
-      if (!matchedInsured && candidateInsuredName) {
-        try {
-          const createdClient = await createClient({ name: candidateInsuredName });
-          updateAppData((prev) => ({
-            clients: [createdClient, ...prev.clients],
-          }));
-          matchedInsured = createdClient;
-        } catch (err) {
-          console.error('Failed to create insured client', err);
-        }
-      }
       const values = {
         ...draft,
         salesChannelId: matchedChannel?.id,
-        insuredClientId: matchedInsured?.id,
       };
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
@@ -305,15 +283,12 @@ const AppContent: React.FC = () => {
         insuranceTypeName: normalizeStringValue(policyObj.insurance_type),
       });
     },
-    [clients, salesChannels, updateAppData]
+    [salesChannels]
   );
 
   const handleRequestAddPolicy = (dealId: string) => {
     const deal = dealsById.get(dealId);
-    const executorUser = deal?.executor ? users.find((user) => user.id === deal.executor) : null;
-    const counterpartyName =
-      executorUser ? getUserDisplayName(executorUser) : deal?.executorName ?? '';
-    setPolicyDefaultCounterparty(counterpartyName || undefined);
+    setPolicyDefaultCounterparty(undefined);
     setPolicyPrefill(null);
     setPolicySourceFileId(null);
     setPolicyDealId(dealId);
@@ -901,10 +876,17 @@ const AppContent: React.FC = () => {
       updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
 
       const hasCounterparty = Boolean(counterparty?.trim());
-      const hasExecutor = Boolean(deal?.executor);
+      const executorName = deal?.executorName?.trim();
+      const hasExecutor = Boolean(executorName);
       const ensureExpenses = hasCounterparty || hasExecutor;
+      const expenseTargetName =
+        counterparty?.trim() || executorName || 'контрагент';
+      const expenseNote = `Расход контрагенту ${expenseTargetName}`;
       const paymentsToProcess = paymentDrafts.map((payment) =>
-        normalizePaymentDraft(payment, ensureExpenses)
+        normalizePaymentDraft(payment, ensureExpenses, {
+          autoIncomeNote: 'ожидаемое КВ',
+          autoExpenseNote: ensureExpenses ? expenseNote : undefined,
+        })
       );
 
       for (const paymentDraft of paymentsToProcess) {
