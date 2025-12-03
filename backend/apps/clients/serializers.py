@@ -40,5 +40,7 @@ class ClientMergeSerializer(serializers.Serializer):
                 "Целевой клиент не может быть частью списка исходных."
             )
         if len(source_ids) != len(set(source_ids)):
-            raise serializers.ValidationError("Список исходных клиентов содержит дубликаты.")
+            raise serializers.ValidationError(
+                "Список исходных клиентов содержит дубликаты."
+            )
         return attrs

@@ -77,21 +77,24 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-
     @action(detail=False, methods=["post"], url_path="merge")
     def merge(self, request):
         serializer = ClientMergeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         target_id = str(serializer.validated_data["target_client_id"])
-        source_ids = [str(value) for value in serializer.validated_data["source_client_ids"]]
+        source_ids = [
+            str(value) for value in serializer.validated_data["source_client_ids"]
+        ]
         combined_ids = {target_id, *source_ids}
         clients_qs = Client.objects.with_deleted().filter(id__in=combined_ids)
         clients = list(clients_qs)
         if len(clients) != len(combined_ids):
             found_ids = {str(client.id) for client in clients}
             missing = sorted(combined_ids - found_ids)
-            raise ValidationError({"detail": f"Клиенты не найдены: {', '.join(missing)}"})
+            raise ValidationError(
+                {"detail": f"Клиенты не найдены: {', '.join(missing)}"}
+            )
 
         clients_by_id = {str(client.id): client for client in clients}
         target_client = clients_by_id[target_id]
@@ -104,7 +107,9 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if not source_client:
                 continue
             if source_client.deleted_at is not None:
-                raise ValidationError({"source_client_ids": "Исходные клиенты не должны быть удалены."})
+                raise ValidationError(
+                    {"source_client_ids": "Исходные клиенты не должны быть удалены."}
+                )
             source_clients.append(source_client)
 
         for client in (target_client, *source_clients):
@@ -147,7 +152,6 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "moved_counts": merge_result["moved_counts"],
             }
         )
-
 
         try:
             result = manage_drive_files(

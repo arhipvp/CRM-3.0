@@ -297,7 +297,9 @@ def ensure_client_folder(client) -> Optional[str]:
                 try:
                     _rename_drive_folder(folder_id, name)
                 except DriveError:
-                    logger.exception("Failed to rename Drive folder for client %s", client.pk)
+                    logger.exception(
+                        "Failed to rename Drive folder for client %s", client.pk
+                    )
         else:
             folder_id = None
 

@@ -41,7 +41,10 @@ class ClientMergeService:
         try:
             target_folder_id = ensure_client_folder(self.target_client)
         except DriveError:
-            logger.exception("Failed to ensure Drive folder for target client %s", self.target_client.pk)
+            logger.exception(
+                "Failed to ensure Drive folder for target client %s",
+                self.target_client.pk,
+            )
 
         merged_ids: list[str] = []
         with transaction.atomic():
@@ -53,17 +56,21 @@ class ClientMergeService:
 
                 policies_moved = 0
                 if source_deal_ids:
-                    policies_moved = Policy.objects.filter(deal_id__in=source_deal_ids).update(
-                        client=self.target_client
-                    )
+                    policies_moved = Policy.objects.filter(
+                        deal_id__in=source_deal_ids
+                    ).update(client=self.target_client)
                 moved_counts["policies"] += policies_moved
 
                 if target_folder_id and source.drive_folder_id:
                     try:
-                        move_drive_folder_contents(source.drive_folder_id, target_folder_id)
+                        move_drive_folder_contents(
+                            source.drive_folder_id, target_folder_id
+                        )
                         delete_drive_folder(source.drive_folder_id)
                     except DriveError:
-                        logger.exception("Failed to merge Drive folder from client %s", source.pk)
+                        logger.exception(
+                            "Failed to merge Drive folder from client %s", source.pk
+                        )
 
                 if self.actor:
                     source._audit_actor = self.actor
