@@ -8,19 +8,33 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deals', '0020_add_closing_reason'),
+        ("deals", "0020_add_closing_reason"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='quote',
-            name='insurance_type',
-            field=models.ForeignKey(blank=True, help_text='Тип страхования', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='quotes', to='deals.insurancetype'),
+            model_name="quote",
+            name="insurance_type",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Тип страхования",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="quotes",
+                to="deals.insurancetype",
+            ),
         ),
         migrations.AlterField(
-            model_name='quote',
-            name='seller',
-            field=models.ForeignKey(blank=True, help_text='Продавец', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='quotes', to=settings.AUTH_USER_MODEL),
+            model_name="quote",
+            name="seller",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Продавец",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="quotes",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]
