@@ -76,25 +76,17 @@ const buildPolicyDraftFromRecognition = (
   const paymentsRaw = Array.isArray(parsed.payments)
     ? (parsed.payments as Record<string, unknown>[])
     : [];
-  const payments =
-    paymentsRaw.length > 0
-      ? paymentsRaw.map((payment) => ({
-          amount: normalizeStringValue(payment.amount),
-          description: '',
-          scheduledDate: normalizeDateValue(payment.payment_date),
-          actualDate: '',
-          incomes: [
-            {
+      const payments =
+        paymentsRaw.length > 0
+          ? paymentsRaw.map((payment) => ({
               amount: normalizeStringValue(payment.amount),
-              date: normalizeDateValue(payment.payment_date),
               description: '',
-              source: '',
-              note: '',
-            },
-          ],
-          expenses: [],
-        }))
-      : [
+              scheduledDate: normalizeDateValue(payment.payment_date),
+              actualDate: '',
+              incomes: [],
+              expenses: [],
+            }))
+          : [
         {
           amount: '',
           description: '',
@@ -278,7 +270,9 @@ const AppContent: React.FC = () => {
       );
 
       const recognizedInsuredName = normalizeStringValue(
-        policyObj.insured_client_name ??
+        parsed.insured_client_name ??
+          parsed.client_name ??
+          policyObj.insured_client_name ??
           policyObj.client_name ??
           policyObj.client ??
           policyObj.insured_client ??
