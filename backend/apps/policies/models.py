@@ -1,11 +1,12 @@
 from apps.common.models import SoftDeleteModel
 from django.db import models
+from django.db.models import Q
 
 
 class Policy(SoftDeleteModel):
     """Insurance policy bound to a deal."""
 
-    number = models.CharField(max_length=50, help_text="Policy number", unique=True)
+    number = models.CharField(max_length=50, help_text="Policy number")
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
         related_name="policies",
@@ -107,6 +108,13 @@ class Policy(SoftDeleteModel):
                 fields=["sales_channel"], name="policies_po_sales_c_51cd4d_idx"
             ),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["number"],
+                condition=Q(deleted_at__isnull=True),
+                name="policies_unique_active_number",
+            )
+        ]
 
     def __str__(self) -> str:
         company = self.insurance_company.name if self.insurance_company else "-"
@@ -130,3 +138,9 @@ class Policy(SoftDeleteModel):
                 self.client_id = client_id
 
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Каскадно удаляем платежи при удалении полиса."""
+        for payment in self.payments.all():
+            payment.delete()
+        super().delete(*args, **kwargs)

@@ -41,7 +41,7 @@ class SoftDeleteAdmin(admin.ModelAdmin):
         actions = super().get_actions(request)
         # Добавляем восстановление только если есть удалённые объекты
         if self.model.objects.dead().exists():
-            action = self.restore_deleted
+            action = self.__class__.restore_deleted
             actions["restore_deleted"] = (
                 action,
                 action.__name__,
