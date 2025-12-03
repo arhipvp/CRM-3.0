@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-from django import forms
-from django.core.exceptions import ValidationError
-from django.urls import reverse
-from django.utils.safestring import mark_safe
-
 from apps.common.admin import ShowDeletedFilter, SoftDeleteImportExportAdmin
 from apps.documents.models import Document
 from apps.finances.models import Payment
 from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
+from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from import_export import resources
 
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
