@@ -1,7 +1,7 @@
 import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapClient, mapUser } from './mappers';
-import type { Client, User } from '../types';
+import type { Client, ClientMergeResponse, User } from '../types';
 
 export async function fetchClientsWithPagination(
   filters?: FilterParams
@@ -89,4 +89,38 @@ export async function updateClient(
     }),
   });
   return mapClient(payload);
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  await request(`/clients/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function mergeClients(data: {
+  targetClientId: string;
+  sourceClientIds: string[];
+}): Promise<ClientMergeResponse> {
+  const payload = await request<Record<string, unknown>>('/clients/merge/', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_client_id: data.targetClientId,
+      source_client_ids: data.sourceClientIds,
+    }),
+  });
+
+  const targetRaw = payload.target_client as Record<string, unknown> | undefined;
+  const movedCountsRaw = payload.moved_counts as Record<string, number> | undefined;
+
+  if (!targetRaw) {
+    throw new Error('Client merge response is missing the target client');
+  }
+
+  return {
+    targetClient: mapClient(targetRaw),
+    mergedClientIds: Array.isArray(payload.merged_client_ids)
+      ? payload.merged_client_ids.map((value) => String(value))
+      : [],
+    movedCounts: movedCountsRaw ?? {},
+  };
 }

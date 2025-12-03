@@ -6,6 +6,7 @@ import { useNotification } from './contexts/NotificationContext';
 import { NotificationDisplay } from './components/NotificationDisplay';
 import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
+import { ClientForm } from './components/forms/ClientForm';
 import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
@@ -13,8 +14,11 @@ import type { EditDealFormValues } from './components/forms/EditDealForm';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
+import { Modal } from './components/Modal';
 import {
   createClient,
+  deleteClient,
+  mergeClients,
   createDeal,
   createQuote,
   updateQuote,
@@ -34,6 +38,7 @@ import {
   closeDeal,
   reopenDeal,
   updateDeal,
+  updateClient,
   mergeDeals,
   updatePayment,
   fetchDealHistory,
@@ -48,7 +53,7 @@ import {
   uploadKnowledgeDocument,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Deal, FinancialRecord, Payment, Policy, Quote, User } from './types';
+import { Client, Deal, FinancialRecord, Payment, Policy, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
@@ -160,6 +165,13 @@ const AppContent: React.FC = () => {
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
     useState<FinancialRecordModalState | null>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [clientDeleteTarget, setClientDeleteTarget] = useState<Client | null>(null);
+  const [mergeClientTargetId, setMergeClientTargetId] = useState<string | null>(null);
+  const [mergeSources, setMergeSources] = useState<string[]>([]);
+  const [mergeSearch, setMergeSearch] = useState('');
+  const [mergeError, setMergeError] = useState<string | null>(null);
+  const [isMergingClients, setIsMergingClients] = useState(false);
   const {
     dataState,
     loadData,
@@ -348,6 +360,190 @@ const AppContent: React.FC = () => {
     setPendingModalAfterClient(null);
     setModal(nextModal ?? null);
   };
+
+  const handleClientEditRequest = useCallback((client: Client) => {
+    setEditingClient(client);
+  }, []);
+
+  const handleUpdateClient = useCallback(
+    async (data: {
+      name: string;
+      phone?: string;
+      email?: string | null;
+      birthDate?: string | null;
+      notes?: string | null;
+    }) => {
+      if (!editingClient) {
+        return;
+      }
+      try {
+        const updated = await updateClient(editingClient.id, data);
+        updateAppData((prev) => ({
+          clients: prev.clients.map((client) =>
+            client.id === updated.id ? updated : client
+          ),
+        }));
+        addNotification('Клиент обновлён', 'success', 4000);
+        setEditingClient(null);
+        setError(null);
+      } catch (err) {
+        const message =
+          err instanceof APIError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Ошибка при обновлении клиента';
+        setError(message);
+        throw err;
+      }
+    },
+    [addNotification, editingClient, setError, updateAppData]
+  );
+
+  const handleClientDeleteRequest = useCallback((client: Client) => {
+    setClientDeleteTarget(client);
+  }, []);
+
+  const handleDeleteClient = useCallback(async () => {
+    if (!clientDeleteTarget) {
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      await deleteClient(clientDeleteTarget.id);
+      updateAppData((prev) => ({
+        clients: prev.clients.filter((client) => client.id !== clientDeleteTarget.id),
+      }));
+      addNotification('Клиент удалён', 'success', 4000);
+      setClientDeleteTarget(null);
+      setError(null);
+    } catch (err) {
+      if (err instanceof APIError && err.status === 403) {
+        addNotification('Ошибка доступа при удалении клиента', 'error', 4000);
+      } else {
+        setError(
+          err instanceof APIError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Ошибка при удалении клиента'
+        );
+      }
+      throw err;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [addNotification, clientDeleteTarget, setError, setIsSyncing, updateAppData]);
+
+  const handleClientMergeRequest = useCallback((client: Client) => {
+    setMergeClientTargetId(client.id);
+    setMergeSources([]);
+    setMergeSearch('');
+    setMergeError(null);
+  }, []);
+
+  const toggleMergeSource = useCallback((clientId: string) => {
+    setMergeSources((prev) =>
+      prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId]
+    );
+    setMergeError(null);
+  }, []);
+
+  const closeMergeModal = useCallback(() => {
+    setMergeClientTargetId(null);
+    setMergeSources([]);
+    setMergeSearch('');
+    setMergeError(null);
+  }, []);
+
+  const handleMergeSubmit = useCallback(async () => {
+    if (!mergeClientTargetId) {
+      return;
+    }
+    if (!mergeSources.length) {
+      setMergeError('Выберите клиентов для объединения.');
+      return;
+    }
+    setIsSyncing(true);
+    setIsMergingClients(true);
+    try {
+      const result = await mergeClients({
+        targetClientId: mergeClientTargetId,
+        sourceClientIds: mergeSources,
+      });
+      const mergedIds = new Set(result.mergedClientIds);
+      updateAppData((prev) => ({
+        clients: prev.clients
+          .filter((client) => !mergedIds.has(client.id))
+          .map((client) =>
+            client.id === result.targetClient.id ? result.targetClient : client
+          ),
+        deals: prev.deals.map((deal) =>
+          mergedIds.has(deal.clientId)
+            ? {
+              ...deal,
+              clientId: result.targetClient.id,
+              clientName: result.targetClient.name,
+            }
+            : deal
+        ),
+        policies: prev.policies.map((policy) => {
+          const policyClientId = policy.clientId ?? '';
+          if (!policyClientId || !mergedIds.has(policyClientId)) {
+            return policy;
+          }
+          return {
+            ...policy,
+            clientId: result.targetClient.id,
+            clientName: result.targetClient.name,
+          };
+        }),
+      }));
+      addNotification('Клиенты объединены', 'success', 4000);
+      closeMergeModal();
+      setError(null);
+    } catch (err) {
+      const message =
+        err instanceof APIError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Ошибка при объединении клиентов';
+      setMergeError(message);
+      throw err;
+    } finally {
+      setIsSyncing(false);
+      setIsMergingClients(false);
+    }
+  }, [
+    addNotification,
+    closeMergeModal,
+    mergeClientTargetId,
+    mergeSources,
+    setIsMergingClients,
+    setIsSyncing,
+    updateAppData,
+  ]);
+
+  const mergeCandidates = useMemo(() => {
+    if (!mergeClientTargetId) {
+      return [];
+    }
+    const normalized = mergeSearch.trim().toLowerCase();
+    return clients.filter((client) => {
+      if (client.id === mergeClientTargetId) {
+        return false;
+      }
+      if (!normalized) {
+        return true;
+      }
+      return client.name.toLowerCase().includes(normalized);
+    });
+  }, [clients, mergeClientTargetId, mergeSearch]);
+
+  const mergeTargetClient = mergeClientTargetId
+    ? clients.find((client) => client.id === mergeClientTargetId) ?? null
+    : null;
 
   const handleAddDeal = async (data: {
     title: string;
@@ -1014,6 +1210,9 @@ const AppContent: React.FC = () => {
       <AppRoutes
         deals={deals}
         clients={clients}
+        onClientEdit={handleClientEditRequest}
+        onClientDelete={handleClientDeleteRequest}
+        onClientMerge={handleClientMergeRequest}
         policies={policies}
         payments={payments}
         financialRecords={financialRecords}
@@ -1101,9 +1300,113 @@ const AppContent: React.FC = () => {
         payments={payments}
         financialRecordModal={financialRecordModal}
         setFinancialRecordModal={setFinancialRecordModal}
-        handleUpdateFinancialRecord={handleUpdateFinancialRecord}
-        financialRecords={financialRecords}
-      />
+          handleUpdateFinancialRecord={handleUpdateFinancialRecord}
+          financialRecords={financialRecords}
+        />
+      {editingClient && (
+        <Modal title="Редактировать клиента" onClose={() => setEditingClient(null)}>
+          <ClientForm
+            initial={{
+              name: editingClient.name,
+              phone: editingClient.phone ?? '',
+              email: editingClient.email ?? '',
+              birthDate: editingClient.birthDate ?? '',
+              notes: editingClient.notes ?? '',
+            }}
+            onSubmit={handleUpdateClient}
+          />
+        </Modal>
+      )}
+      {clientDeleteTarget && (
+        <Modal
+          title="Удалить клиента"
+          onClose={() => setClientDeleteTarget(null)}
+          closeOnOverlayClick={false}
+        >
+          <p className="text-sm text-slate-700">
+            Клиент <span className="font-bold">{clientDeleteTarget.name}</span> и все его данные станут недоступны.
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setClientDeleteTarget(null)}
+              className="px-3 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+              disabled={isSyncing}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteClient}
+              className="px-3 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSyncing}
+            >
+              {isSyncing ? 'Удаляем...' : 'Удалить'}
+            </button>
+          </div>
+        </Modal>
+      )}
+      {mergeTargetClient && (
+        <Modal title={`Объединить клиента ${mergeTargetClient.name}`} onClose={closeMergeModal} size="lg">
+          <div className="space-y-5">
+            <p className="text-sm text-slate-600">
+              Выберите клиентов, которые будут объединены в «{mergeTargetClient.name}».
+            </p>
+            <input
+              type="search"
+              value={mergeSearch}
+              onChange={(event) => setMergeSearch(event.target.value)}
+              placeholder="Поиск по имени клиента"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+            />
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {mergeCandidates.length ? (
+                mergeCandidates.map((client) => (
+                  <label
+                    key={client.id}
+                    className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={mergeSources.includes(client.id)}
+                      onChange={() => toggleMergeSource(client.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{client.name}</p>
+                    </div>
+                  </label>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">
+                  {!mergeSearch
+                    ? 'Нет доступных клиентов для объединения.'
+                    : `По запросу "${mergeSearch}" ничего не найдено.`}
+                </p>
+              )}
+            </div>
+            {mergeError && <p className="text-sm text-rose-600">{mergeError}</p>}
+          </div>
+          <div className="flex items-center justify-end gap-3 mt-6 border-t border-slate-200 pt-4">
+            <button
+              type="button"
+              onClick={closeMergeModal}
+              className="px-3 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+              disabled={isMergingClients}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={handleMergeSubmit}
+              disabled={isMergingClients || !mergeSources.length}
+              className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isMergingClients ? 'Объединяем...' : 'Объединить клиентов'}
+            </button>
+          </div>
+        </Modal>
+      )}
       <NotificationDisplay />
 
       {error && (

@@ -172,6 +172,47 @@ def _update_instance_folder(instance: models.Model, folder_id: str) -> None:
     setattr(instance, "drive_folder_id", folder_id)
 
 
+def _get_folder_metadata(folder_id: str) -> Optional[dict]:
+    if not folder_id:
+        return None
+    service = _get_drive_service()
+    try:
+        return (
+            service.files()
+            .get(fileId=folder_id, fields="id,name", supportsAllDrives=True)
+            .execute()
+        )
+    except Exception as exc:
+        if _GDriveHttpError and isinstance(exc, _GDriveHttpError):
+            resp = getattr(exc, "resp", None)
+            status = getattr(resp, "status", None) if resp is not None else None
+            if status in (404, 410):
+                return None
+        logger.exception("Error while fetching Drive folder metadata")
+        raise DriveOperationError("Unable to verify Drive folder.") from exc
+
+
+def _rename_drive_folder(folder_id: str, new_name: str) -> None:
+    if not folder_id or not new_name:
+        return
+    service = _get_drive_service()
+    metadata = {"name": new_name}
+    try:
+        (
+            service.files()
+            .update(
+                fileId=folder_id,
+                body=metadata,
+                supportsAllDrives=True,
+                fields="id",
+            )
+            .execute()
+        )
+    except Exception as exc:
+        logger.exception("Error while renaming Drive folder")
+        raise DriveOperationError("Unable to rename Drive folder.") from exc
+
+
 def _safe_int(value: Optional[str]) -> Optional[int]:
     if value is None:
         return None
@@ -248,7 +289,20 @@ def ensure_client_folder(client) -> Optional[str]:
         raise DriveConfigurationError("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured.")
 
     name = _format_folder_name(client.name or "client", "client")
-    folder_id = _ensure_folder(name, root_folder)
+    folder_id = getattr(client, "drive_folder_id", None)
+    if folder_id:
+        existing = _get_folder_metadata(folder_id)
+        if existing:
+            if existing.get("name") != name:
+                try:
+                    _rename_drive_folder(folder_id, name)
+                except DriveError:
+                    logger.exception("Failed to rename Drive folder for client %s", client.pk)
+        else:
+            folder_id = None
+
+    if not folder_id:
+        folder_id = _ensure_folder(name, root_folder)
     _update_instance_folder(client, folder_id)
     return folder_id
 

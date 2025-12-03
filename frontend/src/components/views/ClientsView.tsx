@@ -14,9 +14,17 @@ interface ClientsViewProps {
   clients: Client[];
   deals: Deal[];
   onClientEdit?: (client: Client) => void;
+  onClientDelete?: (client: Client) => void;
+  onClientMerge?: (client: Client) => void;
 }
 
-export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClientEdit }) => {
+export const ClientsView: React.FC<ClientsViewProps> = ({
+  clients,
+  deals,
+  onClientEdit,
+  onClientDelete,
+  onClientMerge,
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalClient, setFilesModalClient] = useState<Client | null>(null);
@@ -169,14 +177,36 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
                     </button>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    {onClientEdit ? (
-                      <button
-                        type="button"
-                        onClick={() => onClientEdit(client)}
-                        className="text-sm font-semibold text-sky-600 hover:text-sky-800"
-                      >
-                        Редактировать
-                      </button>
+                    {onClientEdit || onClientDelete || onClientMerge ? (
+                      <div className="flex flex-col items-end gap-1">
+                        {onClientEdit && (
+                          <button
+                            type="button"
+                            onClick={() => onClientEdit(client)}
+                            className="text-sm font-semibold text-sky-600 hover:text-sky-800"
+                          >
+                            Редактировать
+                          </button>
+                        )}
+                        {onClientDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onClientDelete(client)}
+                            className="text-sm font-semibold text-rose-600 hover:text-rose-800"
+                          >
+                            Удалить
+                          </button>
+                        )}
+                        {onClientMerge && (
+                          <button
+                            type="button"
+                            onClick={() => onClientMerge(client)}
+                            className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                          >
+                            Объединить
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs uppercase tracking-wide text-slate-400">—</span>
                     )}
@@ -185,8 +215,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, deals, onClie
               );
             })}
             {!paginatedClients.length && (
-              <tr>
-                <td colSpan={6} className="px-5 py-6 text-center text-slate-500">
+                <tr>
+                  <td colSpan={7} className="px-5 py-6 text-center text-slate-500">
                   Клиентов пока нет
                 </td>
               </tr>

@@ -168,6 +168,12 @@ export interface DealMergeResponse {
   movedCounts: Record<string, number>;
 }
 
+export interface ClientMergeResponse {
+  targetClient: Client;
+  mergedClientIds: string[];
+  movedCounts: Record<string, number>;
+}
+
 export interface Policy {
   id: string;
   number: string;

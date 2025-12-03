@@ -34,9 +34,8 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
     container.scrollTop = container.scrollHeight;
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
+  const sendMessage = async () => {
+    if (isSubmitting || !newMessage.trim()) return;
 
     setError(null);
     setSubmitting(true);
@@ -48,6 +47,18 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
       setError(err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage();
+  };
+
+  const handleTextareaKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      await sendMessage();
     }
   };
 
@@ -129,6 +140,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={handleTextareaKeyDown}
               placeholder="Напишите сообщение..."
               rows={2}
               disabled={isSubmitting}

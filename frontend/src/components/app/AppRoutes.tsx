@@ -28,6 +28,9 @@ import type { EditDealFormValues } from '../../components/forms/EditDealForm';
 export interface AppRoutesProps {
   deals: Deal[];
   clients: Client[];
+  onClientEdit: (client: Client) => void;
+  onClientDelete: (client: Client) => void;
+  onClientMerge: (client: Client) => void;
   policies: Policy[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
@@ -94,6 +97,9 @@ export interface AppRoutesProps {
 export const AppRoutes: React.FC<AppRoutesProps> = ({
   deals,
   clients,
+  onClientEdit,
+  onClientDelete,
+  onClientMerge,
   policies,
   payments,
   financialRecords,
@@ -208,7 +214,18 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           />
       }
     />
-    <Route path="/clients" element={<ClientsView clients={clients} deals={deals} />} />
+    <Route
+      path="/clients"
+      element={
+        <ClientsView
+          clients={clients}
+          deals={deals}
+          onClientEdit={onClientEdit}
+          onClientDelete={onClientDelete}
+          onClientMerge={onClientMerge}
+        />
+      }
+    />
     <Route
       path="/policies"
       element={
