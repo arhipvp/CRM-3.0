@@ -16,6 +16,7 @@ interface PaymentSectionProps {
     value: string
   ) => void;
   onRemoveRecord: (paymentIndex: number, type: 'incomes' | 'expenses', recordIndex: number) => void;
+  showRecords?: boolean;
 }
 
 export const PaymentSection: React.FC<PaymentSectionProps> = ({
@@ -26,6 +27,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   onAddRecord,
   onUpdateRecord,
   onRemoveRecord,
+  showRecords = true,
 }) => (
   <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <div className="flex items-center justify-between">
@@ -80,51 +82,53 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       </div>
     </div>
 
-    <div className="space-y-3">
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
-          <button
-            type="button"
-            className="text-xs text-sky-600 hover:underline"
-            onClick={() => onAddRecord(paymentIndex, 'incomes')}
-          >
-            + Добавить доход
-          </button>
+    {showRecords && (
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
+            <button
+              type="button"
+              className="text-xs text-sky-600 hover:underline"
+              onClick={() => onAddRecord(paymentIndex, 'incomes')}
+            >
+              + Добавить доход
+            </button>
+          </div>
+          {payment.incomes.length === 0 && (
+            <p className="text-xs text-slate-500">Добавьте доход, чтобы привязать поступление к этому платежу.</p>
+          )}
+          <FinancialRecordInputs
+            paymentIndex={paymentIndex}
+            type="incomes"
+            records={payment.incomes}
+            onUpdateRecord={onUpdateRecord}
+            onRemoveRecord={onRemoveRecord}
+          />
         </div>
-        {payment.incomes.length === 0 && (
-          <p className="text-xs text-slate-500">Добавьте доход, чтобы привязать поступление к этому платежу.</p>
-        )}
-        <FinancialRecordInputs
-          paymentIndex={paymentIndex}
-          type="incomes"
-          records={payment.incomes}
-          onUpdateRecord={onUpdateRecord}
-          onRemoveRecord={onRemoveRecord}
-        />
-      </div>
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Расходы</h4>
-          <button
-            type="button"
-            className="text-xs text-sky-600 hover:underline"
-            onClick={() => onAddRecord(paymentIndex, 'expenses')}
-          >
-            + Добавить расход
-          </button>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Расходы</h4>
+            <button
+              type="button"
+              className="text-xs text-sky-600 hover:underline"
+              onClick={() => onAddRecord(paymentIndex, 'expenses')}
+            >
+              + Добавить расход
+            </button>
+          </div>
+          {payment.expenses.length === 0 && (
+            <p className="text-xs text-slate-500">Добавьте расход, чтобы контролировать связанные списания.</p>
+          )}
+          <FinancialRecordInputs
+            paymentIndex={paymentIndex}
+            type="expenses"
+            records={payment.expenses}
+            onUpdateRecord={onUpdateRecord}
+            onRemoveRecord={onRemoveRecord}
+          />
         </div>
-        {payment.expenses.length === 0 && (
-          <p className="text-xs text-slate-500">Добавьте расход, чтобы контролировать связанные списания.</p>
-        )}
-        <FinancialRecordInputs
-          paymentIndex={paymentIndex}
-          type="expenses"
-          records={payment.expenses}
-          onUpdateRecord={onUpdateRecord}
-          onRemoveRecord={onRemoveRecord}
-        />
       </div>
-    </div>
+    )}
   </section>
 );
