@@ -22,7 +22,11 @@ BACKEND_DIR_CANDIDATES = (
     BASE_DIR / "backend",
 )
 BACKEND_DIR = next(
-    (candidate for candidate in BACKEND_DIR_CANDIDATES if (candidate / "config" / "settings.py").exists()),
+    (
+        candidate
+        for candidate in BACKEND_DIR_CANDIDATES
+        if (candidate / "config" / "settings.py").exists()
+    ),
     BASE_DIR,
 )
 
@@ -259,6 +263,7 @@ def _resolve_fk_value(field: models.ForeignKey, value: Any) -> Any:
 
     raise ValueError(f"Не найдено {related._meta.verbose_name} '{value}'")
 
+
 def _ensure_placeholder_deal(client_uuid: str | None) -> str | None:
     if not client_uuid:
         return None
@@ -315,7 +320,10 @@ def _ensure_deal_exists(deal_id: str, client_uuid: str | None) -> str | None:
     EXISTING_DEAL_IDS.add(deal_id)
     return deal_id
 
-def _create_deal_for_policy(client_uuid: str | None, policy_number: str | None) -> str | None:
+
+def _create_deal_for_policy(
+    client_uuid: str | None, policy_number: str | None
+) -> str | None:
     if not client_uuid:
         return None
     Client = apps.get_model("clients.Client")
@@ -352,7 +360,9 @@ def _create_deal_for_policy(client_uuid: str | None, policy_number: str | None) 
 def _load_existing_deal_ids() -> None:
     model = apps.get_model("deals.Deal")
     EXISTING_DEAL_IDS.clear()
-    EXISTING_DEAL_IDS.update(str(pk) for pk in model.objects.values_list("id", flat=True))
+    EXISTING_DEAL_IDS.update(
+        str(pk) for pk in model.objects.values_list("id", flat=True)
+    )
 
 
 def _auto_create_related(related: type[models.Model], text: str) -> int | None:
@@ -799,7 +809,10 @@ def main() -> None:
         sheet
         for _, sheet in sorted(
             indexed_sheets,
-            key=lambda pair: (order_index.get(_normalize_sheet_name(pair[1].title), len(order)), pair[0]),
+            key=lambda pair: (
+                order_index.get(_normalize_sheet_name(pair[1].title), len(order)),
+                pair[0],
+            ),
         )
     ]
     for sheet in ordered_sheets:

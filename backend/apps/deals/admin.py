@@ -320,7 +320,6 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
     restore_quotes.short_description = RESTORE_QUOTES_LABEL
 
 
-@admin.register(InsuranceCompany)
 class InsuranceCompanyAdminForm(forms.ModelForm):
     class Meta:
         model = InsuranceCompany
