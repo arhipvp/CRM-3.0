@@ -10,7 +10,7 @@ from apps.common.drive import (
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
-from apps.deals.models import Deal, InsuranceCompany
+from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.finances.models import Payment
 from apps.users.models import UserRole
 from django.db.models import DecimalField, Q, Sum, Value
@@ -170,6 +170,13 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .values_list("name", flat=True)
             .distinct()
         )
+        type_names = list(
+            InsuranceType.objects.filter(name__isnull=False)
+            .exclude(name__exact="")
+            .order_by("name")
+            .values_list("name", flat=True)
+            .distinct()
+        )
 
         for file_id in file_ids:
             if file_id in seen:
@@ -205,6 +212,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     content,
                     filename=file_info["name"],
                     extra_companies=company_names,
+                    extra_types=type_names,
                 )
             except PolicyRecognitionError as exc:
                 results.append(

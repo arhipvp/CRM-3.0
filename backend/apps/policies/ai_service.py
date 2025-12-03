@@ -92,6 +92,7 @@ payments
 Удаляй пробелы, табуляции, переносы строк и мусор.
 Значения полей должны быть очищены и отформатированы.
 Не допускаются значения null, -, N/A, undefined и т.п.
+Если не уверены в значении поля — оставляйте пустым строкой ("").
 
 📋 ПОРЯДОК ОБРАБОТКИ
 Определи количество полисов в документе.
@@ -115,7 +116,9 @@ payments
 """
 
 
-def _build_prompt(extra_companies: List[str] | None = None) -> str:
+def _build_prompt(
+    extra_companies: List[str] | None = None, extra_types: List[str] | None = None
+) -> str:
     """Вернуть системный промпт для распознавания полисов."""
 
     prompt = getattr(settings, "AI_POLICY_PROMPT", "") or DEFAULT_PROMPT
@@ -124,6 +127,12 @@ def _build_prompt(extra_companies: List[str] | None = None) -> str:
         prompt += (
             "\n\nСправочник CRM содержит следующие страховые компании: "
             f"{companies_line}. Используй точное название из этого списка."
+        )
+    if extra_types:
+        types_line = ", ".join(extra_types)
+        prompt += (
+            "\n\nСправочник CRM содержит следующие виды страхования: "
+            f"{types_line}. Отображай значение только если оно есть в этом списке."
         )
     return prompt
 
@@ -308,6 +317,7 @@ def recognize_policy_interactive(
     *,
     messages: List[dict] | None = None,
     extra_companies: List[str] | None = None,
+    extra_types: List[str] | None = None,
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
 ) -> Tuple[dict, str, List[dict]]:
@@ -320,7 +330,10 @@ def recognize_policy_interactive(
 
     if not messages:
         messages = [
-            {"role": "system", "content": _build_prompt(extra_companies)},
+            {
+                "role": "system",
+                "content": _build_prompt(extra_companies, extra_types),
+            },
             {"role": "user", "content": text[:16000]},
         ]
     _check_cancel()
@@ -367,11 +380,12 @@ def recognize_policy_from_text(
     text: str,
     *,
     extra_companies: List[str] | None = None,
+    extra_types: List[str] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по тексту."""
 
     data, transcript, _ = recognize_policy_interactive(
-        text, extra_companies=extra_companies
+        text, extra_companies=extra_companies, extra_types=extra_types
     )
     return data, transcript
 
@@ -381,8 +395,11 @@ def recognize_policy_from_bytes(
     *,
     filename: str,
     extra_companies: List[str] | None = None,
+    extra_types: List[str] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по содержимому файла."""
 
     text = _extract_text_from_bytes(content, filename)
-    return recognize_policy_from_text(text, extra_companies=extra_companies)
+    return recognize_policy_from_text(
+        text, extra_companies=extra_companies, extra_types=extra_types
+    )
