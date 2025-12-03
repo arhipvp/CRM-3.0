@@ -161,7 +161,7 @@ interface DealsViewProps {
 
     fileId?: string | null
 
-  ) => void | Promise<void>;
+  ) => void;
 
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
 

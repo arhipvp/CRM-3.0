@@ -11,6 +11,7 @@ import type { AddFinancialRecordFormValues } from './components/forms/AddFinanci
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
+import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
@@ -58,6 +59,7 @@ import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
 import { getUserDisplayName } from './components/views/dealsView/helpers';
+import { parseNumericAmount } from './utils/parseNumericAmount';
 const normalizeStringValue = (value: unknown): string =>
   typeof value === 'string' ? value : value ? String(value) : '';
 
@@ -843,20 +845,21 @@ const AppContent: React.FC = () => {
   };
 
   const handleAddPolicy = async (dealId: string, values: PolicyFormValues) => {
-  const {
-    number,
-    insuranceCompanyId,
-    insuranceTypeId,
-    isVehicle,
-    brand,
-    model,
-    vin,
-    startDate,
-    endDate,
-    salesChannelId,
-    insuredClientId,
-    payments: paymentDrafts = [],
-  } = values;
+    const {
+      number,
+      insuranceCompanyId,
+      insuranceTypeId,
+      isVehicle,
+      brand,
+      model,
+      vin,
+      startDate,
+      endDate,
+      salesChannelId,
+      insuredClientId,
+      counterparty,
+      payments: paymentDrafts = [],
+    } = values;
     const sourceFileId = policySourceFileId;
     let deal = dealsById.get(dealId);
     let clientId = deal?.clientId;
@@ -897,8 +900,15 @@ const AppContent: React.FC = () => {
       });
       updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
 
-      for (const paymentDraft of paymentDrafts) {
-        const amount = Number(paymentDraft.amount);
+      const hasCounterparty = Boolean(counterparty?.trim());
+      const hasExecutor = Boolean(deal?.executor);
+      const ensureExpenses = hasCounterparty || hasExecutor;
+      const paymentsToProcess = paymentDrafts.map((payment) =>
+        normalizePaymentDraft(payment, ensureExpenses)
+      );
+
+      for (const paymentDraft of paymentsToProcess) {
+        const amount = parseNumericAmount(paymentDraft.amount);
         if (!Number.isFinite(amount) || amount <= 0) {
           continue;
         }
@@ -914,7 +924,7 @@ const AppContent: React.FC = () => {
         const createdRecords: FinancialRecord[] = [];
 
         for (const income of paymentDraft.incomes) {
-          const incomeAmount = Number(income.amount);
+        const incomeAmount = parseNumericAmount(income.amount);
           if (!Number.isFinite(incomeAmount) || incomeAmount <= 0) {
             continue;
           }
@@ -931,7 +941,7 @@ const AppContent: React.FC = () => {
         }
 
         for (const expense of paymentDraft.expenses) {
-          const expenseAmount = Number(expense.amount);
+        const expenseAmount = parseNumericAmount(expense.amount);
           if (!Number.isFinite(expenseAmount) || expenseAmount <= 0) {
             continue;
           }

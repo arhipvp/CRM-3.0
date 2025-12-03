@@ -81,7 +81,7 @@ export interface AppRoutesProps {
     parsed: Record<string, unknown>,
     fileName?: string | null,
     fileId?: string | null
-  ) => void | Promise<void>;
+  ) => void;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   isLoadingMoreDeals: boolean;
