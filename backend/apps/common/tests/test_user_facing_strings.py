@@ -49,7 +49,12 @@ def _collect_model_strings() -> Iterable[str]:
 
 
 def _is_printable(value: str) -> bool:
-    return all(ch.isprintable() or ch == "\n" for ch in value)
+    for ch in value:
+        if ch == "\n":
+            continue
+        if unicodedata.category(ch).startswith("C"):
+            return False
+    return True
 
 
 def _has_cyrillic_letter(value: str) -> bool:
