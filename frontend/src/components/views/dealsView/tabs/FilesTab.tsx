@@ -22,6 +22,7 @@ interface FilesTabProps {
   recognitionMessage: string | null;
   driveError: string | null;
   sortedDriveFiles: DriveFile[];
+  canRecognizeSelectedFiles: boolean;
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({
@@ -37,6 +38,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   recognitionResults,
   recognitionMessage,
   driveError,
+  canRecognizeSelectedFiles,
   sortedDriveFiles,
 }) => {
   if (!selectedDeal) {
@@ -75,16 +77,26 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           type="button"
           onClick={handleRecognizePolicies}
           disabled={
-            isRecognizing || !selectedDeal.driveFolderId || selectedDriveFileIds.length === 0 || !!driveError
+            isRecognizing ||
+            !selectedDeal.driveFolderId ||
+            selectedDriveFileIds.length === 0 ||
+            !canRecognizeSelectedFiles ||
+            !!driveError
           }
           className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {isRecognizing ? 'Распознаем...' : 'Распознать выделенные'}
+          {isRecognizing ? 'Распознаем...' : 'Распознать полис (только PDF)'}
         </button>
         <p className="text-xs text-slate-500">
-          {selectedDriveFileIds.length
-            ? `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
-            : 'Выберите файлы для распознавания'}
+          {selectedDriveFileIds.length ? (
+            canRecognizeSelectedFiles ? (
+              `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
+            ) : (
+              'Можно распознавать только PDF-файлы'
+            )
+          ) : (
+            'Выберите файлы для распознавания'
+          )}
         </p>
       </div>
 

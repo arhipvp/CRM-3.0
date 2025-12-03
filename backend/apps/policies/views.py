@@ -164,7 +164,11 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         seen = set()
         results: List[dict] = []
         company_names = list(
-            InsuranceCompany.objects.order_by("name").values_list("name", flat=True)
+            InsuranceCompany.objects.filter(name__isnull=False)
+            .exclude(name__exact="")
+            .order_by("name")
+            .values_list("name", flat=True)
+            .distinct()
         )
 
         for file_id in file_ids:

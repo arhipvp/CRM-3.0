@@ -189,9 +189,9 @@ GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID = config(
     "GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID", default=""
 )
 
-OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
-OPENAI_BASE_URL = config("OPENAI_BASE_URL", default="")
-OPENAI_MODEL = config("OPENAI_MODEL", default="gpt-4o")
+OPENROUTER_API_KEY = config("OPENROUTER_API_KEY", default="")
+OPENROUTER_BASE_URL = config("OPENROUTER_BASE_URL", default="")
+OPENROUTER_MODEL = config("OPENROUTER_MODEL", default="")
 AI_POLICY_PROMPT = config("AI_POLICY_PROMPT", default="")
 AI_DOCUMENT_PROMPT = config("AI_DOCUMENT_PROMPT", default="")
 

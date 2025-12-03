@@ -529,6 +529,21 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const [selectedDriveFileIds, setSelectedDriveFileIds] = useState<string[]>([]);
 
+  const selectedDriveFiles = useMemo(
+    () =>
+      selectedDriveFileIds
+        .map((id) => driveFiles.find((file) => file.id === id))
+        .filter((file): file is DriveFile => Boolean(file)),
+    [driveFiles, selectedDriveFileIds]
+  );
+
+  const canRecognizeSelectedFiles =
+    selectedDriveFileIds.length > 0 &&
+    selectedDriveFiles.length === selectedDriveFileIds.length &&
+    selectedDriveFiles.every(
+      (file) => file.mimeType?.toLowerCase() === 'application/pdf'
+    );
+
   const [isRecognizing, setRecognizing] = useState(false);
 
   const [recognitionResults, setRecognitionResults] = useState<PolicyRecognitionResult[]>([]);
@@ -1321,6 +1336,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
     }
 
+    if (!canRecognizeSelectedFiles) {
+
+      setRecognitionMessage('Можно распознавать только PDF-файлы.');
+
+      return;
+
+    }
+
     setRecognizing(true);
 
     setRecognitionMessage(null);
@@ -1380,6 +1403,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
     selectedDeal,
 
     selectedDriveFileIds,
+
+    canRecognizeSelectedFiles,
 
   ]);
 
@@ -1644,6 +1669,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
       toggleDriveFileSelection={toggleDriveFileSelection}
 
       handleRecognizePolicies={handleRecognizePolicies}
+
+      canRecognizeSelectedFiles={canRecognizeSelectedFiles}
 
       isRecognizing={isRecognizing}
 

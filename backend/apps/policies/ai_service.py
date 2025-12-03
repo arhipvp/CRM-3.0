@@ -1,4 +1,4 @@
-"""Сервис распознавания полисов через OpenAI."""
+"""Сервис распознавания полисов через OpenRouter."""
 
 from __future__ import annotations
 
@@ -132,12 +132,26 @@ def _log_conversation(label: str, messages: List[dict]) -> str:
     """Залогировать диалог и вернуть транскрипт."""
 
     transcript = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
-    logger.info("Диалог с OpenAI для %s:\n%s", label, transcript)
+    logger.info("Диалог с OpenRouter для %s:\n%s", label, transcript)
     return transcript
+
+
+def _resolve_ai_client_config() -> Tuple[str, str, str]:
+    """Вернуть настройки доступа к OpenRouter."""
+
+    api_key = getattr(settings, "OPENROUTER_API_KEY", "")
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY не задан")
+    model = getattr(settings, "OPENROUTER_MODEL", "") or "gpt-4o-mini"
+    base_url = (
+        getattr(settings, "OPENROUTER_BASE_URL", "") or OPENROUTER_DEFAULT_BASE_URL
+    )
+    return api_key, base_url, model
 
 
 MAX_ATTEMPTS = 3
 REMINDER = "Ответ должен содержать только один валидный JSON без лишних пояснений."
+OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
 POLICY_SCHEMA = {
     "type": "object",
@@ -231,20 +245,22 @@ def _chat(
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
 ) -> str:
-    api_key = settings.OPENAI_API_KEY
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY не задан")
-    base_url = getattr(settings, "OPENAI_BASE_URL", None)
-    model = getattr(settings, "OPENAI_MODEL", "gpt-4o")
-    client = openai.OpenAI(api_key=api_key, base_url=base_url)
+    api_key, base_url, model = _resolve_ai_client_config()
+    client_kwargs: dict[str, str] = {"api_key": api_key, "base_url": base_url}
+    client = openai.OpenAI(**client_kwargs)
+    logger.debug(
+        "Используем OpenRouter (model=%s, base_url=%s)",
+        model,
+        base_url,
+    )
 
     tools = [{"type": "function", "function": POLICY_FUNCTION}]
     tool_choice = {"type": "function", "function": {"name": POLICY_FUNCTION["name"]}}
 
     def _check_cancel() -> None:
         if cancel_cb and cancel_cb():
-            logger.info("Запрос к OpenAI отменён пользователем")
-            raise InterruptedError("Запрос к OpenAI отменён")
+            logger.info("Запрос к OpenRouter отменён пользователем")
+            raise InterruptedError("Запрос к OpenRouter отменён")
 
     if progress_cb:
         stream = client.chat.completions.create(
