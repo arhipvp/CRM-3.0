@@ -575,6 +575,31 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Страхователь</label>
+            <div className="mt-1 flex gap-2 flex-wrap">
+              <select
+                value={insuredClientId}
+                onChange={(event) => setInsuredClientId(event.target.value)}
+                className="w-full md:w-auto flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+              >
+                <option value="">Выберите клиента</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={onRequestAddClient}
+                className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900"
+              >
+                + Добавить клиента
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700">Привязать к транспорту</label>
@@ -721,32 +746,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
       {currentStep === 3 && (
         <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Страхователь</label>
-            <div className="mt-1 flex gap-2 flex-wrap">
-              <select
-                value={insuredClientId}
-                onChange={(event) => setInsuredClientId(event.target.value)}
-                className="w-full md:w-auto flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
-              >
-                <option value="">Выберите клиента</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={onRequestAddClient}
-                className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900"
-              >
-                + Добавить клиента
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Контрагент</label>
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Контрагент</label>
             <input
               type="text"
               value={counterparty}

@@ -253,7 +253,7 @@ const AppContent: React.FC = () => {
   );
 
   const handlePolicyDraftReady = useCallback(
-    (
+    async (
       dealId: string,
       parsed: Record<string, unknown>,
       _fileName?: string | null,
@@ -268,9 +268,31 @@ const AppContent: React.FC = () => {
       const matchedChannel = salesChannels.find(
         (channel) => channel.name.toLowerCase() === recognizedSalesChannel.toLowerCase()
       );
+      const candidateInsuredName = normalizeStringValue(
+        parsed.client_name ?? policyObj.contractor
+      ).trim();
+      let matchedInsured =
+        candidateInsuredName.length > 0
+          ? clients.find(
+              (client) =>
+                client.name.trim().toLowerCase() === candidateInsuredName.toLowerCase()
+            )
+          : undefined;
+      if (!matchedInsured && candidateInsuredName) {
+        try {
+          const createdClient = await createClient({ name: candidateInsuredName });
+          updateAppData((prev) => ({
+            clients: [createdClient, ...prev.clients],
+          }));
+          matchedInsured = createdClient;
+        } catch (err) {
+          console.error('Failed to create insured client', err);
+        }
+      }
       const values = {
         ...draft,
         salesChannelId: matchedChannel?.id,
+        insuredClientId: matchedInsured?.id,
       };
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
@@ -281,7 +303,7 @@ const AppContent: React.FC = () => {
         insuranceTypeName: normalizeStringValue(policyObj.insurance_type),
       });
     },
-    [salesChannels]
+    [clients, salesChannels, updateAppData]
   );
 
   const handleRequestAddPolicy = (dealId: string) => {
