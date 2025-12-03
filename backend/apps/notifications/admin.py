@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin
+
+from apps.common.admin import SoftDeleteImportExportAdmin
 
 from .models import Notification
 
@@ -39,7 +40,7 @@ class NotificationResource(resources.ModelResource):
 
 
 @admin.register(Notification)
-class NotificationAdmin(ImportExportModelAdmin):
+class NotificationAdmin(SoftDeleteImportExportAdmin):
     resource_class = NotificationResource
 
     list_display = ("user", "type", "read_badge", "read_at", "created_at")

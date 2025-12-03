@@ -5,11 +5,38 @@ from import_export.admin import ImportExportModelAdmin
 from .models import SoftDeleteModel
 
 
+class ShowDeletedFilter(admin.SimpleListFilter):
+    title = "Показать удалённые"
+    parameter_name = "show_deleted"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("false", "Скрыть удалённые"),
+            ("true", "Показать удалённые"),
+        )
+
+    def queryset(self, request, queryset):
+        return queryset
+
+
 class SoftDeleteAdmin(admin.ModelAdmin):
     """
     Базовый админ-класс для моделей с мягким удалением (SoftDeleteModel).
-    Обеспечивает поддержку восстановления удалённых объектов.
+    Обеспечивает поддержку восстановления удалённых объектов и фильтрацию.
     """
+
+    def get_list_filter(self, request):
+        """Гарантируем наличие фильтра 'Показать удалённые' в списке фильтров."""
+        base_filters = super().get_list_filter(request)
+        normalized = []
+        if base_filters:
+            if isinstance(base_filters, (tuple, list)):
+                normalized.extend(base_filters)
+            else:
+                normalized.append(base_filters)
+        if ShowDeletedFilter not in normalized:
+            normalized.insert(0, ShowDeletedFilter)
+        return tuple(normalized)
 
     def get_queryset(self, request):
         """По умолчанию показываем только активные объекты."""
@@ -61,23 +88,9 @@ class SoftDeleteAdmin(admin.ModelAdmin):
         return super().changelist_view(request, extra_context)
 
 
-class ShowDeletedFilter(admin.SimpleListFilter):
-    title = "Показать удалённые"
-    parameter_name = "show_deleted"
-
-    def lookups(self, request, model_admin):
-        return (
-            ("false", "Скрыть удалённые"),
-            ("true", "Показать удалённые"),
-        )
-
-    def queryset(self, request, queryset):
-        return queryset
-
-
 class SoftDeleteImportExportAdmin(SoftDeleteAdmin, ImportExportModelAdmin):
     """
-    Комбинированный админ-класс для моделей с мягким удалением и импортом/экспортом.
+    Комбинированный админ-класс для моделей с мягким удалением и импортом/экспорта.
     Обеспечивает фильтрацию удалённых объектов И функциональность импорта/экспорта.
     """
 

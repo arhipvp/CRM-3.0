@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.db.models import Sum
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin
+
+from apps.common.admin import SoftDeleteImportExportAdmin
 
 from .models import FinancialRecord, Payment
 
@@ -80,7 +81,7 @@ class FinancialRecordInline(admin.TabularInline):
 
 
 @admin.register(Payment)
-class PaymentAdmin(ImportExportModelAdmin):
+class PaymentAdmin(SoftDeleteImportExportAdmin):
     resource_class = PaymentResource
 
     list_display = (
@@ -155,7 +156,7 @@ class PaymentAdmin(ImportExportModelAdmin):
 
 
 @admin.register(FinancialRecord)
-class FinancialRecordAdmin(ImportExportModelAdmin):
+class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
     resource_class = FinancialRecordResource
 
     list_display = (

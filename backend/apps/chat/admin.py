@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin
+
+from apps.common.admin import SoftDeleteImportExportAdmin
 
 from .models import ChatMessage
 
@@ -37,7 +38,7 @@ class ChatMessageResource(resources.ModelResource):
 
 
 @admin.register(ChatMessage)
-class ChatMessageAdmin(ImportExportModelAdmin):
+class ChatMessageAdmin(SoftDeleteImportExportAdmin):
     resource_class = ChatMessageResource
 
     list_display = (

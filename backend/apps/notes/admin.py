@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin
+
+from apps.common.admin import SoftDeleteImportExportAdmin
 
 from .models import Note
 
@@ -35,7 +36,7 @@ class NoteResource(resources.ModelResource):
 
 
 @admin.register(Note)
-class NoteAdmin(ImportExportModelAdmin):
+class NoteAdmin(SoftDeleteImportExportAdmin):
     resource_class = NoteResource
 
     list_display = ("deal", "author_name", "body_preview", "status_badge", "created_at")

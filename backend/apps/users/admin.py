@@ -4,6 +4,8 @@ from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
+from apps.common.admin import SoftDeleteImportExportAdmin
+
 from .models import AuditLog, Permission, Role, RolePermission, UserRole
 
 # ============ IMPORT/EXPORT RESOURCES ============
@@ -90,7 +92,7 @@ class UserRoleInline(admin.TabularInline):
 
 
 @admin.register(Role)
-class RoleAdmin(ImportExportModelAdmin):
+class RoleAdmin(SoftDeleteImportExportAdmin):
     resource_class = RoleResource
 
     list_display = [
@@ -148,7 +150,7 @@ class RoleAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Permission)
-class PermissionAdmin(ImportExportModelAdmin):
+class PermissionAdmin(SoftDeleteImportExportAdmin):
     resource_class = PermissionResource
 
     list_display = [

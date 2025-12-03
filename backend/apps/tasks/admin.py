@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
-from import_export.admin import ImportExportModelAdmin
+from apps.common.admin import SoftDeleteImportExportAdmin
 
 from .models import Task
 
@@ -53,7 +53,7 @@ class TaskResource(resources.ModelResource):
 
 
 @admin.register(Task)
-class TaskAdmin(ImportExportModelAdmin):
+class TaskAdmin(SoftDeleteImportExportAdmin):
     resource_class = TaskResource
 
     list_display = (

@@ -11,9 +11,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         source="author.username", read_only=True, allow_null=True
     )
 
-    deal = serializers.PrimaryKeyRelatedField(
-        queryset=Deal.objects.with_deleted()
-    )
+    deal = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.with_deleted())
 
     class Meta:
         model = ChatMessage
