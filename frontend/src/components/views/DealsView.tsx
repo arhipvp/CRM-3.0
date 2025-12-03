@@ -235,6 +235,18 @@ interface DealsViewProps {
 
 
 
+type DealEventType = 'payment' | 'policyExpiration';
+
+interface DealEvent {
+  id: string;
+  type: DealEventType;
+  date: string;
+  title: string;
+  description?: string;
+  policyNumber?: string;
+  amount?: number;
+}
+
 export const DealsView: React.FC<DealsViewProps> = ({
 
   deals,
@@ -395,6 +407,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isDeletingDeal, setIsDeletingDeal] = useState(false);
   const [isClosingDeal, setIsClosingDeal] = useState(false);
   const [isReopeningDeal, setIsReopeningDeal] = useState(false);
+  const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
+  const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
   const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
@@ -1094,6 +1108,19 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
 
+  const handleDelayModalConfirm = async () => {
+    if (!selectedDeal || !nextEvent || !suggestedNextContactInput) {
+      return;
+    }
+    setIsSchedulingDelay(true);
+    try {
+      await handleInlineDateChange('nextContactDate', suggestedNextContactInput);
+      setIsDelayModalOpen(false);
+    } finally {
+      setIsSchedulingDelay(false);
+    }
+  };
+
   const handleAddNote = async () => {
 
     if (!selectedDeal) {
@@ -1541,6 +1568,123 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
 
+  const dealEvents = useMemo(() => {
+    if (!selectedDeal) {
+      return [];
+    }
+
+    const events: DealEvent[] = [];
+
+    relatedPolicies.forEach((policy) => {
+      if (!policy.endDate) {
+        return;
+      }
+      const descriptionParts = [
+        policy.number ? `Полис ${policy.number}` : undefined,
+        policy.insuranceCompany,
+      ].filter(Boolean);
+      events.push({
+        id: `policy-${policy.id}`,
+        type: 'policyExpiration',
+        date: policy.endDate,
+        title: 'Окончание полиса',
+        description: descriptionParts.join(' · ') || 'Окончание страхования',
+        policyNumber: policy.number,
+      });
+    });
+
+    relatedPayments.forEach((payment) => {
+      const eventDate = payment.scheduledDate ?? payment.actualDate;
+      if (!eventDate) {
+        return;
+      }
+      const descriptionParts = [
+        payment.description,
+        payment.policyNumber ? `по полису ${payment.policyNumber}` : undefined,
+      ].filter(Boolean);
+      if (payment.amount !== undefined && payment.amount !== null) {
+        descriptionParts.push(`Сумма ${payment.amount.toLocaleString('ru-RU')} ₽`);
+      }
+      events.push({
+        id: `payment-${payment.id}`,
+        type: 'payment',
+        date: eventDate,
+        title: 'Очередной платёж',
+        description: descriptionParts.join(' · ') || 'Платеж',
+        policyNumber: payment.policyNumber,
+        amount: payment.amount,
+      });
+    });
+
+    return events.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  }, [relatedPayments, relatedPolicies, selectedDeal?.id]);
+
+  const eventWindow = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+    if (!dealEvents.length) {
+      return {
+        upcomingEvents: [] as DealEvent[],
+        pastEvents: [] as DealEvent[],
+        nextEvent: null as DealEvent | null,
+        suggestedNextContactInput: null as string | null,
+      };
+    }
+
+    const upcoming: DealEvent[] = [];
+    const past: DealEvent[] = [];
+
+    dealEvents.forEach((event) => {
+      const eventDate = new Date(event.date);
+      if (Number.isNaN(eventDate.getTime())) {
+        return;
+      }
+      if (eventDate.getTime() >= todayMs) {
+        upcoming.push(event);
+      } else {
+        past.push(event);
+      }
+    });
+
+    const nextEvent = upcoming[0] ?? dealEvents[0];
+    if (!nextEvent) {
+      return {
+        upcomingEvents: upcoming,
+        pastEvents: past,
+        nextEvent: null,
+        suggestedNextContactInput: null,
+      };
+    }
+
+    const offsetDays = nextEvent.type === 'payment' ? 30 : 45;
+    const offsetDate = new Date(nextEvent.date);
+    offsetDate.setDate(offsetDate.getDate() - offsetDays);
+    const suggestedMs = Math.max(offsetDate.getTime(), todayMs);
+    const suggestedNextContactInput = new Date(suggestedMs).toISOString().split('T')[0];
+
+    return {
+      upcomingEvents: upcoming,
+      pastEvents: past,
+      nextEvent,
+      suggestedNextContactInput,
+    };
+  }, [dealEvents]);
+
+  const { upcomingEvents, pastEvents, nextEvent, suggestedNextContactInput } = eventWindow;
+
+  const policyBadgeLabels = useMemo(() => {
+    if (!relatedPolicies.length) {
+      return [];
+    }
+    return relatedPolicies.map((policy) => policy.number || policy.insuranceType || 'Полис');
+  }, [relatedPolicies]);
+
+  const policyBadgePreview = policyBadgeLabels.slice(0, 6);
+  const remainingPolicyBadgeCount = Math.max(policyBadgeLabels.length - policyBadgePreview.length, 0);
+
   const quotes = selectedDeal?.quotes ?? [];
 
 
@@ -1835,12 +1979,23 @@ export const DealsView: React.FC<DealsViewProps> = ({
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-          <input
-            type="date"
-            value={selectedDeal.nextContactDate ?? ''}
-            onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
-            className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-          />
+          <div className="mt-1 flex max-w-[220px] flex-col gap-2">
+            <input
+              type="date"
+              value={selectedDeal.nextContactDate ?? ''}
+              onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+            />
+            <button
+              type="button"
+              onClick={() => setIsDelayModalOpen(true)}
+              disabled={!nextEvent}
+              className="flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-emerald-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="text-base leading-none">👑</span>
+              <span>Отложить до следующего события</span>
+            </button>
+          </div>
         </div>
         <div>
           <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
@@ -2307,6 +2462,130 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   setCreatingFinancialRecordContext(null);
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+      {isDelayModalOpen && selectedDeal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Отложить до следующего события</h3>
+                <p className="text-xs text-slate-500">{selectedDeal.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDelayModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              >
+                тЬХ
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-6">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Ближайшее событие</p>
+                {nextEvent ? (
+                  <>
+                    <p className="text-sm font-semibold text-slate-900">{nextEvent.title}</p>
+                    <p className="text-[12px] text-slate-500">{nextEvent.description}</p>
+                    <p className="text-[11px] text-slate-500">Дата: {formatDate(nextEvent.date)}</p>
+                    <p className="text-[11px] text-slate-500">
+                      Новый следующий контакт: {suggestedNextContactInput ? formatDate(suggestedNextContactInput) : '—'}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-500">Нет доступных событий для расчёта.</p>
+                )}
+              </div>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Предстоящие события</p>
+                  <span className="text-[11px] uppercase tracking-wide text-slate-400">
+                    {upcomingEvents.length} найдено
+                  </span>
+                </div>
+                {upcomingEvents.length ? (
+                  <div className="space-y-3">
+                    {upcomingEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="flex items-start justify-between rounded-xl border border-slate-200 px-4 py-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                          <p className="text-[12px] text-slate-500">{event.description}</p>
+                          {event.policyNumber && (
+                            <p className="text-[11px] text-slate-400">Полис: {event.policyNumber}</p>
+                          )}
+                        </div>
+                        <span className="text-[12px] font-semibold text-slate-600">
+                          {formatDate(event.date)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Предстоящие события не найдены.</p>
+                )}
+                {pastEvents.length > 0 && (
+                  <details className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+                      Старые события ({pastEvents.length})
+                    </summary>
+                    <div className="mt-3 space-y-2">
+                      {pastEvents.map((event) => (
+                        <div key={event.id} className="flex items-start justify-between">
+                          <div>
+                            <p className="text-[13px] font-semibold text-slate-900">{event.title}</p>
+                            <p className="text-[12px] text-slate-500">{event.description}</p>
+                          </div>
+                          <span className="text-[11px] text-slate-500">{formatDate(event.date)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+              <div class="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Полисы в расчёте</p>
+                {policyBadgePreview.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {policyBadgePreview.map((label, index) => (
+                      <span
+                        key={`${label}-${index}`}
+                        className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                    {remainingPolicyBadgeCount > 0 && (
+                      <span className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700">
+                        +{remainingPolicyBadgeCount} ещё
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Привязанные полисы не найдены.</p>
+                )}
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setIsDelayModalOpen(false)}
+                className="px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200 transition"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleDelayModalConfirm}
+                disabled={!nextEvent || isSchedulingDelay}
+                className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {isSchedulingDelay ? 'Сохраняю...' : 'Перенести следующий контакт'}
+              </button>
             </div>
           </div>
         </div>
