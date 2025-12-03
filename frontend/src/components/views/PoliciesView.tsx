@@ -241,7 +241,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Клиент</p>
                   <p className="text-base font-semibold text-slate-800">
-                    {policy.insuredClientName ?? policy.clientName || '—'}
+                    {(policy.insuredClientName ?? policy.clientName) || '—'}
                   </p>
                 </div>
                 <div>

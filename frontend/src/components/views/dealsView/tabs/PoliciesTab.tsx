@@ -156,7 +156,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Клиент</p>
                   <p className="font-semibold text-slate-800">
-                    {policy.insuredClientName ?? policy.clientName || '—'}
+                    {(policy.insuredClientName ?? policy.clientName) || '—'}
                   </p>
                 </div>
                 <div>

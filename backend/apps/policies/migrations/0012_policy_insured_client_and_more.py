@@ -3,11 +3,13 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+
 def set_insured_client_from_client(apps, schema_editor):
     Policy = apps.get_model("policies", "Policy")
     Policy.objects.filter(insured_client__isnull=True).update(
         insured_client=models.F("client")
     )
+
 
 class Migration(migrations.Migration):
 
@@ -21,11 +23,20 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="policy",
             name="insured_client",
-            field=models.ForeignKey(blank=True, help_text="Страхователь", null=True, on_delete=django.db.models.deletion.PROTECT, related_name="insured_policies", to="clients.client"),
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Insured client",
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="insured_policies",
+                to="clients.client",
+            ),
         ),
         migrations.RunPython(set_insured_client_from_client, migrations.RunPython.noop),
         migrations.AddIndex(
             model_name="policy",
-            index=models.Index(fields=["insured_client"], name="policies_po_insured_2a2f53_idx"),
+            index=models.Index(
+                fields=["insured_client"], name="policies_po_insured_2a2f53_idx"
+            ),
         ),
     ]
