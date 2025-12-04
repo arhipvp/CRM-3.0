@@ -1,9 +1,9 @@
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
-from django.core.exceptions import ValidationError
 from django.db.models import Q, Sum
-from rest_framework import permissions, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,6 +11,34 @@ from rest_framework.views import APIView
 from .filters import PaymentFilterSet
 from .models import FinancialRecord, Payment
 from .serializers import FinancialRecordSerializer, PaymentSerializer
+
+
+def _is_admin_user(user):
+    if not user or not user.is_authenticated:
+        return False
+    return UserRole.objects.filter(user=user, role__name="Admin").exists()
+
+
+def _get_deal_from_payment(payment):
+    if not payment:
+        return None
+    deal = getattr(payment, "deal", None)
+    if deal:
+        return deal
+    policy = getattr(payment, "policy", None)
+    if policy:
+        return getattr(policy, "deal", None)
+    return None
+
+
+def _user_has_deal_access(user, deal):
+    if not user or not user.is_authenticated:
+        return False
+    if _is_admin_user(user):
+        return True
+    if not deal:
+        return False
+    return deal.seller_id == user.id or deal.executor_id == user.id
 
 
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -33,7 +61,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return queryset
 
         # Администраторы видят все финансовые записи
-        is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
+        is_admin = _is_admin_user(user)
 
         if not is_admin:
             # Остальные видят только записи для своих сделок (где user = seller или executor)
@@ -42,6 +70,18 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
         return queryset
+
+    def _can_modify(self, user, instance):
+        payment = getattr(instance, "payment", None)
+        deal = _get_deal_from_payment(payment)
+        return _user_has_deal_access(user, deal)
+
+    def perform_create(self, serializer):
+        payment = serializer.validated_data.get("payment")
+        deal = _get_deal_from_payment(payment)
+        if not _user_has_deal_access(self.request.user, deal):
+            raise PermissionDenied("Нет доступа к платежу или сделке.")
+        serializer.save()
 
 
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -73,13 +113,23 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return queryset
 
         # Администраторы видят все платежи
-        is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
+        is_admin = _is_admin_user(user)
 
         if not is_admin:
             # Остальные видят только платежи для своих сделок (где user = seller или executor)
             queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
 
         return queryset
+
+    def perform_create(self, serializer):
+        deal = serializer.validated_data.get("deal")
+        if not _user_has_deal_access(self.request.user, deal):
+            raise PermissionDenied("Нет доступа к сделке.")
+        serializer.save()
+
+    def _can_modify(self, user, instance):
+        deal = _get_deal_from_payment(instance)
+        return _user_has_deal_access(user, deal)
 
     def destroy(self, request, *args, **kwargs):
         """Удаление платежа с проверкой наличия финансовых записей"""
@@ -105,10 +155,7 @@ class FinanceSummaryView(APIView):
         user = request.user
 
         # Если пользователь не аутентифицирован, показываем общую сводку
-        is_admin = False
-        if user.is_authenticated:
-            # Администраторы видят все финансы
-            is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
+        is_admin = _is_admin_user(user)
 
         # Базовый queryset для финансовых записей
         records_queryset = FinancialRecord.objects.filter(deleted_at__isnull=True)
