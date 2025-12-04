@@ -333,6 +333,7 @@ export const mapTask = (raw: Record<string, unknown>): Task => {
       raw.completed_by_name === undefined
         ? undefined
         : toNullableString(raw.completed_by_name),
+    deletedAt: raw.deleted_at === undefined ? undefined : toNullableString(raw.deleted_at),
   };
 };
 

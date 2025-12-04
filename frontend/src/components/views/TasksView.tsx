@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { Task, TaskPriority } from '../../types';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import type { Task, TaskPriority, User } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 
@@ -9,12 +10,12 @@ import { TaskTable } from '../tasks/TaskTable';
 type TaskSortKey = 'dueAt' | 'priority' | 'createdAt';
 
 const TASK_SORT_OPTIONS = [
-  { value: '-dueAt', label: 'Срок (ближайшие)' },
-  { value: 'dueAt', label: 'Срок (дальние)' },
-  { value: '-priority', label: 'Приоритет (высокий)' },
-  { value: 'priority', label: 'Приоритет (низкий)' },
-  { value: '-createdAt', label: 'Созданы недавно' },
-  { value: 'createdAt', label: 'Старые задачи' },
+  { value: '-dueAt', label: 'گِ‘?گ?گَ (گ+گ>گٌگگّگü‘?گٌگç)' },
+  { value: 'dueAt', label: 'گِ‘?گ?گَ (گ?گّگ>‘?گ?گٌگç)' },
+  { value: '-priority', label: 'گ?‘?گٌگ?‘?گٌ‘'گç‘' (گ?‘<‘?گ?گَگٌگü)' },
+  { value: 'priority', label: 'گ?‘?گٌگ?‘?گٌ‘'گç‘' (گ?گٌگْگَگٌگü)' },
+  { value: '-createdAt', label: 'گِگ?گْگ?گّگ?‘< گ?گçگ?گّگ?گ?گ?' },
+  { value: 'createdAt', label: 'گِ‘'گّ‘?‘<گç گْگّگ?گّ‘طگٌ' },
 ];
 
 const getPriorityOrder = (priority: TaskPriority): number => {
@@ -45,13 +46,28 @@ const getTaskSortValue = (task: Task, key: TaskSortKey): number => {
 
 interface TasksViewProps {
   tasks: Task[];
+  currentUser: User | null;
+  onDealSelect?: (dealId: string) => void;
 }
 
-export const TasksView: React.FC<TasksViewProps> = ({ tasks }) => {
+export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDealSelect }) => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({});
+
+  const handleDealClick = useCallback(
+    (dealId?: string) => {
+      if (!dealId) {
+        return;
+      }
+      onDealSelect?.(dealId);
+      navigate('/deals');
+    },
+    [navigate, onDealSelect]
+  );
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
+    const currentUserId = currentUser?.id;
 
     const search = (filters.search ?? '').toString().toLowerCase().trim();
     if (search) {
@@ -77,36 +93,63 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks }) => {
       result = result.filter((task) => task.priority === filters.priority);
     }
 
+    if (filters.show_completed !== 'true') {
+      result = result.filter((task) => task.status !== 'done');
+    }
+
+    if (filters.show_deleted !== 'true') {
+      result = result.filter((task) => !task.deletedAt);
+    }
+
+    if (filters.only_my_tasks === 'true') {
+      result = result.filter((task) => (currentUserId ? task.assignee === currentUserId : false));
+    }
+
     const ordering = (filters.ordering as string) || '-dueAt';
     const direction = ordering.startsWith('-') ? -1 : 1;
     const field = (ordering.replace(/^-/, '') as TaskSortKey) || 'dueAt';
 
     result.sort((a, b) => (getTaskSortValue(a, field) - getTaskSortValue(b, field)) * direction);
     return result;
-  }, [filters, tasks]);
+  }, [filters, tasks, currentUser?.id]);
 
   return (
     <div className="space-y-4">
       <FilterBar
         onFilterChange={setFilters}
-        searchPlaceholder="Поиск по задаче, сделке или описанию..."
+        searchPlaceholder="گ?گ?گٌ‘?گَ گُگ? گْگّگ?گّ‘طگç, ‘?گ?گçگ>گَگç گٌگ>گٌ گ?گُگٌ‘?گّگ?گٌ‘?..."
         sortOptions={TASK_SORT_OPTIONS}
         customFilters={[
           {
             key: 'taskStatus',
-            label: 'Статус',
+            label: 'گِ‘'گّ‘'‘?‘?',
             type: 'select',
             options: Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
           },
           {
             key: 'priority',
-            label: 'Приоритет',
+            label: 'گ?‘?گٌگ?‘?گٌ‘'گç‘'',
             type: 'select',
             options: Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label })),
           },
+          {
+            key: 'show_completed',
+            label: 'Показывать выполненные',
+            type: 'checkbox',
+          },
+          {
+            key: 'show_deleted',
+            label: 'Показывать удаленные',
+            type: 'checkbox',
+          },
+          {
+            key: 'only_my_tasks',
+            label: 'Показывать только мои задачи',
+            type: 'checkbox',
+          },
         ]}
       />
-      <TaskTable tasks={filteredTasks} />
+      <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
     </div>
   );
 };

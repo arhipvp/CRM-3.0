@@ -242,7 +242,12 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     />
     <Route path="/payments" element={<Navigate to="/policies" replace />} />
     <Route path="/finance" element={<FinanceView financialRecords={financialRecords} payments={payments} />} />
-    <Route path="/tasks" element={<TasksView tasks={tasks} />} />
+    <Route
+      path="/tasks"
+      element={
+        <TasksView tasks={tasks} currentUser={currentUser} onDealSelect={onSelectDeal} />
+      }
+    />
     <Route
       path="/knowledge"
       element={

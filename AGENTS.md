@@ -1,5 +1,4 @@
-﻿Отвечай на русском языке.
-ВНИМАТЕЛЬНО СЛЕДИ ЗА КОДИРОВКОЙ ПРИ ОТКРЫТИИ И РЕДАКТИРОВАНИИ ФАЙЛОВ. Используй "-Encoding OEM" при работе с файлами.
+﻿ВНИМАТЕЛЬНО СЛЕДИ ЗА КОДИРОВКОЙ ПРИ ОТКРЫТИИ И РЕДАКТИРОВАНИИ ФАЙЛОВ. Используй "-Encoding OEM" при работе с файлами.
 Я настроил подключение к моему серверу по ключу SSH root@173.249.7.183. Ключ C:\Users\Володенька/.ssh/id_ed25519. Ты можешь использовать это подключение для работы с сервером. Но сначала спроси у меня разрешение.
 После написания кода проверяй через isort и black.
 
@@ -35,3 +34,5 @@
 ## Security & Configuration Tips
 - Never commit secrets; copy `.env.example` for each service and set `DJANGO_SECRET_KEY`, `DATABASE_URL`, and `VITE_API_URL`. Use per-developer Postgres ports if multiple stacks run locally.
 - Run `python manage.py check --deploy` before tagging releases and keep Docker images parameterized through compose env vars rather than hardcoding credentials.
+
+Отвечай на русском языке.
