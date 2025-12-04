@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import type { Deal, FinancialRecord, Payment, Policy } from '../../../../types';
+import type { Deal, Payment, Policy } from '../../../../types';
 import {
   FinancialRecordCreationContext,
   formatCurrency,
@@ -7,6 +7,7 @@ import {
   PolicySortKey,
 } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
+import { PaymentCard } from '../../../policies/PaymentCard';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -58,50 +59,6 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
   const sortLabel = POLICY_SORT_LABELS[policySortKey] ?? policySortKey;
   const sortOrderSymbol = policySortOrder === 'asc' ? '↑' : '↓';
-
-  const renderRecordRows = (records: FinancialRecord[], recordType: 'income' | 'expense') => {
-    if (!records.length) {
-      return (
-        <tr>
-          <td colSpan={4} className="px-2 py-2 text-[11px] text-center text-slate-400">
-            Записей нет
-          </td>
-        </tr>
-      );
-    }
-
-    return records.map((record) => {
-      const amountValue = Math.abs(Number(record.amount) || 0);
-      const sign = recordType === 'income' ? '+' : '-';
-
-      return (
-        <tr key={record.id} className="border-t border-slate-100">
-          <td className="px-2 py-2 text-[11px] text-slate-600">{record.description || 'Без описания'}</td>
-          <td className="px-2 py-2 text-[11px] text-slate-600">{formatDate(record.date)}</td>
-          <td className="px-2 py-2 text-right font-semibold text-[11px] text-slate-900">
-            <span className={recordType === 'income' ? 'text-emerald-600' : 'text-red-600'}>
-              {sign}
-              {formatCurrency(amountValue.toString())}
-            </span>
-          </td>
-          <td className="px-2 py-2 text-right text-[11px] text-slate-600 space-x-2">
-            <button
-              onClick={() => setEditingFinancialRecordId(record.id)}
-              className="text-[11px] text-sky-600 hover:text-sky-800 font-semibold"
-            >
-              Изменить
-            </button>
-            <button
-              onClick={() => onDeleteFinancialRecord(record.id).catch(() => undefined)}
-              className="text-[11px] text-rose-500 hover:text-rose-600 font-semibold"
-            >
-              Удалить
-            </button>
-          </td>
-        </tr>
-      );
-    });
-  };
 
   if (!sortedPolicies.length) {
     return (
@@ -223,117 +180,22 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   <p className="mt-2 text-xs text-slate-500">Платежей пока нет.</p>
                 ) : (
                   <div className="mt-2 space-y-2 text-[11px] text-slate-600">
-                    {payments.map((payment) => {
-                      const incomes =
-                        payment.financialRecords?.filter(
-                          (record) => record.recordType === 'Доход'
-                        ) || [];
-                      const expenses =
-                        payment.financialRecords?.filter(
-                          (record) => record.recordType === 'Расход'
-                        ) || [];
-
-                      return (
-                        <div
-                          key={payment.id}
-                          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-slate-900 text-sm">
-                                {formatCurrency(payment.amount)}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {payment.note || payment.description || 'Без описания'}
-                              </p>
-                            </div>
-                            <div className="flex gap-4 text-[11px] text-slate-500">
-                              <div>
-                                <p className="uppercase tracking-[0.3em]">План</p>
-                                <p className="font-semibold text-slate-900">
-                                  {formatDate(payment.scheduledDate)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="uppercase tracking-[0.3em]">Факт</p>
-                                <p className="font-semibold text-slate-900">
-                                  {formatDate(payment.actualDate)}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                setCreatingPaymentPolicyId(null);
-                                setEditingPaymentId(payment.id);
-                              }}
-                              className="text-xs font-semibold text-sky-600 hover:text-sky-800"
-                            >
-                              Изменить
-                            </button>
-                          </div>
-                          <div className="mt-3 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-                              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                                <span>Доходы</span>
-                                <button
-                                  onClick={() =>
-                                    setCreatingFinancialRecordContext({
-                                      paymentId: payment.id,
-                                      recordType: 'income',
-                                    })
-                                  }
-                                  className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
-                                >
-                                  Добавить
-                                </button>
-                              </div>
-                              <div className="mt-2 overflow-x-auto">
-                                <table className="min-w-full text-[11px] text-slate-600">
-                                  <thead>
-                                    <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
-                                      <th className="px-2 py-1 text-left">Описание</th>
-                                      <th className="px-2 py-1 text-left">Дата</th>
-                                      <th className="px-2 py-1 text-right">Сумма</th>
-                                      <th className="px-2 py-1 text-right">Действия</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>{renderRecordRows(incomes, 'income')}</tbody>
-                                </table>
-                              </div>
-                            </div>
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
-                              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                                <span>Расходы</span>
-                                <button
-                                  onClick={() =>
-                                    setCreatingFinancialRecordContext({
-                                      paymentId: payment.id,
-                                      recordType: 'expense',
-                                    })
-                                  }
-                                  className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
-                                >
-                                  Добавить
-                                </button>
-                              </div>
-                              <div className="mt-2 overflow-x-auto">
-                                <table className="min-w-full text-[11px] text-slate-600">
-                                  <thead>
-                                    <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
-                                      <th className="px-2 py-1 text-left">Описание</th>
-                                      <th className="px-2 py-1 text-left">Дата</th>
-                                      <th className="px-2 py-1 text-right">Сумма</th>
-                                      <th className="px-2 py-1 text-right">Действия</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>{renderRecordRows(expenses, 'expense')}</tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {payments.map((payment) => (
+                      <PaymentCard
+                        key={payment.id}
+                        payment={payment}
+                        onEditPayment={(paymentId) => {
+                          setCreatingPaymentPolicyId(null);
+                          setEditingPaymentId(paymentId);
+                        }}
+                        onRequestAddRecord={(paymentId, recordType) => {
+                          setCreatingFinancialRecordContext({ paymentId, recordType });
+                          setEditingFinancialRecordId(null);
+                        }}
+                        onEditFinancialRecord={(recordId) => setEditingFinancialRecordId(recordId)}
+                        onDeleteFinancialRecord={onDeleteFinancialRecord}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
