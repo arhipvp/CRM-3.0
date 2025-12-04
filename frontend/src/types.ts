@@ -290,4 +290,5 @@ export interface Task {
   createdAt: string;
   completedAt?: string | null;
   completedByName?: string | null;
+  deletedAt?: string | null;
 }

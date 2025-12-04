@@ -93,15 +93,18 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
       result = result.filter((task) => task.priority === filters.priority);
     }
 
-    if (filters.show_completed !== 'true') {
+    const showCompleted = String(filters.show_completed) === 'true';
+    if (!showCompleted) {
       result = result.filter((task) => task.status !== 'done');
     }
 
-    if (filters.show_deleted !== 'true') {
+    const showDeleted = String(filters.show_deleted) === 'true';
+    if (!showDeleted) {
       result = result.filter((task) => !task.deletedAt);
     }
 
-    if (filters.only_my_tasks === 'true') {
+    const onlyMyTasks = String(filters.only_my_tasks) === 'true';
+    if (onlyMyTasks) {
       result = result.filter((task) => (currentUserId ? task.assignee === currentUserId : false));
     }
 
