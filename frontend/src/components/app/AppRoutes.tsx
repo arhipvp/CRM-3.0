@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { DealsView } from '../views/DealsView';
 import { ClientsView } from '../views/ClientsView';
 import { PoliciesView } from '../views/PoliciesView';
-import { FinanceView } from '../views/FinanceView';
 import { TasksView } from '../views/TasksView';
 import { SettingsView } from '../views/SettingsView';
 import { KnowledgeDocumentsView } from '../views/KnowledgeDocumentsView';
@@ -241,7 +240,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       }
     />
     <Route path="/payments" element={<Navigate to="/policies" replace />} />
-    <Route path="/finance" element={<FinanceView financialRecords={financialRecords} payments={payments} />} />
     <Route
       path="/tasks"
       element={

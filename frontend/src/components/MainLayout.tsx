@@ -7,7 +7,6 @@ export type View =
   | 'deals'
   | 'clients'
   | 'policies'
-  | 'finance'
   | 'tasks'
   | 'knowledge'
   | 'settings';
@@ -24,7 +23,6 @@ const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
   { path: '/deals', label: 'Сделки', icon: '📝' },
   { path: '/clients', label: 'Клиенты', icon: '👥' },
   { path: '/policies', label: 'Полисы', icon: '📄' },
-  { path: '/finance', label: 'Финансы', icon: '🏦' },
   { path: '/tasks', label: 'Задачи', icon: '🗂️' },
   { path: '/knowledge', label: 'Библиотека', icon: '📚' },
   { path: '/settings', label: 'Настройки', icon: '⚙️' },
