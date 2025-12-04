@@ -96,13 +96,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               key={policy.id}
               className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="grid gap-3 px-3 py-3 text-[11px] text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_1fr]">
+              <div className="grid gap-3 px-3 py-3 text-sm text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_1fr]">
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Номер</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Номер</p>
                   <p className="font-semibold text-slate-900">{policy.number || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Компания</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Компания</p>
                   <ColoredLabel
                     value={policy.insuranceCompany}
                     fallback="—"
@@ -111,13 +111,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   />
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Клиент</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Клиент</p>
                   <p className="font-semibold text-slate-800">
                     {(policy.insuredClientName ?? policy.clientName) || '—'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Канал</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Канал</p>
                   <ColoredLabel
                     value={policy.salesChannel}
                     fallback="—"
@@ -126,13 +126,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   />
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Сумма</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Сумма</p>
                   <p className="font-semibold text-slate-900">
                     {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Действие</p>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Действие</p>
                   <div className="flex items-center justify-end gap-3">
                     <button
                       type="button"
@@ -151,14 +151,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500 sm:flex sm:items-center sm:justify-between">
+              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-500 sm:flex sm:items-center sm:justify-between">
                 <div className="flex flex-wrap text-sm text-slate-600 gap-4">
                   <span>Тип: {policy.insuranceType || '—'}</span>
                   <span>Марка: {policy.brand || '—'}</span>
                   <span>Модель: {policy.model || '—'}</span>
                   <span>VIN: {policy.vin || '—'}</span>
                 </div>
-                <div className="flex flex-wrap gap-4 text-[11px] text-slate-500">
+                <div className="flex flex-wrap gap-4 text-sm text-slate-500">
                   <span>Начало: {formatDate(policy.startDate)}</span>
                   <span>Окончание: {formatDate(policy.endDate)}</span>
                 </div>
@@ -179,7 +179,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 {payments.length === 0 ? (
                   <p className="mt-2 text-xs text-slate-500">Платежей пока нет.</p>
                 ) : (
-                  <div className="mt-2 space-y-2 text-[11px] text-slate-600">
+                  <div className="mt-2 space-y-2 text-sm text-slate-600">
                     {payments.map((payment) => (
                       <PaymentCard
                         key={payment.id}

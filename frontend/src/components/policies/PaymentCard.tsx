@@ -82,19 +82,19 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   const paidTone = payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
-          <p className="text-xs text-slate-500 truncate">{payment.note || payment.description || 'Без описания'}</p>
+          <p className="text-base font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
+          <p className="text-sm text-slate-500 truncate">{payment.note || payment.description || 'Без описания'}</p>
         </div>
-        <div className="flex flex-wrap gap-4 text-[10px] text-slate-500 sm:text-[11px]">
+        <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.25em] text-slate-500">
           <div>
-            <p className="uppercase tracking-[0.3em] text-[9px]">Оплатить до...</p>
+            <p className="text-[9px] leading-none">Оплатить до...</p>
             <p className="text-sm font-semibold text-slate-800">{formatDate(payment.scheduledDate)}</p>
           </div>
           <div>
-            <p className="uppercase tracking-[0.3em] text-[9px]">Оплачен:</p>
+            <p className="text-[9px] leading-none">Оплачен:</p>
             <p className={`text-sm font-semibold ${paidTone}`}>{paidText}</p>
           </div>
         </div>
@@ -108,9 +108,9 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           </button>
         )}
       </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
         <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
             <span>{RECORD_TITLES.income}</span>
             <button
               type="button"
@@ -121,9 +121,9 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             </button>
           </div>
           <div className="mt-2 overflow-x-auto">
-            <table className="min-w-full text-[11px] text-slate-600">
+            <table className="min-w-full text-sm text-slate-600">
               <thead>
-                <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
+                <tr className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   <th className="px-2 py-1 text-left">Описание</th>
                   <th className="px-2 py-1 text-left">Дата</th>
                   <th className="px-2 py-1 text-right">Сумма</th>
@@ -135,7 +135,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           </div>
         </section>
         <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
             <span>{RECORD_TITLES.expense}</span>
             <button
               type="button"
@@ -146,9 +146,9 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             </button>
           </div>
           <div className="mt-2 overflow-x-auto">
-            <table className="min-w-full text-[11px] text-slate-600">
+            <table className="min-w-full text-sm text-slate-600">
               <thead>
-                <tr className="text-[9px] uppercase tracking-[0.3em] text-slate-400">
+                <tr className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   <th className="px-2 py-1 text-left">Описание</th>
                   <th className="px-2 py-1 text-left">Дата</th>
                   <th className="px-2 py-1 text-right">Сумма</th>

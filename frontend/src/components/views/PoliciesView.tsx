@@ -179,7 +179,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
               key={policy.id}
               className="space-y-2 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="grid gap-4 px-5 py-4 text-sm text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.9fr_0.8fr_1fr]">
+              <div className="grid gap-3 px-4 py-3 text-sm text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.9fr_0.8fr_1fr]">
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Номер</p>
                   <p className="text-lg font-semibold text-slate-900">{policy.number || '—'}</p>
@@ -236,26 +236,26 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 sm:flex sm:items-center sm:justify-between">
-                <div className="flex flex-wrap gap-6 text-sm text-slate-700">
+              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 sm:flex sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-5 text-base text-slate-700">
                   <span>Тип: {policy.insuranceType || '—'}</span>
                   <span>Марка: {policy.brand || '—'}</span>
                   <span>Модель: {policy.model || '—'}</span>
                   <span>VIN: {policy.vin || '—'}</span>
                 </div>
-                <div className="flex flex-wrap gap-5 text-sm text-slate-500">
+                <div className="flex flex-wrap gap-4 text-sm text-slate-500">
                   <span>Начало: {formatDate(policy.startDate)}</span>
                   <span>Окончание: {formatDate(policy.endDate)}</span>
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-600">
+              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
                   <div>Платежи</div>
                 </div>
                 {payments.length === 0 ? (
                   <p className="mt-2 text-sm text-slate-500">Платежей пока нет.</p>
                 ) : (
-                  <div className="mt-2 space-y-3 text-sm text-slate-600">
+                  <div className="mt-2 space-y-2 text-sm text-slate-600">
                     {payments.map((payment) => (
                       <PaymentCard
                         key={payment.id}
