@@ -10,12 +10,12 @@ import { TaskTable } from '../tasks/TaskTable';
 type TaskSortKey = 'dueAt' | 'priority' | 'createdAt';
 
 const TASK_SORT_OPTIONS = [
-  { value: '-dueAt', label: 'گِ‘?گ?گَ (گ+گ>گٌگگّگü‘?گٌگç)' },
-  { value: 'dueAt', label: 'گِ‘?گ?گَ (گ?گّگ>‘?گ?گٌگç)' },
-  { value: '-priority', label: 'گ?‘?گٌگ?‘?گٌ‘'گç‘' (گ?‘<‘?گ?گَگٌگü)' },
-  { value: 'priority', label: 'گ?‘?گٌگ?‘?گٌ‘'گç‘' (گ?گٌگْگَگٌگü)' },
-  { value: '-createdAt', label: 'گِگ?گْگ?گّگ?‘< گ?گçگ?گّگ?گ?گ?' },
-  { value: 'createdAt', label: 'گِ‘'گّ‘?‘<گç گْگّگ?گّ‘طگٌ' },
+  { value: '-dueAt', label: 'Due date (newest first)' },
+  { value: 'dueAt', label: 'Due date (oldest first)' },
+  { value: '-priority', label: 'Priority (high to low)' },
+  { value: 'priority', label: 'Priority (low to high)' },
+  { value: '-createdAt', label: 'Created date (latest first)' },
+  { value: 'createdAt', label: 'Created date (oldest first)' },
 ];
 
 const getPriorityOrder = (priority: TaskPriority): number => {
@@ -117,34 +117,34 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
     <div className="space-y-4">
       <FilterBar
         onFilterChange={setFilters}
-        searchPlaceholder="گ?گ?گٌ‘?گَ گُگ? گْگّگ?گّ‘طگç, ‘?گ?گçگ>گَگç گٌگ>گٌ گ?گُگٌ‘?گّگ?گٌ‘?..."
+        searchPlaceholder="Search tasks, deals, or descriptions..."
         sortOptions={TASK_SORT_OPTIONS}
         customFilters={[
           {
             key: 'taskStatus',
-            label: 'گِ‘'گّ‘'‘?‘?',
+            label: 'Status',
             type: 'select',
             options: Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
           },
           {
             key: 'priority',
-            label: 'گ?‘?گٌگ?‘?گٌ‘'گç‘'',
+            label: 'Priority',
             type: 'select',
             options: Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label })),
           },
           {
             key: 'show_completed',
-            label: 'Показывать выполненные',
+            label: 'Show completed',
             type: 'checkbox',
           },
           {
             key: 'show_deleted',
-            label: 'Показывать удаленные',
+            label: 'Show deleted',
             type: 'checkbox',
           },
           {
             key: 'only_my_tasks',
-            label: 'Показывать только мои задачи',
+            label: 'Only my tasks',
             type: 'checkbox',
           },
         ]}

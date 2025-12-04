@@ -15,7 +15,7 @@ interface TaskTableProps {
   onDealClick?: (dealId?: string) => void;
 }
 
-const DEFAULT_EMPTY_MESSAGE = '??óø ?ç‘' úø?ø‘Ø';
+const DEFAULT_EMPTY_MESSAGE = 'No tasks found';
 
 export const TaskTable: React.FC<TaskTableProps> = ({
   tasks,
@@ -51,31 +51,31 @@ export const TaskTable: React.FC<TaskTableProps> = ({
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
           <tr>
-            <th className="px-5 py-3">Задача</th>
-            <th className="px-5 py-3">Клиент</th>
-            {showDealColumn && <th className="px-5 py-3">Сделка</th>}
-            <th className="px-5 py-3">Статус</th>
-            <th className="px-5 py-3">Приоритет</th>
-            <th className="px-5 py-3">Ответственный</th>
-            <th className="px-5 py-3">Срок</th>
-            <th className="px-5 py-3">Напоминание</th>
-            <th className="px-5 py-3">Создано</th>
-            <th className="px-5 py-3">Выполнено</th>
-            <th className="px-5 py-3">Удалено</th>
-            {hasActions && <th className="px-5 py-3 text-right">Действия</th>}
+            <th className="px-5 py-3">Task</th>
+            <th className="px-5 py-3">Client</th>
+            {showDealColumn && <th className="px-5 py-3">Deal</th>}
+            <th className="px-5 py-3">Status</th>
+            <th className="px-5 py-3">Priority</th>
+            <th className="px-5 py-3">Assignee</th>
+            <th className="px-5 py-3">Due</th>
+            <th className="px-5 py-3">Reminder</th>
+            <th className="px-5 py-3">Created</th>
+            <th className="px-5 py-3">Completed</th>
+            <th className="px-5 py-3">Deleted</th>
+            {hasActions && <th className="px-5 py-3 text-right">Actions</th>}
           </tr>
         </thead>
         <tbody>
           {tasks.map((task) => {
             const completionInfoParts: string[] = [];
             if (task.status === 'done') {
-              if (task.completedByName) {
-                completionInfoParts.push(`-øó‘?‘<>: ${task.completedByName}`);
-              } else {
-                completionInfoParts.push('-ø?ç‘?‘?ç??');
-              }
+              completionInfoParts.push(
+                task.completedByName
+                  ? `Completed by ${task.completedByName}`
+                  : 'Completed'
+              );
               if (task.completedAt) {
-                completionInfoParts.push(`? ${formatDateTime(task.completedAt)}`);
+                completionInfoParts.push(`on ${formatDateTime(task.completedAt)}`);
               }
             }
             const completionInfo = completionInfoParts.join(' ');
@@ -95,14 +95,12 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   )}
                   <div className="text-[11px] text-slate-400 mt-2 space-y-0.5">
                     {task.createdByName && (
-                      <p>??‘?‘'ø?ñ>: {task.createdByName}</p>
+                      <p className="leading-tight">Created by {task.createdByName}</p>
                     )}
-                    <p>Чеклист: {checklistCount}</p>
+                    <p className="leading-tight">Checklist: {checklistCount}</p>
                   </div>
                 </td>
-                <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.clientName || '—'}
-                </td>
+                <td className="px-5 py-4 text-slate-600 align-top">{task.clientName || '-'}</td>
                 {showDealColumn && (
                   <td className="px-5 py-4 align-top">
                     {task.dealId ? (
@@ -114,7 +112,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         {task.dealTitle || task.dealId}
                       </button>
                     ) : (
-                      '—'
+                      '-'
                     )}
                   </td>
                 )}
@@ -125,25 +123,25 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   {PRIORITY_LABELS[task.priority] || task.priority}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.assigneeName || task.assignee || '—'}
+                  {task.assigneeName || task.assignee || '-'}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.dueAt ? formatDate(task.dueAt) : '—'}
+                  {task.dueAt ? formatDate(task.dueAt) : '-'}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.remindAt ? formatDate(task.remindAt) : '—'}
+                  {task.remindAt ? formatDate(task.remindAt) : '-'}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
                   {formatDateTime(task.createdAt)}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.completedAt ? formatDateTime(task.completedAt) : '—'}
+                  {task.completedAt ? formatDateTime(task.completedAt) : '-'}
                   {completionInfo && (
                     <p className="text-[11px] text-slate-400 mt-1">{completionInfo}</p>
                   )}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.deletedAt ? formatDateTime(task.deletedAt) : '—'}
+                  {task.deletedAt ? formatDateTime(task.deletedAt) : '-'}
                 </td>
                 {hasActions && (
                   <td className="px-5 py-4 text-right space-x-3 text-xs align-top">
@@ -154,7 +152,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         disabled={completingTaskIds.includes(task.id)}
                         className="text-emerald-600 font-semibold hover:text-emerald-800 whitespace-nowrap"
                       >
-                        {completingTaskIds.includes(task.id) ? '?‘'?ç‘Øøç?...' : '???ç‘'ñ‘'‘? ?‘<õ?>?ç???ü'}
+                        {completingTaskIds.includes(task.id) ? 'Marking...' : 'Mark done'}
                       </button>
                     )}
                     {onEditTask && (
@@ -163,7 +161,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         onClick={() => onEditTask(task.id)}
                         className="text-slate-400 hover:text-sky-600 whitespace-nowrap"
                       >
-                        ?ú?ç?ñ‘'‘?
+                        Edit
                       </button>
                     )}
                     {onDeleteTask && (
@@ -172,7 +170,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                         onClick={() => handleDelete(task.id)}
                         className="text-slate-400 hover:text-red-500 whitespace-nowrap"
                       >
-                        ??ø>ñ‘'‘?
+                        Delete
                       </button>
                     )}
                   </td>

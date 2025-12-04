@@ -15,7 +15,7 @@ export interface FilterBarProps {
 
 export const FilterBar: React.FC<FilterBarProps> = ({
   onFilterChange,
-  searchPlaceholder = 'ђ?ђ?ђс‘?ђу...',
+  searchPlaceholder = 'Search...',
   sortOptions = [],
   customFilters = [],
 }) => {
@@ -85,7 +85,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
           <div className="flex-1 min-w-48">
-            <label className="text-sm text-slate-600 mb-1 block">ђ?ђ?ђс‘?ђу</label>
+            <label className="text-sm text-slate-600 mb-1 block">Search</label>
             <input
               type="text"
               value={search}
@@ -97,13 +97,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           {sortOptions.length > 0 && (
             <div className="w-full md:w-auto">
-              <label className="text-sm text-slate-600 mb-1 block">ђцђ?‘?‘'ђс‘?ђ?ђ?ђуђш</label>
+              <label className="text-sm text-slate-600 mb-1 block">Sort</label>
               <select
                 value={ordering}
                 onChange={(event) => handleOrderingChange(event.target.value)}
                 className="w-full md:w-auto px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
               >
-                <option value="">ђ?ђ? ‘?ђ?ђ?ђ>‘Шђшђ?ђс‘?</option>
+                <option value="">Select direction</option>
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -142,7 +142,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
                       className="w-full md:w-auto px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                     >
-                      <option value="">ђ'‘?ђз</option>
+                      <option value="">Any</option>
                       {filter.options.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
@@ -160,7 +160,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               onClick={handleClearFilters}
               className="px-3 py-2 text-sm border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 whitespace-nowrap"
             >
-              ђ?‘Шђс‘?‘'ђс‘'‘?
+              Clear filters
             </button>
           )}
         </div>
