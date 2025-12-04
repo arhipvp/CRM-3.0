@@ -399,6 +399,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isReopeningDeal, setIsReopeningDeal] = useState(false);
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
   const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
+  const [selectedDelayEventId, setSelectedDelayEventId] = useState<string | null>(null);
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
   const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
@@ -1035,6 +1036,24 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   };
 
+  const updateDealDates = useCallback(
+    async (fields: { nextContactDate?: string | null; expectedClose?: string | null }) => {
+      if (!selectedDeal) {
+        return;
+      }
+      const payload: EditDealFormValues = {
+        title: selectedDeal.title,
+        description: selectedDeal.description || '',
+        clientId: selectedDeal.clientId,
+        source: selectedDeal.source ?? null,
+        nextContactDate: fields.nextContactDate ?? selectedDeal.nextContactDate ?? null,
+        expectedClose: fields.expectedClose ?? selectedDeal.expectedClose ?? null,
+      };
+      await onUpdateDeal(selectedDeal.id, payload);
+    },
+    [onUpdateDeal, selectedDeal]
+  );
+
 
 
   const handleInlineDateChange = async (
@@ -1053,27 +1072,17 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
 
-    const payload: EditDealFormValues = {
-
-      title: selectedDeal.title,
-
-      description: selectedDeal.description || '',
-
-      clientId: selectedDeal.clientId,
-
-      source: selectedDeal.source ?? null,
-
-      nextContactDate: field === 'nextContactDate' ? value : selectedDeal.nextContactDate ?? null,
-
-      expectedClose: field === 'expectedClose' ? value : selectedDeal.expectedClose ?? null,
-
-    };
-
-
-
     try {
 
-      await onUpdateDeal(selectedDeal.id, payload);
+      await updateDealDates(
+
+        field === 'nextContactDate'
+
+          ? { nextContactDate: value }
+
+          : { expectedClose: value }
+
+      );
 
       if (options?.selectTopDeal) {
 
@@ -1099,13 +1108,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
   const handleDelayModalConfirm = async () => {
-    if (!selectedDeal || !nextEvent || !suggestedNextContactInput) {
+    if (!selectedDeal || !selectedDelayEvent || !selectedDelayEventNextContact) {
       return;
     }
     setIsSchedulingDelay(true);
     try {
-      await handleInlineDateChange('nextContactDate', suggestedNextContactInput);
+      await updateDealDates({
+        nextContactDate: selectedDelayEventNextContact,
+        expectedClose: selectedDelayEvent.date,
+      });
       setIsDelayModalOpen(false);
+    } catch (err) {
+      console.error('Ошибка обновления даты сделки:', err);
     } finally {
       setIsSchedulingDelay(false);
     }
@@ -1570,17 +1584,45 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const eventWindow = useMemo(() => buildEventWindow(dealEvents), [dealEvents]);
 
-  const { upcomingEvents, pastEvents, nextEvent, suggestedNextContactInput } = eventWindow;
+  const { upcomingEvents, pastEvents } = eventWindow;
 
-  const policyBadgeLabels = useMemo(() => {
-    if (!relatedPolicies.length) {
-      return [];
+  const calculateNextContactForEvent = (event: DealEvent | null) => {
+    if (!event) {
+      return null;
     }
-    return relatedPolicies.map((policy) => policy.number || policy.insuranceType || 'Полис');
-  }, [relatedPolicies]);
+    const offsetDays = event.type === 'payment' ? 30 : 45;
+    const target = new Date(event.date);
+    target.setDate(target.getDate() - offsetDays);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextContactMs = Math.max(target.getTime(), today.getTime());
+    return new Date(nextContactMs).toISOString().split('T')[0];
+  };
 
-  const policyBadgePreview = policyBadgeLabels.slice(0, 6);
-  const remainingPolicyBadgeCount = Math.max(policyBadgeLabels.length - policyBadgePreview.length, 0);
+  const selectedDelayEvent = useMemo(() => {
+    const preferredId =
+      selectedDelayEventId ?? eventWindow.nextEvent?.id ?? dealEvents[0]?.id ?? null;
+    return dealEvents.find((event) => event.id === preferredId) ?? null;
+  }, [dealEvents, eventWindow.nextEvent?.id, selectedDelayEventId]);
+
+  const selectedDelayEventNextContact = useMemo(
+    () => calculateNextContactForEvent(selectedDelayEvent),
+    [selectedDelayEvent]
+  );
+
+  useEffect(() => {
+    if (!isDelayModalOpen) {
+      return;
+    }
+    const defaultId = eventWindow.nextEvent?.id ?? dealEvents[0]?.id ?? null;
+    setSelectedDelayEventId((prev) => prev ?? defaultId);
+  }, [dealEvents, eventWindow.nextEvent?.id, isDelayModalOpen]);
+
+  useEffect(() => {
+    if (!isDelayModalOpen) {
+      setSelectedDelayEventId(null);
+    }
+  }, [isDelayModalOpen]);
 
   const quotes = selectedDeal?.quotes ?? [];
 
@@ -1876,23 +1918,23 @@ export const DealsView: React.FC<DealsViewProps> = ({
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-          <div className="mt-1 flex max-w-[220px] flex-col gap-2">
-            <input
-              type="date"
-              value={selectedDeal.nextContactDate ?? ''}
-              onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-            />
-            <button
-              type="button"
-              onClick={() => setIsDelayModalOpen(true)}
-              disabled={!nextEvent}
-              className="flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-emerald-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span className="text-base leading-none">👑</span>
-              <span>Отложить до следующего события</span>
-            </button>
-          </div>
+            <div className="mt-1 flex max-w-[220px] flex-col gap-2">
+              <input
+                type="date"
+                value={selectedDeal.nextContactDate ?? ''}
+                onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+              />
+              <button
+                type="button"
+                onClick={() => setIsDelayModalOpen(true)}
+                disabled={!dealEvents.length}
+                className="flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-emerald-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="text-base leading-none">👑</span>
+                <span>Отложить до следующего события</span>
+              </button>
+            </div>
         </div>
         <div>
           <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
@@ -2375,24 +2417,27 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 type="button"
                 onClick={() => setIsDelayModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+                aria-label="Закрыть"
               >
-                тЬХ
+                ×
               </button>
             </div>
             <div className="px-6 py-4 space-y-6">
               <div className="space-y-2">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Ближайшее событие</p>
-                {nextEvent ? (
+                <p className="text-xs uppercase tracking-wide text-slate-400">Выбранное событие</p>
+                {selectedDelayEvent ? (
                   <>
-                    <p className="text-sm font-semibold text-slate-900">{nextEvent.title}</p>
-                    <p className="text-[12px] text-slate-500">{nextEvent.description}</p>
-                    <p className="text-[11px] text-slate-500">Дата: {formatDate(nextEvent.date)}</p>
-                    <p className="text-[11px] text-slate-500">
-                      Новый следующий контакт: {suggestedNextContactInput ? formatDate(suggestedNextContactInput) : '—'}
-                    </p>
+                    <p className="text-sm font-semibold text-slate-900">{selectedDelayEvent.title}</p>
+                    <p className="text-[12px] text-slate-500">{selectedDelayEvent.description}</p>
+                    <p className="text-[11px] text-slate-500">Дата: {formatDate(selectedDelayEvent.date)}</p>
+                    {selectedDelayEventNextContact && (
+                      <p className="text-[11px] text-slate-500">
+                        Новый следующий контакт: {formatDate(selectedDelayEventNextContact)}
+                      </p>
+                    )}
                   </>
                 ) : (
-                  <p className="text-sm text-slate-500">Нет доступных событий для расчёта.</p>
+                  <p className="text-sm text-slate-500">Событие не выбрано.</p>
                 )}
               </div>
               <div className="space-y-3">
@@ -2404,23 +2449,31 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </div>
                 {upcomingEvents.length ? (
                   <div className="space-y-3">
-                    {upcomingEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        className="flex items-start justify-between rounded-xl border border-slate-200 px-4 py-3"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                          <p className="text-[12px] text-slate-500">{event.description}</p>
-                          {event.policyNumber && (
-                            <p className="text-[11px] text-slate-400">Полис: {event.policyNumber}</p>
-                          )}
-                        </div>
-                        <span className="text-[12px] font-semibold text-slate-600">
-                          {formatDate(event.date)}
-                        </span>
-                      </div>
-                    ))}
+                    {upcomingEvents.map((event) => {
+                      const isSelected = selectedDelayEvent?.id === event.id;
+                      return (
+                        <button
+                          key={event.id}
+                          type="button"
+                          onClick={() => setSelectedDelayEventId(event.id)}
+                          className={`w-full text-left rounded-xl border px-4 py-3 transition ${
+                            isSelected
+                              ? 'border-sky-500 bg-sky-50 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                              <p className="text-[12px] text-slate-500">{event.description}</p>
+                            </div>
+                            <span className="text-[12px] font-semibold text-slate-600">
+                              {formatDate(event.date)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">Предстоящие события не найдены.</p>
@@ -2445,22 +2498,22 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 )}
               </div>
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Полисы в расчёте</p>
-                {policyBadgePreview.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {policyBadgePreview.map((label, index) => (
-                      <span
-                        key={`${label}-${index}`}
-                        className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700"
+                <p className="text-xs uppercase tracking-wide text-slate-400">Полисы в сделке</p>
+                {relatedPolicies.length ? (
+                  <div className="space-y-2">
+                    {relatedPolicies.map((policy) => (
+                      <div
+                        key={policy.id}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3"
                       >
-                        {label}
-                      </span>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {policy.number} · {policy.insuranceType}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {policy.insuranceCompany} · {formatDate(policy.startDate)} – {formatDate(policy.endDate)}
+                        </p>
+                      </div>
                     ))}
-                    {remainingPolicyBadgeCount > 0 && (
-                      <span className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                        +{remainingPolicyBadgeCount} ещё
-                      </span>
-                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">Привязанные полисы не найдены.</p>
@@ -2478,7 +2531,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <button
                 type="button"
                 onClick={handleDelayModalConfirm}
-                disabled={!nextEvent || isSchedulingDelay}
+                disabled={!selectedDelayEvent || !selectedDelayEventNextContact || isSchedulingDelay}
                 className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {isSchedulingDelay ? 'Сохраняю...' : 'Перенести следующий контакт'}
