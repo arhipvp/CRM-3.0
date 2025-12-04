@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Policy, Payment, FinancialRecord } from '../../types';
+import { Policy, Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
