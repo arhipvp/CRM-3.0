@@ -85,6 +85,13 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             raise PermissionDenied("Нет доступа к платежу или сделке.")
         serializer.save()
 
+    def get_object(self):
+        from django.shortcuts import get_object_or_404
+
+        kwargs = {self.lookup_field: self.kwargs.get(self.lookup_field)}
+        lookup = FinancialRecord.objects.select_related("payment")
+        return get_object_or_404(lookup, **kwargs)
+
 
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для платежей с поддержкой проверки удаления"""

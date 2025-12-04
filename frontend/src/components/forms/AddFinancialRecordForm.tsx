@@ -95,9 +95,7 @@ export function AddFinancialRecordForm({
 
       await onSubmit(formData);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Ошибка при сохранении финансовой записи'
-      );
+      setError(err instanceof Error ? err.message : 'Ошибка при сохранении записи');
     } finally {
       setLoading(false);
     }
@@ -138,7 +136,7 @@ export function AddFinancialRecordForm({
       )}
 
       <div className="form-group">
-        <label htmlFor="recordType">Тип записи *</label>
+        <label htmlFor="recordType">Тип операции *</label>
         <select
           id="recordType"
           name="recordType"
@@ -146,13 +144,13 @@ export function AddFinancialRecordForm({
           onChange={handleChange}
           disabled={loading}
         >
-          <option value="income">Доход (агент получит)</option>
-          <option value="expense">Расход (затраты на дела)</option>
+          <option value="income">Доход (поступление)</option>
+          <option value="expense">Расход (затраты)</option>
         </select>
       </div>
 
       <div className="form-group">
-        <label htmlFor="amount">Сумма (руб.) *</label>
+        <label htmlFor="amount">Сумма (₽) *</label>
         <input
           type="number"
           id="amount"
@@ -186,7 +184,7 @@ export function AddFinancialRecordForm({
           name="description"
           value={formData.description || ''}
           onChange={handleChange}
-          placeholder="Описание записи"
+          placeholder="Описание операции"
           disabled={loading}
         />
       </div>
@@ -199,7 +197,7 @@ export function AddFinancialRecordForm({
           name="source"
           value={formData.source || ''}
           onChange={handleChange}
-          placeholder="Источник дохода или назначение расхода"
+          placeholder="С чего поступило или куда ушло"
           disabled={loading}
         />
       </div>
@@ -211,7 +209,7 @@ export function AddFinancialRecordForm({
           name="note"
           value={formData.note || ''}
           onChange={handleChange}
-          placeholder="Дополнительные примечания"
+          placeholder="Дополнительные детали"
           rows={3}
           disabled={loading}
         />
@@ -219,7 +217,7 @@ export function AddFinancialRecordForm({
 
       <div className="form-actions">
         <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? '????':'??????c?????c...' : actionLabel}
+          {loading ? 'Сохраняем...' : actionLabel}
         </button>
         <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
           Отмена
@@ -275,6 +273,19 @@ export function AddFinancialRecordForm({
           word-break: break-all;
         }
 
+        .type-indicator {
+          padding: 10px 12px;
+          border-radius: 8px;
+          background: #ecfeff;
+          border: 1px solid #bae6fd;
+          color: #0c4a6e;
+          font-weight: 600;
+        }
+
+        .type-label strong {
+          font-weight: 700;
+        }
+
         .form-group {
           display: flex;
           flex-direction: column;
@@ -310,19 +321,6 @@ export function AddFinancialRecordForm({
         .form-group select:disabled {
           background: #f8fafc;
           color: #94a3b8;
-        }
-
-        .type-indicator {
-          padding: 10px 12px;
-          border-radius: 8px;
-          background: #ecfeff;
-          border: 1px solid #bae6fd;
-          color: #0c4a6e;
-          font-weight: 600;
-        }
-
-        .type-indicator strong {
-          font-weight: 700;
         }
 
         .form-actions {
@@ -374,5 +372,3 @@ export function AddFinancialRecordForm({
     </form>
   );
 }
-
-
