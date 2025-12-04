@@ -98,7 +98,7 @@ class FinanceAccessTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_executor_can_create_financial_record(self):
+    def test_executor_cannot_create_financial_record(self):
         self._auth(self.executor_token)
         response = self.api_client.post(
             "/api/v1/financial_records/",
@@ -108,7 +108,7 @@ class FinanceAccessTests(APITestCase):
             },
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_other_user_cannot_create_financial_record(self):
         self._auth(self.other_token)
@@ -119,5 +119,46 @@ class FinanceAccessTests(APITestCase):
                 "amount": "75.00",
             },
             format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_seller_can_update_financial_record(self):
+        self._auth(self.seller_token)
+        response = self.api_client.patch(
+            f"/api/v1/financial_records/{self.fin_record.id}/",
+            {"amount": "-50.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_executor_cannot_update_financial_record(self):
+        self._auth(self.executor_token)
+        response = self.api_client.patch(
+            f"/api/v1/financial_records/{self.fin_record.id}/",
+            {"amount": "-25.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_other_user_cannot_update_financial_record(self):
+        self._auth(self.other_token)
+        response = self.api_client.patch(
+            f"/api/v1/financial_records/{self.fin_record.id}/",
+            {"amount": "25.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_executor_cannot_delete_financial_record(self):
+        self._auth(self.executor_token)
+        response = self.api_client.delete(
+            f"/api/v1/financial_records/{self.fin_record.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_other_user_cannot_delete_financial_record(self):
+        self._auth(self.other_token)
+        response = self.api_client.delete(
+            f"/api/v1/financial_records/{self.fin_record.id}/"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

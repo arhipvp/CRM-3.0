@@ -1167,6 +1167,14 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
+    const parsedAmount = parseFloat(values.amount);
+    if (!Number.isFinite(parsedAmount)) {
+      return parsedAmount;
+    }
+    return values.recordType === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
+  };
+
   const handleAddFinancialRecord = async (values: AddFinancialRecordFormValues) => {
     const paymentId = values.paymentId || financialRecordModal?.paymentId;
     if (!paymentId) {
@@ -1175,7 +1183,7 @@ const AppContent: React.FC = () => {
     try {
       const created = await createFinancialRecord({
         paymentId: paymentId,
-        amount: parseFloat(values.amount),
+        amount: normalizeFinancialRecordAmount(values),
         date: values.date || null,
         description: values.description,
         source: values.source,
@@ -1192,7 +1200,7 @@ const AppContent: React.FC = () => {
   const handleUpdateFinancialRecord = async (recordId: string, values: AddFinancialRecordFormValues) => {
     try {
       const updated = await updateFinancialRecord(recordId, {
-        amount: parseFloat(values.amount),
+        amount: normalizeFinancialRecordAmount(values),
         date: values.date || null,
         description: values.description,
         source: values.source,

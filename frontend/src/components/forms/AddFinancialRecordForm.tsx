@@ -19,6 +19,34 @@ interface AddFinancialRecordFormProps {
   defaultRecordType?: 'income' | 'expense';
 }
 
+const resolveRecordType = (record?: FinancialRecord): 'income' | 'expense' | undefined => {
+  if (!record) {
+    return undefined;
+  }
+  if (record.recordType === 'Расход') {
+    return 'expense';
+  }
+  if (record.recordType === 'Доход') {
+    return 'income';
+  }
+  const parsedAmount = parseFloat(record.amount || '');
+  if (!Number.isFinite(parsedAmount)) {
+    return undefined;
+  }
+  return parsedAmount >= 0 ? 'income' : 'expense';
+};
+
+const formatRecordTypeLabel = (type: 'income' | 'expense'): string =>
+  type === 'income' ? 'Доход' : 'Расход';
+
+const getCleanAmount = (value?: string): string => {
+  if (!value) {
+    return '';
+  }
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? Math.abs(parsed).toString() : '';
+};
+
 export function AddFinancialRecordForm({
   paymentId,
   record,
@@ -28,12 +56,8 @@ export function AddFinancialRecordForm({
 }: AddFinancialRecordFormProps) {
   const [formData, setFormData] = useState<AddFinancialRecordFormValues>({
     paymentId,
-    recordType: record
-      ? parseFloat(record.amount) >= 0
-        ? 'income'
-        : 'expense'
-      : defaultRecordType ?? 'income',
-    amount: record ? Math.abs(parseFloat(record.amount)).toString() : '',
+    recordType: resolveRecordType(record) ?? defaultRecordType ?? 'income',
+    amount: record ? getCleanAmount(record.amount) : '',
     date: record?.date || '',
     description: record?.description || '',
     source: record?.source || '',
@@ -42,6 +66,12 @@ export function AddFinancialRecordForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const recordTypeLabel = formatRecordTypeLabel(formData.recordType);
+  const actionLabel = record
+    ? `Сохранить ${recordTypeLabel.toLowerCase()}`
+    : `Добавить ${recordTypeLabel.toLowerCase()}`;
+  const indicatorLabel = record ? 'Изменяете' : 'Добавляете';
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -75,6 +105,11 @@ export function AddFinancialRecordForm({
 
   return (
     <form onSubmit={handleSubmit} className="add-financial-record-form">
+      <div className="type-indicator">
+        <span className="type-label">
+          {indicatorLabel} <strong>{recordTypeLabel}</strong>
+        </span>
+      </div>
       {error && <div className="error-message">{error}</div>}
 
       {record && (
@@ -184,7 +219,7 @@ export function AddFinancialRecordForm({
 
       <div className="form-actions">
         <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? 'Сохранение...' : record ? 'Обновить' : 'Создать'}
+          {loading ? '????':'??????c?????c...' : actionLabel}
         </button>
         <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
           Отмена
@@ -277,6 +312,19 @@ export function AddFinancialRecordForm({
           color: #94a3b8;
         }
 
+        .type-indicator {
+          padding: 10px 12px;
+          border-radius: 8px;
+          background: #ecfeff;
+          border: 1px solid #bae6fd;
+          color: #0c4a6e;
+          font-weight: 600;
+        }
+
+        .type-indicator strong {
+          font-weight: 700;
+        }
+
         .form-actions {
           display: flex;
           gap: 12px;
@@ -326,3 +374,5 @@ export function AddFinancialRecordForm({
     </form>
   );
 }
+
+

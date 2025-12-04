@@ -31,14 +31,16 @@ def _get_deal_from_payment(payment):
     return None
 
 
-def _user_has_deal_access(user, deal):
+def _user_has_deal_access(user, deal, *, allow_executor=True):
     if not user or not user.is_authenticated:
         return False
     if _is_admin_user(user):
         return True
     if not deal:
         return False
-    return deal.seller_id == user.id or deal.executor_id == user.id
+    if allow_executor:
+        return deal.seller_id == user.id or deal.executor_id == user.id
+    return deal.seller_id == user.id
 
 
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -74,12 +76,12 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def _can_modify(self, user, instance):
         payment = getattr(instance, "payment", None)
         deal = _get_deal_from_payment(payment)
-        return _user_has_deal_access(user, deal)
+        return _user_has_deal_access(user, deal, allow_executor=False)
 
     def perform_create(self, serializer):
         payment = serializer.validated_data.get("payment")
         deal = _get_deal_from_payment(payment)
-        if not _user_has_deal_access(self.request.user, deal):
+        if not _user_has_deal_access(self.request.user, deal, allow_executor=False):
             raise PermissionDenied("Нет доступа к платежу или сделке.")
         serializer.save()
 
