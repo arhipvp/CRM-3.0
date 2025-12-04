@@ -96,58 +96,60 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               key={policy.id}
               className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="grid gap-3 px-3 py-3 text-sm text-slate-500 sm:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_1fr]">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Номер</p>
-                  <p className="font-semibold text-slate-900">{policy.number || '—'}</p>
+              <div className="px-3 py-3 text-sm text-slate-500">
+                <div className="grid gap-4 sm:grid-cols-[1.1fr_0.9fr_0.8fr]">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Номер</p>
+                    <p className="font-semibold text-slate-900">{policy.number || '—'}</p>
+                  </div>
+                  <div className="flex gap-6 text-[10px] uppercase tracking-[0.4em] text-slate-500 mt-3 sm:mt-0">
+                    <span>Начало: {formatDate(policy.startDate)}</span>
+                    <span>Конец: {formatDate(policy.endDate)}</span>
+                  </div>
+                  <div className="flex items-start justify-end gap-3 text-[9px] uppercase tracking-[0.35em] text-slate-400">
+                    <div>
+                      <p>Действия</p>
+                      <div className="flex gap-2 text-xs text-slate-600">
+                        <button
+                          type="button"
+                          className="font-semibold text-slate-500 hover:text-sky-600"
+                          onClick={() => onRequestEditPolicy(policy)}
+                        >
+                          Ред.
+                        </button>
+                        <button
+                          type="button"
+                          className="font-semibold text-rose-500 hover:text-rose-600"
+                          onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                        >
+                          Уд.
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Компания</p>
-                  <ColoredLabel
-                    value={policy.insuranceCompany}
-                    fallback="—"
-                    showDot
-                    className="font-semibold text-slate-800"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Клиент</p>
-                  <p className="font-semibold text-slate-800">
-                    {(policy.insuredClientName ?? policy.clientName) || '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Канал</p>
-                  <ColoredLabel
-                    value={policy.salesChannel}
-                    fallback="—"
-                    showDot
-                    className="font-semibold text-slate-800"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Сумма</p>
-                  <p className="font-semibold text-slate-900">
-                    {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Действие</p>
-                  <div className="flex items-center justify-end gap-3">
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-slate-400 hover:text-sky-600"
-                      onClick={() => onRequestEditPolicy(policy)}
-                    >
-                      Ред.
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-rose-500 hover:text-rose-600"
-                      onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                    >
-                      Уд.
-                    </button>
+                <div className="mt-4 grid gap-4 text-sm text-slate-600 sm:grid-cols-[1fr_1fr_0.8fr]">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Клиент</p>
+                    <p className="font-semibold text-slate-800">
+                      {(policy.insuredClientName ?? policy.clientName) || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Компания</p>
+                    <ColoredLabel
+                      value={policy.insuranceCompany}
+                      fallback="—"
+                      showDot
+                      className="font-semibold text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Канал / Сумма</p>
+                    <div className="text-base font-semibold text-slate-900">
+                      <span className="block">{policy.salesChannel || '—'}</span>
+                      <span>{formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}</span>
+                    </div>
                   </div>
                 </div>
               </div>

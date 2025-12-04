@@ -81,20 +81,53 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   const paidText = payment.actualDate ? formatDate(payment.actualDate) : 'нет';
   const paidTone = payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
 
+  const renderSection = (
+    title: string,
+    records: FinancialRecord[],
+    recordType: 'income' | 'expense',
+    onAdd: () => void
+  ) => (
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
+      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.4em] text-slate-400">
+        <span>{title}</span>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="text-[11px] font-semibold text-sky-600 hover:text-sky-800"
+        >
+          Добавить
+        </button>
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="min-w-full text-sm text-slate-600">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-[0.35em] text-slate-400">
+              <th className="px-2 py-1 text-left">Описание</th>
+              <th className="px-2 py-1 text-left">Дата</th>
+              <th className="px-2 py-1 text-right">Сумма</th>
+              <th className="px-2 py-1 text-right">Действия</th>
+            </tr>
+          </thead>
+          <tbody>{renderRecordRows(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord)}</tbody>
+        </table>
+      </div>
+    </section>
+  );
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <p className="text-base font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
+          <p className="text-lg font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
           <p className="text-sm text-slate-500 truncate">{payment.note || payment.description || 'Без описания'}</p>
         </div>
-        <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.25em] text-slate-500">
+        <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.3em] text-slate-500">
           <div>
-            <p className="text-[9px] leading-none">Оплатить до...</p>
+            <p className="leading-none text-[9px]">Оплатить до...</p>
             <p className="text-sm font-semibold text-slate-800">{formatDate(payment.scheduledDate)}</p>
           </div>
           <div>
-            <p className="text-[9px] leading-none">Оплачен:</p>
+            <p className="leading-none text-[9px]">Оплачен:</p>
             <p className={`text-sm font-semibold ${paidTone}`}>{paidText}</p>
           </div>
         </div>
@@ -108,57 +141,13 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           </button>
         )}
       </div>
-      <div className="mt-2 grid gap-2 md:grid-cols-2">
-        <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
-            <span>{RECORD_TITLES.income}</span>
-            <button
-              type="button"
-              onClick={() => onRequestAddRecord(payment.id, 'income')}
-              className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
-            >
-              Добавить
-            </button>
-          </div>
-          <div className="mt-2 overflow-x-auto">
-            <table className="min-w-full text-sm text-slate-600">
-              <thead>
-                <tr className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  <th className="px-2 py-1 text-left">Описание</th>
-                  <th className="px-2 py-1 text-left">Дата</th>
-                  <th className="px-2 py-1 text-right">Сумма</th>
-                  <th className="px-2 py-1 text-right">Действия</th>
-                </tr>
-              </thead>
-              <tbody>{renderRecordRows(incomes, 'income', onEditFinancialRecord, onDeleteFinancialRecord)}</tbody>
-            </table>
-          </div>
-        </section>
-        <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
-            <span>{RECORD_TITLES.expense}</span>
-            <button
-              type="button"
-              onClick={() => onRequestAddRecord(payment.id, 'expense')}
-              className="text-[10px] font-semibold text-sky-600 hover:text-sky-800"
-            >
-              Добавить
-            </button>
-          </div>
-          <div className="mt-2 overflow-x-auto">
-            <table className="min-w-full text-sm text-slate-600">
-              <thead>
-                <tr className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  <th className="px-2 py-1 text-left">Описание</th>
-                  <th className="px-2 py-1 text-left">Дата</th>
-                  <th className="px-2 py-1 text-right">Сумма</th>
-                  <th className="px-2 py-1 text-right">Действия</th>
-                </tr>
-              </thead>
-              <tbody>{renderRecordRows(expenses, 'expense', onEditFinancialRecord, onDeleteFinancialRecord)}</tbody>
-            </table>
-          </div>
-        </section>
+      <div className="space-y-3">
+        {renderSection(RECORD_TITLES.income, incomes, 'income', () =>
+          onRequestAddRecord(payment.id, 'income')
+        )}
+        {renderSection(RECORD_TITLES.expense, expenses, 'expense', () =>
+          onRequestAddRecord(payment.id, 'expense')
+        )}
       </div>
     </div>
   );
