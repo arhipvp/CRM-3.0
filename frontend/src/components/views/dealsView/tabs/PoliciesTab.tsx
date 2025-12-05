@@ -97,33 +97,31 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
               <div className="px-3 py-3 text-sm text-slate-500">
-                <div className="grid gap-4 sm:grid-cols-[1.1fr_0.9fr_0.8fr]">
+                <div className="grid gap-4 sm:grid-cols-[1.1fr_auto]">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Номер</p>
-                    <p className="font-semibold text-slate-900">{policy.number || '—'}</p>
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">?????</p>
+                    <p className="font-semibold text-slate-900">{policy.number || '-'}</p>
                   </div>
-                  <div className="flex gap-6 text-[10px] uppercase tracking-[0.4em] text-slate-500 mt-3 sm:mt-0">
-                    <span>Начало: {formatDate(policy.startDate)}</span>
-                    <span>Конец: {formatDate(policy.endDate)}</span>
-                  </div>
-                  <div className="flex items-start justify-end gap-3 text-[9px] uppercase tracking-[0.35em] text-slate-400">
-                    <div>
-                      <p>Действия</p>
-                      <div className="flex gap-2 text-xs text-slate-600">
-                        <button
-                          type="button"
-                          className="font-semibold text-slate-500 hover:text-sky-600"
-                          onClick={() => onRequestEditPolicy(policy)}
-                        >
-                          Ред.
-                        </button>
-                        <button
-                          type="button"
-                          className="font-semibold text-rose-500 hover:text-rose-600"
-                          onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                        >
-                          Уд.
-                        </button>
+                  <div className="flex justify-end">
+                    <div className="flex items-start justify-end gap-3 text-[9px] uppercase tracking-[0.35em] text-slate-400">
+                      <div>
+                        <p>????????</p>
+                        <div className="flex gap-2 text-xs text-slate-600">
+                          <button
+                            type="button"
+                            className="font-semibold text-slate-500 hover:text-sky-600"
+                            onClick={() => onRequestEditPolicy(policy)}
+                          >
+                            ???.
+                          </button>
+                          <button
+                            type="button"
+                            className="font-semibold text-rose-500 hover:text-rose-600"
+                            onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                          >
+                            ??.
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
