@@ -135,6 +135,7 @@ class Deal(SoftDeleteModel):
         for policy in self.policies.all():
             policy.delete()
         self.payments.all().delete()
+        self.tasks.all().delete()
         return super().delete(*args, **kwargs)
 
 

@@ -6,7 +6,7 @@ from django.test import TestCase
 
 
 class DealTaskCascadeDeletionTests(TestCase):
-    def test_tasks_remain_after_deal_deleted(self):
+    def test_tasks_deleted_when_deal_deleted(self):
         seller = User.objects.create_user(username="task-seller", password="pass")
         client = Client.objects.create(name="Task Cascade Client")
         deal = Deal.objects.create(
@@ -20,6 +20,6 @@ class DealTaskCascadeDeletionTests(TestCase):
 
         deal.delete()
 
-        task.refresh_from_db()
-        self.assertIsNone(task.deleted_at)
-        self.assertEqual(Task.objects.filter(deal=deal).count(), 1)
+        deleted_task = Task.objects.with_deleted().get(id=task.id)
+        self.assertIsNotNone(deleted_task.deleted_at)
+        self.assertEqual(Task.objects.filter(deal=deal).count(), 0)
