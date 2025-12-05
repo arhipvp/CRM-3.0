@@ -122,6 +122,7 @@ class AuditLog(models.Model):
         ("update", "Редактирование"),
         ("merge", "Слияние"),
         ("delete", "Удаление"),
+        ("restore", "Восстановление"),
         ("assign", "Назначение"),
         ("revoke", "Отзыв"),
     ]

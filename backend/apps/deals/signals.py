@@ -44,7 +44,10 @@ def log_deal_change(sender, instance, created, **kwargs):
     was_deleted = getattr(instance, "_was_deleted", False)
     now_deleted = getattr(instance, "_now_deleted", False)
 
-    if was_deleted and now_deleted:
+    if was_deleted and not now_deleted:
+        # Это восстановление
+        action = "restore"
+    elif was_deleted and now_deleted:
         # Это обновление, но не soft delete (оба deleted)
         action = "update"
     elif not was_deleted and now_deleted:
@@ -63,6 +66,7 @@ def log_deal_change(sender, instance, created, **kwargs):
         "create": f"Создана сделка '{instance.title}'",
         "update": f"Изменена сделка '{instance.title}'",
         "soft_delete": f"Удалена сделка '{instance.title}'",
+        "restore": f"Восстановлена сделка '{instance.title}'",
     }
 
     AuditLog.objects.create(

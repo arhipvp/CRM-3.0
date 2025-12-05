@@ -395,6 +395,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   const [isMerging, setIsMerging] = useState(false);
 
   const [isDeletingDeal, setIsDeletingDeal] = useState(false);
+  const [isRestoringDeal, setIsRestoringDeal] = useState(false);
   const [isClosingDeal, setIsClosingDeal] = useState(false);
   const [isReopeningDeal, setIsReopeningDeal] = useState(false);
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
@@ -896,6 +897,21 @@ export const DealsView: React.FC<DealsViewProps> = ({
       setIsDeletingDeal(false);
     }
   }, [isSelectedDealDeleted, onDeleteDeal, selectedDeal]);
+
+  const handleRestoreDealClick = useCallback(async () => {
+    if (!selectedDeal || !isSelectedDealDeleted) {
+      return;
+    }
+
+    setIsRestoringDeal(true);
+    try {
+      await onRestoreDeal(selectedDeal.id);
+    } catch (err) {
+      console.error('Ошибка восстановления сделки:', err);
+    } finally {
+      setIsRestoringDeal(false);
+    }
+  }, [isSelectedDealDeleted, onRestoreDeal, selectedDeal]);
 
   const handleCloseDealClick = useCallback(async () => {
     if (!selectedDeal || isSelectedDealDeleted || isDealClosedStatus || !isCurrentUserSeller) {
@@ -2166,14 +2182,25 @@ export const DealsView: React.FC<DealsViewProps> = ({
               >
                 Редактировать
               </button>
-              <button
-                type="button"
-                onClick={handleDeleteDealClick}
-                disabled={isSelectedDealDeleted || isDeletingDeal}
-                className="px-4 py-1.5 text-sm font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
-              </button>
+              {isSelectedDealDeleted ? (
+                <button
+                  type="button"
+                  onClick={handleRestoreDealClick}
+                  disabled={isRestoringDeal}
+                  className="px-4 py-1.5 text-sm font-semibold rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleDeleteDealClick}
+                  disabled={isDeletingDeal}
+                  className="px-4 py-1.5 text-sm font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleCloseDealClick}
