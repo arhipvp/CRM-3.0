@@ -314,6 +314,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   onDeleteDeal,
 
+  onRestoreDeal,
+
   dealSearch,
 
   onDealSearchChange,
