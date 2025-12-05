@@ -11,6 +11,7 @@ export interface FilterParams {
   search?: string;
   ordering?: string;
   show_deleted?: boolean;
+  show_closed?: boolean;
   [key: string]: unknown;
 }
 

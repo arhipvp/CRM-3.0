@@ -217,9 +217,11 @@ const AppContent: React.FC = () => {
   setDealExpectedCloseFrom,
   dealExpectedCloseTo,
   setDealExpectedCloseTo,
-  dealShowDeleted,
-  setDealShowDeleted,
-  filters: dealFilters,
+    dealShowDeleted,
+    setDealShowDeleted,
+    dealShowClosed,
+    setDealShowClosed,
+    filters: dealFilters,
   } = useDealFilters();
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
@@ -1333,6 +1335,8 @@ const AppContent: React.FC = () => {
         onDealExpectedCloseToChange={setDealExpectedCloseTo}
         dealShowDeleted={dealShowDeleted}
         onDealShowDeletedChange={setDealShowDeleted}
+        dealShowClosed={dealShowClosed}
+        onDealShowClosedChange={setDealShowClosed}
         onPolicyDraftReady={handlePolicyDraftReady}
         knowledgeDocs={knowledgeDocs}
         knowledgeLoading={knowledgeLoading}

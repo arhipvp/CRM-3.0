@@ -1,5 +1,7 @@
 from apps.clients.models import Client
 from apps.deals.models import Deal
+from apps.finances.models import FinancialRecord, Payment
+from apps.policies.models import Policy
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
@@ -99,3 +101,49 @@ class DealCloseReopenTests(APITestCase):
         self.deal.refresh_from_db()
         self.assertEqual(self.deal.status, "open")
         self.assertEqual(self.deal.closing_reason, "")
+
+    def test_closed_deals_hidden_without_flag_and_shown_with_flag(self):
+        closed_deal = Deal.objects.create(
+            title="Archived Deal",
+            client=self.deal.client,
+            seller=self.seller,
+            status="won",
+            stage_name="final",
+        )
+        self._auth(self.admin_token)
+        response = self.client.get("/api/v1/deals/", format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = {entry["id"] for entry in response.data.get("results", [])}
+        self.assertIn(str(self.deal.id), ids)
+        self.assertNotIn(str(closed_deal.id), ids)
+
+        response = self.client.get(
+            "/api/v1/deals/", {"show_closed": "1"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = {entry["id"] for entry in response.data.get("results", [])}
+        self.assertIn(str(closed_deal.id), ids)
+
+    def test_closing_deal_keeps_policies_and_finance_records_intact(self):
+        policy = Policy.objects.create(deal=self.deal, number="POL-123")
+        payment = Payment.objects.create(
+            policy=policy, deal=self.deal, amount=250.0, description="Premium"
+        )
+        FinancialRecord.objects.create(
+            payment=payment, amount=250.0, description="Income"
+        )
+
+        self._auth(self.seller_token)
+        response = self.client.post(
+            f"/api/v1/deals/{self.deal.id}/close/",
+            {"reason": "Won"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        policy.refresh_from_db()
+        payment.refresh_from_db()
+        record = FinancialRecord.objects.get(payment=payment)
+        self.assertIsNone(policy.deleted_at)
+        self.assertIsNone(payment.deleted_at)
+        self.assertIsNone(record.deleted_at)

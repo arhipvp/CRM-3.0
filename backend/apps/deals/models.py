@@ -132,7 +132,9 @@ class Deal(SoftDeleteModel):
         return self.title
 
     def delete(self, *args, **kwargs):
-        self.tasks.all().delete()
+        for policy in self.policies.all():
+            policy.delete()
+        self.payments.all().delete()
         return super().delete(*args, **kwargs)
 
 

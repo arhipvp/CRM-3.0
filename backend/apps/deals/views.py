@@ -92,6 +92,12 @@ class DealViewSet(
             return False
         return str(raw_value).lower() in ("1", "true", "yes", "on")
 
+    def _include_closed_flag(self):
+        raw_value = self.request.query_params.get("show_closed")
+        if raw_value is None:
+            return False
+        return str(raw_value).lower() in ("1", "true", "yes", "on")
+
     def get_queryset(self):
         """
         Фильтровать сделки в зависимости от роли пользователя:
@@ -104,6 +110,10 @@ class DealViewSet(
 
         if self.action in {"close", "reopen"}:
             return queryset
+
+        include_closed = self._include_closed_flag()
+        if not include_closed:
+            queryset = queryset.exclude(status__in=CLOSED_STATUSES)
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:

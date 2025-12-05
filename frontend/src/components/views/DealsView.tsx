@@ -234,6 +234,10 @@ interface DealsViewProps {
 
   onDealShowDeletedChange: (value: boolean) => void;
 
+  dealShowClosed: boolean;
+
+  onDealShowClosedChange: (value: boolean) => void;
+
 }
 
 
@@ -339,6 +343,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
   dealShowDeleted,
 
   onDealShowDeletedChange,
+
+  dealShowClosed,
+
+  onDealShowClosedChange,
 
   currentUser,
 
@@ -2077,17 +2085,31 @@ export const DealsView: React.FC<DealsViewProps> = ({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="dealShowDeleted"
-              type="checkbox"
-              checked={dealShowDeleted}
-              onChange={(event) => onDealShowDeletedChange(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-            />
-            <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
-              Показать удалённые сделки
-            </label>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                id="dealShowClosed"
+                type="checkbox"
+                checked={dealShowClosed}
+                onChange={(event) => onDealShowClosedChange(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              />
+              <label htmlFor="dealShowClosed" className="text-xs font-semibold text-slate-500">
+                Показать закрытые сделки
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="dealShowDeleted"
+                type="checkbox"
+                checked={dealShowDeleted}
+                onChange={(event) => onDealShowDeletedChange(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              />
+              <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
+                Показать удалённые сделки
+              </label>
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
