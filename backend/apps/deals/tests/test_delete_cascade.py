@@ -37,5 +37,6 @@ class DealDeletionCascadeTests(TestCase):
         self.assertIsNotNone(deleted_payment.deleted_at)
         self.assertIsNotNone(deleted_record.deleted_at)
 
-        task.refresh_from_db()
-        self.assertIsNone(task.deleted_at)
+        deleted_task = Task.objects.with_deleted().get(id=task.id)
+        self.assertIsNotNone(deleted_task.deleted_at)
+        self.assertEqual(Task.objects.filter(deal=self.deal).count(), 0)
