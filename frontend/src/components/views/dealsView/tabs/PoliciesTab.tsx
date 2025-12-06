@@ -7,6 +7,7 @@ import {
   PolicySortKey,
 } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
+import { LabelValuePair } from '../../../common/LabelValuePair';
 import { PaymentCard } from '../../../policies/PaymentCard';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
@@ -96,7 +97,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               key={policy.id}
               className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="px-3 py-3 text-sm text-slate-500">
+              <div className="px-3 py-3 text-sm text-slate-500 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-[1.1fr_auto]">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">?????</p>
@@ -126,41 +127,51 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-4 text-sm text-slate-600 sm:grid-cols-[1fr_1fr_0.8fr]">
-                  <div>
-                    <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Клиент</p>
-                    <p className="font-semibold text-slate-800">
-                      {(policy.insuredClientName ?? policy.clientName) || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Компания</p>
-                    <ColoredLabel
-                      value={policy.insuranceCompany}
-                      fallback="—"
-                      showDot
-                      className="font-semibold text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400">Канал / Сумма</p>
-                    <div className="text-base font-semibold text-slate-900">
-                      <span className="block">{policy.salesChannel || '—'}</span>
-                      <span>{formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}</span>
-                    </div>
-                  </div>
+                <div className="mt-4 flex flex-wrap gap-6">
+                  <LabelValuePair
+                    label="Клиент"
+                    value={(policy.insuredClientName ?? policy.clientName) || '-'}
+                    className="min-w-[180px]"
+                  />
+                  <LabelValuePair
+                    label="Компания"
+                    value={
+                      <ColoredLabel
+                        value={policy.insuranceCompany}
+                        fallback="-"
+                        showDot
+                        className="font-semibold text-slate-900"
+                      />
+                    }
+                    className="min-w-[160px]"
+                  />
+                  <LabelValuePair
+                    label="Канал / сумма"
+                    value={
+                      <span className="flex flex-col gap-0.5">
+                        <span className="text-xs font-normal uppercase tracking-[0.2em] text-slate-500">
+                          {policy.salesChannel || '-'}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-900">
+                          {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
+                        </span>
+                      </span>
+                    }
+                    className="min-w-[220px]"
+                    valueClassName="flex flex-col gap-0.5 text-base text-slate-900"
+                  />
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-500 sm:flex sm:items-center sm:justify-between">
-                <div className="flex flex-wrap text-sm text-slate-600 gap-4">
-                  <span>Тип: {policy.insuranceType || '—'}</span>
-                  <span>Марка: {policy.brand || '—'}</span>
-                  <span>Модель: {policy.model || '—'}</span>
-                  <span>VIN: {policy.vin || '—'}</span>
+              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 space-y-3">
+                <div className="flex flex-wrap gap-6">
+                  <LabelValuePair label="Тип" value={policy.insuranceType || '-'} />
+                  <LabelValuePair label="Марка" value={policy.brand || '-'} />
+                  <LabelValuePair label="Модель" value={policy.model || '-'} />
+                  <LabelValuePair label="VIN" value={policy.vin || '-'} />
                 </div>
-                <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                  <span>Начало: {formatDate(policy.startDate)}</span>
-                  <span>Окончание: {formatDate(policy.endDate)}</span>
+                <div className="flex flex-wrap gap-6 text-sm text-slate-500">
+                  <LabelValuePair label="Начало" value={formatDate(policy.startDate)} className="text-sm text-slate-500" />
+                  <LabelValuePair label="Окончание" value={formatDate(policy.endDate)} className="text-sm text-slate-500" />
                 </div>
               </div>
               <div className="border-t border-slate-100 bg-slate-50 px-3 py-3">
