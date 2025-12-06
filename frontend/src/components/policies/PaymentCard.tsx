@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { FinancialRecord, Payment } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 
@@ -15,7 +15,7 @@ const RECORD_TITLES: Record<'income' | 'expense', string> = {
   expense: 'Расходы',
 };
 
-const renderRecordRows = (
+const renderRecordList = (
   records: FinancialRecord[],
   recordType: 'income' | 'expense',
   onEditRecord: (recordId: string) => void,
@@ -23,48 +23,59 @@ const renderRecordRows = (
 ) => {
   if (!records.length) {
     return (
-      <tr>
-        <td colSpan={4} className="px-2 py-1 text-[11px] text-center text-slate-400">
-          Записей нет
-        </td>
-      </tr>
+      <p className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+        Записей нет
+      </p>
     );
   }
 
-  return records.map((record) => {
-    const amountValue = Math.abs(Number(record.amount) || 0);
-    const sign = recordType === 'income' ? '+' : '-';
+  return (
+    <div className="space-y-2">
+      {records.map((record) => {
+        const amountValue = Math.abs(Number(record.amount) || 0);
+        const tone = recordType === 'income' ? 'text-emerald-600' : 'text-rose-600';
+        const sign = recordType === 'income' ? '+' : '-';
 
-    return (
-      <tr key={record.id}>
-        <td className="px-2 py-1 text-[11px] text-slate-600">{record.description || 'Без описания'}</td>
-        <td className="px-2 py-1 text-[11px] text-slate-600">{formatDate(record.date)}</td>
-        <td className="px-2 py-1 text-right text-[11px] font-semibold text-slate-900">
-          <span className={recordType === 'income' ? 'text-emerald-600' : 'text-rose-600'}>
-            {sign}
-            {formatCurrency(amountValue.toString())}
-          </span>
-        </td>
-        <td className="px-2 py-1 text-right text-[11px] text-slate-600 space-x-2">
-          <button
-            onClick={() => onEditRecord(record.id)}
-            className="text-[11px] text-sky-600 hover:text-sky-800 font-semibold"
-            type="button"
+        return (
+          <div
+            key={record.id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm"
           >
-            Изменить
-          </button>
-          <button
-            onClick={() => onDeleteRecord(record.id).catch(() => undefined)}
-            className="text-[11px] text-rose-500 hover:text-rose-600 font-semibold"
-            type="button"
-          >
-            Удалить
-          </button>
-        </td>
-      </tr>
-    );
-  });
+            <div className="min-w-0 space-y-0.5">
+              <p className="font-semibold text-slate-800">{record.description || 'Без описания'}</p>
+              <p className="text-[11px] text-slate-500">{formatDate(record.date)}</p>
+            </div>
+            <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
+              <span className={tone}>
+                {sign}
+                {formatCurrency(amountValue.toString())}
+              </span>
+            </div>
+            <div className="flex gap-3 text-[11px] text-slate-500">
+              <button
+                onClick={() => onEditRecord(record.id)}
+                className="font-semibold text-sky-600 hover:text-sky-800"
+                type="button"
+              >
+                Изменить
+              </button>
+              <button
+                onClick={() => onDeleteRecord(record.id).catch(() => undefined)}
+                className="font-semibold text-rose-500 hover:text-rose-600"
+                type="button"
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
+
+const describeRecordsCount = (records: FinancialRecord[]) =>
+  records.length ? `${records.length} ${records.length === 1 ? 'запись' : 'записей'}` : 'Нет записей';
 
 export const PaymentCard: React.FC<PaymentCardProps> = ({
   payment,
@@ -80,39 +91,55 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
 
   const paidText = payment.actualDate ? formatDate(payment.actualDate) : 'нет';
   const paidTone = payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
+  const [expandedSections, setExpandedSections] = useState<Record<'income' | 'expense', boolean>>({
+    income: false,
+    expense: false,
+  });
 
-  const renderSection = (
+  const toggleSection = (section: 'income' | 'expense') =>
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+
+  const renderAccordionSection = (
     title: string,
     records: FinancialRecord[],
     recordType: 'income' | 'expense',
     onAdd: () => void
-  ) => (
-    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
-      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.4em] text-slate-400">
-        <span>{title}</span>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="text-[11px] font-semibold text-sky-600 hover:text-sky-800"
-        >
-          Добавить
-        </button>
-      </div>
-      <div className="mt-3 overflow-x-auto">
-        <table className="min-w-full text-sm text-slate-600">
-          <thead>
-            <tr className="text-[10px] uppercase tracking-[0.35em] text-slate-400">
-              <th className="px-2 py-1 text-left">Описание</th>
-              <th className="px-2 py-1 text-left">Дата</th>
-              <th className="px-2 py-1 text-right">Сумма</th>
-              <th className="px-2 py-1 text-right">Действия</th>
-            </tr>
-          </thead>
-          <tbody>{renderRecordRows(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord)}</tbody>
-        </table>
-      </div>
-    </section>
-  );
+  ) => {
+    const isOpen = expandedSections[recordType];
+    return (
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 shadow-inner">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">{title}</p>
+            <p className="text-[11px] text-slate-500">{describeRecordsCount(records)}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onAdd}
+              className="text-[11px] font-semibold text-sky-600 hover:text-sky-800"
+            >
+              Добавить
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleSection(recordType)}
+              className="text-[11px] font-semibold text-slate-500 hover:text-slate-700"
+            >
+              {isOpen ? 'Скрыть' : 'Показать'}
+            </button>
+          </div>
+        </div>
+        {isOpen && (
+          <div className="px-4 pb-4">
+            <div className="space-y-2">
+              {renderRecordList(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord)}
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
@@ -142,10 +169,10 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
         )}
       </div>
       <div className="space-y-3">
-        {renderSection(RECORD_TITLES.income, incomes, 'income', () =>
+        {renderAccordionSection(RECORD_TITLES.income, incomes, 'income', () =>
           onRequestAddRecord(payment.id, 'income')
         )}
-        {renderSection(RECORD_TITLES.expense, expenses, 'expense', () =>
+        {renderAccordionSection(RECORD_TITLES.expense, expenses, 'expense', () =>
           onRequestAddRecord(payment.id, 'expense')
         )}
       </div>
