@@ -1191,7 +1191,17 @@ const AppContent: React.FC = () => {
         source: values.source,
         note: values.note,
       });
-      updateAppData((prev) => ({ financialRecords: [created, ...prev.financialRecords] }));
+      updateAppData((prev) => ({
+        financialRecords: [created, ...prev.financialRecords],
+        payments: prev.payments.map((payment) =>
+          payment.id === created.paymentId
+            ? {
+                ...payment,
+                financialRecords: [...(payment.financialRecords ?? []), created],
+              }
+            : payment
+        ),
+      }));
       setFinancialRecordModal(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при создании записи');
@@ -1212,6 +1222,16 @@ const AppContent: React.FC = () => {
         financialRecords: prev.financialRecords.map((record) =>
           record.id === updated.id ? updated : record
         ),
+        payments: prev.payments.map((payment) =>
+          payment.id === updated.paymentId
+            ? {
+                ...payment,
+                financialRecords: (payment.financialRecords ?? []).map((record) =>
+                  record.id === updated.id ? updated : record
+                ),
+              }
+            : payment
+        ),
       }));
       setFinancialRecordModal(null);
     } catch (err) {
@@ -1221,13 +1241,28 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteFinancialRecord = async (recordId: string) => {
-    try {
-      await deleteFinancialRecord(recordId);
-      updateAppData((prev) => ({
-        financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
-      }));
-      setFinancialRecordModal(null);
-    } catch (err) {
+      try {
+        await deleteFinancialRecord(recordId);
+        updateAppData((prev) => {
+          const existing = prev.financialRecords.find((record) => record.id === recordId);
+          return {
+            financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
+            payments: existing
+              ? prev.payments.map((payment) =>
+                  payment.id === existing.paymentId
+                    ? {
+                        ...payment,
+                        financialRecords: (payment.financialRecords ?? []).filter(
+                          (record) => record.id !== recordId
+                        ),
+                      }
+                    : payment
+                )
+              : prev.payments,
+          };
+        });
+        setFinancialRecordModal(null);
+      } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при удалении записи');
       throw err;
     }
