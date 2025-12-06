@@ -7,6 +7,7 @@ import {
   formatCurrency,
   formatDate,
   FinancialRecordCreationContext,
+  policyHasUnpaidActivity,
 } from './dealsView/helpers';
 import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
@@ -105,6 +106,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     return map;
   }, [payments]);
 
+  const allFinancialRecords = useMemo(
+    () => payments.flatMap((payment) => payment.financialRecords ?? []),
+    [payments]
+  );
+
   const filteredPolicies = useMemo(() => {
     let result = [...policies];
 
@@ -132,14 +138,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
     const showUnpaidOnly = filters.unpaid === 'true';
     if (showUnpaidOnly) {
-      result = result.filter((policy) => {
-        const policyPayments = paymentsByPolicyMap.get(policy.id) ?? [];
-        const hasUnpaidPayment = policyPayments.some((payment) => !payment.actualDate);
-        const hasUnpaidRecords = policyPayments.some((payment) =>
-          (payment.financialRecords ?? []).some((record) => !(record.date ?? '').trim())
-        );
-        return hasUnpaidPayment || hasUnpaidRecords;
-      });
+      result = result.filter((policy) =>
+        policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords)
+      );
     }
 
     const ordering = (filters.ordering as string) || '-startDate';
@@ -156,7 +157,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     });
 
     return result;
-  }, [filters, policies, paymentsByPolicyMap]);
+  }, [filters, policies, paymentsByPolicyMap, allFinancialRecords]);
 
   const customFilters = [
     ...(statusOptions.length
@@ -183,11 +184,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         payments: paymentsByPolicyMap.get(policy.id) ?? [],
       })),
     [filteredPolicies, paymentsByPolicyMap]
-  );
-
-  const allFinancialRecords = useMemo(
-    () => payments.flatMap((payment) => payment.financialRecords ?? []),
-    [payments]
   );
 
   const editingFinancialRecord = editingFinancialRecordId

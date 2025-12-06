@@ -1,4 +1,4 @@
-import type { DealStatus, Policy, PolicyRecognitionResult } from '../../../types';
+import type { DealStatus, FinancialRecord, Payment, Policy, PolicyRecognitionResult } from '../../../types';
 
 export const statusLabels: Record<DealStatus, string> = {
   open: 'В работе',
@@ -152,4 +152,28 @@ export const formatRecognitionSummary = (result: PolicyRecognitionResult) => {
     return 'Полис распознан, можно перейти к заполнению.';
   }
   return result.message ?? 'Ошибка при распознавании полиса';
+};
+
+export const getPaymentFinancialRecords = (payment: Payment, allFinancialRecords: FinancialRecord[]) => {
+  if (payment.financialRecords && payment.financialRecords.length > 0) {
+    return payment.financialRecords;
+  }
+  return allFinancialRecords.filter((record) => record.paymentId === payment.id);
+};
+
+export const hasUnpaidFinancialActivity = (payment: Payment, allFinancialRecords: FinancialRecord[]) => {
+  if (!payment.actualDate) {
+    return true;
+  }
+  const records = getPaymentFinancialRecords(payment, allFinancialRecords);
+  return records.some((record) => !(record.date ?? '').trim());
+};
+
+export const policyHasUnpaidActivity = (
+  policyId: string,
+  paymentsByPolicyMap: Map<string, Payment[]>,
+  allFinancialRecords: FinancialRecord[]
+) => {
+  const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
+  return policyPayments.some((payment) => hasUnpaidFinancialActivity(payment, allFinancialRecords));
 };
