@@ -138,27 +138,27 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               <div className="px-3 py-3 text-sm text-slate-500 space-y-3">
                 <div className="grid gap-4 sm:grid-cols-[1.1fr_auto]">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">?????</p>
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Номер</p>
                     <p className="font-semibold text-slate-900">{policy.number || '-'}</p>
                   </div>
                   <div className="flex justify-end">
                     <div className="flex items-start justify-end gap-3 text-[9px] uppercase tracking-[0.35em] text-slate-400">
                       <div>
-                        <p>????????</p>
+                        <p>Действия</p>
                         <div className="flex gap-2 text-xs text-slate-600">
                           <button
                             type="button"
                             className="font-semibold text-slate-500 hover:text-sky-600"
                             onClick={() => onRequestEditPolicy(policy)}
                           >
-                            ???.
+                            Ред.
                           </button>
                           <button
                             type="button"
                             className="font-semibold text-rose-500 hover:text-rose-600"
                             onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
                           >
-                            ??.
+                            Уд.
                           </button>
                         </div>
                       </div>
