@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { FinancialRecord, Payment } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 
@@ -8,6 +8,7 @@ interface PaymentCardProps {
   onRequestAddRecord: (paymentId: string, recordType: 'income' | 'expense') => void;
   onEditFinancialRecord: (recordId: string) => void;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
+  recordsExpandedOverride?: boolean;
 }
 
 const RECORD_TITLES: Record<'income' | 'expense', string> = {
@@ -83,6 +84,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   onRequestAddRecord,
   onEditFinancialRecord,
   onDeleteFinancialRecord,
+  recordsExpandedOverride,
 }) => {
   const incomes =
     payment.financialRecords?.filter((record) => record.recordType === 'Доход') || [];
@@ -95,6 +97,16 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
     income: false,
     expense: false,
   });
+
+  useEffect(() => {
+    if (recordsExpandedOverride === undefined) {
+      return;
+    }
+    setExpandedSections({
+      income: recordsExpandedOverride,
+      expense: recordsExpandedOverride,
+    });
+  }, [recordsExpandedOverride]);
 
   const toggleSection = (section: 'income' | 'expense') =>
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));

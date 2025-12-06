@@ -54,6 +54,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onRequestEditPolicy,
 }) => {
   const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
+  const [recordsExpandedAll, setRecordsExpandedAll] = useState(false);
 
   if (!selectedDeal) {
     return null;
@@ -87,41 +88,43 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           + Создать полис
         </button>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs text-slate-400">Сортировка: {sortLabel} {sortOrderSymbol}</div>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-            onClick={() =>
-              setPaymentsExpanded((prev) => {
-                const next = { ...prev };
-                sortedPolicies.forEach((policy) => {
-                  next[policy.id] = true;
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-slate-400">Сортировка: {sortLabel} {sortOrderSymbol}</div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+              onClick={() => {
+                setPaymentsExpanded((prev) => {
+                  const next = { ...prev };
+                  sortedPolicies.forEach((policy) => {
+                    next[policy.id] = true;
+                  });
+                  return next;
                 });
-                return next;
-              })
-            }
-          >
-            Раскрыть все
-          </button>
-          <button
-            type="button"
-            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-            onClick={() =>
-              setPaymentsExpanded((prev) => {
-                const next = { ...prev };
-                sortedPolicies.forEach((policy) => {
-                  next[policy.id] = false;
+                setRecordsExpandedAll(true);
+              }}
+            >
+              Раскрыть все
+            </button>
+            <button
+              type="button"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+              onClick={() => {
+                setPaymentsExpanded((prev) => {
+                  const next = { ...prev };
+                  sortedPolicies.forEach((policy) => {
+                    next[policy.id] = false;
+                  });
+                  return next;
                 });
-                return next;
-              })
-            }
-          >
-            Скрыть все
-          </button>
+                setRecordsExpandedAll(false);
+              }}
+            >
+              Скрыть все
+            </button>
+          </div>
         </div>
-      </div>
       <div className="space-y-4">
         {sortedPolicies.map((policy) => {
           const payments =
@@ -241,6 +244,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                       <PaymentCard
                         key={payment.id}
                         payment={payment}
+                        recordsExpandedOverride={recordsExpandedAll}
                         onEditPayment={(paymentId) => {
                           setCreatingPaymentPolicyId(null);
                           setEditingPaymentId(paymentId);

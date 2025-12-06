@@ -81,6 +81,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const [creatingFinancialRecordContext, setCreatingFinancialRecordContext] =
     useState<FinancialRecordCreationContext | null>(null);
   const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
+  const [recordsExpandedAll, setRecordsExpandedAll] = useState(false);
 
   const statusOptions = useMemo(() => {
     const unique = Array.from(new Set(policies.map((policy) => policy.status).filter(Boolean)));
@@ -89,6 +90,20 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       label: normalizeStatusLabel(status),
     }));
   }, [policies]);
+
+  const paymentsByPolicyMap = useMemo(() => {
+    const map = new Map<string, Payment[]>();
+    payments.forEach((payment) => {
+      const policyId = payment.policyId;
+      if (!policyId) {
+        return;
+      }
+      const current = map.get(policyId) ?? [];
+      current.push(payment);
+      map.set(policyId, current);
+    });
+    return map;
+  }, [payments]);
 
   const filteredPolicies = useMemo(() => {
     let result = [...policies];
@@ -115,6 +130,18 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       result = result.filter((policy) => policy.status === filters.status);
     }
 
+    const showUnpaidOnly = filters.unpaid === 'true';
+    if (showUnpaidOnly) {
+      result = result.filter((policy) => {
+        const policyPayments = paymentsByPolicyMap.get(policy.id) ?? [];
+        const hasUnpaidPayment = policyPayments.some((payment) => !payment.actualDate);
+        const hasUnpaidRecords = policyPayments.some((payment) =>
+          (payment.financialRecords ?? []).some((record) => !(record.date ?? '').trim())
+        );
+        return hasUnpaidPayment || hasUnpaidRecords;
+      });
+    }
+
     const ordering = (filters.ordering as string) || '-startDate';
     const direction = ordering.startsWith('-') ? -1 : 1;
     const field = (ordering.replace(/^-/, '') as PolicySortKey) || 'startDate';
@@ -129,26 +156,33 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     });
 
     return result;
-  }, [filters, policies]);
+  }, [filters, policies, paymentsByPolicyMap]);
 
-  const customFilters = statusOptions.length
-    ? [
-        {
-          key: 'status',
-          label: 'Статус',
-          type: 'select' as const,
-          options: statusOptions,
-        },
-      ]
-    : [];
+  const customFilters = [
+    ...(statusOptions.length
+      ? [
+          {
+            key: 'status',
+            label: 'Статус',
+            type: 'select' as const,
+            options: statusOptions,
+          },
+        ]
+      : []),
+    {
+      key: 'unpaid',
+      label: 'Показывать только неоплаченные',
+      type: 'checkbox' as const,
+    },
+  ];
 
   const paymentsByPolicy = useMemo(
     () =>
       filteredPolicies.map((policy) => ({
         policy,
-        payments: payments.filter((payment) => payment.policyId === policy.id),
+        payments: paymentsByPolicyMap.get(policy.id) ?? [],
       })),
-    [filteredPolicies, payments]
+    [filteredPolicies, paymentsByPolicyMap]
   );
 
   const allFinancialRecords = useMemo(
@@ -179,13 +213,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             type="button"
             className="text-xs font-semibold text-slate-500 hover:text-slate-700"
             onClick={() =>
-              setPaymentsExpanded((prev) => {
-                const next = { ...prev };
-                filteredPolicies.forEach((policy) => {
-                  next[policy.id] = true;
+              {
+                setPaymentsExpanded((prev) => {
+                  const next = { ...prev };
+                  filteredPolicies.forEach((policy) => {
+                    next[policy.id] = true;
+                  });
+                  return next;
                 });
-                return next;
-              })
+                setRecordsExpandedAll(true);
+              }
             }
           >
             Раскрыть все
@@ -194,13 +231,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             type="button"
             className="text-xs font-semibold text-slate-500 hover:text-slate-700"
             onClick={() =>
-              setPaymentsExpanded((prev) => {
-                const next = { ...prev };
-                filteredPolicies.forEach((policy) => {
-                  next[policy.id] = false;
+              {
+                setPaymentsExpanded((prev) => {
+                  const next = { ...prev };
+                  filteredPolicies.forEach((policy) => {
+                    next[policy.id] = false;
+                  });
+                  return next;
                 });
-                return next;
-              })
+                setRecordsExpandedAll(false);
+              }
             }
           >
             Скрыть все
@@ -315,6 +355,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   <div className="mt-2 space-y-2 text-sm text-slate-600">
                     {payments.map((payment) => (
                       <PaymentCard
+                        recordsExpandedOverride={recordsExpandedAll}
                         key={payment.id}
                         payment={payment}
                         onRequestAddRecord={(paymentId, recordType) => {
