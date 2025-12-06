@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import type { Deal, Payment, Policy } from '../../../../types';
 import {
   FinancialRecordCreationContext,
   formatCurrency,
   PolicySortKey,
+  policyHasUnpaidActivity,
 } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { LabelValuePair } from '../../../common/LabelValuePair';
@@ -55,6 +56,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 }) => {
   const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
   const [recordsExpandedAll, setRecordsExpandedAll] = useState(false);
+  const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const STORAGE_PAYMENTS_KEY = 'crm:policies:payments-expanded';
   const STORAGE_RECORDS_KEY = 'crm:policies:records-expanded';
 
@@ -93,6 +95,34 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     window.localStorage.setItem(STORAGE_RECORDS_KEY, recordsExpandedAll ? 'true' : 'false');
   }, [recordsExpandedAll]);
 
+  const paymentsByPolicyMap = useMemo(() => {
+    const map = new Map<string, Payment[]>();
+    relatedPayments.forEach((payment) => {
+      const policyId = payment.policyId;
+      if (!policyId) {
+        return;
+      }
+      const current = map.get(policyId) ?? [];
+      current.push(payment);
+      map.set(policyId, current);
+    });
+    return map;
+  }, [relatedPayments]);
+
+  const allFinancialRecords = useMemo(
+    () => relatedPayments.flatMap((payment) => payment.financialRecords ?? []),
+    [relatedPayments]
+  );
+
+  const visiblePolicies = useMemo(() => {
+    if (!showUnpaidOnly) {
+      return sortedPolicies;
+    }
+    return sortedPolicies.filter((policy) =>
+      policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords)
+    );
+  }, [showUnpaidOnly, sortedPolicies, paymentsByPolicyMap, allFinancialRecords]);
+
   if (!selectedDeal) {
     return null;
   }
@@ -126,7 +156,18 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
         </button>
       </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-slate-400">Сортировка: {sortLabel} {sortOrderSymbol}</div>
+          <div className="flex items-center gap-4 text-xs text-slate-400">
+            <span>Сортировка: {sortLabel} {sortOrderSymbol}</span>
+            <label className="flex items-center gap-2 text-[11px] text-slate-600">
+              <input
+                type="checkbox"
+                className="h-3 w-3 rounded border border-slate-300 text-sky-600 focus:ring-sky-500"
+                checked={showUnpaidOnly}
+                onChange={(event) => setShowUnpaidOnly(event.target.checked)}
+              />
+              Только неоплаченные
+            </label>
+          </div>
           <div className="flex gap-3">
             <button
               type="button"
@@ -134,7 +175,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               onClick={() => {
                 setPaymentsExpanded((prev) => {
                   const next = { ...prev };
-                  sortedPolicies.forEach((policy) => {
+                  visiblePolicies.forEach((policy) => {
                     next[policy.id] = true;
                   });
                   return next;
@@ -150,7 +191,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               onClick={() => {
                 setPaymentsExpanded((prev) => {
                   const next = { ...prev };
-                  sortedPolicies.forEach((policy) => {
+                  visiblePolicies.forEach((policy) => {
                     next[policy.id] = false;
                   });
                   return next;
@@ -163,9 +204,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           </div>
         </div>
       <div className="space-y-4">
-        {sortedPolicies.map((policy) => {
-          const payments =
-            relatedPayments.filter((payment) => payment.policyId === policy.id) || [];
+        {visiblePolicies.map((policy) => {
+          const payments = paymentsByPolicyMap.get(policy.id) ?? [];
 
           return (
             <section
