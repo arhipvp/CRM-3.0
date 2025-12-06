@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React, { useState } from 'react';
 import type { Deal, Payment, Policy } from '../../../../types';
 import {
   FinancialRecordCreationContext,
@@ -57,6 +57,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   if (!selectedDeal) {
     return null;
   }
+
+  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
 
   const sortLabel = POLICY_SORT_LABELS[policySortKey] ?? policySortKey;
   const sortOrderSymbol = policySortOrder === 'asc' ? '↑' : '↓';
@@ -146,19 +148,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     className="min-w-[160px]"
                   />
                   <LabelValuePair
-                    label="Канал / сумма"
-                    value={
-                      <span className="flex flex-col gap-0.5">
-                        <span className="text-xs font-normal uppercase tracking-[0.2em] text-slate-500">
-                          {policy.salesChannel || '-'}
-                        </span>
-                        <span className="text-sm font-semibold text-slate-900">
-                          {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
-                        </span>
-                      </span>
-                    }
+                    label="Канал"
+                    value={policy.salesChannel || '-'}
                     className="min-w-[220px]"
-                    valueClassName="flex flex-col gap-0.5 text-base text-slate-900"
+                  />
+                  <LabelValuePair
+                    label="Сумма"
+                    value={`${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(policy.paymentsTotal)}`}
                   />
                 </div>
               </div>
@@ -175,21 +171,42 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 </div>
               </div>
               <div className="border-t border-slate-100 bg-slate-50 px-3 py-3">
-                <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
-                  <div>Платежи</div>
-                  <button
-                    onClick={() => {
-                      setEditingPaymentId('new');
-                      setCreatingPaymentPolicyId(policy.id);
-                    }}
-                    className="text-xs font-semibold text-sky-600 hover:text-sky-800"
-                  >
-                    + Добавить платёж
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-semibold text-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span>Платежи</span>
+                    {payments.length > 0 && (
+                      <span className="text-[11px] text-slate-500">{payments.length} запись{payments.length === 1 ? '' : 'ей'}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => {
+                        setEditingPaymentId('new');
+                        setCreatingPaymentPolicyId(policy.id);
+                      }}
+                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                    >
+                      + Добавить платёж
+                    </button>
+                    {payments.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPaymentsExpanded((prev) => ({
+                            ...prev,
+                            [policy.id]: !prev[policy.id],
+                          }))
+                        }
+                        className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                      >
+                        {(paymentsExpanded[policy.id] ?? false) ? 'Скрыть' : 'Показать'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {payments.length === 0 ? (
                   <p className="mt-2 text-xs text-slate-500">Платежей пока нет.</p>
-                ) : (
+                ) : paymentsExpanded[policy.id] ? (
                   <div className="mt-2 space-y-2 text-sm text-slate-600">
                     {payments.map((payment) => (
                       <PaymentCard
@@ -208,7 +225,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                       />
                     ))}
                   </div>
-                )}
+                ) : null}
               </div>
             </section>
           );

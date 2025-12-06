@@ -20,7 +20,7 @@ import type {
   ModalType,
   PaymentModalState,
 } from './types';
-import type { PolicyFormValues } from '../forms/addPolicy/types';
+import type { FinancialRecordDraft, PaymentDraft, PolicyFormValues } from '../forms/addPolicy/types';
 
 interface PolicyPrefill {
   values: PolicyFormValues;
@@ -28,7 +28,54 @@ interface PolicyPrefill {
   insuranceTypeName?: string;
 }
 
-const buildPolicyFormValues = (policy: Policy): PolicyFormValues => ({
+const normalizeRecordAmount = (value?: string | null) => {
+  const numeric = Number(value ?? '0');
+  if (!Number.isFinite(numeric)) {
+    return '0';
+  }
+  return String(Math.abs(numeric));
+};
+
+const toFinancialRecordDraft = (record: FinancialRecord): FinancialRecordDraft => ({
+  amount: normalizeRecordAmount(record.amount),
+  date: record.date ?? '',
+  description: record.description ?? '',
+  source: record.source ?? '',
+  note: record.note ?? '',
+});
+
+const splitFinancialRecords = (records: FinancialRecord[]) => {
+  const incomes: FinancialRecordDraft[] = [];
+  const expenses: FinancialRecordDraft[] = [];
+  for (const record of records) {
+    const amount = Number(record.amount ?? '0');
+    if (!Number.isFinite(amount) || amount >= 0) {
+      incomes.push(toFinancialRecordDraft(record));
+    } else {
+      expenses.push(toFinancialRecordDraft(record));
+    }
+  }
+  return { incomes, expenses };
+};
+
+const buildPaymentDraft = (payment: Payment, financialRecords: FinancialRecord[]): PaymentDraft => {
+  const records = payment.financialRecords ?? financialRecords.filter((record) => record.paymentId === payment.id);
+  const { incomes, expenses } = splitFinancialRecords(records);
+  return {
+    amount: payment.amount,
+    description: payment.description,
+    scheduledDate: payment.scheduledDate ?? '',
+    actualDate: payment.actualDate ?? '',
+    incomes,
+    expenses,
+  };
+};
+
+const buildPolicyFormValues = (
+  policy: Policy,
+  payments: Payment[],
+  financialRecords: FinancialRecord[]
+): PolicyFormValues => ({
   number: policy.number,
   insuranceCompanyId: policy.insuranceCompanyId,
   insuranceTypeId: policy.insuranceTypeId,
@@ -41,7 +88,8 @@ const buildPolicyFormValues = (policy: Policy): PolicyFormValues => ({
   startDate: policy.startDate,
   endDate: policy.endDate,
   insuredClientId: policy.insuredClientId,
-  payments: [],
+  insuredClientName: policy.insuredClientName ?? policy.clientName,
+  payments: payments.map((payment) => buildPaymentDraft(payment, financialRecords)),
 });
 
 interface AppModalsProps {
@@ -120,107 +168,114 @@ export const AppModals: React.FC<AppModalsProps> = ({
   handleUpdateFinancialRecord,
   financialRecords,
   setEditingQuote,
-}) => (
-  <>
-    {modal === 'client' && (
-      <Modal title="Новый клиент" onClose={closeClientModal}>
-        <ClientForm onSubmit={handleAddClient} />
-      </Modal>
-    )}
+}) => {
+  const editingPolicyPayments = editingPolicy
+    ? payments.filter((payment) => payment.policyId === editingPolicy.id)
+    : [];
 
-    {modal === 'deal' && (
-      <Modal title="Новая сделка" onClose={() => setModal(null)} closeOnOverlayClick={false}>
-        <DealForm
-          clients={clients}
-          users={users}
-          onSubmit={handleAddDeal}
-          onRequestAddClient={() => openClientModal('deal')}
-        />
-      </Modal>
-    )}
-    {quoteDealId && (
-      <Modal title="Добавить расчёт" onClose={() => setQuoteDealId(null)}>
-        <AddQuoteForm
-          onSubmit={(values) => handleAddQuote(quoteDealId, values)}
-          onCancel={() => setQuoteDealId(null)}
-        />
-      </Modal>
-    )}
+  return (
+    <>
+      {modal === 'client' && (
+        <Modal title="Новый клиент" onClose={closeClientModal}>
+          <ClientForm onSubmit={handleAddClient} />
+        </Modal>
+      )}
 
-    {editingQuote && (
-      <Modal title="Редактировать расчёт" onClose={() => setEditingQuote(null)}>
-        <AddQuoteForm
-          initialValues={editingQuote}
-          onSubmit={handleUpdateQuote}
-          onCancel={() => setEditingQuote(null)}
-        />
-      </Modal>
-    )}
+      {modal === 'deal' && (
+        <Modal title="Новая сделка" onClose={() => setModal(null)} closeOnOverlayClick={false}>
+          <DealForm
+            clients={clients}
+            users={users}
+            onSubmit={handleAddDeal}
+            onRequestAddClient={() => openClientModal('deal')}
+          />
+        </Modal>
+      )}
 
-    {policyDealId && (
-      <Modal
-        title="Добавить полис"
-        onClose={closePolicyModal}
-        size="xl"
-        closeOnOverlayClick={false}
-      >
-        <AddPolicyForm
-          salesChannels={salesChannels}
-          initialValues={policyPrefill?.values}
-          initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
-          initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
-          defaultCounterparty={policyDefaultCounterparty}
-          executorName={policyDealExecutorName}
-          clients={clients}
-          onRequestAddClient={() => openClientModal()}
-          onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-          onCancel={closePolicyModal}
-        />
-      </Modal>
-    )}
+      {quoteDealId && (
+        <Modal title="Добавить расчёт" onClose={() => setQuoteDealId(null)}>
+          <AddQuoteForm
+            onSubmit={(values) => handleAddQuote(quoteDealId, values)}
+            onCancel={() => setQuoteDealId(null)}
+          />
+        </Modal>
+      )}
 
-    {editingPolicy && (
-      <Modal
-        title="Редактировать полис"
-        onClose={() => setEditingPolicy(null)}
-        size="xl"
-        closeOnOverlayClick={false}
-      >
-        <AddPolicyForm
-          salesChannels={salesChannels}
-          initialValues={buildPolicyFormValues(editingPolicy)}
-          initialInsuranceCompanyName={editingPolicy.insuranceCompany}
-          initialInsuranceTypeName={editingPolicy.insuranceType}
-          executorName={editingPolicyExecutorName}
-          clients={clients}
-          onRequestAddClient={() => openClientModal()}
-          onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
-          onCancel={() => setEditingPolicy(null)}
-        />
-      </Modal>
-    )}
+      {editingQuote && (
+        <Modal title="Редактировать расчёт" onClose={() => setEditingQuote(null)}>
+          <AddQuoteForm
+            initialValues={editingQuote}
+            onSubmit={handleUpdateQuote}
+            onCancel={() => setEditingQuote(null)}
+          />
+        </Modal>
+      )}
 
-    {paymentModal && (
-      <Modal title="Редактировать платёж" onClose={() => setPaymentModal(null)}>
-        <AddPaymentForm
-          payment={payments.find((p) => p.id === paymentModal.paymentId)}
-          onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
-          onCancel={() => setPaymentModal(null)}
-        />
-      </Modal>
-    )}
+      {policyDealId && (
+        <Modal
+          title="Добавить полис"
+          onClose={closePolicyModal}
+          size="xl"
+          closeOnOverlayClick={false}
+        >
+          <AddPolicyForm
+            salesChannels={salesChannels}
+            initialValues={policyPrefill?.values}
+            initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
+            initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+            defaultCounterparty={policyDefaultCounterparty}
+            executorName={policyDealExecutorName}
+            clients={clients}
+            onRequestAddClient={() => openClientModal()}
+            onSubmit={(values) => handleAddPolicy(policyDealId, values)}
+            onCancel={closePolicyModal}
+          />
+        </Modal>
+      )}
 
-    {financialRecordModal && (
-      <Modal title="Редактировать запись" onClose={() => setFinancialRecordModal(null)}>
-        <AddFinancialRecordForm
-          paymentId={financialRecordModal.paymentId!}
-          record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
-          onSubmit={(values) =>
-            handleUpdateFinancialRecord(financialRecordModal.recordId!, values)
-          }
-          onCancel={() => setFinancialRecordModal(null)}
-        />
-      </Modal>
-    )}
-  </>
-);
+      {editingPolicy && (
+        <Modal
+          title="Редактировать полис"
+          onClose={() => setEditingPolicy(null)}
+          size="xl"
+          closeOnOverlayClick={false}
+        >
+          <AddPolicyForm
+            salesChannels={salesChannels}
+            initialValues={buildPolicyFormValues(editingPolicy, editingPolicyPayments, financialRecords)}
+            initialInsuranceCompanyName={editingPolicy.insuranceCompany}
+            initialInsuranceTypeName={editingPolicy.insuranceType}
+            executorName={editingPolicyExecutorName}
+            clients={clients}
+            onRequestAddClient={() => openClientModal()}
+            onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
+            onCancel={() => setEditingPolicy(null)}
+          />
+        </Modal>
+      )}
+
+      {paymentModal && (
+        <Modal title="Редактировать платёж" onClose={() => setPaymentModal(null)}>
+          <AddPaymentForm
+            payment={payments.find((p) => p.id === paymentModal.paymentId)}
+            onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
+            onCancel={() => setPaymentModal(null)}
+          />
+        </Modal>
+      )}
+
+      {financialRecordModal && (
+        <Modal title="Редактировать запись" onClose={() => setFinancialRecordModal(null)}>
+          <AddFinancialRecordForm
+            paymentId={financialRecordModal.paymentId!}
+            record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
+            onSubmit={(values) =>
+              handleUpdateFinancialRecord(financialRecordModal.recordId!, values)
+            }
+            onCancel={() => setFinancialRecordModal(null)}
+          />
+        </Modal>
+      )}
+    </>
+  );
+};

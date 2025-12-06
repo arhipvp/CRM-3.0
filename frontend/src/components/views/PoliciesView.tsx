@@ -80,6 +80,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
   const [creatingFinancialRecordContext, setCreatingFinancialRecordContext] =
     useState<FinancialRecordCreationContext | null>(null);
+  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
 
   const statusOptions = useMemo(() => {
     const unique = Array.from(new Set(policies.map((policy) => policy.status).filter(Boolean)));
@@ -233,19 +234,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     className="min-w-[160px]"
                   />
                   <LabelValuePair
-                    label="Канал / сумма"
-                    value={
-                      <span className="flex flex-col gap-0.5">
-                        <span className="text-xs font-normal uppercase tracking-[0.2em] text-slate-500">
-                          {policy.salesChannel || '—'}
-                        </span>
-                        <span className="text-sm font-semibold text-slate-900">
-                          {formatCurrency(policy.paymentsPaid)} / {formatCurrency(policy.paymentsTotal)}
-                        </span>
-                      </span>
-                    }
+                    label="Канал"
+                    value={policy.salesChannel || '—'}
                     className="min-w-[220px]"
-                    valueClassName="flex flex-col gap-0.5 text-base text-slate-900"
+                  />
+                  <LabelValuePair
+                    label="Сумма"
+                    value={`${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(policy.paymentsTotal)}`}
                   />
                 </div>
               </div>
@@ -271,11 +266,30 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
               </div>
               <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
-                  <div>Платежи</div>
+                  <div className="flex items-center gap-2">
+                    <span>Платежи</span>
+                    {payments.length > 0 && (
+                      <span className="text-[11px] text-slate-500">{payments.length} запись{payments.length === 1 ? '' : 'ей'}</span>
+                    )}
+                  </div>
+                  {payments.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPaymentsExpanded((prev) => ({
+                          ...prev,
+                          [policy.id]: !prev[policy.id],
+                        }))
+                      }
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                    >
+                      {(paymentsExpanded[policy.id] ?? false) ? 'Скрыть' : 'Показать'}
+                    </button>
+                  )}
                 </div>
                 {payments.length === 0 ? (
                   <p className="mt-2 text-sm text-slate-500">Платежей пока нет.</p>
-                ) : (
+                ) : paymentsExpanded[policy.id] ? (
                   <div className="mt-2 space-y-2 text-sm text-slate-600">
                     {payments.map((payment) => (
                       <PaymentCard
@@ -290,7 +304,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                       />
                     ))}
                   </div>
-                )}
+                ) : null}
               </div>
             </section>
           ))}
