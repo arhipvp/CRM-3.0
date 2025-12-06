@@ -167,12 +167,46 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
   return (
     <div className="space-y-3">
-      <FilterBar
-        onFilterChange={setFilters}
-        searchPlaceholder="Поиск по номеру, клиенту или компании..."
-        sortOptions={POLICY_SORT_OPTIONS}
-        customFilters={customFilters}
-      />
+      <div className="flex flex-col gap-2">
+        <FilterBar
+          onFilterChange={setFilters}
+          searchPlaceholder="Поиск по номеру, клиенту или компании..."
+          sortOptions={POLICY_SORT_OPTIONS}
+          customFilters={customFilters}
+        />
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            onClick={() =>
+              setPaymentsExpanded((prev) => {
+                const next = { ...prev };
+                filteredPolicies.forEach((policy) => {
+                  next[policy.id] = true;
+                });
+                return next;
+              })
+            }
+          >
+            Раскрыть все
+          </button>
+          <button
+            type="button"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            onClick={() =>
+              setPaymentsExpanded((prev) => {
+                const next = { ...prev };
+                filteredPolicies.forEach((policy) => {
+                  next[policy.id] = false;
+                });
+                return next;
+              })
+            }
+          >
+            Скрыть все
+          </button>
+        </div>
+      </div>
 
       {filteredPolicies.length ? (
         <div className="space-y-4">
@@ -181,7 +215,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
               key={policy.id}
               className="space-y-2 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="px-4 py-3 text-sm text-slate-500 space-y-4">
+              <div className="px-4 py-3 text-sm text-slate-500 space-y-3">
                 <div className="grid gap-4 sm:grid-cols-[1.1fr_0.9fr_0.8fr]">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Номер</p>
@@ -250,18 +284,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   <LabelValuePair label="Марка" value={policy.brand || '—'} />
                   <LabelValuePair label="Модель" value={policy.model || '—'} />
                   <LabelValuePair label="VIN" value={policy.vin || '—'} />
-                </div>
-                <div className="flex flex-wrap gap-6 text-sm text-slate-500">
-                  <LabelValuePair
-                    label="Начало"
-                    value={formatDate(policy.startDate)}
-                    className="text-sm text-slate-500"
-                  />
-                  <LabelValuePair
-                    label="Окончание"
-                    value={formatDate(policy.endDate)}
-                    className="text-sm text-slate-500"
-                  />
                 </div>
               </div>
               <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">

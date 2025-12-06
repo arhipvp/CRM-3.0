@@ -3,7 +3,6 @@ import type { Deal, Payment, Policy } from '../../../../types';
 import {
   FinancialRecordCreationContext,
   formatCurrency,
-  formatDate,
   PolicySortKey,
 } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
@@ -88,7 +87,41 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           + Создать полис
         </button>
       </div>
-      <div className="text-xs text-slate-400">Сортировка: {sortLabel} {sortOrderSymbol}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-slate-400">Сортировка: {sortLabel} {sortOrderSymbol}</div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            onClick={() =>
+              setPaymentsExpanded((prev) => {
+                const next = { ...prev };
+                sortedPolicies.forEach((policy) => {
+                  next[policy.id] = true;
+                });
+                return next;
+              })
+            }
+          >
+            Раскрыть все
+          </button>
+          <button
+            type="button"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            onClick={() =>
+              setPaymentsExpanded((prev) => {
+                const next = { ...prev };
+                sortedPolicies.forEach((policy) => {
+                  next[policy.id] = false;
+                });
+                return next;
+              })
+            }
+          >
+            Скрыть все
+          </button>
+        </div>
+      </div>
       <div className="space-y-4">
         {sortedPolicies.map((policy) => {
           const payments =
@@ -99,7 +132,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               key={policy.id}
               className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
-              <div className="px-3 py-3 text-sm text-slate-500 space-y-4">
+              <div className="px-3 py-3 text-sm text-slate-500 space-y-3">
                 <div className="grid gap-4 sm:grid-cols-[1.1fr_auto]">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">?????</p>
@@ -159,15 +192,11 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 </div>
               </div>
               <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 space-y-3">
-                <div className="flex flex-wrap gap-6">
+                <div className="flex flex-wrap gap-6 text-sm">
                   <LabelValuePair label="Тип" value={policy.insuranceType || '-'} />
                   <LabelValuePair label="Марка" value={policy.brand || '-'} />
                   <LabelValuePair label="Модель" value={policy.model || '-'} />
                   <LabelValuePair label="VIN" value={policy.vin || '-'} />
-                </div>
-                <div className="flex flex-wrap gap-6 text-sm text-slate-500">
-                  <LabelValuePair label="Начало" value={formatDate(policy.startDate)} className="text-sm text-slate-500" />
-                  <LabelValuePair label="Окончание" value={formatDate(policy.endDate)} className="text-sm text-slate-500" />
                 </div>
               </div>
               <div className="border-t border-slate-100 bg-slate-50 px-3 py-3">
