@@ -1,4 +1,4 @@
-import React, { ComponentProps } from 'react';
+import type { ComponentProps } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type { Payment, Policy } from '../../../types';
 import { PoliciesView } from '../PoliciesView';
@@ -120,6 +120,7 @@ describe('PoliciesView', () => {
       />
     );
 
+    fireEvent.click(screen.getByText('Показать'));
     const paymentCard = screen.getByTestId('payment-card-payment-1');
     expect(paymentCard.dataset.expanded).toBe('false');
 
@@ -127,6 +128,6 @@ describe('PoliciesView', () => {
     expect(paymentCard.dataset.expanded).toBe('true');
 
     fireEvent.click(screen.getByText('Скрыть все'));
-    expect(paymentCard.dataset.expanded).toBe('false');
+    expect(screen.queryByTestId('payment-card-payment-1')).toBeNull();
   });
 });

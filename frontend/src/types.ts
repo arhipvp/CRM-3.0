@@ -201,6 +201,7 @@ export interface Policy {
   paymentsPaid?: string;
   paymentsTotal?: string;
   createdAt: string;
+  updatedAt?: string;
   driveFolderId?: string | null;
 }
 
