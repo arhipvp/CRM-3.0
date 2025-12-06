@@ -10,6 +10,7 @@ const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
   scheduledDate: overrides.scheduledDate ?? null,
   actualDate: overrides.actualDate ?? null,
   financialRecords: overrides.financialRecords,
+  deletedAt: overrides.deletedAt,
   createdAt: overrides.createdAt ?? new Date().toISOString(),
   updatedAt: overrides.updatedAt ?? new Date().toISOString(),
 });
@@ -22,6 +23,7 @@ const buildRecord = (overrides: Partial<FinancialRecord> = {}): FinancialRecord 
   description: overrides.description,
   source: overrides.source,
   note: overrides.note,
+  deletedAt: overrides.deletedAt,
   createdAt: overrides.createdAt ?? new Date().toISOString(),
   updatedAt: overrides.updatedAt ?? new Date().toISOString(),
 });
@@ -44,6 +46,22 @@ describe('hasUnpaidFinancialActivity', () => {
     const payment = buildPayment({
       actualDate: '2025-01-01',
       financialRecords: [buildRecord({ date: '2025-01-02' })],
+    });
+    expect(hasUnpaidFinancialActivity(payment, [])).toBe(false);
+  });
+
+  it('ignores deleted records when checking dates', () => {
+    const payment = buildPayment({
+      actualDate: '2025-01-01',
+      financialRecords: [buildRecord({ date: '', deletedAt: '2025-01-04' })],
+    });
+    expect(hasUnpaidFinancialActivity(payment, [])).toBe(false);
+  });
+
+  it('skips deleted payments even without dates', () => {
+    const payment = buildPayment({
+      actualDate: null,
+      deletedAt: '2025-01-05',
     });
     expect(hasUnpaidFinancialActivity(payment, [])).toBe(false);
   });
@@ -75,5 +93,17 @@ describe('policyHasUnpaidActivity', () => {
     map.set('policy-closed', [payment]);
 
     expect(policyHasUnpaidActivity('policy-closed', map, [])).toBe(false);
+  });
+
+  it('ignores deleted payments when evaluating the policy', () => {
+    const payment = buildPayment({
+      id: 'p-deleted',
+      actualDate: null,
+      deletedAt: '2025-01-06',
+    });
+    const map = new Map<string, Payment[]>();
+    map.set('policy-deleted', [payment]);
+
+    expect(policyHasUnpaidActivity('policy-deleted', map, [])).toBe(false);
   });
 });

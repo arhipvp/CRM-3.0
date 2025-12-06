@@ -154,6 +154,11 @@ export const formatRecognitionSummary = (result: PolicyRecognitionResult) => {
   return result.message ?? 'Ошибка при распознавании полиса';
 };
 
+const isPaymentDeleted = (payment: Payment) => Boolean(payment.deletedAt);
+const isRecordDeleted = (record: FinancialRecord) => Boolean(record.deletedAt);
+const hasPaymentBeenPaid = (payment: Payment) => Boolean((payment.actualDate ?? '').trim());
+const hasRecordBeenPaid = (record: FinancialRecord) => Boolean((record.date ?? '').trim());
+
 export const getPaymentFinancialRecords = (payment: Payment, allFinancialRecords: FinancialRecord[]) => {
   if (payment.financialRecords && payment.financialRecords.length > 0) {
     return payment.financialRecords;
@@ -161,12 +166,18 @@ export const getPaymentFinancialRecords = (payment: Payment, allFinancialRecords
   return allFinancialRecords.filter((record) => record.paymentId === payment.id);
 };
 
-export const hasUnpaidFinancialActivity = (payment: Payment, allFinancialRecords: FinancialRecord[]) => {
-  if (!payment.actualDate) {
+export const hasUnpaidFinancialActivity = (
+  payment: Payment,
+  allFinancialRecords: FinancialRecord[]
+) => {
+  if (isPaymentDeleted(payment)) {
+    return false;
+  }
+  if (!hasPaymentBeenPaid(payment)) {
     return true;
   }
   const records = getPaymentFinancialRecords(payment, allFinancialRecords);
-  return records.some((record) => !(record.date ?? '').trim());
+  return records.some((record) => !isRecordDeleted(record) && !hasRecordBeenPaid(record));
 };
 
 export const policyHasUnpaidActivity = (
