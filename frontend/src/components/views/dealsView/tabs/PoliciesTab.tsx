@@ -54,11 +54,11 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onDeletePolicy,
   onRequestEditPolicy,
 }) => {
+  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
+
   if (!selectedDeal) {
     return null;
   }
-
-  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
 
   const sortLabel = POLICY_SORT_LABELS[policySortKey] ?? policySortKey;
   const sortOrderSymbol = policySortOrder === 'asc' ? '↑' : '↓';
