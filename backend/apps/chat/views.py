@@ -29,19 +29,24 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = ChatMessage.objects.alive().order_by("created_at")
+        if not user or not user.is_authenticated:
+            raise PermissionDenied(
+                "Требуется авторизация для доступа к сообщениям чата."
+            )
+
+        queryset = (
+            ChatMessage.objects.alive()
+            .select_related("author", "deal")
+            .order_by("created_at")
+        )
 
         deal_id = self.request.query_params.get("deal")
         if deal_id:
-            queryset = queryset.filter(deal_id=deal_id)
+            if not self._user_has_deal_access_by_id(user, deal_id):
+                raise PermissionDenied("Нет доступа к выбранной сделке.")
+            return queryset.filter(deal_id=deal_id)
 
-        if not user.is_authenticated:
-            return queryset
-
-        if self._is_admin(user):
-            return queryset
-
-        if user_has_permission(user, "deal", "view"):
+        if self._is_admin(user) or user_has_permission(user, "deal", "view"):
             return queryset
 
         allowed_deal_ids = (
@@ -80,6 +85,18 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if user_has_permission(user, "deal", "view"):
             return True
         return deal.seller_id == user.id or deal.executor_id == user.id
+
+    def _user_has_deal_access_by_id(self, user, deal_id: str | int) -> bool:
+        if self._is_admin(user):
+            return True
+        if user_has_permission(user, "deal", "view"):
+            return True
+        return (
+            Deal.objects.with_deleted()
+            .filter(id=deal_id)
+            .filter(Q(seller=user) | Q(executor=user))
+            .exists()
+        )
 
     def _can_modify(self, user, instance):
         if super()._can_modify(user, instance):

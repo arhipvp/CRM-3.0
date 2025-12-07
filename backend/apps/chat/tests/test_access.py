@@ -14,6 +14,11 @@ class ChatMessageAccessTests(APITestCase):
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.executor = User.objects.create_user(username="executor", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")
+        self.no_view_user = User.objects.create_user(
+            username="outsider", password="pass"
+        )
+        limited_role = Role.objects.create(name="Limited Access")
+        UserRole.objects.create(user=self.no_view_user, role=limited_role)
         self.deal = Deal.objects.create(
             title="Deal One",
             client=self.client_record,
@@ -26,6 +31,14 @@ class ChatMessageAccessTests(APITestCase):
             title="Deal Two",
             client=self.client_record,
             seller=self.seller,
+            executor=self.executor,
+            status="open",
+            stage_name="initial",
+        )
+        self.outsider_deal = Deal.objects.create(
+            title="Outsider Deal",
+            client=self.client_record,
+            seller=self.no_view_user,
             executor=self.executor,
             status="open",
             stage_name="initial",
@@ -58,6 +71,12 @@ class ChatMessageAccessTests(APITestCase):
             author_name="Seller",
         )
         ChatMessage.objects.create(
+            deal=self.outsider_deal,
+            body="Outsider deal message",
+            author=self.no_view_user,
+            author_name="Outsider",
+        )
+        ChatMessage.objects.create(
             deal=self.deleted_deal,
             body="Deleted deal message",
             author=self.seller,
@@ -68,6 +87,7 @@ class ChatMessageAccessTests(APITestCase):
         self.api_client = APIClient()
         self.seller_token = str(RefreshToken.for_user(self.seller).access_token)
         self.other_token = str(RefreshToken.for_user(self.other_user).access_token)
+        self.no_view_token = str(RefreshToken.for_user(self.no_view_user).access_token)
         self.admin_user = User.objects.create_user(username="admin", password="pass")
         admin_role, _ = Role.objects.get_or_create(name="Admin")
         UserRole.objects.create(user=self.admin_user, role=admin_role)
@@ -116,6 +136,43 @@ class ChatMessageAccessTests(APITestCase):
             all(message["deal"] == str(self.deal.id) for message in results)
         )
 
+    def test_anonymous_user_cannot_list_chat_messages(self):
+        self.api_client.credentials()
+        response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Требуется авторизация для доступа к сообщениям чата.",
+        )
+
+    def test_chat_messages_list_requires_authentication(self):
+        self.api_client.credentials()
+        response = self.api_client.get("/api/v1/chat_messages/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Требуется авторизация для доступа к сообщениям чата.",
+        )
+
+    def test_anonymous_user_cannot_retrieve_chat_message_detail(self):
+        message = ChatMessage.objects.filter(deal=self.deal).first()
+        self.api_client.credentials()
+        response = self.api_client.get(f"/api/v1/chat_messages/{message.id}/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Требуется авторизация для доступа к сообщениям чата.",
+        )
+
+    def test_non_participant_cannot_view_other_deal_chat(self):
+        self._auth(self.other_token)
+        response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data
+        self.assertEqual(payload.get("count"), 0)
+        results = payload.get("results") if isinstance(payload, dict) else payload
+        self.assertEqual(len(results), 0)
+
     def test_non_participant_cannot_create_message(self):
         self._auth(self.other_token)
         response = self.api_client.post(
@@ -124,6 +181,24 @@ class ChatMessageAccessTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_without_view_permission_cannot_view_foreign_chat(self):
+        self._auth(self.no_view_token)
+        response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data
+        self.assertEqual(payload.get("count"), 0)
+        self.assertEqual(payload.get("results"), [])
+
+    def test_user_without_view_permission_cannot_create_foreign_chat_message(self):
+        self._auth(self.no_view_token)
+        response = self.api_client.post(
+            "/api/v1/chat_messages/",
+            {"deal": str(self.deal.id), "body": "Forbidden message"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get("detail"), "Нет доступа к выбранной сделке.")
 
     def test_admin_can_create_message_for_any_deal(self):
         self._auth(self.admin_token)
@@ -206,3 +281,13 @@ class ChatMessageAccessTests(APITestCase):
         self.assertEqual(payload.get("count"), 3)
         bodies = [msg["body"] for msg in payload["results"]]
         self.assertTrue(all(body.startswith("Archived") for body in bodies))
+
+    def test_deal_filter_blocks_unrelated_chats(self):
+        self._auth(self.other_token)
+        response = self.api_client.get(
+            f"/api/v1/chat_messages/?deal={self.outsider_deal.id}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data
+        self.assertEqual(payload.get("count"), 0)
+        self.assertEqual(payload.get("results"), [])
