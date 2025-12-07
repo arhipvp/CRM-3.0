@@ -895,6 +895,28 @@ const AppContent: React.FC = () => {
         sourceFileId,
       });
       updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
+      const parsePolicyAmount = (value?: string | null) => {
+        const parsed = parseNumericAmount(value ?? '');
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      let policyPaymentsTotal = parsePolicyAmount(created.paymentsTotal);
+      let policyPaymentsPaid = parsePolicyAmount(created.paymentsPaid);
+      const formatPolicyAmount = (value: number) => value.toFixed(2);
+      const syncPolicyTotals = () => {
+        const formattedTotal = formatPolicyAmount(policyPaymentsTotal);
+        const formattedPaid = formatPolicyAmount(policyPaymentsPaid);
+        updateAppData((prev) => ({
+          policies: prev.policies.map((policy) =>
+            policy.id === created.id
+              ? {
+                  ...policy,
+                  paymentsTotal: formattedTotal,
+                  paymentsPaid: formattedPaid,
+                }
+              : policy
+          ),
+        }));
+      };
 
       const hasCounterparty = Boolean(counterparty?.trim());
       const executorName = deal?.executorName?.trim();
@@ -966,6 +988,11 @@ const AppContent: React.FC = () => {
             ? [...createdRecords, ...(payment.financialRecords ?? [])]
             : payment.financialRecords,
         };
+        policyPaymentsTotal += amount;
+        if (payment.actualDate) {
+          policyPaymentsPaid += amount;
+        }
+        syncPolicyTotals();
         updateAppData((prev) => ({
           payments: [paymentWithRecords, ...prev.payments],
           financialRecords:
@@ -1048,12 +1075,14 @@ const AppContent: React.FC = () => {
     try {
       await deletePolicy(policyId);
       updateAppData((prev) => {
-        const remainingPayments = prev.payments.filter((payment) => payment.policyId !== policyId);
-        const removedPaymentIds = new Set(
-          prev.payments
-            .filter((payment) => payment.policyId === policyId)
-            .map((payment) => payment.id)
-        );
+        const removedPaymentIds = new Set<string>();
+        const remainingPayments = prev.payments.filter((payment) => {
+          const shouldRemove = payment.policyId === policyId;
+          if (shouldRemove) {
+            removedPaymentIds.add(payment.id);
+          }
+          return !shouldRemove;
+        });
         return {
           policies: prev.policies.filter((policy) => policy.id !== policyId),
           payments: remainingPayments,
