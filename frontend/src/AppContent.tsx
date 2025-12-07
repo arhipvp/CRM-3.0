@@ -239,36 +239,35 @@ const AppContent: React.FC = () => {
   );
 
   const adjustPaymentsTotals = useCallback(
-    T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }
-  >(
-    items: T[],
-    targetId: string | undefined | null,
-    totalDelta: number,
-    paidDelta: number
-  ) => {
-    if (!targetId) {
-      return items;
-    }
-    const normalizedTotalDelta = Number.isFinite(totalDelta) ? totalDelta : 0;
-    const normalizedPaidDelta = Number.isFinite(paidDelta) ? paidDelta : 0;
-    if (normalizedTotalDelta === 0 && normalizedPaidDelta === 0) {
-      return items;
-    }
-    return items.map((item) => {
-      if (item.id !== targetId) {
-        return item;
+    <T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }>(
+      items: T[],
+      targetId: string | undefined | null,
+      totalDelta: number,
+      paidDelta: number
+    ) => {
+      if (!targetId) {
+        return items;
       }
-      const currentTotal = parseAmountValue(item.paymentsTotal);
-      const currentPaid = parseAmountValue(item.paymentsPaid);
-      return {
-        ...item,
-        paymentsTotal: formatAmountValue(currentTotal + normalizedTotalDelta),
-        paymentsPaid: formatAmountValue(currentPaid + normalizedPaidDelta),
-      };
-    });
-  },
-  []
-);
+      const normalizedTotalDelta = Number.isFinite(totalDelta) ? totalDelta : 0;
+      const normalizedPaidDelta = Number.isFinite(paidDelta) ? paidDelta : 0;
+      if (normalizedTotalDelta === 0 && normalizedPaidDelta === 0) {
+        return items;
+      }
+      return items.map((item) => {
+        if (item.id !== targetId) {
+          return item;
+        }
+        const currentTotal = parseAmountValue(item.paymentsTotal);
+        const currentPaid = parseAmountValue(item.paymentsPaid);
+        return {
+          ...item,
+          paymentsTotal: formatAmountValue(currentTotal + normalizedTotalDelta),
+          paymentsPaid: formatAmountValue(currentPaid + normalizedPaidDelta),
+        };
+      });
+    },
+    []
+  );
 
   const handlePolicyDraftReady = useCallback(
     (
