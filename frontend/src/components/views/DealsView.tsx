@@ -2163,36 +2163,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
                 </tr>
                 <tr className="border-t border-slate-100 bg-slate-50/70">
-                  <th className="px-4 py-2 align-top">
-                    <input
-                      type="text"
-                      value={dealSourceFilter}
-                      onChange={(event) => onDealSourceFilterChange(event.target.value)}
-                      placeholder="Источник сделки"
-                      aria-label="Фильтр по источнику"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                    />
-                  </th>
                   <th className="px-4 py-2 align-top" />
                   <th className="px-4 py-2 align-top" />
-                  <th className="px-4 py-2 align-top">
-                    <div className="flex flex-col gap-2">
-                      <input
-                        type="date"
-                        value={dealExpectedCloseFrom}
-                        onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
-                        aria-label="Крайний срок с"
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                      />
-                      <input
-                        type="date"
-                        value={dealExpectedCloseTo}
-                        onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
-                        aria-label="Крайний срок по"
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                      />
-                    </div>
-                  </th>
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top" />
                   <th className="px-4 py-2 align-top" />
                   <th className="px-4 py-2 align-top">
                     <select
