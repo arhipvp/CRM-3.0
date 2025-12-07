@@ -139,39 +139,27 @@ class ChatMessageAccessTests(APITestCase):
     def test_anonymous_user_cannot_list_chat_messages(self):
         self.api_client.credentials()
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(
-            response.data.get("detail"),
-            "Требуется авторизация для доступа к сообщениям чата.",
-        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_chat_messages_list_requires_authentication(self):
         self.api_client.credentials()
         response = self.api_client.get("/api/v1/chat_messages/")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(
-            response.data.get("detail"),
-            "Требуется авторизация для доступа к сообщениям чата.",
-        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_anonymous_user_cannot_retrieve_chat_message_detail(self):
         message = ChatMessage.objects.filter(deal=self.deal).first()
         self.api_client.credentials()
         response = self.api_client.get(f"/api/v1/chat_messages/{message.id}/")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(
-            response.data.get("detail"),
-            "Требуется авторизация для доступа к сообщениям чата.",
-        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_non_participant_cannot_view_other_deal_chat(self):
         self._auth(self.other_token)
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.data
-        self.assertEqual(payload.get("count"), 0)
-        results = payload.get("results") if isinstance(payload, dict) else payload
-        self.assertEqual(len(results), 0)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Нет доступа к выбранной сделке.",
+        )
 
     def test_non_participant_cannot_create_message(self):
         self._auth(self.other_token)
@@ -185,10 +173,11 @@ class ChatMessageAccessTests(APITestCase):
     def test_user_without_view_permission_cannot_view_foreign_chat(self):
         self._auth(self.no_view_token)
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.data
-        self.assertEqual(payload.get("count"), 0)
-        self.assertEqual(payload.get("results"), [])
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Нет доступа к выбранной сделке.",
+        )
 
     def test_user_without_view_permission_cannot_create_foreign_chat_message(self):
         self._auth(self.no_view_token)
@@ -287,7 +276,8 @@ class ChatMessageAccessTests(APITestCase):
         response = self.api_client.get(
             f"/api/v1/chat_messages/?deal={self.outsider_deal.id}"
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.data
-        self.assertEqual(payload.get("count"), 0)
-        self.assertEqual(payload.get("results"), [])
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Нет доступа к выбранной сделке.",
+        )
