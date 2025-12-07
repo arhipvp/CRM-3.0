@@ -125,7 +125,7 @@ export async function request<T = unknown>(
   const hadRefreshToken = Boolean(refreshToken);
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
-    console.log(`API request ${path}: token present (${token.substring(0, 20)}...)`);
+    console.log(`API request ${path}: token present`);
   } else {
     console.log(`API request ${path}: NO TOKEN FOUND`);
   }

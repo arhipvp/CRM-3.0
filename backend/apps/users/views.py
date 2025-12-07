@@ -28,7 +28,7 @@ class PermissionViewSet(ModelViewSet):
 
     queryset = Permission.objects.all()
     serializer_class = PermissionSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
 
 class RoleViewSet(ModelViewSet):
@@ -36,7 +36,7 @@ class RoleViewSet(ModelViewSet):
 
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -310,14 +310,22 @@ class AuditLogViewSet(ModelViewSet):
                 {"error": "actor_id обязателен"}, status=status.HTTP_400_BAD_REQUEST
             )
 
+        try:
+            actor_id_value = int(actor_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "actor_id должен быть числом"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Админы видят логи любого пользователя, остальные только свои
         is_admin = request.user.user_roles.filter(role__name="Admin").exists()
-        if not is_admin and int(actor_id) != request.user.id:
+        if not is_admin and actor_id_value != request.user.id:
             return Response(
                 {"detail": "Доступ запрещён"}, status=status.HTTP_403_FORBIDDEN
             )
 
-        queryset = AuditLog.objects.filter(actor_id=actor_id)
+        queryset = AuditLog.objects.filter(actor_id=actor_id_value)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

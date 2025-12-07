@@ -1,5 +1,4 @@
 from rest_framework import permissions, viewsets
-from rest_framework.permissions import AllowAny
 
 from .models import Notification
 from .serializers import NotificationSerializer
@@ -7,7 +6,7 @@ from .serializers import NotificationSerializer
 
 class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         # Если пользователь не аутентифицирован, возвращаем пустой queryset

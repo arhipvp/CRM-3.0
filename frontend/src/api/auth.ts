@@ -53,10 +53,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   const data = (await response.json()) as LoginResponse;
   setAccessToken(data.access);
   setRefreshToken(data.refresh);
-  console.log('Login successful, tokens saved:', {
-    access: data.access?.substring(0, 20) + '...',
-    hasToken: !!getAccessToken(),
-  });
+  console.log('Login successful, tokens stored');
   return data;
 }
 

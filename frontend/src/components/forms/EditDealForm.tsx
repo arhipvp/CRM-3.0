@@ -78,7 +78,8 @@ export function EditDealForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    const nextValue = name === 'title' && value === '' ? '' : value || null;
+    const preserveEmptyStrings = ['title', 'description', 'source'];
+    const nextValue = preserveEmptyStrings.includes(name) ? value : value || null;
     setFormData((prev) => ({
       ...prev,
       [name]: nextValue,
