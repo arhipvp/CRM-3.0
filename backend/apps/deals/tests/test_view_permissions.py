@@ -2,7 +2,7 @@ from datetime import date
 
 from apps.clients.models import Client
 from apps.deals.models import Deal
-from apps.users.models import Role, UserRole
+from apps.users.models import Permission, Role, RolePermission, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -16,10 +16,10 @@ class DealUpdatePermissionsTests(APITestCase):
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")
         self.admin_user = User.objects.create_user(username="admin", password="pass")
-        client = Client.objects.create(name="Client")
+        self.client = Client.objects.create(name="Client")
         self.deal = Deal.objects.create(
             title="Permission Deal",
-            client=client,
+            client=self.client,
             seller=self.seller,
             status="open",
             stage_name="initial",
@@ -67,3 +67,28 @@ class DealUpdatePermissionsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.deal.refresh_from_db()
         self.assertEqual(self.deal.expected_close, date(2025, 12, 31))
+
+    def test_role_with_deal_view_permission_sees_all_deals(self):
+        observer_role = Role.objects.create(name="Observer")
+        view_permission = Permission.objects.create(resource="deal", action="view")
+        RolePermission.objects.create(role=observer_role, permission=view_permission)
+        observer = User.objects.create_user(username="observer", password="pass")
+        UserRole.objects.create(user=observer, role=observer_role)
+        extra_deal = Deal.objects.create(
+            title="Other Deal",
+            client=self.client,
+            seller=self.admin_user,
+            executor=self.admin_user,
+            status="open",
+            stage_name="initial",
+        )
+
+        observer_token = str(RefreshToken.for_user(observer).access_token)
+        self._auth(observer_token)
+
+        response = self.api_client.get("/api/v1/deals/", format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        deal_ids = self._extract_deal_ids(response)
+        self.assertIn(str(self.deal.id), deal_ids)
+        self.assertIn(str(extra_deal.id), deal_ids)

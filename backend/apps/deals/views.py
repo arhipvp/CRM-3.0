@@ -1,6 +1,7 @@
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
+from apps.users.services import user_has_permission
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -122,6 +123,9 @@ class DealViewSet(
         is_admin = _is_admin_user(user)
 
         if is_admin:
+            return queryset
+
+        if user_has_permission(user, "deal", "view"):
             return queryset
 
         return queryset.filter(Q(seller=user) | Q(executor=user))

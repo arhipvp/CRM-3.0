@@ -1,6 +1,7 @@
 ﻿from apps.common.permissions import EditProtectedMixin
 from apps.deals.models import Deal
 from apps.users.models import UserRole
+from apps.users.services import user_has_permission
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
@@ -40,6 +41,9 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if self._is_admin(user):
             return queryset
 
+        if user_has_permission(user, "deal", "view"):
+            return queryset
+
         allowed_deal_ids = (
             Deal.objects.with_deleted()
             .filter(Q(seller=user) | Q(executor=user))
@@ -72,6 +76,8 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if not user or not user.is_authenticated or not deal:
             return False
         if self._is_admin(user):
+            return True
+        if user_has_permission(user, "deal", "view"):
             return True
         return deal.seller_id == user.id or deal.executor_id == user.id
 

@@ -1,7 +1,7 @@
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
 from apps.deals.models import Deal
-from apps.users.models import Role, UserRole
+from apps.users.models import Permission, Role, RolePermission, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -72,6 +72,16 @@ class ChatMessageAccessTests(APITestCase):
         admin_role, _ = Role.objects.get_or_create(name="Admin")
         UserRole.objects.create(user=self.admin_user, role=admin_role)
         self.admin_token = str(RefreshToken.for_user(self.admin_user).access_token)
+        observer_role = Role.objects.create(name="Observer")
+        view_permission = Permission.objects.create(resource="deal", action="view")
+        RolePermission.objects.create(role=observer_role, permission=view_permission)
+        self.observer_user = User.objects.create_user(
+            username="observer", password="pass"
+        )
+        UserRole.objects.create(user=self.observer_user, role=observer_role)
+        self.observer_token = str(
+            RefreshToken.for_user(self.observer_user).access_token
+        )
 
     def _auth(self, token: str) -> None:
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
@@ -120,6 +130,15 @@ class ChatMessageAccessTests(APITestCase):
         response = self.api_client.post(
             "/api/v1/chat_messages/",
             {"deal": str(self.deal.id), "body": "Admin ping"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_role_with_view_permission_can_create_message(self):
+        self._auth(self.observer_token)
+        response = self.api_client.post(
+            "/api/v1/chat_messages/",
+            {"deal": str(self.deal.id), "body": "Observer ping"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
