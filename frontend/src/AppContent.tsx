@@ -98,13 +98,13 @@ const AppContent: React.FC = () => {
     setModal('client');
   };
 
-  const closeClientModal = () => {
+  const closeClientModal = useCallback(() => {
     if (isClientModalOverlayOpen) {
       setClientModalOverlayOpen(false);
       return;
     }
     setModal(null);
-  };
+  }, [isClientModalOverlayOpen, setModal]);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
@@ -1092,6 +1092,7 @@ const AppContent: React.FC = () => {
       }
     },
     [
+      adjustPaymentsTotals,
       closePolicyModal,
       dealFilters,
       dealsById,
@@ -1339,7 +1340,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [invalidateDealsCache, setError, setPaymentModal, syncDealsByIds, updateAppData]
+    [adjustPaymentsTotals, invalidateDealsCache, setError, setPaymentModal, syncDealsByIds, updateAppData]
   );
 
   const handleUpdatePayment = useCallback(
@@ -1424,7 +1425,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [invalidateDealsCache, payments, setError, setPaymentModal, syncDealsByIds, updateAppData]
+    [adjustPaymentsTotals, invalidateDealsCache, payments, setError, setPaymentModal, syncDealsByIds, updateAppData]
   );
 
   const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
