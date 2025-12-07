@@ -777,19 +777,21 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const handleChatSendMessage = useCallback(
 
-    async (body: string) => {
+    async (body: string): Promise<ChatMessage> => {
 
       const dealId = selectedDeal?.id;
 
       if (!dealId) {
 
-        return;
+        throw new Error('Сделка не выбрана');
 
       }
 
       const newMessage = await onSendChatMessage(dealId, body);
 
       setChatMessages((prev) => [...prev, newMessage]);
+
+      return newMessage;
 
     },
 

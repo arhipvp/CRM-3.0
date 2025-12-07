@@ -4,9 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { LoginPage } from '../components/LoginPage';
 import { login, type LoginResponse } from '../api';
 
-vi.mock('../api', () => ({
-  login: vi.fn(),
-}));
+vi.mock('../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api')>();
+  return {
+    ...actual,
+    login: vi.fn(),
+  };
+});
 
 const mockedLogin = vi.mocked(login);
 const mockUser: LoginResponse['user'] = {
