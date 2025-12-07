@@ -1987,15 +1987,15 @@ export const DealsView: React.FC<DealsViewProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-full">
-      <section className="xl:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+    <div className="flex h-full flex-col gap-6">
+      <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200">
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
             <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
           </div>
         </div>
-        <div className="px-5 py-3 border-b border-slate-100 space-y-3">
+        <div className="px-6 py-4 space-y-4 border-b border-slate-100">
           <div>
             <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
               Поиск
@@ -2095,67 +2095,117 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {sortedDeals.map((deal) => {
-            const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
-            const deadlineTone = getDeadlineTone(deal.expectedClose);
-            const isDeleted = Boolean(deal.deletedAt);
-            return (
-              <button
-                key={deal.id}
-                onClick={() => onSelectDeal(deal.id)}
-                className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
-                  selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
-                } ${isDeleted ? 'opacity-60 line-through' : ''}`}
-              >
-                <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-                <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
-                {isDeleted && (
-                  <p className="text-[11px] font-semibold text-rose-500 mt-1">
-                    Удалена: {formatDeletedAt(deal.deletedAt)}
-                  </p>
-                )}
-                <p className="text-xs text-slate-400 mt-1">Клиент: {deal.clientName || '-'}</p>
-                {deal.expectedClose ? (
-                  <p className={`text-xs mt-1 ${deadlineTone}`}>
-                    Застраховать не позднее чем: {formatDate(deal.expectedClose)}
-                  </p>
-                ) : (
-                  <p className="text-xs mt-1 text-rose-500 font-semibold">
-                    Заполните дату, чтобы не пропустить сроки
-                  </p>
-                )}
-                <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
-                  <span>Контакт: {formatDate(deal.nextContactDate)}</span>
-                  {deal.nextContactDate && (
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        isOverdue ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                      }`}
+        <div className="max-h-[480px] overflow-y-auto">
+          <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
+            <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
+                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
+                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
+                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ожидаемое</th>
+                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
+                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {sortedDeals.length ? (
+                sortedDeals.map((deal) => {
+                  const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
+                  const deadlineTone = getDeadlineTone(deal.expectedClose);
+                  const isDeleted = Boolean(deal.deletedAt);
+                  const isSelected = selectedDeal?.id === deal.id;
+                  const rowClassName = [
+                    'transition-colors',
+                    'cursor-pointer',
+                    isSelected ? 'bg-sky-50' : 'hover:bg-slate-50',
+                    isDeleted ? 'opacity-60' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
+                  return (
+                    <tr
+                      key={deal.id}
+                      onClick={() => onSelectDeal(deal.id)}
+                      className={rowClassName}
                     >
-                      {isOverdue ? '⚠ ' : ''}
-                      {formatDate(deal.nextContactDate)}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-          {dealsHasMore && (
-            <div className="px-5 py-4 border-t border-slate-100 text-center">
-              <button
-                type="button"
-                onClick={onLoadMoreDeals}
-                disabled={isLoadingMoreDeals}
-                className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
-              >
-                {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
-              </button>
-            </div>
-          )}
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
+                        <p className="text-[11px] text-slate-500 mt-1">{deal.source || '—'}</p>
+                        {deal.deletedAt && (
+                          <p className="text-[11px] text-rose-500 mt-1">
+                            Удалена: {formatDeletedAt(deal.deletedAt)}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-900">
+                        {deal.clientName || '—'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-900">
+                        <ColoredLabel
+                          value={statusLabels[deal.status]}
+                          fallback="—"
+                          className="font-semibold"
+                          showDot
+                        />
+                        {deal.closingReason && (
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            {deal.closingReason}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold">
+                        {deal.expectedClose ? (
+                          <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
+                        ) : (
+                          <span className="text-xs text-rose-500 font-semibold">Нет срока</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {deal.nextContactDate ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-900">{formatDate(deal.nextContactDate)}</span>
+                            <span
+                              className={`px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide rounded-full ${
+                                isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'
+                              }`}
+                            >
+                              {isOverdue ? 'Просрочено' : 'Запланировано'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-rose-500 font-semibold uppercase tracking-wide">Не назначено</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-900">
+                        {deal.executorName || '—'}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">
+                    Сделки не найдены.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
+        {dealsHasMore && (
+          <div className="border-t border-slate-100 px-6 py-4 text-center">
+            <button
+              type="button"
+              onClick={onLoadMoreDeals}
+              disabled={isLoadingMoreDeals}
+              className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
+            >
+              {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
+            </button>
+          </div>
+        )}
       </section>
-      <section className="xl:col-span-3 space-y-6">
+      <section className="space-y-6">
         {selectedDeal ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
