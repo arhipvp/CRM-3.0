@@ -396,34 +396,55 @@ export const DealsView: React.FC<DealsViewProps> = ({
   );
 
 
-  const [deadlineSortDirection, setDeadlineSortDirection] = useState<'asc' | 'desc' | null>(null);
+  type DealsSortKey = 'deadline' | 'nextContact';
+
+  const [sortState, setSortState] = useState<{ key: DealsSortKey | null; direction: 'asc' | 'desc' | null }>({
+    key: null,
+    direction: null,
+  });
 
   const displayedDeals = useMemo<Deal[]>(() => {
-    if (!deadlineSortDirection) {
+    if (!sortState.key || !sortState.direction) {
       return sortedDeals;
     }
-    const getDeadlineTime = (deal: Deal) => (deal.expectedClose ? new Date(deal.expectedClose).getTime() : Infinity);
+    const getSortValue = (deal: Deal) => {
+      if (sortState.key === 'deadline') {
+        return deal.expectedClose ? new Date(deal.expectedClose).getTime() : Infinity;
+      }
+      return deal.nextContactDate ? new Date(deal.nextContactDate).getTime() : Infinity;
+    };
     const sorted = [...sortedDeals].sort((a, b) => {
-      const difference = getDeadlineTime(a) - getDeadlineTime(b);
-      return deadlineSortDirection === 'asc' ? difference : -difference;
+      const difference = getSortValue(a) - getSortValue(b);
+      return sortState.direction === 'asc' ? difference : -difference;
     });
     return sorted;
-  }, [sortedDeals, deadlineSortDirection]);
+  }, [sortedDeals, sortState]);
 
-  const toggleDeadlineSortDirection = useCallback(() => {
-    setDeadlineSortDirection((current) => {
-      if (current === 'asc') {
-        return 'desc';
+  const toggleColumnSort = useCallback((key: DealsSortKey) => {
+    setSortState((current) => {
+      if (current.key !== key) {
+        return { key, direction: 'asc' };
       }
-      if (current === 'desc') {
-        return null;
+      if (current.direction === 'asc') {
+        return { key, direction: 'desc' };
       }
-      return 'asc';
+      return { key: null, direction: null };
     });
   }, []);
 
-  const deadlineSortIndicator =
-    deadlineSortDirection === 'asc' ? '^' : deadlineSortDirection === 'desc' ? 'v' : '-';
+  const getSortIndicator = (key: DealsSortKey) => {
+    if (sortState.key !== key || !sortState.direction) {
+      return '–';
+    }
+    return sortState.direction === 'asc' ? '↑' : '↓';
+  };
+
+  const getSortLabel = (key: DealsSortKey) => {
+    if (sortState.key !== key || !sortState.direction) {
+      return 'по умолчанию';
+    }
+    return sortState.direction === 'asc' ? 'по возрастанию' : 'по убыванию';
+  };
 
 
 
@@ -2109,59 +2130,76 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
                   <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
                   <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
-                  <th className="px-4 py-2">
+                  <th className="px-4 py-2 min-w-[160px] align-top">
                     <button
                       type="button"
-                      onClick={toggleDeadlineSortDirection}
-                      aria-label={`Сортировать по крайнему сроку, текущий порядок ${deadlineSortDirection ? (deadlineSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию') : 'по умолчанию'}`}
-                      aria-pressed={Boolean(deadlineSortDirection)}
-                      className="flex items-center gap-2 text-left"
+                      onClick={() => toggleColumnSort('deadline')}
+                      aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel('deadline')}`}
+                      className="flex items-center justify-between gap-2 text-left w-full"
                     >
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2">Крайний срок</span>
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{deadlineSortIndicator}</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2">
+                        Крайний срок
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        {getSortIndicator('deadline')}
+                      </span>
                     </button>
                   </th>
-                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
+                  <th className="px-4 py-2 min-w-[140px] align-top">
+                    <button
+                      type="button"
+                      onClick={() => toggleColumnSort('nextContact')}
+                      aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel('nextContact')}`}
+                      className="flex items-center justify-between gap-2 text-left w-full"
+                    >
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        След. контакт
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        {getSortIndicator('nextContact')}
+                      </span>
+                    </button>
+                  </th>
                   <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
                 </tr>
-                <tr className="border-t border-slate-100 bg-white/90">
-                  <th className="px-4 py-2">
+                <tr className="border-t border-slate-100 bg-slate-50/70">
+                  <th className="px-4 py-2 align-top">
                     <input
                       type="text"
                       value={dealSourceFilter}
                       onChange={(event) => onDealSourceFilterChange(event.target.value)}
-                      placeholder="Источник"
+                      placeholder="Источник сделки"
                       aria-label="Фильтр по источнику"
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
                     />
                   </th>
-                  <th className="px-4 py-2" />
-                  <th className="px-4 py-2" />
-                  <th className="px-4 py-2">
-                    <div className="flex flex-col gap-1">
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top">
+                    <div className="flex flex-col gap-2">
                       <input
                         type="date"
                         value={dealExpectedCloseFrom}
                         onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
                         aria-label="Крайний срок с"
-                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
                       />
                       <input
                         type="date"
                         value={dealExpectedCloseTo}
                         onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
                         aria-label="Крайний срок по"
-                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
                       />
                     </div>
                   </th>
-                  <th className="px-4 py-2" />
-                  <th className="px-4 py-2">
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top">
                     <select
                       value={dealExecutorFilter}
                       onChange={(event) => onDealExecutorFilterChange(event.target.value)}
                       aria-label="Фильтр по исполнителю"
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
                     >
                       <option value="">Все</option>
                       {users.map((user) => (
