@@ -16,6 +16,7 @@ import {
 } from './addPolicy/types';
 import { FinancialRecordInputs } from './addPolicy/components/FinancialRecordInputs';
 import { PaymentSection } from './addPolicy/components/PaymentSection';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 interface AddPolicyFormProps {
   onSubmit: (values: PolicyFormValues) => Promise<void>;
@@ -507,7 +508,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         payments,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить полис. Попробуйте позже.');
+      setError(formatErrorMessage(err, 'Не удалось сохранить полис. Попробуйте позже.'));
       throw err;
     } finally {
       setSubmitting(false);

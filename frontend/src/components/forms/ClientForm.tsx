@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 interface ClientFormProps {
   initial?: { name: string; phone?: string; email?: string; birthDate?: string | null; notes?: string | null };
@@ -42,7 +43,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
         notes: notes.trim() || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить клиента');
+      setError(formatErrorMessage(err, 'Не удалось сохранить клиента'));
     } finally {
       setSubmitting(false);
     }

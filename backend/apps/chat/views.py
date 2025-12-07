@@ -4,13 +4,27 @@ from apps.users.models import UserRole
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.pagination import PageNumberPagination
 
 from .models import ChatMessage
 from .serializers import ChatMessageSerializer
 
 
+class ChatMessagePagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "limit"
+    max_page_size = 100
+
+
 class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
+    """
+    Сообщения могут менять только админы, авторы и участники сделки (seller/executor).
+    EditProtectedMixin проверяет автора, а дополнительная проверка дает доступ участникам сделки.
+    """
+
+    owner_field = "author"
     serializer_class = ChatMessageSerializer
+    pagination_class = ChatMessagePagination
 
     def get_queryset(self):
         user = self.request.user
@@ -60,3 +74,10 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if self._is_admin(user):
             return True
         return deal.seller_id == user.id or deal.executor_id == user.id
+
+    def _can_modify(self, user, instance):
+        if super()._can_modify(user, instance):
+            return True
+
+        deal = getattr(instance, "deal", None)
+        return self._user_has_deal_access(user, deal)

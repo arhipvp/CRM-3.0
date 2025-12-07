@@ -29,6 +29,7 @@ import {
   User,
 
 } from '../../types';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 import {
   fetchDealDriveFiles,
@@ -186,7 +187,7 @@ interface DealsViewProps {
 
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
 
-  onSendChatMessage: (dealId: string, body: string) => Promise<void>;
+  onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
 
   onDeleteChatMessage: (messageId: string) => Promise<void>;
 
@@ -786,13 +787,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       }
 
-      await onSendChatMessage(dealId, body);
+      const newMessage = await onSendChatMessage(dealId, body);
 
-      await loadChatMessages();
+      setChatMessages((prev) => [...prev, newMessage]);
 
     },
 
-    [onSendChatMessage, selectedDeal?.id, loadChatMessages]
+    [onSendChatMessage, selectedDeal?.id]
 
   );
 
@@ -812,11 +813,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       await onDeleteChatMessage(messageId);
 
-      await loadChatMessages();
+      setChatMessages((prev) => prev.filter((message) => message.id !== messageId));
 
     },
 
-    [onDeleteChatMessage, loadChatMessages, selectedDeal?.id]
+    [onDeleteChatMessage, selectedDeal?.id]
 
   );
 
@@ -873,7 +874,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
     } catch (err) {
 
-      setMergeError(err instanceof Error ? err.message : 'Во время объединения произошла ошибка.');
+      setMergeError(formatErrorMessage(err, 'Во время объединения произошла ошибка.'));
 
     } finally {
 
@@ -1185,11 +1186,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       console.error('Ошибка создания заметки:', err);
 
-      setNotesError(
-
-        err instanceof Error ? err.message : 'Не удалось создать заметку'
-
-      );
+      setNotesError(formatErrorMessage(err, 'Не удалось создать заметку'));
 
     } finally {
 
@@ -1217,15 +1214,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       console.error('Ошибка удаления заметки:', err);
 
-      setNotesError(
-
-        err instanceof Error
-
-          ? err.message
-
-          : 'Не удалось удалить заметку'
-
-      );
+      setNotesError(formatErrorMessage(err, 'Не удалось удалить заметку'));
 
     } finally {
 
@@ -1253,11 +1242,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       console.error('Ошибка восстановления заметки:', err);
 
-      setNotesError(
-
-        err instanceof Error ? err.message : 'Не удалось восстановить заметку'
-
-      );
+      setNotesError(formatErrorMessage(err, 'Не удалось восстановить заметку'));
 
     } finally {
 
@@ -1309,11 +1294,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       setDriveError(
 
-        err instanceof Error
-
-          ? err.message
-
-          : 'Не удалось загрузить файлы из Google Drive.'
+        formatErrorMessage(err, 'Не удалось загрузить файлы из Google Drive.')
 
       );
 
@@ -1502,7 +1483,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
         console.error('Ошибка загрузки заметок:', err);
 
-        setNotesError(err instanceof Error ? err.message : 'Не удалось загрузить заметки');
+        setNotesError(formatErrorMessage(err, 'Не удалось загрузить заметки'));
 
       } finally {
 

@@ -35,3 +35,22 @@ class ChatMessage(SoftDeleteModel):
 
     def __str__(self) -> str:
         return f"{self.author_name}: {self.body[:50]}"
+
+    @property
+    def author_display_name(self) -> str:
+        """Получить удобочитаемое имя автора с запасным вариантом."""
+        name = (self.author_name or "").strip()
+        if name:
+            return name
+
+        author = self.author
+        if author:
+            full_name_raw = author.get_full_name()
+            full_name = full_name_raw.strip() if full_name_raw else ""
+            username = (author.username or "").strip()
+            if full_name:
+                return full_name
+            if username:
+                return username
+
+        return "Пользователь"

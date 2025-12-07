@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { User, ChatMessage } from '../types';
 import { getUserColor } from '../utils/userColor';
+import { Modal } from './Modal';
+import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface ChatBoxProps {
   messages: ChatMessage[];
   currentUser: User;
-  onSendMessage: (body: string) => Promise<void>;
+  onSendMessage: (body: string) => Promise<ChatMessage>;
   onDeleteMessage: (messageId: string) => Promise<void>;
 }
 
@@ -24,8 +26,12 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
   const [isSubmitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [messageToDelete, setMessageToDelete] = useState<ChatMessage | null>(null);
+  const [isDeletingMessage, setDeletingMessage] = useState(false);
+  const userRoles = currentUser.roles ?? [];
+  const isAdmin = userRoles.includes('Admin');
 
-  // РђРІС‚РѕСЃРєСЂРѕР»Р» Рє РїРѕСЃР»РµРґРЅРµРјСѓ СЃРѕРѕР±С‰РµРЅРёСЋ
+  // Автоскролл к последнему сообщению
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) {
@@ -33,6 +39,8 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
     }
     container.scrollTop = container.scrollHeight;
   }, [messages]);
+
+  const canDeleteMessage = () => isAdmin;
 
   const sendMessage = async () => {
     if (isSubmitting || !newMessage.trim()) return;
@@ -44,7 +52,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
       await onSendMessage(newMessage.trim());
       setNewMessage('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ');
+      setError(formatErrorMessage(err, 'Не удалось отправить сообщение'));
     } finally {
       setSubmitting(false);
     }
@@ -62,12 +70,25 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
     }
   };
 
-  const handleDelete = async (messageId: string) => {
-    if (!confirm('Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ СЌС‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ?')) return;
+  const handleDeleteClick = (message: ChatMessage) => {
+    setMessageToDelete(message);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!messageToDelete) {
+      return;
+    }
+
+    setError(null);
+    setDeletingMessage(true);
+
     try {
-      await onDeleteMessage(messageId);
+      await onDeleteMessage(messageToDelete.id);
+      setMessageToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ');
+      setError(formatErrorMessage(err, 'Не удалось удалить сообщение.'));
+    } finally {
+      setDeletingMessage(false);
     }
   };
 
@@ -89,11 +110,15 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
           </p>
         ) : (
           messages.map((msg) => {
-            const authorColor = getUserColor(
-              msg.author ?? msg.author_username ?? msg.author_name
-            );
-            const authorName =
-              msg.author_name || msg.author_username || 'Пользователь';
+            const resolvedAuthorDisplayName =
+              msg.author_display_name ??
+              msg.author_name ??
+              msg.author_username ??
+              'Пользователь';
+            const authorColor = getUserColor(resolvedAuthorDisplayName);
+            const authorName = resolvedAuthorDisplayName;
+            const showDeleteButton =
+              canDeleteMessage() && msg.showDeleteButton !== false;
             return (
               <div
                 key={msg.id}
@@ -115,12 +140,14 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
                     {msg.body}
                   </p>
                 </div>
-                <button
-                  onClick={() => handleDelete(msg.id)}
-                  className="text-xs text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition flex-shrink-0"
-                >
-                  ×
-                </button>
+                {showDeleteButton && (
+                  <button
+                    onClick={() => handleDeleteClick(msg)}
+                    className="text-xs text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition flex-shrink-0"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             );
           })
@@ -156,6 +183,36 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
           </div>
         </form>
       </div>
+      {messageToDelete && (
+        <Modal
+          title="Подтвердите удаление"
+          onClose={() => setMessageToDelete(null)}
+          size="sm"
+        >
+          <p className="text-sm text-slate-700">
+            Вы уверены, что хотите удалить это сообщение?
+          </p>
+          <p className="text-sm text-slate-500 mt-2 break-words">{messageToDelete.body}</p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setMessageToDelete(null)}
+              className="px-3 py-2 text-sm font-semibold text-slate-500 border border-slate-200 rounded-lg hover:text-slate-700"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDelete}
+              disabled={isDeletingMessage}
+              className="px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60"
+            >
+              {isDeletingMessage ? 'Удаление...' : 'Удалить'}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
+

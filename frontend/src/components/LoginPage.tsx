@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { login } from '../api';
 import './LoginPage.css';
+import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -24,7 +25,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       console.log('Login successful, calling onLoginSuccess');
       onLoginSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка входа');
+      setError(formatErrorMessage(err, 'Ошибка входа'));
       setIsLoading(false);
     }
   };

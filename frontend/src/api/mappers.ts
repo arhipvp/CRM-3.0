@@ -364,12 +364,27 @@ export const mapNote = (raw: Record<string, unknown>): Note => ({
   deletedAt: toNullableString(raw.deleted_at),
 });
 
-export const mapChatMessage = (raw: Record<string, unknown>): ChatMessage => ({
-  id: toStringValue(raw.id),
-  deal: toStringValue(raw.deal),
-  author_name: toStringValue(raw.author_name),
-  author_username: toNullableString(raw.author_username),
-  author: toNullableString(raw.author),
-  body: toStringValue(raw.body),
-  created_at: toStringValue(raw.created_at),
-});
+export const mapChatMessage = (raw: Record<string, unknown>): ChatMessage => {
+  const fallbackAuthorDisplayName =
+    toOptionalString(raw.author_name ?? raw.authorName) ??
+    toOptionalString(raw.author_username ?? raw.authorUsername);
+  const resolvedDisplayName =
+    toOptionalString(
+      raw.author_display_name ??
+        raw.authorDisplayName ??
+        raw.author_displayName
+    ) ??
+    fallbackAuthorDisplayName ??
+    'Пользователь';
+
+  return {
+    id: toStringValue(raw.id),
+    deal: toStringValue(raw.deal),
+    author_name: toStringValue(raw.author_name),
+    author_username: toNullableString(raw.author_username),
+    author: toNullableString(raw.author),
+    author_display_name: toStringValue(resolvedDisplayName),
+    body: toStringValue(raw.body),
+    created_at: toStringValue(raw.created_at),
+  };
+};

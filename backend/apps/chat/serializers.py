@@ -10,6 +10,9 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     author_username = serializers.CharField(
         source="author.username", read_only=True, allow_null=True
     )
+    author_display_name = serializers.CharField(
+        source="author_display_name", read_only=True
+    )
 
     deal = serializers.PrimaryKeyRelatedField(queryset=Deal.objects.with_deleted())
 
@@ -23,6 +26,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
             "deleted_at",
             "author",
             "author_name",
+            "author_display_name",
         )
 
     def to_representation(self, instance):

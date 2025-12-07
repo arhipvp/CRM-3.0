@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Deal, Client, User } from '../../types';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 const formatUserLabel = (user: User) => {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
@@ -71,7 +72,7 @@ export function EditDealForm({
 
       await onSubmit(formData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при обновлении сделки');
+      setError(formatErrorMessage(err, 'Ошибка при обновлении сделки'));
     } finally {
       setLoading(false);
     }

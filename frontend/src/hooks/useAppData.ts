@@ -23,6 +23,7 @@ import type {
   Task,
   User,
 } from '../types';
+import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface AppDataState {
   clients: Client[];
@@ -146,7 +147,7 @@ export const useAppData = () => {
       });
       setDealsNextPage(payload.next ? dealsNextPage + 1 : null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading more deals');
+      setError(formatErrorMessage(err, 'Error loading more deals'));
     } finally {
       setIsLoadingMoreDeals(false);
     }
@@ -183,8 +184,7 @@ export const useAppData = () => {
       setAppData({ knowledgeDocs: docs });
     } catch (err) {
       setAppData({
-        knowledgeError:
-          err instanceof Error ? err.message : 'Ошибка при загрузке справочной базы',
+        knowledgeError: formatErrorMessage(err, 'Ошибка при загрузке справочной базы'),
       });
       throw err;
     } finally {
@@ -217,7 +217,7 @@ export const useAppData = () => {
         salesChannels: salesChannelsData,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при загрузке данных с backend');
+      setError(formatErrorMessage(err, 'Ошибка при загрузке данных с backend'));
       throw err;
     } finally {
       setIsLoading(false);

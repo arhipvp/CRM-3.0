@@ -187,6 +187,7 @@ export interface ChatMessage {
   deal: string;
   author_name?: string;
   author_username?: string;
+  author_display_name?: string;
   author?: string;
   body: string;
   created_at: string;

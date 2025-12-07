@@ -8,6 +8,7 @@ import {
 } from '../api';
 import { FileUploadManager } from './FileUploadManager';
 import { Modal } from './Modal';
+import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface DriveFilesModalProps {
     isOpen: boolean;
@@ -58,9 +59,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
             setFiles(fetchedFiles);
         } catch (err) {
             console.error('Ошибка загрузки файлов:', err);
-            setError(
-                err instanceof Error ? err.message : 'Не удалось загрузить файлы'
-            );
+            setError(formatErrorMessage(err, 'Не удалось загрузить файлы'));
         } finally {
             setIsLoading(false);
         }

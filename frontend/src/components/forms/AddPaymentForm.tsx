@@ -5,6 +5,7 @@ import { PolicyField } from './addPayment/PolicyField';
 import { DealField } from './addPayment/DealField';
 import { DatesFields } from './addPayment/DatesFields';
 import { FormActions } from './addPayment/FormActions';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -101,7 +102,7 @@ export function AddPaymentForm({
 
       await onSubmit(submission);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить платёж');
+      setError(formatErrorMessage(err, 'Не удалось сохранить платёж'));
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface FileUploadManagerProps {
   onUpload: (file: File) => Promise<void>;
@@ -70,7 +71,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
         progressInterval = null;
       }
       setUploadProgress(0);
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить файл');
+      setError(formatErrorMessage(err, 'Не удалось загрузить файл'));
     } finally {
       if (progressInterval) {
         clearInterval(progressInterval);

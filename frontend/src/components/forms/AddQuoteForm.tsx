@@ -5,6 +5,7 @@ import {
   fetchInsuranceTypes,
 } from '../../api';
 import type { InsuranceCompany, InsuranceType } from '../../types';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export interface QuoteFormValues {
   insuranceCompanyId: string;
@@ -89,7 +90,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         comments: comments.trim() || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить расчет');
+      setError(formatErrorMessage(err, 'Не удалось сохранить расчет'));
     } finally {
       setSubmitting(false);
     }

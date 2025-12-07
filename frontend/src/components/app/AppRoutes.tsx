@@ -54,7 +54,7 @@ export interface AppRoutesProps {
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
-  onSendChatMessage: (dealId: string, body: string) => Promise<void>;
+  onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;

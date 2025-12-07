@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FinancialRecord } from '../../types';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export interface AddFinancialRecordFormValues {
   paymentId: string;
@@ -95,7 +96,7 @@ export function AddFinancialRecordForm({
 
       await onSubmit(formData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при сохранении записи');
+      setError(formatErrorMessage(err, 'Ошибка при сохранении записи'));
     } finally {
       setLoading(false);
     }

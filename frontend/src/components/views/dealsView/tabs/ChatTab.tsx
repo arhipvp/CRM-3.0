@@ -7,7 +7,7 @@ interface ChatTabProps {
   chatMessages: ChatMessage[];
   isChatLoading: boolean;
   currentUser: User | null;
-  onSendMessage: (body: string) => Promise<void>;
+  onSendMessage: (body: string) => Promise<ChatMessage>;
   onDeleteMessage: (messageId: string) => Promise<void>;
 }
 
@@ -24,7 +24,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({
   }
 
   if (isChatLoading) {
-    return <p className="text-sm text-slate-500">����㦠�� ᮮ�饭��...</p>;
+    return <p className="text-sm text-slate-500">Загрузка чата...</p>;
   }
 
   if (!currentUser) {

@@ -131,9 +131,11 @@ export interface ChatMessage {
   deal: string;
   author_name: string;
   author_username?: string | null;
+  author_display_name: string;
   author?: string | null;
   body: string;
   created_at: string;
+  showDeleteButton?: boolean;
 }
 
 export interface Deal {

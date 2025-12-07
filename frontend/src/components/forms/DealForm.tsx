@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Client, User } from '../../types';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
 
@@ -106,7 +107,7 @@ export const DealForm: React.FC<DealFormProps> = ({
         source: source.trim() || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать сделку');
+      setError(formatErrorMessage(err, 'Не удалось создать сделку'));
     } finally {
       setSubmitting(false);
     }

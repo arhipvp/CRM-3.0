@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Task, TaskPriority, TaskStatus, User } from '../../types';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export interface AddTaskFormValues {
   title: string;
@@ -60,7 +61,7 @@ export function AddTaskForm({
 
       await onSubmit(formData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при сохранении задачи');
+      setError(formatErrorMessage(err, 'Ошибка при сохранении задачи'));
     } finally {
       setLoading(false);
     }

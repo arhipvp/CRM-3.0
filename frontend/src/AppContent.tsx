@@ -16,6 +16,7 @@ import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
 import { Modal } from './components/Modal';
+import { formatErrorMessage } from './utils/formatErrorMessage';
 import {
   createClient,
   deleteClient,
@@ -255,6 +256,43 @@ const AppContent: React.FC = () => {
     [refreshDeals]
   );
 
+  const parseAmountValue = (value?: string | null) => {
+    const parsed = parseNumericAmount(value ?? '');
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const formatAmountValue = (value: number) => value.toFixed(2);
+
+  const adjustPaymentsTotals = <
+    T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }
+  >(
+    items: T[],
+    targetId: string | undefined | null,
+    totalDelta: number,
+    paidDelta: number
+  ) => {
+    if (!targetId) {
+      return items;
+    }
+    const normalizedTotalDelta = Number.isFinite(totalDelta) ? totalDelta : 0;
+    const normalizedPaidDelta = Number.isFinite(paidDelta) ? paidDelta : 0;
+    if (normalizedTotalDelta === 0 && normalizedPaidDelta === 0) {
+      return items;
+    }
+    return items.map((item) => {
+      if (item.id !== targetId) {
+        return item;
+      }
+      const currentTotal = parseAmountValue(item.paymentsTotal);
+      const currentPaid = parseAmountValue(item.paymentsPaid);
+      return {
+        ...item,
+        paymentsTotal: formatAmountValue(currentTotal + normalizedTotalDelta),
+        paymentsPaid: formatAmountValue(currentPaid + normalizedPaidDelta),
+      };
+    });
+  };
+
   const handlePolicyDraftReady = useCallback(
     (
       dealId: string,
@@ -331,7 +369,7 @@ const AppContent: React.FC = () => {
     setError(null);
     refreshDealsWithSelection(debouncedDealFilters).catch((err) => {
       console.error('Search deals error:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка при поиске сделок');
+      setError(formatErrorMessage(err, 'Ошибка при поиске сделок'));
     });
   }, [
     debouncedDealFilters,
@@ -424,13 +462,7 @@ const AppContent: React.FC = () => {
         setEditingClient(null);
         setError(null);
       } catch (err) {
-        const message =
-          err instanceof APIError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Ошибка при обновлении клиента';
-        setError(message);
+        setError(formatErrorMessage(err, 'Ошибка при обновлении клиента'));
         throw err;
       }
     },
@@ -454,19 +486,13 @@ const AppContent: React.FC = () => {
       addNotification('Клиент удалён', 'success', 4000);
       setClientDeleteTarget(null);
       setError(null);
-    } catch (err) {
-      if (err instanceof APIError && err.status === 403) {
-        addNotification('Ошибка доступа при удалении клиента', 'error', 4000);
-      } else {
-        setError(
-          err instanceof APIError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Ошибка при удалении клиента'
-        );
-      }
-      throw err;
+      } catch (err) {
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Ошибка доступа при удалении клиента', 'error', 4000);
+        } else {
+          setError(formatErrorMessage(err, 'Ошибка при удалении клиента'));
+        }
+        throw err;
     } finally {
       setIsSyncing(false);
     }
@@ -661,16 +687,16 @@ const AppContent: React.FC = () => {
       updateAppData((prev) => ({
         deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
       }));
-    } catch (err) {
-      if (err instanceof APIError && err.status === 403) {
-        addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
-      } else {
-        setError(err instanceof Error ? err.message : 'Ошибка при восстановлении сделки');
+      } catch (err) {
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
+        } else {
+          setError(formatErrorMessage(err, 'Ошибка при восстановлении сделки'));
+        }
+      } finally {
+        setIsSyncing(false);
       }
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+    };
 
   const handleUpdateDeal = async (dealId: string, data: EditDealFormValues) => {
     setIsSyncing(true);
@@ -680,16 +706,16 @@ const AppContent: React.FC = () => {
         deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
       }));
       setSelectedDealId(updated.id);
-    } catch (err) {
-      if (err instanceof APIError && err.status === 403) {
-        addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
-      } else {
-        setError(err instanceof Error ? err.message : 'Ошибка при обновлении сделки');
+      } catch (err) {
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
+        } else {
+          setError(formatErrorMessage(err, 'Ошибка при обновлении сделки'));
+        }
+        throw err;
+      } finally {
+        setIsSyncing(false);
       }
-      throw err;
-    } finally {
-      setIsSyncing(false);
-    }
   };
   const handleDeleteDeal = useCallback(
     async (dealId: string) => {
@@ -707,7 +733,7 @@ const AppContent: React.FC = () => {
         if (err instanceof APIError && err.status === 403) {
           addNotification('Ошибка доступа при удалении сделки', 'error', 4000);
         } else {
-          setError(err instanceof Error ? err.message : 'Не удалось удалить сделку');
+          setError(formatErrorMessage(err, 'Не удалось удалить сделку'));
         }
       } finally {
         setIsSyncing(false);
@@ -729,7 +755,7 @@ const AppContent: React.FC = () => {
         if (err instanceof APIError && err.status === 403) {
           addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
         } else {
-          setError(err instanceof Error ? err.message : 'Не удалось восстановить сделку');
+          setError(formatErrorMessage(err, 'Не удалось восстановить сделку'));
         }
       } finally {
         setIsSyncing(false);
@@ -752,13 +778,7 @@ const AppContent: React.FC = () => {
         setError(null);
         addNotification('Сделки объединены', 'success', 4000);
       } catch (err) {
-        const message =
-          err instanceof APIError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Ошибка объединения сделок';
-        setError(message);
+        setError(formatErrorMessage(err, 'Ошибка объединения сделок'));
         throw err;
       } finally {
         setIsSyncing(false);
@@ -777,13 +797,7 @@ const AppContent: React.FC = () => {
       }));
       setQuoteDealId(null);
     } catch (err) {
-      const message =
-        err instanceof APIError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Ошибка при добавлении предложения';
-      setError(message);
+      setError(formatErrorMessage(err, 'Ошибка при добавлении предложения'));
       throw err;
     }
   };
@@ -809,13 +823,7 @@ const AppContent: React.FC = () => {
       }));
       setEditingQuote(null);
     } catch (err) {
-      const message =
-        err instanceof APIError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Ошибка при обновлении предложения';
-      setError(message);
+      setError(formatErrorMessage(err, 'Ошибка при обновлении предложения'));
       throw err;
     }
   };
@@ -835,7 +843,7 @@ const AppContent: React.FC = () => {
         ),
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при удалении предложения');
+      setError(formatErrorMessage(err, 'Ошибка при удалении предложения'));
       throw err;
     }
   };
@@ -870,9 +878,7 @@ const AppContent: React.FC = () => {
             : [fetchedDeal, ...prev.deals],
         }));
       } catch (err) {
-        const message =
-          err instanceof APIError ? err.message : err instanceof Error ? err.message : 'Ошибка при получении сделки';
-        setError(message);
+        setError(formatErrorMessage(err, 'Ошибка при получении сделки'));
         throw err;
       }
     }
@@ -1002,6 +1008,7 @@ const AppContent: React.FC = () => {
         }));
       }
 
+      let refreshFailed = false;
       try {
         await refreshPolicies();
       } catch (refreshErr) {
@@ -1010,11 +1017,24 @@ const AppContent: React.FC = () => {
             ? refreshErr.message
             : 'Не удалось обновить список полисов'
         );
+        refreshFailed = true;
+      }
+      try {
+        await refreshDealsWithSelection(dealFilters, { force: true });
+      } catch (refreshErr) {
+        setError(
+          refreshErr instanceof Error
+            ? refreshErr.message
+            : 'Не удалось обновить список сделок'
+        );
+        refreshFailed = true;
       }
 
-      closePolicyModal();
+      if (!refreshFailed) {
+        closePolicyModal();
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить полис');
+      setError(formatErrorMessage(err, 'Не удалось сохранить полис'));
       throw err;
     }
   };
@@ -1092,7 +1112,7 @@ const AppContent: React.FC = () => {
         };
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить полис');
+      setError(formatErrorMessage(err, 'Не удалось удалить полис'));
       throw err;
     }
   };
@@ -1108,16 +1128,16 @@ const AppContent: React.FC = () => {
     try {
       return await fetchChatMessages(dealId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить сообщения');
+      setError(formatErrorMessage(err, 'Не удалось загрузить сообщения'));
       throw err;
     }
   };
 
   const handleSendChatMessage = async (dealId: string, body: string) => {
     try {
-      await createChatMessage(dealId, body);
+      return await createChatMessage(dealId, body);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось отправить сообщение');
+      setError(formatErrorMessage(err, 'Не удалось отправить сообщение'));
       throw err;
     }
   };
@@ -1126,7 +1146,7 @@ const AppContent: React.FC = () => {
     try {
       await deleteChatMessage(messageId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить сообщение');
+      setError(formatErrorMessage(err, 'Не удалось удалить сообщение'));
       throw err;
     }
   };
@@ -1137,7 +1157,7 @@ const AppContent: React.FC = () => {
       const created = await createTask({ dealId, ...data });
       updateAppData((prev) => ({ tasks: [created, ...prev.tasks] }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при создании задачи');
+      setError(formatErrorMessage(err, 'Ошибка при создании задачи'));
       throw err;
     } finally {
       setIsSyncing(false);
@@ -1155,7 +1175,7 @@ const AppContent: React.FC = () => {
       if (err instanceof APIError && err.status === 403) {
         addNotification('Ошибка доступа при обновлении задачи', 'error', 4000);
       } else {
-        setError(err instanceof Error ? err.message : 'Ошибка при обновлении задачи');
+        setError(formatErrorMessage(err, 'Ошибка при обновлении задачи'));
       }
       throw err;
     } finally {
@@ -1168,7 +1188,7 @@ const AppContent: React.FC = () => {
       await deleteTask(taskId);
       updateAppData((prev) => ({ tasks: prev.tasks.filter((task) => task.id !== taskId) }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при удалении задачи');
+      setError(formatErrorMessage(err, 'Ошибка при удалении задачи'));
       throw err;
     }
   };
@@ -1192,22 +1212,22 @@ const AppContent: React.FC = () => {
         source: 'Система',
       });
 
+      const paymentAmount = parseAmountValue(created.amount);
+      const paymentPaidAmount = created.actualDate ? paymentAmount : 0;
       updateAppData((prev) => ({
         payments: [created, ...prev.payments],
         financialRecords: [zeroIncome, ...prev.financialRecords],
+        policies: adjustPaymentsTotals(
+          prev.policies,
+          created.policyId,
+          paymentAmount,
+          paymentPaidAmount
+        ),
+        deals: adjustPaymentsTotals(prev.deals, created.dealId, paymentAmount, paymentPaidAmount),
       }));
-      try {
-        await refreshPolicies();
-      } catch (refreshErr) {
-        setError(
-          refreshErr instanceof Error
-            ? refreshErr.message
-            : 'Не удалось обновить список полисов'
-        );
-      }
       setPaymentModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при создании платежа');
+      setError(formatErrorMessage(err, 'Ошибка при создании платежа'));
       throw err;
     }
   };
@@ -1222,12 +1242,65 @@ const AppContent: React.FC = () => {
         scheduledDate: values.scheduledDate || null,
         actualDate: values.actualDate || null,
       });
-      updateAppData((prev) => ({
-        payments: prev.payments.map((payment) => (payment.id === updated.id ? updated : payment)),
-      }));
+      const updatedAmount = parseAmountValue(updated.amount);
+      const updatedPaid = updated.actualDate ? updatedAmount : 0;
+      updateAppData((prev) => {
+        const previousPayment = prev.payments.find((payment) => payment.id === updated.id);
+        const previousAmount = parseAmountValue(previousPayment?.amount);
+        const previousPaid = previousPayment?.actualDate ? previousAmount : 0;
+        const previousPolicyId = previousPayment?.policyId;
+        const previousDealId = previousPayment?.dealId;
+
+        let policies = prev.policies;
+        if (previousPolicyId && previousPolicyId === updated.policyId) {
+          policies = adjustPaymentsTotals(
+            policies,
+            previousPolicyId,
+            updatedAmount - previousAmount,
+            updatedPaid - previousPaid
+          );
+        } else {
+          if (previousPolicyId) {
+            policies = adjustPaymentsTotals(
+              policies,
+              previousPolicyId,
+              -previousAmount,
+              -previousPaid
+            );
+          }
+          if (updated.policyId) {
+            policies = adjustPaymentsTotals(policies, updated.policyId, updatedAmount, updatedPaid);
+          }
+        }
+
+        let deals = prev.deals;
+        if (previousDealId && previousDealId === updated.dealId) {
+          deals = adjustPaymentsTotals(
+            deals,
+            previousDealId,
+            updatedAmount - previousAmount,
+            updatedPaid - previousPaid
+          );
+        } else {
+          if (previousDealId) {
+            deals = adjustPaymentsTotals(deals, previousDealId, -previousAmount, -previousPaid);
+          }
+          if (updated.dealId) {
+            deals = adjustPaymentsTotals(deals, updated.dealId, updatedAmount, updatedPaid);
+          }
+        }
+
+        return {
+          payments: prev.payments.map((payment) =>
+            payment.id === updated.id ? updated : payment
+          ),
+          policies,
+          deals,
+        };
+      });
       setPaymentModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при обновлении платежа');
+      setError(formatErrorMessage(err, 'Ошибка при обновлении платежа'));
       throw err;
     }
   };
@@ -1267,7 +1340,7 @@ const AppContent: React.FC = () => {
       }));
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при создании записи');
+      setError(formatErrorMessage(err, 'Ошибка при создании записи'));
       throw err;
     }
   };
@@ -1298,35 +1371,35 @@ const AppContent: React.FC = () => {
       }));
       setFinancialRecordModal(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при обновлении записи');
+      setError(formatErrorMessage(err, 'Ошибка при обновлении записи'));
       throw err;
     }
   };
 
   const handleDeleteFinancialRecord = async (recordId: string) => {
-      try {
-        await deleteFinancialRecord(recordId);
-        updateAppData((prev) => {
-          const existing = prev.financialRecords.find((record) => record.id === recordId);
-          return {
-            financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
-            payments: existing
-              ? prev.payments.map((payment) =>
-                  payment.id === existing.paymentId
-                    ? {
-                        ...payment,
-                        financialRecords: (payment.financialRecords ?? []).filter(
-                          (record) => record.id !== recordId
-                        ),
-                      }
-                    : payment
-                )
-              : prev.payments,
-          };
-        });
-        setFinancialRecordModal(null);
-      } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при удалении записи');
+    try {
+      await deleteFinancialRecord(recordId);
+      updateAppData((prev) => {
+        const existing = prev.financialRecords.find((record) => record.id === recordId);
+        return {
+          financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
+          payments: existing
+            ? prev.payments.map((payment) =>
+                payment.id === existing.paymentId
+                  ? {
+                      ...payment,
+                      financialRecords: (payment.financialRecords ?? []).filter(
+                        (record) => record.id !== recordId
+                      ),
+                    }
+                  : payment
+              )
+            : prev.payments,
+        };
+      });
+      setFinancialRecordModal(null);
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Ошибка при удалении записи'));
       throw err;
     }
   };
@@ -1609,3 +1682,4 @@ const AppContent: React.FC = () => {
 };
 
 export default AppContent;
+

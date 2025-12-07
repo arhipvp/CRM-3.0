@@ -76,6 +76,25 @@ class ChatMessageAccessTests(APITestCase):
     def _auth(self, token: str) -> None:
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
+    def _create_messages(
+        self,
+        deal: Deal,
+        count: int,
+        *,
+        author=None,
+        prefix="Message",
+    ) -> None:
+        """Seeds multiple chat messages for a deal."""
+        sender = author or self.seller
+        author_name = (sender.get_full_name() or sender.username).strip()
+        for idx in range(count):
+            ChatMessage.objects.create(
+                deal=deal,
+                body=f"{prefix} {idx + 1}",
+                author=sender,
+                author_name=author_name,
+            )
+
     def test_messages_are_scoped_to_deal(self):
         self._auth(self.seller_token)
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
@@ -127,3 +146,44 @@ class ChatMessageAccessTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data.get("detail"), "Сделка удалена, чат недоступен")
+
+    def test_chat_messages_pagination_limits_default_and_custom_page_size(self):
+        self._create_messages(self.deal, 25, prefix="Paginated")
+        self._auth(self.seller_token)
+
+        response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data
+        self.assertEqual(payload.get("count"), 27)
+        self.assertEqual(len(payload["results"]), 20)
+        self.assertIsNotNone(payload.get("next"))
+
+        limited_response = self.api_client.get(
+            f"/api/v1/chat_messages/?deal={self.deal.id}&limit=5"
+        )
+        limited_payload = limited_response.data
+        self.assertEqual(limited_payload.get("count"), 27)
+        self.assertEqual(len(limited_payload["results"]), 5)
+        self.assertIsNotNone(limited_payload.get("next"))
+
+    def test_deleted_deal_messages_remain_accessible_after_deletion(self):
+        archived_deal = Deal.objects.create(
+            title="Archived Deal",
+            client=self.client_record,
+            seller=self.seller,
+            executor=self.executor,
+            status="open",
+            stage_name="initial",
+        )
+        self._create_messages(archived_deal, 3, prefix="Archived")
+        archived_deal.delete()
+
+        self._auth(self.seller_token)
+        response = self.api_client.get(
+            f"/api/v1/chat_messages/?deal={archived_deal.id}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data
+        self.assertEqual(payload.get("count"), 3)
+        bodies = [msg["body"] for msg in payload["results"]]
+        self.assertTrue(all(body.startswith("Archived") for body in bodies))
