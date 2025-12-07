@@ -1989,13 +1989,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
   return (
     <div className="flex h-full flex-col gap-6">
       <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200">
+        <div className="px-5 py-3 border-b border-slate-200">
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
             <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
           </div>
         </div>
-        <div className="px-6 py-4 space-y-4 border-b border-slate-100">
+        <div className="px-5 py-3 space-y-3 border-b border-slate-100">
           <div>
             <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
               Поиск
@@ -2099,12 +2099,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
             <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-100">
               <tr>
-                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
-                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
-                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
-                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ожидаемое</th>
-                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
-                <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
+                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
+                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
+                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
+                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ожидаемое</th>
+                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
+                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -2128,7 +2128,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       onClick={() => onSelectDeal(deal.id)}
                       className={rowClassName}
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3">
                         <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
                         <p className="text-[11px] text-slate-500 mt-1">{deal.source || '—'}</p>
                         {deal.deletedAt && (
@@ -2137,10 +2137,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
                           </p>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-900">
+                      <td className="px-5 py-3 text-sm text-slate-900">
                         {deal.clientName || '—'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-900">
+                      <td className="px-5 py-3 text-sm text-slate-900">
                         <ColoredLabel
                           value={statusLabels[deal.status]}
                           fallback="—"
@@ -2153,14 +2153,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
                           </p>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold">
+                      <td className="px-5 py-3 text-sm font-semibold">
                         {deal.expectedClose ? (
                           <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
                         ) : (
                           <span className="text-xs text-rose-500 font-semibold">Нет срока</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3">
                         {deal.nextContactDate ? (
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-slate-900">{formatDate(deal.nextContactDate)}</span>
@@ -2176,7 +2176,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                           <span className="text-xs text-rose-500 font-semibold uppercase tracking-wide">Не назначено</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-900">
+                      <td className="px-5 py-3 text-sm text-slate-900">
                         {deal.executorName || '—'}
                       </td>
                     </tr>
