@@ -25,7 +25,7 @@ API доступно по `http://localhost:8000/api/v1`. `GET /health/` провер€ет состо€н
 1. `cd frontend`
 2. `npm install`
 3. `cp .env.example .env`
-4. ”становите `VITE_API_URL=http://localhost:8000/api/v1/`
+4. ”становите `VITE_API_URL=/api/v1` - Vite проксирует запросы через `VITE_PROXY_TARGET`; при пр€мом обращении (без прокси) укажите `http://localhost:8000/api/v1/`.
 5. `npm run dev` (Vite на `http://localhost:5173`)
 
 ƒл€ сборки: `npm run build`. Ћинтинг выполн€етс€ через `npm run lint` (`eslint.config.js`).
@@ -42,11 +42,12 @@ API доступно по `http://localhost:8000/api/v1`. `GET /health/` провер€ет состо€н
 
 ## ќбщие скрипты
 
-- `scripts/import_business_data.py`/`scripts/import_clients.py` Ч импорт клиентов/сделок/полисов из Excel; поддерживают `--sheet`, `--dry-run`, `--clear`.
-- `scripts/full_import.sh` Ч перезаливка клиентов, сделок, полисов, платежей из дампов `/transform_{clients,deals}.py` и Excel (принимает `--backup-sql`, `--backup-xlsx`, `--env-file`).
-- `scripts/backup_project_to_drive.py` Ч архив репозитори€, дампы Postgres/Excel и копирование Google Drive.
-- `scripts/fix_mojibake.py` Ч исправление mojibake в `.ts/.tsx/.js/.jsx` файлах через `ftfy`.
-- `transform_clients.py`/`transform_deals.py` Ч генераци€ SQL/JSON по экспортам `COPY public.client` и `COPY public.deal`.
+- `backend/scripts/import_business_data.py` Ч импорт клиентов, сделок, полисов, платежей и задач из шаблона `scripts/templates/business_data_template_new.xlsx` (`--sheet`, `--dry-run`, `--clear`).
+- `backend/scripts/populate_test_data.sh` Ч запускает `populate_test_data.py` внутри backend дл€ генерации тестовых данных.
+- `backend/scripts/reset_db.sh` Ч выполн€ет `flush` и `migrate` внутри backend.
+- `scripts/backup_project_to_drive.py` Ч архивирует проект, делает дампы Postgres/Excel и копирует их на Google Drive.
+- `scripts/fix_mojibake.py` Ч исправл€ет mojibake в `.ts/.tsx/.js/.jsx` через `ftfy`.
+- `scripts/templates/business_data_template_new.xlsx` Ч актуальный Excel-шаблон дл€ импорта клиентов, сделок, полисов, платежей и задач.
 
 ## јвтоматический бэкап на Google Drive
 

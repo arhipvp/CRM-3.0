@@ -10,10 +10,13 @@ import { ClientForm } from './components/forms/ClientForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
-import type { ModalType } from './components/app/types';
 import { Modal } from './components/Modal';
 import { formatErrorMessage } from './utils/formatErrorMessage';
 import {
+  createClient,
+  updateClient,
+  deleteClient,
+  mergeClients,
   createDeal,
   createQuote,
   updateQuote,
@@ -36,15 +39,32 @@ import {
   clearTokens,
   APIError,
   uploadKnowledgeDocument,
+  fetchDeal,
+  createPolicy,
+  updatePolicy,
+  deletePolicy,
+  createPayment,
+  updatePayment,
+  createFinancialRecord,
+  updateFinancialRecord,
+  deleteFinancialRecord,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
 import { Client, Deal, FinancialRecord, Payment, Policy, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
-import { useClientManagement } from './hooks/useClientManagement';
-import { usePolicyManagement } from './hooks/usePolicyManagement';
-import { usePaymentManagement } from './hooks/usePaymentManagement';
+import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
+import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
+import type { PolicyFormValues } from './components/forms/addPolicy/types';
+import type {
+  ModalType,
+  PaymentModalState,
+  FinancialRecordModalState,
+} from './components/app/types';
+import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
+import { parseNumericAmount } from './utils/parseNumericAmount';
+import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
 const resolveRoleNames = (userData: CurrentUserResponse): string[] => {
   const parsed = userData.user_roles
     ?.map((ur) => ur.role?.name)
