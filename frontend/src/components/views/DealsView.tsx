@@ -2106,7 +2106,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 onClick={() => onSelectDeal(deal.id)}
                 className={`w-full text-left px-5 py-4 border-b border-slate-100 transition ${
                   selectedDeal?.id === deal.id ? 'bg-sky-50' : 'hover:bg-slate-50'
-                } ${isDeleted ? 'opacity-60' : ''}`}
+                } ${isDeleted ? 'opacity-60 line-through' : ''}`}
               >
                 <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
                 <p className="text-xs text-slate-500 mt-1">{statusLabels[deal.status]}</p>
