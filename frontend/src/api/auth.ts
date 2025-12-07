@@ -1,4 +1,4 @@
-﻿import { API_BASE, clearTokens, getAccessToken, request, setAccessToken, setRefreshToken } from './request';
+﻿import { API_BASE, clearTokens, request, setAccessToken, setRefreshToken } from './request';
 
 export interface LoginResponse {
   access: string;
