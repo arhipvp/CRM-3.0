@@ -83,6 +83,13 @@ const mapApiUser = (userData: CurrentUserResponse): User => ({
   lastName: userData.last_name ?? undefined,
 });
 
+const parseAmountValue = (value?: string | null) => {
+  const parsed = parseNumericAmount(value ?? '');
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatAmountValue = (value: number) => value.toFixed(2);
+
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -231,14 +238,7 @@ const AppContent: React.FC = () => {
     [invalidateDealsCache, updateAppData]
   );
 
-  const parseAmountValue = (value?: string | null) => {
-    const parsed = parseNumericAmount(value ?? '');
-    return Number.isFinite(parsed) ? parsed : 0;
-  };
-
-  const formatAmountValue = (value: number) => value.toFixed(2);
-
-  const adjustPaymentsTotals = <
+  const adjustPaymentsTotals = useCallback(
     T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }
   >(
     items: T[],
@@ -266,7 +266,9 @@ const AppContent: React.FC = () => {
         paymentsPaid: formatAmountValue(currentPaid + normalizedPaidDelta),
       };
     });
-  };
+  },
+  []
+);
 
   const handlePolicyDraftReady = useCallback(
     (
