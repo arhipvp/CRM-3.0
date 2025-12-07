@@ -219,18 +219,6 @@ interface DealsViewProps {
 
   onDealExecutorFilterChange: (value: string) => void;
 
-  dealSourceFilter: string;
-
-  onDealSourceFilterChange: (value: string) => void;
-
-  dealExpectedCloseFrom: string;
-
-  onDealExpectedCloseFromChange: (value: string) => void;
-
-  dealExpectedCloseTo: string;
-
-  onDealExpectedCloseToChange: (value: string) => void;
-
   dealShowDeleted: boolean;
 
   onDealShowDeletedChange: (value: boolean) => void;
@@ -328,18 +316,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
   dealExecutorFilter,
 
   onDealExecutorFilterChange,
-
-  dealSourceFilter,
-
-  onDealSourceFilterChange,
-
-  dealExpectedCloseFrom,
-
-  onDealExpectedCloseFromChange,
-
-  dealExpectedCloseTo,
-
-  onDealExpectedCloseToChange,
 
   dealShowDeleted,
 
@@ -2075,13 +2051,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
       <section className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
         <div className="divide-y divide-slate-200">
           <div className="px-4 py-4">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Выбор</p>
-                <p className="text-lg font-semibold text-slate-900">Сделки</p>
-                <p className="text-sm text-slate-500">Всего {displayedDeals.length}</p>
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">Выбор</span>
+                <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
+                <span className="text-sm text-slate-500 whitespace-nowrap">Всего {displayedDeals.length}</span>
               </div>
-            </div>
           </div>
           <div className="px-4 py-4 space-y-4 border-b border-slate-200">
             <div>

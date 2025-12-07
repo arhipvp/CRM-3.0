@@ -170,12 +170,6 @@ const AppContent: React.FC = () => {
     setDealSearch,
     dealExecutorFilter,
     setDealExecutorFilter,
-    dealSourceFilter,
-    setDealSourceFilter,
-  dealExpectedCloseFrom,
-  setDealExpectedCloseFrom,
-  dealExpectedCloseTo,
-  setDealExpectedCloseTo,
     dealShowDeleted,
     setDealShowDeleted,
     dealShowClosed,
@@ -1529,12 +1523,6 @@ const AppContent: React.FC = () => {
         onDealSearchChange={setDealSearch}
         dealExecutorFilter={dealExecutorFilter}
         onDealExecutorFilterChange={setDealExecutorFilter}
-        dealSourceFilter={dealSourceFilter}
-        onDealSourceFilterChange={setDealSourceFilter}
-        dealExpectedCloseFrom={dealExpectedCloseFrom}
-        onDealExpectedCloseFromChange={setDealExpectedCloseFrom}
-        dealExpectedCloseTo={dealExpectedCloseTo}
-        onDealExpectedCloseToChange={setDealExpectedCloseTo}
         dealShowDeleted={dealShowDeleted}
         onDealShowDeletedChange={setDealShowDeleted}
         dealShowClosed={dealShowClosed}

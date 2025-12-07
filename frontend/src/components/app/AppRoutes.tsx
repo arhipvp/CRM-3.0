@@ -67,12 +67,6 @@ export interface AppRoutesProps {
   onDealSearchChange: (value: string) => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
-  dealSourceFilter: string;
-  onDealSourceFilterChange: (value: string) => void;
-  dealExpectedCloseFrom: string;
-  onDealExpectedCloseFromChange: (value: string) => void;
-  dealExpectedCloseTo: string;
-  onDealExpectedCloseToChange: (value: string) => void;
   dealShowDeleted: boolean;
   onDealShowDeletedChange: (value: boolean) => void;
   dealShowClosed: boolean;
@@ -139,12 +133,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onDealSearchChange,
   dealExecutorFilter,
   onDealExecutorFilterChange,
-  dealSourceFilter,
-  onDealSourceFilterChange,
-  dealExpectedCloseFrom,
-  onDealExpectedCloseFromChange,
-  dealExpectedCloseTo,
-  onDealExpectedCloseToChange,
   dealShowDeleted,
   onDealShowDeletedChange,
   dealShowClosed,
@@ -203,14 +191,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDealSearchChange={onDealSearchChange}
           dealExecutorFilter={dealExecutorFilter}
           onDealExecutorFilterChange={onDealExecutorFilterChange}
-          dealSourceFilter={dealSourceFilter}
-          onDealSourceFilterChange={onDealSourceFilterChange}
-          dealExpectedCloseFrom={dealExpectedCloseFrom}
-          onDealExpectedCloseFromChange={onDealExpectedCloseFromChange}
-        dealExpectedCloseTo={dealExpectedCloseTo}
-        onDealExpectedCloseToChange={onDealExpectedCloseToChange}
-        dealShowDeleted={dealShowDeleted}
-        onDealShowDeletedChange={onDealShowDeletedChange}
+          dealShowDeleted={dealShowDeleted}
+          onDealShowDeletedChange={onDealShowDeletedChange}
         dealShowClosed={dealShowClosed}
         onDealShowClosedChange={onDealShowClosedChange}
         onPolicyDraftReady={onPolicyDraftReady}

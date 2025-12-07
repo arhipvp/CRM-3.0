@@ -5,9 +5,6 @@ import type { FilterParams } from '../api';
 export const useDealFilters = () => {
   const [dealSearch, setDealSearch] = useState('');
   const [dealExecutorFilter, setDealExecutorFilter] = useState('');
-  const [dealSourceFilter, setDealSourceFilter] = useState('');
-  const [dealExpectedCloseFrom, setDealExpectedCloseFrom] = useState('');
-  const [dealExpectedCloseTo, setDealExpectedCloseTo] = useState('');
   const [dealShowDeleted, setDealShowDeleted] = useState(false);
   const [dealShowClosed, setDealShowClosed] = useState(false);
 
@@ -20,16 +17,6 @@ export const useDealFilters = () => {
     if (dealExecutorFilter) {
       result.executor = dealExecutorFilter;
     }
-    const trimmedSource = dealSourceFilter.trim();
-    if (trimmedSource) {
-      result.source = trimmedSource;
-    }
-    if (dealExpectedCloseFrom) {
-      result['expected_close_after'] = dealExpectedCloseFrom;
-    }
-    if (dealExpectedCloseTo) {
-      result['expected_close_before'] = dealExpectedCloseTo;
-    }
     if (dealShowDeleted) {
       result.show_deleted = true;
     }
@@ -37,27 +24,13 @@ export const useDealFilters = () => {
       result.show_closed = true;
     }
     return result;
-  }, [
-    dealSearch,
-    dealExecutorFilter,
-    dealSourceFilter,
-    dealExpectedCloseFrom,
-    dealExpectedCloseTo,
-    dealShowDeleted,
-    dealShowClosed,
-  ]);
+  }, [dealSearch, dealExecutorFilter, dealShowDeleted, dealShowClosed]);
 
   return {
     dealSearch,
     setDealSearch,
     dealExecutorFilter,
     setDealExecutorFilter,
-    dealSourceFilter,
-    setDealSourceFilter,
-    dealExpectedCloseFrom,
-    setDealExpectedCloseFrom,
-    dealExpectedCloseTo,
-    setDealExpectedCloseTo,
     dealShowDeleted,
     setDealShowDeleted,
     dealShowClosed,
