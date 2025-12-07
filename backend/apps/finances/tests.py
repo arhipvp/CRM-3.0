@@ -5,6 +5,7 @@ from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -162,3 +163,19 @@ class FinanceAccessTests(APITestCase):
             f"/api/v1/financial_records/{self.fin_record.id}/"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_seller_can_delete_unpaid_payment(self):
+        self._auth(self.seller_token)
+        response = self.api_client.delete(f"/api/v1/payments/{self.payment.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_cannot_delete_paid_payment(self):
+        paid_payment = Payment.objects.create(
+            deal=self.deal,
+            amount=Decimal("500.00"),
+            description="Paid",
+            actual_date=timezone.now(),
+        )
+        self._auth(self.seller_token)
+        response = self.api_client.delete(f"/api/v1/payments/{paid_payment.id}/")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
