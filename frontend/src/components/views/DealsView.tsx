@@ -2130,7 +2130,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       className={rowClassName}
                     >
                       <td className={`px-4 py-2 ${deletedTextClass}`}>
-                        <p className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>{deal.title}</p>
+                        <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>{deal.title}</p>
                         <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>{deal.source || '—'}</p>
                         {deal.deletedAt && (
                           <p className="text-[11px] text-rose-500 mt-1">
@@ -2142,12 +2142,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
                         <span className={deletedTextClass}>{deal.clientName || '—'}</span>
                       </td>
                       <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
-                        <ColoredLabel
-                          value={statusLabels[deal.status]}
-                          fallback="—"
-                          className={`font-semibold ${deletedTextClass}`}
-                          showDot
-                        />
+                        <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
+                          {statusLabels[deal.status]}
+                        </span>
                         {deal.closingReason && (
                           <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
                             {deal.closingReason}
@@ -2178,7 +2175,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
                         )}
                       </td>
                       <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
-                        <span className={deletedTextClass}>{deal.executorName || '—'}</span>
+                        <ColoredLabel
+                          value={deal.executorName}
+                          fallback="—"
+                          className={`text-sm text-slate-900 font-semibold ${deletedTextClass}`}
+                          showDot={false}
+                        />
                       </td>
                     </tr>
                   );
