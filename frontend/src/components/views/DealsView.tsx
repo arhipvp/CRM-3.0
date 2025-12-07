@@ -1086,55 +1086,34 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
   const handleInlineDateChange = async (
-
     field: 'nextContactDate' | 'expectedClose',
-
     rawValue: string,
-
     options?: { selectTopDeal?: boolean }
-
   ) => {
-
     if (!selectedDeal) return;
 
     const value = rawValue || null;
 
-
-
     try {
-
       await updateDealDates(
-
         field === 'nextContactDate'
-
           ? { nextContactDate: value }
-
           : { expectedClose: value }
-
       );
 
       if (options?.selectTopDeal) {
-
         const topDeal = sortedDeals[0];
-
         if (topDeal && topDeal.id !== selectedDeal.id) {
-
           onSelectDeal(topDeal.id);
-
         }
-
       }
-
     } catch (err) {
-
       console.error('Ошибка обновления даты сделки:', err);
-
     }
-
   };
 
-
-
+  const handleQuickNextContactShift = (newValue: string) =>
+    handleInlineDateChange('nextContactDate', newValue, { selectTopDeal: true });
 
   const handleDelayModalConfirm = async () => {
     if (!selectedDeal || !selectedDelayEvent || !selectedDelayEventNextContact) {
@@ -2332,6 +2311,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
             <div className="p-6">
               <EditDealForm
+                key={selectedDeal.id}
                 deal={selectedDeal}
                 clients={clients}
                 users={users}
@@ -2340,6 +2320,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   setIsEditingDeal(false);
                 }}
                 onCancel={() => setIsEditingDeal(false)}
+                onQuickNextContactShift={handleQuickNextContactShift}
               />
             </div>
           </div>

@@ -24,6 +24,7 @@ interface EditDealFormProps {
   users: User[];
   onSubmit: (data: EditDealFormValues) => Promise<void>;
   onCancel: () => void;
+  onQuickNextContactShift?: (newNextContactDate: string) => Promise<void>;
 }
 
 export function EditDealForm({
@@ -32,6 +33,7 @@ export function EditDealForm({
   users,
   onSubmit,
   onCancel,
+  onQuickNextContactShift,
 }: EditDealFormProps) {
   const [formData, setFormData] = useState<EditDealFormValues>({
     title: deal.title,
@@ -46,6 +48,31 @@ export function EditDealForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isQuickSaving, setIsQuickSaving] = useState(false);
+
+  const parseDateValue = (value?: string | null) => {
+    if (!value) {
+      return new Date();
+    }
+    const [year, month, day] = value.split('-').map((segment) => Number(segment));
+    if ([year, month, day].some((value) => Number.isNaN(value))) {
+      return new Date();
+    }
+    return new Date(year, month - 1, day);
+  };
+
+  const formatDateForInput = (value: Date) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const quickDateOptions = [
+    { label: 'завтра', days: 1 },
+    { label: '+2 дня', days: 2 },
+    { label: '+5 дней', days: 5 },
+  ];
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -75,6 +102,37 @@ export function EditDealForm({
       setError(formatErrorMessage(err, 'Ошибка при обновлении сделки'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuickNextContact = async (days: number) => {
+    if (loading || isQuickSaving) {
+      return;
+    }
+
+    setError('');
+    const currentValue = formData.nextContactDate ?? deal.nextContactDate ?? null;
+    const baseDate = parseDateValue(currentValue);
+    const targetDate = new Date(baseDate);
+    targetDate.setDate(targetDate.getDate() + days);
+    const nextDateValue = formatDateForInput(targetDate);
+
+    setFormData((prev) => ({
+      ...prev,
+      nextContactDate: nextDateValue,
+    }));
+
+    if (!onQuickNextContactShift) {
+      return;
+    }
+
+    setIsQuickSaving(true);
+    try {
+      await onQuickNextContactShift(nextDateValue);
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Не удалось обновить дату следующего контакта'));
+    } finally {
+      setIsQuickSaving(false);
     }
   };
 
@@ -190,6 +248,19 @@ export function EditDealForm({
             onChange={handleChange}
             disabled={loading}
           />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {quickDateOptions.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => handleQuickNextContact(option.days)}
+                disabled={loading || isQuickSaving}
+                className="text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="form-group">
