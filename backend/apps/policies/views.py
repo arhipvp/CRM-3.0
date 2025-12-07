@@ -103,7 +103,9 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         if request.method == "POST" and not uploaded_file:
             return Response(
-                {"detail": "Файл не передан"},
+                {
+                    "detail": "\u0424\u0430\u0439\u043b \u043d\u0435 \u043f\u0435\u0440\u0435\u0434\u0430\u043d"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -130,12 +132,18 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         deal = Deal.objects.filter(pk=deal_id).first()
         if not deal:
             return Response(
-                {"detail": "Сделка не найдена."}, status=status.HTTP_404_NOT_FOUND
+                {
+                    "detail": "\u0421\u0434\u0435\u043b\u043a\u0430 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430."
+                },
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         if not self._user_can_modify(deal, request.user):
             return Response(
-                {"detail": "Нет доступа к сделке."}, status=status.HTTP_403_FORBIDDEN
+                {
+                    "detail": "\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u0430 \u043a \u0441\u0434\u0435\u043b\u043a\u0435."
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         folder_id = deal.drive_folder_id
@@ -149,7 +157,9 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
         if not folder_id:
             return Response(
-                {"detail": "Файловая папка сделки не настроена."},
+                {
+                    "detail": "\u0424\u0430\u0439\u043b\u043e\u0432\u0430\u044f \u043f\u0430\u043f\u043a\u0430 \u0441\u0434\u0435\u043b\u043a\u0438 \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -190,7 +200,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     {
                         "fileId": file_id,
                         "status": "error",
-                        "message": "Файл не найден в папке сделки.",
+                        "message": "\u0424\u0430\u0439\u043b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d \u0432 \u043f\u0430\u043f\u043a\u0435 \u0441\u0434\u0435\u043b\u043a\u0438.",
                     }
                 )
                 continue
@@ -232,7 +242,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     "fileId": file_id,
                     "fileName": file_info["name"],
                     "status": "parsed",
-                    "message": "Полис распознан",
+                    "message": "\u041f\u043e\u043b\u0438\u0441 \u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d",
                     "transcript": transcript,
                     "data": data,
                 }
@@ -291,10 +301,14 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         user = self.request.user
 
         if not deal or not user or not user.is_authenticated:
-            raise PermissionDenied("Нет доступа к сделке.")
+            raise PermissionDenied(
+                "\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u0430 \u043a \u0441\u0434\u0435\u043b\u043a\u0435."
+            )
 
         if deal.seller_id != user.id:
-            raise PermissionDenied("Только продавец сделки может добавить полис.")
+            raise PermissionDenied(
+                "\u0422\u043e\u043b\u044c\u043a\u043e \u043f\u0440\u043e\u0434\u0430\u0432\u0435\u0446 \u0441\u0434\u0435\u043b\u043a\u0438 \u043c\u043e\u0436\u0435\u0442 \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u043e\u043b\u0438\u0441."
+            )
 
         source_file_id = serializer.validated_data.pop("source_file_id", None)
         if isinstance(source_file_id, str):

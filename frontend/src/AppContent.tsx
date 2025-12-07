@@ -1047,7 +1047,21 @@ const AppContent: React.FC = () => {
   const handleDeletePolicy = async (policyId: string) => {
     try {
       await deletePolicy(policyId);
-      updateAppData((prev) => ({ policies: prev.policies.filter((policy) => policy.id !== policyId) }));
+      updateAppData((prev) => {
+        const remainingPayments = prev.payments.filter((payment) => payment.policyId !== policyId);
+        const removedPaymentIds = new Set(
+          prev.payments
+            .filter((payment) => payment.policyId === policyId)
+            .map((payment) => payment.id)
+        );
+        return {
+          policies: prev.policies.filter((policy) => policy.id !== policyId),
+          payments: remainingPayments,
+          financialRecords: prev.financialRecords.filter(
+            (record) => !removedPaymentIds.has(record.paymentId)
+          ),
+        };
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось удалить полис');
       throw err;
