@@ -2113,6 +2113,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
                   const deadlineTone = getDeadlineTone(deal.expectedClose);
                   const isDeleted = Boolean(deal.deletedAt);
+                  const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
                   const isSelected = selectedDeal?.id === deal.id;
                   const rowClassName = [
                     'transition-colors',
@@ -2128,42 +2129,42 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       onClick={() => onSelectDeal(deal.id)}
                       className={rowClassName}
                     >
-                      <td className="px-5 py-3">
-                        <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-                        <p className="text-[11px] text-slate-500 mt-1">{deal.source || '—'}</p>
+                      <td className={`px-5 py-3 ${deletedTextClass}`}>
+                        <p className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>{deal.title}</p>
+                        <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>{deal.source || '—'}</p>
                         {deal.deletedAt && (
                           <p className="text-[11px] text-rose-500 mt-1">
                             Удалена: {formatDeletedAt(deal.deletedAt)}
                           </p>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-sm text-slate-900">
-                        {deal.clientName || '—'}
+                      <td className={`px-5 py-3 text-sm text-slate-900 ${deletedTextClass}`}>
+                        <span className={deletedTextClass}>{deal.clientName || '—'}</span>
                       </td>
-                      <td className="px-5 py-3 text-sm text-slate-900">
+                      <td className={`px-5 py-3 text-sm text-slate-900 ${deletedTextClass}`}>
                         <ColoredLabel
                           value={statusLabels[deal.status]}
                           fallback="—"
-                          className="font-semibold"
+                          className={`font-semibold ${deletedTextClass}`}
                           showDot
                         />
                         {deal.closingReason && (
-                          <p className="text-[11px] text-slate-500 mt-1">
+                          <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
                             {deal.closingReason}
                           </p>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-sm font-semibold">
+                      <td className={`px-5 py-3 text-sm font-semibold ${deletedTextClass}`}>
                         {deal.expectedClose ? (
                           <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
                         ) : (
-                          <span className="text-xs text-rose-500 font-semibold">Нет срока</span>
+                          <span className={`text-xs text-rose-500 font-semibold ${deletedTextClass || ''}`}>Нет срока</span>
                         )}
                       </td>
-                      <td className="px-5 py-3">
+                      <td className={`px-5 py-3 ${deletedTextClass}`}>
                         {deal.nextContactDate ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-slate-900">{formatDate(deal.nextContactDate)}</span>
+                            <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>{formatDate(deal.nextContactDate)}</span>
                             <span
                               className={`px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide rounded-full ${
                                 isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'
@@ -2173,11 +2174,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs text-rose-500 font-semibold uppercase tracking-wide">Не назначено</span>
+                          <span className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}>Не назначено</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-sm text-slate-900">
-                        {deal.executorName || '—'}
+                      <td className={`px-5 py-3 text-sm text-slate-900 ${deletedTextClass}`}>
+                        <span className={deletedTextClass}>{deal.executorName || '—'}</span>
                       </td>
                     </tr>
                   );
@@ -2219,9 +2220,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <div className="flex items-center gap-3">
                 <span className="text-sm font-semibold text-slate-900">
                   {statusLabels[selectedDeal.status]}
-                </span>
-                <span className={`text-sm font-semibold ${headerExpectedCloseTone}`}>
-                  {selectedDeal.expectedClose ? formatDate(selectedDeal.expectedClose) : 'Нет срока'}
                 </span>
               </div>
               {selectedDeal.closingReason && (
