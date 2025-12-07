@@ -12,6 +12,7 @@ class PaymentFilterSet(django_filters.FilterSet):
     Supports filtering by:
     - deal: Associated deal
     - policy: Associated policy
+    - paid: Whether the payment has been marked as paid
 
     Also supports ordering by scheduled_date and created_at.
     """
@@ -19,6 +20,12 @@ class PaymentFilterSet(django_filters.FilterSet):
     deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
 
     policy = django_filters.NumberFilter(field_name="policy__id", label="Policy ID")
+
+    paid = django_filters.BooleanFilter(
+        method="filter_paid",
+        label="Paid status",
+        widget=django_filters.widgets.BooleanWidget,
+    )
 
     ordering = django_filters.OrderingFilter(
         fields=(
@@ -34,3 +41,8 @@ class PaymentFilterSet(django_filters.FilterSet):
     class Meta:
         model = Payment
         fields = ("deal", "policy")
+
+    def filter_paid(self, queryset, _, value):
+        if value:
+            return queryset.filter(actual_date__isnull=False)
+        return queryset.filter(actual_date__isnull=True)
