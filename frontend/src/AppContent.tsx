@@ -179,6 +179,7 @@ const AppContent: React.FC = () => {
     dataState,
     loadData,
     refreshDeals,
+    refreshPolicies,
     refreshKnowledgeDocuments,
     updateAppData,
     setAppData,
@@ -974,6 +975,16 @@ const AppContent: React.FC = () => {
         }));
       }
 
+      try {
+        await refreshPolicies();
+      } catch (refreshErr) {
+        setError(
+          refreshErr instanceof Error
+            ? refreshErr.message
+            : 'Не удалось обновить список полисов'
+        );
+      }
+
       closePolicyModal();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить полис');
@@ -1142,6 +1153,15 @@ const AppContent: React.FC = () => {
         payments: [created, ...prev.payments],
         financialRecords: [zeroIncome, ...prev.financialRecords],
       }));
+      try {
+        await refreshPolicies();
+      } catch (refreshErr) {
+        setError(
+          refreshErr instanceof Error
+            ? refreshErr.message
+            : 'Не удалось обновить список полисов'
+        );
+      }
       setPaymentModal(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при создании платежа');

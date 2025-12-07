@@ -230,6 +230,7 @@ export const useAppData = () => {
     dataState,
     loadData,
     refreshDeals,
+    refreshPolicies,
     refreshKnowledgeDocuments,
     updateAppData,
     setAppData,
