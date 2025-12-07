@@ -2021,8 +2021,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   return (
     <div className="flex h-full flex-col gap-6">
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="divide-y divide-slate-100">
+      <section className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
+        <div className="divide-y divide-slate-200">
           <div className="px-4 py-4">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
@@ -2032,7 +2032,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               </div>
             </div>
           </div>
-          <div className="px-4 py-4 space-y-4 border-b border-slate-100">
+          <div className="px-4 py-4 space-y-4 border-b border-slate-200">
             <div>
               <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
                 Поиск
@@ -2132,8 +2132,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
               </div>
             </div>
             <div className="max-h-[360px] overflow-y-auto">
-              <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
-                <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-100">
+              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
                     <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
@@ -2151,12 +2151,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       const isDeleted = Boolean(deal.deletedAt);
                       const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
                       const isSelected = selectedDeal?.id === deal.id;
-                      const rowClassName = [
-                        'transition-colors',
-                        'cursor-pointer',
-                        isSelected ? 'bg-sky-100 border-y border-slate-200 shadow-sm' : 'hover:bg-slate-50',
-                        isDeleted ? 'opacity-60' : '',
-                      ]
+                        const rowClassName = [
+                          'transition-colors',
+                          'cursor-pointer',
+                          isSelected ? 'bg-sky-100 border-y border-slate-300 shadow-sm' : 'hover:bg-slate-50',
+                          isDeleted ? 'opacity-60' : '',
+                        ]
                         .filter(Boolean)
                         .join(' ');
                       return (
@@ -2265,7 +2265,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               )}
             </div>
             {selectedDeal ? (
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-6">
+              <div className="rounded-2xl border border-slate-300 bg-white shadow-sm p-6 space-y-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <p className="text-sm text-slate-500">Клиент</p>
@@ -2368,7 +2368,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
                 Выберите сделку, чтобы увидеть подробности.
               </div>
             )}
