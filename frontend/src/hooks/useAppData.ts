@@ -86,6 +86,13 @@ export const useAppData = () => {
   const dealsCacheRef = useRef(
     new Map<string, { results: Deal[]; nextPage: number | null }>()
   );
+  const invalidateDealsCache = useCallback((filters?: FilterParams) => {
+    if (filters) {
+      dealsCacheRef.current.delete(buildDealsCacheKey(filters));
+      return;
+    }
+    dealsCacheRef.current.clear();
+  }, []);
 
   const setAppData = useCallback((payload: Partial<AppDataState>) => {
     dispatch({ type: 'assign', payload });
@@ -230,6 +237,7 @@ export const useAppData = () => {
     dataState,
     loadData,
     refreshDeals,
+    invalidateDealsCache,
     refreshPolicies,
     refreshKnowledgeDocuments,
     updateAppData,

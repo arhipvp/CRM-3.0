@@ -137,6 +137,7 @@ const AppContent: React.FC = () => {
     dataState,
     loadData,
     refreshDeals,
+    invalidateDealsCache,
     refreshPolicies,
     refreshKnowledgeDocuments,
     updateAppData,
@@ -225,8 +226,9 @@ const AppContent: React.FC = () => {
         const missingDeals = fetchedDeals.filter((deal) => !existingIds.has(deal.id));
         return { deals: [...updatedDeals, ...missingDeals] };
       });
+      invalidateDealsCache();
     },
-    [updateAppData]
+    [invalidateDealsCache, updateAppData]
   );
 
   const parseAmountValue = (value?: string | null) => {
@@ -319,12 +321,12 @@ const AppContent: React.FC = () => {
     [salesChannels, clients]
   );
 
-  const handleRequestAddPolicy = (dealId: string) => {
+  const handleRequestAddPolicy = useCallback((dealId: string) => {
     setPolicyDefaultCounterparty(undefined);
     setPolicyPrefill(null);
     setPolicySourceFileId(null);
     setPolicyDealId(dealId);
-  };
+  }, []);
 
   const debouncedDealFilters = useDebouncedValue(dealFilters, 300);
 
@@ -395,17 +397,20 @@ const AppContent: React.FC = () => {
     checkAuth();
   }, [loadData]);
 
-  const handleAddClient = async (data: {
-    name: string;
-    phone?: string;
-    birthDate?: string | null;
-    notes?: string | null;
-    email?: string | null;
-  }) => {
-    const created = await createClient(data);
-    updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
-    closeClientModal();
-  };
+  const handleAddClient = useCallback(
+    async (data: {
+      name: string;
+      phone?: string;
+      birthDate?: string | null;
+      notes?: string | null;
+      email?: string | null;
+    }) => {
+      const created = await createClient(data);
+      updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
+      closeClientModal();
+    },
+    [closeClientModal, updateAppData]
+  );
 
   const handleClientEditRequest = useCallback((client: Client) => {
     setEditingClient(client);
@@ -591,26 +596,30 @@ const AppContent: React.FC = () => {
     ? clients.find((client) => client.id === mergeClientTargetId) ?? null
     : null;
 
-  const handleAddDeal = async (data: {
-    title: string;
-    clientId: string;
-    description?: string;
-    expectedClose?: string | null;
-    executorId?: string | null;
-    source?: string;
-  }) => {
-    const created = await createDeal({
-      title: data.title,
-      clientId: data.clientId,
-      description: data.description,
-      expectedClose: data.expectedClose,
-      executorId: data.executorId,
-      source: data.source,
-    });
-    updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
-    setSelectedDealId(created.id);
-    setModal(null);
-  };
+  const handleAddDeal = useCallback(
+    async (data: {
+      title: string;
+      clientId: string;
+      description?: string;
+      expectedClose?: string | null;
+      executorId?: string | null;
+      source?: string;
+    }) => {
+      invalidateDealsCache();
+      const created = await createDeal({
+        title: data.title,
+        clientId: data.clientId,
+        description: data.description,
+        expectedClose: data.expectedClose,
+        executorId: data.executorId,
+        source: data.source,
+      });
+      updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
+      setSelectedDealId(created.id);
+      setModal(null);
+    },
+    [invalidateDealsCache, setModal, setSelectedDealId, updateAppData]
+  );
 
   const handleKnowledgeUpload = useCallback(
     async (file: File, metadata: { title?: string; description?: string }) => {
@@ -628,36 +637,43 @@ const AppContent: React.FC = () => {
     [refreshKnowledgeDocuments, setAppData]
   );
 
-  const handleCloseDeal = async (
-    dealId: string,
-    payload: { reason: string; status?: 'won' | 'lost' }
-  ) => {
-    setIsSyncing(true);
-    try {
-      const updated = await closeDeal(dealId, payload);
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
-      }));
-    } catch (err) {
-      const message =
-        err instanceof APIError
-          ? err.message
-          : err instanceof Error
+  const handleCloseDeal = useCallback(
+    async (
+      dealId: string,
+      payload: { reason: string; status?: 'won' | 'lost' }
+    ) => {
+      invalidateDealsCache();
+      setIsSyncing(true);
+      try {
+        const updated = await closeDeal(dealId, payload);
+        updateAppData((prev) => ({
+          deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
+        }));
+      } catch (err) {
+        const message =
+          err instanceof APIError
             ? err.message
-            : 'Ошибка при закрытии сделки';
-      setError(message);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+            : err instanceof Error
+              ? err.message
+              : 'Ошибка при закрытии сделки';
+        setError(message);
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [invalidateDealsCache, setError, setIsSyncing, updateAppData]
+  );
 
-  const handleReopenDeal = async (dealId: string) => {
-    setIsSyncing(true);
-    try {
-      const updated = await reopenDeal(dealId);
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
-      }));
+  const handleReopenDeal = useCallback(
+    async (dealId: string) => {
+      invalidateDealsCache();
+      setIsSyncing(true);
+      try {
+        const updated = await reopenDeal(dealId);
+        updateAppData((prev) => ({
+          deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
+        }));
+        setSelectedDealId(updated.id);
       } catch (err) {
         if (err instanceof APIError && err.status === 403) {
           addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
@@ -667,16 +683,27 @@ const AppContent: React.FC = () => {
       } finally {
         setIsSyncing(false);
       }
-    };
+    },
+    [
+      addNotification,
+      invalidateDealsCache,
+      setError,
+      setIsSyncing,
+      setSelectedDealId,
+      updateAppData,
+    ]
+  );
 
-  const handleUpdateDeal = async (dealId: string, data: EditDealFormValues) => {
-    setIsSyncing(true);
-    try {
-      const updated = await updateDeal(dealId, data);
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
-      }));
-      setSelectedDealId(updated.id);
+  const handleUpdateDeal = useCallback(
+    async (dealId: string, data: EditDealFormValues) => {
+      invalidateDealsCache();
+      setIsSyncing(true);
+      try {
+        const updated = await updateDeal(dealId, data);
+        updateAppData((prev) => ({
+          deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
+        }));
+        setSelectedDealId(updated.id);
       } catch (err) {
         if (err instanceof APIError && err.status === 403) {
           addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
@@ -687,7 +714,9 @@ const AppContent: React.FC = () => {
       } finally {
         setIsSyncing(false);
       }
-  };
+    },
+    [addNotification, invalidateDealsCache, setError, setIsSyncing, setSelectedDealId, updateAppData]
+  );
   const handleDeleteDeal = useCallback(
     async (dealId: string) => {
       if (!confirm('Вы уверены, что хотите удалить эту сделку?')) {
@@ -737,6 +766,7 @@ const AppContent: React.FC = () => {
 
   const handleMergeDeals = useCallback(
     async (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => {
+      invalidateDealsCache();
       setIsSyncing(true);
       try {
         const result = await mergeDeals({ targetDealId, sourceDealIds, resultingClientId });
@@ -755,306 +785,86 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, setError, setSelectedDealId, setIsSyncing, updateAppData]
+    [addNotification, invalidateDealsCache, setError, setSelectedDealId, setIsSyncing, updateAppData]
   );
 
-  const handleAddQuote = async (dealId: string, values: QuoteFormValues) => {
-    try {
-      const created = await createQuote({ dealId, ...values });
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) =>
-          deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal
-        ),
-      }));
-      setQuoteDealId(null);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при добавлении предложения'));
-      throw err;
-    }
-  };
-
-  const handleUpdateQuote = async (values: QuoteFormValues) => {
-    if (!editingQuote) {
-      return;
-    }
-    const { id, dealId } = editingQuote;
-    try {
-      const updated = await updateQuote(id, values);
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) =>
-          deal.id === dealId
-            ? {
-              ...deal,
-              quotes: deal.quotes
-                ? deal.quotes.map((quote) => (quote.id === id ? updated : quote))
-                : [updated],
-            }
-            : deal
-        ),
-      }));
-      setEditingQuote(null);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при обновлении предложения'));
-      throw err;
-    }
-  };
-
-  const handleRequestEditQuote = (quote: Quote) => {
-    setEditingQuote(quote);
-  };
-
-  const handleDeleteQuote = async (dealId: string, quoteId: string) => {
-    try {
-      await deleteQuote(quoteId);
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) =>
-          deal.id === dealId
-            ? { ...deal, quotes: deal.quotes?.filter((quote) => quote.id !== quoteId) ?? [] }
-            : deal
-        ),
-      }));
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при удалении предложения'));
-      throw err;
-    }
-  };
-
-  const handleAddPolicy = async (dealId: string, values: PolicyFormValues) => {
-    setIsSyncing(true);
-    const {
-      number,
-      insuranceCompanyId,
-      insuranceTypeId,
-      isVehicle,
-      brand,
-      model,
-      vin,
-      startDate,
-      endDate,
-      salesChannelId,
-      insuredClientId,
-      counterparty,
-      payments: paymentDrafts = [],
-    } = values;
-    const sourceFileId = policySourceFileId;
-    let deal = dealsById.get(dealId);
-    let clientId = deal?.clientId;
-    if (!clientId) {
+  const handleAddQuote = useCallback(
+    async (dealId: string, values: QuoteFormValues) => {
+      invalidateDealsCache();
       try {
-        const fetchedDeal = await fetchDeal(dealId);
-        deal = fetchedDeal;
-        clientId = fetchedDeal.clientId;
+        const created = await createQuote({ dealId, ...values });
         updateAppData((prev) => ({
-          deals: prev.deals.some((item) => item.id === dealId)
-            ? prev.deals
-            : [fetchedDeal, ...prev.deals],
+          deals: prev.deals.map((deal) =>
+            deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal
+          ),
         }));
+        setQuoteDealId(null);
       } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при получении сделки'));
+        setError(formatErrorMessage(err, 'Ошибка при добавлении предложения'));
         throw err;
       }
-    }
+    },
+    [invalidateDealsCache, setError, setQuoteDealId, updateAppData]
+  );
 
-    try {
-      const created = await createPolicy({
-        dealId,
-        clientId,
-        insuredClientId,
-        number,
-        insuranceCompanyId,
-        insuranceTypeId,
-        isVehicle,
-        salesChannelId,
-        brand,
-        model,
-        vin,
-        startDate,
-        endDate,
-        sourceFileId,
-      });
-      updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
-      const parsePolicyAmount = (value?: string | null) => {
-        const parsed = parseNumericAmount(value ?? '');
-        return Number.isFinite(parsed) ? parsed : 0;
-      };
-      let policyPaymentsTotal = parsePolicyAmount(created.paymentsTotal);
-      let policyPaymentsPaid = parsePolicyAmount(created.paymentsPaid);
-      const formatPolicyAmount = (value: number) => value.toFixed(2);
-      const syncPolicyTotals = () => {
-        const formattedTotal = formatPolicyAmount(policyPaymentsTotal);
-        const formattedPaid = formatPolicyAmount(policyPaymentsPaid);
+  const handleUpdateQuote = useCallback(
+    async (values: QuoteFormValues) => {
+      if (!editingQuote) {
+        return;
+      }
+      invalidateDealsCache();
+      const { id, dealId } = editingQuote;
+      try {
+        const updated = await updateQuote(id, values);
         updateAppData((prev) => ({
-          policies: prev.policies.map((policy) =>
-            policy.id === created.id
+          deals: prev.deals.map((deal) =>
+            deal.id === dealId
               ? {
-                  ...policy,
-                  paymentsTotal: formattedTotal,
-                  paymentsPaid: formattedPaid,
+                  ...deal,
+                  quotes: deal.quotes
+                    ? deal.quotes.map((quote) => (quote.id === id ? updated : quote))
+                    : [updated],
                 }
-              : policy
+              : deal
           ),
         }));
-      };
-
-      const hasCounterparty = Boolean(counterparty?.trim());
-      const executorName = deal?.executorName?.trim();
-      const hasExecutor = Boolean(executorName);
-      const ensureExpenses = hasCounterparty || hasExecutor;
-      const expenseTargetName =
-        counterparty?.trim() || executorName || 'контрагент';
-      const expenseNote = `Расход контрагенту ${expenseTargetName}`;
-      const paymentsToProcess = paymentDrafts.map((payment) =>
-        normalizePaymentDraft(payment, ensureExpenses, {
-          autoIncomeNote: 'ожидаемое КВ',
-          autoExpenseNote: ensureExpenses ? expenseNote : undefined,
-        })
-      );
-
-      let dealPaymentsTotalDelta = 0;
-      let dealPaymentsPaidDelta = 0;
-
-      for (const paymentDraft of paymentsToProcess) {
-        const amount = parseNumericAmount(paymentDraft.amount);
-        if (!Number.isFinite(amount) || amount < 0) {
-          continue;
-        }
-
-        const payment = await createPayment({
-          dealId,
-          policyId: created.id,
-          amount,
-          description: paymentDraft.description,
-          scheduledDate: paymentDraft.scheduledDate || null,
-          actualDate: paymentDraft.actualDate || null,
-        });
-        const createdRecords: FinancialRecord[] = [];
-
-        for (const income of paymentDraft.incomes) {
-        const incomeAmount = parseNumericAmount(income.amount);
-          if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
-            continue;
-          }
-
-          const record = await createFinancialRecord({
-            paymentId: payment.id,
-            amount: incomeAmount,
-            date: income.date || null,
-            description: income.description,
-            source: income.source,
-            note: income.note,
-          });
-          createdRecords.push(record);
-        }
-
-        for (const expense of paymentDraft.expenses) {
-        const expenseAmount = parseNumericAmount(expense.amount);
-          if (!Number.isFinite(expenseAmount) || expenseAmount < 0) {
-            continue;
-          }
-
-          const record = await createFinancialRecord({
-            paymentId: payment.id,
-            amount: -Math.abs(expenseAmount),
-            date: expense.date || null,
-            description: expense.description,
-            source: expense.source,
-            note: expense.note,
-          });
-          createdRecords.push(record);
-        }
-
-        const paymentWithRecords: Payment = {
-          ...payment,
-          financialRecords: createdRecords.length
-            ? [...createdRecords, ...(payment.financialRecords ?? [])]
-            : payment.financialRecords,
-        };
-        policyPaymentsTotal += amount;
-        if (payment.actualDate) {
-          policyPaymentsPaid += amount;
-          dealPaymentsPaidDelta += amount;
-        }
-        dealPaymentsTotalDelta += amount;
-        syncPolicyTotals();
-        updateAppData((prev) => ({
-          payments: [paymentWithRecords, ...prev.payments],
-          financialRecords:
-            createdRecords.length > 0
-              ? [...createdRecords, ...prev.financialRecords]
-              : prev.financialRecords,
-        }));
+        setEditingQuote(null);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при обновлении предложения'));
+        throw err;
       }
+    },
+    [editingQuote, invalidateDealsCache, setEditingQuote, setError, updateAppData]
+  );
 
-      if (dealPaymentsTotalDelta || dealPaymentsPaidDelta) {
+  const handleRequestEditQuote = useCallback((quote: Quote) => {
+    setEditingQuote(quote);
+  }, []);
+
+  const handleDeleteQuote = useCallback(
+    async (dealId: string, quoteId: string) => {
+      invalidateDealsCache();
+      try {
+        await deleteQuote(quoteId);
         updateAppData((prev) => ({
-          deals: adjustPaymentsTotals(
-            prev.deals,
-            dealId,
-            dealPaymentsTotalDelta,
-            dealPaymentsPaidDelta
+          deals: prev.deals.map((deal) =>
+            deal.id === dealId
+              ? { ...deal, quotes: deal.quotes?.filter((quote) => quote.id !== quoteId) ?? [] }
+              : deal
           ),
         }));
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при удалении предложения'));
+        throw err;
       }
+    },
+    [invalidateDealsCache, setError, updateAppData]
+  );
 
-      let refreshFailed = false;
-      try {
-        const refreshedDeal = await fetchDeal(dealId);
-        updateAppData((prev) => ({
-          deals: prev.deals.some((deal) => deal.id === refreshedDeal.id)
-            ? prev.deals.map((deal) =>
-                deal.id === refreshedDeal.id ? refreshedDeal : deal
-              )
-            : [refreshedDeal, ...prev.deals],
-        }));
-        setSelectedDealId(refreshedDeal.id);
-      } catch (refreshErr) {
-        setError(
-          refreshErr instanceof Error
-            ? refreshErr.message
-            : 'Не удалось обновить данные сделки'
-        );
-        refreshFailed = true;
-      }
-
-      try {
-        await refreshPolicies();
-      } catch (refreshErr) {
-        setError(
-          refreshErr instanceof Error
-            ? refreshErr.message
-            : 'Не удалось обновить список полисов'
-        );
-        refreshFailed = true;
-      }
-      try {
-        await refreshDealsWithSelection(dealFilters, { force: true });
-      } catch (refreshErr) {
-        setError(
-          refreshErr instanceof Error
-            ? refreshErr.message
-            : 'Не удалось обновить список сделок'
-        );
-        refreshFailed = true;
-      }
-
-      if (!refreshFailed) {
-        closePolicyModal();
-      }
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось сохранить полис'));
-      throw err;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-  const handleRequestEditPolicy = (policy: Policy) => {
-    setModal(null);
-    closePolicyModal();
-    setEditingPolicy(policy);
-  };
-  const handleUpdatePolicy = async (policyId: string, values: PolicyFormValues) => {
-    setIsSyncing(true);
-    try {
+  const handleAddPolicy = useCallback(
+    async (dealId: string, values: PolicyFormValues) => {
+      invalidateDealsCache();
+      setIsSyncing(true);
       const {
         number,
         insuranceCompanyId,
@@ -1063,272 +873,559 @@ const AppContent: React.FC = () => {
         brand,
         model,
         vin,
-        counterparty,
-        salesChannelId,
         startDate,
         endDate,
+        salesChannelId,
         insuredClientId,
+        counterparty,
+        payments: paymentDrafts = [],
       } = values;
-      const updated = await updatePolicy(policyId, {
-        number,
-        insuranceCompanyId,
-        insuranceTypeId,
-        isVehicle,
-        brand,
-        model,
-        vin,
-        counterparty,
-        salesChannelId,
-        startDate,
-        endDate,
-        insuredClientId,
-      });
-      updateAppData((prev) => ({
-        policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
-      }));
-      setEditingPolicy(null);
-    } catch (err) {
-      const message =
-        err instanceof APIError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Не удалось обновить полис.';
-      setError(message);
-      throw err;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-  const handleDeletePolicy = async (policyId: string) => {
-    try {
-      await deletePolicy(policyId);
-      updateAppData((prev) => {
-        const removedPaymentIds = new Set<string>();
-        const remainingPayments = prev.payments.filter((payment) => {
-          const shouldRemove = payment.policyId === policyId;
-          if (shouldRemove) {
-            removedPaymentIds.add(payment.id);
-          }
-          return !shouldRemove;
-        });
-        return {
-          policies: prev.policies.filter((policy) => policy.id !== policyId),
-          payments: remainingPayments,
-          financialRecords: prev.financialRecords.filter(
-            (record) => !removedPaymentIds.has(record.paymentId)
-          ),
-        };
-      });
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось удалить полис'));
-      throw err;
-    }
-  };
-
-  const handleDriveFolderCreated = (dealId: string, folderId: string) => {
-    updateAppData((prev) => ({
-      deals: prev.deals.map((deal) =>
-        deal.id === dealId ? { ...deal, driveFolderId: folderId } : deal
-      ),
-    }));
-  };
-  const handleFetchChatMessages = async (dealId: string) => {
-    try {
-      return await fetchChatMessages(dealId);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось загрузить сообщения'));
-      throw err;
-    }
-  };
-
-  const handleSendChatMessage = async (dealId: string, body: string) => {
-    try {
-      return await createChatMessage(dealId, body);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось отправить сообщение'));
-      throw err;
-    }
-  };
-
-  const handleDeleteChatMessage = async (messageId: string) => {
-    try {
-      await deleteChatMessage(messageId);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось удалить сообщение'));
-      throw err;
-    }
-  };
-
-  const handleCreateTask = async (dealId: string, data: AddTaskFormValues) => {
-    setIsSyncing(true);
-    try {
-      const created = await createTask({ dealId, ...data });
-      updateAppData((prev) => ({ tasks: [created, ...prev.tasks] }));
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при создании задачи'));
-      throw err;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleUpdateTask = async (taskId: string, data: Partial<AddTaskFormValues>) => {
-    setIsSyncing(true);
-    try {
-      const updated = await updateTask(taskId, data);
-      updateAppData((prev) => ({
-        tasks: prev.tasks.map((task) => (task.id === updated.id ? updated : task)),
-      }));
-    } catch (err) {
-      if (err instanceof APIError && err.status === 403) {
-        addNotification('Ошибка доступа при обновлении задачи', 'error', 4000);
-      } else {
-        setError(formatErrorMessage(err, 'Ошибка при обновлении задачи'));
+      const sourceFileId = policySourceFileId;
+      let deal = dealsById.get(dealId);
+      let clientId = deal?.clientId;
+      if (!clientId) {
+        try {
+          const fetchedDeal = await fetchDeal(dealId);
+          deal = fetchedDeal;
+          clientId = fetchedDeal.clientId;
+          updateAppData((prev) => ({
+            deals: prev.deals.some((item) => item.id === dealId)
+              ? prev.deals
+              : [fetchedDeal, ...prev.deals],
+          }));
+        } catch (err) {
+          setError(formatErrorMessage(err, 'Ошибка при получении сделки'));
+          throw err;
+        }
       }
-      throw err;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      await deleteTask(taskId);
-      updateAppData((prev) => ({ tasks: prev.tasks.filter((task) => task.id !== taskId) }));
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при удалении задачи'));
-      throw err;
-    }
-  };
-
-  const handleAddPayment = async (values: AddPaymentFormValues) => {
-    try {
-      const created = await createPayment({
-        policyId: values.policyId,
-        dealId: values.dealId ?? undefined,
-        amount: parseFloat(values.amount),
-        description: values.description,
-        scheduledDate: values.scheduledDate || null,
-        actualDate: values.actualDate || null,
-      });
-
-      const zeroIncome = await createFinancialRecord({
-        paymentId: created.id,
-        amount: 0,
-        date: new Date().toISOString().split('T')[0],
-        description: 'Счёт: автоматически создан для учета',
-        source: 'Система',
-      });
-
-      const paymentAmount = parseAmountValue(created.amount);
-      const paymentPaidAmount = created.actualDate ? paymentAmount : 0;
-      updateAppData((prev) => ({
-        payments: [created, ...prev.payments],
-        financialRecords: [zeroIncome, ...prev.financialRecords],
-        policies: adjustPaymentsTotals(
-          prev.policies,
-          created.policyId,
-          paymentAmount,
-          paymentPaidAmount
-        ),
-        deals: adjustPaymentsTotals(prev.deals, created.dealId, paymentAmount, paymentPaidAmount),
-      }));
       try {
-        await syncDealsByIds([created.dealId]);
-      } catch (syncErr) {
-        const baseMessage = 'Не удалось обновить данные сделки после создания платежа';
-        const detail = formatErrorMessage(syncErr);
-        const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
-        throw new Error(message);
-      }
-      setPaymentModal(null);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при создании платежа'));
-      throw err;
-    }
-  };
+        const created = await createPolicy({
+          dealId,
+          clientId,
+          insuredClientId,
+          number,
+          insuranceCompanyId,
+          insuranceTypeId,
+          isVehicle,
+          salesChannelId,
+          brand,
+          model,
+          vin,
+          startDate,
+          endDate,
+          sourceFileId,
+        });
+        updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
+        const parsePolicyAmount = (value?: string | null) => {
+          const parsed = parseNumericAmount(value ?? '');
+          return Number.isFinite(parsed) ? parsed : 0;
+        };
+        let policyPaymentsTotal = parsePolicyAmount(created.paymentsTotal);
+        let policyPaymentsPaid = parsePolicyAmount(created.paymentsPaid);
+        const formatPolicyAmount = (value: number) => value.toFixed(2);
+        const syncPolicyTotals = () => {
+          const formattedTotal = formatPolicyAmount(policyPaymentsTotal);
+          const formattedPaid = formatPolicyAmount(policyPaymentsPaid);
+          updateAppData((prev) => ({
+            policies: prev.policies.map((policy) =>
+              policy.id === created.id
+                ? {
+                    ...policy,
+                    paymentsTotal: formattedTotal,
+                    paymentsPaid: formattedPaid,
+                  }
+                : policy
+            ),
+          }));
+        };
 
-  const handleUpdatePayment = async (paymentId: string, values: AddPaymentFormValues) => {
-    try {
-      const previousPayment = payments.find((payment) => payment.id === paymentId);
-      const previousAmount = parseAmountValue(previousPayment?.amount);
-      const previousPaid = previousPayment?.actualDate ? previousAmount : 0;
-      const previousPolicyId = previousPayment?.policyId;
-      const previousDealId = previousPayment?.dealId;
+        const hasCounterparty = Boolean(counterparty?.trim());
+        const executorName = deal?.executorName?.trim();
+        const hasExecutor = Boolean(executorName);
+        const ensureExpenses = hasCounterparty || hasExecutor;
+        const expenseTargetName =
+          counterparty?.trim() || executorName || 'контрагент';
+        const expenseNote = `Расход контрагенту ${expenseTargetName}`;
+        const paymentsToProcess = paymentDrafts.map((payment) =>
+          normalizePaymentDraft(payment, ensureExpenses, {
+            autoIncomeNote: 'ожидаемое КВ',
+            autoExpenseNote: ensureExpenses ? expenseNote : undefined,
+          })
+        );
 
-      const updated = await updatePayment(paymentId, {
-        policyId: values.policyId,
-        dealId: values.dealId ?? undefined,
-        amount: parseFloat(values.amount),
-        description: values.description,
-        scheduledDate: values.scheduledDate || null,
-        actualDate: values.actualDate || null,
-      });
-      const updatedAmount = parseAmountValue(updated.amount);
-      const updatedPaid = updated.actualDate ? updatedAmount : 0;
-      updateAppData((prev) => {
-        let policies = prev.policies;
-        if (previousPolicyId && previousPolicyId === updated.policyId) {
-          policies = adjustPaymentsTotals(
-            policies,
-            previousPolicyId,
-            updatedAmount - previousAmount,
-            updatedPaid - previousPaid
+        let dealPaymentsTotalDelta = 0;
+        let dealPaymentsPaidDelta = 0;
+
+        for (const paymentDraft of paymentsToProcess) {
+          const amount = parseNumericAmount(paymentDraft.amount);
+          if (!Number.isFinite(amount) || amount < 0) {
+            continue;
+          }
+
+          const payment = await createPayment({
+            dealId,
+            policyId: created.id,
+            amount,
+            description: paymentDraft.description,
+            scheduledDate: paymentDraft.scheduledDate || null,
+            actualDate: paymentDraft.actualDate || null,
+          });
+          const createdRecords: FinancialRecord[] = [];
+
+          for (const income of paymentDraft.incomes) {
+            const incomeAmount = parseNumericAmount(income.amount);
+            if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
+              continue;
+            }
+
+            const record = await createFinancialRecord({
+              paymentId: payment.id,
+              amount: incomeAmount,
+              date: income.date || null,
+              description: income.description,
+              source: income.source,
+              note: income.note,
+            });
+            createdRecords.push(record);
+          }
+
+          for (const expense of paymentDraft.expenses) {
+            const expenseAmount = parseNumericAmount(expense.amount);
+            if (!Number.isFinite(expenseAmount) || expenseAmount < 0) {
+              continue;
+            }
+
+            const record = await createFinancialRecord({
+              paymentId: payment.id,
+              amount: -Math.abs(expenseAmount),
+              date: expense.date || null,
+              description: expense.description,
+              source: expense.source,
+              note: expense.note,
+            });
+            createdRecords.push(record);
+          }
+
+          const paymentWithRecords: Payment = {
+            ...payment,
+            financialRecords: createdRecords.length
+              ? [...createdRecords, ...(payment.financialRecords ?? [])]
+              : payment.financialRecords,
+          };
+          policyPaymentsTotal += amount;
+          if (payment.actualDate) {
+            policyPaymentsPaid += amount;
+            dealPaymentsPaidDelta += amount;
+          }
+          dealPaymentsTotalDelta += amount;
+          syncPolicyTotals();
+          updateAppData((prev) => ({
+            payments: [paymentWithRecords, ...prev.payments],
+            financialRecords:
+              createdRecords.length > 0
+                ? [...createdRecords, ...prev.financialRecords]
+                : prev.financialRecords,
+          }));
+        }
+
+        if (dealPaymentsTotalDelta || dealPaymentsPaidDelta) {
+          updateAppData((prev) => ({
+            deals: adjustPaymentsTotals(
+              prev.deals,
+              dealId,
+              dealPaymentsTotalDelta,
+              dealPaymentsPaidDelta
+            ),
+          }));
+        }
+
+        let refreshFailed = false;
+        try {
+          const refreshedDeal = await fetchDeal(dealId);
+          updateAppData((prev) => ({
+            deals: prev.deals.some((deal) => deal.id === refreshedDeal.id)
+              ? prev.deals.map((deal) =>
+                  deal.id === refreshedDeal.id ? refreshedDeal : deal
+                )
+              : [refreshedDeal, ...prev.deals],
+          }));
+          setSelectedDealId(refreshedDeal.id);
+        } catch (refreshErr) {
+          setError(
+            refreshErr instanceof Error
+              ? refreshErr.message
+              : 'Не удалось обновить данные сделки'
           );
+          refreshFailed = true;
+        }
+
+        try {
+          await refreshPolicies();
+        } catch (refreshErr) {
+          setError(
+            refreshErr instanceof Error
+              ? refreshErr.message
+              : 'Не удалось обновить список полисов'
+          );
+          refreshFailed = true;
+        }
+        try {
+          await refreshDealsWithSelection(dealFilters, { force: true });
+        } catch (refreshErr) {
+          setError(
+            refreshErr instanceof Error
+              ? refreshErr.message
+              : 'Не удалось обновить список сделок'
+          );
+          refreshFailed = true;
+        }
+
+        if (!refreshFailed) {
+          closePolicyModal();
+        }
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Не удалось сохранить полис'));
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [
+      closePolicyModal,
+      dealFilters,
+      dealsById,
+      invalidateDealsCache,
+      policySourceFileId,
+      refreshDealsWithSelection,
+      refreshPolicies,
+      setError,
+      setIsSyncing,
+      setSelectedDealId,
+      updateAppData,
+    ]
+  );
+  const handleRequestEditPolicy = useCallback(
+    (policy: Policy) => {
+      setModal(null);
+      closePolicyModal();
+      setEditingPolicy(policy);
+    },
+    [closePolicyModal, setModal]
+  );
+  const handleUpdatePolicy = useCallback(
+    async (policyId: string, values: PolicyFormValues) => {
+      setIsSyncing(true);
+      try {
+        const {
+          number,
+          insuranceCompanyId,
+          insuranceTypeId,
+          isVehicle,
+          brand,
+          model,
+          vin,
+          counterparty,
+          salesChannelId,
+          startDate,
+          endDate,
+          insuredClientId,
+        } = values;
+        const updated = await updatePolicy(policyId, {
+          number,
+          insuranceCompanyId,
+          insuranceTypeId,
+          isVehicle,
+          brand,
+          model,
+          vin,
+          counterparty,
+          salesChannelId,
+          startDate,
+          endDate,
+          insuredClientId,
+        });
+        updateAppData((prev) => ({
+          policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
+        }));
+        setEditingPolicy(null);
+      } catch (err) {
+        const message =
+          err instanceof APIError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Не удалось обновить полис.';
+        setError(message);
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [setEditingPolicy, setError, setIsSyncing, updateAppData]
+  );
+  const handleDeletePolicy = useCallback(
+    async (policyId: string) => {
+      try {
+        await deletePolicy(policyId);
+        updateAppData((prev) => {
+          const removedPaymentIds = new Set<string>();
+          const remainingPayments = prev.payments.filter((payment) => {
+            const shouldRemove = payment.policyId === policyId;
+            if (shouldRemove) {
+              removedPaymentIds.add(payment.id);
+            }
+            return !shouldRemove;
+          });
+          return {
+            policies: prev.policies.filter((policy) => policy.id !== policyId),
+            payments: remainingPayments,
+            financialRecords: prev.financialRecords.filter(
+              (record) => !removedPaymentIds.has(record.paymentId)
+            ),
+          };
+        });
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Не удалось удалить полис'));
+        throw err;
+      }
+    },
+    [setError, updateAppData]
+  );
+
+  const handleDriveFolderCreated = useCallback(
+    (dealId: string, folderId: string) => {
+      invalidateDealsCache();
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) =>
+          deal.id === dealId ? { ...deal, driveFolderId: folderId } : deal
+        ),
+      }));
+    },
+    [invalidateDealsCache, updateAppData]
+  );
+  const handleFetchChatMessages = useCallback(
+    async (dealId: string) => {
+      try {
+        return await fetchChatMessages(dealId);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Не удалось загрузить сообщения'));
+        throw err;
+      }
+    },
+    [setError]
+  );
+
+  const handleSendChatMessage = useCallback(
+    async (dealId: string, body: string) => {
+      try {
+        return await createChatMessage(dealId, body);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Не удалось отправить сообщение'));
+        throw err;
+      }
+    },
+    [setError]
+  );
+
+  const handleDeleteChatMessage = useCallback(
+    async (messageId: string) => {
+      try {
+        await deleteChatMessage(messageId);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Не удалось удалить сообщение'));
+        throw err;
+      }
+    },
+    [setError]
+  );
+
+  const handleCreateTask = useCallback(
+    async (dealId: string, data: AddTaskFormValues) => {
+      setIsSyncing(true);
+      try {
+        const created = await createTask({ dealId, ...data });
+        updateAppData((prev) => ({ tasks: [created, ...prev.tasks] }));
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при создании задачи'));
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [setError, setIsSyncing, updateAppData]
+  );
+
+  const handleUpdateTask = useCallback(
+    async (taskId: string, data: Partial<AddTaskFormValues>) => {
+      setIsSyncing(true);
+      try {
+        const updated = await updateTask(taskId, data);
+        updateAppData((prev) => ({
+          tasks: prev.tasks.map((task) => (task.id === updated.id ? updated : task)),
+        }));
+      } catch (err) {
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Ошибка доступа при обновлении задачи', 'error', 4000);
         } else {
-          if (previousPolicyId) {
+          setError(formatErrorMessage(err, 'Ошибка при обновлении задачи'));
+        }
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [addNotification, setError, setIsSyncing, updateAppData]
+  );
+
+  const handleDeleteTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await deleteTask(taskId);
+        updateAppData((prev) => ({ tasks: prev.tasks.filter((task) => task.id !== taskId) }));
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при удалении задачи'));
+        throw err;
+      }
+    },
+    [setError, updateAppData]
+  );
+
+  const handleAddPayment = useCallback(
+    async (values: AddPaymentFormValues) => {
+      invalidateDealsCache();
+      try {
+        const created = await createPayment({
+          policyId: values.policyId,
+          dealId: values.dealId ?? undefined,
+          amount: parseFloat(values.amount),
+          description: values.description,
+          scheduledDate: values.scheduledDate || null,
+          actualDate: values.actualDate || null,
+        });
+
+        const zeroIncome = await createFinancialRecord({
+          paymentId: created.id,
+          amount: 0,
+          date: new Date().toISOString().split('T')[0],
+          description: 'Счёт: автоматически создан для учета',
+          source: 'Система',
+        });
+
+        const paymentAmount = parseAmountValue(created.amount);
+        const paymentPaidAmount = created.actualDate ? paymentAmount : 0;
+        updateAppData((prev) => ({
+          payments: [created, ...prev.payments],
+          financialRecords: [zeroIncome, ...prev.financialRecords],
+          policies: adjustPaymentsTotals(
+            prev.policies,
+            created.policyId,
+            paymentAmount,
+            paymentPaidAmount
+          ),
+          deals: adjustPaymentsTotals(prev.deals, created.dealId, paymentAmount, paymentPaidAmount),
+        }));
+        try {
+          await syncDealsByIds([created.dealId]);
+        } catch (syncErr) {
+          const baseMessage = 'Не удалось обновить данные сделки после создания платежа';
+          const detail = formatErrorMessage(syncErr);
+          const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
+          throw new Error(message);
+        }
+        setPaymentModal(null);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при создании платежа'));
+        throw err;
+      }
+    },
+    [invalidateDealsCache, setError, setPaymentModal, syncDealsByIds, updateAppData]
+  );
+
+  const handleUpdatePayment = useCallback(
+    async (paymentId: string, values: AddPaymentFormValues) => {
+      invalidateDealsCache();
+      try {
+        const previousPayment = payments.find((payment) => payment.id === paymentId);
+        const previousAmount = parseAmountValue(previousPayment?.amount);
+        const previousPaid = previousPayment?.actualDate ? previousAmount : 0;
+        const previousPolicyId = previousPayment?.policyId;
+        const previousDealId = previousPayment?.dealId;
+
+        const updated = await updatePayment(paymentId, {
+          policyId: values.policyId,
+          dealId: values.dealId ?? undefined,
+          amount: parseFloat(values.amount),
+          description: values.description,
+          scheduledDate: values.scheduledDate || null,
+          actualDate: values.actualDate || null,
+        });
+        const updatedAmount = parseAmountValue(updated.amount);
+        const updatedPaid = updated.actualDate ? updatedAmount : 0;
+        updateAppData((prev) => {
+          let policies = prev.policies;
+          if (previousPolicyId && previousPolicyId === updated.policyId) {
             policies = adjustPaymentsTotals(
               policies,
               previousPolicyId,
-              -previousAmount,
-              -previousPaid
+              updatedAmount - previousAmount,
+              updatedPaid - previousPaid
             );
+          } else {
+            if (previousPolicyId) {
+              policies = adjustPaymentsTotals(
+                policies,
+                previousPolicyId,
+                -previousAmount,
+                -previousPaid
+              );
+            }
+            if (updated.policyId) {
+              policies = adjustPaymentsTotals(policies, updated.policyId, updatedAmount, updatedPaid);
+            }
           }
-          if (updated.policyId) {
-            policies = adjustPaymentsTotals(policies, updated.policyId, updatedAmount, updatedPaid);
-          }
-        }
 
-        let deals = prev.deals;
-        if (previousDealId && previousDealId === updated.dealId) {
-          deals = adjustPaymentsTotals(
+          let deals = prev.deals;
+          if (previousDealId && previousDealId === updated.dealId) {
+            deals = adjustPaymentsTotals(
+              deals,
+              previousDealId,
+              updatedAmount - previousAmount,
+              updatedPaid - previousPaid
+            );
+          } else {
+            if (previousDealId) {
+              deals = adjustPaymentsTotals(deals, previousDealId, -previousAmount, -previousPaid);
+            }
+            if (updated.dealId) {
+              deals = adjustPaymentsTotals(deals, updated.dealId, updatedAmount, updatedPaid);
+            }
+          }
+
+          return {
+            payments: prev.payments.map((payment) =>
+              payment.id === updated.id ? updated : payment
+            ),
+            policies,
             deals,
-            previousDealId,
-            updatedAmount - previousAmount,
-            updatedPaid - previousPaid
-          );
-        } else {
-          if (previousDealId) {
-            deals = adjustPaymentsTotals(deals, previousDealId, -previousAmount, -previousPaid);
-          }
-          if (updated.dealId) {
-            deals = adjustPaymentsTotals(deals, updated.dealId, updatedAmount, updatedPaid);
-          }
+          };
+        });
+        try {
+          await syncDealsByIds([updated.dealId, previousDealId]);
+        } catch (syncErr) {
+          const baseMessage = 'Не удалось обновить данные сделки после изменения платежа';
+          const detail = formatErrorMessage(syncErr);
+          const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
+          throw new Error(message);
         }
-
-        return {
-          payments: prev.payments.map((payment) =>
-            payment.id === updated.id ? updated : payment
-          ),
-          policies,
-          deals,
-        };
-      });
-      try {
-        await syncDealsByIds([updated.dealId, previousDealId]);
-      } catch (syncErr) {
-        const baseMessage = 'Не удалось обновить данные сделки после изменения платежа';
-        const detail = formatErrorMessage(syncErr);
-        const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
-        throw new Error(message);
+        setPaymentModal(null);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при обновлении платежа'));
+        throw err;
       }
-      setPaymentModal(null);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при обновлении платежа'));
-      throw err;
-    }
-  };
+    },
+    [invalidateDealsCache, payments, setError, setPaymentModal, syncDealsByIds, updateAppData]
+  );
 
   const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
     const parsedAmount = parseFloat(values.amount);
@@ -1338,98 +1435,107 @@ const AppContent: React.FC = () => {
     return values.recordType === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
   };
 
-  const handleAddFinancialRecord = async (values: AddFinancialRecordFormValues) => {
-    const paymentId = values.paymentId || financialRecordModal?.paymentId;
-    if (!paymentId) {
-      return;
-    }
-    try {
-      const created = await createFinancialRecord({
-        paymentId: paymentId,
-        amount: normalizeFinancialRecordAmount(values),
-        date: values.date || null,
-        description: values.description,
-        source: values.source,
-        note: values.note,
-      });
-      updateAppData((prev) => ({
-        financialRecords: [created, ...prev.financialRecords],
-        payments: prev.payments.map((payment) =>
-          payment.id === created.paymentId
-            ? {
-                ...payment,
-                financialRecords: [...(payment.financialRecords ?? []), created],
-              }
-            : payment
-        ),
-      }));
-      setFinancialRecordModal(null);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при создании записи'));
-      throw err;
-    }
-  };
+  const handleAddFinancialRecord = useCallback(
+    async (values: AddFinancialRecordFormValues) => {
+      const paymentId = values.paymentId || financialRecordModal?.paymentId;
+      if (!paymentId) {
+        return;
+      }
+      try {
+        const created = await createFinancialRecord({
+          paymentId: paymentId,
+          amount: normalizeFinancialRecordAmount(values),
+          date: values.date || null,
+          description: values.description,
+          source: values.source,
+          note: values.note,
+        });
+        updateAppData((prev) => ({
+          financialRecords: [created, ...prev.financialRecords],
+          payments: prev.payments.map((payment) =>
+            payment.id === created.paymentId
+              ? {
+                  ...payment,
+                  financialRecords: [...(payment.financialRecords ?? []), created],
+                }
+              : payment
+          ),
+        }));
+        setFinancialRecordModal(null);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при создании записи'));
+        throw err;
+      }
+    },
+    [financialRecordModal, setError, setFinancialRecordModal, updateAppData]
+  );
 
-  const handleUpdateFinancialRecord = async (recordId: string, values: AddFinancialRecordFormValues) => {
-    try {
-      const updated = await updateFinancialRecord(recordId, {
-        amount: normalizeFinancialRecordAmount(values),
-        date: values.date || null,
-        description: values.description,
-        source: values.source,
-        note: values.note,
-      });
-      updateAppData((prev) => ({
-        financialRecords: prev.financialRecords.map((record) =>
-          record.id === updated.id ? updated : record
-        ),
-        payments: prev.payments.map((payment) =>
-          payment.id === updated.paymentId
-            ? {
-                ...payment,
-                financialRecords: (payment.financialRecords ?? []).map((record) =>
-                  record.id === updated.id ? updated : record
-                ),
-              }
-            : payment
-        ),
-      }));
-      setFinancialRecordModal(null);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при обновлении записи'));
-      throw err;
-    }
-  };
+  const handleUpdateFinancialRecord = useCallback(
+    async (recordId: string, values: AddFinancialRecordFormValues) => {
+      try {
+        const updated = await updateFinancialRecord(recordId, {
+          amount: normalizeFinancialRecordAmount(values),
+          date: values.date || null,
+          description: values.description,
+          source: values.source,
+          note: values.note,
+        });
+        updateAppData((prev) => ({
+          financialRecords: prev.financialRecords.map((record) =>
+            record.id === updated.id ? updated : record
+          ),
+          payments: prev.payments.map((payment) =>
+            payment.id === updated.paymentId
+              ? {
+                  ...payment,
+                  financialRecords: (payment.financialRecords ?? []).map((record) =>
+                    record.id === updated.id ? updated : record
+                  ),
+                }
+              : payment
+          ),
+        }));
+        setFinancialRecordModal(null);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при обновлении записи'));
+        throw err;
+      }
+    },
+    [setError, setFinancialRecordModal, updateAppData]
+  );
 
-  const handleDeleteFinancialRecord = async (recordId: string) => {
-    try {
-      await deleteFinancialRecord(recordId);
-      updateAppData((prev) => {
-        const existing = prev.financialRecords.find((record) => record.id === recordId);
-        return {
-          financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
-          payments: existing
-            ? prev.payments.map((payment) =>
-                payment.id === existing.paymentId
-                  ? {
-                      ...payment,
-                      financialRecords: (payment.financialRecords ?? []).filter(
-                        (record) => record.id !== recordId
-                      ),
-                    }
-                  : payment
-              )
-            : prev.payments,
-        };
-      });
-      setFinancialRecordModal(null);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при удалении записи'));
-      throw err;
-    }
-  };
+  const handleDeleteFinancialRecord = useCallback(
+    async (recordId: string) => {
+      try {
+        await deleteFinancialRecord(recordId);
+        updateAppData((prev) => {
+          const existing = prev.financialRecords.find((record) => record.id === recordId);
+          return {
+            financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
+            payments: existing
+              ? prev.payments.map((payment) =>
+                  payment.id === existing.paymentId
+                    ? {
+                        ...payment,
+                        financialRecords: (payment.financialRecords ?? []).filter(
+                          (record) => record.id !== recordId
+                        ),
+                      }
+                    : payment
+                )
+              : prev.payments,
+          };
+        });
+        setFinancialRecordModal(null);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при удалении записи'));
+        throw err;
+      }
+    },
+    [setError, setFinancialRecordModal, updateAppData]
+  );
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     clearTokens();
     setCurrentUser(null);
     setIsAuthenticated(false);
@@ -1447,7 +1553,7 @@ const AppContent: React.FC = () => {
       knowledgeError: null,
       knowledgeUploading: false,
     });
-  };
+  }, [setAppData]);
 
   if (authLoading || isLoading) {
     return (
