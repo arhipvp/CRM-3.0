@@ -396,6 +396,36 @@ export const DealsView: React.FC<DealsViewProps> = ({
   );
 
 
+  const [deadlineSortDirection, setDeadlineSortDirection] = useState<'asc' | 'desc' | null>(null);
+
+  const displayedDeals = useMemo<Deal[]>(() => {
+    if (!deadlineSortDirection) {
+      return sortedDeals;
+    }
+    const getDeadlineTime = (deal: Deal) => (deal.expectedClose ? new Date(deal.expectedClose).getTime() : Infinity);
+    const sorted = [...sortedDeals].sort((a, b) => {
+      const difference = getDeadlineTime(a) - getDeadlineTime(b);
+      return deadlineSortDirection === 'asc' ? difference : -difference;
+    });
+    return sorted;
+  }, [sortedDeals, deadlineSortDirection]);
+
+  const toggleDeadlineSortDirection = useCallback(() => {
+    setDeadlineSortDirection((current) => {
+      if (current === 'asc') {
+        return 'desc';
+      }
+      if (current === 'desc') {
+        return null;
+      }
+      return 'asc';
+    });
+  }, []);
+
+  const deadlineSortIndicator =
+    deadlineSortDirection === 'asc' ? '^' : deadlineSortDirection === 'desc' ? 'v' : '-';
+
+
 
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
 
@@ -2028,7 +2058,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <div>
                 <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Выбор</p>
                 <p className="text-lg font-semibold text-slate-900">Сделки</p>
-                <p className="text-sm text-slate-500">Всего {sortedDeals.length}</p>
+                <p className="text-sm text-slate-500">Всего {displayedDeals.length}</p>
               </div>
             </div>
           </div>
@@ -2045,65 +2075,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 placeholder="Поиск по сделкам"
                 className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
               />
-            </div>
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label htmlFor="dealExecutor" className="text-xs font-semibold text-slate-500 mb-1 block">
-                  Ответственный
-                </label>
-                <select
-                  id="dealExecutor"
-                  value={dealExecutorFilter}
-                  onChange={(event) => onDealExecutorFilterChange(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                >
-                  <option value="">Все</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {getUserDisplayName(user)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="dealSource" className="text-xs font-semibold text-slate-500 mb-1 block">
-                  Источник
-                </label>
-                <input
-                  id="dealSource"
-                  type="text"
-                  value={dealSourceFilter}
-                  onChange={(event) => onDealSourceFilterChange(event.target.value)}
-                  placeholder="Например, реклама, рефералы"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              <div>
-                <label htmlFor="dealExpectedCloseFrom" className="text-xs font-semibold text-slate-500 mb-1 block">
-                  Дата закрытия с
-                </label>
-                <input
-                  id="dealExpectedCloseFrom"
-                  type="date"
-                  value={dealExpectedCloseFrom}
-                  onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                />
-              </div>
-              <div>
-                <label htmlFor="dealExpectedCloseTo" className="text-xs font-semibold text-slate-500 mb-1 block">
-                  Дата закрытия по
-                </label>
-                <input
-                  id="dealExpectedCloseTo"
-                  type="date"
-                  value={dealExpectedCloseTo}
-                  onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                />
-              </div>
             </div>
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2">
@@ -2131,21 +2102,80 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 </label>
               </div>
             </div>
-            <div className="max-h-[360px] overflow-y-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
-                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
-                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
-                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ожидаемое</th>
-                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
-                    <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {sortedDeals.length ? (
-                    sortedDeals.map((deal) => {
+          <div className="max-h-[360px] overflow-y-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
+                  <th className="px-4 py-2">
+                    <button
+                      type="button"
+                      onClick={toggleDeadlineSortDirection}
+                      aria-label={`Сортировать по крайнему сроку, текущий порядок ${deadlineSortDirection ? (deadlineSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию') : 'по умолчанию'}`}
+                      aria-pressed={Boolean(deadlineSortDirection)}
+                      className="flex items-center gap-2 text-left"
+                    >
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2">Крайний срок</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{deadlineSortIndicator}</span>
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
+                </tr>
+                <tr className="border-t border-slate-100 bg-white/90">
+                  <th className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={dealSourceFilter}
+                      onChange={(event) => onDealSourceFilterChange(event.target.value)}
+                      placeholder="Источник"
+                      aria-label="Фильтр по источнику"
+                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                    />
+                  </th>
+                  <th className="px-4 py-2" />
+                  <th className="px-4 py-2" />
+                  <th className="px-4 py-2">
+                    <div className="flex flex-col gap-1">
+                      <input
+                        type="date"
+                        value={dealExpectedCloseFrom}
+                        onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
+                        aria-label="Крайний срок с"
+                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                      />
+                      <input
+                        type="date"
+                        value={dealExpectedCloseTo}
+                        onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
+                        aria-label="Крайний срок по"
+                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                      />
+                    </div>
+                  </th>
+                  <th className="px-4 py-2" />
+                  <th className="px-4 py-2">
+                    <select
+                      value={dealExecutorFilter}
+                      onChange={(event) => onDealExecutorFilterChange(event.target.value)}
+                      aria-label="Фильтр по исполнителю"
+                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                    >
+                      <option value="">Все</option>
+                      {users.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {getUserDisplayName(user)}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {displayedDeals.length ? (
+                  displayedDeals.map((deal) => {
                       const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
                       const deadlineTone = getDeadlineTone(deal.expectedClose);
                       const isDeleted = Boolean(deal.deletedAt);
