@@ -141,14 +141,12 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         return _user_has_deal_access(user, deal)
 
     def destroy(self, request, *args, **kwargs):
-        """Удаление платежа с проверкой наличия финансовых записей"""
+        """Удаление платежа запрещено, если он уже оплачен."""
         instance = self.get_object()
 
         if not instance.can_delete():
             return Response(
-                {
-                    "detail": "Невозможно удалить платёж, так как у него есть финансовые записи."
-                },
+                {"detail": "Нельзя удалить платёж, если он уже оплачен."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
