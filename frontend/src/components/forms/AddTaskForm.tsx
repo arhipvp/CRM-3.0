@@ -43,9 +43,10 @@ export function AddTaskForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    const nextValue = name === 'title' && value === '' ? '' : value || null;
     setFormData((prev) => ({
       ...prev,
-      [name]: value || null,
+      [name]: nextValue,
     }));
   };
 
@@ -55,7 +56,8 @@ export function AddTaskForm({
     setLoading(true);
 
     try {
-      if (!formData.title.trim()) {
+      const title = formData.title ?? '';
+      if (!title.trim()) {
         throw new Error('Название задачи обязательно');
       }
 
