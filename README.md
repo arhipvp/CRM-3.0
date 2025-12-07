@@ -42,12 +42,12 @@ API доступно по `http://localhost:8000/api/v1`. `GET /health/` провер€ет состо€н
 
 ## ќбщие скрипты
 
-- `backend/scripts/import_business_data.py` Ч импорт клиентов, сделок, полисов, платежей и задач из шаблона `scripts/templates/business_data_template_new.xlsx` (`--sheet`, `--dry-run`, `--clear`).
-- `backend/scripts/populate_test_data.sh` Ч запускает `populate_test_data.py` внутри backend дл€ генерации тестовых данных.
-- `backend/scripts/reset_db.sh` Ч выполн€ет `flush` и `migrate` внутри backend.
-- `scripts/backup_project_to_drive.py` Ч архивирует проект, делает дампы Postgres/Excel и копирует их на Google Drive.
-- `scripts/fix_mojibake.py` Ч исправл€ет mojibake в `.ts/.tsx/.js/.jsx` через `ftfy`.
-- `scripts/templates/business_data_template_new.xlsx` Ч актуальный Excel-шаблон дл€ импорта клиентов, сделок, полисов, платежей и задач.
+- `backend/scripts/import_business_data.py` Ч импорт клиентов, сделок, полисов, платежей и задач из шаблона `scripts/templates/business_data_template_new.xlsx` (листы `clients`, `deals`, `policies`, `payments`, `incomes`, `expenses`, `tasks`, опции `--sheet`, `--dry-run`, `--clear`).
+- `backend/scripts/populate_test_data.sh` Ч запускает `python manage.py shell < populate_test_data.py` внутри backend дл€ посадки тестовых данных.
+- `backend/scripts/reset_db.sh` Ч выполн€ет `python manage.py flush --no-input` и затем `python manage.py migrate`.
+- `scripts/backup_project_to_drive.py` Ч архивирует проект, делает дампы Postgres/Excel и копирует в Google Drive с переменными `GOOGLE_DRIVE_*`.
+- `scripts/fix_mojibake.py` Ч вызывает `ftfy` по списку файлов в `frontend`, использу€ `scripts/vendor/ftfy`.
+- `scripts/templates/business_data_template_new.xlsx` Ч актуальный Excel-шаблон со листами дл€ клиентов, сделок, полисов, платежей, доходов, расходов и задач.
 
 ## јвтоматический бэкап на Google Drive
 
