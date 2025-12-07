@@ -32,11 +32,11 @@ API доступно по `http://localhost:8000/api/v1`. `GET /health/` провер€ет состо€н
 
 ## Docker Compose
 
-1. ”бедитесь, что `backend/.env` содержит `DJANGO_DB_PORT=5435`.
+1. ѕри необходимости пробросить Postgres на хост убедитесь, что `.env` (или `.env.production`) определ€ет `POSTGRES_HOST_PORT=5435`; Compose использует эту переменную (`${POSTGRES_HOST_PORT:-5435}:5432`) дл€ маппинга внешнего порта.
 2. `docker compose up --build`
 
  онтейнеры:
-- Postgres: порт `5435`
+- Postgres: хостовый порт `${POSTGRES_HOST_PORT:-5435}` -> контейнерный `5432` (DJANGO_DB_PORT в `.env*/backend/.env` должен оставатьс€ `5432`, потому что Django общаетс€ с контейнером на стандартном порту)
 - Backend: `http://localhost:8000/`
 - Frontend: `http://localhost:5173/` (Vite проксирует API через `VITE_API_URL`)
 
@@ -67,7 +67,7 @@ API доступно по `http://localhost:8000/api/v1`. `GET /health/` провер€ет состо€н
 
 - `.github/workflows/deploy.yml` Ч на `master` подключаетс€ к VPS (`VPS_HOST`, `VPS_USER`), делает `git reset --hard origin/master`, `docker compose -f docker-compose.prod.yml --env-file .env.production pull && up --build -d`.
 - ѕеред деплоем добавьте секреты: `VPS_SSH_KEY`, `VPS_USER`, `VPS_HOST`, `VPS_PATH`.
-- Ќа сервере: репозиторий в `/root/crm3`, `.env.production` содержит реальные секреты, `docker compose` запускаетс€ с `DJANGO_DB_PORT=5435`.
+- Ќа сервере: репозиторий в `/root/crm3`, `.env.production` содержит реальные секреты, `docker compose` запускаетс€ с `POSTGRES_HOST_PORT=5435` (DJANGO_DB_PORT остаЄтс€ `5432`).
 - ƒл€ другой ветки обновите `on.push.branches` и целевой `git reset`.
 
 ## “есты и проверки
@@ -79,6 +79,6 @@ API доступно по `http://localhost:8000/api/v1`. `GET /health/` провер€ет состо€н
 ## ѕолезные ссылки
 
 - `.env.example` и `backend/.env.example` показывают нужные переменные.
-- `docker-compose.yml` поднимает Postgres (5435), backend и Vite.
+- `docker-compose.yml` поднимает Postgres (хостовой порт `POSTGRES_HOST_PORT`, по умолчанию 5435), backend и Vite.
 - `scripts/templates/business_data_template_new.xlsx` Ч шаблон дл€ импорта клиентов/сделок/полисов/платежей.
 EOF

@@ -150,16 +150,50 @@ class DealViewSet(
             return False
         return _is_admin_user(user) or deal.seller_id == user.id
 
+    def _reject_when_no_seller(self, user, deal):
+        if not deal:
+            return None
+        if deal.seller_id is None and not _is_admin_user(user):
+            return Response(
+                {"detail": "У сделки нет продавца! Обратитесь к администратору."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return None
+
     def perform_create(self, serializer):
         if self.request.user and self.request.user.is_authenticated:
             serializer.save(seller=self.request.user)
         else:
             serializer.save()
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        response = self._reject_when_no_seller(request.user, instance)
+        if response:
+            return response
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        response = self._reject_when_no_seller(request.user, instance)
+        if response:
+            return response
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        response = self._reject_when_no_seller(request.user, instance)
+        if response:
+            return response
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"], url_path="close")
     def close(self, request, pk=None):
         queryset = self.get_queryset()
         deal = get_object_or_404(queryset, pk=pk)
+        response = self._reject_when_no_seller(request.user, deal)
+        if response:
+            return response
         if not self._is_deal_seller(request.user, deal):
             return Response(
                 {"detail": "Only the assigned seller can close this deal."},
@@ -197,6 +231,9 @@ class DealViewSet(
     def reopen(self, request, pk=None):
         queryset = self.get_queryset()
         deal = get_object_or_404(queryset, pk=pk)
+        response = self._reject_when_no_seller(request.user, deal)
+        if response:
+            return response
         if deal.status not in CLOSED_STATUSES:
             return Response(
                 {"detail": "Only closed deals can be reopened."},

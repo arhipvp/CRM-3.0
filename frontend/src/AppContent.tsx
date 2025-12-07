@@ -7,31 +7,17 @@ import { NotificationDisplay } from './components/NotificationDisplay';
 import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
 import { ClientForm } from './components/forms/ClientForm';
-import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
-import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { EditDealFormValues } from './components/forms/EditDealForm';
-import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
-import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
-import type { ModalType, FinancialRecordModalState, PaymentModalState } from './components/app/types';
+import type { ModalType } from './components/app/types';
 import { Modal } from './components/Modal';
 import { formatErrorMessage } from './utils/formatErrorMessage';
 import {
-  createClient,
-  deleteClient,
-  mergeClients,
   createDeal,
   createQuote,
   updateQuote,
-  createPolicy,
-  updatePolicy,
-  createPayment,
-  createFinancialRecord,
-  updateFinancialRecord,
-  deleteFinancialRecord,
   deleteQuote,
-  deletePolicy,
   deleteDeal,
   restoreDeal,
   fetchChatMessages,
@@ -40,11 +26,8 @@ import {
   closeDeal,
   reopenDeal,
   updateDeal,
-  updateClient,
   mergeDeals,
-  updatePayment,
   fetchDealHistory,
-  fetchDeal,
   createTask,
   updateTask,
   deleteTask,
@@ -59,60 +42,9 @@ import { Client, Deal, FinancialRecord, Payment, Policy, Quote, User } from './t
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
-import { parseNumericAmount } from './utils/parseNumericAmount';
-const normalizeStringValue = (value: unknown): string =>
-  typeof value === 'string' ? value : value ? String(value) : '';
-
-const normalizeDateValue = (value: unknown): string => {
-  if (typeof value === 'string' && value.trim()) {
-    return value;
-  }
-  return '';
-};
-
-const buildPolicyDraftFromRecognition = (
-  parsed: Record<string, unknown>
-): PolicyFormValues => {
-  const policy = (parsed.policy ?? {}) as Record<string, unknown>;
-  const paymentsRaw = Array.isArray(parsed.payments)
-    ? (parsed.payments as Record<string, unknown>[])
-    : [];
-      const payments =
-        paymentsRaw.length > 0
-          ? paymentsRaw.map((payment) => ({
-              amount: normalizeStringValue(payment.amount),
-              description: '',
-              scheduledDate: normalizeDateValue(payment.payment_date),
-              actualDate: '',
-              incomes: [],
-              expenses: [],
-            }))
-          : [
-        {
-          amount: '',
-          description: '',
-          scheduledDate: '',
-          actualDate: '',
-          incomes: [],
-          expenses: [],
-        },
-      ];
-
-  return {
-    number: normalizeStringValue(policy.policy_number),
-    insuranceCompanyId: '',
-    insuranceTypeId: '',
-    isVehicle: Boolean(policy.vehicle_brand || policy.vehicle_model || policy.vehicle_vin),
-    brand: normalizeStringValue(policy.vehicle_brand),
-    model: normalizeStringValue(policy.vehicle_model),
-    vin: normalizeStringValue(policy.vehicle_vin),
-    counterparty: normalizeStringValue(policy.contractor),
-    startDate: normalizeDateValue(policy.start_date) || null,
-    endDate: normalizeDateValue(policy.end_date) || null,
-    payments,
-  };
-};
-
+import { useClientManagement } from './hooks/useClientManagement';
+import { usePolicyManagement } from './hooks/usePolicyManagement';
+import { usePaymentManagement } from './hooks/usePaymentManagement';
 const resolveRoleNames = (userData: CurrentUserResponse): string[] => {
   const parsed = userData.user_roles
     ?.map((ur) => ur.role?.name)
