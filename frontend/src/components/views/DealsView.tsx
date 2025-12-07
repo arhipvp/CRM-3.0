@@ -422,6 +422,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
     return sortState.direction === 'asc' ? 'по возрастанию' : 'по убыванию';
   };
 
+  const getColumnTitleClass = (key: DealsSortKey) =>
+    `text-[11px] font-semibold uppercase tracking-wide ${sortState.key === key ? 'text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2' : 'text-slate-500'}`;
+
 
 
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
@@ -2111,7 +2114,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel('deadline')}`}
                       className="flex items-center justify-between gap-2 text-left w-full"
                     >
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2">
+                      <span className={getColumnTitleClass('deadline')}>
                         Крайний срок
                       </span>
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -2126,7 +2129,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel('nextContact')}`}
                       className="flex items-center justify-between gap-2 text-left w-full"
                     >
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <span className={getColumnTitleClass('nextContact')}>
                         След. контакт
                       </span>
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
