@@ -556,6 +556,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
     [driveFiles, selectedDriveFileIds]
   );
 
+  const [isInlineDateUpdating, setIsInlineDateUpdating] = useState(false);
+
   const canRecognizeSelectedFiles =
     selectedDriveFileIds.length > 0 &&
     selectedDriveFiles.length === selectedDriveFileIds.length &&
@@ -1085,12 +1087,31 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
 
 
+  const parseDateOrToday = (value?: string | null) => {
+    if (!value) {
+      return new Date();
+    }
+    const [year, month, day] = value.split('-').map((segment) => Number(segment));
+    if ([year, month, day].some((segment) => Number.isNaN(segment))) {
+      return new Date();
+    }
+    return new Date(year, month - 1, day);
+  };
+
+  const formatDateForInput = (value: Date) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleInlineDateChange = async (
     field: 'nextContactDate' | 'expectedClose',
     rawValue: string,
     options?: { selectTopDeal?: boolean }
   ) => {
     if (!selectedDeal) return;
+    setIsInlineDateUpdating(true);
 
     const value = rawValue || null;
 
@@ -1109,11 +1130,29 @@ export const DealsView: React.FC<DealsViewProps> = ({
       }
     } catch (err) {
       console.error('Ошибка обновления даты сделки:', err);
+    } finally {
+      setIsInlineDateUpdating(false);
     }
   };
 
   const handleQuickNextContactShift = (newValue: string) =>
     handleInlineDateChange('nextContactDate', newValue, { selectTopDeal: true });
+
+  const quickInlineShift = (days: number) => {
+    if (!selectedDeal) {
+      return;
+    }
+    const baseDate = parseDateOrToday(selectedDeal.nextContactDate);
+    const targetDate = new Date(baseDate);
+    targetDate.setDate(targetDate.getDate() + days);
+    handleQuickNextContactShift(formatDateForInput(targetDate));
+  };
+
+  const quickInlineDateOptions = [
+    { label: 'завтра', days: 1 },
+    { label: '+2 дня', days: 2 },
+    { label: '+5 дней', days: 5 },
+  ];
 
   const handleDelayModalConfirm = async () => {
     if (!selectedDeal || !selectedDelayEvent || !selectedDelayEventNextContact) {
@@ -1906,7 +1945,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-            <div className="mt-1 flex max-w-[220px] flex-col gap-2">
+          <div className="mt-1 flex max-w-[220px] flex-col gap-2">
+            <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={selectedDeal.nextContactDate ?? ''}
@@ -1923,6 +1963,20 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 <span>Отложить до следующего события</span>
               </button>
             </div>
+            <div className="flex flex-wrap gap-2">
+              {quickInlineDateOptions.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => quickInlineShift(option.days)}
+                  disabled={isInlineDateUpdating}
+                  className="text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div>
           <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
