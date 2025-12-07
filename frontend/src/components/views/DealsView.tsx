@@ -1989,13 +1989,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
   return (
     <div className="flex h-full flex-col gap-6">
       <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-200">
+        <div className="px-4 py-2 border-b border-slate-200">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">Сделки</p>
+            <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Сделки</p>
             <p className="text-lg font-semibold text-slate-900">{sortedDeals.length}</p>
           </div>
         </div>
-        <div className="px-5 py-3 space-y-3 border-b border-slate-100">
+        <div className="px-4 py-2 space-y-2 border-b border-slate-100">
           <div>
             <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
               Поиск
@@ -2009,7 +2009,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
             />
           </div>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
             <div>
               <label htmlFor="dealExecutor" className="text-xs font-semibold text-slate-500 mb-1 block">
                 Ответственный
@@ -2042,7 +2042,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               />
             </div>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-2">
             <div>
               <label htmlFor="dealExpectedCloseFrom" className="text-xs font-semibold text-slate-500 mb-1 block">
                 Дата закрытия с
@@ -2052,7 +2052,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 type="date"
                 value={dealExpectedCloseFrom}
                 onChange={(event) => onDealExpectedCloseFromChange(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
               />
             </div>
             <div>
@@ -2064,11 +2064,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 type="date"
                 value={dealExpectedCloseTo}
                 onChange={(event) => onDealExpectedCloseToChange(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
               />
             </div>
           </div>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2">
               <input
                 id="dealShowClosed"
@@ -2095,16 +2095,16 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
           </div>
         </div>
-        <div className="max-h-[480px] overflow-y-auto">
+        <div className="max-h-[360px] overflow-y-auto">
           <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
             <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-100">
               <tr>
-                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
-                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
-                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
-                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ожидаемое</th>
-                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
-                <th className="px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
+                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
+                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
+                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
+                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ожидаемое</th>
+                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">След. контакт</th>
+                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -2129,7 +2129,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                       onClick={() => onSelectDeal(deal.id)}
                       className={rowClassName}
                     >
-                      <td className={`px-5 py-3 ${deletedTextClass}`}>
+                      <td className={`px-4 py-2 ${deletedTextClass}`}>
                         <p className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>{deal.title}</p>
                         <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>{deal.source || '—'}</p>
                         {deal.deletedAt && (
@@ -2138,10 +2138,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
                           </p>
                         )}
                       </td>
-                      <td className={`px-5 py-3 text-sm text-slate-900 ${deletedTextClass}`}>
+                      <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
                         <span className={deletedTextClass}>{deal.clientName || '—'}</span>
                       </td>
-                      <td className={`px-5 py-3 text-sm text-slate-900 ${deletedTextClass}`}>
+                      <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
                         <ColoredLabel
                           value={statusLabels[deal.status]}
                           fallback="—"
@@ -2154,14 +2154,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
                           </p>
                         )}
                       </td>
-                      <td className={`px-5 py-3 text-sm font-semibold ${deletedTextClass}`}>
+                      <td className={`px-4 py-2 text-sm font-semibold ${deletedTextClass}`}>
                         {deal.expectedClose ? (
                           <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
                         ) : (
                           <span className={`text-xs text-rose-500 font-semibold ${deletedTextClass || ''}`}>Нет срока</span>
                         )}
                       </td>
-                      <td className={`px-5 py-3 ${deletedTextClass}`}>
+                      <td className={`px-4 py-2 ${deletedTextClass}`}>
                         {deal.nextContactDate ? (
                           <div className="flex items-center gap-2">
                             <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>{formatDate(deal.nextContactDate)}</span>
@@ -2177,7 +2177,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                           <span className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}>Не назначено</span>
                         )}
                       </td>
-                      <td className={`px-5 py-3 text-sm text-slate-900 ${deletedTextClass}`}>
+                      <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
                         <span className={deletedTextClass}>{deal.executorName || '—'}</span>
                       </td>
                     </tr>
@@ -2185,7 +2185,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
                     Сделки не найдены.
                   </td>
                 </tr>
@@ -2194,7 +2194,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           </table>
         </div>
         {dealsHasMore && (
-          <div className="border-t border-slate-100 px-6 py-4 text-center">
+          <div className="border-t border-slate-100 px-4 py-3 text-center">
             <button
               type="button"
               onClick={onLoadMoreDeals}
