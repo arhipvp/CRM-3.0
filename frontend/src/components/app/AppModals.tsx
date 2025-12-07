@@ -99,6 +99,7 @@ interface AppModalsProps {
   users: User[];
   openClientModal: (afterModal?: ModalType | null) => void;
   closeClientModal: () => void;
+  isClientModalOverlayOpen: boolean;
   handleAddClient: (data: {
     name: string;
     phone?: string;
@@ -141,6 +142,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
   users,
   openClientModal,
   closeClientModal,
+  isClientModalOverlayOpen,
   handleAddClient,
   handleAddDeal,
   quoteDealId,
@@ -274,6 +276,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
             }
             onCancel={() => setFinancialRecordModal(null)}
           />
+        </Modal>
+      )}
+
+      {isClientModalOverlayOpen && (
+        <Modal title="گ?گ?گ?‘<گü گَگ>گٌگçگ?‘" onClose={closeClientModal} zIndex={50}>
+          <ClientForm onSubmit={handleAddClient} />
         </Modal>
       )}
     </>

@@ -89,16 +89,21 @@ const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [modal, setModal] = useState<ModalType>(null);
-  const [pendingModalAfterClient, setPendingModalAfterClient] = useState<ModalType>(null);
+  const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
   const openClientModal = (afterModal: ModalType | null = null) => {
-    setPendingModalAfterClient(afterModal);
+    if (afterModal) {
+      setClientModalOverlayOpen(true);
+      return;
+    }
     setModal('client');
   };
 
   const closeClientModal = () => {
-    const nextModal = pendingModalAfterClient;
-    setPendingModalAfterClient(null);
-    setModal(nextModal ?? null);
+    if (isClientModalOverlayOpen) {
+      setClientModalOverlayOpen(false);
+      return;
+    }
+    setModal(null);
   };
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
@@ -405,9 +410,7 @@ const AppContent: React.FC = () => {
   }) => {
     const created = await createClient(data);
     updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
-    const nextModal = pendingModalAfterClient;
-    setPendingModalAfterClient(null);
-    setModal(nextModal ?? null);
+    closeClientModal();
   };
 
   const handleClientEditRequest = useCallback((client: Client) => {
@@ -1553,6 +1556,7 @@ const AppContent: React.FC = () => {
         setModal={setModal}
         openClientModal={openClientModal}
         closeClientModal={closeClientModal}
+        isClientModalOverlayOpen={isClientModalOverlayOpen}
         clients={clients}
         users={users}
         handleAddClient={handleAddClient}

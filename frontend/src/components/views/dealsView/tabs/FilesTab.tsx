@@ -46,12 +46,26 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   }
 
   const disableUpload = !selectedDeal.driveFolderId;
+  const driveFolderLink = selectedDeal.driveFolderId
+    ? `https://drive.google.com/drive/folders/${selectedDeal.driveFolderId}`
+    : null;
 
   return (
     <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-900">Файлы Google Drive</p>
+          {driveFolderLink ? (
+            <a
+              href={driveFolderLink}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-slate-900 hover:text-sky-600"
+            >
+              Файлы Google Drive
+            </a>
+          ) : (
+            <p className="text-sm font-semibold text-slate-900">Файлы Google Drive</p>
+          )}
           <p className="text-xs text-slate-500">Контент читается прямо из папки, привязанной к этой сделке.</p>
         </div>
         <button

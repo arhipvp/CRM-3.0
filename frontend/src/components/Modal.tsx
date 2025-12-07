@@ -15,6 +15,7 @@ interface ModalProps {
   children: React.ReactNode;
   closeOnOverlayClick?: boolean;
   size?: ModalSize;
+  zIndex?: number;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -23,6 +24,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   closeOnOverlayClick = true,
   size = 'md',
+  zIndex = 40,
 }) => {
   const handleOverlayClick = () => {
     if (closeOnOverlayClick) {
@@ -35,6 +37,7 @@ export const Modal: React.FC<ModalProps> = ({
   return (
     <div
       className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
+      style={{ zIndex }}
       onClick={handleOverlayClick}
     >
       <div
