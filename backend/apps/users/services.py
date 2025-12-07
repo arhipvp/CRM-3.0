@@ -18,7 +18,7 @@ def user_has_permission(
         return False
 
     return RolePermission.objects.filter(
-        role__userrole__user_id=user_id,
+        role__users__user_id=user_id,
         permission__resource=resource,
         permission__action=action,
         permission__deleted_at__isnull=True,
