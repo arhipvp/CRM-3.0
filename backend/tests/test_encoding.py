@@ -17,6 +17,30 @@ FRONTEND_EXTENSIONS = {
     ".html",
 }
 
+ASCII_PRINTABLE = {chr(code) for code in range(0x20, 0x7F)}
+WHITESPACE_CHARS = {"\n", "\r", "\t"}
+ALLOWED_EXTRA_CHARS = {
+    "«",
+    "»",
+    "—",
+    "–",
+    "‘",
+    "’",
+    "“",
+    "”",
+    "…",
+    "·",
+    "₽",
+    "№",
+    "•",
+    "\u00a0",
+}
+CYRILLIC_RANGE = (0x0400, 0x052F)
+FORM_DIRECTORIES = (
+    REPO_ROOT / "frontend" / "src" / "components" / "forms",
+    REPO_ROOT / "frontend" / "src" / "components" / "app",
+)
+
 
 def iter_files(root: Path, extensions: Iterable[str]) -> Iterable[Path]:
     lower_extensions = {ext.lower() for ext in extensions}
@@ -28,6 +52,26 @@ def iter_files(root: Path, extensions: Iterable[str]) -> Iterable[Path]:
         if any(part in EXCLUDED_PARTS for part in path.parts):
             continue
         yield path
+
+
+def iter_form_files() -> Iterable[Path]:
+    for directory in FORM_DIRECTORIES:
+        if not directory.exists():
+            continue
+        yield from iter_files(directory, FRONTEND_EXTENSIONS)
+
+
+def is_supported_text_char(char: str) -> bool:
+    if char in WHITESPACE_CHARS:
+        return True
+    if char in ASCII_PRINTABLE:
+        return True
+    if char in ALLOWED_EXTRA_CHARS:
+        return True
+    if char == "\ufeff":
+        return True
+    code = ord(char)
+    return CYRILLIC_RANGE[0] <= code <= CYRILLIC_RANGE[1]
 
 
 class SourceEncodingTestCase(TestCase):
@@ -45,6 +89,31 @@ class SourceEncodingTestCase(TestCase):
                 + "\n".join(failures)
             )
 
+    def assert_only_allowed_form_characters(self, paths: Iterable[Path]) -> None:
+        failures: list[str] = []
+        for path in paths:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for line_no, line in enumerate(text.splitlines(), start=1):
+                for char in line:
+                    if not is_supported_text_char(char):
+                        snippet = line.strip()
+                        if not snippet:
+                            snippet = "<empty line>"
+                        if len(snippet) > 120:
+                            snippet = snippet[:120] + "..."
+                        failures.append(
+                            f"{path}:{line_no} contains {repr(char)} (U+{ord(char):04X}) in {snippet!r}"
+                        )
+                        break
+                else:
+                    continue
+                break
+        if failures:
+            self.fail(
+                "Found characters outside of the allowed English/Cyrillic set in form sources:\n"
+                + "\n".join(failures)
+            )
+
     def test_no_replacement_symbol_in_python_source(self):
         self.assert_no_replacement_char(iter_files(REPO_ROOT, PYTHON_EXTENSIONS))
 
@@ -53,3 +122,9 @@ class SourceEncodingTestCase(TestCase):
         if not frontend_dir.exists():
             self.skipTest("Frontend directory is missing in this checkout")
         self.assert_no_replacement_char(iter_files(frontend_dir, FRONTEND_EXTENSIONS))
+
+    def test_forms_use_only_english_or_russian(self):
+        paths = list(iter_form_files())
+        if not paths:
+            self.skipTest("Form directories are missing in this checkout")
+        self.assert_only_allowed_form_characters(paths)

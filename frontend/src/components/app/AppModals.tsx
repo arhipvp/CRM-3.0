@@ -280,7 +280,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
       )}
 
       {isClientModalOverlayOpen && (
-        <Modal title="گ?گ?گ?‘<گü گَگ>گٌگçگ?‘" onClose={closeClientModal} zIndex={50}>
+        <Modal title="Новый клиент" onClose={closeClientModal} zIndex={50}>
           <ClientForm onSubmit={handleAddClient} />
         </Modal>
       )}
