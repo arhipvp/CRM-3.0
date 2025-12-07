@@ -256,6 +256,28 @@ const AppContent: React.FC = () => {
     [refreshDeals]
   );
 
+  const syncDealsByIds = useCallback(
+    async (dealIds: (string | null | undefined)[]) => {
+      const normalizedIds = Array.from(
+        new Set(dealIds.filter((id): id is string => Boolean(id)))
+      );
+      if (!normalizedIds.length) {
+        return;
+      }
+      const fetchedDeals = await Promise.all(
+        normalizedIds.map((dealId) => fetchDeal(dealId))
+      );
+      updateAppData((prev) => {
+        const dealMap = new Map<string, Deal>(fetchedDeals.map((deal) => [deal.id, deal]));
+        const existingIds = new Set(prev.deals.map((deal) => deal.id));
+        const updatedDeals = prev.deals.map((deal) => dealMap.get(deal.id) ?? deal);
+        const missingDeals = fetchedDeals.filter((deal) => !existingIds.has(deal.id));
+        return { deals: [...updatedDeals, ...missingDeals] };
+      });
+    },
+    [updateAppData]
+  );
+
   const parseAmountValue = (value?: string | null) => {
     const parsed = parseNumericAmount(value ?? '');
     return Number.isFinite(parsed) ? parsed : 0;
@@ -849,6 +871,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleAddPolicy = async (dealId: string, values: PolicyFormValues) => {
+    setIsSyncing(true);
     const {
       number,
       insuranceCompanyId,
@@ -938,6 +961,9 @@ const AppContent: React.FC = () => {
         })
       );
 
+      let dealPaymentsTotalDelta = 0;
+      let dealPaymentsPaidDelta = 0;
+
       for (const paymentDraft of paymentsToProcess) {
         const amount = parseNumericAmount(paymentDraft.amount);
         if (!Number.isFinite(amount) || amount < 0) {
@@ -997,7 +1023,9 @@ const AppContent: React.FC = () => {
         policyPaymentsTotal += amount;
         if (payment.actualDate) {
           policyPaymentsPaid += amount;
+          dealPaymentsPaidDelta += amount;
         }
+        dealPaymentsTotalDelta += amount;
         syncPolicyTotals();
         updateAppData((prev) => ({
           payments: [paymentWithRecords, ...prev.payments],
@@ -1008,7 +1036,37 @@ const AppContent: React.FC = () => {
         }));
       }
 
+      if (dealPaymentsTotalDelta || dealPaymentsPaidDelta) {
+        updateAppData((prev) => ({
+          deals: adjustPaymentsTotals(
+            prev.deals,
+            dealId,
+            dealPaymentsTotalDelta,
+            dealPaymentsPaidDelta
+          ),
+        }));
+      }
+
       let refreshFailed = false;
+      try {
+        const refreshedDeal = await fetchDeal(dealId);
+        updateAppData((prev) => ({
+          deals: prev.deals.some((deal) => deal.id === refreshedDeal.id)
+            ? prev.deals.map((deal) =>
+                deal.id === refreshedDeal.id ? refreshedDeal : deal
+              )
+            : [refreshedDeal, ...prev.deals],
+        }));
+        setSelectedDealId(refreshedDeal.id);
+      } catch (refreshErr) {
+        setError(
+          refreshErr instanceof Error
+            ? refreshErr.message
+            : 'Не удалось обновить данные сделки'
+        );
+        refreshFailed = true;
+      }
+
       try {
         await refreshPolicies();
       } catch (refreshErr) {
@@ -1036,6 +1094,8 @@ const AppContent: React.FC = () => {
     } catch (err) {
       setError(formatErrorMessage(err, 'Не удалось сохранить полис'));
       throw err;
+    } finally {
+      setIsSyncing(false);
     }
   };
   const handleRequestEditPolicy = (policy: Policy) => {
@@ -1225,6 +1285,14 @@ const AppContent: React.FC = () => {
         ),
         deals: adjustPaymentsTotals(prev.deals, created.dealId, paymentAmount, paymentPaidAmount),
       }));
+      try {
+        await syncDealsByIds([created.dealId]);
+      } catch (syncErr) {
+        const baseMessage = 'Не удалось обновить данные сделки после создания платежа';
+        const detail = formatErrorMessage(syncErr);
+        const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
+        throw new Error(message);
+      }
       setPaymentModal(null);
     } catch (err) {
       setError(formatErrorMessage(err, 'Ошибка при создании платежа'));
@@ -1234,6 +1302,12 @@ const AppContent: React.FC = () => {
 
   const handleUpdatePayment = async (paymentId: string, values: AddPaymentFormValues) => {
     try {
+      const previousPayment = payments.find((payment) => payment.id === paymentId);
+      const previousAmount = parseAmountValue(previousPayment?.amount);
+      const previousPaid = previousPayment?.actualDate ? previousAmount : 0;
+      const previousPolicyId = previousPayment?.policyId;
+      const previousDealId = previousPayment?.dealId;
+
       const updated = await updatePayment(paymentId, {
         policyId: values.policyId,
         dealId: values.dealId ?? undefined,
@@ -1245,12 +1319,6 @@ const AppContent: React.FC = () => {
       const updatedAmount = parseAmountValue(updated.amount);
       const updatedPaid = updated.actualDate ? updatedAmount : 0;
       updateAppData((prev) => {
-        const previousPayment = prev.payments.find((payment) => payment.id === updated.id);
-        const previousAmount = parseAmountValue(previousPayment?.amount);
-        const previousPaid = previousPayment?.actualDate ? previousAmount : 0;
-        const previousPolicyId = previousPayment?.policyId;
-        const previousDealId = previousPayment?.dealId;
-
         let policies = prev.policies;
         if (previousPolicyId && previousPolicyId === updated.policyId) {
           policies = adjustPaymentsTotals(
@@ -1298,6 +1366,14 @@ const AppContent: React.FC = () => {
           deals,
         };
       });
+      try {
+        await syncDealsByIds([updated.dealId, previousDealId]);
+      } catch (syncErr) {
+        const baseMessage = 'Не удалось обновить данные сделки после изменения платежа';
+        const detail = formatErrorMessage(syncErr);
+        const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
+        throw new Error(message);
+      }
       setPaymentModal(null);
     } catch (err) {
       setError(formatErrorMessage(err, 'Ошибка при обновлении платежа'));
