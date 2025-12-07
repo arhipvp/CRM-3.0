@@ -68,6 +68,12 @@ class DealUpdatePermissionsTests(APITestCase):
         self.deal.refresh_from_db()
         self.assertEqual(self.deal.expected_close, date(2025, 12, 31))
 
+    def _extract_deal_ids(self, response):
+        data = response.data
+        if isinstance(data, dict):
+            data = data.get("results", [])
+        return [deal["id"] for deal in data]
+
     def test_role_with_deal_view_permission_sees_all_deals(self):
         observer_role = Role.objects.create(name="Observer")
         view_permission = Permission.objects.create(resource="deal", action="view")
