@@ -1,4 +1,5 @@
 from apps.common.models import SoftDeleteModel
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -44,11 +45,13 @@ class Payment(SoftDeleteModel):
         return f"Платёж {self.amount} РУБ для {self.policy}"
 
     def can_delete(self) -> bool:
-        """Платёж можно удалять независимо от существования финансовых записей."""
-        return True
+        """Платёж можно удалять только если он ещё не оплачен."""
+        return not self.is_paid
 
     def delete(self, using=None, keep_parents=False):
-        """Мягкое удаление: каскадно удаляем финансовые операции перед платёжом."""
+        """Мягкое удаление: запрет для оплаченных платежей и каскадные записи."""
+        if self.is_paid:
+            raise ValidationError("Оплаченный платёж нельзя удалить.")
         for record in self.financial_records.all():
             record.delete()
         super().delete(using=using, keep_parents=keep_parents)
