@@ -2052,30 +2052,33 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   return (
     <div className="flex h-full flex-col gap-6">
-      <section className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
-        <div className="divide-y divide-slate-200">
-          <div className="px-4 py-4">
-              <div className="flex flex-wrap items-baseline gap-2">
-                <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">Выбор</span>
-                <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
-                <span className="text-sm text-slate-500 whitespace-nowrap">Всего {displayedDeals.length}</span>
+      <section className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden h-[calc(100vh-4rem)]">
+        <div className="h-full flex flex-col">
+          <div className="flex flex-col gap-3" style={{ flex: '0 0 20vh', minHeight: '220px', maxHeight: '20vh' }}>
+            <div
+              className="px-4 py-4 flex items-center justify-between gap-6 font-sans"
+              style={{ fontFamily: 'Inter, "Segoe UI", system-ui, sans-serif' }}
+            >
+              <div className="flex items-end gap-3 uppercase tracking-[0.35em] text-slate-400">
+                <span className="text-[10px]">Выбор</span>
+                <span className="text-lg font-semibold tracking-[0.15em] text-slate-900">Сделки</span>
+                <span className="text-xs font-semibold tracking-[0.35em] text-slate-500">
+                  Всего {displayedDeals.length}
+                </span>
               </div>
-          </div>
-          <div className="px-4 py-3 space-y-3 border-b border-slate-200 max-h-[20vh] overflow-hidden">
-            <div>
-              <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
-                Поиск
-              </label>
-              <input
-                id="dealSearch"
-                type="search"
-                value={dealSearch}
-                onChange={(event) => onDealSearchChange(event.target.value)}
-                placeholder="Поиск по сделкам"
-                className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-              />
+              <div className="flex items-center gap-3 min-w-[260px]">
+                <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Поиск</span>
+                <input
+                  id="dealSearch"
+                  type="search"
+                  value={dealSearch}
+                  onChange={(event) => onDealSearchChange(event.target.value)}
+                  placeholder="Поиск по сделкам"
+                  className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                />
+              </div>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="px-4 pb-2 flex flex-wrap gap-6 border-b border-slate-200 text-xs text-slate-500">
               <div className="flex items-center gap-2">
                 <input
                   id="dealShowClosed"
@@ -2084,7 +2087,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   onChange={(event) => onDealShowClosedChange(event.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
-                <label htmlFor="dealShowClosed" className="text-xs font-semibold text-slate-500">
+                <label htmlFor="dealShowClosed" className="font-semibold">
                   Показать закрытые сделки
                 </label>
               </div>
@@ -2096,13 +2099,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
                   onChange={(event) => onDealShowDeletedChange(event.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
-                <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
+                <label htmlFor="dealShowDeleted" className="font-semibold">
                   Показать удалённые сделки
                 </label>
               </div>
             </div>
           </div>
-          <div className="max-h-[360px] overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <table className="min-w-full text-left text-sm border border-slate-200">
               <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500">
                 <tr>
@@ -2167,7 +2170,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
               <tbody className="bg-white">
                 {displayedDeals.length ? (
                   displayedDeals.map((deal) => {
-                      const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
                       const deadlineTone = getDeadlineTone(deal.expectedClose);
                       const isDeleted = Boolean(deal.deletedAt);
                       const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
@@ -2272,6 +2274,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
               </div>
             )}
           </div>
+          <div className="flex-1 overflow-auto">
           <div className="px-4 py-5 space-y-4">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <p className="text-[10px] tracking-[0.4em] text-slate-400">
