@@ -2052,234 +2052,222 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   return (
     <div className="flex h-full flex-col gap-6">
-      <section className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden h-[calc(100vh-4rem)]">
-        <div className="flex h-full min-h-0">
-          <div
-            className="flex flex-col min-h-0 border-r border-slate-200"
-            style={{ flexBasis: '420px', minWidth: '320px', maxWidth: '520px' }}
-          >
-            <div className="flex flex-col gap-3" style={{ flex: '0 0 20vh', minHeight: '220px', maxHeight: '20vh' }}>
-              <div
-                className="px-4 py-4 flex items-center justify-between gap-6 font-sans"
-                style={{ fontFamily: 'Inter, "Segoe UI", system-ui, sans-serif' }}
-              >
-                <div className="flex items-end gap-3 uppercase tracking-[0.35em] text-slate-400">
-                  <span className="text-[10px]">Выбор</span>
-                  <span className="text-lg font-semibold tracking-[0.15em] text-slate-900">Сделки</span>
-                  <span className="text-xs font-semibold tracking-[0.35em] text-slate-500">
-                    Всего {displayedDeals.length}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 min-w-[260px]">
-                  <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Поиск</span>
-                  <input
-                    id="dealSearch"
-                    type="search"
-                    value={dealSearch}
-                    onChange={(event) => onDealSearchChange(event.target.value)}
-                    placeholder="Поиск по сделкам"
-                    className="h-9 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                  />
-                </div>
+      <section className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
+        <div className="divide-y divide-slate-200">
+          <div className="px-4 py-4">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">Выбор</span>
+                <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
+                <span className="text-sm text-slate-500 whitespace-nowrap">Всего {displayedDeals.length}</span>
               </div>
-              <div className="px-4 pb-2 flex flex-wrap gap-6 border-b border-slate-200 text-xs text-slate-500">
-                <div className="flex items-center gap-2">
-                  <input
-                    id="dealShowClosed"
-                    type="checkbox"
-                    checked={dealShowClosed}
-                    onChange={(event) => onDealShowClosedChange(event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  />
-                  <label htmlFor="dealShowClosed" className="font-semibold">
-                    Показать закрытые сделки
-                  </label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="dealShowDeleted"
-                    type="checkbox"
-                    checked={dealShowDeleted}
-                    onChange={(event) => onDealShowDeletedChange(event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                  />
-                  <label htmlFor="dealShowDeleted" className="font-semibold">
-                    Показать удалённые сделки
-                  </label>
-                </div>
+          </div>
+          <div className="px-4 py-4 space-y-4 border-b border-slate-200">
+            <div>
+              <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
+                Поиск
+              </label>
+              <input
+                id="dealSearch"
+                type="search"
+                value={dealSearch}
+                onChange={(event) => onDealSearchChange(event.target.value)}
+                placeholder="Поиск по сделкам"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              />
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <input
+                  id="dealShowClosed"
+                  type="checkbox"
+                  checked={dealShowClosed}
+                  onChange={(event) => onDealShowClosedChange(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                <label htmlFor="dealShowClosed" className="text-xs font-semibold text-slate-500">
+                  Показать закрытые сделки
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="dealShowDeleted"
+                  type="checkbox"
+                  checked={dealShowDeleted}
+                  onChange={(event) => onDealShowDeletedChange(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
+                  Показать удалённые сделки
+                </label>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <table className="min-w-full text-left text-sm border border-slate-200">
-                <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-3 py-2 font-semibold border-r border-slate-200">Сделка</th>
-                    <th className="px-3 py-2 font-semibold border-r border-slate-200">Клиент</th>
-                    <th className="px-3 py-2 font-semibold border-r border-slate-200">Статус</th>
-                    <th className="px-3 py-2 font-semibold border-r border-slate-200 min-w-[140px]">
-                      <button
-                        type="button"
-                        onClick={() => toggleColumnSort('deadline')}
-                        aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel('deadline')}`}
-                        className="flex items-center justify-between gap-2 text-[11px] w-full"
-                      >
-                        <span className={getColumnTitleClass('deadline')}>
-                          Крайний срок
-                        </span>
-                        <span className="text-[11px] font-semibold text-slate-500">
-                          {getSortIndicator('deadline')}
-                        </span>
-                      </button>
-                    </th>
-                    <th className="px-3 py-2 font-semibold border-r border-slate-200 min-w-[140px]">
-                      <button
-                        type="button"
-                        onClick={() => toggleColumnSort('nextContact')}
-                        aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel('nextContact')}`}
-                        className="flex items-center justify-between gap-2 text-[11px] w-full"
-                      >
-                        <span className={getColumnTitleClass('nextContact')}>
-                          След. контакт
-                        </span>
-                        <span className="text-[11px] font-semibold text-slate-500">
-                          {getSortIndicator('nextContact')}
-                        </span>
-                      </button>
-                    </th>
-                    <th className="px-3 py-2 font-semibold border-r border-slate-200">Исполнитель</th>
-                  </tr>
-                  <tr className="border-b border-slate-200 bg-slate-50/70">
-                    <th className="px-3 py-2 border-r border-slate-200" />
-                    <th className="px-3 py-2 border-r border-slate-200" />
-                    <th className="px-3 py-2 border-r border-slate-200" />
-                    <th className="px-3 py-2 border-r border-slate-200" />
-                    <th className="px-3 py-2 border-r border-slate-200" />
-                    <th className="px-3 py-2 border-slate-200 text-left">
-                      <select
-                        value={dealExecutorFilter}
-                        onChange={(event) => onDealExecutorFilterChange(event.target.value)}
-                        aria-label="Фильтр по исполнителю"
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                      >
-                        <option value="">Все</option>
-                        {users.map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {getUserDisplayName(user)}
-                          </option>
-                        ))}
-                      </select>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {displayedDeals.length ? (
-                    displayedDeals.map((deal) => {
-                        const deadlineTone = getDeadlineTone(deal.expectedClose);
-                        const isDeleted = Boolean(deal.deletedAt);
-                        const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
-                        const isSelected = selectedDeal?.id === deal.id;
-                          const rowClassName = [
-                            'transition-colors',
-                            'cursor-pointer',
-                            isSelected ? 'bg-sky-100 shadow-sm' : 'hover:bg-slate-50',
-                            isDeleted ? 'opacity-60' : '',
-                          ]
-                          .filter(Boolean)
-                          .join(' ');
-                        return (
-                          <tr
-                            key={deal.id}
-                            onClick={() => onSelectDeal(deal.id)}
-                            className={rowClassName}
-                          >
-                            <td
-                              className={`px-3 py-2 align-top border-b border-slate-200 border-r border-slate-200 ${deletedTextClass}`}
-                            >
-                              <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>{deal.title}</p>
-                              <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>{deal.source || '—'}</p>
-                              {deal.deletedAt && (
-                                <p className="text-[11px] text-rose-500 mt-1">
-                                  Удалена: {formatDeletedAt(deal.deletedAt)}
-                                </p>
-                              )}
-                            </td>
-                            <td
-                              className={`px-3 py-2 align-top border-b border-slate-200 border-r border-slate-200 text-sm text-slate-900 ${deletedTextClass}`}
-                            >
-                              <span className={deletedTextClass}>{deal.clientName || '—'}</span>
-                            </td>
-                            <td
-                              className={`px-3 py-2 align-top border-b border-slate-200 border-r border-slate-200 text-sm text-slate-900 ${deletedTextClass}`}
-                            >
-                              <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
-                                {statusLabels[deal.status]}
-                              </span>
-                              {deal.closingReason && (
-                                <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
-                                  {deal.closingReason}
-                                </p>
-                              )}
-                            </td>
-                            <td
-                              className={`px-3 py-2 align-top border-b border-slate-200 border-r border-slate-200 text-sm font-semibold ${deletedTextClass}`}
-                            >
-                              {deal.expectedClose ? (
-                                <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
-                              ) : (
-                                <span className={`text-xs text-rose-500 font-semibold ${deletedTextClass || ''}`}>Нет срока</span>
-                              )}
-                            </td>
-                            <td
-                              className={`px-3 py-2 align-top border-b border-slate-200 border-r border-slate-200 ${deletedTextClass}`}
-                            >
-                              {deal.nextContactDate ? (
+          <div className="max-h-[360px] overflow-y-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Сделка</th>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Клиент</th>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Статус</th>
+                  <th className="px-4 py-2 min-w-[160px] align-top">
+                    <button
+                      type="button"
+                      onClick={() => toggleColumnSort('deadline')}
+                      aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel('deadline')}`}
+                      className="flex items-center justify-between gap-2 text-left w-full"
+                    >
+                      <span className={getColumnTitleClass('deadline')}>
+                        Крайний срок
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        {getSortIndicator('deadline')}
+                      </span>
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 min-w-[140px] align-top">
+                    <button
+                      type="button"
+                      onClick={() => toggleColumnSort('nextContact')}
+                      aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel('nextContact')}`}
+                      className="flex items-center justify-between gap-2 text-left w-full"
+                    >
+                      <span className={getColumnTitleClass('nextContact')}>
+                        След. контакт
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        {getSortIndicator('nextContact')}
+                      </span>
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Исполнитель</th>
+                </tr>
+                <tr className="border-t border-slate-100 bg-slate-50/70">
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top" />
+                  <th className="px-4 py-2 align-top">
+                    <select
+                      value={dealExecutorFilter}
+                      onChange={(event) => onDealExecutorFilterChange(event.target.value)}
+                      aria-label="Фильтр по исполнителю"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                    >
+                      <option value="">Все</option>
+                      {users.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {getUserDisplayName(user)}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {displayedDeals.length ? (
+                  displayedDeals.map((deal) => {
+                      const isOverdue = deal.nextContactDate ? new Date(deal.nextContactDate) < new Date() : false;
+                      const deadlineTone = getDeadlineTone(deal.expectedClose);
+                      const isDeleted = Boolean(deal.deletedAt);
+                      const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
+                      const isSelected = selectedDeal?.id === deal.id;
+                        const rowClassName = [
+                          'transition-colors',
+                          'cursor-pointer',
+                          isSelected ? 'bg-sky-100 border-y border-slate-300 shadow-sm' : 'hover:bg-slate-50',
+                          isDeleted ? 'opacity-60' : '',
+                        ]
+                        .filter(Boolean)
+                        .join(' ');
+                      return (
+                        <tr
+                          key={deal.id}
+                          onClick={() => onSelectDeal(deal.id)}
+                          className={rowClassName}
+                        >
+                          <td className={`px-4 py-2 ${deletedTextClass}`}>
+                            <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>{deal.title}</p>
+                            <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>{deal.source || '—'}</p>
+                            {deal.deletedAt && (
+                              <p className="text-[11px] text-rose-500 mt-1">
+                                Удалена: {formatDeletedAt(deal.deletedAt)}
+                              </p>
+                            )}
+                          </td>
+                          <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
+                            <span className={deletedTextClass}>{deal.clientName || '—'}</span>
+                          </td>
+                          <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
+                            <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
+                              {statusLabels[deal.status]}
+                            </span>
+                            {deal.closingReason && (
+                              <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
+                                {deal.closingReason}
+                              </p>
+                            )}
+                          </td>
+                          <td className={`px-4 py-2 text-sm font-semibold ${deletedTextClass}`}>
+                            {deal.expectedClose ? (
+                              <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
+                            ) : (
+                              <span className={`text-xs text-rose-500 font-semibold ${deletedTextClass || ''}`}>Нет срока</span>
+                            )}
+                          </td>
+                          <td className={`px-4 py-2 ${deletedTextClass}`}>
+                            {deal.nextContactDate ? (
+                              <div className="flex items-center gap-2">
                                 <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
                                   {formatDate(deal.nextContactDate)}
                                 </span>
-                              ) : (
-                                <span className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}>
-                                  Не назначено
+                                <span
+                                  className={`px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide rounded-full ${
+                                    isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'
+                                  }`}
+                                >
+                                  {isOverdue ? 'Просрочено' : 'Запланировано'}
                                 </span>
-                              )}
-                            </td>
-                            <td
-                              className={`px-3 py-2 text-sm text-slate-900 align-top border-b border-slate-200 ${deletedTextClass}`}
-                            >
-                              <ColoredLabel
-                                value={deal.executorName}
-                                fallback="—"
-                                className={`text-sm text-slate-900 font-semibold ${deletedTextClass}`}
-                                showDot={false}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="px-3 py-2 text-center text-sm text-slate-500 border border-slate-200">
-                          Сделки не найдены.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {dealsHasMore && (
-                <div className="border-t border-slate-100 px-4 py-3 text-center">
-                  <button
-                    type="button"
-                    onClick={onLoadMoreDeals}
-                    disabled={isLoadingMoreDeals}
-                    className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
-                  >
-                    {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
-                  </button>
-                </div>
-              )}
+                              </div>
+                            ) : (
+                              <span className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}>
+                                Не назначено
+                              </span>
+                            )}
+                          </td>
+                          <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
+                            <ColoredLabel
+                              value={deal.executorName}
+                              fallback="—"
+                              className={`text-sm text-slate-900 font-semibold ${deletedTextClass}`}
+                              showDot={false}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
+                        Сделки не найдены.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+            {dealsHasMore && (
+              <div className="border-t border-slate-100 px-4 py-3 text-center">
+                <button
+                  type="button"
+                  onClick={onLoadMoreDeals}
+                  disabled={isLoadingMoreDeals}
+                  className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
+                >
+                  {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
+                </button>
+              </div>
+            )}
           </div>
-          <div className="flex-1 overflow-auto">
           <div className="px-4 py-5 space-y-4">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <p className="text-[10px] tracking-[0.4em] text-slate-400">
