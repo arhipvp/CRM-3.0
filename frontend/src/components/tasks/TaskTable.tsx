@@ -2,6 +2,7 @@ import React from 'react';
 import { Task } from '../../types';
 import { formatDate, formatDateTime } from '../views/dealsView/helpers';
 import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
+import { ColoredLabel } from '../common/ColoredLabel';
 
 interface TaskTableProps {
   tasks: Task[];
@@ -66,20 +67,9 @@ export const TaskTable: React.FC<TaskTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          {tasks.map((task) => {
-            const completionInfoParts: string[] = [];
-            if (task.status === 'done') {
-              completionInfoParts.push(
-                task.completedByName
-                  ? `Выполнил ${task.completedByName}`
-                  : 'Выполнено'
-              );
-              if (task.completedAt) {
-                completionInfoParts.push(`on ${formatDateTime(task.completedAt)}`);
-              }
-            }
-            const completionInfo = completionInfoParts.join(' ');
-            const checklistCount = task.checklist?.length ?? 0;
+      {tasks.map((task) => {
+        const isDone = task.status === 'done';
+        const checklistCount = task.checklist?.length ?? 0;
 
             return (
               <tr
@@ -89,9 +79,21 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                 }`}
               >
                 <td className="px-5 py-4 align-top">
-                  <p className="font-semibold text-slate-900">{task.title}</p>
+                  <p
+                    className={`font-semibold ${
+                      isDone ? 'text-slate-500 line-through' : 'text-slate-900'
+                    }`}
+                  >
+                    {task.title}
+                  </p>
                   {task.description && (
-                    <p className="text-xs text-slate-500 mt-1">{task.description}</p>
+                    <p
+                      className={`text-xs mt-1 ${
+                        isDone ? 'text-slate-500 line-through' : 'text-slate-500'
+                      }`}
+                    >
+                      {task.description}
+                    </p>
                   )}
                   <div className="text-[11px] text-slate-400 mt-2 space-y-0.5">
                     {task.createdByName && (
@@ -136,8 +138,20 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
                   {task.completedAt ? formatDateTime(task.completedAt) : '-'}
-                  {completionInfo && (
-                    <p className="text-[11px] text-slate-400 mt-1">{completionInfo}</p>
+                  {isDone && (
+                    <p className="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center gap-1">
+                      Выполнил{' '}
+                      <ColoredLabel
+                        value={task.completedByName ?? undefined}
+                        fallback="—"
+                        className="font-semibold text-[11px]"
+                      />
+                      {task.completedAt && (
+                        <span className="text-[11px] text-slate-400">
+                          on {formatDateTime(task.completedAt)}
+                        </span>
+                      )}
+                    </p>
                   )}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
