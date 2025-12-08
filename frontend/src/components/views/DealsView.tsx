@@ -587,6 +587,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   );
 
   const [isInlineDateUpdating, setIsInlineDateUpdating] = useState(false);
+  const [nextContactInputValue, setNextContactInputValue] = useState('');
 
   const canRecognizeSelectedFiles =
     selectedDriveFileIds.length > 0 &&
@@ -1135,7 +1136,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
     return `${year}-${month}-${day}`;
   };
 
-  const handleInlineDateChange = async (
+  useEffect(() => {
+    setNextContactInputValue(selectedDeal?.nextContactDate ?? '');
+  }, [selectedDeal?.nextContactDate]);
+
+  const handleInlineDateSave = async (
     field: 'nextContactDate' | 'expectedClose',
     rawValue: string,
     options?: { selectTopDeal?: boolean }
@@ -1152,6 +1157,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
           : { expectedClose: value }
       );
 
+      if (field === 'nextContactDate') {
+        setNextContactInputValue(value ?? '');
+      }
+
       if (options?.selectTopDeal) {
         const topDeal = sortedDeals[0];
         if (topDeal && topDeal.id !== selectedDeal.id) {
@@ -1165,8 +1174,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
     }
   };
 
-  const handleQuickNextContactShift = (newValue: string) =>
-    handleInlineDateChange('nextContactDate', newValue, { selectTopDeal: true });
+  const handleQuickNextContactShift = (newValue: string) => {
+    setNextContactInputValue(newValue);
+    handleInlineDateSave('nextContactDate', newValue, { selectTopDeal: true });
+  };
 
   const quickInlineShift = (days: number) => {
     if (!selectedDeal) {
@@ -1978,8 +1989,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <div className="mt-1 max-w-[220px] flex flex-col gap-2">
             <input
               type="date"
-              value={selectedDeal.nextContactDate ?? ''}
-              onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
+              value={nextContactInputValue}
+              onChange={(event) => setNextContactInputValue(event.target.value)}
+              onBlur={() => handleInlineDateSave('nextContactDate', nextContactInputValue)}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
             />
             <div className="flex flex-wrap gap-2">
@@ -2004,7 +2016,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <input
             type="date"
             value={selectedDeal.expectedClose ?? ''}
-            onChange={(event) => handleInlineDateChange('expectedClose', event.target.value)}
+            onChange={(event) => handleInlineDateSave('expectedClose', event.target.value)}
             className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
           />
         </div>
