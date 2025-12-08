@@ -267,7 +267,7 @@ export function EditDealForm({
         </div>
 
         <div className="form-group">
-          <label htmlFor="expectedClose">Застраховать не позднее... *</label>
+          <label htmlFor="expectedClose">Застраховать до *</label>
           <input
             type="date"
             id="expectedClose"

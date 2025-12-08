@@ -588,6 +588,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const [isInlineDateUpdating, setIsInlineDateUpdating] = useState(false);
   const [nextContactInputValue, setNextContactInputValue] = useState('');
+  const [expectedCloseInputValue, setExpectedCloseInputValue] = useState('');
 
   const canRecognizeSelectedFiles =
     selectedDriveFileIds.length > 0 &&
@@ -1140,6 +1141,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
     setNextContactInputValue(selectedDeal?.nextContactDate ?? '');
   }, [selectedDeal?.nextContactDate]);
 
+  useEffect(() => {
+    setExpectedCloseInputValue(selectedDeal?.expectedClose ?? '');
+  }, [selectedDeal?.expectedClose]);
+
   const handleInlineDateSave = async (
     field: 'nextContactDate' | 'expectedClose',
     rawValue: string,
@@ -1159,6 +1164,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
       if (field === 'nextContactDate') {
         setNextContactInputValue(value ?? '');
+      }
+      if (field === 'expectedClose') {
+        setExpectedCloseInputValue(value ?? '');
       }
 
       if (options?.selectTopDeal) {
@@ -2010,15 +2018,14 @@ export const DealsView: React.FC<DealsViewProps> = ({
           </div>
         </div>
         <div>
-          <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
-            Застраховать не позднее чем
-          </p>
-          <input
-            type="date"
-            value={selectedDeal.expectedClose ?? ''}
-            onChange={(event) => handleInlineDateSave('expectedClose', event.target.value)}
-            className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-          />
+        <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>Застраховать до</p>
+        <input
+          type="date"
+          value={expectedCloseInputValue}
+          onChange={(event) => setExpectedCloseInputValue(event.target.value)}
+          onBlur={(event) => handleInlineDateSave('expectedClose', event.target.value)}
+          className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+        />
         </div>
       </div>
     );
