@@ -1176,7 +1176,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   const handleQuickNextContactShift = (newValue: string) => {
     setNextContactInputValue(newValue);
-    handleInlineDateSave('nextContactDate', newValue, { selectTopDeal: true });
+    return handleInlineDateSave('nextContactDate', newValue, { selectTopDeal: true });
   };
 
   const quickInlineShift = (days: number) => {
