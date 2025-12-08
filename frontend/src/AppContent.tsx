@@ -97,21 +97,26 @@ const AppContent: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [modal, setModal] = useState<ModalType>(null);
   const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
+  const [clientModalReturnTo, setClientModalReturnTo] = useState<ModalType | null>(null);
+  const [pendingDealClientId, setPendingDealClientId] = useState<string | null>(null);
   const openClientModal = (afterModal: ModalType | null = null) => {
     if (afterModal) {
       setClientModalOverlayOpen(true);
+      setClientModalReturnTo(afterModal);
       return;
     }
+    setClientModalReturnTo(null);
     setModal('client');
   };
 
   const closeClientModal = useCallback(() => {
     if (isClientModalOverlayOpen) {
       setClientModalOverlayOpen(false);
+      setClientModalReturnTo(null);
       return;
     }
     setModal(null);
-  }, [isClientModalOverlayOpen, setModal]);
+  }, [isClientModalOverlayOpen, setModal, setClientModalReturnTo]);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
@@ -408,10 +413,17 @@ const AppContent: React.FC = () => {
     }) => {
       const created = await createClient(data);
       updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
+      if (clientModalReturnTo === 'deal') {
+        setPendingDealClientId(created.id);
+      }
       closeClientModal();
     },
-    [closeClientModal, updateAppData]
+    [closeClientModal, updateAppData, clientModalReturnTo]
   );
+
+  const handlePendingDealClientConsumed = useCallback(() => {
+    setPendingDealClientId(null);
+  }, []);
 
   const handleClientEditRequest = useCallback((client: Client) => {
     setEditingClient(client);
@@ -1657,6 +1669,8 @@ const AppContent: React.FC = () => {
         users={users}
         handleAddClient={handleAddClient}
         handleAddDeal={handleAddDeal}
+        pendingDealClientId={pendingDealClientId}
+        onPendingDealClientConsumed={handlePendingDealClientConsumed}
         quoteDealId={quoteDealId}
         setQuoteDealId={setQuoteDealId}
         handleAddQuote={handleAddQuote}

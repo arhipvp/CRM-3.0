@@ -108,6 +108,8 @@ interface AppModalsProps {
     email?: string | null;
   }) => Promise<void>;
   handleAddDeal: (data: { title: string; description?: string; clientId: string; expectedClose?: string | null; executorId?: string | null; source?: string }) => Promise<void>;
+  pendingDealClientId: string | null;
+  onPendingDealClientConsumed: () => void;
   quoteDealId: string | null;
   setQuoteDealId: React.Dispatch<React.SetStateAction<string | null>>;
   handleAddQuote: (dealId: string, values: QuoteFormValues) => Promise<void>;
@@ -145,6 +147,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
   isClientModalOverlayOpen,
   handleAddClient,
   handleAddDeal,
+  pendingDealClientId,
+  onPendingDealClientConsumed,
   quoteDealId,
   setQuoteDealId,
   handleAddQuote,
@@ -189,6 +193,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
             clients={clients}
             users={users}
             onSubmit={handleAddDeal}
+            preselectedClientId={pendingDealClientId}
+            onPreselectedClientConsumed={onPendingDealClientConsumed}
             onRequestAddClient={() => openClientModal('deal')}
           />
         </Modal>

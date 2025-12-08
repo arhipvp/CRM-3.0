@@ -16,6 +16,8 @@ interface DealFormProps {
     executorId?: string | null;
     source?: string;
   }) => Promise<void>;
+  preselectedClientId?: string | null;
+  onPreselectedClientConsumed?: () => void;
   onRequestAddClient: () => void;
 }
 
@@ -24,6 +26,8 @@ export const DealForm: React.FC<DealFormProps> = ({
   users,
   defaultExecutorId,
   onSubmit,
+  preselectedClientId,
+  onPreselectedClientConsumed,
   onRequestAddClient,
 }) => {
   const [title, setTitle] = useState('');
@@ -43,6 +47,19 @@ export const DealForm: React.FC<DealFormProps> = ({
     });
     return map;
   }, [clients]);
+
+  useEffect(() => {
+    if (!preselectedClientId) {
+      return;
+    }
+    const preselectedClient = clientsById.get(preselectedClientId);
+    if (!preselectedClient) {
+      return;
+    }
+    setClientId(preselectedClient.id);
+    setClientQuery(preselectedClient.name);
+    onPreselectedClientConsumed?.();
+  }, [clientsById, onPreselectedClientConsumed, preselectedClientId]);
 
   useEffect(() => {
     if (!clients.length) {
