@@ -1975,24 +1975,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-          <div className="mt-1 flex max-w-[220px] flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={selectedDeal.nextContactDate ?? ''}
-                onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-              />
-              <button
-                type="button"
-                onClick={() => setIsDelayModalOpen(true)}
-                disabled={!dealEvents.length}
-                className="flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-emerald-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="text-base leading-none">👑</span>
-                <span>Отложить до следующего события</span>
-              </button>
-            </div>
+          <div className="mt-1 max-w-[220px] flex flex-col gap-2">
+            <input
+              type="date"
+              value={selectedDeal.nextContactDate ?? ''}
+              onChange={(event) => handleInlineDateChange('nextContactDate', event.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+            />
             <div className="flex flex-wrap gap-2">
               {quickInlineDateOptions.map((option) => (
                 <button
@@ -2268,15 +2257,19 @@ export const DealsView: React.FC<DealsViewProps> = ({
             )}
           </div>
           <div className="px-4 py-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Выбранная сделка</p>
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <p className="text-[10px] tracking-[0.4em] text-slate-400">
+                <span className="uppercase">Выбранная сделка:</span>
                 {selectedDeal ? (
-                  <p className="text-base font-semibold text-slate-900">{selectedDeal.title}</p>
+                  <span className="ml-2 inline-block text-base font-semibold text-slate-900">
+                    {selectedDeal.title}
+                  </span>
                 ) : (
-                  <p className="text-sm font-semibold text-slate-500">Выберите сделку выше</p>
+                  <span className="ml-2 inline-block text-sm font-semibold text-slate-500">
+                    Выберите сделку выше
+                  </span>
                 )}
-              </div>
+              </p>
               {selectedDeal && (
                 <span className="text-sm font-semibold text-slate-500">
                   {statusLabels[selectedDeal.status]}
@@ -2285,86 +2278,123 @@ export const DealsView: React.FC<DealsViewProps> = ({
             </div>
             {selectedDeal ? (
               <div className="rounded-2xl border border-slate-300 bg-white shadow-sm p-6 space-y-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">Клиент</p>
-                    <p className="text-xl font-semibold text-slate-900">{selectedClient?.name || selectedDeal.clientName || '-'}</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Ответственный: <ColoredLabel value={sellerDisplayName !== '—' ? sellerDisplayName : undefined} fallback="—" showDot={false} className="text-slate-900 font-semibold" /> · Исполнитель: <ColoredLabel value={executorDisplayName !== '—' ? executorDisplayName : undefined} fallback="—" showDot={false} className="text-slate-900 font-semibold" />
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <p className="text-[10px] tracking-[0.4em] text-slate-400 uppercase">
+                        Выбранная сделка:
+                      </p>
+                      <p className="text-base font-semibold text-slate-900">
+                        {selectedDeal.title}
+                      </p>
+                    </div>
+                    {selectedDeal.description && (
+                      <p className="text-sm leading-relaxed text-slate-500 max-w-3xl">
+                        {selectedDeal.description}
+                      </p>
+                    )}
+                    <p className="text-sm text-slate-500">
+                      Клиент:
+                      <span className="ml-2 text-base font-semibold text-slate-900">
+                        {selectedClient?.name || selectedDeal.clientName || '—'}
+                      </span>
                     </p>
-                  </div>
-                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-slate-400">
+                      Ответственный:{' '}
+                      <ColoredLabel
+                        value={sellerDisplayName !== '—' ? sellerDisplayName : undefined}
+                        fallback="—"
+                        showDot={false}
+                        className="text-slate-900 font-semibold"
+                      />{' '}
+                      · Исполнитель:{' '}
+                      <ColoredLabel
+                        value={executorDisplayName !== '—' ? executorDisplayName : undefined}
+                        fallback="—"
+                        showDot={false}
+                        className="text-slate-900 font-semibold"
+                      />
+                    </p>
                     <span className="text-sm font-semibold text-slate-900">
                       {statusLabels[selectedDeal.status]}
                     </span>
+                    {selectedDeal.closingReason && (
+                      <p className="text-xs text-slate-500">
+                        Причина закрытия: {selectedDeal.closingReason}
+                      </p>
+                    )}
                   </div>
-                  {selectedDeal.closingReason && (
-                    <p className="text-xs text-slate-500 mt-2">
-                      Причина закрытия: {selectedDeal.closingReason}
-                    </p>
-                  )}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleEditDealClick}
-                    disabled={isSelectedDealDeleted}
-                    className="px-4 py-1.5 text-sm font-semibold rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Редактировать
-                  </button>
-                  {isSelectedDealDeleted ? (
+                  <div className="flex flex-wrap justify-end gap-2">
                     <button
                       type="button"
-                      onClick={handleRestoreDealClick}
-                      disabled={isRestoringDeal}
-                      className="px-4 py-1.5 text-sm font-semibold rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={handleEditDealClick}
+                      disabled={isSelectedDealDeleted}
+                      className="px-4 py-1.5 text-sm font-semibold rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
+                      Редактировать
                     </button>
-                  ) : (
+                    {isSelectedDealDeleted ? (
+                      <button
+                        type="button"
+                        onClick={handleRestoreDealClick}
+                        disabled={isRestoringDeal}
+                        className="px-4 py-1.5 text-sm font-semibold rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleDeleteDealClick}
+                        disabled={isDeletingDeal}
+                        className="px-4 py-1.5 text-sm font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={handleDeleteDealClick}
-                      disabled={isDeletingDeal}
-                      className="px-4 py-1.5 text-sm font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleCloseDealClick}
-                    disabled={
-                      isSelectedDealDeleted ||
-                      isDealClosedStatus ||
-                      isClosingDeal ||
-                      !isCurrentUserSeller
-                    }
-                    className="px-4 py-1.5 text-sm font-semibold rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
-                  </button>
-                  {isDealClosedStatus && (
-                    <button
-                      type="button"
-                      onClick={handleReopenDealClick}
+                      onClick={handleCloseDealClick}
                       disabled={
-                        isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal
+                        isSelectedDealDeleted ||
+                        isDealClosedStatus ||
+                        isClosingDeal ||
+                        !isCurrentUserSeller
                       }
-                      className="px-4 py-1.5 text-sm font-semibold rounded-full bg-amber-600 text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="px-4 py-1.5 text-sm font-semibold rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
+                      {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleMergeClick}
-                    disabled={isSelectedDealDeleted}
-                    className="px-4 py-1.5 text-sm font-semibold rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Сцепить
-                  </button>
+                    {isDealClosedStatus && (
+                      <button
+                        type="button"
+                        onClick={handleReopenDealClick}
+                        disabled={
+                          isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal
+                        }
+                        className="px-4 py-1.5 text-sm font-semibold rounded-full bg-amber-600 text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleMergeClick}
+                      disabled={isSelectedDealDeleted}
+                      className="px-4 py-1.5 text-sm font-semibold rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Сцепить
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsDelayModalOpen(true)}
+                      disabled={!dealEvents.length}
+                      className="flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-emerald-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="text-base leading-none">👑</span>
+                      <span>Отложить</span>
+                    </button>
+                  </div>
                 </div>
                 {renderHeaderDates()}
                 <div>
