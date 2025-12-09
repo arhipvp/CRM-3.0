@@ -14,6 +14,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
     """Проверяем доступ покупателей к платежам и финансовым записям сделок."""
 
     def setUp(self):
+        super().setUp()
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.executor = User.objects.create_user(username="executor", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")

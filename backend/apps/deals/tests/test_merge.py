@@ -94,6 +94,7 @@ class DealMergeServiceTestCase(TestCase):
 
 class DealMergeAPITestCase(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")
         self.client_obj = Client.objects.create(name="Client")

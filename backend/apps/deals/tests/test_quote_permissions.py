@@ -10,6 +10,7 @@ class QuoteDeletionPermissionsTests(AuthenticatedAPITestCase):
     """Убедиться, что расчет могут удалить только создатель, продавец сделки или админ."""
 
     def setUp(self):
+        super().setUp()
         self.creator = User.objects.create_user(username="creator", password="pass")
         self.deal_seller = User.objects.create_user(username="seller", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")

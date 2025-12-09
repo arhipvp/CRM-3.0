@@ -9,6 +9,7 @@ from rest_framework import status
 
 class ChatMessageAccessTests(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         self.client_record = Client.objects.create(name="Test Client")
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.executor = User.objects.create_user(username="executor", password="pass")

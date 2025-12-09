@@ -11,6 +11,7 @@ class NoteCreationPermissionsTests(AuthenticatedAPITestCase):
     """Проверки на создание заметок только продавцом сделки."""
 
     def setUp(self):
+        super().setUp()
         self.seller_user = User.objects.create_user(
             username="seller", password="strongpass"
         )

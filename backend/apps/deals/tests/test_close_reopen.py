@@ -10,6 +10,7 @@ from rest_framework import status
 
 class DealCloseReopenTests(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.other = User.objects.create_user(username="other", password="pass")
         self.admin = User.objects.create_user(username="admin", password="pass")

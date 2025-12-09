@@ -13,6 +13,7 @@ class PolicyCreationPermissionsTests(AuthenticatedAPITestCase):
     """????? ??????? ?? ???????? ? ???????? ???????."""
 
     def setUp(self):
+        super().setUp()
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")
         self.admin_user = User.objects.create_user(username="admin", password="pass")
