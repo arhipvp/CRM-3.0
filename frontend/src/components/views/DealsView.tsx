@@ -78,8 +78,6 @@ import {
 
   formatDate,
 
-  formatDeletedAt,
-
 
   getDeadlineTone,
 
