@@ -325,6 +325,21 @@ def ensure_deal_folder(deal) -> Optional[str]:
         return None
 
     name = _format_folder_name(deal.title or "deal", "deal")
+    folder_id = getattr(deal, "drive_folder_id", None)
+    if folder_id:
+        metadata = _get_folder_metadata(folder_id)
+        if metadata:
+            if metadata.get("name") != name:
+                try:
+                    _rename_drive_folder(folder_id, name)
+                except DriveError:
+                    logger.exception(
+                        "Failed to rename Drive folder for deal %s", deal.pk
+                    )
+            _update_instance_folder(deal, folder_id)
+            return folder_id
+        folder_id = None
+
     folder_id = _ensure_folder(name, client_folder)
     _update_instance_folder(deal, folder_id)
     return folder_id
