@@ -1,15 +1,15 @@
 # -*- coding: cp866 -*-
+# -*- coding: cp866 -*-
 from apps.clients.models import Client
+from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.policies.models import Policy
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class PolicyCreationPermissionsTests(APITestCase):
+class PolicyCreationPermissionsTests(AuthenticatedAPITestCase):
     """????? ??????? ?? ???????? ? ???????? ???????."""
 
     def setUp(self):
@@ -40,13 +40,9 @@ class PolicyCreationPermissionsTests(APITestCase):
         )
         UserRole.objects.create(user=self.admin_user, role=admin_role)
 
-        self.api_client = APIClient()
-        self.seller_token = str(RefreshToken.for_user(self.seller).access_token)
-        self.other_token = str(RefreshToken.for_user(self.other_user).access_token)
-        self.admin_token = str(RefreshToken.for_user(self.admin_user).access_token)
-
-    def _auth(self, token: str):
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.token_for(self.seller)
+        self.token_for(self.other_user)
+        self.token_for(self.admin_user)
 
     def _policy_payload(self, number: str) -> dict:
         return {
@@ -56,8 +52,8 @@ class PolicyCreationPermissionsTests(APITestCase):
             "insurance_type": self.insurance_type.id,
         }
 
-    def _post_policy(self, token: str, number: str):
-        self._auth(token)
+    def _post_policy(self, user: User, number: str):
+        self.authenticate(user)
         return self.api_client.post(
             "/api/v1/policies/",
             self._policy_payload(number),
@@ -72,34 +68,34 @@ class PolicyCreationPermissionsTests(APITestCase):
             insurance_type=self.insurance_type,
         )
 
-    def _delete_policy(self, token: str, policy_id):
-        self._auth(token)
+    def _delete_policy(self, user: User, policy_id):
+        self.authenticate(user)
         return self.api_client.delete(f"/api/v1/policies/{policy_id}/")
 
     def test_seller_can_create_policy(self):
         number = "POLICY-SELLER-001"
-        response = self._post_policy(self.seller_token, number)
+        response = self._post_policy(self.seller, number)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Policy.objects.filter(number=number, deal=self.deal).exists())
 
     def test_non_seller_cannot_create_policy(self):
         number = "POLICY-OTHER-001"
-        response = self._post_policy(self.other_token, number)
+        response = self._post_policy(self.other_user, number)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(Policy.objects.filter(number=number).exists())
 
     def test_admin_cannot_create_policy(self):
         number = "POLICY-ADMIN-001"
-        response = self._post_policy(self.admin_token, number)
+        response = self._post_policy(self.admin_user, number)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(Policy.objects.filter(number=number).exists())
 
     def test_seller_can_delete_policy(self):
         policy = self._create_policy_instance("POLICY-DELETE-SELLER")
-        response = self._delete_policy(self.seller_token, policy.id)
+        response = self._delete_policy(self.seller, policy.id)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Policy.objects.filter(pk=policy.pk).exists())
@@ -107,7 +103,7 @@ class PolicyCreationPermissionsTests(APITestCase):
 
     def test_non_deal_owner_cannot_delete_policy(self):
         policy = self._create_policy_instance("POLICY-DELETE-OTHER")
-        response = self._delete_policy(self.other_token, policy.id)
+        response = self._delete_policy(self.other_user, policy.id)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Policy.objects.filter(pk=policy.pk).exists())

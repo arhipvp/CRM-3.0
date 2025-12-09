@@ -1,14 +1,13 @@
 from apps.clients.models import Client
+from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.notes.models import Note
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class NoteCreationPermissionsTests(APITestCase):
+class NoteCreationPermissionsTests(AuthenticatedAPITestCase):
     """Проверки на создание заметок только продавцом сделки."""
 
     def setUp(self):
@@ -31,9 +30,6 @@ class NoteCreationPermissionsTests(APITestCase):
             stage_name="initial",
         )
 
-        self.api_client = APIClient()
-        self.seller_token = str(RefreshToken.for_user(self.seller_user).access_token)
-        self.other_token = str(RefreshToken.for_user(self.other_user).access_token)
         self.admin_user = User.objects.create_user(
             username="admin", password="strongpass"
         )
@@ -41,16 +37,12 @@ class NoteCreationPermissionsTests(APITestCase):
             name="Admin", defaults={"description": "Default admin role"}
         )
         UserRole.objects.create(user=self.admin_user, role=admin_role)
-        self.admin_token = str(RefreshToken.for_user(self.admin_user).access_token)
-
-    def _auth(self, token: str) -> None:
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
     def _payload(self) -> dict:
         return {"deal": self.deal.id, "body": "Привет от продавца"}
 
     def test_seller_can_create_note(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller_user)
         response = self.api_client.post(
             "/api/v1/notes/", self._payload(), format="json"
         )
@@ -60,7 +52,7 @@ class NoteCreationPermissionsTests(APITestCase):
         self.assertEqual(response.data["body"], "Привет от продавца")
 
     def test_non_seller_cannot_create_note(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.post(
             "/api/v1/notes/", self._payload(), format="json"
         )
@@ -73,7 +65,7 @@ class NoteCreationPermissionsTests(APITestCase):
         note = Note.objects.create(
             deal=self.deal, body="deletable note", author_name="Seller"
         )
-        self._auth(self.seller_token)
+        self.authenticate(self.seller_user)
 
         response = self.api_client.delete(f"/api/v1/notes/{note.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -85,7 +77,7 @@ class NoteCreationPermissionsTests(APITestCase):
         note = Note.objects.create(
             deal=self.deal, body="other user note", author_name="Seller"
         )
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
 
         response = self.api_client.delete(f"/api/v1/notes/{note.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -95,7 +87,7 @@ class NoteCreationPermissionsTests(APITestCase):
         note = Note.objects.create(
             deal=self.deal, body="admin deletes this", author_name="Admin"
         )
-        self._auth(self.admin_token)
+        self.authenticate(self.admin_user)
 
         response = self.api_client.delete(f"/api/v1/notes/{note.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)

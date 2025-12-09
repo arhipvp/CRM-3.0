@@ -1,14 +1,13 @@
 from apps.clients.models import Client
+from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.tasks.models import Task
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class TaskPermissionsTests(APITestCase):
+class TaskPermissionsTests(AuthenticatedAPITestCase):
     """Убедиться, что только владелец сделки и админ могут удалять задачи."""
 
     def setUp(self):
@@ -30,10 +29,9 @@ class TaskPermissionsTests(APITestCase):
         admin_role = Role.objects.create(name="Admin")
         UserRole.objects.create(user=self.admin, role=admin_role)
 
-        self.api_client = APIClient()
-        self.seller_token = str(RefreshToken.for_user(self.seller).access_token)
-        self.executor_token = str(RefreshToken.for_user(self.executor).access_token)
-        self.admin_token = str(RefreshToken.for_user(self.admin).access_token)
+        self.token_for(self.seller)
+        self.token_for(self.executor)
+        self.token_for(self.admin)
 
         self.task = Task.objects.create(
             deal=self.deal,
@@ -41,25 +39,25 @@ class TaskPermissionsTests(APITestCase):
             created_by=self.other_user,
         )
 
-    def _delete_task(self, token: str):
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    def _delete_task(self, user: User):
+        self.authenticate(user)
         return self.api_client.delete(f"/api/v1/tasks/{self.task.id}/")
 
     def test_seller_can_delete_task(self):
-        response = self._delete_task(self.seller_token)
+        response = self._delete_task(self.seller)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         deleted_task = Task.objects.with_deleted().get(id=self.task.id)
         self.assertIsNotNone(deleted_task.deleted_at)
 
     def test_executor_cannot_delete_task(self):
-        response = self._delete_task(self.executor_token)
+        response = self._delete_task(self.executor)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIsNone(Task.objects.get(id=self.task.id).deleted_at)
 
     def test_admin_can_delete_task(self):
-        response = self._delete_task(self.admin_token)
+        response = self._delete_task(self.admin)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         deleted_task = Task.objects.with_deleted().get(id=self.task.id)
@@ -69,7 +67,7 @@ class TaskPermissionsTests(APITestCase):
         self.task.assignee = self.executor
         self.task.save(update_fields=["assignee"])
 
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.executor_token}")
+        self.authenticate(self.executor)
         response = self.api_client.patch(
             f"/api/v1/tasks/{self.task.id}/",
             {"status": Task.TaskStatus.DONE},

@@ -1,17 +1,16 @@
 from decimal import Decimal
 
 from apps.clients.models import Client
+from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class FinanceAccessTests(APITestCase):
+class FinanceAccessTests(AuthenticatedAPITestCase):
     """Проверяем доступ покупателей к платежам и финансовым записям сделок."""
 
     def setUp(self):
@@ -42,17 +41,8 @@ class FinanceAccessTests(APITestCase):
             payment=self.payment, amount=Decimal("100"), description="Calc"
         )
 
-        self.api_client = APIClient()
-        self.seller_token = str(RefreshToken.for_user(self.seller).access_token)
-        self.executor_token = str(RefreshToken.for_user(self.executor).access_token)
-        self.other_token = str(RefreshToken.for_user(self.other_user).access_token)
-        self.admin_token = str(RefreshToken.for_user(self.admin_user).access_token)
-
-    def _auth(self, token: str):
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
-
     def test_seller_can_create_payment(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.post(
             "/api/v1/payments/",
             {
@@ -64,7 +54,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_executor_can_create_payment(self):
-        self._auth(self.executor_token)
+        self.authenticate(self.executor)
         response = self.api_client.post(
             "/api/v1/payments/",
             {
@@ -76,7 +66,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_other_user_cannot_create_payment(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.post(
             "/api/v1/payments/",
             {
@@ -88,7 +78,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_seller_can_create_financial_record(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.post(
             "/api/v1/financial_records/",
             {
@@ -100,7 +90,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_executor_cannot_create_financial_record(self):
-        self._auth(self.executor_token)
+        self.authenticate(self.executor)
         response = self.api_client.post(
             "/api/v1/financial_records/",
             {
@@ -112,7 +102,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_other_user_cannot_create_financial_record(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.post(
             "/api/v1/financial_records/",
             {
@@ -124,7 +114,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_seller_can_update_financial_record(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.patch(
             f"/api/v1/financial_records/{self.fin_record.id}/",
             {"amount": "-50.00"},
@@ -133,7 +123,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_executor_cannot_update_financial_record(self):
-        self._auth(self.executor_token)
+        self.authenticate(self.executor)
         response = self.api_client.patch(
             f"/api/v1/financial_records/{self.fin_record.id}/",
             {"amount": "-25.00"},
@@ -142,7 +132,7 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_other_user_cannot_update_financial_record(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.patch(
             f"/api/v1/financial_records/{self.fin_record.id}/",
             {"amount": "25.00"},
@@ -151,21 +141,21 @@ class FinanceAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_executor_cannot_delete_financial_record(self):
-        self._auth(self.executor_token)
+        self.authenticate(self.executor)
         response = self.api_client.delete(
             f"/api/v1/financial_records/{self.fin_record.id}/"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_other_user_cannot_delete_financial_record(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.delete(
             f"/api/v1/financial_records/{self.fin_record.id}/"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_seller_can_delete_unpaid_payment(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.delete(f"/api/v1/payments/{self.payment.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
@@ -176,6 +166,6 @@ class FinanceAccessTests(APITestCase):
             description="Paid",
             actual_date=timezone.now(),
         )
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.delete(f"/api/v1/payments/{paid_payment.id}/")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

@@ -1,14 +1,13 @@
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
+from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.users.models import Permission, Role, RolePermission, UserRole
 from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
-class ChatMessageAccessTests(APITestCase):
+class ChatMessageAccessTests(AuthenticatedAPITestCase):
     def setUp(self):
         self.client_record = Client.objects.create(name="Test Client")
         self.seller = User.objects.create_user(username="seller", password="pass")
@@ -84,14 +83,13 @@ class ChatMessageAccessTests(APITestCase):
         )
         self.deleted_deal.delete()
 
-        self.api_client = APIClient()
-        self.seller_token = str(RefreshToken.for_user(self.seller).access_token)
-        self.other_token = str(RefreshToken.for_user(self.other_user).access_token)
-        self.no_view_token = str(RefreshToken.for_user(self.no_view_user).access_token)
+        self.token_for(self.seller)
+        self.token_for(self.other_user)
+        self.token_for(self.no_view_user)
         self.admin_user = User.objects.create_user(username="admin", password="pass")
         admin_role, _ = Role.objects.get_or_create(name="Admin")
         UserRole.objects.create(user=self.admin_user, role=admin_role)
-        self.admin_token = str(RefreshToken.for_user(self.admin_user).access_token)
+        self.token_for(self.admin_user)
         observer_role = Role.objects.create(name="Observer")
         view_permission = Permission.objects.create(resource="deal", action="view")
         RolePermission.objects.create(role=observer_role, permission=view_permission)
@@ -99,12 +97,7 @@ class ChatMessageAccessTests(APITestCase):
             username="observer", password="pass"
         )
         UserRole.objects.create(user=self.observer_user, role=observer_role)
-        self.observer_token = str(
-            RefreshToken.for_user(self.observer_user).access_token
-        )
-
-    def _auth(self, token: str) -> None:
-        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.token_for(self.observer_user)
 
     def _create_messages(
         self,
@@ -126,7 +119,7 @@ class ChatMessageAccessTests(APITestCase):
             )
 
     def test_messages_are_scoped_to_deal(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = response.data
@@ -153,7 +146,7 @@ class ChatMessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_non_participant_cannot_view_other_deal_chat(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
@@ -162,7 +155,7 @@ class ChatMessageAccessTests(APITestCase):
         )
 
     def test_non_participant_cannot_create_message(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.post(
             "/api/v1/chat_messages/",
             {"deal": str(self.deal.id), "body": "Hello"},
@@ -171,7 +164,7 @@ class ChatMessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_without_view_permission_cannot_view_foreign_chat(self):
-        self._auth(self.no_view_token)
+        self.authenticate(self.no_view_user)
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
@@ -180,7 +173,7 @@ class ChatMessageAccessTests(APITestCase):
         )
 
     def test_user_without_view_permission_cannot_create_foreign_chat_message(self):
-        self._auth(self.no_view_token)
+        self.authenticate(self.no_view_user)
         response = self.api_client.post(
             "/api/v1/chat_messages/",
             {"deal": str(self.deal.id), "body": "Forbidden message"},
@@ -190,7 +183,7 @@ class ChatMessageAccessTests(APITestCase):
         self.assertEqual(response.data.get("detail"), "Нет доступа к выбранной сделке.")
 
     def test_admin_can_create_message_for_any_deal(self):
-        self._auth(self.admin_token)
+        self.authenticate(self.admin_user)
         response = self.api_client.post(
             "/api/v1/chat_messages/",
             {"deal": str(self.deal.id), "body": "Admin ping"},
@@ -199,7 +192,7 @@ class ChatMessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_role_with_view_permission_can_create_message(self):
-        self._auth(self.observer_token)
+        self.authenticate(self.observer_user)
         response = self.api_client.post(
             "/api/v1/chat_messages/",
             {"deal": str(self.deal.id), "body": "Observer ping"},
@@ -208,7 +201,7 @@ class ChatMessageAccessTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_deleted_deal_chat_is_visible(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.get(
             f"/api/v1/chat_messages/?deal={self.deleted_deal.id}"
         )
@@ -221,7 +214,7 @@ class ChatMessageAccessTests(APITestCase):
         )
 
     def test_cannot_create_message_for_deleted_deal(self):
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.post(
             "/api/v1/chat_messages/",
             {"deal": str(self.deleted_deal.id), "body": "Hello deleted"},
@@ -232,7 +225,7 @@ class ChatMessageAccessTests(APITestCase):
 
     def test_chat_messages_pagination_limits_default_and_custom_page_size(self):
         self._create_messages(self.deal, 25, prefix="Paginated")
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
 
         response = self.api_client.get(f"/api/v1/chat_messages/?deal={self.deal.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -261,7 +254,7 @@ class ChatMessageAccessTests(APITestCase):
         self._create_messages(archived_deal, 3, prefix="Archived")
         archived_deal.delete()
 
-        self._auth(self.seller_token)
+        self.authenticate(self.seller)
         response = self.api_client.get(
             f"/api/v1/chat_messages/?deal={archived_deal.id}"
         )
@@ -272,7 +265,7 @@ class ChatMessageAccessTests(APITestCase):
         self.assertTrue(all(body.startswith("Archived") for body in bodies))
 
     def test_deal_filter_blocks_unrelated_chats(self):
-        self._auth(self.other_token)
+        self.authenticate(self.other_user)
         response = self.api_client.get(
             f"/api/v1/chat_messages/?deal={self.outsider_deal.id}"
         )
