@@ -78,6 +78,22 @@ class DealViewSet(
     pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
+    def _build_search_query(self, search_term: str) -> Q | None:
+        terms = [term for term in search_term.strip().split() if term]
+        if not terms or not self.search_fields:
+            return None
+
+        combined_query: Q | None = None
+        for term in terms:
+            term_query = Q()
+            for field in self.search_fields:
+                term_query |= Q(**{f"{field}__icontains": term})
+            combined_query = (
+                term_query if combined_query is None else combined_query & term_query
+            )
+
+        return combined_query
+
     def _base_queryset(self, include_deleted=False):
         manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
         queryset = (
@@ -134,6 +150,9 @@ class DealViewSet(
 
         search_term = self.request.query_params.get("search")
         if search_term and search_term.strip():
+            search_q = self._build_search_query(search_term)
+            if search_q is not None:
+                queryset = queryset.filter(search_q)
             queryset = queryset.distinct()
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
