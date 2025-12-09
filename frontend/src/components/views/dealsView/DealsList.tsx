@@ -57,12 +57,14 @@ export const DealsList: React.FC<DealsListProps> = ({
 
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
 
+  const selectedDealId = selectedDeal?.id ?? null;
+
   useEffect(() => {
-    if (!selectedDeal || !selectedRowRef.current || !selectedRowRef.current.isConnected) {
+    if (!selectedDealId || !selectedRowRef.current || !selectedRowRef.current.isConnected) {
       return;
     }
     selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [selectedDeal?.id]);
+  }, [selectedDealId]);
 
   const toggleColumnSort = (key: DealsSortKey) => {
     setSortState((current) => {
@@ -118,28 +120,30 @@ export const DealsList: React.FC<DealsListProps> = ({
   return (
     <>
       <div className="px-4 py-4">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">
-            Выбор
-          </span>
-          <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
-          <span className="text-sm text-slate-500 whitespace-nowrap">Всего {displayedDeals.length}</span>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">
+              Выбор
+            </span>
+            <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
+            <span className="text-sm text-slate-500 whitespace-nowrap">Всего {displayedDeals.length}</span>
+          </div>
+          <div className="w-full max-w-sm">
+            <label htmlFor="dealSearch" className="sr-only">
+              Поиск по сделкам
+            </label>
+            <input
+              id="dealSearch"
+              type="search"
+              value={dealSearch}
+              onChange={(event) => onDealSearchChange(event.target.value)}
+              placeholder="Поиск по сделкам"
+              className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+            />
+          </div>
         </div>
       </div>
-      <div className="px-4 py-4 space-y-4 border-b border-slate-200">
-        <div>
-          <label htmlFor="dealSearch" className="text-xs font-semibold text-slate-500 mb-1 block">
-            Поиск
-          </label>
-          <input
-            id="dealSearch"
-            type="search"
-            value={dealSearch}
-            onChange={(event) => onDealSearchChange(event.target.value)}
-            placeholder="Поиск по сделкам"
-            className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-          />
-        </div>
+      <div className="px-4 py-4 border-b border-slate-200">
         <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <input
@@ -166,6 +170,7 @@ export const DealsList: React.FC<DealsListProps> = ({
             </label>
           </div>
         </div>
+      </div>
       <div className="max-h-[360px] overflow-y-auto">
         <table className="deals-table min-w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-[#E3E7F0]">
@@ -235,9 +240,6 @@ export const DealsList: React.FC<DealsListProps> = ({
           <tbody className="bg-white">
             {displayedDeals.length ? (
               displayedDeals.map((deal) => {
-                const isOverdue = deal.nextContactDate
-                  ? new Date(deal.nextContactDate) < new Date()
-                  : false;
                 const deadlineTone = getDeadlineTone(deal.expectedClose);
                 const isDeleted = Boolean(deal.deletedAt);
                 const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
@@ -268,14 +270,6 @@ export const DealsList: React.FC<DealsListProps> = ({
                       <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>
                         {deal.title}
                       </p>
-                      <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
-                        {deal.source || '—'}
-                      </p>
-                      {deal.closingReason && (
-                        <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
-                          Причина закрытия: {deal.closingReason}
-                        </p>
-                      )}
                       {deal.deletedAt && (
                         <p className="text-[11px] text-rose-500 mt-1">
                           Удалена: {formatDeletedAt(deal.deletedAt)}
@@ -302,20 +296,9 @@ export const DealsList: React.FC<DealsListProps> = ({
                       className={`border border-[#E3E7F0] px-6 py-3 text-sm text-right ${deletedTextClass}`}
                     >
                       {deal.nextContactDate ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <span
-                            className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}
-                          >
-                            {formatDate(deal.nextContactDate)}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide rounded-full ${
-                              isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'
-                            }`}
-                          >
-                            {isOverdue ? 'Просрочено' : 'Запланировано'}
-                          </span>
-                        </div>
+                        <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
+                          {formatDate(deal.nextContactDate)}
+                        </span>
                       ) : (
                         <span
                           className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}
@@ -347,19 +330,18 @@ export const DealsList: React.FC<DealsListProps> = ({
           </tbody>
         </table>
       </div>
-        {dealsHasMore && (
-          <div className="border-t border-slate-100 px-4 py-3 text-center">
-              <button
-                type="button"
-                onClick={onLoadMoreDeals}
-                disabled={isLoadingMoreDeals}
-                className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
-              >
-                {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
-              </button>
-          </div>
-        )}
-      </div>
+      {dealsHasMore && (
+        <div className="border-t border-slate-100 px-4 py-3 text-center">
+          <button
+            type="button"
+            onClick={onLoadMoreDeals}
+            disabled={isLoadingMoreDeals}
+            className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
+          >
+            {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
+          </button>
+        </div>
+      )}
     </>
   );
 };
