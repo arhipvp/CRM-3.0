@@ -1822,11 +1822,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   </span>
                 )}
               </p>
-              {selectedDeal && (
-                <span className="text-sm font-semibold text-slate-500">
-                  {statusLabels[selectedDeal.status as DealStatus]}
-                </span>
-              )}
             </div>
             {selectedDeal ? (
               <div className="rounded-2xl border border-slate-300 bg-white shadow-sm p-6 space-y-6">
@@ -1867,9 +1862,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                         className="text-slate-900 font-semibold"
                       />
                     </p>
-                    <span className="text-sm font-semibold text-slate-900">
-                      {statusLabels[selectedDeal.status as DealStatus]}
-                    </span>
                     {selectedDeal.closingReason && (
                       <p className="text-xs text-slate-500">
                         Причина закрытия: {selectedDeal.closingReason}

@@ -1,5 +1,11 @@
 import type { DealStatus, FinancialRecord, Payment, Policy, PolicyRecognitionResult } from '../../../types';
 
+const DATE_FORMATTER = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
 export const statusLabels: Record<DealStatus, string> = {
   open: 'В работе',
   won: 'Выиграна',
@@ -26,8 +32,16 @@ export type FinancialRecordCreationContext = {
   recordType: 'income' | 'expense';
 };
 
-export const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
+export const formatDate = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
+  }
+  return DATE_FORMATTER.format(parsed);
+};
 
 export const formatDateTime = (value?: string | null) =>
   value ? new Date(value).toLocaleString('ru-RU') : '—';

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Deal, User } from '../../../types';
 
 import { ColoredLabel } from '../../common/ColoredLabel';
@@ -8,7 +8,6 @@ import {
   formatDeletedAt,
   getDeadlineTone,
   getUserDisplayName,
-  statusLabels,
 } from './helpers';
 
 type DealsSortKey = 'deadline' | 'nextContact';
@@ -56,6 +55,15 @@ export const DealsList: React.FC<DealsListProps> = ({
     direction: null,
   });
 
+  const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  useEffect(() => {
+    if (!selectedDeal || !selectedRowRef.current || !selectedRowRef.current.isConnected) {
+      return;
+    }
+    selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [selectedDeal?.id]);
+
   const toggleColumnSort = (key: DealsSortKey) => {
     setSortState((current) => {
       if (current.key !== key) {
@@ -82,12 +90,13 @@ export const DealsList: React.FC<DealsListProps> = ({
     return sortState.direction === 'asc' ? 'по возрастанию' : 'по убыванию';
   };
 
-  const getColumnTitleClass = (key: DealsSortKey) =>
-    `text-[11px] font-semibold uppercase tracking-wide ${
-      sortState.key === key
-        ? 'text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2'
-        : 'text-slate-500'
-    }`;
+  const getColumnTitleClass = (key: DealsSortKey) => {
+    const baseClass = 'text-[11px] font-semibold uppercase tracking-wide';
+    if (sortState.key === key && sortState.direction) {
+      return `${baseClass} text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2`;
+    }
+    return `${baseClass} text-slate-900`;
+  };
 
   const displayedDeals = useMemo<Deal[]>(() => {
     if (!sortState.key || !sortState.direction) {
@@ -157,176 +166,187 @@ export const DealsList: React.FC<DealsListProps> = ({
             </label>
           </div>
         </div>
-        <div className="max-h-[360px] overflow-y-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Сделка
-                </th>
-                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Клиент
-                </th>
-                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Статус
-                </th>
-                <th className="px-4 py-2 min-w-[160px] align-top">
-                  <button
-                    type="button"
-                    onClick={() => toggleColumnSort('deadline')}
-                    aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
-                      'deadline'
-                    )}`}
-                    className="flex items-center justify-between gap-2 text-left w-full"
+      <div className="max-h-[360px] overflow-y-auto">
+        <table className="deals-table min-w-full border-collapse text-left text-sm">
+          <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-[#E3E7F0]">
+            <tr>
+              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[260px]">
+                Сделка
+              </th>
+              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[200px]">
+                Клиент
+              </th>
+              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-center text-slate-900 min-w-[180px]">
+                <button
+                  type="button"
+                  onClick={() => toggleColumnSort('deadline')}
+                  aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
+                    'deadline'
+                  )}`}
+                  className="flex w-full items-center justify-center gap-2"
+                >
+                  <span className={getColumnTitleClass('deadline')}>Крайний срок</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    {getSortIndicator('deadline')}
+                  </span>
+                </button>
+              </th>
+              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-right text-slate-900 min-w-[200px]">
+                <button
+                  type="button"
+                  onClick={() => toggleColumnSort('nextContact')}
+                  aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
+                    'nextContact'
+                  )}`}
+                  className="flex w-full items-center justify-end gap-2"
+                >
+                  <span className={getColumnTitleClass('nextContact')}>След. контакт</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    {getSortIndicator('nextContact')}
+                  </span>
+                </button>
+              </th>
+              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[190px]">
+                Исполнитель
+              </th>
+            </tr>
+            <tr className="border-t border-[#E3E7F0] bg-slate-50/70">
+              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
+              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
+              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
+              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
+              <th className="border border-[#E3E7F0] px-6 py-2 align-top">
+                <select
+                  value={dealExecutorFilter}
+                  onChange={(event) => onDealExecutorFilterChange(event.target.value)}
+                  aria-label="Фильтр по исполнителю"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+                >
+                  <option value="">Все</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {getUserDisplayName(user)}
+                    </option>
+                  ))}
+                </select>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white">
+            {displayedDeals.length ? (
+              displayedDeals.map((deal) => {
+                const isOverdue = deal.nextContactDate
+                  ? new Date(deal.nextContactDate) < new Date()
+                  : false;
+                const deadlineTone = getDeadlineTone(deal.expectedClose);
+                const isDeleted = Boolean(deal.deletedAt);
+                const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
+                const isSelected = selectedDeal?.id === deal.id;
+                const rowClassName = [
+                  'transition-colors',
+                  'cursor-pointer',
+                  'border-l-4 border-transparent',
+                  'hover:bg-slate-50 hover:border-sky-500',
+                  isSelected ? 'bg-sky-100 border-sky-500 shadow-sm' : '',
+                  isDeleted ? 'opacity-60' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ');
+                return (
+                  <tr
+                    key={deal.id}
+                    onClick={() => onSelectDeal(deal.id)}
+                    className={rowClassName}
+                    ref={(element) => {
+                      if (deal.id === selectedDeal?.id) {
+                        selectedRowRef.current = element;
+                      }
+                    }}
+                    style={{ minHeight: '56px' }}
                   >
-                    <span className={getColumnTitleClass('deadline')}>Крайний срок</span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      {getSortIndicator('deadline')}
-                    </span>
-                  </button>
-                </th>
-                <th className="px-4 py-2 min-w-[140px] align-top">
-                  <button
-                    type="button"
-                    onClick={() => toggleColumnSort('nextContact')}
-                    aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
-                      'nextContact'
-                    )}`}
-                    className="flex items-center justify-between gap-2 text-left w-full"
-                  >
-                    <span className={getColumnTitleClass('nextContact')}>След. контакт</span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      {getSortIndicator('nextContact')}
-                    </span>
-                  </button>
-                </th>
-                <th className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Исполнитель
-                </th>
-              </tr>
-              <tr className="border-t border-slate-100 bg-slate-50/70">
-                <th className="px-4 py-2 align-top" />
-                <th className="px-4 py-2 align-top" />
-                <th className="px-4 py-2 align-top" />
-                <th className="px-4 py-2 align-top" />
-                <th className="px-4 py-2 align-top" />
-                <th className="px-4 py-2 align-top">
-                  <select
-                    value={dealExecutorFilter}
-                    onChange={(event) => onDealExecutorFilterChange(event.target.value)}
-                    aria-label="Фильтр по исполнителю"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                  >
-                    <option value="">Все</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {getUserDisplayName(user)}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {displayedDeals.length ? (
-                displayedDeals.map((deal) => {
-                  const isOverdue = deal.nextContactDate
-                    ? new Date(deal.nextContactDate) < new Date()
-                    : false;
-                  const deadlineTone = getDeadlineTone(deal.expectedClose);
-                  const isDeleted = Boolean(deal.deletedAt);
-                  const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
-                  const isSelected = selectedDeal?.id === deal.id;
-                  const rowClassName = [
-                    'transition-colors',
-                    'cursor-pointer',
-                    isSelected ? 'bg-sky-100 border-y border-slate-300 shadow-sm' : 'hover:bg-slate-50',
-                    isDeleted ? 'opacity-60' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ');
-                  return (
-                    <tr key={deal.id} onClick={() => onSelectDeal(deal.id)} className={rowClassName}>
-                      <td className={`px-4 py-2 ${deletedTextClass}`}>
-                        <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>
-                          {deal.title}
-                        </p>
+                    <td className={`border border-[#E3E7F0] px-6 py-3 ${deletedTextClass}`}>
+                      <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>
+                        {deal.title}
+                      </p>
+                      <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
+                        {deal.source || '—'}
+                      </p>
+                      {deal.closingReason && (
                         <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
-                          {deal.source || '—'}
+                          Причина закрытия: {deal.closingReason}
                         </p>
-                        {deal.deletedAt && (
-                          <p className="text-[11px] text-rose-500 mt-1">
-                            Удалена: {formatDeletedAt(deal.deletedAt)}
-                          </p>
-                        )}
-                      </td>
-                      <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
-                        <span className={deletedTextClass}>{deal.clientName || '—'}</span>
-                      </td>
-                      <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
-                        <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
-                          {statusLabels[deal.status]}
+                      )}
+                      {deal.deletedAt && (
+                        <p className="text-[11px] text-rose-500 mt-1">
+                          Удалена: {formatDeletedAt(deal.deletedAt)}
+                        </p>
+                      )}
+                    </td>
+                    <td
+                      className={`border border-[#E3E7F0] px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
+                    >
+                      <span className={deletedTextClass}>{deal.clientName || '—'}</span>
+                    </td>
+                    <td
+                      className={`border border-[#E3E7F0] px-6 py-3 text-sm font-semibold text-center ${deletedTextClass}`}
+                    >
+                      {deal.expectedClose ? (
+                        <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
+                      ) : (
+                        <span className={`text-xs text-rose-500 font-semibold ${deletedTextClass || ''}`}>
+                          Нет срока
                         </span>
-                        {deal.closingReason && (
-                          <p className={`text-[11px] text-slate-500 mt-1 ${deletedTextClass}`}>
-                            {deal.closingReason}
-                          </p>
-                        )}
-                      </td>
-                      <td className={`px-4 py-2 text-sm font-semibold ${deletedTextClass}`}>
-                        {deal.expectedClose ? (
-                          <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
-                        ) : (
-                          <span className={`text-xs text-rose-500 font-semibold ${deletedTextClass || ''}`}>
-                            Нет срока
-                          </span>
-                        )}
-                      </td>
-                      <td className={`px-4 py-2 ${deletedTextClass}`}>
-                        {deal.nextContactDate ? (
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}
-                            >
-                              {formatDate(deal.nextContactDate)}
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide rounded-full ${
-                                isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'
-                              }`}
-                            >
-                              {isOverdue ? 'Просрочено' : 'Запланировано'}
-                            </span>
-                          </div>
-                        ) : (
+                      )}
+                    </td>
+                    <td
+                      className={`border border-[#E3E7F0] px-6 py-3 text-sm text-right ${deletedTextClass}`}
+                    >
+                      {deal.nextContactDate ? (
+                        <div className="flex items-center justify-end gap-2">
                           <span
-                            className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}
+                            className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}
                           >
-                            Не назначено
+                            {formatDate(deal.nextContactDate)}
                           </span>
-                        )}
-                      </td>
-                      <td className={`px-4 py-2 text-sm text-slate-900 ${deletedTextClass}`}>
-                        <ColoredLabel
-                          value={deal.executorName}
-                          fallback="—"
-                          className={`text-sm text-slate-900 font-semibold ${deletedTextClass}`}
-                          showDot={false}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-500">
-                    Сделки не найдены.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                          <span
+                            className={`px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide rounded-full ${
+                              isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'
+                            }`}
+                          >
+                            {isOverdue ? 'Просрочено' : 'Запланировано'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span
+                          className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}
+                        >
+                          Не назначено
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className={`border border-[#E3E7F0] px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
+                    >
+                      <ColoredLabel
+                        value={deal.executorName}
+                        fallback="—"
+                        className={`text-sm text-slate-900 font-semibold ${deletedTextClass}`}
+                        showDot={false}
+                      />
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={5} className="border border-[#E3E7F0] px-6 py-4 text-center text-sm text-slate-500">
+                  Сделки не найдены.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
         {dealsHasMore && (
           <div className="border-t border-slate-100 px-4 py-3 text-center">
               <button
