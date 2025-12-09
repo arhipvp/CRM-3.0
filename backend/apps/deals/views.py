@@ -48,7 +48,24 @@ class DealViewSet(
 ):
     serializer_class = DealSerializer
     filterset_class = DealFilterSet
-    search_fields = ["title", "description"]
+    search_fields = [
+        "title",
+        "description",
+        "client__name",
+        "client__phone",
+        "client__email",
+        "client__notes",
+        "notes__body",
+        "policies__number",
+        "policies__vin",
+        "policies__brand",
+        "policies__model",
+        "policies__counterparty",
+        "policies__client__name",
+        "policies__insured_client__name",
+        "policies__insurance_company__name",
+        "policies__insurance_type__name",
+    ]
     ordering_fields = [
         "created_at",
         "updated_at",
@@ -114,6 +131,10 @@ class DealViewSet(
         include_closed = self._include_closed_flag()
         if not include_closed:
             queryset = queryset.exclude(status__in=CLOSED_STATUSES)
+
+        search_term = self.request.query_params.get("search")
+        if search_term and search_term.strip():
+            queryset = queryset.distinct()
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:
