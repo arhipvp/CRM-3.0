@@ -17,10 +17,10 @@ class DealUpdatePermissionsTests(AuthenticatedAPITestCase):
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")
         self.admin_user = User.objects.create_user(username="admin", password="pass")
-        self.client = Client.objects.create(name="Client")
+        self.client_record = Client.objects.create(name="Client")
         self.deal = Deal.objects.create(
             title="Permission Deal",
-            client=self.client,
+            client=self.client_record,
             seller=self.seller,
             status="open",
             stage_name="initial",
@@ -79,7 +79,7 @@ class DealUpdatePermissionsTests(AuthenticatedAPITestCase):
         UserRole.objects.create(user=observer, role=observer_role)
         extra_deal = Deal.objects.create(
             title="Other Deal",
-            client=self.client,
+            client=self.client_record,
             seller=self.admin_user,
             executor=self.admin_user,
             status="open",
