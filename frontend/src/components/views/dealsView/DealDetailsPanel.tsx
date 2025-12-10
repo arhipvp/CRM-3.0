@@ -41,7 +41,6 @@ import { ColoredLabel } from '../../common/ColoredLabel';
 import {
   DealTabId,
   FinancialRecordCreationContext,
-  formatDate,
   getDeadlineTone,
   getPolicySortValue,
   getUserDisplayName,
@@ -58,6 +57,7 @@ import { FilesTab } from './tabs/FilesTab';
 import { ChatTab } from './tabs/ChatTab';
 import { DealDelayModal, DealMergeModal } from './DealDetailsModals';
 import { DealTabs } from './DealTabs';
+import { DealNotesSection } from './DealNotesSection';
 
 
 interface DealDetailsPanelProps {
