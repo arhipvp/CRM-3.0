@@ -610,14 +610,7 @@ const AppContent: React.FC = () => {
     : null;
 
   const handleAddDeal = useCallback(
-    async (data: {
-      title: string;
-      clientId: string;
-      description?: string;
-      expectedClose?: string | null;
-      executorId?: string | null;
-      source?: string;
-    }) => {
+    async (data: DealFormValues) => {
       invalidateDealsCache();
       const created = await createDeal({
         title: data.title,
@@ -625,7 +618,7 @@ const AppContent: React.FC = () => {
         description: data.description,
         expectedClose: data.expectedClose,
         executorId: data.executorId,
-        source: data.source,
+        source: data.source?.trim() || undefined,
       });
       updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
       setSelectedDealId(created.id);

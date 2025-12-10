@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal } from '../Modal';
 import { ClientForm } from '../forms/ClientForm';
 import { DealForm } from '../forms/DealForm';
+import type { DealFormValues } from '../forms/DealForm';
 import { AddQuoteForm, QuoteFormValues } from '../forms/AddQuoteForm';
 import { AddPolicyForm } from '../forms/AddPolicyForm';
 import { AddPaymentForm, AddPaymentFormValues } from '../forms/AddPaymentForm';
@@ -107,7 +108,7 @@ interface AppModalsProps {
     notes?: string | null;
     email?: string | null;
   }) => Promise<void>;
-  handleAddDeal: (data: { title: string; description?: string; clientId: string; expectedClose?: string | null; executorId?: string | null; source?: string }) => Promise<void>;
+  handleAddDeal: (data: DealFormValues) => Promise<void>;
   pendingDealClientId: string | null;
   onPendingDealClientConsumed: () => void;
   quoteDealId: string | null;
