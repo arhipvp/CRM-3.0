@@ -238,7 +238,7 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
                   <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
                   <p className="text-[11px] text-slate-500">
                     Стадия: {deal.stageName || '—'} · Статус:{' '}
-                    {statusLabels[deal.status as DealStatus]}
+                    {statusLabels[deal.status]}
                   </p>
                 </div>
               </label>
