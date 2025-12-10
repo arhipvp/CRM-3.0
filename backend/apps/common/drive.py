@@ -179,7 +179,7 @@ def _get_folder_metadata(folder_id: str) -> Optional[dict]:
     try:
         return (
             service.files()
-            .get(fileId=folder_id, fields="id,name", supportsAllDrives=True)
+            .get(fileId=folder_id, fields="id,name,parents", supportsAllDrives=True)
             .execute()
         )
     except Exception as exc:
@@ -336,6 +336,12 @@ def ensure_deal_folder(deal) -> Optional[str]:
                     logger.exception(
                         "Failed to rename Drive folder for deal %s", deal.pk
                     )
+            parents = metadata.get("parents") or []
+            if client_folder and client_folder not in parents:
+                try:
+                    move_drive_folder_to_parent(folder_id, client_folder)
+                except DriveError:
+                    logger.exception("Failed to move Drive folder for deal %s", deal.pk)
             _update_instance_folder(deal, folder_id)
             return folder_id
         folder_id = None
