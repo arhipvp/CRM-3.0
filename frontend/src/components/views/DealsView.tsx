@@ -28,6 +28,7 @@ interface DealsViewProps {
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
+  onRequestAddClient: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRefreshPolicies?: () => Promise<void>;
@@ -85,6 +86,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onRequestEditQuote,
   onRequestAddPolicy,
   onRequestEditPolicy,
+  onRequestAddClient,
   onDeleteQuote,
   onDeletePolicy,
   onRefreshPolicies,
@@ -168,6 +170,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onRequestEditQuote={onRequestEditQuote}
             onRequestAddPolicy={onRequestAddPolicy}
             onRequestEditPolicy={onRequestEditPolicy}
+            onRequestAddClient={onRequestAddClient}
             onDeleteQuote={onDeleteQuote}
             onDeletePolicy={onDeletePolicy}
             onRefreshPolicies={onRefreshPolicies}

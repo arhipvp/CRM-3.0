@@ -45,6 +45,7 @@ export interface AppRoutesProps {
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
+  onRequestAddClient: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
@@ -111,6 +112,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onRequestEditQuote,
   onRequestAddPolicy,
   onRequestEditPolicy,
+  onRequestAddClient,
   onDeleteQuote,
   onDeletePolicy,
   onAddPayment,
@@ -151,9 +153,9 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     <Route
       path="/deals"
       element={
-        <DealsView
-          deals={deals}
-          clients={clients}
+          <DealsView
+            deals={deals}
+            clients={clients}
           policies={policies}
           payments={payments}
           financialRecords={financialRecords}
@@ -186,16 +188,17 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDeleteTask={onDeleteTask}
           onDeleteDeal={onDeleteDeal}
           onRestoreDeal={onRestoreDeal}
-          onMergeDeals={onMergeDeals}
-          dealSearch={dealSearch}
-          onDealSearchChange={onDealSearchChange}
-          dealExecutorFilter={dealExecutorFilter}
-          onDealExecutorFilterChange={onDealExecutorFilterChange}
-          dealShowDeleted={dealShowDeleted}
-          onDealShowDeletedChange={onDealShowDeletedChange}
-        dealShowClosed={dealShowClosed}
-        onDealShowClosedChange={onDealShowClosedChange}
-        onPolicyDraftReady={onPolicyDraftReady}
+            onMergeDeals={onMergeDeals}
+            dealSearch={dealSearch}
+            onDealSearchChange={onDealSearchChange}
+            dealExecutorFilter={dealExecutorFilter}
+            onDealExecutorFilterChange={onDealExecutorFilterChange}
+            dealShowDeleted={dealShowDeleted}
+            onDealShowDeletedChange={onDealShowDeletedChange}
+            dealShowClosed={dealShowClosed}
+            onDealShowClosedChange={onDealShowClosedChange}
+            onRequestAddClient={onRequestAddClient}
+            onPolicyDraftReady={onPolicyDraftReady}
             onLoadMoreDeals={onLoadMoreDeals}
             dealsHasMore={dealsHasMore}
             isLoadingMoreDeals={isLoadingMoreDeals}

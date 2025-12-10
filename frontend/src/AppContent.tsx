@@ -1614,6 +1614,7 @@ const AppContent: React.FC = () => {
         onRequestEditQuote={handleRequestEditQuote}
         onRequestAddPolicy={handleRequestAddPolicy}
         onRequestEditPolicy={handleRequestEditPolicy}
+        onRequestAddClient={() => openClientModal('deal')}
         onDeleteQuote={handleDeleteQuote}
         onDeletePolicy={handleDeletePolicy}
         onAddPayment={handleAddPayment}
