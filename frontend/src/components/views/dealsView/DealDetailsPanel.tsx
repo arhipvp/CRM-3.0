@@ -58,6 +58,7 @@ import { DealTabs } from './DealTabs';
 import { DealHeader } from './DealHeader';
 import { DealActions } from './DealActions';
 import { DealNotesSection } from './DealNotesSection';
+import { DealDateControls } from './DealDateControls';
 
 
 interface DealDetailsPanelProps {
@@ -334,7 +335,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     [driveFiles, selectedDriveFileIds]
   );
 
-  const [isInlineDateUpdating, setIsInlineDateUpdating] = useState(false);
   const [nextContactInputValue, setNextContactInputValue] = useState('');
   const [expectedCloseInputValue, setExpectedCloseInputValue] = useState('');
 
@@ -893,42 +893,42 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     setExpectedCloseInputValue(selectedDeal?.expectedClose ?? '');
   }, [selectedDeal?.expectedClose]);
 
-  const handleInlineDateSave = async (
-    field: 'nextContactDate' | 'expectedClose',
-    rawValue: string,
-    options?: { selectTopDeal?: boolean }
-  ) => {
-    if (!selectedDeal) return;
-    setIsInlineDateUpdating(true);
+  const handleInlineDateSave = useCallback(
+    async (
+      field: 'nextContactDate' | 'expectedClose',
+      rawValue: string,
+      options?: { selectTopDeal?: boolean }
+    ) => {
+      if (!selectedDeal) return;
 
-    const value = rawValue || null;
+      const value = rawValue || null;
 
-    try {
-      await updateDealDates(
-        field === 'nextContactDate'
-          ? { nextContactDate: value }
-          : { expectedClose: value }
-      );
+      try {
+        await updateDealDates(
+          field === 'nextContactDate'
+            ? { nextContactDate: value }
+            : { expectedClose: value }
+        );
 
-      if (field === 'nextContactDate') {
-        setNextContactInputValue(value ?? '');
-      }
-      if (field === 'expectedClose') {
-        setExpectedCloseInputValue(value ?? '');
-      }
-
-      if (options?.selectTopDeal) {
-        const topDeal = sortedDeals[0];
-        if (topDeal && topDeal.id !== selectedDeal.id) {
-          onSelectDeal(topDeal.id);
+        if (field === 'nextContactDate') {
+          setNextContactInputValue(value ?? '');
         }
+        if (field === 'expectedClose') {
+          setExpectedCloseInputValue(value ?? '');
+        }
+
+        if (options?.selectTopDeal) {
+          const topDeal = sortedDeals[0];
+          if (topDeal && topDeal.id !== selectedDeal.id) {
+            onSelectDeal(topDeal.id);
+          }
+        }
+      } catch (err) {
+        console.error('Ошибка обновления даты сделки:', err);
       }
-    } catch (err) {
-      console.error('Ошибка обновления даты сделки:', err);
-    } finally {
-      setIsInlineDateUpdating(false);
-    }
-  };
+    },
+    [onSelectDeal, selectedDeal, sortedDeals, updateDealDates]
+  );
 
   const handleQuickNextContactShift = (newValue: string) => {
     setNextContactInputValue(newValue);
@@ -1621,52 +1621,15 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
   );
 
-  const renderHeaderDates = () => {
-    if (!selectedDeal) {
-      return null;
-    }
+  const handleNextContactBlur = useCallback(
+    (value: string) => handleInlineDateSave('nextContactDate', value),
+    [handleInlineDateSave]
+  );
 
-    return (
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
-          <div className="mt-1 max-w-[220px] flex flex-col gap-2">
-            <input
-              type="date"
-              value={nextContactInputValue}
-              onChange={(event) => setNextContactInputValue(event.target.value)}
-              onBlur={() => handleInlineDateSave('nextContactDate', nextContactInputValue)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-            />
-            <div className="flex flex-wrap gap-2">
-              {quickInlineDateOptions.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  onClick={() => quickInlineShift(option.days)}
-                  disabled={isInlineDateUpdating}
-                  className="text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div>
-        <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>Застраховать до</p>
-        <input
-          type="date"
-          value={expectedCloseInputValue}
-          onChange={(event) => setExpectedCloseInputValue(event.target.value)}
-          onBlur={(event) => handleInlineDateSave('expectedClose', event.target.value)}
-          className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
-        />
-        </div>
-      </div>
-    );
-  };
-
+  const handleExpectedCloseBlur = useCallback(
+    (value: string) => handleInlineDateSave('expectedClose', value),
+    [handleInlineDateSave]
+  );
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview': {
@@ -1753,7 +1716,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     onDelay={() => setIsDelayModalOpen(true)}
                   />
                 </div>
-                {renderHeaderDates()}
+                <DealDateControls
+                  nextContactValue={nextContactInputValue}
+                  expectedCloseValue={expectedCloseInputValue}
+                  headerExpectedCloseTone={headerExpectedCloseTone}
+                  quickOptions={quickInlineDateOptions}
+                  onNextContactChange={setNextContactInputValue}
+                  onNextContactBlur={handleNextContactBlur}
+                  onExpectedCloseChange={setExpectedCloseInputValue}
+                  onExpectedCloseBlur={handleExpectedCloseBlur}
+                  onQuickShift={quickInlineShift}
+                />
                 <div>
                   <DealTabs activeTab={activeTab} onChange={setActiveTab} />
                   <div
