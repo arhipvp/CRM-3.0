@@ -36,8 +36,6 @@ import {
   AddFinancialRecordForm,
   AddFinancialRecordFormValues,
 } from '../../forms/AddFinancialRecordForm';
-import { ColoredLabel } from '../../common/ColoredLabel';
-
 import {
   DealTabId,
   FinancialRecordCreationContext,
@@ -57,6 +55,8 @@ import { FilesTab } from './tabs/FilesTab';
 import { ChatTab } from './tabs/ChatTab';
 import { DealDelayModal, DealMergeModal } from './DealDetailsModals';
 import { DealTabs } from './DealTabs';
+import { DealHeader } from './DealHeader';
+import { DealActions } from './DealActions';
 import { DealNotesSection } from './DealNotesSection';
 
 
@@ -1727,120 +1727,31 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             </div>
             {selectedDeal ? (
               <div className="rounded-2xl border border-slate-300 bg-white shadow-sm p-6 space-y-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <p className="text-[10px] tracking-[0.4em] text-slate-400 uppercase">
-                        Выбранная сделка:
-                      </p>
-                      <p className="text-base font-semibold text-slate-900">
-                        {selectedDeal.title}
-                      </p>
-                    </div>
-                    {selectedDeal.description && (
-                      <p className="text-sm leading-relaxed text-slate-500 max-w-3xl">
-                        {selectedDeal.description}
-                      </p>
-                    )}
-                    <p className="text-sm text-slate-500">
-                      Клиент:
-                      <span className="ml-2 text-base font-semibold text-slate-900">
-                        {selectedClientDisplayName}
-                      </span>
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Ответственный:{' '}
-                      <ColoredLabel
-                        value={sellerDisplayName !== '—' ? sellerDisplayName : undefined}
-                        fallback="—"
-                        showDot={false}
-                        className="text-slate-900 font-semibold"
-                      />{' '}
-                      · Исполнитель:{' '}
-                      <ColoredLabel
-                        value={executorDisplayName !== '—' ? executorDisplayName : undefined}
-                        fallback="—"
-                        showDot={false}
-                        className="text-slate-900 font-semibold"
-                      />
-                    </p>
-                    {selectedDeal.closingReason && (
-                      <p className="text-xs text-slate-500">
-                        Причина закрытия: {selectedDeal.closingReason}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={handleEditDealClick}
-                      disabled={isSelectedDealDeleted}
-                      className="px-4 py-1.5 text-sm font-semibold rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Редактировать
-                    </button>
-                    {isSelectedDealDeleted ? (
-                      <button
-                        type="button"
-                        onClick={handleRestoreDealClick}
-                        disabled={isRestoringDeal}
-                        className="px-4 py-1.5 text-sm font-semibold rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleDeleteDealClick}
-                        disabled={isDeletingDeal}
-                        className="px-4 py-1.5 text-sm font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleCloseDealClick}
-                      disabled={
-                        isSelectedDealDeleted ||
-                        isDealClosedStatus ||
-                        isClosingDeal ||
-                        !isCurrentUserSeller
-                      }
-                      className="px-4 py-1.5 text-sm font-semibold rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
-                    </button>
-                    {isDealClosedStatus && (
-                      <button
-                        type="button"
-                        onClick={handleReopenDealClick}
-                        disabled={
-                          isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal
-                        }
-                        className="px-4 py-1.5 text-sm font-semibold rounded-full bg-amber-600 text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleMergeClick}
-                      disabled={isSelectedDealDeleted}
-                      className="px-4 py-1.5 text-sm font-semibold rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Сцепить
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsDelayModalOpen(true)}
-                      disabled={!dealEvents.length}
-                      className="flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-emerald-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <span className="text-base leading-none">👑</span>
-                      <span>Отложить</span>
-                    </button>
-                  </div>
+                <div className="flex flex-col gap-4">
+                  <DealHeader
+                    deal={selectedDeal}
+                    clientDisplayName={selectedClientDisplayName}
+                    sellerDisplayName={sellerDisplayName}
+                    executorDisplayName={executorDisplayName}
+                  />
+                  <DealActions
+                    isSelectedDealDeleted={isSelectedDealDeleted}
+                    isDeletingDeal={isDeletingDeal}
+                    isRestoringDeal={isRestoringDeal}
+                    isDealClosedStatus={isDealClosedStatus}
+                    isClosingDeal={isClosingDeal}
+                    isReopeningDeal={isReopeningDeal}
+                    isCurrentUserSeller={isCurrentUserSeller}
+                    canReopenClosedDeal={canReopenClosedDeal}
+                    dealEventsLength={dealEvents.length}
+                    onEdit={handleEditDealClick}
+                    onRestore={handleRestoreDealClick}
+                    onDelete={handleDeleteDealClick}
+                    onClose={handleCloseDealClick}
+                    onReopen={handleReopenDealClick}
+                    onMerge={handleMergeClick}
+                    onDelay={() => setIsDelayModalOpen(true)}
+                  />
                 </div>
                 {renderHeaderDates()}
                 <div>
