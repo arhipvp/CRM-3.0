@@ -39,7 +39,6 @@ import {
 import { ColoredLabel } from '../../common/ColoredLabel';
 
 import {
-  DEAL_TABS,
   DealTabId,
   FinancialRecordCreationContext,
   formatDate,
@@ -58,6 +57,7 @@ import { QuotesTab } from './tabs/QuotesTab';
 import { FilesTab } from './tabs/FilesTab';
 import { ChatTab } from './tabs/ChatTab';
 import { DealDelayModal, DealMergeModal } from './DealDetailsModals';
+import { DealTabs } from './DealTabs';
 
 
 interface DealDetailsPanelProps {
@@ -1946,22 +1946,16 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 </div>
                 {renderHeaderDates()}
                 <div>
-                  <div className="flex flex-wrap gap-2 border-b border-slate-200">
-                    {DEAL_TABS.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-                          activeTab === tab.id
-                            ? 'bg-white text-sky-600 border border-b-white border-slate-200'
-                            : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
+                  <DealTabs activeTab={activeTab} onChange={setActiveTab} />
+                  <div
+                    className="pt-6"
+                    role="tabpanel"
+                    id={`deal-tabpanel-${activeTab}`}
+                    aria-labelledby={`deal-tab-${activeTab}`}
+                    tabIndex={0}
+                  >
+                    {renderTabContent()}
                   </div>
-                  <div className="pt-6">{renderTabContent()}</div>
                 </div>
               </div>
             ) : (
