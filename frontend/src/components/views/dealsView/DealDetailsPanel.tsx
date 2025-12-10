@@ -5,7 +5,6 @@ import {
   ChatMessage,
   Client,
   Deal,
-  DealStatus,
   DriveFile,
   FinancialRecord,
   Note,
@@ -49,7 +48,6 @@ import {
   getUserDisplayName,
   PolicySortKey,
   closedDealStatuses,
-  statusLabels,
 } from './helpers';
 
 import type { DealEvent } from './eventUtils';
@@ -59,6 +57,7 @@ import { PoliciesTab } from './tabs/PoliciesTab';
 import { QuotesTab } from './tabs/QuotesTab';
 import { FilesTab } from './tabs/FilesTab';
 import { ChatTab } from './tabs/ChatTab';
+import { DealDelayModal, DealMergeModal } from './DealDetailsModals';
 
 
 interface DealDetailsPanelProps {
@@ -1808,6 +1807,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
   };
 
+  const selectedClientDisplayName =
+    selectedClient?.name || selectedDeal?.clientName || '—';
+
   return (
     <>
       <div className="px-4 py-5 space-y-4">
@@ -1845,7 +1847,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     <p className="text-sm text-slate-500">
                       Клиент:
                       <span className="ml-2 text-base font-semibold text-slate-900">
-                        {selectedClient?.name || selectedDeal.clientName || '—'}
+                        {selectedClientDisplayName}
                       </span>
                     </p>
                     <p className="text-xs text-slate-400">
@@ -2163,227 +2165,36 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         </div>
       )}
       {isDelayModalOpen && selectedDeal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Отложить до следующего события</h3>
-                <p className="text-xs text-slate-500">{selectedDeal.title}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsDelayModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-                aria-label="Закрыть"
-              >
-                ×
-              </button>
-            </div>
-            <div className="px-6 py-4 space-y-6">
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Выбранное событие</p>
-                {selectedDelayEvent ? (
-                  <>
-                    <p className="text-sm font-semibold text-slate-900">{selectedDelayEvent.title}</p>
-                    <p className="text-[12px] text-slate-500">{selectedDelayEvent.description}</p>
-                    <p className="text-[11px] text-slate-500">Дата: {formatDate(selectedDelayEvent.date)}</p>
-                    {selectedDelayEventNextContact && (
-                      <p className="text-[11px] text-slate-500">
-                        Новый следующий контакт: {formatDate(selectedDelayEventNextContact)}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm text-slate-500">Событие не выбрано.</p>
-                )}
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-700">Предстоящие события</p>
-                  <span className="text-[11px] uppercase tracking-wide text-slate-400">
-                    {upcomingEvents.length} найдено
-                  </span>
-                </div>
-                {upcomingEvents.length ? (
-                  <div className="space-y-3">
-                    {upcomingEvents.map((event) => {
-                      const isSelected = selectedDelayEvent?.id === event.id;
-                      return (
-                        <button
-                          key={event.id}
-                          type="button"
-                          onClick={() => setSelectedDelayEventId(event.id)}
-                          className={`w-full text-left rounded-xl border px-4 py-3 transition ${
-                            isSelected
-                              ? 'border-sky-500 bg-sky-50 shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                              <p className="text-[12px] text-slate-500">{event.description}</p>
-                            </div>
-                            <span className="text-[12px] font-semibold text-slate-600">
-                              {formatDate(event.date)}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500">Предстоящие события не найдены.</p>
-                )}
-                {pastEvents.length > 0 && (
-                  <details className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <summary className="cursor-pointer text-sm font-semibold text-slate-600">
-                      Старые события ({pastEvents.length})
-                    </summary>
-                    <div className="mt-3 space-y-2">
-                      {pastEvents.map((event) => (
-                        <div key={event.id} className="flex items-start justify-between">
-                          <div>
-                            <p className="text-[13px] font-semibold text-slate-900">{event.title}</p>
-                            <p className="text-[12px] text-slate-500">{event.description}</p>
-                          </div>
-                          <span className="text-[11px] text-slate-500">{formatDate(event.date)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                )}
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Полисы в сделке</p>
-                {relatedPolicies.length ? (
-                  <div className="space-y-2">
-                    {relatedPolicies.map((policy) => (
-                      <div
-                        key={policy.id}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-3"
-                      >
-                        <p className="text-sm font-semibold text-slate-900">
-                          {policy.number} · {policy.insuranceType}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {policy.insuranceCompany} · {formatDate(policy.startDate)} – {formatDate(policy.endDate)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500">Привязанные полисы не найдены.</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-              <button
-                type="button"
-                onClick={() => setIsDelayModalOpen(false)}
-                className="px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200 transition"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleDelayModalConfirm}
-                disabled={!selectedDelayEvent || !selectedDelayEventNextContact || isSchedulingDelay}
-                className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {isSchedulingDelay ? 'Сохраняю...' : 'Перенести следующий контакт'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <DealDelayModal
+          deal={selectedDeal}
+          selectedEvent={selectedDelayEvent}
+          selectedEventNextContact={selectedDelayEventNextContact}
+          upcomingEvents={upcomingEvents}
+          pastEvents={pastEvents}
+          relatedPolicies={relatedPolicies}
+          isSchedulingDelay={isSchedulingDelay}
+          onClose={() => setIsDelayModalOpen(false)}
+          onEventSelect={setSelectedDelayEventId}
+          onConfirm={handleDelayModalConfirm}
+        />
       )}
       {isMergeModalOpen && selectedDeal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-slate-900">Объединить сделки</h3>
-              <button
-                type="button"
-                onClick={() => setIsMergeModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Целевая сделка</p>
-                <p className="text-base font-semibold text-slate-900">{selectedDeal.title}</p>
-                <p className="text-xs text-slate-500">
-                  Клиент: {selectedClient?.name || selectedDeal.clientName || '—'}
-                </p>
-              </div>
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-slate-700">Выберите сделки для переноса</p>
-                <input
-                  type="search"
-                  value={mergeSearch}
-                  onChange={(event) => setMergeSearch(event.target.value)}
-                  placeholder="Поиск по названию сделки"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                />
-                {mergeList.length ? (
-                  mergeList.map((deal: Deal) => (
-                    <label
-                      key={deal.id}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={mergeSources.includes(deal.id)}
-                        onChange={() => toggleMergeSource(deal.id)}
-                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                      />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-                        <p className="text-[11px] text-slate-500">
-                          Стадия: {deal.stageName || '—'} · Статус:{' '}
-                          {statusLabels[deal.status as DealStatus]}
-                        </p>
-                      </div>
-                    </label>
-                  ))
-                ) : (
-                  !isMergeSearchLoading && (
-                    <p className="text-sm text-slate-500">
-                      {isMergeSearchActive
-                        ? `По запросу "${mergeQuery}" ничего не найдено.`
-                        : 'Нет других активных сделок у клиента.'}
-                    </p>
-                  )
-                )}
-                {isMergeSearchLoading && (
-                  <p className="text-sm text-slate-500">Поиск...</p>
-                )}
-              </div>
-              {mergeError && (
-                <p className="text-sm font-medium text-rose-600">{mergeError}</p>
-              )}
-            </div>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-              <button
-                type="button"
-                onClick={() => setIsMergeModalOpen(false)}
-                className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleMergeSubmit}
-                disabled={isMerging || !mergeSources.length}
-                className="px-3 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isMerging ? 'Объединяем...' : 'Объединить сделки'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <DealMergeModal
+          targetDeal={selectedDeal}
+          selectedClientName={selectedClientDisplayName}
+          mergeSearch={mergeSearch}
+          onMergeSearchChange={setMergeSearch}
+          mergeList={mergeList}
+          mergeSources={mergeSources}
+          toggleMergeSource={toggleMergeSource}
+          mergeError={mergeError}
+          isLoading={isMergeSearchLoading}
+          isActiveSearch={isMergeSearchActive}
+          searchQuery={mergeQuery}
+          isMerging={isMerging}
+          onClose={() => setIsMergeModalOpen(false)}
+          onSubmit={handleMergeSubmit}
+        />
       )}
     </>
   );
