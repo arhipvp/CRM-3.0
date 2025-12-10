@@ -1,10 +1,9 @@
-import React from 'react';
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Deal, DealEvent, Policy } from '../../../../types';
+import type { Deal, Policy } from '../../../../types';
 import { DealDelayModal, DealMergeModal } from '../DealDetailsModals';
+import type { DealEvent } from '../eventUtils';
 
 const deal: Deal = {
   id: 'deal-1',
@@ -13,6 +12,8 @@ const deal: Deal = {
   clientName: 'Client A',
   status: 'open',
   createdAt: '2024-01-01T00:00:00Z',
+  quotes: [],
+  documents: [],
 };
 
 const upcomingEvent: DealEvent = {
@@ -41,6 +42,7 @@ const policies: Policy[] = [
     dealId: deal.id,
     isVehicle: true,
     createdAt: '2024-01-01T00:00:00Z',
+    status: 'active',
   },
 ];
 
@@ -90,6 +92,8 @@ describe('DealDetailsModals', () => {
         clientName: 'Client A',
         status: 'open',
         createdAt: '2024-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
       },
       {
         id: 'deal-2',
@@ -98,6 +102,8 @@ describe('DealDetailsModals', () => {
         clientName: 'Client A',
         status: 'open',
         createdAt: '2024-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
       },
     ];
 

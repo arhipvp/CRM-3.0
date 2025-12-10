@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { Deal, DealEvent, DealStatus, Policy } from '../../../types';
+import { Deal, Policy } from '../../../types';
+import type { DealEvent } from './eventUtils';
 import { formatDate, statusLabels } from './helpers';
 
 interface DealDelayModalProps {
