@@ -4,7 +4,7 @@ import { ActivityLog, ChatMessage, Deal, Client, FinancialRecord, Payment, Polic
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
-import type { EditDealFormValues } from '../forms/EditDealForm';
+import type { DealFormValues } from '../forms/DealForm';
 import { DealDetailsPanel } from './dealsView/DealDetailsPanel';
 import { DealsList } from './dealsView/DealsList';
 import { useSelectedDeal } from '../../hooks/useSelectedDeal';
@@ -23,7 +23,7 @@ interface DealsViewProps {
   onSelectDeal: (dealId: string) => void;
   onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
-  onUpdateDeal: (dealId: string, data: EditDealFormValues) => Promise<void>;
+  onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;

@@ -8,7 +8,7 @@ import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
 import { ClientForm } from './components/forms/ClientForm';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
-import type { EditDealFormValues } from './components/forms/EditDealForm';
+import type { DealFormValues } from './components/forms/DealForm';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import { Modal } from './components/Modal';
 import { formatErrorMessage } from './utils/formatErrorMessage';
@@ -708,7 +708,7 @@ const AppContent: React.FC = () => {
   );
 
   const handleUpdateDeal = useCallback(
-    async (dealId: string, data: EditDealFormValues) => {
+    async (dealId: string, data: DealFormValues) => {
       invalidateDealsCache();
       setIsSyncing(true);
       try {

@@ -30,7 +30,7 @@ import {
 } from '../../../api';
 
 import { ActivityTimeline } from '../../ActivityTimeline';
-import { EditDealForm, EditDealFormValues } from '../../forms/EditDealForm';
+import { DealForm, DealFormValues } from '../../forms/DealForm';
 import { AddTaskForm, AddTaskFormValues } from '../../forms/AddTaskForm';
 import { AddPaymentForm, AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import {
@@ -78,7 +78,7 @@ interface DealDetailsPanelProps {
   onSelectDeal: (dealId: string) => void;
   onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
-  onUpdateDeal: (dealId: string, data: EditDealFormValues) => Promise<void>;
+  onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onMergeDeals: (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
@@ -851,7 +851,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       if (!selectedDeal) {
         return;
       }
-      const payload: EditDealFormValues = {
+      const payload: DealFormValues = {
         title: selectedDeal.title,
         description: selectedDeal.description || '',
         clientId: selectedDeal.clientId,
@@ -1978,19 +1978,40 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 ✕
               </button>
             </div>
-            <div className="p-6">
-              <EditDealForm
+            <div className="p-6 space-y-3">
+              <DealForm
                 key={selectedDeal.id}
-                deal={selectedDeal}
                 clients={clients}
                 users={users}
+                initialValues={{
+                  title: selectedDeal.title,
+                  description: selectedDeal.description ?? '',
+                  clientId: selectedDeal.clientId,
+                  executorId: selectedDeal.executor ?? null,
+                  sellerId: selectedDeal.seller ?? null,
+                  source: selectedDeal.source ?? '',
+                  nextContactDate: selectedDeal.nextContactDate ?? null,
+                  expectedClose: selectedDeal.expectedClose ?? null,
+                }}
+                mode="edit"
+                showSellerField
+                showNextContactField
+                quickNextContactOptions={quickInlineDateOptions}
+                expectedCloseRequired
+                showAddClientButton={false}
+                onQuickNextContactShift={handleQuickNextContactShift}
                 onSubmit={async (data) => {
                   await onUpdateDeal(selectedDeal.id, data);
                   setIsEditingDeal(false);
                 }}
-                onCancel={() => setIsEditingDeal(false)}
-                onQuickNextContactShift={handleQuickNextContactShift}
               />
+              <button
+                type="button"
+                onClick={() => setIsEditingDeal(false)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                Отмена
+              </button>
             </div>
           </div>
         </div>

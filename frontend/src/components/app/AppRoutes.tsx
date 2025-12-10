@@ -22,7 +22,7 @@ import type {
 import type { AddFinancialRecordFormValues } from '../../components/forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../../components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
-import type { EditDealFormValues } from '../../components/forms/EditDealForm';
+import type { DealFormValues } from '../../components/forms/DealForm';
 
 export interface AppRoutesProps {
   deals: Deal[];
@@ -40,7 +40,7 @@ export interface AppRoutesProps {
   onSelectDeal: (dealId: string) => void;
   onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
-  onUpdateDeal: (dealId: string, data: EditDealFormValues) => Promise<void>;
+  onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;

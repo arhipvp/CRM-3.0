@@ -4,42 +4,91 @@ import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
 
+export interface DealFormValues {
+  title: string;
+  clientId: string;
+  description?: string;
+  expectedClose?: string | null;
+  executorId?: string | null;
+  source?: string | null;
+  sellerId?: string | null;
+  nextContactDate?: string | null;
+}
+
+interface QuickNextContactOption {
+  label: string;
+  days: number;
+}
+
 interface DealFormProps {
   clients: Client[];
   users: User[];
   defaultExecutorId?: string | null;
-  onSubmit: (data: {
-    title: string;
-    clientId: string;
-    description?: string;
-    expectedClose?: string | null;
-    executorId?: string | null;
-    source?: string;
-  }) => Promise<void>;
+  initialValues?: Partial<DealFormValues>;
+  mode?: 'create' | 'edit';
+  onSubmit: (data: DealFormValues) => Promise<void>;
   preselectedClientId?: string | null;
   onPreselectedClientConsumed?: () => void;
-  onRequestAddClient: () => void;
+  onRequestAddClient?: () => void;
+  onQuickNextContactShift?: (newNextContactDate: string) => Promise<void>;
+  showAddClientButton?: boolean;
+  showSellerField?: boolean;
+  showNextContactField?: boolean;
+  quickNextContactOptions?: QuickNextContactOption[];
+  expectedCloseRequired?: boolean;
+  expectedCloseLabel?: string;
+  nextContactLabel?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
+  submitErrorMessage?: string;
 }
+
+const DEFAULT_QUICK_NEXT_CONTACT_OPTIONS: QuickNextContactOption[] = [
+  { label: 'завтра', days: 1 },
+  { label: '+2 дня', days: 2 },
+  { label: '+5 дней', days: 5 },
+];
+
+const parseDateValue = (value?: string | null) => {
+  if (!value) {
+    return new Date();
+  }
+  const [year, month, day] = value.split('-').map((segment) => Number(segment));
+  if ([year, month, day].some((segment) => Number.isNaN(segment))) {
+    return new Date();
+  }
+  return new Date(year, month - 1, day);
+};
+
+const formatDateForInput = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export const DealForm: React.FC<DealFormProps> = ({
   clients,
   users,
   defaultExecutorId,
+  initialValues,
+  mode = 'create',
   onSubmit,
   preselectedClientId,
   onPreselectedClientConsumed,
   onRequestAddClient,
+  onQuickNextContactShift,
+  showAddClientButton = true,
+  showSellerField = false,
+  showNextContactField = false,
+  quickNextContactOptions,
+  expectedCloseRequired = false,
+  expectedCloseLabel,
+  nextContactLabel = 'Следующий контакт',
+  submitLabel,
+  submittingLabel,
+  submitErrorMessage,
 }) => {
-  const [title, setTitle] = useState('');
-  const [clientId, setClientId] = useState(clients[0]?.id ?? '');
-  const [clientQuery, setClientQuery] = useState(clients[0]?.name ?? '');
-  const [description, setDescription] = useState('');
-  const [source, setSource] = useState('');
-  const [expectedClose, setExpectedClose] = useState<string>('');
-  const [executorId, setExecutorId] = useState(defaultExecutorId ?? '');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setSubmitting] = useState(false);
-  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const clientsById = useMemo(() => {
     const map = new Map<string, Client>();
     clients.forEach((client) => {
@@ -48,18 +97,85 @@ export const DealForm: React.FC<DealFormProps> = ({
     return map;
   }, [clients]);
 
+  const initialTitle = initialValues?.title ?? '';
+  const initialDescription = initialValues?.description ?? '';
+  const initialSource = initialValues?.source ?? '';
+  const initialExpectedClose = initialValues?.expectedClose ?? '';
+  const initialExecutorId = initialValues?.executorId ?? defaultExecutorId ?? '';
+  const initialSellerId = initialValues?.sellerId ?? '';
+  const initialNextContactDate = initialValues?.nextContactDate ?? '';
+  const initialClientId =
+    initialValues?.clientId ?? preselectedClientId ?? clients[0]?.id ?? '';
+  const initialClientQuery = initialClientId
+    ? clientsById.get(initialClientId)?.name ?? clients[0]?.name ?? ''
+    : clients[0]?.name ?? '';
+
+  const [title, setTitle] = useState(initialTitle);
+  const [clientId, setClientId] = useState(initialClientId);
+  const [clientQuery, setClientQuery] = useState(initialClientQuery);
+  const [description, setDescription] = useState(initialDescription);
+  const [source, setSource] = useState(initialSource);
+  const [expectedClose, setExpectedClose] = useState(initialExpectedClose);
+  const [executorId, setExecutorId] = useState(initialExecutorId);
+  const [sellerId, setSellerId] = useState(initialSellerId);
+  const [nextContactDate, setNextContactDate] = useState(initialNextContactDate);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setSubmitting] = useState(false);
+  const [isQuickSaving, setIsQuickSaving] = useState(false);
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+
   useEffect(() => {
-    if (!preselectedClientId) {
+    setTitle(initialTitle);
+  }, [initialTitle]);
+
+  useEffect(() => {
+    setDescription(initialDescription);
+  }, [initialDescription]);
+
+  useEffect(() => {
+    setSource(initialSource);
+  }, [initialSource]);
+
+  useEffect(() => {
+    setExpectedClose(initialExpectedClose);
+  }, [initialExpectedClose]);
+
+  useEffect(() => {
+    if (initialValues?.executorId !== undefined) {
+      setExecutorId(initialValues.executorId ?? '');
       return;
     }
-    const preselectedClient = clientsById.get(preselectedClientId);
-    if (!preselectedClient) {
+    setExecutorId(defaultExecutorId ?? '');
+  }, [initialValues?.executorId, defaultExecutorId]);
+
+  useEffect(() => {
+    setSellerId(initialSellerId);
+  }, [initialSellerId]);
+
+  useEffect(() => {
+    setNextContactDate(initialNextContactDate);
+  }, [initialNextContactDate]);
+
+  useEffect(() => {
+    if (!initialValues?.clientId) {
       return;
     }
-    setClientId(preselectedClient.id);
-    setClientQuery(preselectedClient.name);
+    setClientId(initialValues.clientId);
+    setClientQuery(clientsById.get(initialValues.clientId)?.name ?? '');
+  }, [clientsById, initialValues?.clientId]);
+
+  useEffect(() => {
+    if (!preselectedClientId || initialValues?.clientId) {
+      return;
+    }
+    const preselected = clientsById.get(preselectedClientId);
+    if (!preselected) {
+      return;
+    }
+    setClientId(preselected.id);
+    setClientQuery(preselected.name);
     onPreselectedClientConsumed?.();
-  }, [clientsById, onPreselectedClientConsumed, preselectedClientId]);
+  }, [clientsById, initialValues?.clientId, onPreselectedClientConsumed, preselectedClientId]);
 
   useEffect(() => {
     if (!clients.length) {
@@ -103,10 +219,25 @@ export const DealForm: React.FC<DealFormProps> = ({
     const resolvedClient = resolveClientFromQuery();
     const selectedClientId = resolvedClient?.id ?? clientId;
 
-    if (!trimmedTitle || !selectedClientId) {
-      setError('Необходимо выбрать клиента');
+    if (!trimmedTitle) {
+      setError('Название сделки обязательно');
       return;
     }
+    if (!selectedClientId) {
+      setError('Клиент обязателен');
+      return;
+    }
+
+    const payload: DealFormValues = {
+      title: trimmedTitle,
+      clientId: selectedClientId,
+      description: description.trim() || undefined,
+      expectedClose: expectedClose || null,
+      executorId: executorId || undefined,
+      source: source.trim() || undefined,
+      ...(showSellerField ? { sellerId: sellerId || null } : {}),
+      ...(showNextContactField ? { nextContactDate: nextContactDate || null } : {}),
+    };
 
     setError(null);
     setSubmitting(true);
@@ -115,16 +246,14 @@ export const DealForm: React.FC<DealFormProps> = ({
         setClientId(resolvedClient.id);
         setClientQuery(resolvedClient.name);
       }
-      await onSubmit({
-        title: trimmedTitle,
-        clientId: selectedClientId,
-        description: description.trim() || undefined,
-        expectedClose: expectedClose || null,
-        executorId: executorId || undefined,
-        source: source.trim() || undefined,
-      });
+      await onSubmit(payload);
     } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось создать сделку'));
+      setError(
+        formatErrorMessage(
+          err,
+          submitErrorMessage ?? (mode === 'edit' ? 'Не удалось обновить сделку' : 'Не удалось создать сделку')
+        )
+      );
     } finally {
       setSubmitting(false);
     }
@@ -135,6 +264,37 @@ export const DealForm: React.FC<DealFormProps> = ({
     setClientQuery(client.name);
     setShowClientSuggestions(false);
   };
+
+  const quickDateOptions = quickNextContactOptions ?? DEFAULT_QUICK_NEXT_CONTACT_OPTIONS;
+
+  const handleQuickNextContact = async (days: number) => {
+    if (isQuickSaving) {
+      return;
+    }
+    setError(null);
+    const baseDate = parseDateValue(nextContactDate);
+    const targetDate = new Date(baseDate);
+    targetDate.setDate(targetDate.getDate() + days);
+    const nextValue = formatDateForInput(targetDate);
+    setNextContactDate(nextValue);
+
+    if (!onQuickNextContactShift) {
+      return;
+    }
+
+    setIsQuickSaving(true);
+    try {
+      await onQuickNextContactShift(nextValue);
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Не удалось обновить дату следующего контакта'));
+    } finally {
+      setIsQuickSaving(false);
+    }
+  };
+
+  const shouldShowAddClient = showAddClientButton && Boolean(onRequestAddClient);
+  const submitText = submitLabel ?? (mode === 'edit' ? 'Сохранить' : 'Создать сделку');
+  const submittingText = submittingLabel ?? 'Сохраняем...';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -190,16 +350,37 @@ export const DealForm: React.FC<DealFormProps> = ({
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={onRequestAddClient}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              + Клиент
-            </button>
+            {shouldShowAddClient && (
+              <button
+                type="button"
+                onClick={onRequestAddClient}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                + Клиент
+              </button>
+            )}
           </div>
         </div>
       </div>
+      {showSellerField && (
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Продавец</label>
+          <select
+            value={sellerId}
+            onChange={(event) => setSellerId(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          >
+            <option value="">Не выбран</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.firstName || user.lastName
+                  ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+                  : user.username}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div>
         <label className="block text-sm font-medium text-slate-700">Исполнитель</label>
         <select
@@ -236,14 +417,40 @@ export const DealForm: React.FC<DealFormProps> = ({
           placeholder="Источник сделки"
         />
       </div>
-
+      {showNextContactField && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-slate-700">{nextContactLabel}</label>
+          <input
+            type="date"
+            value={nextContactDate}
+            onChange={(event) => setNextContactDate(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {quickDateOptions.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => handleQuickNextContact(option.days)}
+                disabled={isQuickSaving}
+                className="text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div>
-        <label className="block text-sm font-medium text-slate-700">Ожидаемая дата закрытия</label>
+        <label className="block text-sm font-medium text-slate-700">
+          {expectedCloseLabel ?? (expectedCloseRequired ? 'Застраховать до *' : 'Ожидаемая дата закрытия')}
+        </label>
         <input
           type="date"
           value={expectedClose}
           onChange={(event) => setExpectedClose(event.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          required={expectedCloseRequired}
         />
       </div>
       <button
@@ -251,7 +458,7 @@ export const DealForm: React.FC<DealFormProps> = ({
         disabled={isSubmitting || !clients.length}
         className="w-full bg-sky-600 text-white rounded-lg py-2 font-semibold text-sm disabled:opacity-60"
       >
-        {isSubmitting ? 'Сохраняем...' : 'Создать сделку'}
+        {isSubmitting ? submittingText : submitText}
       </button>
     </form>
   );
