@@ -165,7 +165,11 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   {PRIORITY_LABELS[task.priority] || task.priority}
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.assigneeName || task.assignee || '-'}
+                  <ColoredLabel
+                    value={task.assigneeName || task.assignee || undefined}
+                    fallback="-"
+                    className="font-semibold text-sm text-slate-600"
+                  />
                 </td>
                 <td className="px-5 py-4 text-slate-600 align-top">
                   {task.dueAt ? formatDate(task.dueAt) : '-'}
