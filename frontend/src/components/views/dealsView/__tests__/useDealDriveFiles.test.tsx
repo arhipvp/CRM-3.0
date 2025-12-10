@@ -12,6 +12,8 @@ vi.mock('../../../../api', () => ({
 }));
 
 import { fetchDealDriveFiles, recognizeDealPolicies } from '../../../../api';
+const fetchDealDriveFilesMock = vi.mocked(fetchDealDriveFiles);
+const recognizeDealPoliciesMock = vi.mocked(recognizeDealPolicies);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -79,7 +81,7 @@ describe('useDealDriveFiles', () => {
       isFolder: false,
     };
     const folderId = 'folder-new';
-    fetchDealDriveFiles.mockResolvedValueOnce({ files: [file], folderId });
+    fetchDealDriveFilesMock.mockResolvedValueOnce({ files: [file], folderId });
 
     const onDriveFolderCreated = vi.fn();
     const { resultRef } = renderDriveHook(deal, { onDriveFolderCreated });
@@ -88,7 +90,7 @@ describe('useDealDriveFiles', () => {
       await resultRef.current?.loadDriveFiles();
     });
 
-    expect(fetchDealDriveFiles).toHaveBeenCalledWith(deal.id, false);
+    expect(fetchDealDriveFilesMock).toHaveBeenCalledWith(deal.id, false);
     expect(resultRef.current?.sortedDriveFiles).toEqual([file]);
     expect(onDriveFolderCreated).toHaveBeenCalledWith(deal.id, folderId);
   });
@@ -126,8 +128,8 @@ describe('useDealDriveFiles', () => {
       data: { foo: 'bar' },
       fileName: 'policy.pdf',
     };
-    fetchDealDriveFiles.mockResolvedValueOnce({ files: [file], folderId: null });
-    recognizeDealPolicies.mockResolvedValueOnce({ results: [parsedResult] });
+    fetchDealDriveFilesMock.mockResolvedValueOnce({ files: [file], folderId: null });
+    recognizeDealPoliciesMock.mockResolvedValueOnce({ results: [parsedResult] });
 
     const onPolicyDraftReady = vi.fn();
     const { resultRef } = renderDriveHook(deal, { onPolicyDraftReady });
@@ -145,7 +147,7 @@ describe('useDealDriveFiles', () => {
     });
 
     await waitFor(() => {
-      expect(recognizeDealPolicies).toHaveBeenCalledWith(deal.id, [file.id]);
+      expect(recognizeDealPoliciesMock).toHaveBeenCalledWith(deal.id, [file.id]);
       expect(onPolicyDraftReady).toHaveBeenCalledWith(
         deal.id,
         parsedResult.data,

@@ -13,6 +13,8 @@ vi.mock('../../../../api', () => ({
 }));
 
 import { fetchDealNotes, createNote } from '../../../../api';
+const fetchDealNotesMock = vi.mocked(fetchDealNotes);
+const createNoteMock = vi.mocked(createNote);
 
 const renderDealNotesHook = (dealId?: string) => {
   const resultRef: { current: ReturnType<typeof useDealNotes> | null } = {
@@ -46,12 +48,12 @@ describe('useDealNotes', () => {
         updatedAt: '2025-01-01T00:00:00Z',
       },
     ];
-    fetchDealNotes.mockResolvedValueOnce(initialNotes);
+    fetchDealNotesMock.mockResolvedValueOnce(initialNotes);
 
     const { resultRef } = renderDealNotesHook('deal-1');
 
     await waitFor(() => {
-      expect(fetchDealNotes).toHaveBeenCalledWith('deal-1', false);
+      expect(fetchDealNotesMock).toHaveBeenCalledWith('deal-1', false);
     });
 
     await waitFor(() => {
@@ -63,7 +65,7 @@ describe('useDealNotes', () => {
     });
 
     await waitFor(() => {
-      expect(fetchDealNotes).toHaveBeenCalledWith('deal-1', true);
+      expect(fetchDealNotesMock).toHaveBeenCalledWith('deal-1', true);
     });
   });
 
@@ -88,8 +90,14 @@ describe('useDealNotes', () => {
       },
     ];
 
-    fetchDealNotes.mockResolvedValueOnce(firstBatch).mockResolvedValueOnce(secondBatch);
-    createNote.mockResolvedValue(undefined);
+    fetchDealNotesMock.mockResolvedValueOnce(firstBatch).mockResolvedValueOnce(secondBatch);
+    createNoteMock.mockResolvedValueOnce({
+      id: 'note-3',
+      dealId: 'deal-1',
+      body: 'New note',
+      createdAt: '2025-01-03T00:00:00Z',
+      updatedAt: '2025-01-03T00:00:00Z',
+    } as Note);
 
     const { resultRef } = renderDealNotesHook('deal-1');
 
@@ -103,7 +111,7 @@ describe('useDealNotes', () => {
       await resultRef.current?.addNote();
     });
 
-    expect(createNote).toHaveBeenCalledWith('deal-1', 'New note');
+    expect(createNoteMock).toHaveBeenCalledWith('deal-1', 'New note');
     await waitFor(() => expect(fetchDealNotes).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(resultRef.current?.noteDraft).toBe(''));
   });
