@@ -5,28 +5,16 @@ import {
   ChatMessage,
   Client,
   Deal,
-  DriveFile,
   FinancialRecord,
-  Note,
   Payment,
   Policy,
-  PolicyRecognitionResult,
   Quote,
   Task,
   User,
 } from '../../../types';
 import { formatErrorMessage } from '../../../utils/formatErrorMessage';
 
-import {
-  fetchDealDriveFiles,
-  uploadDealDriveFile,
-  fetchDealNotes,
-  createNote,
-  archiveNote,
-  restoreNote,
-  recognizeDealPolicies,
-  fetchDeals,
-} from '../../../api';
+import { fetchDeals } from '../../../api';
 
 import { ActivityTimeline } from '../../ActivityTimeline';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
@@ -59,6 +47,8 @@ import { DealHeader } from './DealHeader';
 import { DealActions } from './DealActions';
 import { DealNotesSection } from './DealNotesSection';
 import { DealDateControls } from './DealDateControls';
+import { useDealNotes } from './hooks/useDealNotes';
+import { useDealDriveFiles } from './hooks/useDealDriveFiles';
 
 
 interface DealDetailsPanelProps {
@@ -319,67 +309,49 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const [policySortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+  const {
+    isDriveLoading,
+    driveError,
+    selectedDriveFileIds,
+    canRecognizeSelectedFiles,
+    isRecognizing,
+    recognitionResults,
+    recognitionMessage,
+    sortedDriveFiles,
+    loadDriveFiles,
+    handleDriveFileUpload,
+    toggleDriveFileSelection,
+    handleRecognizePolicies,
+    resetDriveState,
+  } = useDealDriveFiles({
+    selectedDeal,
+    onDriveFolderCreated,
+    onRefreshPolicies,
+    onPolicyDraftReady,
+  });
 
-  const [isDriveLoading, setIsDriveLoading] = useState(false);
-
-  const [driveError, setDriveError] = useState<string | null>(null);
-
-  const [selectedDriveFileIds, setSelectedDriveFileIds] = useState<string[]>([]);
-
-  const selectedDriveFiles = useMemo(
-    () =>
-      selectedDriveFileIds
-        .map((id) => driveFiles.find((file) => file.id === id))
-        .filter((file): file is DriveFile => Boolean(file)),
-    [driveFiles, selectedDriveFileIds]
-  );
+  const {
+    notes,
+    notesLoading,
+    notesFilter,
+    noteDraft,
+    notesError,
+    notesAction,
+    setNoteDraft,
+    setNotesFilter,
+    addNote: handleAddNote,
+    archiveNote: handleArchiveNote,
+    restoreNote: handleRestoreNote,
+  } = useDealNotes(selectedDeal?.id);
 
   const [nextContactInputValue, setNextContactInputValue] = useState('');
   const [expectedCloseInputValue, setExpectedCloseInputValue] = useState('');
-
-  const canRecognizeSelectedFiles =
-    selectedDriveFileIds.length > 0 &&
-    selectedDriveFiles.length === selectedDriveFileIds.length &&
-    selectedDriveFiles.every(
-      (file) => file.mimeType?.toLowerCase() === 'application/pdf'
-    );
-
-  const [isRecognizing, setRecognizing] = useState(false);
-
-  const [recognitionResults, setRecognitionResults] = useState<PolicyRecognitionResult[]>([]);
-
-  const [recognitionMessage, setRecognitionMessage] = useState<string | null>(null);
-
-  const [notes, setNotes] = useState<Note[]>([]);
-
-  const [notesLoading, setNotesLoading] = useState(false);
-
-  const [notesFilter, setNotesFilter] = useState<'active' | 'archived'>('active');
-
-  const [noteDraft, setNoteDraft] = useState('');
-
-  const [notesError, setNotesError] = useState<string | null>(null);
-
-  const [notesAction, setNotesAction] = useState<string | null>(null);
 
 
 
   useEffect(() => {
 
     setActiveTab('overview');
-
-  }, [selectedDeal?.id]);
-
-
-
-  useEffect(() => {
-
-    setSelectedDriveFileIds([]);
-
-    setRecognitionResults([]);
-
-    setRecognitionMessage(null);
 
   }, [selectedDeal?.id]);
 
@@ -969,182 +941,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
   };
 
-  const handleAddNote = async () => {
-
-    if (!selectedDeal) {
-
-      return;
-
-    }
-
-    const trimmed = noteDraft.trim();
-
-    if (!trimmed) {
-
-      return;
-
-    }
-
-
-
-    setNotesAction('create');
-
-    setNotesError(null);
-
-    try {
-
-      await createNote(selectedDeal.id, trimmed);
-
-      setNoteDraft('');
-
-      await loadNotes(notesFilter);
-
-    } catch (err) {
-
-      console.error('Ошибка создания заметки:', err);
-
-      setNotesError(formatErrorMessage(err, 'Не удалось создать заметку'));
-
-    } finally {
-
-      setNotesAction(null);
-
-    }
-
-  };
-
-
-
-  const handleArchiveNote = async (noteId: string) => {
-
-    setNotesAction(noteId);
-
-    setNotesError(null);
-
-    try {
-
-      await archiveNote(noteId);
-
-      await loadNotes(notesFilter);
-
-    } catch (err) {
-
-      console.error('Ошибка удаления заметки:', err);
-
-      setNotesError(formatErrorMessage(err, 'Не удалось удалить заметку'));
-
-    } finally {
-
-      setNotesAction(null);
-
-    }
-
-  };
-
-
-
-  const handleRestoreNote = async (noteId: string) => {
-
-    setNotesAction(noteId);
-
-    setNotesError(null);
-
-    try {
-
-      await restoreNote(noteId);
-
-      setNotesFilter('active');
-
-    } catch (err) {
-
-      console.error('Ошибка восстановления заметки:', err);
-
-      setNotesError(formatErrorMessage(err, 'Не удалось восстановить заметку'));
-
-    } finally {
-
-      setNotesAction(null);
-
-    }
-
-  };
-
-
-
-  const loadDriveFiles = useCallback(async () => {
-
-    if (!selectedDeal) {
-
-      setDriveFiles([]);
-
-      setDriveError(null);
-
-      return;
-
-    }
-
-
-
-    setIsDriveLoading(true);
-
-    try {
-
-      const includeDeleted = Boolean(selectedDeal.deletedAt);
-
-      const { files, folderId } = await fetchDealDriveFiles(selectedDeal.id, includeDeleted);
-
-      setDriveFiles(files);
-
-      setDriveError(null);
-
-      if (folderId && folderId !== selectedDeal.driveFolderId) {
-
-        onDriveFolderCreated(selectedDeal.id, folderId);
-
-      }
-
-    } catch (err) {
-
-      console.error('Ошибка загрузки файлов Google Drive:', err);
-
-      setDriveFiles([]);
-
-      setDriveError(
-
-        formatErrorMessage(err, 'Не удалось загрузить файлы из Google Drive.')
-
-      );
-
-    } finally {
-
-      setIsDriveLoading(false);
-
-    }
-
-  }, [selectedDeal, onDriveFolderCreated]);
-
-
-
-  const handleDriveFileUpload = useCallback(
-
-    async (file: File) => {
-
-      if (!selectedDeal) {
-
-        return;
-
-      }
-
-      await uploadDealDriveFile(selectedDeal.id, file, isSelectedDealDeleted);
-
-    },
-
-    [selectedDeal, isSelectedDealDeleted]
-
-  );
-
-
-
   useEffect(() => {
 
     if (activeTab === 'files') {
@@ -1157,180 +953,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
 
 
-    setDriveFiles([]);
+    resetDriveState();
 
-    setDriveError(null);
-
-  }, [activeTab, loadDriveFiles]);
-
-
-
-  const toggleDriveFileSelection = useCallback((fileId: string) => {
-
-    setSelectedDriveFileIds((prev) =>
-
-      prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]
-
-    );
-
-  }, []);
-
-
-
-  const handleRecognizePolicies = useCallback(async () => {
-
-    if (!selectedDeal) {
-
-      return;
-
-    }
-
-    if (!selectedDriveFileIds.length) {
-
-      setRecognitionMessage('Выберите хотя бы один файл для распознавания.');
-
-      return;
-
-    }
-
-    if (!canRecognizeSelectedFiles) {
-
-      setRecognitionMessage('Можно распознавать только PDF-файлы.');
-
-      return;
-
-    }
-
-    setRecognizing(true);
-
-    setRecognitionMessage(null);
-
-    try {
-
-      const { results } = await recognizeDealPolicies(
-
-        selectedDeal.id,
-
-        selectedDriveFileIds
-
-      );
-
-      setRecognitionResults(results);
-
-      const parsed = results.find(
-        (result: PolicyRecognitionResult) => result.status === 'parsed' && result.data
-      );
-
-      if (parsed && onPolicyDraftReady) {
-
-        onPolicyDraftReady(
-          selectedDeal.id,
-          parsed.data!,
-          parsed.fileName ?? null,
-          parsed.fileId ?? null
-        );
-
-      }
-
-      if (onRefreshPolicies) {
-
-        await onRefreshPolicies();
-
-      }
-
-    } catch (error) {
-
-      console.error('Ошибка распознавания полисов:', error);
-
-      setRecognitionMessage(
-
-        error instanceof Error
-
-          ? error.message
-
-          : 'Не удалось распознать полисы. Попробуйте позже.'
-
-      );
-
-    } finally {
-
-      setRecognizing(false);
-
-    }
-
-  }, [
-
-    onRefreshPolicies,
-
-    onPolicyDraftReady,
-
-    selectedDeal,
-
-    selectedDriveFileIds,
-
-    canRecognizeSelectedFiles,
-
-  ]);
-
-
-
-  const loadNotes = useCallback(
-
-    async (filter: 'active' | 'archived') => {
-
-      const dealId = selectedDeal?.id;
-
-      if (!dealId) {
-
-        setNotes([]);
-
-        return;
-
-      }
-
-      setNotesLoading(true);
-
-      setNotesError(null);
-
-      try {
-
-        const fetchedNotes = await fetchDealNotes(dealId, filter === 'archived');
-
-        setNotes(fetchedNotes);
-
-      } catch (err) {
-
-        console.error('Ошибка загрузки заметок:', err);
-
-        setNotesError(formatErrorMessage(err, 'Не удалось загрузить заметки'));
-
-      } finally {
-
-        setNotesLoading(false);
-
-      }
-
-    },
-
-    [selectedDeal?.id]
-
-  );
-
-
-
-  useEffect(() => {
-
-    if (!selectedDeal?.id) {
-
-      setNotes([]);
-
-      return;
-
-    }
-
-    void loadNotes(notesFilter);
-
-  }, [selectedDeal?.id, loadNotes, notesFilter]);
+  }, [activeTab, loadDriveFiles, resetDriveState]);
 
 
 
@@ -1463,24 +1088,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     return [...active, ...done];
 
   }, [relatedTasks]);
-
-
-
-  const sortedDriveFiles = useMemo(() => {
-
-    return [...driveFiles].sort((a, b) => {
-
-      if (a.isFolder !== b.isFolder) {
-
-        return a.isFolder ? -1 : 1;
-
-      }
-
-      return a.name.localeCompare(b.name, 'ru-RU', { sensitivity: 'base' });
-
-    });
-
-  }, [driveFiles]);
 
 
 
