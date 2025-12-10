@@ -12,9 +12,8 @@ import {
   Task,
   User,
 } from '../../../types';
-import { formatErrorMessage } from '../../../utils/formatErrorMessage';
-
-import { fetchDeals } from '../../../api';
+import { useDealInlineDates } from './hooks/useDealInlineDates';
+import { useDealMerge } from './hooks/useDealMerge';
 
 import { ActivityTimeline } from '../../ActivityTimeline';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
@@ -166,13 +165,28 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     selectedDeal && (isCurrentUserSeller || currentUserIsAdmin)
   );
 
-  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
-
-  const [mergeSources, setMergeSources] = useState<string[]>([]);
-
-  const [mergeError, setMergeError] = useState<string | null>(null);
-
-  const [isMerging, setIsMerging] = useState(false);
+  const {
+    isMergeModalOpen,
+    openMergeModal,
+    closeMergeModal,
+    mergeSources,
+    mergeError,
+    mergeSearch,
+    setMergeSearch,
+    mergeList,
+    mergeQuery,
+    isMergeSearchActive,
+    isMergeSearchLoading,
+    isMerging,
+    toggleMergeSource,
+    handleMergeSubmit,
+  } = useDealMerge({
+    deals,
+    clients,
+    selectedDeal,
+    currentUser,
+    onMergeDeals,
+  });
 
   const [isDeletingDeal, setIsDeletingDeal] = useState(false);
   const [isRestoringDeal, setIsRestoringDeal] = useState(false);
@@ -181,102 +195,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
   const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
   const [selectedDelayEventId, setSelectedDelayEventId] = useState<string | null>(null);
-  const [mergeSearch, setMergeSearch] = useState('');
-  const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
-  const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
-
-  const [mergeResultingClientId, setMergeResultingClientId] = useState<string | undefined>(undefined);
-
-  const mergeCandidates = useMemo(() => {
-
-    if (!selectedDeal) {
-
-      return [];
-
-    }
-
-    return deals.filter((deal: Deal) => deal.id !== selectedDeal.id && !deal.deletedAt);
-
-  }, [deals, selectedDeal]);
-
-  const mergeClientOptions = useMemo(() => {
-
-    if (!selectedDeal) {
-
-      return [];
-
-    }
-
-    const ids = new Set<string>();
-
-    if (selectedDeal.clientId) {
-
-      ids.add(selectedDeal.clientId);
-
-    }
-
-    mergeCandidates.forEach((deal: Deal) => {
-
-      if (deal.clientId) {
-
-        ids.add(deal.clientId);
-
-      }
-
-    });
-
-    return Array.from(ids).map((clientId) => {
-
-      const client = clients.find((entity) => entity.id === clientId);
-
-      const fallbackName =
-
-        mergeCandidates.find((deal: Deal) => deal.clientId === clientId)?.clientName ||
-
-        selectedDeal.clientName;
-
-      const name = client?.name || fallbackName || '—';
-
-      return { id: clientId, name };
-
-    });
-
-  }, [clients, mergeCandidates, selectedDeal]);
-
-  useEffect(() => {
-
-    if (!isMergeModalOpen) {
-
-      setMergeResultingClientId(undefined);
-
-      return;
-
-    }
-
-    if (!mergeClientOptions.length) {
-
-      setMergeResultingClientId(undefined);
-
-      return;
-
-    }
-
-    setMergeResultingClientId((prev) => {
-
-      if (prev && mergeClientOptions.some((option) => option.id === prev)) {
-
-        return prev;
-
-      }
-
-      return mergeClientOptions[0].id;
-
-    });
-
-  }, [isMergeModalOpen, mergeClientOptions]);
-
-
-
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -343,9 +261,23 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     archiveNote: handleArchiveNote,
     restoreNote: handleRestoreNote,
   } = useDealNotes(selectedDeal?.id);
-
-  const [nextContactInputValue, setNextContactInputValue] = useState('');
-  const [expectedCloseInputValue, setExpectedCloseInputValue] = useState('');
+  const {
+    nextContactInputValue,
+    expectedCloseInputValue,
+    handleNextContactChange,
+    handleExpectedCloseChange,
+    handleNextContactBlur,
+    handleExpectedCloseBlur,
+    handleQuickNextContactShift,
+    quickInlineShift,
+    quickInlineDateOptions,
+    updateDealDates,
+  } = useDealInlineDates({
+    selectedDeal,
+    sortedDeals,
+    onUpdateDeal,
+    onSelectDeal,
+  });
 
 
 
@@ -354,146 +286,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     setActiveTab('overview');
 
   }, [selectedDeal?.id]);
-
-
-
-  useEffect(() => {
-
-    if (!isMergeModalOpen) {
-
-      setMergeSources([]);
-
-      setMergeError(null);
-
-      setMergeSearch('');
-
-      setMergeSearchResults([]);
-
-      setIsMergeSearchLoading(false);
-
-    }
-
-  }, [isMergeModalOpen]);
-
-
-
-  useEffect(() => {
-
-    setMergeSources([]);
-
-    setMergeError(null);
-
-    setMergeSearch('');
-
-    setMergeSearchResults([]);
-
-    setIsMergeSearchLoading(false);
-
-  }, [selectedDeal?.id]);
-
-
-
-  const mergeQuery = mergeSearch.trim();
-
-  useEffect(() => {
-
-    if (!mergeQuery) {
-
-      setMergeSearchResults([]);
-
-      setIsMergeSearchLoading(false);
-
-      return;
-
-    }
-
-
-
-    let isCancelled = false;
-
-
-
-    setIsMergeSearchLoading(true);
-
-
-
-    const handler = setTimeout(() => {
-
-      (async () => {
-
-        try {
-
-          const filters: Record<string, unknown> = {
-
-            search: mergeQuery,
-
-            page_size: 50,
-
-          };
-
-          if (currentUser?.id) {
-
-            filters.seller = currentUser.id;
-
-          }
-
-          const results = await fetchDeals(filters);
-
-          if (isCancelled) {
-
-            return;
-
-          }
-
-          const filtered = results.filter(
-
-            (deal) => deal.id !== selectedDeal?.id && !deal.deletedAt
-
-          );
-
-          setMergeSearchResults(filtered);
-
-        } catch (err) {
-
-          if (!isCancelled) {
-
-            console.error('Ошибка поиска сделок для объединения:', err);
-
-            setMergeSearchResults([]);
-
-          }
-
-        } finally {
-
-          if (!isCancelled) {
-
-            setIsMergeSearchLoading(false);
-
-          }
-
-        }
-
-      })();
-
-    }, 300);
-
-
-
-    return () => {
-
-      isCancelled = true;
-
-      clearTimeout(handler);
-
-    };
-
-  }, [currentUser?.id, mergeQuery, selectedDeal?.id]);
-
-
-
-  const isMergeSearchActive = Boolean(mergeQuery);
-
-  const mergeList = isMergeSearchActive ? mergeSearchResults : mergeCandidates;
 
 
 
@@ -576,69 +368,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     [onDeleteChatMessage, selectedDeal?.id]
 
   );
-
-
-
-  const toggleMergeSource = useCallback((dealId: string) => {
-
-    setMergeSources((prev) =>
-
-      prev.includes(dealId) ? prev.filter((id) => id !== dealId) : [...prev, dealId]
-
-    );
-
-    setMergeError(null);
-
-  }, []);
-
-
-
-
-  const handleMergeSubmit = useCallback(async () => {
-
-    if (!selectedDeal) {
-
-      return;
-
-    }
-
-    if (!mergeSources.length) {
-
-      setMergeError('Выберите сделки для объединения.');
-
-      return;
-
-    }
-
-    if (mergeClientOptions.length && !mergeResultingClientId) {
-
-      setMergeError('Выберите клиента для объединённой сделки.');
-
-      return;
-
-    }
-
-    setIsMerging(true);
-
-    setMergeError(null);
-
-    try {
-
-      await onMergeDeals(selectedDeal.id, mergeSources, mergeResultingClientId);
-
-      setIsMergeModalOpen(false);
-
-    } catch (err) {
-
-      setMergeError(formatErrorMessage(err, 'Во время объединения произошла ошибка.'));
-
-    } finally {
-
-      setIsMerging(false);
-
-    }
-
-  }, [mergeClientOptions.length, mergeResultingClientId, mergeSources, onMergeDeals, selectedDeal]);
 
 
 
@@ -726,8 +455,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       return;
     }
 
-    setIsMergeModalOpen(true);
-  }, [isSelectedDealDeleted, selectedDeal]);
+    openMergeModal();
+  }, [isSelectedDealDeleted, openMergeModal, selectedDeal]);
 
 
 
@@ -818,110 +547,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
 
   };
-
-  const updateDealDates = useCallback(
-    async (fields: { nextContactDate?: string | null; expectedClose?: string | null }) => {
-      if (!selectedDeal) {
-        return;
-      }
-      const payload: DealFormValues = {
-        title: selectedDeal.title,
-        description: selectedDeal.description || '',
-        clientId: selectedDeal.clientId,
-        source: selectedDeal.source ?? null,
-        nextContactDate: fields.nextContactDate ?? selectedDeal.nextContactDate ?? null,
-        expectedClose: fields.expectedClose ?? selectedDeal.expectedClose ?? null,
-      };
-      await onUpdateDeal(selectedDeal.id, payload);
-    },
-    [onUpdateDeal, selectedDeal]
-  );
-
-
-
-  const parseDateOrToday = (value?: string | null) => {
-    if (!value) {
-      return new Date();
-    }
-    const [year, month, day] = value.split('-').map((segment) => Number(segment));
-    if ([year, month, day].some((segment) => Number.isNaN(segment))) {
-      return new Date();
-    }
-    return new Date(year, month - 1, day);
-  };
-
-  const formatDateForInput = (value: Date) => {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, '0');
-    const day = String(value.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  useEffect(() => {
-    setNextContactInputValue(selectedDeal?.nextContactDate ?? '');
-  }, [selectedDeal?.nextContactDate]);
-
-  useEffect(() => {
-    setExpectedCloseInputValue(selectedDeal?.expectedClose ?? '');
-  }, [selectedDeal?.expectedClose]);
-
-  const handleInlineDateSave = useCallback(
-    async (
-      field: 'nextContactDate' | 'expectedClose',
-      rawValue: string,
-      options?: { selectTopDeal?: boolean }
-    ) => {
-      if (!selectedDeal) return;
-
-      const value = rawValue || null;
-
-      try {
-        await updateDealDates(
-          field === 'nextContactDate'
-            ? { nextContactDate: value }
-            : { expectedClose: value }
-        );
-
-        if (field === 'nextContactDate') {
-          setNextContactInputValue(value ?? '');
-        }
-        if (field === 'expectedClose') {
-          setExpectedCloseInputValue(value ?? '');
-        }
-
-        if (options?.selectTopDeal) {
-          const topDeal = sortedDeals[0];
-          if (topDeal && topDeal.id !== selectedDeal.id) {
-            onSelectDeal(topDeal.id);
-          }
-        }
-      } catch (err) {
-        console.error('Ошибка обновления даты сделки:', err);
-      }
-    },
-    [onSelectDeal, selectedDeal, sortedDeals, updateDealDates]
-  );
-
-  const handleQuickNextContactShift = (newValue: string) => {
-    setNextContactInputValue(newValue);
-    return handleInlineDateSave('nextContactDate', newValue, { selectTopDeal: true });
-  };
-
-  const quickInlineShift = (days: number) => {
-    if (!selectedDeal) {
-      return;
-    }
-    const baseDate = parseDateOrToday(selectedDeal.nextContactDate);
-    const targetDate = new Date(baseDate);
-    targetDate.setDate(targetDate.getDate() + days);
-    handleQuickNextContactShift(formatDateForInput(targetDate));
-  };
-
-  const quickInlineDateOptions = [
-    { label: 'завтра', days: 1 },
-    { label: '+2 дня', days: 2 },
-    { label: '+5 дней', days: 5 },
-  ];
 
   const handleDelayModalConfirm = async () => {
     if (!selectedDeal || !selectedDelayEvent || !selectedDelayEventNextContact) {
@@ -1228,15 +853,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
   );
 
-  const handleNextContactBlur = useCallback(
-    (value: string) => handleInlineDateSave('nextContactDate', value),
-    [handleInlineDateSave]
-  );
-
-  const handleExpectedCloseBlur = useCallback(
-    (value: string) => handleInlineDateSave('expectedClose', value),
-    [handleInlineDateSave]
-  );
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview': {
@@ -1328,9 +944,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   expectedCloseValue={expectedCloseInputValue}
                   headerExpectedCloseTone={headerExpectedCloseTone}
                   quickOptions={quickInlineDateOptions}
-                  onNextContactChange={setNextContactInputValue}
+                  onNextContactChange={handleNextContactChange}
                   onNextContactBlur={handleNextContactBlur}
-                  onExpectedCloseChange={setExpectedCloseInputValue}
+                  onExpectedCloseChange={handleExpectedCloseChange}
                   onExpectedCloseBlur={handleExpectedCloseBlur}
                   onQuickShift={quickInlineShift}
                 />
@@ -1575,7 +1191,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           isActiveSearch={isMergeSearchActive}
           searchQuery={mergeQuery}
           isMerging={isMerging}
-          onClose={() => setIsMergeModalOpen(false)}
+          onClose={closeMergeModal}
           onSubmit={handleMergeSubmit}
         />
       )}
