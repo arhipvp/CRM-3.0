@@ -51,4 +51,15 @@ describe('eventUtils', () => {
     expect(window.nextEvent?.description).toContain('Сумма');
     expect(window.suggestedNextContactInput).toBe('2026-10-24');
   });
+
+  it('skips already paid payments when building events', () => {
+    const paidPayment: Payment = {
+      ...samplePayment,
+      actualDate: '2026-09-01',
+      scheduledDate: '2026-09-01',
+    };
+
+    const events = buildDealEvents({ policies: [], payments: [paidPayment] });
+    expect(events).toHaveLength(0);
+  });
 });

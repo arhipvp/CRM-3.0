@@ -18,22 +18,6 @@ const formatDateForInput = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const parseIsoDateString = (value: string) => {
-  const [yearStr, monthStr, dayStr] = value.split('-');
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const day = Number(dayStr);
-
-  if ([year, month, day].some((segment) => Number.isNaN(segment))) {
-    return null;
-  }
-
-  const date = new Date();
-  date.setFullYear(year, month - 1, day);
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
 interface UseDealInlineDatesParams {
   selectedDeal: Deal | null;
   sortedDeals: Deal[];

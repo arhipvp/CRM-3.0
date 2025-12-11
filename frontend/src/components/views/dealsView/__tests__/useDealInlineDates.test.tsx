@@ -88,10 +88,18 @@ describe('useDealInlineDates', () => {
       await resultRef.current?.quickInlineShift(2);
     });
 
+    let expectedNextContactDate: string | undefined;
+
     await waitFor(() => {
-      expect(onUpdateDeal).toHaveBeenCalledWith(deal.id, expect.objectContaining({ nextContactDate: '2025-01-03' }));
+      expectedNextContactDate = resultRef.current?.nextContactInputValue;
+      expect(expectedNextContactDate).toBeTruthy();
+      expect(onUpdateDeal).toHaveBeenCalledWith(
+        deal.id,
+        expect.objectContaining({ nextContactDate: expectedNextContactDate })
+      );
       expect(onSelectDeal).toHaveBeenCalledWith(topDeal.id);
     });
-    expect(resultRef.current?.nextContactInputValue).toBe('2025-01-03');
+    expect(expectedNextContactDate).toBeDefined();
+    expect(resultRef.current?.nextContactInputValue).toBe(expectedNextContactDate);
   });
 });

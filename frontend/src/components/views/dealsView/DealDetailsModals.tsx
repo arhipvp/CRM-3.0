@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Deal, Policy } from '../../../types';
+import { Deal } from '../../../types';
 import type { DealEvent } from './eventUtils';
 import { formatDate, statusLabels } from './helpers';
 
@@ -10,7 +10,6 @@ interface DealDelayModalProps {
   selectedEventNextContact: string | null;
   upcomingEvents: DealEvent[];
   pastEvents: DealEvent[];
-  relatedPolicies: Policy[];
   isSchedulingDelay: boolean;
   onClose: () => void;
   onEventSelect: (eventId: string) => void;
@@ -23,7 +22,6 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
   selectedEventNextContact,
   upcomingEvents,
   pastEvents,
-  relatedPolicies,
   isSchedulingDelay,
   onClose,
   onEventSelect,
@@ -51,10 +49,10 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
           {selectedEvent ? (
             <>
               <p className="text-sm font-semibold text-slate-900">{selectedEvent.title}</p>
-              <p className="text-[12px] text-slate-500">{selectedEvent.description}</p>
-              <p className="text-[11px] text-slate-500">Дата: {formatDate(selectedEvent.date)}</p>
+              <p className="text-sm text-slate-500">{selectedEvent.description}</p>
+              <p className="text-xs text-slate-500">Дата: {formatDate(selectedEvent.date)}</p>
               {selectedEventNextContact && (
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Новый следующий контакт: {formatDate(selectedEventNextContact)}
                 </p>
               )}
@@ -66,7 +64,7 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-700">Предстоящие события</p>
-            <span className="text-[11px] uppercase tracking-wide text-slate-400">
+            <span className="text-xs uppercase tracking-wide text-slate-400">
               {upcomingEvents.length} найдено
             </span>
           </div>
@@ -88,9 +86,9 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                        <p className="text-[12px] text-slate-500">{event.description}</p>
+                        <p className="text-sm text-slate-500">{event.description}</p>
                       </div>
-                      <span className="text-[12px] font-semibold text-slate-600">
+                      <span className="text-sm font-semibold text-slate-600">
                         {formatDate(event.date)}
                       </span>
                     </div>
@@ -110,34 +108,14 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
                 {pastEvents.map((event) => (
                   <div key={event.id} className="flex items-start justify-between">
                     <div>
-                      <p className="text-[13px] font-semibold text-slate-900">{event.title}</p>
-                      <p className="text-[12px] text-slate-500">{event.description}</p>
+                      <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                      <p className="text-sm text-slate-500">{event.description}</p>
                     </div>
-                    <span className="text-[11px] text-slate-500">{formatDate(event.date)}</span>
+                    <span className="text-xs text-slate-500">{formatDate(event.date)}</span>
                   </div>
                 ))}
               </div>
             </details>
-          )}
-        </div>
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-slate-400">Полисы в сделке</p>
-          {relatedPolicies.length ? (
-            <div className="space-y-2">
-              {relatedPolicies.map((policy) => (
-                <div key={policy.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {policy.number} · {policy.insuranceType}
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    {policy.insuranceCompany} · {formatDate(policy.startDate)} –{' '}
-                    {formatDate(policy.endDate)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">Привязанные полисы не найдены.</p>
           )}
         </div>
       </div>

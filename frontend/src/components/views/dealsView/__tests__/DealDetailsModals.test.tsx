@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Deal, Policy } from '../../../../types';
+import type { Deal } from '../../../../types';
 import { DealDelayModal, DealMergeModal } from '../DealDetailsModals';
 import type { DealEvent } from '../eventUtils';
 
@@ -31,21 +31,6 @@ const pastEvent: DealEvent = {
   title: 'Прошлый платёж',
 };
 
-const policies: Policy[] = [
-  {
-    id: 'policy-1',
-    number: '123456',
-    insuranceCompanyId: 'company-1',
-    insuranceCompany: 'SafeCo',
-    insuranceTypeId: 'type-1',
-    insuranceType: 'Каско',
-    dealId: deal.id,
-    isVehicle: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    status: 'active',
-  },
-];
-
 describe('DealDetailsModals', () => {
   it('renders delay modal and wires events', () => {
     const onClose = vi.fn();
@@ -59,7 +44,6 @@ describe('DealDetailsModals', () => {
         selectedEventNextContact="2024-12-01"
         upcomingEvents={[upcomingEvent]}
         pastEvents={[pastEvent]}
-        relatedPolicies={policies}
         isSchedulingDelay={false}
         onClose={onClose}
         onEventSelect={onEventSelect}

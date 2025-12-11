@@ -1171,7 +1171,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           selectedEventNextContact={selectedDelayEventNextContact}
           upcomingEvents={upcomingEvents}
           pastEvents={pastEvents}
-          relatedPolicies={relatedPolicies}
           isSchedulingDelay={isSchedulingDelay}
           onClose={() => setIsDelayModalOpen(false)}
           onEventSelect={setSelectedDelayEventId}
