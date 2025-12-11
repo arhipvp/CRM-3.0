@@ -50,7 +50,7 @@ import {
   deleteFinancialRecord,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Client, Deal, FinancialRecord, Payment, Policy, Quote, User } from './types';
+import { Client, Deal, FinancialRecord, Payment, Policy, Quote, SalesChannel, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
@@ -89,6 +89,31 @@ const parseAmountValue = (value?: string | null) => {
 };
 
 const formatAmountValue = (value: number) => value.toFixed(2);
+
+const matchSalesChannel = (channels: SalesChannel[], recognizedValue: string): SalesChannel | undefined => {
+  const normalizedValue = recognizedValue.trim().toLowerCase();
+  if (!normalizedValue) {
+    return undefined;
+  }
+  return channels.find((channel) => {
+    const channelName = channel.name.toLowerCase();
+    if (channelName === normalizedValue) {
+      return true;
+    }
+    if (channelName.includes(normalizedValue) || normalizedValue.includes(channelName)) {
+      return true;
+    }
+    const normalizedTokens = normalizedValue.split(/\s+/).filter(Boolean);
+    const channelTokens = channelName.split(/\s+/).filter(Boolean);
+    if (normalizedTokens.some((token) => channelTokens.some((channelToken) => channelToken.includes(token)))) {
+      return true;
+    }
+    if (channelTokens.some((token) => normalizedValue.includes(token))) {
+      return true;
+    }
+    return false;
+  });
+};
 
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
@@ -286,10 +311,13 @@ const AppContent: React.FC = () => {
       }
       const draft = buildPolicyDraftFromRecognition(parsed);
       const policyObj = (parsed.policy ?? {}) as Record<string, unknown>;
-      const recognizedSalesChannel = normalizeStringValue(policyObj.sales_channel);
-      const matchedChannel = salesChannels.find(
-        (channel) => channel.name.toLowerCase() === recognizedSalesChannel.toLowerCase()
+      const recognizedSalesChannel = normalizeStringValue(
+        policyObj.sales_channel ??
+          policyObj.sales_channel_name ??
+          policyObj.salesChannel ??
+          policyObj.salesChannelName
       );
+      const matchedChannel = matchSalesChannel(salesChannels, recognizedSalesChannel);
 
       const recognizedInsuredName = normalizeStringValue(
         parsed.insured_client_name ??
@@ -1818,4 +1846,3 @@ const AppContent: React.FC = () => {
 };
 
 export default AppContent;
-
