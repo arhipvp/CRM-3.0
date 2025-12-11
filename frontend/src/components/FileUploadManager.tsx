@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface FileUploadManagerProps {
@@ -6,11 +6,127 @@ interface FileUploadManagerProps {
   disabled?: boolean;
 }
 
+interface FileSystemEntryCommon {
+  name: string;
+  fullPath: string;
+  isFile: boolean;
+  isDirectory: boolean;
+}
+
+interface FileSystemFileEntry extends FileSystemEntryCommon {
+  file: (
+    successCallback: (file: File) => void,
+    errorCallback?: (error: DOMException) => void
+  ) => void;
+}
+
+interface FileSystemDirectoryEntry extends FileSystemEntryCommon {
+  createReader: () => FileSystemDirectoryReader;
+}
+
+interface FileSystemDirectoryReader {
+  readEntries(
+    successCallback: (entries: FileSystemEntry[]) => void,
+    errorCallback?: (error: DOMException) => void
+  ): void;
+}
+
+type FileSystemEntry = FileSystemFileEntry | FileSystemDirectoryEntry;
+
+type DataTransferItemWithEntry = DataTransferItem & {
+  webkitGetAsEntry?: () => FileSystemEntry | null;
+};
+
+const readDirectoryEntries = (
+  reader: FileSystemDirectoryReader
+): Promise<FileSystemEntry[]> =>
+  new Promise((resolve) => {
+    const entries: FileSystemEntry[] = [];
+
+    const readChunk = () => {
+      reader.readEntries(
+        (results) => {
+          if (!results.length) {
+            resolve(entries);
+            return;
+          }
+          entries.push(...results);
+          readChunk();
+        },
+        (error) => {
+          console.error('Failed to read directory entries', error);
+          resolve(entries);
+        }
+      );
+    };
+
+    readChunk();
+  });
+
+const traverseEntry = async (entry: FileSystemEntry): Promise<File[]> => {
+  if (entry.isFile) {
+    return new Promise((resolve) => {
+      (entry as FileSystemFileEntry).file(
+        (file) => resolve([file]),
+        (error) => {
+          console.error('Failed to read file from directory entry', error);
+          resolve([]);
+        }
+      );
+    });
+  }
+
+  if (entry.isDirectory) {
+    try {
+      const reader = (entry as FileSystemDirectoryEntry).createReader();
+      const entries = await readDirectoryEntries(reader);
+      const nestedFiles = await Promise.all(entries.map(traverseEntry));
+      return nestedFiles.flat();
+    } catch (error) {
+      console.error('Failed to traverse directory entry', error);
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const collectFilesFromDataTransfer = async (
+  event: React.DragEvent<HTMLLabelElement>
+): Promise<File[]> => {
+  const items = Array.from(event.dataTransfer?.items ?? []);
+  if (!items.length) {
+    return Array.from(event.dataTransfer?.files ?? []);
+  }
+
+  const nested = await Promise.all(
+    items.map(async (item) => {
+      if (item.kind !== 'file') {
+        return [] as File[];
+      }
+      const entry = (item as DataTransferItemWithEntry).webkitGetAsEntry?.();
+      if (entry) {
+        return traverseEntry(entry);
+      }
+      const file = item.getAsFile();
+      return file ? [file] : [];
+    })
+  );
+
+  const flattened = nested.flat();
+  if (flattened.length > 0) {
+    return flattened;
+  }
+
+  return Array.from(event.dataTransfer?.files ?? []);
+};
+
 export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, disabled }) => {
   const [isUploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const preventDefaults = (event: DragEvent) => {
@@ -29,6 +145,14 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
       document.body?.removeEventListener('dragover', preventDefaults, options);
       document.body?.removeEventListener('drop', preventDefaults, options);
     };
+  }, []);
+
+  useEffect(() => {
+    const input = fileInputRef.current;
+    if (input) {
+      input.setAttribute('directory', '');
+      input.setAttribute('webkitdirectory', '');
+    }
   }, []);
 
   const uploadFiles = async (files: File[], resetInput?: () => void) => {
@@ -117,7 +241,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
     if (isUploading || disabled) return;
     setDragActive(false);
 
-    const droppedFiles = Array.from(event.dataTransfer.files ?? []);
+    const droppedFiles = await collectFilesFromDataTransfer(event);
     if (!droppedFiles.length) return;
 
     await uploadFiles(droppedFiles);
@@ -145,6 +269,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
             onChange={handleFileSelect}
             disabled={isUploading || disabled}
             className="hidden"
+            ref={fileInputRef}
           />
           <div className="text-center">
             <p className="text-3xl mb-2">📁</p>

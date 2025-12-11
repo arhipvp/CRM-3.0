@@ -27,8 +27,6 @@ except ImportError as exc:  # pragma: no cover - requires optional dependency
 else:
     _drive_import_error = None
 
-_service_resource = None
-
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
@@ -59,8 +57,6 @@ class DriveFileInfo(TypedDict):
 
 
 def _get_drive_service():
-    global _service_resource
-
     if _drive_import_error:
         raise DriveConfigurationError(
             "google-api-python-client and google-auth must be installed to work with Drive."
@@ -68,9 +64,6 @@ def _get_drive_service():
 
     if not _gdrive_build or not _service_account:
         raise DriveConfigurationError("Drive client dependencies are not available.")
-
-    if _service_resource:
-        return _service_resource
 
     keyfile = getattr(settings, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "").strip()
     if not keyfile:
@@ -82,10 +75,9 @@ def _get_drive_service():
         credentials = _service_account.Credentials.from_service_account_file(
             keyfile, scopes=DRIVE_SCOPES
         )
-        _service_resource = _gdrive_build(
+        return _gdrive_build(
             "drive", "v3", credentials=credentials, cache_discovery=False
         )
-        return _service_resource
     except Exception as exc:  # pragma: no cover - relies on third-party errors
         logger.exception("Failed to initialize Google Drive client")
         raise DriveConfigurationError(
