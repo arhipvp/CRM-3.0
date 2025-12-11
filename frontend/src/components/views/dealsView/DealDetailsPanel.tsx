@@ -81,7 +81,8 @@ interface DealDetailsPanelProps {
     dealId: string,
     parsed: Record<string, unknown>,
     fileName?: string | null,
-    fileId?: string | null
+    fileId?: string | null,
+    parsedFileIds?: string[]
   ) => void;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;

@@ -152,7 +152,8 @@ describe('useDealDriveFiles', () => {
         deal.id,
         parsedResult.data,
         parsedResult.fileName,
-        parsedResult.fileId
+        parsedResult.fileId,
+        [parsedResult.fileId]
       );
     });
 

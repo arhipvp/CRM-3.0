@@ -151,13 +151,13 @@ const AppContent: React.FC = () => {
     insuranceTypeName?: string;
   } | null>(null);
   const [policyDefaultCounterparty, setPolicyDefaultCounterparty] = useState<string | undefined>(undefined);
-  const [policySourceFileId, setPolicySourceFileId] = useState<string | null>(null);
+  const [policySourceFileIds, setPolicySourceFileIds] = useState<string[]>([]);
 
   const closePolicyModal = useCallback(() => {
     setPolicyDealId(null);
     setPolicyPrefill(null);
     setPolicyDefaultCounterparty(undefined);
-    setPolicySourceFileId(null);
+    setPolicySourceFileIds([]);
   }, []);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
@@ -304,7 +304,8 @@ const AppContent: React.FC = () => {
       dealId: string,
       parsed: Record<string, unknown>,
       _fileName?: string | null,
-      fileId?: string | null
+      fileId?: string | null,
+      parsedFileIds?: string[]
     ) => {
       if (!parsed) {
         return;
@@ -345,7 +346,14 @@ const AppContent: React.FC = () => {
       };
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
-      setPolicySourceFileId(fileId ?? null);
+      const resolvedFileIds = parsedFileIds?.length
+        ? Array.from(
+            new Set(parsedFileIds.filter((id): id is string => Boolean(id)))
+          )
+        : fileId
+        ? [fileId]
+        : [];
+      setPolicySourceFileIds(resolvedFileIds);
       setPolicyPrefill({
         values,
         insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
@@ -358,7 +366,7 @@ const AppContent: React.FC = () => {
   const handleRequestAddPolicy = useCallback((dealId: string) => {
     setPolicyDefaultCounterparty(undefined);
     setPolicyPrefill(null);
-    setPolicySourceFileId(null);
+    setPolicySourceFileIds([]);
     setPolicyDealId(dealId);
   }, []);
 
@@ -914,7 +922,8 @@ const AppContent: React.FC = () => {
         counterparty,
         payments: paymentDrafts = [],
       } = values;
-      const sourceFileId = policySourceFileId;
+      const sourceFileIds = policySourceFileIds;
+      const sourceFileId = sourceFileIds[0];
       let deal = dealsById.get(dealId);
       let clientId = deal?.clientId;
       if (!clientId) {
@@ -949,6 +958,7 @@ const AppContent: React.FC = () => {
           startDate,
           endDate,
           sourceFileId,
+          sourceFileIds: sourceFileIds.length ? sourceFileIds : undefined,
         });
         updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
         const parsePolicyAmount = (value?: string | null) => {
@@ -1131,7 +1141,7 @@ const AppContent: React.FC = () => {
       dealFilters,
       dealsById,
       invalidateDealsCache,
-      policySourceFileId,
+      policySourceFileIds,
       refreshDealsWithSelection,
       refreshPolicies,
       setError,

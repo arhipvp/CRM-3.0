@@ -16,7 +16,8 @@ interface UseDealDriveFilesParams {
     dealId: string,
     parsed: Record<string, unknown>,
     fileName?: string | null,
-    fileId?: string | null
+    fileId?: string | null,
+    parsedFileIds?: string[]
   ) => void;
 }
 
@@ -151,6 +152,9 @@ export const useDealDriveFiles = ({
         return;
       }
       setRecognitionResults(results);
+      const parsedFileIds = results
+        .filter((result) => result.status === 'parsed' && result.fileId)
+        .map((result) => result.fileId!);
       const parsed = results.find(
         (result) => result.status === 'parsed' && result.data
       );
@@ -159,7 +163,8 @@ export const useDealDriveFiles = ({
           currentDealId,
           parsed.data!,
           parsed.fileName ?? null,
-          parsed.fileId ?? null
+          parsed.fileId ?? null,
+          parsedFileIds
         );
       }
       if (onRefreshPolicies) {

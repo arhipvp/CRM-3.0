@@ -11,17 +11,6 @@ const QUICK_INLINE_DATE_OPTIONS = [
   { label: '+5 дней', days: 5 },
 ] as const;
 
-const parseDateOrToday = (value?: string | null) => {
-  if (!value) {
-    return new Date();
-  }
-  const [year, month, day] = value.split('-').map((segment) => Number(segment));
-  if ([year, month, day].some((segment) => Number.isNaN(segment))) {
-    return new Date();
-  }
-  return new Date(year, month - 1, day);
-};
-
 const formatDateForInput = (value: Date) => {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, '0');
@@ -138,15 +127,13 @@ export const useDealInlineDates = ({
 
   const quickInlineShift = useCallback(
     (days: number) => {
-      if (!selectedDeal) {
-        return;
-      }
-      const baseDate = parseDateOrToday(selectedDeal.nextContactDate);
+      const baseDate = new Date();
+      baseDate.setHours(0, 0, 0, 0);
       const targetDate = new Date(baseDate);
       targetDate.setDate(targetDate.getDate() + days);
       handleQuickNextContactShift(formatDateForInput(targetDate));
     },
-    [selectedDeal, handleQuickNextContactShift]
+    [handleQuickNextContactShift]
   );
 
   const quickInlineDateOptions = useMemo(

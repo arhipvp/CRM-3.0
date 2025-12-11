@@ -33,6 +33,12 @@ class PolicySerializer(serializers.ModelSerializer):
     source_file_id = serializers.CharField(
         write_only=True, required=False, allow_blank=True
     )
+    source_file_ids = serializers.ListField(
+        child=serializers.CharField(),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+    )
 
     class Meta:
         model = Policy
@@ -65,6 +71,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "updated_at",
             "deleted_at",
             "source_file_id",
+            "source_file_ids",
         )
         read_only_fields = (
             "id",

@@ -46,6 +46,7 @@ export async function createPolicy(data: {
   startDate?: string | null;
   endDate?: string | null;
   sourceFileId?: string | null;
+  sourceFileIds?: string[];
 }): Promise<Policy> {
   const bodyPayload: Record<string, unknown> = {
     deal: data.dealId,
@@ -65,6 +66,9 @@ export async function createPolicy(data: {
   };
   if (data.sourceFileId) {
     bodyPayload.source_file_id = data.sourceFileId;
+  }
+  if (data.sourceFileIds && data.sourceFileIds.length) {
+    bodyPayload.source_file_ids = data.sourceFileIds;
   }
   const payload = await request<Record<string, unknown>>('/policies/', {
     method: 'POST',

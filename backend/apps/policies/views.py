@@ -301,6 +301,19 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         source_file_id = serializer.validated_data.pop("source_file_id", None)
         if isinstance(source_file_id, str):
             source_file_id = source_file_id.strip()
-        policy = serializer.save()
+        source_file_ids = serializer.validated_data.pop("source_file_ids", []) or []
+        normalized_file_ids = []
+        if isinstance(source_file_ids, list):
+            for file_id in source_file_ids:
+                if isinstance(file_id, str):
+                    cleaned = file_id.strip()
+                    if cleaned:
+                        normalized_file_ids.append(cleaned)
         if source_file_id:
-            self._move_recognized_file_to_folder(policy, source_file_id)
+            normalized_file_ids.append(source_file_id)
+        policy = serializer.save()
+        moved_file_ids = set()
+        for file_id in normalized_file_ids:
+            if file_id and file_id not in moved_file_ids:
+                self._move_recognized_file_to_folder(policy, file_id)
+                moved_file_ids.add(file_id)
