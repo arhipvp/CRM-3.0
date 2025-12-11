@@ -2,33 +2,36 @@
 
 ## Quick start
 
-`ash
+```
 cd backend
 python -m venv .venv && .venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 cp .env.example .env
 python manage.py migrate
 python manage.py runserver
-`
+```
 
-## Structure
+## Структура
 
-- pps/clients тАФ ╨║╨╗╨╕╨╡╨╜╤В╤Л ╨╕ ╨║╨╛╨╜╤В╨░╨║╤В╤Л
-- pps/deals тАФ ╤Б╨┤╨╡╨╗╨║╨╕, ╨▓╨╛╤А╨╛╨╜╨║╨╕ ╨╕ ╤Н╤В╨░╨┐╤Л
-- pps/tasks тАФ ╨╖╨░╨┤╨░╤З╨╕
-- pps/documents тАФ ╨┤╨╛╨║╤Г╨╝╨╡╨╜╤В╤Л ╨╕ ╤Д╨░╨╣╨╗╤Л
-- pps/notifications тАФ ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П
+- `apps/clients` - клиенты и контакты
+- `apps/deals` - сделки, воронки и этапы
+- `apps/tasks` - задачи
+- `apps/documents` - документы и файлы
+- `apps/notifications` - уведомления
+- `config` - общие настройки Django
 
-REST API ╨┤╨╛╤Б╤В╤Г╨┐╨╡╨╜ ╨┐╨╛ http://localhost:8000/api/v1/, health-check тАФ /health/.
+REST API доступен по `http://localhost:8000/api/v1/`, health-check - `/health/`.
 
 ## Excel client import
 
-1. ╨Ч╨░╨┐╨╛╨╗╨╜╨╕╤В╨╡ pps/clients/templates/client_import_template.xlsx (╤Б╤В╨╛╨╗╨▒╤Ж╤Л: Name, Phone, Birth Date, Notes). ╨д╨╛╤А╨╝╨░╤В╤Л ╨┤╨░╤В: YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY.
-2. python manage.py import_clients_from_excel path/to/file.xlsx [--sheet Sheet1] [--created-by USER] [--dry-run]
-3. ╨Ъ╨╛╨╝╨░╨╜╨┤╨░ ╨┐╤А╨╛╨┐╤Г╤Б╨║╨░╨╡╤В ╨┐╤Г╤Б╤В╤Л╨╡ ╤Б╤В╤А╨╛╨║╨╕, ╨┐╨╡╤А╨╡╨┤╨░╤С╤В created_by, ╨║╨╛╨│╨┤╨░ ╨╖╨░╨┤╨░╨╜ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤М, ╨╕ ╨╜╨╡ ╤В╤А╨╛╨│╨░╨╡╤В ╤Б╤Г╤Й╨╡╤Б╤В╨▓╤Г╤О╤Й╨╕╤Е ╨║╨╗╨╕╨╡╨╜╤В╨╛╨▓.
+1. Заполните `apps/clients/templates/client_import_template.xlsx` (столбцы: Name, Phone, Birth Date, Notes).
+2. `python manage.py import_clients_from_excel path/to/file.xlsx [--sheet Sheet1] [--created-by USER] [--dry-run]`.
+3. Команда пропускает пустые строки, передаёт `created_by`, когда задан пользователь, и не трогает существующих клиентов.
 
 ## Multi-sheet business import
 
-1. ╨Ш╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╣╤В╨╡ scripts/templates/business_data_template_new.xlsx ╤Б ╨╗╨╕╤Б╤В╨░╨╝╨╕ clients, deals, policies, payments, incomes, expenses, 	asks.
-2. python scripts/import_business_data.py path/to/workbook.xlsx [--sheet deals] [--dry-run]; ╨▒╨╡╨╖ --sheet ╨╛╨▒╤А╨░╨▒╨░╤В╤Л╨▓╨░╤О╤В╤Б╤П ╨▓╤Б╨╡ ╨╗╨╕╤Б╤В╤Л, --dry-run ╨▓╨░╨╗╨╕╨┤╨╕╤А╤Г╨╡╤В, ╨╜╨░╤Б╤В╤А╨╛╨╣╨║╨╕ ╨▒╨╡╤А╤Г╤В╤Б╤П ╨╕╨╖ ackend/.env.
-3. ╨б╨║╤А╨╕╨┐╤В ╤Б╨╛╨╖╨┤╨░╤С╤В clients.Client, deals.Deal, policies.Policy, inances.Payment, inances.FinancialRecord, 	asks.Task ╨╕ ╨░╨▓╤В╨╛╨╝╨░╤В╨╕╤З╨╡╤Б╨║╨╕ ╤Б╨╛╨╖╨┤╨░╤С╤В InsuranceCompany, InsuranceType, SalesChannel, ╨╡╤Б╨╗╨╕ ╨╕╤Е ╨╜╨╡╤В.
+1. Используйте `scripts/templates/business_data_template_new.xlsx` с листами `clients`, `deals`, `policies`, `payments`, `incomes`, `expenses`, `tasks`.
+2. `python scripts/import_business_data.py path/to/workbook.xlsx [--sheet deals] [--dry-run]`; без `--sheet` обрабатываются все листы, `--dry-run` валидирует, настройки берутся из `backend/.env`.
+3. Скрипт создаёт `clients.Client`, `deals.Deal`, `policies.Policy`, `finances.Payment`, `finances.FinancialRecord`, `tasks.Task` и автоматически создаёт связанные `InsuranceCompany`, `InsuranceType`, `SalesChannel`, если их нет.
+
+Дополнительные детали по полям и переходу из старой базы находятся в `docs/DATA_TRANSFER.md`.

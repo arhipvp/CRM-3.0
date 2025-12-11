@@ -1,85 +1,91 @@
 # CRM 3.0 Skeleton
 
-Monorepo ё Django 5 + DRF т `backend/` ш React 19 + Vite т `frontend/`. `scripts/` ёюфхЁцшЄ тёяюьюурЄхы№э√х чрфрўш (шьяюЁЄ фрээ√ї, яЁхюсЁрчютрэш , с¤ъря√).
+Monorepo с Django 5 + DRF в `backend/` и React 19 + Vite в `frontend/`. `scripts/` содержит вспомогательные задачи (импорт данных, преобразования, бэкапы).
 
 ## Backend
 
 1. `cd backend`
-2. `python -m venv .venv` ш `.venv\Scripts\activate` (Windows) шыш `source .venv/bin/activate` (Unix)
+2. `python -m venv .venv` и `.venv\Scripts\activate` (Windows) или `source .venv/bin/activate` (Unix)
 3. `pip install -r requirements.txt`
 4. `cp .env.example .env`
-5. ╙ёЄрэютшЄх чэрўхэш  яхЁхьхээ√ї (`DJANGO_SECRET_KEY`, `DJANGO_DB_*`, `GOOGLE_DRIVE_*` ш Є.я.)
+5. Установите значения переменных (`DJANGO_SECRET_KEY`, `DJANGO_DB_*`, `GOOGLE_DRIVE_*` и т.п.)
 6. `python manage.py migrate`
 7. `python manage.py runserver`
 
-API фюёЄєяэю яю `http://localhost:8000/api/v1`. `GET /health/` яЁютхЁ хЄ ёюёЄю эшх ёхЁтхЁр, `docs/` ш `redoc/` фр■Є фюёЄєя ъ OpenAPI.
+API доступно по `http://localhost:8000/api/v1`. `GET /health/` проверяет состояние сервера, `docs/` и `redoc/` дают доступ к OpenAPI.
 
-### ╧ЁшьхЁ√ ъюьрэф
+### Примеры команд
 
 - `python manage.py test apps/clients`
 - `python manage.py check --deploy`
-- `python manage.py loaddata ...` фы  ЇшъёЄєЁ
+- `python manage.py loaddata ...` для фикстур
 
 ## Frontend
 
 1. `cd frontend`
 2. `npm install`
 3. `cp .env.example .env`
-4. ╙ёЄрэютшЄх `VITE_API_URL=/api/v1` - Vite яЁюъёшЁєхЄ чряЁюё√ ўхЁхч `VITE_PROXY_TARGET`; яЁш яЁ ьюь юсЁр∙хэшш (схч яЁюъёш) єърцшЄх `http://localhost:8000/api/v1/`.
-5. `npm run dev` (Vite эр `http://localhost:5173`)
+4. Установите `VITE_API_URL=/api/v1` - Vite проксирует запросы через `VITE_PROXY_TARGET`; при прямом обращении (без прокси) укажите `http://localhost:8000/api/v1/`.
+5. `npm run dev` (Vite на `http://localhost:5173`)
 
-─ы  ёсюЁъш: `npm run build`. ╦шэЄшэу т√яюыэ хЄё  ўхЁхч `npm run lint` (`eslint.config.js`).
+Для сборки: `npm run build`. Линтинг выполняется через `npm run lint` (`eslint.config.js`).
 
 ## Docker Compose
 
-1. ╧Ёш эхюсїюфшьюёЄш яЁюсЁюёшЄ№ Postgres эр їюёЄ єсхфшЄхё№, ўЄю `.env` (шыш `.env.production`) юяЁхфхы хЄ `POSTGRES_HOST_PORT=5435`; Compose шёяюы№чєхЄ ¤Єє яхЁхьхээє■ (`${POSTGRES_HOST_PORT:-5435}:5432`) фы  ьряяшэур тэх°эхую яюЁЄр.
+1. При необходимости пробросить Postgres на хост убедитесь, что `.env` (или `.env.production`) определяет `POSTGRES_HOST_PORT=5435`; Compose использует эту переменную (`${POSTGRES_HOST_PORT:-5435}:5432`) для маппинга внешнего порта.
 2. `docker compose up --build`
 
-╩юэЄхщэхЁ√:
-- Postgres: їюёЄют√щ яюЁЄ `${POSTGRES_HOST_PORT:-5435}` -> ъюэЄхщэхЁэ√щ `5432` (DJANGO_DB_PORT т `.env*/backend/.env` фюыцхэ юёЄртрЄ№ё  `5432`, яюЄюьє ўЄю Django юс∙рхЄё  ё ъюэЄхщэхЁюь эр ёЄрэфрЁЄэюь яюЁЄє)
+Контейнеры:
+- Postgres: хостовый порт `${POSTGRES_HOST_PORT:-5435}` -> контейнерный `5432` (DJANGO_DB_PORT в `.env*/backend/.env` должен оставаться `5432`, потому что Django общается с контейнером на стандартном порту)
 - Backend: `http://localhost:8000/`
-- Frontend: `http://localhost:5173/` (Vite яЁюъёшЁєхЄ API ўхЁхч `VITE_API_URL`)
+- Frontend: `http://localhost:5173/` (Vite проксирует API через `VITE_API_URL`)
 
-## ╬с∙шх ёъЁшяЄ√
+## Общие скрипты
 
-- `backend/scripts/import_business_data.py` Ч шьяюЁЄ ъышхэЄют, ёфхыюъ, яюышёют, яырЄхцхщ ш чрфрў шч °рсыюэр `scripts/templates/business_data_template_new.xlsx` (ышёЄ√ `clients`, `deals`, `policies`, `payments`, `incomes`, `expenses`, `tasks`, юяЎшш `--sheet`, `--dry-run`, `--clear`).
-- `backend/scripts/populate_test_data.sh` Ч чряєёърхЄ `python manage.py shell < populate_test_data.py` тэєЄЁш backend фы  яюёрфъш ЄхёЄют√ї фрээ√ї.
-- `backend/scripts/reset_db.sh` Ч т√яюыэ хЄ `python manage.py flush --no-input` ш чрЄхь `python manage.py migrate`.
-- `scripts/backup_project_to_drive.py` Ч рЁїштшЁєхЄ яЁюхъЄ, фхырхЄ фрья√ Postgres/Excel ш ъюяшЁєхЄ т Google Drive ё яхЁхьхээ√ьш `GOOGLE_DRIVE_*`.
-- `scripts/fix_mojibake.py` Ч т√ч√трхЄ `ftfy` яю ёяшёъє Їрщыют т `frontend`, шёяюы№чє  `scripts/vendor/ftfy`.
-- `scripts/templates/business_data_template_new.xlsx` Ч ръЄєры№э√щ Excel-°рсыюэ ёю ышёЄрьш фы  ъышхэЄют, ёфхыюъ, яюышёют, яырЄхцхщ, фюїюфют, Ёрёїюфют ш чрфрў.
+- `backend/scripts/import_business_data.py` - импорт клиентов, сделок, полисов, платежей и задач из шаблона `scripts/templates/business_data_template_new.xlsx` (листы `clients`, `deals`, `policies`, `payments`, `incomes`, `expenses`, `tasks`, опции `--sheet`, `--dry-run`, `--clear`).
+- `backend/scripts/populate_test_data.sh` - запускает `python manage.py shell < populate_test_data.py` внутри backend для посадки тестовых данных.
+- `backend/scripts/reset_db.sh` - выполняет `python manage.py flush --no-input` и затем `python manage.py migrate`.
+- `scripts/backup_project_to_drive.py` - архивирует проект, делает дампы Postgres/Excel и копирует в Google Drive с переменными `GOOGLE_DRIVE_*`.
+- `scripts/fix_mojibake.py` - вызывает `ftfy` по списку файлов в `frontend`, используя `scripts/vendor/ftfy`.
+- `scripts/templates/business_data_template_new.xlsx` - актуальный Excel-шаблон со листами для клиентов, сделок, полисов, платежей, доходов, расходов и задач.
 
-## └тЄюьрЄшўхёъшщ с¤ъря эр Google Drive
+## Автоматический бэкап на Google Drive
 
-- `scripts/backup_project_to_drive.py` рЁїштшЁєхЄ яЁюхъЄ (шёъы■ўр  `.git`, `node_modules`, `media`, `frontend/dist`), ёючфр╕Є SQL ш Excel фрья√ (`database-dumps`) ш ъюяшЁєхЄ `GOOGLE_DRIVE_ROOT_FOLDER_ID` т `drive-files`.
-- ═рёЄЁющЄх `.env`/`backend/.env` ё `DJANGO_DB_*`, `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`.
-- ╧хЁхьхээ√х:
+- `scripts/backup_project_to_drive.py` архивирует проект (исключая `.git`, `node_modules`, `media`, `frontend/dist`), создаёт SQL и Excel дампы (`database-dumps`) и копирует `GOOGLE_DRIVE_ROOT_FOLDER_ID` в `drive-files`.
+- Настройте `.env`/`backend/.env` с `DJANGO_DB_*`, `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`, `GOOGLE_DRIVE_BACKUP_FOLDER_ID`, `GOOGLE_DRIVE_ROOT_FOLDER_ID`.
+- Переменные:
   - `BACKUP_DB_EXCLUDE_TABLES` (comma-separated, default `users_auditlog`)
   - `BACKUP_MAX_SESSIONS` (default `2000`)
-  - `BACKUP_DB_FALLBACK_HOST` Ч fallback host яЁш эхфюёЄєяэюёЄш `DJANGO_DB_HOST`
-- ╟ряєёъ: `python scripts/backup_project_to_drive.py [--project-root PATH] [--env-file PATH]`.
-- ─ы  Ёхуєы Ёэющ ЁрсюЄ√ єёЄрэютшЄх systemd unit/timer `crm3-drive-backup.{service,timer}` ш т√яюыэшЄх:
+  - `BACKUP_DB_FALLBACK_HOST` - fallback host при недоступности `DJANGO_DB_HOST`
+- Запуск: `python scripts/backup_project_to_drive.py [--project-root PATH] [--env-file PATH]`.
+- Для регулярной работы установите systemd unit/timer `crm3-drive-backup.{service,timer}` и выполните:
   ```sh
   sudo systemctl daemon-reload
   sudo systemctl enable --now crm3-drive-backup.timer
   ```
 
-## CI/CD ш фхяыющ
+## CI/CD и деплой
 
-- `.github/workflows/deploy.yml` Ч эр `master` яюфъы■ўрхЄё  ъ VPS (`VPS_HOST`, `VPS_USER`), фхырхЄ `git reset --hard origin/master`, `docker compose -f docker-compose.prod.yml --env-file .env.production pull && up --build -d`.
-- ╧хЁхф фхяыюхь фюсрт№Єх ёхъЁхЄ√: `VPS_SSH_KEY`, `VPS_USER`, `VPS_HOST`, `VPS_PATH`.
-- ═р ёхЁтхЁх: ЁхяючшЄюЁшщ т `/root/crm3`, `.env.production` ёюфхЁцшЄ Ёхры№э√х ёхъЁхЄ√, `docker compose` чряєёърхЄё  ё `POSTGRES_HOST_PORT=5435` (DJANGO_DB_PORT юёЄр╕Єё  `5432`).
-- ─ы  фЁєующ тхЄъш юсэютшЄх `on.push.branches` ш Ўхыхтющ `git reset`.
+- `.github/workflows/deploy.yml` - на `master` подключается к VPS (`VPS_HOST`, `VPS_USER`), делает `git reset --hard origin/master`, `docker compose -f docker-compose.prod.yml --env-file .env.production pull && up --build -d`.
+- Перед деплоем добавьте секреты: `VPS_SSH_KEY`, `VPS_USER`, `VPS_HOST`, `VPS_PATH`.
+- На сервере: репозиторий в `/root/crm3`, `.env.production` содержит реальные секреты, `docker compose` запускается с `POSTGRES_HOST_PORT=5435` (DJANGO_DB_PORT остаётся `5432`).
+- Для другой ветки обновите `on.push.branches` и целевой `git reset`.
 
-## ╥хёЄ√ ш яЁютхЁъш
+## Тесты и проверки
 
-- Backend: `python manage.py test`, `python manage.py check --deploy` яхЁхф Ёхышчюь.
+- Backend: `python manage.py test`, `python manage.py check --deploy` перед релизом.
 - Frontend: `npm run lint`, `npm run build`, `npm run dev`.
-- ╤ъЁшяЄ√: `python scripts/backup_project_to_drive.py --help`, `python transform_clients.py --help` ш Є.ф. Ч яЁютхЁ ■Є ярЁрьхЄЁшчрЎш■.
+- Скрипты: `python scripts/backup_project_to_drive.py --help`, `python transform_clients.py --help` и т.д. - проверяют параметризацию.
 
-## ╧юыхчэ√х ёё√ыъш
+## Документация и полезные ссылки
 
-- `.env.example` ш `backend/.env.example` яюърч√тр■Є эєцэ√х яхЁхьхээ√х.
-- `docker-compose.yml` яюфэшьрхЄ Postgres (їюёЄютющ яюЁЄ `POSTGRES_HOST_PORT`, яю єьюыўрэш■ 5435), backend ш Vite.
-- `scripts/templates/business_data_template_new.xlsx` Ч °рсыюэ фы  шьяюЁЄр ъышхэЄют/ёфхыюъ/яюышёют/яырЄхцхщ.
-EOF
+- `docs/DATA_TRANSFER.md` описывает маппинг полей из старой базы и последовательность импорта для `clients`, `deals`, `policies`, `payments`, `incomes`, `expenses`, `tasks`.
+- `backend/README.md` содержит расширенную справку по Excel-импортам и вспомогательным скриптам, таким как `import_business_data.py`.
+- `.env.example` и `backend/.env.example` показывают нужные переменные, включая ключи Google Drive и соединение Postgres.
+- `docker-compose.yml` поднимает Postgres (хостовой порт `POSTGRES_HOST_PORT`, по умолчанию 5435), backend и Vite.
+- `scripts/templates/business_data_template_new.xlsx` - шаблон для импорта клиентов/сделок/полисов/платежей.
+
+## Стиль кода
+
+- Форматирование Python регулируется `black` и `isort` (конфиги в `backend/pyproject.toml` и `.isort.cfg`). Обязательно прогоняйте `black` и `isort` перед коммитами.
+- React/TypeScript код проверяется ESLint (`frontend/eslint.config.js`). Поддерживайте единый стиль по модулю и именованиям, как указано в конфиге.
