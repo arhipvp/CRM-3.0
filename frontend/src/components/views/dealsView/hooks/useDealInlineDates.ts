@@ -18,6 +18,22 @@ const formatDateForInput = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const parseIsoDateString = (value: string) => {
+  const [yearStr, monthStr, dayStr] = value.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  if ([year, month, day].some((segment) => Number.isNaN(segment))) {
+    return null;
+  }
+
+  const date = new Date();
+  date.setFullYear(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
 interface UseDealInlineDatesParams {
   selectedDeal: Deal | null;
   sortedDeals: Deal[];
@@ -127,13 +143,16 @@ export const useDealInlineDates = ({
 
   const quickInlineShift = useCallback(
     (days: number) => {
-      const baseDate = new Date();
-      baseDate.setHours(0, 0, 0, 0);
-      const targetDate = new Date(baseDate);
-      targetDate.setDate(targetDate.getDate() + days);
-      handleQuickNextContactShift(formatDateForInput(targetDate));
+      const value = selectedDeal?.nextContactDate ? parseIsoDateString(selectedDeal.nextContactDate) : null;
+      const baseDate = value ? value : (() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return today;
+      })();
+      baseDate.setDate(baseDate.getDate() + days);
+      handleQuickNextContactShift(formatDateForInput(baseDate));
     },
-    [handleQuickNextContactShift]
+    [handleQuickNextContactShift, selectedDeal?.nextContactDate]
   );
 
   const quickInlineDateOptions = useMemo(

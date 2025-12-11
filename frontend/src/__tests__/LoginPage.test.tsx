@@ -31,11 +31,16 @@ describe('LoginPage', () => {
     mockedLogin.mockReset();
   });
 
-  it('renders the login form with default values', () => {
+  it('renders the login form with empty fields', () => {
     render(<LoginPage onLoginSuccess={vi.fn()} />);
 
-    expect(screen.getByLabelText(/имя пользователя/i)).toHaveValue('admin');
-    expect(screen.getByLabelText(/пароль/i)).toHaveValue('admin123');
+    const usernameField = screen.getByLabelText(/имя пользователя/i);
+    const passwordField = screen.getByLabelText(/пароль/i);
+
+    expect(usernameField).toHaveValue('');
+    expect(passwordField).toHaveValue('');
+    expect(usernameField).toHaveAttribute('placeholder', 'admin');
+    expect(passwordField).toHaveAttribute('placeholder', '••••••••');
     expect(screen.getByRole('button', { name: /войти/i })).toBeEnabled();
   });
 
@@ -46,6 +51,8 @@ describe('LoginPage', () => {
 
     render(<LoginPage onLoginSuccess={onLoginSuccess} />);
 
+    await user.type(screen.getByLabelText(/имя пользователя/i), 'admin');
+    await user.type(screen.getByLabelText(/пароль/i), 'admin123');
     await user.click(screen.getByRole('button', { name: /войти/i }));
 
     await waitFor(() => expect(onLoginSuccess).toHaveBeenCalled());
@@ -59,6 +66,8 @@ describe('LoginPage', () => {
 
     render(<LoginPage onLoginSuccess={onLoginSuccess} />);
 
+    await user.type(screen.getByLabelText(/имя пользователя/i), 'admin');
+    await user.type(screen.getByLabelText(/пароль/i), 'wrong-pass');
     await user.click(screen.getByRole('button', { name: /войти/i }));
 
     await waitFor(() => {
