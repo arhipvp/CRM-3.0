@@ -143,16 +143,13 @@ export const useDealInlineDates = ({
 
   const quickInlineShift = useCallback(
     (days: number) => {
-      const value = selectedDeal?.nextContactDate ? parseIsoDateString(selectedDeal.nextContactDate) : null;
-      const baseDate = value ? value : (() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return today;
-      })();
-      baseDate.setDate(baseDate.getDate() + days);
-      handleQuickNextContactShift(formatDateForInput(baseDate));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(today);
+      targetDate.setDate(targetDate.getDate() + days);
+      handleQuickNextContactShift(formatDateForInput(targetDate));
     },
-    [handleQuickNextContactShift, selectedDeal?.nextContactDate]
+    [handleQuickNextContactShift]
   );
 
   const quickInlineDateOptions = useMemo(
