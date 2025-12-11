@@ -6,42 +6,24 @@ interface FileUploadManagerProps {
   disabled?: boolean;
 }
 
-interface FileSystemEntryCommon {
-  name: string;
-  fullPath: string;
-  isFile: boolean;
-  isDirectory: boolean;
-}
-
-interface FileSystemFileEntry extends FileSystemEntryCommon {
-  file: (
-    successCallback: (file: File) => void,
-    errorCallback?: (error: DOMException) => void
-  ) => void;
-}
-
-interface FileSystemDirectoryEntry extends FileSystemEntryCommon {
-  createReader: () => FileSystemDirectoryReader;
-}
-
-interface FileSystemDirectoryReader {
-  readEntries(
-    successCallback: (entries: FileSystemEntry[]) => void,
-    errorCallback?: (error: DOMException) => void
-  ): void;
-}
-
-type FileSystemEntry = FileSystemFileEntry | FileSystemDirectoryEntry;
-
 type DataTransferItemWithEntry = DataTransferItem & {
   webkitGetAsEntry?: () => FileSystemEntry | null;
 };
+
+const isFileEntry = (
+  entry: FileSystemEntry | null | undefined
+): entry is FileSystemFileEntry => Boolean(entry && entry.isFile);
+
+const isDirectoryEntry = (
+  entry: FileSystemEntry | null | undefined
+): entry is FileSystemDirectoryEntry =>
+  Boolean(entry && typeof (entry as FileSystemDirectoryEntry).createReader === 'function');
 
 const readDirectoryEntries = (
   reader: FileSystemDirectoryReader
 ): Promise<FileSystemEntry[]> =>
   new Promise((resolve) => {
-    const entries: FileSystemEntry[] = [];
+const entries: FileSystemEntry[] = [];
 
     const readChunk = () => {
       reader.readEntries(
@@ -64,9 +46,9 @@ const readDirectoryEntries = (
   });
 
 const traverseEntry = async (entry: FileSystemEntry): Promise<File[]> => {
-  if (entry.isFile) {
+  if (isFileEntry(entry)) {
     return new Promise((resolve) => {
-      (entry as FileSystemFileEntry).file(
+      entry.file(
         (file) => resolve([file]),
         (error) => {
           console.error('Failed to read file from directory entry', error);
@@ -76,9 +58,9 @@ const traverseEntry = async (entry: FileSystemEntry): Promise<File[]> => {
     });
   }
 
-  if (entry.isDirectory) {
+  if (isDirectoryEntry(entry)) {
     try {
-      const reader = (entry as FileSystemDirectoryEntry).createReader();
+      const reader = entry.createReader();
       const entries = await readDirectoryEntries(reader);
       const nestedFiles = await Promise.all(entries.map(traverseEntry));
       return nestedFiles.flat();
