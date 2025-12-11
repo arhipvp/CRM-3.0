@@ -40,7 +40,7 @@ describe('DealHeader', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders WhatsApp icon when the client has a phone', () => {
+  it('renders messaging icons when the client has a phone', () => {
     render(
       <DealHeader
         deal={deal}
@@ -54,6 +54,10 @@ describe('DealHeader', () => {
     expect(
       screen.getByRole('link', { name: 'Написать клиенту в WhatsApp' })
     ).toHaveAttribute('href', 'https://wa.me/79990000002');
+
+    expect(
+      screen.getByRole('link', { name: 'Написать клиенту в Telegram' })
+    ).toHaveAttribute('href', 'https://t.me/+79990000002');
   });
 
   it('does not render WhatsApp icon when the client phone is missing', () => {
@@ -68,6 +72,9 @@ describe('DealHeader', () => {
 
     expect(
       screen.queryByRole('link', { name: 'Написать клиенту в WhatsApp' })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('link', { name: 'Написать клиенту в Telegram' })
     ).toBeNull();
   });
 });

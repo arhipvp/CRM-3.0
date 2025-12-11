@@ -3,13 +3,23 @@ import React from 'react';
 import { ColoredLabel } from '../../common/ColoredLabel';
 import type { Deal } from '../../../types';
 
-const getWhatsAppLink = (phone?: string) => {
+const getNormalizedPhoneDigits = (phone?: string) => {
   if (!phone) {
     return null;
   }
 
   const digitsOnly = phone.replace(/\D/g, '');
+  return digitsOnly || null;
+};
+
+const getWhatsAppLink = (phone?: string) => {
+  const digitsOnly = getNormalizedPhoneDigits(phone);
   return digitsOnly ? `https://wa.me/${digitsOnly}` : null;
+};
+
+const getTelegramLink = (phone?: string) => {
+  const digitsOnly = getNormalizedPhoneDigits(phone);
+  return digitsOnly ? `https://t.me/+${digitsOnly}` : null;
 };
 
 interface DealHeaderProps {
@@ -28,6 +38,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
   executorDisplayName,
 }) => {
   const whatsAppLink = getWhatsAppLink(clientPhone);
+  const telegramLink = getTelegramLink(clientPhone);
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -62,6 +73,24 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
                   fill="currentColor"
                 >
                   <path d="M7.2 8.6a1 1 0 0 1 1.05.28l1.13 1.14c.33.33.34.87.01 1.21l-.2.2a9.7 9.7 0 0 0 3.73 3.73l.2-.2c.15-.16.37-.24.58-.24.22 0 .44.08.6.24l1.14 1.13c.29.29.33.75.08 1.07l-1.12 1.68a1 1 0 0 1-1.18.41c-1.55-.62-3.48-1.52-5.25-3.3-1.77-1.77-2.68-3.7-3.3-5.25a1 1 0 0 1 .41-1.18l1.68-1.12c.31-.21.72-.2 1.01.08z" />
+                </svg>
+              </a>
+            )}
+            {telegramLink && (
+              <a
+                href={telegramLink}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label="Написать клиенту в Telegram"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-sky-100 bg-sky-50 text-sky-600 transition hover:border-sky-200 hover:bg-sky-100"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  className="h-3.5 w-3.5"
+                  fill="currentColor"
+                >
+                  <path d="M3 12l17-9-5 17-4-6-4 6z" />
                 </svg>
               </a>
             )}
