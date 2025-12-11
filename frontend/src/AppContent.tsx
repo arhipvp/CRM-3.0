@@ -349,7 +349,7 @@ const AppContent: React.FC = () => {
       setPolicyPrefill({
         values,
         insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
-        insuranceTypeName: normalizeStringValue(policyObj.insurance_type),
+        insuranceTypeName: '',
       });
     },
     [salesChannels, clients]

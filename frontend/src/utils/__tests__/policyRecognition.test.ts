@@ -34,7 +34,7 @@ describe('buildPolicyDraftFromRecognition', () => {
       actualDate: '',
       description: 'первый платеж',
     });
-    expect(draft.payments[0].incomes[0].amount).toBe('5401');
+    expect(draft.payments[0].incomes[0].amount).toBe('1');
   });
 
   it('returns an empty payments array when the document does not contain schedules', () => {

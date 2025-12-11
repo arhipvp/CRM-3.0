@@ -109,9 +109,6 @@ const buildPaymentDraft = (entry: Record<string, unknown>): PaymentDraft => {
     normalizeDateValue(entry.payment_date ?? entry.scheduledDate ?? entry.scheduled_date) ||
     normalizeDateValue(entry.date);
   const description = normalizeStringValue(entry.description ?? entry.note ?? entry.details);
-  const parsedAmount = Number(amount) || 0;
-  const incomeAmount = (parsedAmount + 1).toString();
-
   return {
     amount: amount || '0',
     description,
@@ -120,7 +117,7 @@ const buildPaymentDraft = (entry: Record<string, unknown>): PaymentDraft => {
     incomes: [
       {
         ...createEmptyRecord(),
-        amount: incomeAmount,
+        amount: '1',
         date: '',
       },
     ],
