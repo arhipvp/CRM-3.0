@@ -32,6 +32,7 @@ interface AddPolicyFormProps {
 }
 
 const MAX_INSURED_SUGGESTIONS = 5;
+const VIN_REGEX = /^[A-Za-z0-9]{17}$/;
 const normalizeTypeForComparison = (value: string) =>
   value
     .toLowerCase()
@@ -480,8 +481,15 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       return;
     }
 
-    if (isVehicle && !vin.trim()) {
+    const normalizedVin = vin.trim();
+
+    if (isVehicle && !normalizedVin) {
       setError('Укажите VIN, если полис оформлен на автомобиль.');
+      return;
+    }
+
+    if (normalizedVin && !VIN_REGEX.test(normalizedVin)) {
+      setError('VIN должен состоять из 17 латинских букв и цифр.');
       return;
     }
 
@@ -505,7 +513,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         isVehicle,
         brand: isVehicle ? brand.trim() || undefined : undefined,
         model: isVehicle ? model.trim() || undefined : undefined,
-        vin: isVehicle ? vin.trim() : undefined,
+        vin: isVehicle ? normalizedVin : undefined,
         counterparty: counterparty.trim() || undefined,
         salesChannelId: salesChannelId || undefined,
         insuredClientId: selectedInsuredId || undefined,

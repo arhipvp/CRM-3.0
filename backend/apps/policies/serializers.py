@@ -1,6 +1,10 @@
+import re
+
 from rest_framework import serializers
 
 from .models import Policy
+
+VIN_PATTERN = re.compile(r"^[A-Za-z0-9]{17}$")
 
 
 class PolicySerializer(serializers.ModelSerializer):
@@ -74,3 +78,15 @@ class PolicySerializer(serializers.ModelSerializer):
             "payments_total",
             "deal_title",
         )
+
+    def validate_vin(self, value: str) -> str:
+        """Убедиться, что VIN — 17 латинских символов или цифр."""
+
+        if not value:
+            return value
+        normalized = value.strip()
+        if not VIN_PATTERN.fullmatch(normalized):
+            raise serializers.ValidationError(
+                "VIN должен состоять из 17 латинских букв и цифр."
+            )
+        return normalized
