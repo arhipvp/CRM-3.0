@@ -21,6 +21,7 @@ describe('DealHeader', () => {
       <DealHeader
         deal={{ ...deal, description: 'Test description', closingReason: 'Причина' }}
         clientDisplayName="Client A"
+        clientPhone="+7 (999) 000-00-01"
         sellerDisplayName="Seller"
         executorDisplayName="Executor"
       />
@@ -37,5 +38,36 @@ describe('DealHeader', () => {
           content.includes('Причина закрытия') && content.includes('Причина')
       )
     ).toBeInTheDocument();
+  });
+
+  it('renders WhatsApp icon when the client has a phone', () => {
+    render(
+      <DealHeader
+        deal={deal}
+        clientDisplayName="Client A"
+        clientPhone="+7 999 000 00 02"
+        sellerDisplayName="Seller"
+        executorDisplayName="Executor"
+      />
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Написать клиенту в WhatsApp' })
+    ).toHaveAttribute('href', 'https://wa.me/79990000002');
+  });
+
+  it('does not render WhatsApp icon when the client phone is missing', () => {
+    render(
+      <DealHeader
+        deal={deal}
+        clientDisplayName="Client A"
+        sellerDisplayName="Seller"
+        executorDisplayName="Executor"
+      />
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Написать клиенту в WhatsApp' })
+    ).toBeNull();
   });
 });

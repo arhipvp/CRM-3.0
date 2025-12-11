@@ -918,6 +918,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   <DealHeader
                     deal={selectedDeal}
                     clientDisplayName={selectedClientDisplayName}
+                    clientPhone={selectedClient?.phone}
                     sellerDisplayName={sellerDisplayName}
                     executorDisplayName={executorDisplayName}
                   />
