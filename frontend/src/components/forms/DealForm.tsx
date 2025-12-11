@@ -234,7 +234,7 @@ export const DealForm: React.FC<DealFormProps> = ({
       description: description.trim() || undefined,
       expectedClose: expectedClose || null,
       executorId: executorId || undefined,
-      source: source.trim() || undefined,
+      source: source.trim(),
       ...(showSellerField ? { sellerId: sellerId || null } : {}),
       ...(showNextContactField ? { nextContactDate: nextContactDate || null } : {}),
     };

@@ -95,8 +95,8 @@ export async function updateDeal(
   if ('sellerId' in data) {
     body.seller = data.sellerId || null;
   }
-  if ('source' in data) {
-    body.source = data.source ?? null;
+  if (data.source !== undefined) {
+    body.source = typeof data.source === 'string' ? data.source.trim() : '';
   }
 
   const payload = await request<Record<string, unknown>>(`/deals/${id}/`, {
