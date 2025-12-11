@@ -32,13 +32,11 @@ interface AddPolicyFormProps {
 }
 
 const MAX_INSURED_SUGGESTIONS = 5;
-const INSURANCE_TYPE_SYNONYMS: Record<string, (value: string) => boolean> = {
-  ОСАГО: (value) =>
-    ['осаг', 'граждан', 'ответствен', 'гражданской', 'гражданская'].some((token) =>
-      value.includes(token)
-    ),
-  Каско: (value) => value.includes('каско'),
-};
+const normalizeTypeForComparison = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, '')
+    .trim();
 
 export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onSubmit,
@@ -205,35 +203,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     if (!initialInsuranceTypeName || !types.length) {
       return;
     }
-    const normalizedType = initialInsuranceTypeName.trim().toLowerCase();
-    if (!normalizedType) {
+    const normalizedRecognized = normalizeTypeForComparison(initialInsuranceTypeName);
+    if (!normalizedRecognized) {
       return;
     }
-    const strippedNormalizedType = normalizedType.replace(/\s+/g, '');
-    const match = types.find((type) => {
-      const normalizedTypeName = type.name.toLowerCase();
-      const strippedTypeName = normalizedTypeName.replace(/\s+/g, '');
-      return (
-        normalizedTypeName === normalizedType ||
-        normalizedTypeName.includes(normalizedType) ||
-        normalizedType.includes(normalizedTypeName) ||
-        strippedTypeName.includes(strippedNormalizedType) ||
-        strippedNormalizedType.includes(strippedTypeName)
-      );
-    });
+    const match = types.find((type) => normalizeTypeForComparison(type.name) === normalizedRecognized);
     if (match) {
       setInsuranceTypeId(match.id);
-      return;
-    }
-    const synonymEntry = Object.entries(INSURANCE_TYPE_SYNONYMS).find(([, predicate]) =>
-      predicate(normalizedType)
-    );
-    if (synonymEntry) {
-      const [canonicalName] = synonymEntry;
-      const aliasMatch = types.find((type) => type.name === canonicalName);
-      if (aliasMatch) {
-        setInsuranceTypeId(aliasMatch.id);
-      }
     }
   }, [initialInsuranceTypeName, types]);
 

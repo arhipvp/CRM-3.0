@@ -31,10 +31,10 @@ describe('buildPolicyDraftFromRecognition', () => {
     expect(draft.payments[0]).toMatchObject({
       amount: '5400',
       scheduledDate: '2025-12-17',
-      actualDate: '2025-12-17',
+      actualDate: '',
       description: 'первый платеж',
     });
-    expect(draft.payments[0].incomes[0].amount).toBe('5400');
+    expect(draft.payments[0].incomes[0].amount).toBe('5401');
   });
 
   it('returns an empty payments array when the document does not contain schedules', () => {
