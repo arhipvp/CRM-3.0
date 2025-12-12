@@ -1,0 +1,12 @@
+[Unit]
+Description=Run CRM 3.0 Google Drive backup every 6 hours
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00
+Persistent=true
+RandomizedDelaySec=300
+AccuracySec=1m
+Unit=crm3-drive-backup.service
+
+[Install]
+WantedBy=timers.target

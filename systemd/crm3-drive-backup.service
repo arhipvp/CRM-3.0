@@ -1,0 +1,17 @@
+[Unit]
+Description=CRM 3.0 Google Drive backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/crm3
+EnvironmentFile=/root/crm3/.env
+Environment=BACKUP_DB_FALLBACK_HOST=localhost
+Environment=GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE=/root/crm3/credentials.json
+Environment=GOOGLE_DRIVE_BACKUP_FOLDER_ID=1UEpbPVnt9wZ-y56GCq_GBOurBJHCNoVf
+Environment=GOOGLE_DRIVE_ROOT_FOLDER_ID=1t9-ZijytjS5BE8Kb_HDTpwJrEsP4Pc3Z
+ExecStart=/root/crm3/backend/.venv/bin/python scripts/backup_project_to_drive.py
+Nice=10
+StandardOutput=append:/root/crm3/cron-backup.log
+StandardError=inherit
