@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from typing import Callable, List, Tuple
 
@@ -16,11 +19,15 @@ logger = logging.getLogger(__name__)
 try:
     from jsonschema import ValidationError, validate
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    HAVE_JSONSCHEMA = False
     ValidationError = Exception
 
     def validate(instance, schema):  # type: ignore[unused-argument]
         """Пустая проверка схемы, если jsonschema недоступна."""
         logger.warning("jsonschema не установлен, проверка схемы пропущена")
+
+else:
+    HAVE_JSONSCHEMA = True
 
 
 DEFAULT_PROMPT = """Ты — ассистент, отвечающий за импорт данных из страховых полисов в CRM. На основе загруженного документа (PDF, скан или текст) необходимо сформировать один JSON строго по следующему шаблону:
@@ -161,6 +168,10 @@ MAX_ATTEMPTS = 3
 REMINDER = "Ответ должен содержать только один валидный JSON без лишних пояснений."
 OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
+DATE_PATTERN = r"^\\d{4}-\\d{2}-\\d{2}$"
+VIN_PATTERN = r"^[A-Za-z0-9]{17}$"
+AMOUNT_PATTERN = r"^-?\\d+(?:[\\.,]\\d{1,2})?$"
+
 POLICY_SCHEMA = {
     "type": "object",
     "properties": {
@@ -173,11 +184,11 @@ POLICY_SCHEMA = {
                 "insurance_company": {"type": "string"},
                 "contractor": {"type": "string"},
                 "sales_channel": {"type": "string"},
-                "start_date": {"type": "string"},
-                "end_date": {"type": "string"},
+                "start_date": {"type": "string", "pattern": DATE_PATTERN},
+                "end_date": {"type": "string", "pattern": DATE_PATTERN},
                 "vehicle_brand": {"type": "string"},
                 "vehicle_model": {"type": "string"},
-                "vehicle_vin": {"type": "string"},
+                "vehicle_vin": {"type": "string", "pattern": f"^$|{VIN_PATTERN}"},
                 "note": {"type": "string"},
             },
             "required": [
@@ -200,9 +211,14 @@ POLICY_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "amount": {"type": "number"},
-                    "payment_date": {"type": "string"},
-                    "actual_payment_date": {"type": "string"},
+                    "amount": {
+                        "anyOf": [
+                            {"type": "number"},
+                            {"type": "string", "pattern": AMOUNT_PATTERN},
+                        ]
+                    },
+                    "payment_date": {"type": "string", "pattern": DATE_PATTERN},
+                    "actual_payment_date": {"type": "string", "pattern": DATE_PATTERN},
                 },
                 "required": ["amount", "payment_date", "actual_payment_date"],
                 "additionalProperties": False,
@@ -247,6 +263,157 @@ class PolicyRecognitionError(ValueError):
         self.transcript = transcript or ""
 
 
+def _basic_policy_validate(data: dict) -> None:
+    """Минимальная валидация структуры, если jsonschema недоступен."""
+
+    if not isinstance(data, dict):
+        raise PolicyRecognitionError("Ответ должен быть объектом JSON")
+
+    for key in ("client_name", "policy", "payments"):
+        if key not in data:
+            raise PolicyRecognitionError(f"Отсутствует ключ {key!r}")
+
+    policy = data.get("policy")
+    if not isinstance(policy, dict):
+        raise PolicyRecognitionError("policy должен быть объектом JSON")
+
+    required_policy_keys = (
+        "policy_number",
+        "insurance_type",
+        "insurance_company",
+        "contractor",
+        "sales_channel",
+        "start_date",
+        "end_date",
+        "vehicle_brand",
+        "vehicle_model",
+        "vehicle_vin",
+        "note",
+    )
+    for key in required_policy_keys:
+        if key not in policy:
+            raise PolicyRecognitionError(f"В policy отсутствует ключ {key!r}")
+
+    date_re = re.compile(r"^\\d{4}-\\d{2}-\\d{2}$")
+    for key in ("start_date", "end_date"):
+        value = policy.get(key)
+        if not isinstance(value, str) or not date_re.fullmatch(value):
+            raise PolicyRecognitionError(f"{key} должен быть строкой YYYY-MM-DD")
+
+    vin = policy.get("vehicle_vin")
+    if not isinstance(vin, str):
+        raise PolicyRecognitionError("vehicle_vin должен быть строкой")
+    if vin and not re.fullmatch(r"^[A-Za-z0-9]{17}$", vin):
+        raise PolicyRecognitionError(
+            "vehicle_vin должен быть пустым или VIN из 17 символов"
+        )
+
+    payments = data.get("payments")
+    if not isinstance(payments, list):
+        raise PolicyRecognitionError("payments должен быть массивом")
+    for idx, payment in enumerate(payments):
+        if not isinstance(payment, dict):
+            raise PolicyRecognitionError(f"payments[{idx}] должен быть объектом")
+        for key in ("amount", "payment_date", "actual_payment_date"):
+            if key not in payment:
+                raise PolicyRecognitionError(
+                    f"В payments[{idx}] отсутствует ключ {key!r}"
+                )
+        amount = payment.get("amount")
+        if not isinstance(amount, (int, float, str)):
+            raise PolicyRecognitionError(
+                f"payments[{idx}].amount должен быть числом или строкой"
+            )
+        for key in ("payment_date", "actual_payment_date"):
+            value = payment.get(key)
+            if not isinstance(value, str) or not date_re.fullmatch(value):
+                raise PolicyRecognitionError(
+                    f"payments[{idx}].{key} должен быть YYYY-MM-DD"
+                )
+
+
+def _normalize_date(value: object) -> str:
+    """Привести дату к YYYY-MM-DD, понимая популярные форматы."""
+
+    if not isinstance(value, str):
+        return ""
+    raw = value.strip()
+    if not raw:
+        return ""
+    if re.fullmatch(r"^\d{4}-\d{2}-\d{2}$", raw):
+        return raw
+
+    raw = raw.replace("\\", "/").replace(".", "-").replace("/", "-")
+    raw = re.sub(r"\s+", "", raw)
+    for fmt in ("%d-%m-%Y", "%d-%m-%y", "%Y-%m-%d", "%Y-%d-%m"):
+        try:
+            parsed = datetime.strptime(raw, fmt).date()
+            return parsed.isoformat()
+        except ValueError:
+            continue
+    return ""
+
+
+def _normalize_amount(value: object) -> str:
+    """Нормализовать сумму в строку без пробелов, с точкой как разделителем."""
+
+    if value is None:
+        return "0"
+    if isinstance(value, (int, Decimal)):
+        return str(value)
+    if isinstance(value, float):
+        # У float возможны хвосты, поэтому конвертируем через строку
+        return str(Decimal(str(value)))
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return "0"
+        cleaned = (
+            raw.replace("\u00a0", "")
+            .replace(" ", "")
+            .replace("руб.", "")
+            .replace("руб", "")
+            .replace("₽", "")
+        )
+        cleaned = cleaned.replace(",", ".")
+        cleaned = re.sub(r"[^0-9.\\-]", "", cleaned)
+        if cleaned in ("", "-", ".", "-."):
+            return "0"
+        try:
+            return str(Decimal(cleaned))
+        except InvalidOperation:
+            return "0"
+    return "0"
+
+
+def _normalize_policy_payload(data: dict) -> dict:
+    """Подчистить типовые ошибки распознавания перед валидацией."""
+
+    if not isinstance(data, dict):
+        return data
+    policy = data.get("policy")
+    if isinstance(policy, dict):
+        for key in ("start_date", "end_date"):
+            normalized = _normalize_date(policy.get(key))
+            if normalized:
+                policy[key] = normalized
+        vin = policy.get("vehicle_vin")
+        if isinstance(vin, str):
+            policy["vehicle_vin"] = vin.strip()
+
+    payments = data.get("payments")
+    if isinstance(payments, list):
+        for payment in payments:
+            if not isinstance(payment, dict):
+                continue
+            payment["amount"] = _normalize_amount(payment.get("amount"))
+            for key in ("payment_date", "actual_payment_date"):
+                normalized = _normalize_date(payment.get(key))
+                if normalized:
+                    payment[key] = normalized
+    return data
+
+
 def _chat(
     messages: List[dict],
     *,
@@ -280,26 +447,29 @@ def _chat(
             tool_choice=tool_choice,
         )
         parts: List[str] = []
+        content_parts: List[str] = []
         try:
             for chunk in stream:
                 _check_cancel()
                 delta = chunk.choices[0].delta if chunk.choices else None
                 tool_calls = delta.tool_calls if delta else None
-                if not tool_calls:
-                    continue
-                func = tool_calls[0].function if tool_calls else None
-                if not func:
-                    continue
-                part = func.arguments or ""
-                if part:
-                    parts.append(part)
-                    if progress_cb:
-                        progress_cb("assistant", part)
+                if tool_calls:
+                    func = tool_calls[0].function if tool_calls else None
+                    if func:
+                        part = func.arguments or ""
+                        if part:
+                            parts.append(part)
+                            progress_cb("assistant", part)
+                        continue
+                content = getattr(delta, "content", None) if delta else None
+                if content:
+                    content_parts.append(content)
+                    progress_cb("assistant", content)
         finally:
             close_method = getattr(stream, "close", None)
             if callable(close_method):
                 close_method()
-        return "".join(parts)
+        return "".join(parts) or "".join(content_parts)
 
     resp = client.chat.completions.create(
         model=model,
@@ -308,7 +478,14 @@ def _chat(
         tools=tools,
         tool_choice=tool_choice,
     )
-    return resp.choices[0].message.tool_calls[0].function.arguments
+    message = resp.choices[0].message
+    tool_calls = getattr(message, "tool_calls", None)
+    if tool_calls and tool_calls[0].function and tool_calls[0].function.arguments:
+        return tool_calls[0].function.arguments
+    content = getattr(message, "content", None) or ""
+    if content:
+        return content
+    raise RuntimeError("OpenRouter вернул пустой ответ")
 
 
 def recognize_policy_interactive(
@@ -347,7 +524,11 @@ def recognize_policy_interactive(
         messages.append({"role": "assistant", "content": answer})
         try:
             data = json.loads(answer)
-            validate(instance=data, schema=POLICY_SCHEMA)
+            data = _normalize_policy_payload(data)
+            if HAVE_JSONSCHEMA:
+                validate(instance=data, schema=POLICY_SCHEMA)
+            else:
+                _basic_policy_validate(data)
         except json.JSONDecodeError as exc:
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)
