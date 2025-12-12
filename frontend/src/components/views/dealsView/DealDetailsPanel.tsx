@@ -148,10 +148,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 }) => {
   const sellerDisplayName = sellerUser
     ? getUserDisplayName(sellerUser)
-    : selectedDeal?.sellerName || '-';
+    : selectedDeal?.sellerName || '—';
   const executorDisplayName = executorUser
     ? getUserDisplayName(executorUser)
-    : selectedDeal?.executorName || '-';
+    : selectedDeal?.executorName || '—';
   const headerExpectedCloseTone = getDeadlineTone(selectedDeal?.expectedClose);
 
   const isSelectedDealDeleted = Boolean(selectedDeal?.deletedAt);

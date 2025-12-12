@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Deal, Task } from '../../../../types';
 import { TaskTable } from '../../../tasks/TaskTable';
 
@@ -44,45 +44,49 @@ export const TasksTab: React.FC<TasksTabProps> = ({
 
   if (!relatedTasks.length) {
     return (
-      <div className="space-y-4">
-        <p className="text-sm text-slate-500">Для этой сделки пока нет задач.</p>
+      <section className="app-panel p-6 shadow-none space-y-4">
+        <p className="text-sm text-slate-600">Задач по сделке пока нет.</p>
         <button
           type="button"
           onClick={onCreateTaskClick}
-          className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
+          className="btn btn-primary rounded-xl self-start"
         >
           Создать задачу
         </button>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <section className="app-panel p-6 shadow-none space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h3 className="text-base font-semibold text-slate-800">Задачи</h3>
-          <label className="flex items-center gap-1 text-xs text-slate-500">
+          <p className="app-label">Задачи</p>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
             <input
               type="checkbox"
               checked={showDeletedTasks}
               onChange={(event) => setShowDeletedTasks(event.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
             />
-            <span>Показать удаленные</span>
+            <span>Показывать удалённые</span>
             {deletedTasksCount > 0 && (
-              <span className="text-[11px] text-slate-400">({deletedTasksCount})</span>
+              <span className="text-[11px] text-slate-400">
+                ({deletedTasksCount})
+              </span>
             )}
           </label>
         </div>
+
         <button
           type="button"
           onClick={onCreateTaskClick}
-          className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          className="btn btn-secondary btn-sm rounded-xl"
         >
-          + Добавить задачу
+          + Создать задачу
         </button>
       </div>
+
       <TaskTable
         tasks={visibleTasks}
         showDealColumn={false}
@@ -95,8 +99,9 @@ export const TasksTab: React.FC<TasksTabProps> = ({
         onEditTask={onEditTaskClick}
         onDeleteTask={onDeleteTask}
         completingTaskIds={completingTaskIds}
-        emptyMessage="Задачи не найдены"
+        emptyMessage="Задач не найдено"
       />
-    </div>
+    </section>
   );
 };
+

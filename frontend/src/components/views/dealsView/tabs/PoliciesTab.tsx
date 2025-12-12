@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Deal, Payment, Policy } from '../../../../types';
 import {
   FinancialRecordCreationContext,
@@ -54,7 +54,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onDeletePolicy,
   onRequestEditPolicy,
 }) => {
-  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
+  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>(
+    {}
+  );
   const [recordsExpandedAll, setRecordsExpandedAll] = useState(false);
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const STORAGE_PAYMENTS_KEY = 'crm:policies:payments-expanded';
@@ -85,14 +87,20 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     if (typeof window === 'undefined') {
       return;
     }
-    window.localStorage.setItem(STORAGE_PAYMENTS_KEY, JSON.stringify(paymentsExpanded));
+    window.localStorage.setItem(
+      STORAGE_PAYMENTS_KEY,
+      JSON.stringify(paymentsExpanded)
+    );
   }, [paymentsExpanded]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
-    window.localStorage.setItem(STORAGE_RECORDS_KEY, recordsExpandedAll ? 'true' : 'false');
+    window.localStorage.setItem(
+      STORAGE_RECORDS_KEY,
+      recordsExpandedAll ? 'true' : 'false'
+    );
   }, [recordsExpandedAll]);
 
   const paymentsByPolicyMap = useMemo(() => {
@@ -132,168 +140,168 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
   if (!sortedPolicies.length) {
     return (
-      <div className="space-y-4">
-        <p className="text-sm text-slate-500">Для сделки пока нет полисов.</p>
+      <section className="app-panel p-6 shadow-none space-y-4">
+        <p className="text-sm text-slate-600">Для сделки пока нет полисов.</p>
         <button
+          type="button"
           onClick={() => onRequestAddPolicy(selectedDeal.id)}
-          className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700"
+          className="btn btn-primary rounded-xl self-start"
         >
           Создать полис
         </button>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex justify-between items-center">
-        <h3 className="text-base font-semibold text-slate-800">Полисы</h3>
-        <button
-          onClick={() => onRequestAddPolicy(selectedDeal.id)}
-          className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
-        >
-          + Создать полис
-        </button>
-      </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4 text-xs text-slate-400">
-            <span>Сортировка: {sortLabel} {sortOrderSymbol}</span>
-            <label className="flex items-center gap-2 text-[11px] text-slate-600">
-              <input
-                type="checkbox"
-                className="h-3 w-3 rounded border border-slate-300 text-sky-600 focus:ring-sky-500"
-                checked={showUnpaidOnly}
-                onChange={(event) => setShowUnpaidOnly(event.target.checked)}
-              />
-              Только неоплаченные
-            </label>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-              onClick={() => {
-                setPaymentsExpanded((prev) => {
-                  const next = { ...prev };
-                  visiblePolicies.forEach((policy) => {
-                    next[policy.id] = true;
-                  });
-                  return next;
-                });
-                setRecordsExpandedAll(true);
-              }}
-            >
-              Раскрыть все
-            </button>
-            <button
-              type="button"
-              className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-              onClick={() => {
-                setPaymentsExpanded((prev) => {
-                  const next = { ...prev };
-                  visiblePolicies.forEach((policy) => {
-                    next[policy.id] = false;
-                  });
-                  return next;
-                });
-                setRecordsExpandedAll(false);
-              }}
-            >
-              Скрыть все
-            </button>
-          </div>
+    <section className="app-panel p-6 shadow-none space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <p className="app-label">Полисы</p>
+          <span className="text-xs text-slate-500">
+            Сортировка: {sortLabel} {sortOrderSymbol}
+          </span>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border border-slate-300 text-sky-600 focus:ring-sky-500"
+              checked={showUnpaidOnly}
+              onChange={(event) => setShowUnpaidOnly(event.target.checked)}
+            />
+            Только неоплаченные
+          </label>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onRequestAddPolicy(selectedDeal.id)}
+            className="btn btn-secondary btn-sm rounded-xl"
+          >
+            + Создать полис
+          </button>
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm rounded-xl"
+            onClick={() => {
+              setPaymentsExpanded((prev) => {
+                const next = { ...prev };
+                visiblePolicies.forEach((policy) => {
+                  next[policy.id] = true;
+                });
+                return next;
+              });
+              setRecordsExpandedAll(true);
+            }}
+          >
+            Раскрыть все
+          </button>
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm rounded-xl"
+            onClick={() => {
+              setPaymentsExpanded((prev) => {
+                const next = { ...prev };
+                visiblePolicies.forEach((policy) => {
+                  next[policy.id] = false;
+                });
+                return next;
+              });
+              setRecordsExpandedAll(false);
+            }}
+          >
+            Скрыть все
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-4">
         {visiblePolicies.map((policy) => {
           const payments = paymentsByPolicyMap.get(policy.id) ?? [];
+          const expanded = paymentsExpanded[policy.id] ?? false;
 
           return (
-            <section
-              key={policy.id}
-              className="space-y-3 rounded-2xl border border-slate-200 bg-white shadow-sm"
-            >
-              <div className="px-3 py-3 text-sm text-slate-500 space-y-3">
-                <div className="grid gap-4 sm:grid-cols-[1.1fr_auto]">
+            <section key={policy.id} className="rounded-2xl border border-slate-200 bg-white">
+              <div className="p-4 space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Номер</p>
-                    <p className="font-semibold text-slate-900">{policy.number || '-'}</p>
+                    <p className="app-label">Номер</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {policy.number || '—'}
+                    </p>
                   </div>
-                  <div className="flex justify-end">
-                    <div className="flex items-start justify-end gap-3 text-[9px] uppercase tracking-[0.35em] text-slate-400">
-                      <div>
-                        <p>Действия</p>
-                        <div className="flex gap-2 text-xs text-slate-600">
-                          <button
-                            type="button"
-                            className="font-semibold text-slate-500 hover:text-sky-600"
-                            onClick={() => onRequestEditPolicy(policy)}
-                          >
-                            Ред.
-                          </button>
-                          <button
-                            type="button"
-                            className="font-semibold text-rose-500 hover:text-rose-600"
-                            onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                          >
-                            Уд.
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm rounded-xl"
+                      onClick={() => onRequestEditPolicy(policy)}
+                    >
+                      Редактировать
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm rounded-xl"
+                      onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                    >
+                      Удалить
+                    </button>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-6">
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <LabelValuePair
                     label="Клиент"
-                    value={(policy.insuredClientName ?? policy.clientName) || '-'}
-                    className="min-w-[180px]"
+                    value={(policy.insuredClientName ?? policy.clientName) || '—'}
                   />
                   <LabelValuePair
                     label="Компания"
                     value={
                       <ColoredLabel
                         value={policy.insuranceCompany}
-                        fallback="-"
+                        fallback="—"
                         showDot
                         className="font-semibold text-slate-900"
                       />
                     }
-                    className="min-w-[160px]"
                   />
-                  <LabelValuePair
-                    label="Канал"
-                    value={policy.salesChannel || '-'}
-                    className="min-w-[220px]"
-                  />
+                  <LabelValuePair label="Канал" value={policy.salesChannel || '—'} />
                   <LabelValuePair
                     label="Сумма"
-                    value={`${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(policy.paymentsTotal)}`}
+                    value={`${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(
+                      policy.paymentsTotal
+                    )}`}
                   />
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-3 py-2 space-y-3">
-                <div className="flex flex-wrap gap-6 text-sm">
-                  <LabelValuePair label="Тип" value={policy.insuranceType || '-'} />
-                  <LabelValuePair label="Марка" value={policy.brand || '-'} />
-                  <LabelValuePair label="Модель" value={policy.model || '-'} />
-                  <LabelValuePair label="VIN" value={policy.vin || '-'} />
+
+              <div className="border-t border-slate-200 bg-slate-50/70 p-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <LabelValuePair label="Тип" value={policy.insuranceType || '—'} />
+                  <LabelValuePair label="Марка" value={policy.brand || '—'} />
+                  <LabelValuePair label="Модель" value={policy.model || '—'} />
+                  <LabelValuePair label="VIN" value={policy.vin || '—'} />
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-3 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-semibold text-slate-800">
+
+              <div className="border-t border-slate-200 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <span>Платежи</span>
+                    <p className="app-label">Платежи</p>
                     {payments.length > 0 && (
-                      <span className="text-[11px] text-slate-500">{payments.length} запись{payments.length === 1 ? '' : 'ей'}</span>
+                      <span className="text-xs text-slate-500">
+                        {payments.length} запись{payments.length === 1 ? '' : 'ей'}
+                      </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-4">
+
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => {
                         setEditingPaymentId('new');
                         setCreatingPaymentPolicyId(policy.id);
                       }}
-                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      className="btn btn-secondary btn-sm rounded-xl"
                     >
                       + Добавить платёж
                     </button>
@@ -303,20 +311,21 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         onClick={() =>
                           setPaymentsExpanded((prev) => ({
                             ...prev,
-                            [policy.id]: !prev[policy.id],
+                            [policy.id]: !expanded,
                           }))
                         }
-                        className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                        className="btn btn-quiet btn-sm rounded-xl"
                       >
-                        {(paymentsExpanded[policy.id] ?? false) ? 'Скрыть' : 'Показать'}
+                        {expanded ? 'Скрыть' : 'Показать'}
                       </button>
                     )}
                   </div>
                 </div>
+
                 {payments.length === 0 ? (
-                  <p className="mt-2 text-xs text-slate-500">Платежей пока нет.</p>
-                ) : paymentsExpanded[policy.id] ? (
-                  <div className="mt-2 space-y-2 text-sm text-slate-600">
+                  <p className="mt-3 text-sm text-slate-600">Платежей пока нет.</p>
+                ) : expanded ? (
+                  <div className="mt-3 space-y-2">
                     {payments.map((payment) => (
                       <PaymentCard
                         key={payment.id}
@@ -330,7 +339,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                           setCreatingFinancialRecordContext({ paymentId, recordType });
                           setEditingFinancialRecordId(null);
                         }}
-                        onEditFinancialRecord={(recordId) => setEditingFinancialRecordId(recordId)}
+                        onEditFinancialRecord={(recordId) =>
+                          setEditingFinancialRecordId(recordId)
+                        }
                         onDeleteFinancialRecord={onDeleteFinancialRecord}
                       />
                     ))}
@@ -341,6 +352,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           );
         })}
       </div>
-    </div>
+    </section>
   );
 };
+

@@ -23,20 +23,21 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-base font-semibold text-slate-800">Предложенные продукты</h3>
+    <section className="app-panel p-6 shadow-none space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="app-label">Расчёты</p>
         <button
+          type="button"
           onClick={() => onRequestAddQuote(selectedDeal.id)}
-          className="px-3 py-2 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          className="btn btn-secondary btn-sm rounded-xl"
         >
           + Добавить расчёт
         </button>
       </div>
       {!quotes.length ? (
-        <p className="text-sm text-slate-500">Расчётов пока нет.</p>
+        <p className="text-sm text-slate-600">Расчётов пока нет.</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="min-w-full text-sm text-left">
             <thead className="text-[10px] uppercase tracking-[0.2em] text-slate-500 bg-slate-50">
               <tr>
@@ -78,7 +79,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <td className="px-4 py-3 text-slate-400">{formatDate(quote.createdAt)}</td>
                   <td className="px-4 py-3 text-right space-x-3">
                     <button
-                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      className="text-xs font-semibold text-sky-700 hover:text-sky-900"
                       onClick={() => onRequestEditQuote(quote)}
                       type="button"
                     >
@@ -98,6 +99,6 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           </table>
         </div>
       )}
-    </div>
+    </section>
   );
 };

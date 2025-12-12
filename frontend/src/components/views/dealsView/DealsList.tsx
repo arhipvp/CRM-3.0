@@ -60,7 +60,11 @@ export const DealsList: React.FC<DealsListProps> = ({
   const selectedDealId = selectedDeal?.id ?? null;
 
   useEffect(() => {
-    if (!selectedDealId || !selectedRowRef.current || !selectedRowRef.current.isConnected) {
+    if (
+      !selectedDealId ||
+      !selectedRowRef.current ||
+      !selectedRowRef.current.isConnected
+    ) {
       return;
     }
     selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -122,11 +126,12 @@ export const DealsList: React.FC<DealsListProps> = ({
       <div className="px-4 py-4 bg-white">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">
-              Выбор
+            <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
+              Сделки
             </span>
-            <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
-            <span className="text-sm text-slate-500 whitespace-nowrap">Всего {displayedDeals.length}</span>
+            <span className="text-sm text-slate-500 whitespace-nowrap">
+              Всего {displayedDeals.length}
+            </span>
           </div>
           <div className="w-full max-w-sm">
             <label htmlFor="dealSearch" className="sr-only">
@@ -143,6 +148,7 @@ export const DealsList: React.FC<DealsListProps> = ({
           </div>
         </div>
       </div>
+
       <div className="px-4 py-4 border-b border-slate-200 bg-white">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
@@ -157,6 +163,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               Показать закрытые сделки
             </label>
           </div>
+
           <div className="flex items-center gap-2">
             <input
               id="dealShowDeleted"
@@ -169,6 +176,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               Показать удалённые сделки
             </label>
           </div>
+
           <div className="flex items-center gap-2 min-w-[220px]">
             <label
               htmlFor="dealExecutorFilter"
@@ -193,6 +201,7 @@ export const DealsList: React.FC<DealsListProps> = ({
           </div>
         </div>
       </div>
+
       <div className="max-h-[360px] overflow-y-auto bg-white">
         <table className="deals-table min-w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 bg-white/90 backdrop-blur border-b border-slate-200">
@@ -235,27 +244,6 @@ export const DealsList: React.FC<DealsListProps> = ({
               </th>
               <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[190px]">
                 Исполнитель
-              </th>
-            </tr>
-            <tr className="hidden">
-              <th className="border border-slate-200 px-6 py-2 align-top" />
-              <th className="border border-slate-200 px-6 py-2 align-top" />
-              <th className="border border-slate-200 px-6 py-2 align-top" />
-              <th className="border border-slate-200 px-6 py-2 align-top" />
-              <th className="border border-slate-200 px-6 py-2 align-top">
-                <select
-                  value={dealExecutorFilter}
-                  onChange={(event) => onDealExecutorFilterChange(event.target.value)}
-                  aria-label="Фильтр по исполнителю"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
-                >
-                  <option value="">Все</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {getUserDisplayName(user)}
-                    </option>
-                  ))}
-                </select>
               </th>
             </tr>
           </thead>
@@ -353,6 +341,7 @@ export const DealsList: React.FC<DealsListProps> = ({
           </tbody>
         </table>
       </div>
+
       {dealsHasMore && (
         <div className="border-t border-slate-100 px-4 py-3 text-center">
           <button
@@ -368,3 +357,4 @@ export const DealsList: React.FC<DealsListProps> = ({
     </>
   );
 };
+
