@@ -51,7 +51,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     : null;
 
   return (
-    <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <section className="app-panel p-6 shadow-none space-y-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           {driveFolderLink ? (
@@ -72,7 +72,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           type="button"
           onClick={loadDriveFiles}
           disabled={!selectedDeal.driveFolderId || isDriveLoading}
-          className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn btn-secondary btn-sm self-start rounded-xl text-slate-600"
         >
           {isDriveLoading ? 'Обновляю...' : 'Обновить'}
         </button>
@@ -97,7 +97,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             !canRecognizeSelectedFiles ||
             !!driveError
           }
-          className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="btn btn-primary btn-sm rounded-xl"
         >
           {isRecognizing ? 'Распознаем...' : 'Распознать полис (только PDF)'}
         </button>

@@ -128,8 +128,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   return (
     <div className="flex h-full flex-col gap-6">
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
-        <div className="divide-y divide-slate-300">
+      <section className="app-panel overflow-hidden">
+        <div className="divide-y divide-slate-200">
           <DealsList
             sortedDeals={sortedDeals}
             selectedDeal={selectedDeal}

@@ -10,7 +10,7 @@ export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange }) => (
   <div
     role="tablist"
     aria-label="Разделы выбранной сделки"
-    className="flex w-full flex-nowrap gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50/70 p-1 scrollbar-none"
+    className="flex w-full flex-nowrap gap-2 overflow-x-auto app-panel-muted p-1 shadow-none scrollbar-none"
   >
     {DEAL_TABS.map((tab) => {
       const isActive = activeTab === tab.id;
@@ -37,4 +37,3 @@ export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange }) => (
     })}
   </div>
 );
-

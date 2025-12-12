@@ -39,13 +39,13 @@ export const DealActions: React.FC<DealActionsProps> = ({
   onDelay,
   onDelayDisabled,
 }) => (
-  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+  <div className="flex flex-wrap items-center justify-between gap-3 app-panel-muted p-3 shadow-none">
     <div className="flex flex-wrap items-center gap-2">
       <button
         type="button"
         onClick={onEdit}
         disabled={isSelectedDealDeleted}
-        className="inline-flex items-center justify-center rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn btn-primary"
       >
         Редактировать
       </button>
@@ -53,7 +53,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
         type="button"
         onClick={onDelay}
         disabled={onDelayDisabled ?? !dealEventsLength}
-        className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn btn-secondary"
       >
         <span className="text-base leading-none">🕒</span>
         <span>Отложить</span>
@@ -62,7 +62,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
         type="button"
         onClick={onMerge}
         disabled={isSelectedDealDeleted}
-        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn btn-secondary"
       >
         Сцепить
       </button>
@@ -78,7 +78,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
           isClosingDeal ||
           !isCurrentUserSeller
         }
-        className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn btn-success"
       >
         {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
       </button>
@@ -88,7 +88,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
           type="button"
           onClick={onReopen}
           disabled={isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal}
-          className="inline-flex items-center justify-center rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn btn-quiet"
         >
           {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
         </button>
@@ -99,7 +99,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
           type="button"
           onClick={onRestore}
           disabled={isRestoringDeal}
-          className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn btn-quiet"
         >
           {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
         </button>
@@ -108,7 +108,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
           type="button"
           onClick={onDelete}
           disabled={isDeletingDeal}
-          className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn btn-danger"
         >
           {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
         </button>
@@ -116,4 +116,3 @@ export const DealActions: React.FC<DealActionsProps> = ({
     </div>
   </div>
 );
-

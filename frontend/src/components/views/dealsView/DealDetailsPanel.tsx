@@ -851,7 +851,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   );
 
   const renderActivityTab = () => (
-    <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
+    <section className="app-panel p-6 shadow-none">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="app-label">История</p>
+        {selectedDeal && <p className="text-xs text-slate-500">{selectedDeal.title}</p>}
+      </div>
+      <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
+    </section>
   );
 
   const renderTabContent = () => {

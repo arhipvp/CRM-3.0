@@ -119,7 +119,7 @@ export const DealsList: React.FC<DealsListProps> = ({
 
   return (
     <>
-      <div className="px-4 py-4">
+      <div className="px-4 py-4 bg-white">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">
@@ -143,8 +143,8 @@ export const DealsList: React.FC<DealsListProps> = ({
           </div>
         </div>
       </div>
-      <div className="px-4 py-4 border-b border-slate-200">
-        <div className="flex flex-wrap gap-3">
+      <div className="px-4 py-4 border-b border-slate-200 bg-white">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <input
               id="dealShowClosed"
@@ -168,6 +168,28 @@ export const DealsList: React.FC<DealsListProps> = ({
             <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
               Показать удалённые сделки
             </label>
+          </div>
+          <div className="flex items-center gap-2 min-w-[220px]">
+            <label
+              htmlFor="dealExecutorFilter"
+              className="text-xs font-semibold text-slate-500 whitespace-nowrap"
+            >
+              Исполнитель
+            </label>
+            <select
+              id="dealExecutorFilter"
+              value={dealExecutorFilter}
+              onChange={(event) => onDealExecutorFilterChange(event.target.value)}
+              aria-label="Фильтр по исполнителю"
+              className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+            >
+              <option value="">Все</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {getUserDisplayName(user)}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -215,7 +237,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                 Исполнитель
               </th>
             </tr>
-            <tr className="border-t border-slate-200 bg-slate-50/80">
+            <tr className="hidden">
               <th className="border border-slate-200 px-6 py-2 align-top" />
               <th className="border border-slate-200 px-6 py-2 align-top" />
               <th className="border border-slate-200 px-6 py-2 align-top" />
