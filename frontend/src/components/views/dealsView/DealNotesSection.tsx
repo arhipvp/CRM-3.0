@@ -18,7 +18,7 @@ interface DealNotesSectionProps {
 
 const filterOptions: { value: 'active' | 'archived'; label: string }[] = [
   { value: 'active', label: 'Активные' },
-  { value: 'archived', label: 'Показать удалённые заметки' },
+  { value: 'archived', label: 'Показать удаленные заметки' },
 ];
 
 export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
@@ -135,8 +135,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
         ))}
       </div>
     ) : (
-      <p className="text-sm text-slate-600">Заметок пока нет.</p>
+      <p className="text-sm text-slate-600">Заметок не найдено.</p>
     )}
   </section>
 );
-
