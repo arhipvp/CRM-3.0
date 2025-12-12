@@ -898,7 +898,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   return (
     <>
       <div className="px-4 py-5 space-y-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div className="hidden">
               <p className="text-[10px] tracking-[0.4em] text-slate-400">
                 <span className="uppercase">Выбранная сделка:</span>
                 {selectedDeal ? (

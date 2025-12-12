@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { ColoredLabel } from '../../common/ColoredLabel';
 import type { Deal } from '../../../types';
 
@@ -43,20 +41,26 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="space-y-2">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <p className="text-[10px] tracking-[0.4em] text-slate-400 uppercase">
-            Выбранная сделка:
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+            Сделка
           </p>
-          <p className="text-base font-semibold text-slate-900">{deal.title}</p>
+          <h2 className="text-xl font-semibold leading-tight text-slate-900">
+            {deal.title}
+          </h2>
         </div>
+
         {deal.description && (
-          <p className="text-sm leading-relaxed text-slate-500 max-w-3xl">
+          <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
             {deal.description}
           </p>
         )}
-        <p className="text-sm text-slate-500">
-          Клиент:
-          <span className="ml-2 inline-flex items-center gap-2 text-base font-semibold text-slate-900">
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Клиент
+          </span>
+          <span className="inline-flex items-center gap-2 font-semibold text-slate-900">
             {clientDisplayName}
             {whatsAppLink && (
               <a
@@ -64,12 +68,12 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="Написать клиенту в WhatsApp"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-600 transition hover:border-emerald-200 hover:bg-emerald-100"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-white text-emerald-600 shadow-sm transition hover:bg-emerald-50"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
-                  className="h-3.5 w-3.5"
+                  className="h-4 w-4"
                   fill="currentColor"
                 >
                   <path d="M7.2 8.6a1 1 0 0 1 1.05.28l1.13 1.14c.33.33.34.87.01 1.21l-.2.2a9.7 9.7 0 0 0 3.73 3.73l.2-.2c.15-.16.37-.24.58-.24.22 0 .44.08.6.24l1.14 1.13c.29.29.33.75.08 1.07l-1.12 1.68a1 1 0 0 1-1.18.41c-1.55-.62-3.48-1.52-5.25-3.3-1.77-1.77-2.68-3.7-3.3-5.25a1 1 0 0 1 .41-1.18l1.68-1.12c.31-.21.72-.2 1.01.08z" />
@@ -82,12 +86,12 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="Написать клиенту в Telegram"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-sky-100 bg-sky-50 text-sky-600 transition hover:border-sky-200 hover:bg-sky-100"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-600 shadow-sm transition hover:bg-sky-50"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
-                  className="h-3.5 w-3.5"
+                  className="h-4 w-4"
                   fill="currentColor"
                 >
                   <path d="M3 12l17-9-5 17-4-6-4 6z" />
@@ -95,27 +99,37 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
               </a>
             )}
           </span>
-        </p>
-        <p className="text-xs text-slate-400">
-          Ответственный:{' '}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Ответственный
+          </span>
           <ColoredLabel
             value={sellerDisplayName !== '—' ? sellerDisplayName : undefined}
             fallback="—"
             showDot={false}
-            className="text-slate-900 font-semibold"
-          />{' '}
-          · Исполнитель:{' '}
+            className="font-semibold text-slate-900"
+          />
+          <span className="text-slate-400">•</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Исполнитель
+          </span>
           <ColoredLabel
             value={executorDisplayName !== '—' ? executorDisplayName : undefined}
             fallback="—"
             showDot={false}
-            className="text-slate-900 font-semibold"
+            className="font-semibold text-slate-900"
           />
-        </p>
+        </div>
+
         {deal.closingReason && (
-          <p className="text-xs text-slate-500">Причина закрытия: {deal.closingReason}</p>
+          <p className="text-xs text-slate-600">
+            Причина закрытия: {deal.closingReason}
+          </p>
         )}
       </div>
     </div>
   );
 };
+
