@@ -173,15 +173,15 @@ export const DealsList: React.FC<DealsListProps> = ({
       </div>
       <div className="max-h-[360px] overflow-y-auto">
         <table className="deals-table min-w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 bg-white/80 backdrop-blur border-b border-[#E3E7F0]">
+          <thead className="sticky top-0 bg-white/90 backdrop-blur border-b border-slate-200">
             <tr>
-              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[260px]">
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[260px]">
                 Сделка
               </th>
-              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[200px]">
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[200px]">
                 Клиент
               </th>
-              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-center text-slate-900 min-w-[180px]">
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-center text-slate-900 min-w-[180px]">
                 <button
                   type="button"
                   onClick={() => toggleColumnSort('deadline')}
@@ -196,7 +196,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   </span>
                 </button>
               </th>
-              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-right text-slate-900 min-w-[200px]">
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-right text-slate-900 min-w-[200px]">
                 <button
                   type="button"
                   onClick={() => toggleColumnSort('nextContact')}
@@ -211,16 +211,16 @@ export const DealsList: React.FC<DealsListProps> = ({
                   </span>
                 </button>
               </th>
-              <th className="border border-[#E3E7F0] px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[190px]">
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[190px]">
                 Исполнитель
               </th>
             </tr>
-            <tr className="border-t border-[#E3E7F0] bg-slate-50/70">
-              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
-              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
-              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
-              <th className="border border-[#E3E7F0] px-6 py-2 align-top" />
-              <th className="border border-[#E3E7F0] px-6 py-2 align-top">
+            <tr className="border-t border-slate-200 bg-slate-50/80">
+              <th className="border border-slate-200 px-6 py-2 align-top" />
+              <th className="border border-slate-200 px-6 py-2 align-top" />
+              <th className="border border-slate-200 px-6 py-2 align-top" />
+              <th className="border border-slate-200 px-6 py-2 align-top" />
+              <th className="border border-slate-200 px-6 py-2 align-top">
                 <select
                   value={dealExecutorFilter}
                   onChange={(event) => onDealExecutorFilterChange(event.target.value)}
@@ -248,8 +248,8 @@ export const DealsList: React.FC<DealsListProps> = ({
                   'transition-colors',
                   'cursor-pointer',
                   'border-l-4 border-transparent',
-                  'hover:bg-slate-50 hover:border-sky-500',
-                  isSelected ? 'bg-sky-100 border-sky-500 shadow-sm' : '',
+                  'hover:bg-slate-50/80 hover:border-sky-500',
+                  isSelected ? 'bg-sky-50 border-sky-500 shadow-sm' : '',
                   isDeleted ? 'opacity-60' : '',
                 ]
                   .filter(Boolean)
@@ -266,7 +266,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                     }}
                     style={{ minHeight: '56px' }}
                   >
-                    <td className={`border border-[#E3E7F0] px-6 py-3 ${deletedTextClass}`}>
+                    <td className={`border border-slate-200 px-6 py-3 ${deletedTextClass}`}>
                       <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>
                         {deal.title}
                       </p>
@@ -277,12 +277,12 @@ export const DealsList: React.FC<DealsListProps> = ({
                       )}
                     </td>
                     <td
-                      className={`border border-[#E3E7F0] px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
+                      className={`border border-slate-200 px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
                     >
                       <span className={deletedTextClass}>{deal.clientName || '—'}</span>
                     </td>
                     <td
-                      className={`border border-[#E3E7F0] px-6 py-3 text-sm font-semibold text-center ${deletedTextClass}`}
+                      className={`border border-slate-200 px-6 py-3 text-sm font-semibold text-center ${deletedTextClass}`}
                     >
                       {deal.expectedClose ? (
                         <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
@@ -293,7 +293,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                       )}
                     </td>
                     <td
-                      className={`border border-[#E3E7F0] px-6 py-3 text-sm text-right ${deletedTextClass}`}
+                      className={`border border-slate-200 px-6 py-3 text-sm text-right ${deletedTextClass}`}
                     >
                       {deal.nextContactDate ? (
                         <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
@@ -308,7 +308,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                       )}
                     </td>
                     <td
-                      className={`border border-[#E3E7F0] px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
+                      className={`border border-slate-200 px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
                     >
                       <ColoredLabel
                         value={deal.executorName}
@@ -322,7 +322,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               })
             ) : (
               <tr>
-                <td colSpan={5} className="border border-[#E3E7F0] px-6 py-4 text-center text-sm text-slate-500">
+                <td colSpan={5} className="border border-slate-200 px-6 py-4 text-center text-sm text-slate-500">
                   Сделки не найдены.
                 </td>
               </tr>

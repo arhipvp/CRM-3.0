@@ -913,7 +913,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               </p>
             </div>
             {selectedDeal ? (
-              <div className="rounded-2xl border border-slate-300 bg-white shadow-sm p-6 space-y-6">
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-6">
                 <div className="flex flex-col gap-4">
                   <DealHeader
                     deal={selectedDeal}
@@ -966,7 +966,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
                 Выберите сделку, чтобы увидеть подробности.
               </div>
             )}
