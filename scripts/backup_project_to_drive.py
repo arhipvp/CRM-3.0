@@ -15,13 +15,13 @@ from pathlib import Path
 from typing import Any, Iterator, Optional, Set
 from urllib.parse import quote_plus
 
+import psycopg
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-from google.oauth2 import service_account
 from openpyxl import Workbook
-import psycopg
-from psycopg.sql import Identifier, SQL
+from psycopg.sql import SQL, Identifier
 
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -77,7 +77,9 @@ def load_environment() -> dict[str, str]:
 def ensure_required_var(env: dict[str, str], name: str) -> str:
     value = os.environ.get(name) or env.get(name)
     if not value:
-        raise SystemExit(f"{name} must be set either in the environment or in one of {ROOT_ENV_FILES}")
+        raise SystemExit(
+            f"{name} must be set either in the environment or in one of {ROOT_ENV_FILES}"
+        )
     return value
 
 
@@ -92,7 +94,9 @@ def should_exclude(path: Path, root: Path) -> bool:
 def get_excluded_tables(env: dict[str, str]) -> set[str]:
     """Return normalized list of tables that should be skipped during database exports."""
 
-    raw = os.environ.get("BACKUP_DB_EXCLUDE_TABLES") or env.get("BACKUP_DB_EXCLUDE_TABLES", "")
+    raw = os.environ.get("BACKUP_DB_EXCLUDE_TABLES") or env.get(
+        "BACKUP_DB_EXCLUDE_TABLES", ""
+    )
     extras = {table.strip() for table in raw.split(",") if table.strip()}
     return {table.lower() for table in (*DEFAULT_EXCLUDED_TABLES, *extras)}
 
@@ -105,7 +109,11 @@ def get_backup_session_limit(env: dict[str, str]) -> int:
         value = int(raw)
         return max(0, value)
     except ValueError:
-        logger.warning("BACKUP_MAX_SESSIONS=%r is not an integer, defaulting to %s", raw, DEFAULT_BACKUP_MAX_SESSIONS)
+        logger.warning(
+            "BACKUP_MAX_SESSIONS=%r is not an integer, defaulting to %s",
+            raw,
+            DEFAULT_BACKUP_MAX_SESSIONS,
+        )
         return DEFAULT_BACKUP_MAX_SESSIONS
 
 
@@ -133,7 +141,9 @@ def create_archive(root: Path, destination: Path) -> Path:
     logger.info("Creating project archive %s", archive_path.name)
 
     file_count = 0
-    with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with zipfile.ZipFile(
+        archive_path, "w", compression=zipfile.ZIP_DEFLATED
+    ) as archive:
         for file_path in iter_files(root):
             archive_name = file_path.relative_to(root)
             archive.write(file_path, archive_name)
@@ -146,7 +156,9 @@ def create_archive(root: Path, destination: Path) -> Path:
 def _sanitize_sheet_name(name: str) -> str:
     """Drive sheet names must be <=31 characters and avoid invalid symbols."""
 
-    cleaned = "".join(ch if ch not in ('[', ']', '*', ':', '?', '/', "\\") else "_" for ch in name)
+    cleaned = "".join(
+        ch if ch not in ("[", "]", "*", ":", "?", "/", "\\") else "_" for ch in name
+    )
     trimmed = cleaned.strip()
     if not trimmed:
         return "sheet"
@@ -184,11 +196,19 @@ def _resolve_host(host: str, fallback: Optional[str]) -> str:
         return "localhost"
 
 
+def _escape_drive_query_literal(value: str) -> str:
+    """Escape a string for use inside single quotes in Drive `q` queries."""
+
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
 def build_db_config(env: dict[str, str]) -> dict[str, str]:
     """Gather Postgres credentials from the environment."""
 
     host = ensure_required_var(env, "DJANGO_DB_HOST")
-    fallback_host = os.environ.get("BACKUP_DB_FALLBACK_HOST") or env.get("BACKUP_DB_FALLBACK_HOST")
+    fallback_host = os.environ.get("BACKUP_DB_FALLBACK_HOST") or env.get(
+        "BACKUP_DB_FALLBACK_HOST"
+    )
     resolved_host = _resolve_host(host, fallback_host)
 
     return {
@@ -346,16 +366,20 @@ class DriveBackup:
             "mimeType": FOLDER_MIME_TYPE,
             "parents": [parent_id],
         }
-        response = self.service.files().create(
-            body=metadata,
-            fields="id",
-            supportsAllDrives=True,
-        ).execute()
+        response = (
+            self.service.files()
+            .create(
+                body=metadata,
+                fields="id",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
         return response["id"]
 
     def ensure_folder(self, name: str, parent_id: str) -> str:
         logger.debug("Looking for folder %s under %s", name, parent_id)
-        escaped_name = name.replace("'", "\\'")
+        escaped_name = _escape_drive_query_literal(name)
         query = " and ".join(
             (
                 f"name = '{escaped_name}'",
@@ -444,11 +468,16 @@ class DriveBackup:
             skip_folder_ids = set()
 
         if source_folder_id in skip_folder_ids:
-            logger.debug("Skipping folder %s because it is excluded from backup", source_folder_id)
+            logger.debug(
+                "Skipping folder %s because it is excluded from backup",
+                source_folder_id,
+            )
             return
 
         children = self.list_children(source_folder_id)
-        destination_children = {item["name"]: item for item in self.list_children(destination_folder_id)}
+        destination_children = {
+            item["name"]: item for item in self.list_children(destination_folder_id)
+        }
         logger.info("Copying %d Drive items from %s", len(children), source_folder_id)
 
         for child in children:
@@ -466,7 +495,11 @@ class DriveBackup:
                 )
             else:
                 existing = destination_children.get(name)
-                if existing and existing["mimeType"] != FOLDER_MIME_TYPE and not allow_existing:
+                if (
+                    existing
+                    and existing["mimeType"] != FOLDER_MIME_TYPE
+                    and not allow_existing
+                ):
                     logger.debug("Skipping already backed-up file %s", name)
                     continue
                 try:
@@ -524,10 +557,21 @@ class DriveBackup:
         logger.info("Pruning %d old backup folders", len(to_remove))
         for outdated in to_remove:
             try:
-                self.service.files().delete(fileId=outdated["id"], supportsAllDrives=True).execute()
-                logger.info("Removed old backup folder %s (%s)", outdated["name"], outdated["id"])
+                self.service.files().delete(
+                    fileId=outdated["id"], supportsAllDrives=True
+                ).execute()
+                logger.info(
+                    "Removed old backup folder %s (%s)",
+                    outdated["name"],
+                    outdated["id"],
+                )
             except HttpError as exc:
-                logger.warning("Failed to delete %s (%s): %s", outdated["name"], outdated["id"], exc)
+                logger.warning(
+                    "Failed to delete %s (%s): %s",
+                    outdated["name"],
+                    outdated["id"],
+                    exc,
+                )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -549,15 +593,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
 
     env = load_environment()
     if args.env_file:
         env.update({key: value for key, value in load_env_file(args.env_file)})
 
-    service_account_path = Path(ensure_required_var(env, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE")).expanduser()
+    service_account_path = Path(
+        ensure_required_var(env, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE")
+    ).expanduser()
     backup_root = ensure_required_var(env, "GOOGLE_DRIVE_BACKUP_FOLDER_ID")
-    drive_root = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID") or env.get("GOOGLE_DRIVE_ROOT_FOLDER_ID")
+    drive_root = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID") or env.get(
+        "GOOGLE_DRIVE_ROOT_FOLDER_ID"
+    )
     db_config = build_db_config(env)
     excluded_tables = get_excluded_tables(env)
     session_limit = get_backup_session_limit(env)
@@ -592,7 +642,9 @@ def main() -> None:
             backup_client.upload_file(excel_dump, db_folder_id)
 
     media_root_id = backup_client.ensure_folder("Media", backup_root)
-    logger.info("Ensured Media folder ID %s under backup root %s", media_root_id, backup_root)
+    logger.info(
+        "Ensured Media folder ID %s under backup root %s", media_root_id, backup_root
+    )
     if drive_root:
         skip_ids = {backup_root, media_root_id}
         backup_client.copy_folder_tree(
@@ -602,7 +654,9 @@ def main() -> None:
             backup_root, session_limit, skip_ids={*skip_ids, media_root_id}
         )
     else:
-        logger.warning("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured; skipping Drive files backup.")
+        logger.warning(
+            "GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured; skipping Drive files backup."
+        )
 
     logger.info("Backup session %s completed", backup_target_name)
 

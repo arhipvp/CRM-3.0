@@ -30,6 +30,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 ### Инфраструктура
 - **Docker**: `docker-compose.yml` запускает Postgres, backend, frontend и nginx; монтирует env-файлы и volume для static/media.
 - **nginx** используется для отдачи статических файлов, кэширования и проксирования API к backend.
+- **Автобэкап**: скрипт `scripts/backup_project_to_drive.py` и systemd-юниты `systemd/crm3-drive-backup.service`, `systemd/crm3-drive-backup.timer` (требуют настроенные env-переменные для Google Drive и доступа к БД; лог по умолчанию пишется в `/root/crm3/cron-backup.log` согласно юниту).
 - **Переменные окружения**: общий `.env`, `backend/.env` и `frontend/.env` (можно подключить `.env.production`, `.env.vps.secure`). Не коммитить реальные секреты.
 
 ### Приложения Django
