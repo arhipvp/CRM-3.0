@@ -22,7 +22,11 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from .ai_service import PolicyRecognitionError, recognize_policy_from_bytes
+from .ai_service import (
+    PolicyRecognitionError,
+    extract_text_from_bytes,
+    recognize_policy_from_text,
+)
 from .filters import PolicyFilterSet
 from .models import Policy
 from .serializers import PolicySerializer
@@ -181,6 +185,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .distinct()
         )
 
+        downloaded_files: List[dict[str, str]] = []
         for file_id in file_ids:
             if file_id in seen:
                 continue
@@ -210,35 +215,52 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
                 continue
 
+            downloaded_files.append(
+                {
+                    "id": file_id,
+                    "name": file_info["name"],
+                    "text": extract_text_from_bytes(content, file_info["name"]),
+                }
+            )
+
+        if downloaded_files:
+            combined_text = "\n\n".join(
+                f"Файл {file_data['name']}:\n{file_data['text']}"
+                for file_data in downloaded_files
+            ).strip()
+            if not combined_text:
+                combined_text = downloaded_files[0]["text"]
+
             try:
-                data, transcript = recognize_policy_from_bytes(
-                    content,
-                    filename=file_info["name"],
+                data, transcript = recognize_policy_from_text(
+                    combined_text,
                     extra_companies=company_names,
                     extra_types=type_names,
                 )
             except PolicyRecognitionError as exc:
+                for file_data in downloaded_files:
+                    results.append(
+                        {
+                            "fileId": file_data["id"],
+                            "fileName": file_data["name"],
+                            "status": "error",
+                            "message": str(exc),
+                            "transcript": exc.transcript,
+                        }
+                    )
+                return Response({"results": results})
+
+            for file_data in downloaded_files:
                 results.append(
                     {
-                        "fileId": file_id,
-                        "fileName": file_info["name"],
-                        "status": "error",
-                        "message": str(exc),
-                        "transcript": exc.transcript,
+                        "fileId": file_data["id"],
+                        "fileName": file_data["name"],
+                        "status": "parsed",
+                        "message": "Полис распознан",
+                        "transcript": transcript,
+                        "data": data,
                     }
                 )
-                continue
-
-            results.append(
-                {
-                    "fileId": file_id,
-                    "fileName": file_info["name"],
-                    "status": "parsed",
-                    "message": "Полис распознан",
-                    "transcript": transcript,
-                    "data": data,
-                }
-            )
 
         return Response({"results": results})
 
