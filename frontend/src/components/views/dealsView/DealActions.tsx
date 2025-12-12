@@ -39,75 +39,81 @@ export const DealActions: React.FC<DealActionsProps> = ({
   onDelay,
   onDelayDisabled,
 }) => (
-  <div className="flex flex-wrap justify-end gap-2">
-    <button
-      type="button"
-      onClick={onEdit}
-      disabled={isSelectedDealDeleted}
-      className="px-4 py-1.5 text-sm font-semibold rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      Редактировать
-    </button>
-    {isSelectedDealDeleted ? (
+  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+    <div className="flex flex-wrap items-center gap-2">
       <button
         type="button"
-        onClick={onRestore}
-        disabled={isRestoringDeal}
-        className="px-4 py-1.5 text-sm font-semibold rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={onEdit}
+        disabled={isSelectedDealDeleted}
+        className="inline-flex items-center justify-center rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
+        Редактировать
       </button>
-    ) : (
       <button
         type="button"
-        onClick={onDelete}
-        disabled={isDeletingDeal}
-        className="px-4 py-1.5 text-sm font-semibold rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={onDelay}
+        disabled={onDelayDisabled ?? !dealEventsLength}
+        className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
+        <span className="text-base leading-none">🕒</span>
+        <span>Отложить</span>
       </button>
-    )}
-    <button
-      type="button"
-      onClick={onClose}
-      disabled={
-        isSelectedDealDeleted ||
-        isDealClosedStatus ||
-        isClosingDeal ||
-        !isCurrentUserSeller
-      }
-      className="px-4 py-1.5 text-sm font-semibold rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
-    </button>
-    {isDealClosedStatus && (
       <button
         type="button"
-        onClick={onReopen}
+        onClick={onMerge}
+        disabled={isSelectedDealDeleted}
+        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Сцепить
+      </button>
+    </div>
+
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <button
+        type="button"
+        onClick={onClose}
         disabled={
-          isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal
+          isSelectedDealDeleted ||
+          isDealClosedStatus ||
+          isClosingDeal ||
+          !isCurrentUserSeller
         }
-        className="px-4 py-1.5 text-sm font-semibold rounded-full bg-amber-600 text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
+        {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
       </button>
-    )}
-    <button
-      type="button"
-      onClick={onMerge}
-      disabled={isSelectedDealDeleted}
-      className="px-4 py-1.5 text-sm font-semibold rounded-full bg-sky-600 text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      Сцепить
-    </button>
-    <button
-      type="button"
-      onClick={onDelay}
-      disabled={onDelayDisabled ?? !dealEventsLength}
-      className="flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-emerald-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <span className="text-base leading-none">👑</span>
-      <span>Отложить</span>
-    </button>
+
+      {isDealClosedStatus && (
+        <button
+          type="button"
+          onClick={onReopen}
+          disabled={isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal}
+          className="inline-flex items-center justify-center rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
+        </button>
+      )}
+
+      {isSelectedDealDeleted ? (
+        <button
+          type="button"
+          onClick={onRestore}
+          disabled={isRestoringDeal}
+          className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={isDeletingDeal}
+          className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
+        </button>
+      )}
+    </div>
   </div>
 );
+

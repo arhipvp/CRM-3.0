@@ -171,7 +171,7 @@ export const DealsList: React.FC<DealsListProps> = ({
           </div>
         </div>
       </div>
-      <div className="max-h-[360px] overflow-y-auto">
+      <div className="max-h-[360px] overflow-y-auto bg-white">
         <table className="deals-table min-w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 bg-white/90 backdrop-blur border-b border-slate-200">
             <tr>
@@ -247,6 +247,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                 const rowClassName = [
                   'transition-colors',
                   'cursor-pointer',
+                  'even:bg-slate-50/40',
                   'border-l-4 border-transparent',
                   'hover:bg-slate-50/80 hover:border-sky-500',
                   isSelected ? 'bg-sky-50 border-sky-500 shadow-sm' : '',
