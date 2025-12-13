@@ -31,6 +31,8 @@ class DealDriveTrashTests(AuthenticatedAPITestCase):
     def test_seller_can_trash_multiple_files(self):
         self.authenticate(self.seller)
 
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+
         drive_files = [
             {"id": "file-1", "is_folder": False},
             {"id": "file-2", "is_folder": False},
@@ -64,7 +66,7 @@ class DealDriveTrashTests(AuthenticatedAPITestCase):
         self.assertEqual(response.data["moved_file_ids"], ["file-1", "file-2"])
         self.assertEqual(response.data["trash_folder_id"], "trash-folder")
 
-        ensure_deal_folder_mock.assert_called_once()
+        ensure_deal_folder_mock.assert_not_called()
         list_contents_mock.assert_called_once_with("deal-folder")
         ensure_trash_mock.assert_called_once_with("deal-folder")
         move_mock.assert_has_calls(
@@ -74,6 +76,8 @@ class DealDriveTrashTests(AuthenticatedAPITestCase):
 
     def test_returns_400_when_file_missing_in_deal_folder(self):
         self.authenticate(self.seller)
+
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
 
         drive_files = [{"id": "file-1", "is_folder": False}]
 
