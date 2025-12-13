@@ -1,6 +1,6 @@
 import React from 'react';
-
-import { Deal } from '../../../types';
+import type { Deal } from '../../../types';
+import { Modal } from '../../Modal';
 import type { DealEvent } from './eventUtils';
 import { formatDate, statusLabels } from './helpers';
 
@@ -27,117 +27,118 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
   onEventSelect,
   onConfirm,
 }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
-      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">Отложить до следующего события</h3>
-          <p className="text-xs text-slate-500">{deal.title}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-          aria-label="Закрыть"
-        >
-          ×
-        </button>
+  <Modal title="Отложить до следующего контакта" onClose={onClose} size="xl" zIndex={50}>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <p className="app-label">Сделка</p>
+        <p className="mt-1 text-sm font-semibold text-slate-900">{deal.title}</p>
       </div>
-      <div className="px-6 py-4 space-y-6">
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-wide text-slate-400">Выбранное событие</p>
-          {selectedEvent ? (
-            <>
-              <p className="text-sm font-semibold text-slate-900">{selectedEvent.title}</p>
-              <p className="text-sm text-slate-500">{selectedEvent.description}</p>
-              <p className="text-xs text-slate-500">Дата: {formatDate(selectedEvent.date)}</p>
-              {selectedEventNextContact && (
-                <p className="text-xs text-slate-500">
-                  Новый следующий контакт: {formatDate(selectedEventNextContact)}
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-slate-500">Событие не выбрано.</p>
-          )}
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-700">Предстоящие события</p>
-            <span className="text-xs uppercase tracking-wide text-slate-400">
-              {upcomingEvents.length} найдено
-            </span>
-          </div>
-          {upcomingEvents.length ? (
-            <div className="space-y-3">
-              {upcomingEvents.map((event) => {
-                const isSelected = selectedEvent?.id === event.id;
-                return (
-                  <button
-                    key={event.id}
-                    type="button"
-                    onClick={() => onEventSelect(event.id)}
-                    className={`w-full text-left rounded-xl border px-4 py-3 transition ${
-                      isSelected
-                        ? 'border-sky-500 bg-sky-50 shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                        <p className="text-sm text-slate-500">{event.description}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-slate-600">
-                        {formatDate(event.date)}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">Предстоящие события не найдены.</p>
-          )}
-          {pastEvents.length > 0 && (
-            <details className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-600">
-                Старые события ({pastEvents.length})
-              </summary>
-              <div className="mt-3 space-y-2">
-                {pastEvents.map((event) => (
-                  <div key={event.id} className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                      <p className="text-sm text-slate-500">{event.description}</p>
-                    </div>
-                    <span className="text-xs text-slate-500">{formatDate(event.date)}</span>
-                  </div>
-                ))}
+
+      <div className="space-y-2">
+        <p className="app-label">Выбранное событие</p>
+        {selectedEvent ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">{selectedEvent.title}</p>
+                {selectedEvent.description && (
+                  <p className="mt-1 text-sm text-slate-600">{selectedEvent.description}</p>
+                )}
               </div>
-            </details>
-          )}
-        </div>
+              <span className="text-xs font-semibold text-slate-600">
+                {formatDate(selectedEvent.date)}
+              </span>
+            </div>
+            {selectedEventNextContact && (
+              <p className="mt-2 text-xs text-slate-600">
+                Новый следующий контакт: {formatDate(selectedEventNextContact)}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-600">Событие не выбрано.</p>
+        )}
       </div>
-      <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200 transition"
-        >
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-800">Предстоящие события</p>
+          <span className="text-xs text-slate-500">{upcomingEvents.length} найдено</span>
+        </div>
+
+        {upcomingEvents.length ? (
+          <div className="space-y-3">
+            {upcomingEvents.map((event) => {
+              const isSelected = selectedEvent?.id === event.id;
+              return (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() => onEventSelect(event.id)}
+                  className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                    isSelected
+                      ? 'border-sky-500 bg-sky-50 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                      {event.description && (
+                        <p className="mt-1 text-sm text-slate-600">{event.description}</p>
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-slate-600">
+                      {formatDate(event.date)}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-600">Предстоящих событий не найдено.</p>
+        )}
+
+        {pastEvents.length > 0 && (
+          <details className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-2">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+              Прошедшие события ({pastEvents.length})
+            </summary>
+            <div className="mt-3 space-y-2">
+              {pastEvents.map((event) => (
+                <div key={event.id} className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                    {event.description && (
+                      <p className="mt-1 text-sm text-slate-600">{event.description}</p>
+                    )}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    {formatDate(event.date)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        <button type="button" onClick={onClose} className="btn btn-secondary rounded-xl">
           Отмена
         </button>
         <button
           type="button"
           onClick={onConfirm}
-          disabled={!selectedEvent || !selectedEventNextContact || isSchedulingDelay}
-          className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+          disabled={!selectedEvent || isSchedulingDelay}
+          className="btn btn-primary rounded-xl"
         >
-          {isSchedulingDelay ? 'Сохраняю...' : 'Перенести следующий контакт'}
+          {isSchedulingDelay ? 'Переносим...' : 'Перенести следующий контакт'}
         </button>
       </div>
     </div>
-  </div>
+  </Modal>
 );
 
 interface DealMergeModalProps {
@@ -173,38 +174,32 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
   onClose,
   onSubmit,
 }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
-      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-        <h3 className="text-lg font-semibold text-slate-900">Объединить сделки</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-        >
-          ×
-        </button>
+  <Modal title="Объединить сделки" onClose={onClose} size="xl" zIndex={50}>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <p className="app-label">Целевая сделка</p>
+        <p className="mt-1 text-sm font-semibold text-slate-900">{targetDeal.title}</p>
+        <p className="mt-1 text-xs text-slate-600">Клиент: {selectedClientName}</p>
       </div>
-      <div className="p-6 space-y-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400 mb-1">Целевая сделка</p>
-          <p className="text-base font-semibold text-slate-900">{targetDeal.title}</p>
-          <p className="text-xs text-slate-500">Клиент: {selectedClientName}</p>
-        </div>
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-slate-700">Выберите сделки для переноса</p>
-          <input
-            type="search"
-            value={mergeSearch}
-            onChange={(event) => onMergeSearchChange(event.target.value)}
-            placeholder="Поиск по названию сделки"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-          />
-          {mergeList.length ? (
-            mergeList.map((deal) => (
+
+      <div className="space-y-3">
+        <p className="text-sm font-semibold text-slate-800">
+          Выберите сделки для переноса
+        </p>
+        <input
+          type="search"
+          value={mergeSearch}
+          onChange={(event) => onMergeSearchChange(event.target.value)}
+          placeholder="Поиск по названию сделки"
+          className="field field-input"
+        />
+
+        {mergeList.length ? (
+          <div className="space-y-2">
+            {mergeList.map((deal) => (
               <label
                 key={deal.id}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300"
+                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 transition hover:border-slate-300"
               >
                 <input
                   type="checkbox"
@@ -212,45 +207,43 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
                   onChange={() => toggleMergeSource(deal.id)}
                   className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-                  <p className="text-[11px] text-slate-500">
-                    Стадия: {deal.stageName || '—'} · Статус:{' '}
-                    {statusLabels[deal.status]}
+                  <p className="mt-1 text-[11px] text-slate-600">
+                    Статус: {statusLabels[deal.status]}
                   </p>
                 </div>
               </label>
-            ))
-          ) : (
-            !isLoading && (
-              <p className="text-sm text-slate-500">
-                {isActiveSearch
-                  ? `По запросу "${searchQuery}" ничего не найдено.`
-                  : 'Нет других активных сделок у клиента.'}
-              </p>
-            )
-          )}
-          {isLoading && <p className="text-sm text-slate-500">Поиск...</p>}
-        </div>
-        {mergeError && <p className="text-sm font-medium text-rose-600">{mergeError}</p>}
+            ))}
+          </div>
+        ) : (
+          !isLoading && (
+            <p className="text-sm text-slate-600">
+              {isActiveSearch
+                ? `По запросу "${searchQuery}" ничего не найдено.`
+                : 'Нет подходящих сделок у клиента.'}
+            </p>
+          )
+        )}
+
+        {isLoading && <p className="text-sm text-slate-600">Поиск...</p>}
+        {mergeError && <p className="text-sm font-semibold text-rose-700">{mergeError}</p>}
       </div>
-      <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg border border-slate-200"
-        >
+
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        <button type="button" onClick={onClose} className="btn btn-secondary rounded-xl">
           Отмена
         </button>
         <button
           type="button"
           onClick={onSubmit}
-          disabled={isMerging || !mergeSources.length}
-          className="px-3 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isMerging || mergeSources.length === 0}
+          className="btn btn-primary rounded-xl"
         >
           {isMerging ? 'Объединяем...' : 'Объединить сделки'}
         </button>
       </div>
     </div>
-  </div>
+  </Modal>
 );
+

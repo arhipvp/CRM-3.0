@@ -51,7 +51,8 @@ describe('DealDetailsModals', () => {
       />
     );
 
-    expect(screen.getByText('Отложить до следующего события')).toBeInTheDocument();
+    expect(screen.getByText('Отложить до следующего контакта')).toBeInTheDocument();
+
     const eventButton = screen.getByRole('button', { name: /Очередной платёж/ });
     fireEvent.click(eventButton);
     expect(onEventSelect).toHaveBeenCalledWith(upcomingEvent.id);
