@@ -141,7 +141,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               value={dealSearch}
               onChange={(event) => onDealSearchChange(event.target.value)}
               placeholder="Поиск по сделкам"
-              className="h-10 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              className="field field-input"
             />
           </div>
         </div>
@@ -187,7 +187,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               value={dealExecutorFilter}
               onChange={(event) => onDealExecutorFilterChange(event.target.value)}
               aria-label="Фильтр по исполнителю"
-              className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0"
+              className="field field-select"
             >
               <option value="">Все</option>
               {users.map((user) => (

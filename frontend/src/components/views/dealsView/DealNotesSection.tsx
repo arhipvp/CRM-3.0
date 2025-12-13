@@ -64,7 +64,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
           value={noteDraft}
           onChange={(event) => onSetDraft(event.target.value)}
           placeholder="Заметка к сделке"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-inner focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
+          className="field-textarea"
         />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-slate-500">
