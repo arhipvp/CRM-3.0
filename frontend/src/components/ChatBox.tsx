@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { User, ChatMessage } from '../types';
+import { ChatMessage, User } from '../types';
+import { formatErrorMessage } from '../utils/formatErrorMessage';
 import { getUserColor } from '../utils/userColor';
 import { Modal } from './Modal';
-import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface ChatBoxProps {
   messages: ChatMessage[];
@@ -31,7 +31,6 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
   const userRoles = currentUser.roles ?? [];
   const isAdmin = userRoles.includes('Admin');
 
-  // Автоскролл к последнему сообщению
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) {
@@ -43,7 +42,9 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
   const canDeleteMessage = () => isAdmin;
 
   const sendMessage = async () => {
-    if (isSubmitting || !newMessage.trim()) return;
+    if (isSubmitting || !newMessage.trim()) {
+      return;
+    }
 
     setError(null);
     setSubmitting(true);
@@ -58,14 +59,16 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
     await sendMessage();
   };
 
-  const handleTextareaKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+  const handleTextareaKeyDown = async (
+    event: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
       await sendMessage();
     }
   };
@@ -98,31 +101,27 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-[55vh] max-h-[70vh] w-full bg-white border border-slate-200 rounded-lg overflow-hidden">
-      {/* Messages area */}
-      <div
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto bg-slate-50 p-3 space-y-2"
-      >
+    <div className="flex h-full min-h-[55vh] max-h-[70vh] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div ref={messagesContainerRef} className="flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3">
         {messages.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-8">
+          <p className="py-8 text-center text-sm text-slate-600">
             Сообщений нет. Начните разговор!
           </p>
         ) : (
-          messages.map((msg) => {
+          messages.map((message) => {
             const resolvedAuthorDisplayName =
-              msg.author_display_name ??
-              msg.author_name ??
-              msg.author_username ??
+              message.author_display_name ??
+              message.author_name ??
+              message.author_username ??
               'Пользователь';
             const authorColor = getUserColor(resolvedAuthorDisplayName);
-            const authorName = resolvedAuthorDisplayName;
             const showDeleteButton =
-              canDeleteMessage() && msg.showDeleteButton !== false;
+              canDeleteMessage() && message.showDeleteButton !== false;
+
             return (
               <div
-                key={msg.id}
-                className="group flex items-start gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2 shadow-sm transition hover:border-slate-200"
+                key={message.id}
+                className="group flex items-start gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm transition hover:border-slate-200"
               >
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between gap-3">
@@ -130,22 +129,27 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
                       className="text-sm font-semibold"
                       style={authorColor ? { color: authorColor } : undefined}
                     >
-                      {authorName}
+                      {resolvedAuthorDisplayName}
                     </p>
                     <p className="text-[11px] text-slate-400">
-                      {formatTime(msg.created_at)}
+                      {formatTime(message.created_at)}
                     </p>
                   </div>
-                  <p className="text-sm text-slate-600 break-words leading-relaxed">
-                    {msg.body}
+                  <p className="break-words text-sm leading-relaxed text-slate-700">
+                    {message.body}
                   </p>
                 </div>
+
                 {showDeleteButton && (
                   <button
-                    onClick={() => handleDeleteClick(msg)}
-                    className="text-xs text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition flex-shrink-0"
+                    type="button"
+                    onClick={() => handleDeleteClick(message)}
+                    className="opacity-0 transition group-hover:opacity-100"
+                    aria-label="Удалить сообщение"
                   >
-                    ×
+                    <span className="icon-btn h-7 w-7 text-rose-600 hover:bg-rose-50">
+                      ×
+                    </span>
                   </button>
                 )}
               </div>
@@ -154,50 +158,51 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
         )}
       </div>
 
-      {/* Input area */}
       <div className="border-t border-slate-200 bg-white px-4 py-3">
         {error && (
-          <p className="text-xs text-red-500 bg-red-50 p-2 rounded">{error}</p>
+          <p className="rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+            {error}
+          </p>
         )}
+
         <form onSubmit={handleSendMessage} className="space-y-2">
-          <div className="text-xs text-slate-500">
-            Отправляете как <span className="font-semibold text-slate-700">{getUserDisplayName(currentUser)}</span>
+          <div className="text-xs text-slate-600">
+            Отправляете как{' '}
+            <span className="font-semibold text-slate-900">
+              {getUserDisplayName(currentUser)}
+            </span>
           </div>
+
           <div className="flex gap-2">
             <textarea
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(event) => setNewMessage(event.target.value)}
               onKeyDown={handleTextareaKeyDown}
               placeholder="Напишите сообщение..."
               rows={2}
               disabled={isSubmitting}
-              className="flex-1 text-sm rounded-lg border border-slate-300 px-3 py-2 focus:border-sky-500 focus:ring-sky-500 resize-none"
+              className="field-textarea flex-1 resize-none"
             />
             <button
               type="submit"
               disabled={isSubmitting || !newMessage.trim()}
-              className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60 flex-shrink-0"
+              className="btn btn-primary flex-shrink-0"
             >
-              {isSubmitting ? '...' : '💬'}
+              {isSubmitting ? '...' : 'Отправить'}
             </button>
           </div>
         </form>
       </div>
+
       {messageToDelete && (
-        <Modal
-          title="Подтвердите удаление"
-          onClose={() => setMessageToDelete(null)}
-          size="sm"
-        >
-          <p className="text-sm text-slate-700">
-            Вы уверены, что хотите удалить это сообщение?
-          </p>
-          <p className="text-sm text-slate-500 mt-2 break-words">{messageToDelete.body}</p>
+        <Modal title="Подтвердите удаление" onClose={() => setMessageToDelete(null)} size="sm">
+          <p className="text-sm text-slate-700">Вы уверены, что хотите удалить это сообщение?</p>
+          <p className="mt-2 break-words text-sm text-slate-600">{messageToDelete.body}</p>
           <div className="mt-5 flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setMessageToDelete(null)}
-              className="px-3 py-2 text-sm font-semibold text-slate-500 border border-slate-200 rounded-lg hover:text-slate-700"
+              className="btn btn-secondary btn-sm rounded-xl"
             >
               Отмена
             </button>
@@ -205,7 +210,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
               type="button"
               onClick={handleConfirmDelete}
               disabled={isDeletingMessage}
-              className="px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60"
+              className="btn btn-danger btn-sm rounded-xl"
             >
               {isDeletingMessage ? 'Удаление...' : 'Удалить'}
             </button>

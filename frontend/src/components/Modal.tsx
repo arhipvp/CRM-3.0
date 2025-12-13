@@ -36,21 +36,17 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
       style={{ zIndex }}
       onClick={handleOverlayClick}
     >
       <div
-        className={`bg-white rounded-xl shadow-2xl w-full ${sizeClass}`}
-        onClick={(e) => e.stopPropagation()}
+        className={`w-full rounded-2xl border border-slate-200 bg-white shadow-2xl ${sizeClass}`}
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
-            aria-label="Закрыть"
-          >
+          <button type="button" onClick={onClose} className="icon-btn" aria-label="Закрыть">
             ×
           </button>
         </div>
@@ -59,3 +55,4 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
+
