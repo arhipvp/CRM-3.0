@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Client, User } from '../../types';
+import type { Client, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
@@ -65,6 +65,11 @@ const formatDateForInput = (value: Date) => {
   const month = String(value.getMonth() + 1).padStart(2, '0');
   const day = String(value.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const getUserFullName = (user: User) => {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  return fullName || user.username;
 };
 
 export const DealForm: React.FC<DealFormProps> = ({
@@ -175,7 +180,12 @@ export const DealForm: React.FC<DealFormProps> = ({
     setClientId(preselected.id);
     setClientQuery(preselected.name);
     onPreselectedClientConsumed?.();
-  }, [clientsById, initialValues?.clientId, onPreselectedClientConsumed, preselectedClientId]);
+  }, [
+    clientsById,
+    initialValues?.clientId,
+    onPreselectedClientConsumed,
+    preselectedClientId,
+  ]);
 
   useEffect(() => {
     if (!clients.length) {
@@ -213,52 +223,6 @@ export const DealForm: React.FC<DealFormProps> = ({
     return filteredClients[0] ?? null;
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const trimmedTitle = title.trim();
-    const resolvedClient = resolveClientFromQuery();
-    const selectedClientId = resolvedClient?.id ?? clientId;
-
-    if (!trimmedTitle) {
-      setError('Название сделки обязательно');
-      return;
-    }
-    if (!selectedClientId) {
-      setError('Клиент обязателен');
-      return;
-    }
-
-    const payload: DealFormValues = {
-      title: trimmedTitle,
-      clientId: selectedClientId,
-      description: description.trim() || undefined,
-      expectedClose: expectedClose || null,
-      executorId: executorId || undefined,
-      source: source.trim(),
-      ...(showSellerField ? { sellerId: sellerId || null } : {}),
-      ...(showNextContactField ? { nextContactDate: nextContactDate || null } : {}),
-    };
-
-    setError(null);
-    setSubmitting(true);
-    try {
-      if (resolvedClient) {
-        setClientId(resolvedClient.id);
-        setClientQuery(resolvedClient.name);
-      }
-      await onSubmit(payload);
-    } catch (err) {
-      setError(
-        formatErrorMessage(
-          err,
-          submitErrorMessage ?? (mode === 'edit' ? 'Не удалось обновить сделку' : 'Не удалось создать сделку')
-        )
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleClientSelect = (client: Client) => {
     setClientId(client.id);
     setClientQuery(client.name);
@@ -286,7 +250,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     try {
       await onQuickNextContactShift(nextValue);
     } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось обновить дату следующего контакта'));
+      setError(formatErrorMessage(err, 'Не удалось быстро изменить дату следующего контакта.'));
     } finally {
       setIsQuickSaving(false);
     }
@@ -296,21 +260,76 @@ export const DealForm: React.FC<DealFormProps> = ({
   const submitText = submitLabel ?? (mode === 'edit' ? 'Сохранить' : 'Создать сделку');
   const submittingText = submittingLabel ?? 'Сохраняем...';
 
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmedTitle = title.trim();
+    const resolvedClient = resolveClientFromQuery();
+    const selectedClientId = resolvedClient?.id ?? clientId;
+
+    if (!trimmedTitle) {
+      setError('Название сделки обязательно.');
+      return;
+    }
+    if (!selectedClientId) {
+      setError('Клиент обязателен.');
+      return;
+    }
+
+    const payload: DealFormValues = {
+      title: trimmedTitle,
+      clientId: selectedClientId,
+      description: description.trim() || undefined,
+      expectedClose: expectedClose || null,
+      executorId: executorId || undefined,
+      source: source.trim(),
+      ...(showSellerField ? { sellerId: sellerId || null } : {}),
+      ...(showNextContactField ? { nextContactDate: nextContactDate || null } : {}),
+    };
+
+    setError(null);
+    setSubmitting(true);
+    try {
+      if (resolvedClient) {
+        setClientId(resolvedClient.id);
+        setClientQuery(resolvedClient.name);
+      }
+      await onSubmit(payload);
+    } catch (err) {
+      setError(
+        formatErrorMessage(
+          err,
+          submitErrorMessage ??
+            (mode === 'edit' ? 'Не удалось обновить сделку.' : 'Не удалось создать сделку.')
+        )
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
+      {error && (
+        <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+          {error}
+        </p>
+      )}
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">Название*</label>
+        <label className="block text-sm font-semibold text-slate-700">
+          Название *
+        </label>
         <input
           type="text"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-          placeholder="Страхование автопарка"
+          className="mt-1 field field-input"
+          placeholder="Например: КАСКО / ОСАГО"
         />
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">Клиент*</label>
+        <label className="block text-sm font-semibold text-slate-700">Клиент *</label>
         <div className="mt-1 flex flex-col gap-2">
           <div className="relative flex items-center gap-2">
             <div className="relative flex-1">
@@ -325,17 +344,17 @@ export const DealForm: React.FC<DealFormProps> = ({
                 onBlur={() => {
                   setTimeout(() => setShowClientSuggestions(false), 120);
                 }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
-                placeholder="Найти клиента"
+                className="field field-input"
+                placeholder="Начните вводить имя клиента"
               />
               {showClientSuggestions && (
-                <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-44 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                   {filteredClients.length ? (
                     filteredClients.slice(0, MAX_CLIENT_SUGGESTIONS).map((client) => (
                       <button
                         key={client.id}
                         type="button"
-                        className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                        className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                         onMouseDown={(event) => {
                           event.preventDefault();
                           handleClientSelect(client);
@@ -345,16 +364,19 @@ export const DealForm: React.FC<DealFormProps> = ({
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-slate-500">Клиенты не найдены</div>
+                    <div className="px-3 py-2 text-sm text-slate-600">
+                      Клиент не найден
+                    </div>
                   )}
                 </div>
               )}
             </div>
+
             {shouldShowAddClient && (
               <button
                 type="button"
                 onClick={onRequestAddClient}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="btn btn-secondary btn-sm rounded-xl"
               >
                 + Клиент
               </button>
@@ -362,69 +384,70 @@ export const DealForm: React.FC<DealFormProps> = ({
           </div>
         </div>
       </div>
+
       {showSellerField && (
         <div>
-          <label className="block text-sm font-medium text-slate-700">Продавец</label>
+          <label className="block text-sm font-semibold text-slate-700">Ответственный</label>
           <select
             value={sellerId}
             onChange={(event) => setSellerId(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+            className="mt-1 field field-input"
           >
             <option value="">Не выбран</option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
-                {user.firstName || user.lastName
-                  ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
-                  : user.username}
+                {getUserFullName(user)}
               </option>
             ))}
           </select>
         </div>
       )}
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">Исполнитель</label>
+        <label className="block text-sm font-semibold text-slate-700">Исполнитель</label>
         <select
           value={executorId}
           onChange={(event) => setExecutorId(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="mt-1 field field-input"
         >
           <option value="">Не выбран</option>
           {users.map((user) => (
             <option key={user.id} value={user.id}>
-              {user.firstName || user.lastName
-                ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
-                : user.username}
+              {getUserFullName(user)}
             </option>
           ))}
         </select>
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">Краткое описание</label>
+        <label className="block text-sm font-semibold text-slate-700">Описание</label>
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           rows={3}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="mt-1 field-textarea"
         />
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">Источник</label>
+        <label className="block text-sm font-semibold text-slate-700">Источник</label>
         <input
           type="text"
           value={source}
           onChange={(event) => setSource(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="mt-1 field field-input"
           placeholder="Источник сделки"
         />
       </div>
+
       {showNextContactField && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-700">{nextContactLabel}</label>
+          <label className="block text-sm font-semibold text-slate-700">{nextContactLabel}</label>
           <input
             type="date"
             value={nextContactDate}
             onChange={(event) => setNextContactDate(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+            className="mt-1 field field-input"
           />
           <div className="mt-2 flex flex-wrap gap-2">
             {quickDateOptions.map((option) => (
@@ -433,7 +456,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                 type="button"
                 onClick={() => handleQuickNextContact(option.days)}
                 disabled={isQuickSaving}
-                className="text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn btn-quiet btn-sm rounded-full"
               >
                 {option.label}
               </button>
@@ -441,25 +464,28 @@ export const DealForm: React.FC<DealFormProps> = ({
           </div>
         </div>
       )}
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">
-          {expectedCloseLabel ?? (expectedCloseRequired ? 'Застраховать до *' : 'Ожидаемая дата закрытия')}
+        <label className="block text-sm font-semibold text-slate-700">
+          {expectedCloseLabel ?? (expectedCloseRequired ? 'Крайний срок *' : 'Крайний срок')}
         </label>
         <input
           type="date"
           value={expectedClose}
           onChange={(event) => setExpectedClose(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="mt-1 field field-input"
           required={expectedCloseRequired}
         />
       </div>
+
       <button
         type="submit"
-        disabled={isSubmitting || !clients.length}
-        className="w-full bg-sky-600 text-white rounded-lg py-2 font-semibold text-sm disabled:opacity-60"
+        disabled={isSubmitting || clients.length === 0}
+        className="btn btn-primary w-full rounded-xl"
       >
         {isSubmitting ? submittingText : submitText}
       </button>
     </form>
   );
 };
+
