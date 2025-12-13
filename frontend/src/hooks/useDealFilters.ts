@@ -7,9 +7,10 @@ export const useDealFilters = () => {
   const [dealExecutorFilter, setDealExecutorFilter] = useState('');
   const [dealShowDeleted, setDealShowDeleted] = useState(false);
   const [dealShowClosed, setDealShowClosed] = useState(false);
+  const [dealOrdering, setDealOrdering] = useState<string | undefined>(undefined);
 
   const filters = useMemo<FilterParams>(() => {
-    const result: FilterParams = { ordering: 'next_contact_date' };
+    const result: FilterParams = {};
     const trimmedSearch = dealSearch.trim();
     if (trimmedSearch) {
       result.search = trimmedSearch;
@@ -23,8 +24,11 @@ export const useDealFilters = () => {
     if (dealShowClosed) {
       result.show_closed = true;
     }
+    if (dealOrdering) {
+      result.ordering = dealOrdering;
+    }
     return result;
-  }, [dealSearch, dealExecutorFilter, dealShowDeleted, dealShowClosed]);
+  }, [dealSearch, dealExecutorFilter, dealShowDeleted, dealShowClosed, dealOrdering]);
 
   return {
     dealSearch,
@@ -35,6 +39,8 @@ export const useDealFilters = () => {
     setDealShowDeleted,
     dealShowClosed,
     setDealShowClosed,
+    dealOrdering,
+    setDealOrdering,
     filters,
   };
 };

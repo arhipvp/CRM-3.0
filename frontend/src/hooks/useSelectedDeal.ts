@@ -29,16 +29,7 @@ export const computeSelectedDeal = ({
   const usersById = new Map<string, User>();
   users.forEach((user) => usersById.set(user.id, user));
 
-  const sortedDeals = [...deals].sort((a, b) => {
-    const deletedA = Boolean(a.deletedAt);
-    const deletedB = Boolean(b.deletedAt);
-    if (deletedA !== deletedB) {
-      return deletedA ? 1 : -1;
-    }
-    const dateA = a.nextContactDate ? new Date(a.nextContactDate).getTime() : Infinity;
-    const dateB = b.nextContactDate ? new Date(b.nextContactDate).getTime() : Infinity;
-    return dateA - dateB;
-  });
+  const sortedDeals = deals;
 
   const selectedDeal = selectedDealId
     ? sortedDeals.find((deal) => deal.id === selectedDealId) ?? null

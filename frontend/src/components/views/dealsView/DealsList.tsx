@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { Deal, User } from '../../../types';
 
 import { ColoredLabel } from '../../common/ColoredLabel';
@@ -11,6 +11,7 @@ import {
 } from './helpers';
 
 type DealsSortKey = 'deadline' | 'nextContact';
+type DealsSortDirection = 'asc' | 'desc' | null;
 
 interface DealsListProps {
   sortedDeals: Deal[];
@@ -23,6 +24,8 @@ interface DealsListProps {
   onDealShowDeletedChange: (value: boolean) => void;
   dealShowClosed: boolean;
   onDealShowClosedChange: (value: boolean) => void;
+  dealOrdering?: string;
+  onDealOrderingChange: (value: string | undefined) => void;
   users: User[];
   dealsHasMore: boolean;
   isLoadingMoreDeals: boolean;
@@ -41,20 +44,14 @@ export const DealsList: React.FC<DealsListProps> = ({
   onDealShowDeletedChange,
   dealShowClosed,
   onDealShowClosedChange,
+  dealOrdering,
+  onDealOrderingChange,
   users,
   dealsHasMore,
   isLoadingMoreDeals,
   onLoadMoreDeals,
   onSelectDeal,
 }) => {
-  const [sortState, setSortState] = useState<{
-    key: DealsSortKey | null;
-    direction: 'asc' | 'desc' | null;
-  }>({
-    key: null,
-    direction: null,
-  });
-
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
 
   const selectedDealId = selectedDeal?.id ?? null;
@@ -70,56 +67,57 @@ export const DealsList: React.FC<DealsListProps> = ({
     selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [selectedDealId]);
 
+  const getOrderingField = (key: DealsSortKey) =>
+    key === 'deadline' ? 'expected_close' : 'next_contact_date';
+
+  const getSortDirection = (key: DealsSortKey): DealsSortDirection => {
+    const field = getOrderingField(key);
+    if (dealOrdering === `-${field}`) {
+      return 'desc';
+    }
+    if (dealOrdering === field) {
+      return 'asc';
+    }
+    return null;
+  };
+
   const toggleColumnSort = (key: DealsSortKey) => {
-    setSortState((current) => {
-      if (current.key !== key) {
-        return { key, direction: 'asc' };
-      }
-      if (current.direction === 'asc') {
-        return { key, direction: 'desc' };
-      }
-      return { key: null, direction: null };
-    });
+    const field = getOrderingField(key);
+    const currentDirection = getSortDirection(key);
+    if (!currentDirection) {
+      onDealOrderingChange(field);
+      return;
+    }
+    if (currentDirection === 'asc') {
+      onDealOrderingChange(`-${field}`);
+      return;
+    }
+    onDealOrderingChange(undefined);
   };
 
   const getSortIndicator = (key: DealsSortKey) => {
-    if (sortState.key !== key || !sortState.direction) {
-      return '–';
+    const direction = getSortDirection(key);
+    if (!direction) {
+      return '↕';
     }
-    return sortState.direction === 'asc' ? '↑' : '↓';
+    return direction === 'asc' ? '↑' : '↓';
   };
 
   const getSortLabel = (key: DealsSortKey) => {
-    if (sortState.key !== key || !sortState.direction) {
-      return 'по умолчанию';
+    const direction = getSortDirection(key);
+    if (!direction) {
+      return 'не сортируется';
     }
-    return sortState.direction === 'asc' ? 'по возрастанию' : 'по убыванию';
+    return direction === 'asc' ? 'по возрастанию' : 'по убыванию';
   };
 
   const getColumnTitleClass = (key: DealsSortKey) => {
     const baseClass = 'text-[11px] font-semibold uppercase tracking-wide';
-    if (sortState.key === key && sortState.direction) {
+    if (getSortDirection(key)) {
       return `${baseClass} text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2`;
     }
     return `${baseClass} text-slate-900`;
   };
-
-  const displayedDeals = useMemo<Deal[]>(() => {
-    if (!sortState.key || !sortState.direction) {
-      return sortedDeals;
-    }
-    const getSortValue = (deal: Deal) => {
-      if (sortState.key === 'deadline') {
-        return deal.expectedClose ? new Date(deal.expectedClose).getTime() : Infinity;
-      }
-      return deal.nextContactDate ? new Date(deal.nextContactDate).getTime() : Infinity;
-    };
-    const sorted = [...sortedDeals].sort((a, b) => {
-      const difference = getSortValue(a) - getSortValue(b);
-      return sortState.direction === 'asc' ? difference : -difference;
-    });
-    return sorted;
-  }, [sortedDeals, sortState]);
 
   return (
     <>
@@ -130,7 +128,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               Сделки
             </span>
             <span className="text-sm text-slate-500 whitespace-nowrap">
-              Всего {displayedDeals.length}
+              Всего {sortedDeals.length}
             </span>
           </div>
           <div className="w-full max-w-sm">
@@ -248,8 +246,8 @@ export const DealsList: React.FC<DealsListProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white">
-            {displayedDeals.length ? (
-              displayedDeals.map((deal) => {
+            {sortedDeals.length ? (
+              sortedDeals.map((deal) => {
                 const deadlineTone = getDeadlineTone(deal.expectedClose);
                 const isDeleted = Boolean(deal.deletedAt);
                 const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
@@ -357,4 +355,3 @@ export const DealsList: React.FC<DealsListProps> = ({
     </>
   );
 };
-

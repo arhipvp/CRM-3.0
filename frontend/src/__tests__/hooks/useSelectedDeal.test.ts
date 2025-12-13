@@ -30,7 +30,7 @@ const users = [
 ];
 
 describe('computeSelectedDeal', () => {
-  it('sorts deals by next contact date and keeps deleted last', () => {
+  it('keeps deals order as provided', () => {
     const deals = [
       createDeal('d1', '2025-12-01'),
       createDeal('d2', '2025-11-01', '2025-11-02'),
@@ -43,8 +43,8 @@ describe('computeSelectedDeal', () => {
       selectedDealId: null,
     });
 
-    expect(result.sortedDeals.map((deal) => deal.id)).toEqual(['d3', 'd1', 'd2']);
-    expect(result.selectedDeal?.id).toBe('d3');
+    expect(result.sortedDeals.map((deal) => deal.id)).toEqual(['d1', 'd2', 'd3']);
+    expect(result.selectedDeal?.id).toBe('d1');
   });
 
   it('returns selected deal by id with associated client/user', () => {

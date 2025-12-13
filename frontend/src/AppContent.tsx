@@ -212,6 +212,8 @@ const AppContent: React.FC = () => {
     setDealShowDeleted,
     dealShowClosed,
     setDealShowClosed,
+    dealOrdering,
+    setDealOrdering,
     filters: dealFilters,
   } = useDealFilters();
   const dealsById = useMemo(() => {
@@ -1679,6 +1681,8 @@ const AppContent: React.FC = () => {
         onDealShowDeletedChange={setDealShowDeleted}
         dealShowClosed={dealShowClosed}
         onDealShowClosedChange={setDealShowClosed}
+        dealOrdering={dealOrdering}
+        onDealOrderingChange={setDealOrdering}
         onPolicyDraftReady={handlePolicyDraftReady}
         knowledgeDocs={knowledgeDocs}
         knowledgeLoading={knowledgeLoading}

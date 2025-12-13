@@ -65,6 +65,8 @@ interface DealsViewProps {
   onDealShowDeletedChange: (value: boolean) => void;
   dealShowClosed: boolean;
   onDealShowClosedChange: (value: boolean) => void;
+  dealOrdering?: string;
+  onDealOrderingChange: (value: string | undefined) => void;
 }
 
 
@@ -118,6 +120,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDealShowDeletedChange,
   dealShowClosed,
   onDealShowClosedChange,
+  dealOrdering,
+  onDealOrderingChange,
 }) => {
   const { sortedDeals, selectedDeal, selectedClient, sellerUser, executorUser } = useSelectedDeal({
     deals,
@@ -141,6 +145,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onDealShowDeletedChange={onDealShowDeletedChange}
             dealShowClosed={dealShowClosed}
             onDealShowClosedChange={onDealShowClosedChange}
+            dealOrdering={dealOrdering}
+            onDealOrderingChange={onDealOrderingChange}
             users={users}
             dealsHasMore={dealsHasMore}
             isLoadingMoreDeals={isLoadingMoreDeals}
