@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
+import { buildFallbackKey, dedupeCollectedFiles, dedupeFiles, type CollectedFile } from '../utils/fileUpload';
 
 interface FileUploadManagerProps {
   onUpload: (file: File) => Promise<void>;
@@ -23,7 +24,7 @@ const readDirectoryEntries = (
   reader: FileSystemDirectoryReader
 ): Promise<FileSystemEntry[]> =>
   new Promise((resolve) => {
-const entries: FileSystemEntry[] = [];
+    const entries: FileSystemEntry[] = [];
 
     const readChunk = () => {
       reader.readEntries(
@@ -45,11 +46,11 @@ const entries: FileSystemEntry[] = [];
     readChunk();
   });
 
-const traverseEntry = async (entry: FileSystemEntry): Promise<File[]> => {
+const traverseEntry = async (entry: FileSystemEntry): Promise<CollectedFile[]> => {
   if (isFileEntry(entry)) {
     return new Promise((resolve) => {
       entry.file(
-        (file) => resolve([file]),
+        (file) => resolve([{ file, key: entry.fullPath || buildFallbackKey(file) }]),
         (error) => {
           console.error('Failed to read file from directory entry', error);
           resolve([]);
@@ -78,29 +79,29 @@ const collectFilesFromDataTransfer = async (
 ): Promise<File[]> => {
   const items = Array.from(event.dataTransfer?.items ?? []);
   if (!items.length) {
-    return Array.from(event.dataTransfer?.files ?? []);
+    return dedupeFiles(Array.from(event.dataTransfer?.files ?? []));
   }
 
-  const nested = await Promise.all(
+  const nested = await Promise.all<CollectedFile[]>(
     items.map(async (item) => {
       if (item.kind !== 'file') {
-        return [] as File[];
+        return [];
       }
       const entry = (item as DataTransferItemWithEntry).webkitGetAsEntry?.();
       if (entry) {
         return traverseEntry(entry);
       }
       const file = item.getAsFile();
-      return file ? [file] : [];
+      return file ? [{ file, key: buildFallbackKey(file) }] : [];
     })
   );
 
-  const flattened = nested.flat();
-  if (flattened.length > 0) {
-    return flattened;
+  const collected = nested.flat();
+  if (collected.length > 0) {
+    return dedupeCollectedFiles(collected);
   }
 
-  return Array.from(event.dataTransfer?.files ?? []);
+  return dedupeFiles(Array.from(event.dataTransfer?.files ?? []));
 };
 
 export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, disabled }) => {
