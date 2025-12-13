@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-import {
-  fetchInsuranceCompanies,
-  fetchInsuranceTypes,
-} from '../../api';
+import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
 import type { InsuranceCompany, InsuranceType } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
@@ -32,7 +29,9 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   const [insuranceCompanyId, setInsuranceCompanyId] = useState(
     initialValues?.insuranceCompanyId ?? ''
   );
-  const [insuranceTypeId, setInsuranceTypeId] = useState(initialValues?.insuranceTypeId ?? '');
+  const [insuranceTypeId, setInsuranceTypeId] = useState(
+    initialValues?.insuranceTypeId ?? ''
+  );
   const [sumInsured, setSumInsured] = useState(
     initialValues ? String(initialValues.sumInsured) : ''
   );
@@ -54,16 +53,22 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
 
     Promise.all([fetchInsuranceCompanies(), fetchInsuranceTypes()])
       .then(([companyList, typeList]) => {
-        if (!isMounted) return;
+        if (!isMounted) {
+          return;
+        }
         setCompanies(companyList);
         setTypes(typeList);
       })
       .catch(() => {
-        if (!isMounted) return;
-        setOptionsError('Не удалось загрузить справочники страхования');
+        if (!isMounted) {
+          return;
+        }
+        setOptionsError('Не удалось загрузить список компаний и типов.');
       })
       .finally(() => {
-        if (!isMounted) return;
+        if (!isMounted) {
+          return;
+        }
         setLoadingOptions(false);
       });
 
@@ -75,11 +80,13 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!insuranceCompanyId || !insuranceTypeId || !sumInsured || !premium) {
-      setError('Заполните компанию, тип, сумму и премию');
+      setError('Заполните компанию, тип, сумму и премию.');
       return;
     }
+
     setError(null);
     setSubmitting(true);
+
     try {
       await onSubmit({
         insuranceCompanyId,
@@ -90,7 +97,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         comments: comments.trim() || undefined,
       });
     } catch (err) {
-      setError(formatErrorMessage(err, 'Не удалось сохранить расчет'));
+      setError(formatErrorMessage(err, 'Не удалось сохранить расчёт.'));
     } finally {
       setSubmitting(false);
     }
@@ -98,20 +105,27 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
-      {optionsError && (
-        <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{optionsError}</p>
+      {error && (
+        <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+          {error}
+        </p>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {optionsError && (
+        <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+          {optionsError}
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Страховая компания*
+          <label className="block text-sm font-semibold text-slate-700">
+            Страховая компания *
           </label>
           <select
             value={insuranceCompanyId}
             onChange={(event) => setInsuranceCompanyId(event.target.value)}
             disabled={loadingOptions}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+            className="mt-1 field field-input disabled:cursor-not-allowed disabled:bg-slate-50"
           >
             <option value="">Выберите компанию</option>
             {companies.map((company) => (
@@ -121,13 +135,16 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
             ))}
           </select>
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-slate-700">Тип страхования*</label>
+          <label className="block text-sm font-semibold text-slate-700">
+            Тип страхования *
+          </label>
           <select
             value={insuranceTypeId}
             onChange={(event) => setInsuranceTypeId(event.target.value)}
             disabled={loadingOptions}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+            className="mt-1 field field-input disabled:cursor-not-allowed disabled:bg-slate-50"
           >
             <option value="">Выберите тип</option>
             {types.map((insuranceType) => (
@@ -137,9 +154,10 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
             ))}
           </select>
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Страховая сумма, ₽*
+          <label className="block text-sm font-semibold text-slate-700">
+            Страховая сумма, ₽ *
           </label>
           <input
             type="number"
@@ -147,44 +165,54 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
             step="0.01"
             value={sumInsured}
             onChange={(event) => setSumInsured(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+            className="mt-1 field field-input"
           />
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-slate-700">Премия, ₽*</label>
+          <label className="block text-sm font-semibold text-slate-700">
+            Премия, ₽ *
+          </label>
           <input
             type="number"
             min="0"
             step="0.01"
             value={premium}
             onChange={(event) => setPremium(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+            className="mt-1 field field-input"
           />
         </div>
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">Франшиза</label>
+        <label className="block text-sm font-semibold text-slate-700">
+          Франшиза
+        </label>
         <input
           type="text"
           value={deductible}
           onChange={(event) => setDeductible(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="mt-1 field field-input"
         />
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-slate-700">Комментарий</label>
+        <label className="block text-sm font-semibold text-slate-700">
+          Комментарий
+        </label>
         <textarea
           value={comments}
           onChange={(event) => setComments(event.target.value)}
           rows={3}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="mt-1 field-textarea"
         />
       </div>
+
       <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+          className="btn btn-secondary rounded-xl"
           disabled={isSubmitting}
         >
           Отмена
@@ -192,14 +220,16 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         <button
           type="submit"
           disabled={isSubmitting || loadingOptions}
-          className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
+          className="btn btn-primary rounded-xl"
         >
           {isSubmitting ? 'Сохраняем...' : submitLabel}
         </button>
       </div>
+
       {loadingOptions && (
-        <p className="text-xs text-slate-500 mt-2">Загружаем справочники...</p>
+        <p className="mt-2 text-xs text-slate-500">Загружаю справочники...</p>
       )}
     </form>
   );
 };
+
