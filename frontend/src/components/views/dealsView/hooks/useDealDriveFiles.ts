@@ -4,6 +4,7 @@ import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import {
   fetchDealDriveFiles,
+  trashDealDriveFiles,
   uploadDealDriveFile,
   recognizeDealPolicies,
 } from '../../../../api';
@@ -34,6 +35,8 @@ export const useDealDriveFiles = ({
   const [isRecognizing, setRecognizing] = useState(false);
   const [recognitionResults, setRecognitionResults] = useState<PolicyRecognitionResult[]>([]);
   const [recognitionMessage, setRecognitionMessage] = useState<string | null>(null);
+  const [isTrashing, setIsTrashing] = useState(false);
+  const [trashMessage, setTrashMessage] = useState<string | null>(null);
   const latestDealIdRef = useRef<string | null>(selectedDeal?.id ?? null);
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export const useDealDriveFiles = ({
     setSelectedDriveFileIds([]);
     setRecognitionResults([]);
     setRecognitionMessage(null);
+    setTrashMessage(null);
   }, [selectedDeal?.id]);
 
   const loadDriveFiles = useCallback(async () => {
@@ -193,6 +197,47 @@ export const useDealDriveFiles = ({
     selectedDriveFileIds,
   ]);
 
+  const handleTrashSelectedFiles = useCallback(async () => {
+    const deal = selectedDeal;
+    if (!deal) {
+      return;
+    }
+
+    if (!selectedDriveFileIds.length) {
+      setTrashMessage('Выберите файлы для удаления.');
+      return;
+    }
+
+    const confirmText = `Переместить ${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} в корзину?`;
+    if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
+      return;
+    }
+
+    const currentDealId = deal.id;
+    latestDealIdRef.current = currentDealId;
+    setIsTrashing(true);
+    setTrashMessage(null);
+
+    try {
+      await trashDealDriveFiles(currentDealId, selectedDriveFileIds, Boolean(deal.deletedAt));
+      if (latestDealIdRef.current !== currentDealId) {
+        return;
+      }
+      setSelectedDriveFileIds([]);
+      await loadDriveFiles();
+    } catch (error) {
+      if (latestDealIdRef.current !== currentDealId) {
+        return;
+      }
+      console.error('Ошибка перемещения файлов в корзину:', error);
+      setTrashMessage(formatErrorMessage(error, 'Не удалось переместить файлы в корзину.'));
+    } finally {
+      if (latestDealIdRef.current === currentDealId) {
+        setIsTrashing(false);
+      }
+    }
+  }, [loadDriveFiles, selectedDeal, selectedDriveFileIds]);
+
   const sortedDriveFiles = useMemo(() => {
     return [...driveFiles].sort((a, b) => {
       if (a.isFolder !== b.isFolder) {
@@ -210,11 +255,14 @@ export const useDealDriveFiles = ({
     isRecognizing,
     recognitionResults,
     recognitionMessage,
+    isTrashing,
+    trashMessage,
     sortedDriveFiles,
     loadDriveFiles,
     handleDriveFileUpload,
     toggleDriveFileSelection,
     handleRecognizePolicies,
+    handleTrashSelectedFiles,
     resetDriveState,
   };
 };

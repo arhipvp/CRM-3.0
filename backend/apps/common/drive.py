@@ -29,6 +29,7 @@ else:
 
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+TRASH_FOLDER_NAME = "Корзина"
 
 
 class DriveError(Exception):
@@ -362,6 +363,16 @@ def ensure_policy_folder(policy) -> Optional[str]:
     folder_id = _ensure_folder(name, deal_folder)
     _update_instance_folder(policy, folder_id)
     return folder_id
+
+
+def ensure_trash_folder(parent_folder_id: str, name: str = TRASH_FOLDER_NAME) -> str:
+    """Ensure a subfolder exists to hold soft-deleted Drive files."""
+
+    if not parent_folder_id:
+        raise DriveOperationError("Parent folder ID must be provided.")
+
+    folder_name = (name or TRASH_FOLDER_NAME).strip() or TRASH_FOLDER_NAME
+    return _ensure_folder(folder_name, parent_folder_id)
 
 
 def get_document_library_folder_id() -> str:

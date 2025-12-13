@@ -20,6 +20,9 @@ interface FilesTabProps {
   isRecognizing: boolean;
   recognitionResults: PolicyRecognitionResult[];
   recognitionMessage: string | null;
+  isTrashing: boolean;
+  trashMessage: string | null;
+  handleTrashSelectedFiles: () => Promise<void>;
   driveError: string | null;
   sortedDriveFiles: DriveFile[];
   canRecognizeSelectedFiles: boolean;
@@ -37,6 +40,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   isRecognizing,
   recognitionResults,
   recognitionMessage,
+  isTrashing,
+  trashMessage,
+  handleTrashSelectedFiles,
   driveError,
   canRecognizeSelectedFiles,
   sortedDriveFiles,
@@ -92,6 +98,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           onClick={handleRecognizePolicies}
           disabled={
             isRecognizing ||
+            isTrashing ||
             !selectedDeal.driveFolderId ||
             selectedDriveFileIds.length === 0 ||
             !canRecognizeSelectedFiles ||
@@ -100,6 +107,20 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           className="btn btn-primary btn-sm rounded-xl"
         >
           {isRecognizing ? 'Распознаем...' : 'Распознать полис (только PDF)'}
+        </button>
+        <button
+          type="button"
+          onClick={handleTrashSelectedFiles}
+          disabled={
+            isRecognizing ||
+            isTrashing ||
+            !selectedDeal.driveFolderId ||
+            selectedDriveFileIds.length === 0 ||
+            !!driveError
+          }
+          className="btn btn-danger btn-sm rounded-xl"
+        >
+          {isTrashing ? 'Удаляю...' : 'Удалить'}
         </button>
         <p className="text-xs text-slate-500">
           {selectedDriveFileIds.length ? (
@@ -117,6 +138,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       {recognitionMessage && (
         <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{recognitionMessage}</p>
       )}
+
+      {trashMessage && <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{trashMessage}</p>}
 
       {recognitionResults.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3 text-xs">
@@ -168,7 +191,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           <div className="space-y-2">
             {sortedDriveFiles.map((file) => {
               const isSelected = selectedDriveFileIds.includes(file.id);
-              const canSelect = !file.isFolder && !isDriveLoading;
+              const canSelect = !file.isFolder && !isDriveLoading && !isTrashing;
               return (
                 <div
                   key={file.id}

@@ -236,11 +236,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isRecognizing,
     recognitionResults,
     recognitionMessage,
+    isTrashing,
+    trashMessage,
     sortedDriveFiles,
     loadDriveFiles,
     handleDriveFileUpload,
     toggleDriveFileSelection,
     handleRecognizePolicies,
+    handleTrashSelectedFiles,
     resetDriveState,
   } = useDealDriveFiles({
     selectedDeal,
@@ -826,6 +829,12 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       recognitionResults={recognitionResults}
 
       recognitionMessage={recognitionMessage}
+
+      isTrashing={isTrashing}
+
+      trashMessage={trashMessage}
+
+      handleTrashSelectedFiles={handleTrashSelectedFiles}
 
       driveError={driveError}
 
