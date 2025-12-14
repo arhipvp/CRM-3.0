@@ -165,12 +165,19 @@ def _resolve_ai_client_config() -> Tuple[str, str, str]:
 
 
 MAX_ATTEMPTS = 3
-REMINDER = "Ответ должен содержать только один валидный JSON без лишних пояснений."
+REMINDER = (
+    "Ответ должен содержать только один валидный JSON (без ``` и без лишних пояснений)."
+)
 OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
 DATE_PATTERN = r"^\\d{4}-\\d{2}-\\d{2}$"
 VIN_PATTERN = r"^[A-Za-z0-9]{17}$"
 AMOUNT_PATTERN = r"^-?\\d+(?:[\\.,]\\d{1,2})?$"
+
+CODE_FENCE_JSON_RE = re.compile(
+    r"```(?:json)?\s*(\{.*?\})\s*```",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
 POLICY_SCHEMA = {
     "type": "object",
@@ -261,6 +268,34 @@ class PolicyRecognitionError(ValueError):
     def __init__(self, message: str, transcript: str | None = None):
         super().__init__(message)
         self.transcript = transcript or ""
+
+
+def _extract_json_from_answer(answer: str) -> str:
+    """Достать JSON-объект из ответа модели (часто приходит в ```json ... ```)."""
+
+    if not isinstance(answer, str):
+        return ""
+    text = answer.lstrip("\ufeff").strip()
+    if not text:
+        return ""
+
+    fenced = CODE_FENCE_JSON_RE.search(text)
+    if fenced:
+        return fenced.group(1).strip()
+
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines:
+            lines = lines[1:]
+        text = "\n".join(lines).strip()
+        if text.endswith("```"):
+            text = text[: text.rfind("```")].strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1].strip()
+    return text
 
 
 def _basic_policy_validate(data: dict) -> None:
@@ -523,7 +558,8 @@ def recognize_policy_interactive(
         answer = _chat(messages, progress_cb=progress_cb, cancel_cb=cancel_cb)
         messages.append({"role": "assistant", "content": answer})
         try:
-            data = json.loads(answer)
+            extracted = _extract_json_from_answer(answer)
+            data = json.loads(extracted)
             data = _normalize_policy_payload(data)
             if HAVE_JSONSCHEMA:
                 validate(instance=data, schema=POLICY_SCHEMA)
