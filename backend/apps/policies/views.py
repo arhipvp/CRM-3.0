@@ -250,17 +250,23 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     )
                 return Response({"results": results})
 
+            primary_file_id = downloaded_files[0]["id"]
             for file_data in downloaded_files:
-                results.append(
-                    {
-                        "fileId": file_data["id"],
-                        "fileName": file_data["name"],
-                        "status": "parsed",
-                        "message": "Полис распознан",
-                        "transcript": transcript,
-                        "data": data,
-                    }
-                )
+                is_primary = file_data["id"] == primary_file_id
+                payload = {
+                    "fileId": file_data["id"],
+                    "fileName": file_data["name"],
+                    "status": "parsed",
+                    "message": (
+                        f"Распознано (1 запрос на {len(downloaded_files)} файлов)."
+                        if is_primary
+                        else "Файл использован в общем распознавании, результат см. в первом файле."
+                    ),
+                }
+                if is_primary:
+                    payload["transcript"] = transcript
+                    payload["data"] = data
+                results.append(payload)
 
         return Response({"results": results})
 

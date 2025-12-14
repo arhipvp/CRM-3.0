@@ -32,6 +32,9 @@ else:
 
 NOTE_VALUE = "импортировано с помощью ИИ"
 
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x1F\x7F]")
+WHITESPACE_RE = re.compile(r"\s+")
+
 
 DEFAULT_PROMPT = """Ты — ассистент, отвечающий за импорт данных из страховых полисов в CRM.
 На основе переданного текста документов нужно сформировать один JSON строго по следующему шаблону:
@@ -161,7 +164,8 @@ def _resolve_ai_client_config() -> Tuple[str, str, str]:
 
 MAX_ATTEMPTS = 3
 REMINDER = (
-    "Ответ должен содержать только один валидный JSON (без ``` и без лишних пояснений)."
+    "Ответ должен содержать только один валидный JSON (без ``` и без пояснений). "
+    'Все строки должны быть в двойных кавычках; если значение неизвестно — поставь пустую строку ("").'
 )
 OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -318,6 +322,19 @@ def _extract_balanced_json(text: str) -> str:
                 return cleaned[start : idx + 1].strip()
 
     return ""
+
+
+def _sanitize_text(value: object) -> str:
+    """Очистить строку от мусора/переносов/управляющих символов по правилам импорта."""
+
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        value = str(value)
+    cleaned = value.replace("\u00a0", " ").lstrip("\ufeff")
+    cleaned = CONTROL_CHARS_RE.sub(" ", cleaned)
+    cleaned = WHITESPACE_RE.sub(" ", cleaned).strip()
+    return cleaned
 
 
 def _extract_json_from_answer(answer: str) -> str:
@@ -479,8 +496,23 @@ def _normalize_policy_payload(data: dict) -> dict:
 
     if not isinstance(data, dict):
         return data
+
+    if "client_name" in data:
+        data["client_name"] = _sanitize_text(data.get("client_name"))
     policy = data.get("policy")
     if isinstance(policy, dict):
+        for key in (
+            "policy_number",
+            "insurance_type",
+            "insurance_company",
+            "contractor",
+            "sales_channel",
+            "vehicle_brand",
+            "vehicle_model",
+            "vehicle_vin",
+        ):
+            if key in policy:
+                policy[key] = _sanitize_text(policy.get(key))
         policy["note"] = NOTE_VALUE
         for key in ("start_date", "end_date"):
             normalized = _normalize_date(policy.get(key))
@@ -496,6 +528,12 @@ def _normalize_policy_payload(data: dict) -> dict:
             if not isinstance(payment, dict):
                 continue
             payment["amount"] = _normalize_amount(payment.get("amount"))
+            if "payment_date" in payment:
+                payment["payment_date"] = _sanitize_text(payment.get("payment_date"))
+            if "actual_payment_date" in payment:
+                payment["actual_payment_date"] = _sanitize_text(
+                    payment.get("actual_payment_date")
+                )
             payment_date = _normalize_date(payment.get("payment_date"))
             if payment_date:
                 payment["payment_date"] = payment_date
@@ -617,7 +655,7 @@ def recognize_policy_interactive(
         messages.append({"role": "assistant", "content": answer})
         try:
             extracted = _extract_json_from_answer(answer)
-            data = json.loads(extracted)
+            data = json.loads(extracted, strict=False)
             data = _normalize_policy_payload(data)
             if HAVE_JSONSCHEMA:
                 validate(instance=data, schema=POLICY_SCHEMA)
