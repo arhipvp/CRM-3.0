@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+
 import { login } from '../api';
-import './LoginPage.css';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface LoginPageProps {
@@ -13,32 +13,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
       await login(username, password);
-      // Tokens are already set by the login() function
-      // No need to call setAccessToken/setRefreshToken again
-      console.log('Login successful, calling onLoginSuccess');
       onLoginSuccess();
     } catch (err) {
       setError(formatErrorMessage(err, 'Ошибка входа'));
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-box">
-        <h1>CRM 3.0</h1>
-        <p>Управление сделками и клиентами</p>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-sky-900 px-4 py-10">
+      <div className="app-panel w-full max-w-md p-8 shadow-lg">
+        <div className="space-y-1 text-center">
+          <h1 className="text-2xl font-bold text-slate-900">CRM 3.0</h1>
+          <p className="text-sm text-slate-600">Управление сделками и клиентами</p>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="username">Имя пользователя</label>
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <div className="space-y-2">
+            <label htmlFor="username" className="app-label">
+              Имя пользователя
+            </label>
             <input
               id="username"
               type="text"
@@ -46,11 +48,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={isLoading}
+              className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Пароль</label>
+          <div className="space-y-2">
+            <label htmlFor="password" className="app-label">
+              Пароль
+            </label>
             <input
               id="password"
               type="password"
@@ -58,16 +63,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
+              className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
             />
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </p>
+          )}
 
-          <button type="submit" disabled={isLoading} className="login-button">
-            {isLoading ? 'Вход...' : 'Войти'}
+          <button type="submit" disabled={isLoading} className="btn btn-primary w-full justify-center">
+            {isLoading ? 'Входим...' : 'Войти'}
           </button>
         </form>
-
       </div>
     </div>
   );

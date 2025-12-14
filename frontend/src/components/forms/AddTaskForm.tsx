@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Task, TaskPriority, TaskStatus, User } from '../../types';
-import './AddTaskForm.css';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export interface AddTaskFormValues {
@@ -72,11 +71,17 @@ export function AddTaskForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="add-task-form">
-      {error && <div className="error-message">{error}</div>}
+    <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
+      {error && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
 
-      <div className="form-group">
-        <label htmlFor="title">Название задачи *</label>
+      <div className="space-y-2">
+        <label htmlFor="title" className="app-label">
+          Название задачи *
+        </label>
         <input
           type="text"
           id="title"
@@ -86,11 +91,14 @@ export function AddTaskForm({
           placeholder="Название задачи"
           disabled={loading}
           required
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="description">Описание</label>
+      <div className="space-y-2">
+        <label htmlFor="description" className="app-label">
+          Описание
+        </label>
         <textarea
           id="description"
           name="description"
@@ -99,17 +107,21 @@ export function AddTaskForm({
           placeholder="Описание задачи"
           rows={3}
           disabled={loading}
+          className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="assigneeId">Исполнитель</label>
+      <div className="space-y-2">
+        <label htmlFor="assigneeId" className="app-label">
+          Исполнитель
+        </label>
         <select
           id="assigneeId"
           name="assigneeId"
           value={formData.assigneeId ?? ''}
           onChange={handleChange}
           disabled={loading}
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         >
           <option value="">Не назначен</option>
           {users.map((user) => (
@@ -119,21 +131,24 @@ export function AddTaskForm({
           ))}
         </select>
         {!task && (
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-sm text-slate-600">
             По умолчанию будет назначен исполнитель сделки.
           </p>
         )}
       </div>
 
-      <div className="form-row">
-        <div className="form-group">
-          <label htmlFor="priority">Приоритет</label>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <label htmlFor="priority" className="app-label">
+            Приоритет
+          </label>
           <select
             id="priority"
             name="priority"
             value={formData.priority}
             onChange={handleChange}
             disabled={loading}
+            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
           >
             <option value="low">Низкий</option>
             <option value="normal">Обычный</option>
@@ -142,8 +157,10 @@ export function AddTaskForm({
           </select>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="dueAt">Срок выполнения</label>
+        <div className="space-y-2">
+          <label htmlFor="dueAt" className="app-label">
+            Срок выполнения
+          </label>
           <input
             type="date"
             id="dueAt"
@@ -151,38 +168,42 @@ export function AddTaskForm({
             value={formData.dueAt || ''}
             onChange={handleChange}
             disabled={loading}
+            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
           />
         </div>
       </div>
 
       {task && (
-        <div className="form-group">
-          <label htmlFor="status">Статус</label>
+        <div className="space-y-2">
+          <label htmlFor="status" className="app-label">
+            Статус
+          </label>
           <select
             id="status"
             name="status"
             value={formData.status || 'todo'}
             onChange={handleChange}
             disabled={loading}
+            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
           >
             <option value="todo">К выполнению</option>
             <option value="in_progress">В работе</option>
             <option value="done">Выполнено</option>
-            <option value="overdue">Просроченно</option>
+            <option value="overdue">Просрочено</option>
             <option value="canceled">Отменено</option>
           </select>
         </div>
       )}
 
-      <div className="form-actions">
-        <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? 'Сохранение...' : task ? 'Обновить' : 'Создать'}
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading ? 'Сохраняем...' : task ? 'Обновить' : 'Создать'}
         </button>
-        <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
+        <button type="button" onClick={onCancel} disabled={loading} className="btn btn-secondary">
           Отмена
         </button>
       </div>
 
-      </form>
+    </form>
   );
 }
