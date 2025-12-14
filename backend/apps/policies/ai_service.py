@@ -174,9 +174,8 @@ DATE_PATTERN = r"^\\d{4}-\\d{2}-\\d{2}$"
 VIN_PATTERN = r"^[A-Za-z0-9]{17}$"
 AMOUNT_PATTERN = r"^-?\\d+(?:[\\.,]\\d{1,2})?$"
 
-CODE_FENCE_JSON_RE = re.compile(
-    r"```(?:json)?\s*(\{.*?\})\s*```",
-    flags=re.IGNORECASE | re.DOTALL,
+CODE_FENCE_RE = re.compile(
+    r"```(?:json)?\s*(.*?)\s*```", flags=re.IGNORECASE | re.DOTALL
 )
 
 POLICY_SCHEMA = {
@@ -270,6 +269,62 @@ class PolicyRecognitionError(ValueError):
         self.transcript = transcript or ""
 
 
+def _extract_balanced_json(text: str) -> str:
+    """Вытащить первый корректно сбалансированный JSON-объект/массив из строки."""
+
+    if not isinstance(text, str):
+        return ""
+
+    cleaned = text.lstrip("\ufeff").strip()
+    if not cleaned:
+        return ""
+
+    obj_start = cleaned.find("{")
+    arr_start = cleaned.find("[")
+    starts = [pos for pos in (obj_start, arr_start) if pos != -1]
+    if not starts:
+        return ""
+
+    start = min(starts)
+    stack: list[str] = ["}" if cleaned[start] == "{" else "]"]
+    in_string = False
+    escaped = False
+
+    for idx in range(start + 1, len(cleaned)):
+        ch = cleaned[idx]
+
+        if in_string:
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\":
+                escaped = True
+                continue
+            if ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+            continue
+
+        if ch == "{":
+            stack.append("}")
+            continue
+        if ch == "[":
+            stack.append("]")
+            continue
+
+        if ch in ("}", "]"):
+            if not stack or ch != stack[-1]:
+                return ""
+            stack.pop()
+            if not stack:
+                return cleaned[start : idx + 1].strip()
+
+    return ""
+
+
 def _extract_json_from_answer(answer: str) -> str:
     """Достать JSON-объект из ответа модели (часто приходит в ```json ... ```)."""
 
@@ -279,9 +334,13 @@ def _extract_json_from_answer(answer: str) -> str:
     if not text:
         return ""
 
-    fenced = CODE_FENCE_JSON_RE.search(text)
+    fenced = CODE_FENCE_RE.search(text)
     if fenced:
-        return fenced.group(1).strip()
+        inner = fenced.group(1).strip()
+        extracted = _extract_balanced_json(inner)
+        if extracted:
+            return extracted
+        text = inner
 
     if text.startswith("```"):
         lines = text.splitlines()
@@ -291,10 +350,9 @@ def _extract_json_from_answer(answer: str) -> str:
         if text.endswith("```"):
             text = text[: text.rfind("```")].strip()
 
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        return text[start : end + 1].strip()
+    extracted = _extract_balanced_json(text)
+    if extracted:
+        return extracted
     return text
 
 

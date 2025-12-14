@@ -531,51 +531,49 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-4">
+    <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-6">
       {(error || optionsError) && (
-        <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error || optionsError}</p>
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error || optionsError}
+        </p>
       )}
 
       <div className="space-y-2">
-        <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
+        <div className="flex flex-wrap gap-2">
           {steps.map((step, stepIndex) => (
             <button
               key={step.title}
               type="button"
               onClick={() => setCurrentStep(stepIndex + 1)}
-              className={`px-3 py-1 rounded-full border transition-colors ${
-                currentStep === stepIndex + 1
-                  ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-slate-100 text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'
-              }`}
+              className={`btn btn-sm ${currentStep === stepIndex + 1 ? 'btn-primary' : 'btn-secondary'}`}
             >
               {step.title}
             </button>
           ))}
         </div>
-        <p className="text-xs text-slate-500">{steps[currentStep - 1].description}</p>
+        <p className="text-sm text-slate-600">{steps[currentStep - 1].description}</p>
       </div>
 
       {currentStep === 1 && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Номер полиса*</label>
+              <label className="app-label">Номер полиса *</label>
               <input
                 type="text"
                 value={number}
                 onChange={(e) => setNumber(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                className="field field-input mt-2"
                 placeholder="001234567890"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Страховая компания*</label>
+              <label className="app-label">Страховая компания *</label>
               <select
                 value={insuranceCompanyId}
                 onChange={(e) => setInsuranceCompanyId(e.target.value)}
                 disabled={loadingOptions}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+                className="field field-input mt-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
               >
                 <option value="">Выберите страховую компанию</option>
                 {companies.map((company) => (
@@ -589,12 +587,12 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Тип страхования*</label>
+              <label className="app-label">Тип страхования *</label>
               <select
                 value={insuranceTypeId}
                 onChange={(e) => setInsuranceTypeId(e.target.value)}
                 disabled={loadingOptions}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+                className="field field-input mt-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
               >
                 <option value="">Выберите тип страхования</option>
                 {types.map((insuranceType) => (
@@ -605,12 +603,12 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Канал продаж</label>
+              <label className="app-label">Канал продаж</label>
               <select
                 value={salesChannelId}
                 onChange={(event) => setSalesChannelId(event.target.value)}
                 disabled={loadingOptions}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-50"
+                className="field field-input mt-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
               >
                 <option value="">Выберите канал продаж</option>
                 {salesChannels.map((channel) => (
@@ -623,8 +621,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700">Страхователь</label>
-            <div className="mt-1 flex flex-col gap-2 relative">
+            <label className="app-label">Страхователь</label>
+            <div className="mt-2 flex flex-col gap-2 relative">
               <div className="relative flex items-center gap-2">
                 <div className="relative flex-1">
                   <input
@@ -639,17 +637,17 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                     onBlur={() => {
                       setTimeout(() => setShowInsuredSuggestions(false), 120);
                     }}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                    className="field field-input"
                     placeholder="Начните вводить клиента"
                   />
                   {showInsuredSuggestions && (
-                    <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-44 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                    <div className="absolute inset-x-0 top-full z-10 mt-2 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                       {filteredInsuredClients.length ? (
                         filteredInsuredClients.map((client) => (
                           <button
                             key={client.id}
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                            className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                             onMouseDown={(event) => {
                               event.preventDefault();
                               handleInsuredSelect(client);
@@ -667,7 +665,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 <button
                   type="button"
                   onClick={onRequestAddClient}
-                  className="whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="btn btn-sm btn-secondary whitespace-nowrap"
                 >
                   + Добавить клиента
                 </button>
@@ -677,7 +675,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Привязать к транспорту</label>
+              <label className="app-label">Привязать к транспорту</label>
               <label className="flex items-center gap-3 cursor-pointer mt-2">
                 <input
                   type="checkbox"
@@ -690,9 +688,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                     }
                     setIsVehicle(e.target.checked);
                   }}
-                  className="rounded border-slate-300"
+                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
-                <span className="text-sm font-medium text-slate-700">Да</span>
+                <span className="text-sm font-semibold text-slate-700">Да</span>
               </label>
             </div>
           </div>
@@ -700,7 +698,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           {isVehicle && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700">Марка</label>
+                <label className="app-label">Марка</label>
                 <input
                   list="vehicle-brand-options"
                   type="text"
@@ -709,7 +707,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                     setBrand(event.target.value);
                     setModel('');
                   }}
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                  className="field field-input mt-2"
                   placeholder="Toyota"
                 />
                 <datalist id="vehicle-brand-options">
@@ -719,13 +717,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 </datalist>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Модель</label>
+                <label className="app-label">Модель</label>
                 <input
                   list="vehicle-model-options"
                   type="text"
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                  className="field field-input mt-2"
                   placeholder="Camry"
                 />
                 <datalist id="vehicle-model-options">
@@ -735,13 +733,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 </datalist>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">VIN</label>
+                <label className="app-label">VIN</label>
                 <input
                   type="text"
                   value={vin}
                   onChange={(event) => setVin(event.target.value)}
                   maxLength={17}
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                  className="field field-input mt-2"
                   placeholder="Номер шасси (17 символов)"
                 />
               </div>
@@ -754,49 +752,49 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Дата начала</label>
+              <label className="app-label">Дата начала</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                className="field field-input mt-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Дата окончания</label>
+              <label className="app-label">Дата окончания</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => handleEndDateChange(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                className="field field-input mt-2"
               />
             </div>
           </div>
 
           {policyDurationWarning && (
-            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {policyDurationWarning}
             </p>
           )}
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900">Платежи</h3>
+              <p className="app-label">Платежи</p>
               <button
                 type="button"
                 onClick={handleAddPayment}
-                className="text-sm font-medium text-sky-600 hover:text-sky-800"
+                className="btn btn-sm btn-secondary"
               >
                 + Добавить платёж
               </button>
             </div>
             {firstPaymentDateWarning && (
-              <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 {firstPaymentDateWarning}
               </p>
             )}
             {payments.length === 0 && (
-              <p className="text-xs text-slate-500">
+              <p className="text-sm text-slate-600">
                 Добавьте хотя бы один платёж, чтобы связать финансовые данные.
               </p>
             )}
@@ -823,8 +821,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         <div className="space-y-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Контрагент</label>
-              <div className="mt-1 flex flex-wrap gap-2">
+              <label className="app-label">Контрагент</label>
+              <div className="mt-2 flex flex-wrap gap-2">
                 <input
                   type="text"
                   value={counterparty}
@@ -832,32 +830,32 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                     setCounterparty(event.target.value);
                     setCounterpartyTouched(true);
                   }}
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+                  className="field field-input flex-1"
                   placeholder="Контрагент / организация"
                 />
                 <button
                   type="button"
                   onClick={handleAddCounterpartyExpenses}
-                  className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-900"
+                  className="btn btn-sm btn-secondary whitespace-nowrap"
                 >
                   + Расход
                 </button>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Исполнитель по сделке</label>
-              <div className="mt-1 flex flex-wrap gap-2">
+              <label className="app-label">Исполнитель по сделке</label>
+              <div className="mt-2 flex flex-wrap gap-2">
                 <input
                   type="text"
                   value={executorName ?? 'отсутствует'}
                   readOnly
-                  className="flex-1 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500"
+                  className="field field-input flex-1 bg-slate-50 text-slate-900"
                 />
                 <button
                   type="button"
                   onClick={handleAddExecutorExpenses}
                   disabled={!executorName?.trim()}
-                  className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
+                  className="btn btn-sm btn-secondary whitespace-nowrap"
                 >
                   + Расход
                 </button>
@@ -867,7 +865,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
           <div className="space-y-4">
             {payments.map((payment, paymentIndex) => (
-              <section key={`records-${paymentIndex}`} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section key={`records-${paymentIndex}`} className="app-panel p-5 shadow-none space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Платёж #{paymentIndex + 1}</p>
@@ -879,33 +877,33 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                     <button
                       type="button"
                       onClick={() => addRecord(paymentIndex, 'incomes')}
-                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      className="btn btn-sm btn-secondary"
                     >
                       + Доход
                     </button>
                     <button
                       type="button"
                       onClick={() => addRecord(paymentIndex, 'expenses')}
-                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      className="btn btn-sm btn-secondary"
                     >
                       + Расход
                     </button>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="app-panel-muted p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
                       <button
                         type="button"
-                        className="text-xs text-sky-600 hover:underline"
+                        className="btn btn-sm btn-quiet"
                         onClick={() => addRecord(paymentIndex, 'incomes')}
                       >
                         + Добавить доход
                       </button>
                     </div>
                     {payment.incomes.length === 0 && (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm text-slate-600">
                         Добавьте доход, чтобы привязать поступление к этому платежу.
                       </p>
                     )}
@@ -917,19 +915,19 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                       onRemoveRecord={removeRecord}
                     />
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="app-panel-muted p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Расходы</h4>
                       <button
                         type="button"
-                        className="text-xs text-sky-600 hover:underline"
+                        className="btn btn-sm btn-quiet"
                         onClick={() => addRecord(paymentIndex, 'expenses')}
                       >
                         + Добавить расход
                       </button>
                     </div>
                     {payment.expenses.length === 0 && (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm text-slate-600">
                         Добавьте расход, чтобы контролировать связанные списания.
                       </p>
                     )}
@@ -952,7 +950,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+          className="btn btn-secondary"
           disabled={isSubmitting}
         >
           Отмена
@@ -962,7 +960,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             <button
               type="button"
               onClick={handlePreviousStep}
-              className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200"
+              className="btn btn-secondary"
               disabled={isSubmitting}
             >
               Назад
@@ -972,7 +970,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             <button
               type="button"
               onClick={handleNextStep}
-              className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
+              className="btn btn-primary"
               disabled={isSubmitting}
             >
               Далее
@@ -982,7 +980,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               type="submit"
               onMouseDown={markFinalSubmitIntent}
               onClick={markFinalSubmitIntent}
-              className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-60"
+              className="btn btn-primary"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Сохраняем...' : submitLabel}
