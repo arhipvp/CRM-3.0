@@ -13,9 +13,11 @@ export const DatesFields: React.FC<DatesFieldsProps> = ({
   onChange,
   loading,
 }) => (
-  <div className="form-row">
-    <div className="form-group">
-      <label htmlFor="scheduledDate">Плановая дата</label>
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="space-y-2">
+      <label htmlFor="scheduledDate" className="app-label">
+        Плановая дата
+      </label>
       <input
         type="date"
         id="scheduledDate"
@@ -23,10 +25,13 @@ export const DatesFields: React.FC<DatesFieldsProps> = ({
         value={scheduledDate || ''}
         onChange={onChange}
         disabled={loading}
+        className="field field-input"
       />
     </div>
-    <div className="form-group">
-      <label htmlFor="actualDate">Фактическая дата</label>
+    <div className="space-y-2">
+      <label htmlFor="actualDate" className="app-label">
+        Фактическая дата
+      </label>
       <input
         type="date"
         id="actualDate"
@@ -34,6 +39,7 @@ export const DatesFields: React.FC<DatesFieldsProps> = ({
         value={actualDate || ''}
         onChange={onChange}
         disabled={loading}
+        className="field field-input"
       />
     </div>
   </div>

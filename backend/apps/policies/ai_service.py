@@ -170,7 +170,7 @@ REMINDER = (
 )
 OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
-DATE_PATTERN = r"^\\d{4}-\\d{2}-\\d{2}$"
+DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 VIN_PATTERN = r"^[A-Za-z0-9]{17}$"
 AMOUNT_PATTERN = r"^-?\\d+(?:[\\.,]\\d{1,2})?$"
 
@@ -387,7 +387,7 @@ def _basic_policy_validate(data: dict) -> None:
         if key not in policy:
             raise PolicyRecognitionError(f"В policy отсутствует ключ {key!r}")
 
-    date_re = re.compile(r"^\\d{4}-\\d{2}-\\d{2}$")
+    date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
     for key in ("start_date", "end_date"):
         value = policy.get(key)
         if not isinstance(value, str) or not date_re.fullmatch(value):

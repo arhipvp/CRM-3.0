@@ -7,11 +7,11 @@ interface FormActionsProps {
 }
 
 export const FormActions: React.FC<FormActionsProps> = ({ loading, paymentExists, onCancel }) => (
-  <div className="form-actions">
-    <button type="submit" disabled={loading} className="btn-primary">
+  <div className="flex items-center justify-end gap-3 pt-2">
+    <button type="submit" disabled={loading} className="btn btn-primary">
       {loading ? 'Сохраняем...' : paymentExists ? 'Обновить' : 'Сохранить'}
     </button>
-    <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
+    <button type="button" onClick={onCancel} disabled={loading} className="btn btn-secondary">
       Отмена
     </button>
   </div>

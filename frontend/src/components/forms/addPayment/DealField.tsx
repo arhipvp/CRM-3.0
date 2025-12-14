@@ -17,13 +17,24 @@ export const DealField: React.FC<DealFieldProps> = ({
   onChange,
 }) =>
   dealIsFixed ? (
-    <div className="form-group">
-      <label htmlFor="dealId">Сделка</label>
-      <input type="text" id="dealId" name="dealId" value={dealDisplayValue} disabled />
+    <div className="space-y-2">
+      <label htmlFor="dealId" className="app-label">
+        Сделка
+      </label>
+      <input
+        type="text"
+        id="dealId"
+        name="dealId"
+        value={dealDisplayValue}
+        disabled
+        className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+      />
     </div>
   ) : (
-    <div className="form-group">
-      <label htmlFor="dealId">Сделка (по возможности)</label>
+    <div className="space-y-2">
+      <label htmlFor="dealId" className="app-label">
+        Сделка (по возможности)
+      </label>
       <input
         type="text"
         id="dealId"
@@ -32,6 +43,7 @@ export const DealField: React.FC<DealFieldProps> = ({
         onChange={onChange}
         placeholder="ID сделки"
         disabled={loading}
+        className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
       />
     </div>
   );

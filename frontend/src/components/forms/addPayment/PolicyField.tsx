@@ -24,20 +24,30 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
 
   if (fixedPolicyId) {
     return (
-      <div className="form-group">
-        <label htmlFor="policyId">Полис *</label>
-        <input type="text" id="policyId" name="policyId" value={fixedPolicyDisplay} disabled required />
-        {fixedPolicy?.insuranceType && (
-          <p className="text-xs text-slate-500 mt-1">{fixedPolicy.insuranceType}</p>
-        )}
+      <div className="space-y-2">
+        <label htmlFor="policyId" className="app-label">
+          Полис *
+        </label>
+        <input
+          type="text"
+          id="policyId"
+          name="policyId"
+          value={fixedPolicyDisplay}
+          disabled
+          required
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+        />
+        {fixedPolicy?.insuranceType && <p className="text-sm text-slate-600">{fixedPolicy.insuranceType}</p>}
       </div>
     );
   }
 
   if (hasPolicyOptions) {
     return (
-      <div className="form-group">
-        <label htmlFor="policyId">Полис *</label>
+      <div className="space-y-2">
+        <label htmlFor="policyId" className="app-label">
+          Полис *
+        </label>
         <select
           id="policyId"
           name="policyId"
@@ -45,6 +55,7 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
           onChange={onChange}
           disabled={loading}
           required
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         >
           <option value="">Выберите полис</option>
           {policyOptions.map((policy) => (
@@ -59,8 +70,10 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
   }
 
   return (
-    <div className="form-group">
-      <label htmlFor="policyId">Полис *</label>
+    <div className="space-y-2">
+      <label htmlFor="policyId" className="app-label">
+        Полис *
+      </label>
       <input
         type="text"
         id="policyId"
@@ -70,6 +83,7 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
         placeholder="ID полиса"
         disabled={loading}
         required
+        className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
       />
     </div>
   );
