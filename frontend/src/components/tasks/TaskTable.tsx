@@ -1,8 +1,7 @@
-import React from 'react';
-import { Task } from '../../types';
+import type { Task } from '../../types';
+import { ColoredLabel } from '../common/ColoredLabel';
 import { formatDate, formatDateTime } from '../views/dealsView/helpers';
 import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
-import { ColoredLabel } from '../common/ColoredLabel';
 
 interface TaskTableProps {
   tasks: Task[];
@@ -22,7 +21,7 @@ interface TaskTableProps {
 
 const DEFAULT_EMPTY_MESSAGE = 'Задач не найдено';
 
-export const TaskTable: React.FC<TaskTableProps> = ({
+export function TaskTable({
   tasks,
   emptyMessage = DEFAULT_EMPTY_MESSAGE,
   showDealColumn = true,
@@ -36,7 +35,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
   onDeleteTask,
   completingTaskIds = [],
   onDealClick,
-}) => {
+}: TaskTableProps) {
   const hasActions =
     showActions && (Boolean(onMarkTaskDone) || Boolean(onEditTask) || Boolean(onDeleteTask));
 
@@ -55,8 +54,19 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
   const columnCount = baseColumnCount + (hasActions ? 1 : 0);
 
-  const taskHeaderClassName = ['px-5', 'py-3', taskColumnClassName].filter(Boolean).join(' ');
-  const taskCellClassName = ['px-5', 'py-4', 'align-top', taskColumnClassName].filter(Boolean).join(' ');
+  const taskHeaderClassName = [
+    'border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900',
+    taskColumnClassName,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const taskCellClassName = [
+    'border border-slate-200 px-6 py-3 align-top',
+    taskColumnClassName,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const handleDelete = (taskId: string) => {
     if (!onDeleteTask) {
@@ -86,175 +96,229 @@ export const TaskTable: React.FC<TaskTableProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
-          <tr>
-            <th className={taskHeaderClassName}>Задача</th>
-            {showClientColumn && <th className="px-5 py-3">Клиент</th>}
-            {showDealColumn && <th className="px-5 py-3">Сделка</th>}
-            <th className="px-5 py-3">Статус</th>
-            <th className="px-5 py-3">Приоритет</th>
-            <th className="px-5 py-3">Ответственный</th>
-            <th className="px-5 py-3">Срок</th>
-            {showReminderColumn && <th className="px-5 py-3">Напоминание</th>}
-            <th className="px-5 py-3">Создано</th>
-            <th className="px-5 py-3">Выполнено</th>
-            {showDeletedColumn && <th className="px-5 py-3">Удалено</th>}
-            {hasActions && <th className="px-5 py-3 text-right">Действия</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => {
-            const isDone = task.status === 'done';
-            const checklistCount = task.checklist?.length ?? 0;
-
-            return (
-              <tr
-                key={task.id}
-                className={`border-t border-slate-100 hover:bg-slate-50 transition ${
-                  task.deletedAt ? 'bg-rose-50/40' : ''
-                }`}
-              >
-                <td className={taskCellClassName}>
-                  <p
-                    className={`font-semibold ${
-                      isDone ? 'text-slate-500 line-through' : 'text-slate-900'
-                    }`}
-                  >
-                    {task.title}
-                  </p>
-                  {task.description && (
-                    <p
-                      className={`text-xs mt-1 ${
-                        isDone ? 'text-slate-500 line-through' : 'text-slate-500'
-                      }`}
-                    >
-                      {task.description}
-                    </p>
-                  )}
-                  <div className="text-[11px] text-slate-400 mt-2 space-y-0.5">
-                    {task.createdByName && (
-                      <p className="leading-tight">Создал {task.createdByName}</p>
-                    )}
-                    <p className="leading-tight">Чеклист: {checklistCount}</p>
-                  </div>
-                </td>
-                {showClientColumn && (
-                  <td className="px-5 py-4 text-slate-600 align-top">{task.clientName || '-'}</td>
-                )}
-                {showDealColumn && (
-                  <td className="px-5 py-4 align-top">
-                    {task.dealId ? (
-                      <button
-                        type="button"
-                        className="text-sky-600 font-semibold text-left hover:text-sky-800"
-                        onClick={() => handleDealClick(task)}
-                      >
-                        {task.dealTitle || task.dealId}
-                      </button>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                )}
-                <td className="px-5 py-4 text-slate-600 align-top">
-                  {STATUS_LABELS[task.status] || task.status}
-                </td>
-                <td className="px-5 py-4 text-slate-600 align-top">
-                  {PRIORITY_LABELS[task.priority] || task.priority}
-                </td>
-                <td className="px-5 py-4 text-slate-600 align-top">
-                  <ColoredLabel
-                    value={task.assigneeName || task.assignee || undefined}
-                    fallback="-"
-                    className="font-semibold text-sm text-slate-600"
-                  />
-                </td>
-                <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.dueAt ? formatDate(task.dueAt) : '-'}
-                </td>
-                {showReminderColumn && (
-                  <td className="px-5 py-4 text-slate-600 align-top">
-                    {task.remindAt ? formatDate(task.remindAt) : '-'}
-                  </td>
-                )}
-                <td className="px-5 py-4 text-slate-600 align-top">
-                  {formatDateTime(task.createdAt)}
-                </td>
-                <td className="px-5 py-4 text-slate-600 align-top">
-                  {task.completedAt ? formatDateTime(task.completedAt) : '-'}
-                  {isDone && (
-                    <p className="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center gap-1">
-                      Выполнил{' '}
-                      <ColoredLabel
-                        value={task.completedByName ?? undefined}
-                        fallback="—"
-                        className="font-semibold text-[11px]"
-                      />
-                      {task.completedAt && (
-                        <span className="text-[11px] text-slate-400">
-                          on {formatDateTime(task.completedAt)}
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </td>
-                {showDeletedColumn && (
-                  <td className="px-5 py-4 text-slate-600 align-top">
-                    {task.deletedAt ? formatDateTime(task.deletedAt) : '-'}
-                  </td>
-                )}
-                {hasActions && (
-                  <td className="px-5 py-4 text-right space-x-3 text-xs align-top">
-                    {onMarkTaskDone && task.status !== 'done' && (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkDone(task.id)}
-                        disabled={completingTaskIds.includes(task.id)}
-                        className="text-emerald-600 font-semibold hover:text-emerald-800 whitespace-nowrap"
-                        aria-label="Отметить выполненной"
-                        title="Отметить выполненной"
-                      >
-                        {completingTaskIds.includes(task.id) ? '⏳' : '✅'}
-                      </button>
-                    )}
-                    {onEditTask && (
-                      <button
-                        type="button"
-                        onClick={() => onEditTask(task.id)}
-                        className="text-slate-400 hover:text-sky-600 whitespace-nowrap"
-                        aria-label="Редактировать"
-                        title="Редактировать"
-                      >
-                        ✏️
-                      </button>
-                    )}
-                    {onDeleteTask && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(task.id)}
-                        className="text-slate-400 hover:text-red-500 whitespace-nowrap"
-                        aria-label="Удалить"
-                        title="Удалить"
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-          {!tasks.length && (
+    <div className="app-panel shadow-none overflow-hidden">
+      <div className="overflow-x-auto bg-white">
+        <table className="deals-table min-w-full border-collapse text-left text-sm">
+          <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
             <tr>
-              <td colSpan={columnCount} className="px-5 py-6 text-center text-slate-500">
-                {emptyMessage}
-              </td>
+              <th className={taskHeaderClassName}>Задача</th>
+              {showClientColumn && (
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[200px]">
+                  Клиент
+                </th>
+              )}
+              {showDealColumn && (
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[220px]">
+                  Сделка
+                </th>
+              )}
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[140px]">
+                Статус
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[140px]">
+                Приоритет
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                Ответственный
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[140px]">
+                Срок
+              </th>
+              {showReminderColumn && (
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                  Напоминание
+                </th>
+              )}
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                Создано
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[190px]">
+                Выполнено
+              </th>
+              {showDeletedColumn && (
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                  Удалено
+                </th>
+              )}
+              {hasActions && (
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[140px]">
+                  Действия
+                </th>
+              )}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody className="bg-white">
+            {tasks.map((task) => {
+              const isDone = task.status === 'done';
+              const checklistCount = task.checklist?.length ?? 0;
+
+              return (
+                <tr
+                  key={task.id}
+                  className={[
+                    'transition-colors',
+                    'even:bg-slate-50/40',
+                    'border-l-4 border-transparent',
+                    'hover:bg-slate-50/80 hover:border-sky-500',
+                    task.deletedAt ? 'bg-rose-50/30 border-rose-300' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <td className={taskCellClassName}>
+                    <p
+                      className={`font-semibold ${isDone ? 'text-slate-500 line-through' : 'text-slate-900'}`}
+                    >
+                      {task.title}
+                    </p>
+                    {task.description && (
+                      <p
+                        className={`mt-1 text-xs ${isDone ? 'text-slate-500 line-through' : 'text-slate-500'}`}
+                      >
+                        {task.description}
+                      </p>
+                    )}
+                    <div className="mt-2 space-y-0.5 text-[11px] text-slate-400">
+                      {task.createdByName && (
+                        <p className="leading-tight">Создал {task.createdByName}</p>
+                      )}
+                      <p className="leading-tight">Чеклист: {checklistCount}</p>
+                    </div>
+                  </td>
+
+                  {showClientColumn && (
+                    <td className="border border-slate-200 px-6 py-3 align-top text-slate-900">
+                      {task.clientName || '-'}
+                    </td>
+                  )}
+
+                  {showDealColumn && (
+                    <td className="border border-slate-200 px-6 py-3 align-top">
+                      {task.dealId ? (
+                        <button
+                          type="button"
+                          className="text-left font-semibold text-sky-700 hover:text-sky-900"
+                          onClick={() => handleDealClick(task)}
+                        >
+                          {task.dealTitle || task.dealId}
+                        </button>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                  )}
+
+                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                    {STATUS_LABELS[task.status] || task.status}
+                  </td>
+                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                    {PRIORITY_LABELS[task.priority] || task.priority}
+                  </td>
+                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                    <ColoredLabel
+                      value={task.assigneeName || task.assignee || undefined}
+                      fallback="-"
+                      className="text-sm font-semibold text-slate-600"
+                    />
+                  </td>
+                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                    {task.dueAt ? formatDate(task.dueAt) : '-'}
+                  </td>
+
+                  {showReminderColumn && (
+                    <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                      {task.remindAt ? formatDate(task.remindAt) : '-'}
+                    </td>
+                  )}
+
+                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                    {formatDateTime(task.createdAt)}
+                  </td>
+
+                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                    {task.completedAt ? formatDateTime(task.completedAt) : '-'}
+                    {isDone && (
+                      <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
+                        Выполнил{' '}
+                        <ColoredLabel
+                          value={task.completedByName ?? undefined}
+                          fallback="-"
+                          className="text-[11px] font-semibold"
+                        />
+                        {task.completedAt && (
+                          <span className="text-[11px] text-slate-400">
+                            в {formatDateTime(task.completedAt)}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </td>
+
+                  {showDeletedColumn && (
+                    <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                      {task.deletedAt ? formatDateTime(task.deletedAt) : '-'}
+                    </td>
+                  )}
+
+                  {hasActions && (
+                    <td className="border border-slate-200 px-6 py-3 align-top text-right text-xs">
+                      <div className="inline-flex items-center justify-end gap-2">
+                        {onMarkTaskDone && task.status !== 'done' && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkDone(task.id)}
+                            disabled={completingTaskIds.includes(task.id)}
+                            className="icon-btn h-8 w-8 text-emerald-700 hover:bg-emerald-50"
+                            aria-label="Отметить выполненной"
+                            title="Отметить выполненной"
+                          >
+                            {completingTaskIds.includes(task.id) ? '…' : '✓'}
+                          </button>
+                        )}
+                        {onEditTask && (
+                          <button
+                            type="button"
+                            onClick={() => onEditTask(task.id)}
+                            className="icon-btn h-8 w-8 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
+                            aria-label="Редактировать"
+                            title="Редактировать"
+                          >
+                            ✎
+                          </button>
+                        )}
+                        {onDeleteTask && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(task.id)}
+                            className="icon-btn h-8 w-8 text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                            aria-label="Удалить"
+                            title="Удалить"
+                          >
+                            🗑
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+
+            {!tasks.length && (
+              <tr>
+                <td
+                  colSpan={columnCount}
+                  className="border border-slate-200 px-6 py-10 text-center text-slate-600"
+                >
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
-};
+}
+
