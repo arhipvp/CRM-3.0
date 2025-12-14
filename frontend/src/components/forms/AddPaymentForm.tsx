@@ -109,8 +109,12 @@ export function AddPaymentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="add-payment-form">
-      {error && <div className="error-message">{error}</div>}
+    <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
+      {error && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
 
       {payment && <PaymentMetadata payment={payment} />}
 
@@ -133,8 +137,10 @@ export function AddPaymentForm({
         onChange={(e) => setFormData((prev) => ({ ...prev, dealId: e.target.value || null }))}
       />
 
-      <div className="form-group">
-        <label htmlFor="amount">Сумма (руб.) *</label>
+      <div className="space-y-2">
+        <label htmlFor="amount" className="app-label">
+          Сумма (руб.) *
+        </label>
         <input
           type="number"
           id="amount"
@@ -145,11 +151,14 @@ export function AddPaymentForm({
           step="0.01"
           disabled={loading}
           required
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="description">Комментарий</label>
+      <div className="space-y-2">
+        <label htmlFor="description" className="app-label">
+          Комментарий
+        </label>
         <textarea
           id="description"
           name="description"
@@ -158,6 +167,7 @@ export function AddPaymentForm({
           placeholder="Комментарий к платёжному поручению"
           rows={3}
           disabled={loading}
+          className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
@@ -169,146 +179,6 @@ export function AddPaymentForm({
       />
 
       <FormActions loading={loading} paymentExists={Boolean(payment)} onCancel={onCancel} />
-
-      <style>{`
-        .add-payment-form {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          padding: 20px;
-          background: white;
-          border-radius: 8px;
-        }
-
-        .error-message {
-          padding: 12px;
-          background: #fee2e2;
-          color: #991b1b;
-          border-radius: 4px;
-          font-size: 14px;
-        }
-
-        .technical-fields {
-          padding: 12px;
-          background: #f8fafc;
-          border-radius: 4px;
-          border-left: 3px solid #cbd5e1;
-          margin-bottom: 12px;
-        }
-
-        .tech-field {
-          display: flex;
-          gap: 8px;
-          font-size: 13px;
-          margin-bottom: 6px;
-        }
-
-        .tech-field:last-child {
-          margin-bottom: 0;
-        }
-
-        .tech-label {
-          color: #94a3b8;
-          font-weight: 500;
-          min-width: 100px;
-        }
-
-        .tech-value {
-          color: #475569;
-          font-family: monospace;
-          word-break: break-all;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .form-group label {
-          margin-bottom: 6px;
-          font-weight: 500;
-          font-size: 14px;
-          color: #1e293b;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-          padding: 10px 12px;
-          border: 1px solid #e2e8f0;
-          border-radius: 4px;
-          font-size: 14px;
-          font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-          outline: none;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .form-group input:disabled,
-        .form-group textarea:disabled,
-        .form-group select:disabled {
-          background: #f8fafc;
-          color: #94a3b8;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
-        }
-
-        @media (max-width: 640px) {
-          .form-row {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .form-actions {
-          display: flex;
-          gap: 12px;
-          margin-top: 16px;
-        }
-
-        .btn-primary,
-        .btn-secondary {
-          padding: 10px 20px;
-          border-radius: 4px;
-          border: none;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
-        }
-
-        .btn-secondary {
-          background: #e2e8f0;
-          color: #1e293b;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #cbd5f5;
-        }
-
-        .btn-primary:disabled,
-        .btn-secondary:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-      `}</style>
     </form>
   );
 }

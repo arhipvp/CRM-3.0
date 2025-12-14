@@ -6,26 +6,29 @@ interface PaymentMetadataProps {
 }
 
 export const PaymentMetadata: React.FC<PaymentMetadataProps> = ({ payment }) => (
-  <div className="technical-fields">
-    <div className="tech-field">
-      <span className="tech-label">ID:</span>
-      <span className="tech-value">{payment.id}</span>
-    </div>
-    <div className="tech-field">
-      <span className="tech-label">Создан:</span>
-      <span className="tech-value">{payment.createdAt}</span>
-    </div>
-    {payment.updatedAt && (
-      <div className="tech-field">
-        <span className="tech-label">Обновлён:</span>
-        <span className="tech-value">{payment.updatedAt}</span>
+  <div className="app-panel-muted p-4">
+    <p className="app-label mb-2">Технические данные</p>
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="font-semibold text-slate-500">ID</span>
+        <span className="font-mono text-slate-700">{payment.id}</span>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="font-semibold text-slate-500">Создан</span>
+        <span className="font-mono text-slate-700">{payment.createdAt}</span>
+      </div>
+    {payment.updatedAt && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="font-semibold text-slate-500">Обновлён</span>
+          <span className="font-mono text-slate-700">{payment.updatedAt}</span>
+        </div>
     )}
     {payment.deletedAt && (
-      <div className="tech-field">
-        <span className="tech-label">Удалён:</span>
-        <span className="tech-value">{payment.deletedAt}</span>
-      </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="font-semibold text-slate-500">Удалён</span>
+          <span className="font-mono text-slate-700">{payment.deletedAt}</span>
+        </div>
     )}
+    </div>
   </div>
 );

@@ -103,55 +103,65 @@ export function AddFinancialRecordForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="add-financial-record-form">
-      <div className="type-indicator">
-        <span className="type-label">
-          {indicatorLabel} <strong>{recordTypeLabel}</strong>
-        </span>
+    <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
+      <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900">
+        {indicatorLabel} <span className="font-bold">{recordTypeLabel}</span>
       </div>
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
 
       {record && (
-        <div className="technical-fields">
-          <div className="tech-field">
-            <span className="tech-label">ID:</span>
-            <span className="tech-value">{record.id}</span>
-          </div>
-          <div className="tech-field">
-            <span className="tech-label">Создано:</span>
-            <span className="tech-value">{record.createdAt}</span>
-          </div>
-          {record.updatedAt && (
-            <div className="tech-field">
-              <span className="tech-label">Обновлено:</span>
-              <span className="tech-value">{record.updatedAt}</span>
+        <div className="app-panel-muted p-4">
+          <p className="app-label mb-2">Технические данные</p>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-semibold text-slate-500">ID</span>
+              <span className="font-mono text-slate-700">{record.id}</span>
             </div>
-          )}
-          {record.deletedAt && (
-            <div className="tech-field">
-              <span className="tech-label">Удалено:</span>
-              <span className="tech-value">{record.deletedAt}</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-semibold text-slate-500">Создано</span>
+              <span className="font-mono text-slate-700">{record.createdAt}</span>
             </div>
-          )}
+            {record.updatedAt && (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="font-semibold text-slate-500">Обновлено</span>
+                <span className="font-mono text-slate-700">{record.updatedAt}</span>
+              </div>
+            )}
+            {record.deletedAt && (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="font-semibold text-slate-500">Удалено</span>
+                <span className="font-mono text-slate-700">{record.deletedAt}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="form-group">
-        <label htmlFor="recordType">Тип операции *</label>
+      <div className="space-y-2">
+        <label htmlFor="recordType" className="app-label">
+          Тип операции *
+        </label>
         <select
           id="recordType"
           name="recordType"
           value={formData.recordType}
           onChange={handleChange}
           disabled={loading}
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         >
           <option value="income">Доход (поступление)</option>
           <option value="expense">Расход (затраты)</option>
         </select>
       </div>
 
-      <div className="form-group">
-        <label htmlFor="amount">Сумма (₽) *</label>
+      <div className="space-y-2">
+        <label htmlFor="amount" className="app-label">
+          Сумма (руб.) *
+        </label>
         <input
           type="number"
           id="amount"
@@ -162,11 +172,14 @@ export function AddFinancialRecordForm({
           step="0.01"
           disabled={loading}
           required
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="date">Дата</label>
+      <div className="space-y-2">
+        <label htmlFor="date" className="app-label">
+          Дата
+        </label>
         <input
           type="date"
           id="date"
@@ -174,11 +187,14 @@ export function AddFinancialRecordForm({
           value={formData.date || ''}
           onChange={handleChange}
           disabled={loading}
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="description">Описание</label>
+      <div className="space-y-2">
+        <label htmlFor="description" className="app-label">
+          Описание
+        </label>
         <input
           type="text"
           id="description"
@@ -187,11 +203,14 @@ export function AddFinancialRecordForm({
           onChange={handleChange}
           placeholder="Описание операции"
           disabled={loading}
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="source">Источник / Назначение</label>
+      <div className="space-y-2">
+        <label htmlFor="source" className="app-label">
+          Источник / Назначение
+        </label>
         <input
           type="text"
           id="source"
@@ -200,11 +219,14 @@ export function AddFinancialRecordForm({
           onChange={handleChange}
           placeholder="С чего поступило или куда ушло"
           disabled={loading}
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="note">Примечание</label>
+      <div className="space-y-2">
+        <label htmlFor="note" className="app-label">
+          Примечание
+        </label>
         <textarea
           id="note"
           name="note"
@@ -213,163 +235,18 @@ export function AddFinancialRecordForm({
           placeholder="Дополнительные детали"
           rows={3}
           disabled={loading}
+          className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
 
-      <div className="form-actions">
-        <button type="submit" disabled={loading} className="btn-primary">
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <button type="submit" disabled={loading} className="btn btn-primary">
           {loading ? 'Сохраняем...' : actionLabel}
         </button>
-        <button type="button" onClick={onCancel} disabled={loading} className="btn-secondary">
+        <button type="button" onClick={onCancel} disabled={loading} className="btn btn-secondary">
           Отмена
         </button>
       </div>
-
-      <style>{`
-        .add-financial-record-form {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          padding: 20px;
-          background: white;
-          border-radius: 8px;
-        }
-
-        .error-message {
-          padding: 12px;
-          background: #fee2e2;
-          color: #991b1b;
-          border-radius: 4px;
-          font-size: 14px;
-        }
-
-        .technical-fields {
-          padding: 12px;
-          background: #f8fafc;
-          border-radius: 4px;
-          border-left: 3px solid #cbd5e1;
-          margin-bottom: 12px;
-        }
-
-        .tech-field {
-          display: flex;
-          gap: 8px;
-          font-size: 13px;
-          margin-bottom: 6px;
-        }
-
-        .tech-field:last-child {
-          margin-bottom: 0;
-        }
-
-        .tech-label {
-          color: #94a3b8;
-          font-weight: 500;
-          min-width: 100px;
-        }
-
-        .tech-value {
-          color: #475569;
-          font-family: monospace;
-          word-break: break-all;
-        }
-
-        .type-indicator {
-          padding: 10px 12px;
-          border-radius: 8px;
-          background: #ecfeff;
-          border: 1px solid #bae6fd;
-          color: #0c4a6e;
-          font-weight: 600;
-        }
-
-        .type-label strong {
-          font-weight: 700;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .form-group label {
-          margin-bottom: 6px;
-          font-weight: 500;
-          font-size: 14px;
-          color: #1e293b;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-          padding: 10px 12px;
-          border: 1px solid #e2e8f0;
-          border-radius: 4px;
-          font-size: 14px;
-          font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-          outline: none;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .form-group input:disabled,
-        .form-group textarea:disabled,
-        .form-group select:disabled {
-          background: #f8fafc;
-          color: #94a3b8;
-        }
-
-        .form-actions {
-          display: flex;
-          gap: 12px;
-          margin-top: 16px;
-        }
-
-        .btn-primary,
-        .btn-secondary {
-          padding: 10px 20px;
-          border-radius: 4px;
-          border: none;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #2563eb;
-        }
-
-        .btn-primary:disabled {
-          background: #93c5fd;
-          cursor: not-allowed;
-        }
-
-        .btn-secondary {
-          background: #f1f5f9;
-          color: #64748b;
-          border: 1px solid #e2e8f0;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #e2e8f0;
-        }
-
-        .btn-secondary:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      `}</style>
     </form>
   );
 }
