@@ -234,8 +234,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3">
         <FilterBar
           onFilterChange={setFilters}
           searchPlaceholder="Поиск по номеру, клиенту или компании..."
@@ -245,7 +245,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            className="btn btn-secondary btn-sm rounded-xl"
             onClick={() =>
               {
                 setPaymentsExpanded((prev) => {
@@ -263,7 +263,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           </button>
           <button
             type="button"
-            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            className="btn btn-secondary btn-sm rounded-xl"
             onClick={() =>
               {
                 setPaymentsExpanded((prev) => {
@@ -287,13 +287,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           {paymentsByPolicy.map(({ policy, payments }) => (
             <section
               key={policy.id}
-              className="space-y-2 rounded-2xl border border-slate-200 bg-white shadow-sm"
+              className="app-panel shadow-none space-y-2"
             >
-              <div className="px-4 py-3 text-sm text-slate-500 space-y-3">
+              <div className="px-5 py-4 text-sm text-slate-500 space-y-3">
                 <div className="grid gap-4 sm:grid-cols-[1.1fr_0.9fr_0.8fr]">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-slate-400">Номер</p>
-                    <p className="text-lg font-semibold text-slate-900">{policy.number || '—'}</p>
+                    <p className="app-label">Номер</p>
+                    <p className="text-lg font-semibold text-slate-900">{policy.number || '-'}</p>
                   </div>
                   <div className="flex gap-8 text-[11px] uppercase tracking-[0.35em] text-slate-500 mt-3 sm:mt-0">
                     <span>Начало: {formatDate(policy.startDate)}</span>
@@ -352,15 +352,15 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   />
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-3">
+              <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 space-y-3">
                 <div className="flex flex-wrap gap-6 text-sm text-slate-600">
-                  <LabelValuePair label="Тип" value={policy.insuranceType || '—'} />
-                  <LabelValuePair label="Марка" value={policy.brand || '—'} />
-                  <LabelValuePair label="Модель" value={policy.model || '—'} />
-                  <LabelValuePair label="VIN" value={policy.vin || '—'} />
+                  <LabelValuePair label="Тип" value={policy.insuranceType || '-'} />
+                  <LabelValuePair label="Марка" value={policy.brand || '-'} />
+                  <LabelValuePair label="Модель" value={policy.model || '-'} />
+                  <LabelValuePair label="VIN" value={policy.vin || '-'} />
                 </div>
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-600">
                 <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
                   <div className="flex items-center gap-2">
                     <span>Платежи</span>
@@ -377,7 +377,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           [policy.id]: !prev[policy.id],
                         }))
                       }
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                      className="btn btn-secondary btn-sm rounded-xl"
                     >
                       {(paymentsExpanded[policy.id] ?? false) ? 'Скрыть' : 'Показать'}
                     </button>
@@ -407,7 +407,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 px-5 py-6 text-center text-sm text-slate-500">
+        <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
           Нет полисов для отображения
         </div>
       )}

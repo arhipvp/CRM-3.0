@@ -103,15 +103,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="app-panel p-5 shadow-none">
           <p className="text-sm text-slate-500">Клиентов</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.clients}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="app-panel p-5 shadow-none">
           <p className="text-sm text-slate-500">Активных сделок</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.active}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="app-panel p-5 shadow-none">
           <p className="text-sm text-slate-500">Новых за 30 дней</p>
           <p className="text-3xl font-semibold text-slate-900">{newClientsCount}</p>
         </div>
@@ -128,62 +128,85 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         ]}
       />
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
+      <div className="app-panel shadow-none overflow-hidden">
+        <div className="overflow-x-auto bg-white">
+        <table className="deals-table min-w-full border-collapse text-left text-sm">
+          <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
             <tr>
-              <th className="px-5 py-3">Имя</th>
-              <th className="px-5 py-3">Телефон</th>
-              <th className="px-5 py-3">Дата рождения</th>
-              <th className="px-5 py-3">Создан</th>
-              <th className="px-5 py-3 text-right">Сделок</th>
-              <th className="px-5 py-3 text-right">Файлы</th>
-              <th className="px-5 py-3 text-right">Действия</th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[220px]">
+                Имя
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[180px]">
+                Телефон
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                Дата рождения
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                Создан
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[110px]">
+                Сделок
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[120px]">
+                Файлы
+              </th>
+              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[200px]">
+                Действия
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-white">
             {paginatedClients.map((client) => {
               const clientDeals = deals.filter((deal) => deal.clientId === client.id);
               return (
-                <tr key={client.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-5 py-4">
-                    <p className="font-semibold text-slate-900">{client.name}</p>
+                <tr
+                  key={client.id}
+                  className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500"
+                >
+                  <td className="border border-slate-200 px-6 py-3">
+                    <p className="text-base font-semibold text-slate-900">{client.name}</p>
                   </td>
-                  <td className="px-5 py-4 text-slate-600">
+                  <td className="border border-slate-200 px-6 py-3 text-slate-700">
                     {client.phone ? (
                       <a
                         href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                        className="text-sky-700 font-semibold hover:text-sky-900 hover:underline"
                       >
                         {client.phone}
                       </a>
                     ) : (
-                      '—'
+                      '-'
                     )}
                   </td>
-                  <td className="px-5 py-4 text-slate-600">{formatDate(client.birthDate)}</td>
-                  <td className="px-5 py-4 text-slate-600">{formatDate(client.createdAt)}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-slate-900">
+                  <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                    {formatDate(client.birthDate)}
+                  </td>
+                  <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                    {formatDate(client.createdAt)}
+                  </td>
+                  <td className="border border-slate-200 px-6 py-3 text-right font-semibold text-slate-900">
                     {clientDeals.length}
                   </td>
-                  <td className="px-5 py-4 text-right">
+                  <td className="border border-slate-200 px-6 py-3 text-right">
                     <button
+                      type="button"
                       onClick={() => setFilesModalClient(client)}
-                      className="text-sm font-medium text-slate-500 hover:text-sky-600 transition-colors"
+                      className="btn btn-secondary btn-sm rounded-xl"
                     >
                       Файлы
                     </button>
                   </td>
-                  <td className="px-5 py-4 text-right">
+                  <td className="border border-slate-200 px-6 py-3 text-right">
                     {onClientEdit || onClientDelete || onClientMerge ? (
                       <div className="flex flex-col items-end gap-1">
                         {onClientEdit && (
                           <button
                             type="button"
                             onClick={() => onClientEdit(client)}
-                            className="text-sm font-semibold text-sky-600 hover:text-sky-800"
+                            className="text-sm font-semibold text-sky-700 hover:text-sky-900"
                           >
                             Редактировать
                           </button>
@@ -192,7 +215,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onClientDelete(client)}
-                            className="text-sm font-semibold text-rose-600 hover:text-rose-800"
+                            className="text-sm font-semibold text-rose-700 hover:text-rose-900"
                           >
                             Удалить
                           </button>
@@ -208,21 +231,25 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs uppercase tracking-wide text-slate-400">—</span>
+                      <span className="text-xs uppercase tracking-wide text-slate-400">-</span>
                     )}
                   </td>
                 </tr>
               );
             })}
             {!paginatedClients.length && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-6 text-center text-slate-500">
+              <tr>
+                <td
+                  colSpan={7}
+                  className="border border-slate-200 px-6 py-10 text-center text-slate-600"
+                >
                   Клиентов пока нет
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        </div>
 
         {filteredClients.length > PAGE_SIZE && (
           <Pagination

@@ -91,59 +91,83 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
           },
         ]}
       />
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500 uppercase tracking-wide text-xs">
-            <tr>
-              <th className="px-5 py-3">Сделка</th>
-              <th className="px-5 py-3">Сумма</th>
-              <th className="px-5 py-3">Плановая дата</th>
-              <th className="px-5 py-3">Фактическая дата</th>
-              <th className="px-5 py-3 text-right">Действие</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPayments.map((payment) => {
-              const dealTitle = payment.dealTitle || '—';
-              const clientName = payment.dealClientName || '—';
-              return (
-                <tr key={payment.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="px-5 py-4">
-                    <p className="font-semibold text-slate-900">{dealTitle}</p>
-                    <p className="text-xs text-slate-500">{clientName}</p>
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">
-                    {Number(payment.amount).toLocaleString('ru-RU', {
-                      style: 'currency',
-                      currency: 'RUB',
-                    })}
-                  </td>
-                  <td className="px-5 py-4 text-slate-600">{formatDate(payment.scheduledDate)}</td>
-                  <td className="px-5 py-4 text-slate-600">{formatDate(payment.actualDate)}</td>
-                  <td className="px-5 py-4 text-right">
-                    {!payment.actualDate ? (
-                      <button
-                        onClick={() => onMarkPaid(payment.id)}
-                        className="text-sky-600 font-semibold hover:text-sky-800"
-                      >
-                        Отметить оплаченным
-                      </button>
-                    ) : (
-                      <span className="text-xs text-green-600 font-semibold">Оплачен</span>
-                    )}
+      <div className="app-panel shadow-none overflow-hidden">
+        <div className="overflow-x-auto bg-white">
+          <table className="deals-table min-w-full border-collapse text-left text-sm">
+            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
+              <tr>
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[260px]">
+                  Сделка
+                </th>
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[160px]">
+                  Сумма
+                </th>
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                  Плановая дата
+                </th>
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                  Фактическая дата
+                </th>
+                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[200px]">
+                  Действие
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {filteredPayments.map((payment) => {
+                const dealTitle = payment.dealTitle || '-';
+                const clientName = payment.dealClientName || '-';
+
+                return (
+                  <tr
+                    key={payment.id}
+                    className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500"
+                  >
+                    <td className="border border-slate-200 px-6 py-3">
+                      <p className="text-base font-semibold text-slate-900">{dealTitle}</p>
+                      <p className="text-xs text-slate-500 mt-1">{clientName}</p>
+                    </td>
+                    <td className="border border-slate-200 px-6 py-3 text-slate-700 font-semibold">
+                      {Number(payment.amount).toLocaleString('ru-RU', {
+                        style: 'currency',
+                        currency: 'RUB',
+                      })}
+                    </td>
+                    <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                      {formatDate(payment.scheduledDate)}
+                    </td>
+                    <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                      {formatDate(payment.actualDate)}
+                    </td>
+                    <td className="border border-slate-200 px-6 py-3 text-right">
+                      {!payment.actualDate ? (
+                        <button
+                          type="button"
+                          onClick={() => onMarkPaid(payment.id)}
+                          className="btn btn-secondary btn-sm rounded-xl"
+                        >
+                          Отметить оплаченным
+                        </button>
+                      ) : (
+                        <span className="text-xs text-emerald-700 font-semibold">Оплачен</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!filteredPayments.length && (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="border border-slate-200 px-6 py-10 text-center text-slate-600"
+                  >
+                    Платежей пока нет
                   </td>
                 </tr>
-              );
-            })}
-            {!filteredPayments.length && (
-              <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-slate-500">
-                  Платежей пока нет
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
