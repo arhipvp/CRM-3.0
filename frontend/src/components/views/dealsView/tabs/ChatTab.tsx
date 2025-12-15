@@ -23,10 +23,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({
   }
 
   return (
-    <section className="app-panel p-6 shadow-none">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="app-panel p-6 shadow-none space-y-4">
+      <div className="flex items-center justify-between">
         <p className="app-label">Чат</p>
-        <p className="text-xs text-slate-500">{selectedDeal.title}</p>
       </div>
 
       {isChatLoading ? (
