@@ -102,11 +102,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
     const ariaSort = isActive ? (sortConfig?.direction === 'asc' ? 'ascending' : 'descending') : 'none';
 
     return (
-      <th className={`px-4 py-3 ${className ?? ''}`} aria-sort={ariaSort}>
+      <th
+        className={`border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 ${className ?? ''}`}
+        aria-sort={ariaSort}
+      >
         <button
           type="button"
           onClick={() => handleSort(sortKey)}
-          className="w-full flex items-center gap-2 text-left hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 rounded-md"
+          className="flex w-full items-center gap-2 text-left hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-md"
         >
           <span>{label}</span>
           {isActive && <span className="text-[11px]">{sortConfig?.direction === 'asc' ? '↑' : '↓'}</span>}
@@ -134,9 +137,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       {!quotes.length ? (
         <p className="text-sm text-slate-600">Расчётов пока нет.</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="min-w-full text-sm text-left">
-            <thead className="text-[10px] uppercase tracking-[0.2em] text-slate-500 bg-slate-50">
+        <div className="overflow-x-auto bg-white">
+          <table className="deals-table min-w-full border-collapse text-left text-sm">
+            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
               <tr>
                 <SortableHeader label="Тип" sortKey="insuranceType" />
                 <SortableHeader label="Компания" sortKey="insuranceCompany" />
@@ -146,14 +149,18 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 <SortableHeader label="Комментарии" sortKey="comments" />
                 <SortableHeader label="Добавлен" sortKey="seller" />
                 <SortableHeader label="Дата" sortKey="createdAt" />
-                <th className="px-4 py-3 text-right">Действия</th>
+                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right w-[160px]">
+                  Действия
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="bg-white">
               {sortedQuotes.map((quote) => (
-                <tr key={quote.id} className="odd:bg-white even:bg-slate-50">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{quote.insuranceType}</td>
-                  <td className="px-4 py-3">
+                <tr key={quote.id} className="even:bg-slate-50/40 transition-colors hover:bg-slate-50/80">
+                  <td className="border border-slate-200 px-3 py-2 align-top font-semibold text-slate-900">
+                    {quote.insuranceType}
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 align-top">
                     <ColoredLabel
                       value={quote.insuranceCompany}
                       fallback="-"
@@ -161,11 +168,19 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                       className="text-slate-600"
                     />
                   </td>
-                  <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.sumInsured))}</td>
-                  <td className="px-4 py-3 text-slate-900">{formatCurrency(String(quote.premium))}</td>
-                  <td className="px-4 py-3 text-slate-900">{quote.deductible || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{quote.comments || '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-900 whitespace-nowrap">
+                    {formatCurrency(String(quote.sumInsured))}
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-900 whitespace-nowrap">
+                    {formatCurrency(String(quote.premium))}
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-900 whitespace-nowrap">
+                    {quote.deductible || '-'}
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-600">
+                    {quote.comments || '-'}
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 align-top">
                     <ColoredLabel
                       value={quote.sellerName || quote.sellerId}
                       fallback="-"
@@ -173,8 +188,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                       className="text-slate-600"
                     />
                   </td>
-                  <td className="px-4 py-3 text-slate-400">{formatDate(quote.createdAt)}</td>
-                  <td className="px-4 py-3 text-right space-x-3">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-600 whitespace-nowrap">
+                    {formatDate(quote.createdAt)}
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 align-top text-right space-x-3 whitespace-nowrap">
                     <button
                       className="text-xs font-semibold text-sky-700 hover:text-sky-900"
                       onClick={() => onRequestEditQuote(quote)}
