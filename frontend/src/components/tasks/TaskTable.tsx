@@ -10,7 +10,6 @@ interface TaskTableProps {
   showActions?: boolean;
   showClientColumn?: boolean;
   showReminderColumn?: boolean;
-  showDeletedColumn?: boolean;
   taskColumnClassName?: string;
   onMarkTaskDone?: (taskId: string) => void;
   onEditTask?: (taskId: string) => void;
@@ -27,8 +26,7 @@ export function TaskTable({
   showDealColumn = true,
   showActions = false,
   showClientColumn = true,
-  showReminderColumn = true,
-  showDeletedColumn = true,
+  showReminderColumn = false,
   taskColumnClassName = '',
   onMarkTaskDone,
   onEditTask,
@@ -49,20 +47,19 @@ export function TaskTable({
     1 +
     (showReminderColumn ? 1 : 0) +
     1 +
-    1 +
-    (showDeletedColumn ? 1 : 0);
+    1;
 
   const columnCount = baseColumnCount + (hasActions ? 1 : 0);
 
   const taskHeaderClassName = [
-    'border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900',
+    'border border-slate-200 px-4 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900',
     taskColumnClassName,
   ]
     .filter(Boolean)
     .join(' ');
 
   const taskCellClassName = [
-    'border border-slate-200 px-6 py-3 align-top',
+    'border border-slate-200 px-4 py-2 align-top',
     taskColumnClassName,
   ]
     .filter(Boolean)
@@ -98,50 +95,45 @@ export function TaskTable({
   return (
     <div className="app-panel shadow-none overflow-hidden">
       <div className="overflow-x-auto bg-white">
-        <table className="deals-table min-w-full border-collapse text-left text-sm">
+        <table className="deals-table min-w-full table-fixed border-collapse text-left text-sm">
           <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
             <tr>
               <th className={taskHeaderClassName}>Задача</th>
               {showClientColumn && (
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[200px]">
+                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[160px]">
                   Клиент
                 </th>
               )}
               {showDealColumn && (
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[220px]">
+                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[200px]">
                   Сделка
                 </th>
               )}
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[140px]">
+              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[120px]">
                 Статус
               </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[140px]">
+              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[120px]">
                 Приоритет
               </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[130px]">
                 Ответственный
               </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[140px]">
+              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[120px]">
                 Срок
               </th>
               {showReminderColumn && (
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[140px]">
                   Напоминание
                 </th>
               )}
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
+              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[140px]">
                 Создано
               </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[190px]">
+              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[160px]">
                 Выполнено
               </th>
-              {showDeletedColumn && (
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
-                  Удалено
-                </th>
-              )}
               {hasActions && (
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[140px]">
+                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right w-[120px]">
                   Действия
                 </th>
               )}
@@ -167,19 +159,17 @@ export function TaskTable({
                     .join(' ')}
                 >
                   <td className={taskCellClassName}>
-                    <p
-                      className={`font-semibold ${isDone ? 'text-slate-500 line-through' : 'text-slate-900'}`}
-                    >
+                    <p className={`font-semibold leading-snug ${isDone ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
                       {task.title}
                     </p>
                     {task.description && (
                       <p
-                        className={`mt-1 text-xs ${isDone ? 'text-slate-500 line-through' : 'text-slate-500'}`}
+                        className={`mt-1 text-xs leading-snug ${isDone ? 'text-slate-500 line-through' : 'text-slate-500'}`}
                       >
                         {task.description}
                       </p>
                     )}
-                    <div className="mt-2 space-y-0.5 text-[11px] text-slate-400">
+                    <div className="mt-1 space-y-0 text-[11px] text-slate-400">
                       {task.createdByName && (
                         <p className="leading-tight">Создал {task.createdByName}</p>
                       )}
@@ -188,13 +178,13 @@ export function TaskTable({
                   </td>
 
                   {showClientColumn && (
-                    <td className="border border-slate-200 px-6 py-3 align-top text-slate-900">
+                    <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-900">
                       {task.clientName || '-'}
                     </td>
                   )}
 
                   {showDealColumn && (
-                    <td className="border border-slate-200 px-6 py-3 align-top">
+                    <td className="border border-slate-200 px-3 py-2 align-top text-xs">
                       {task.dealId ? (
                         <button
                           type="button"
@@ -209,34 +199,34 @@ export function TaskTable({
                     </td>
                   )}
 
-                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
                     {STATUS_LABELS[task.status] || task.status}
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
                     {PRIORITY_LABELS[task.priority] || task.priority}
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700">
                     <ColoredLabel
                       value={task.assigneeName || task.assignee || undefined}
                       fallback="-"
-                      className="text-sm font-semibold text-slate-600"
+                      className="truncate text-xs font-semibold text-slate-600"
                     />
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
                     {task.dueAt ? formatDate(task.dueAt) : '-'}
                   </td>
 
                   {showReminderColumn && (
-                    <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                    <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
                       {task.remindAt ? formatDate(task.remindAt) : '-'}
                     </td>
                   )}
 
-                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
                     {formatDateTime(task.createdAt)}
                   </td>
 
-                  <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
+                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700">
                     {task.completedAt ? formatDateTime(task.completedAt) : '-'}
                     {isDone && (
                       <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
@@ -255,14 +245,8 @@ export function TaskTable({
                     )}
                   </td>
 
-                  {showDeletedColumn && (
-                    <td className="border border-slate-200 px-6 py-3 align-top text-slate-700">
-                      {task.deletedAt ? formatDateTime(task.deletedAt) : '-'}
-                    </td>
-                  )}
-
                   {hasActions && (
-                    <td className="border border-slate-200 px-6 py-3 align-top text-right text-xs">
+                    <td className="border border-slate-200 px-3 py-2 align-top text-right text-xs">
                       <div className="inline-flex items-center justify-end gap-2">
                         {onMarkTaskDone && task.status !== 'done' && (
                           <button
@@ -309,7 +293,7 @@ export function TaskTable({
               <tr>
                 <td
                   colSpan={columnCount}
-                  className="border border-slate-200 px-6 py-10 text-center text-slate-600"
+                  className="border border-slate-200 px-4 py-8 text-center text-slate-600"
                 >
                   {emptyMessage}
                 </td>
@@ -321,4 +305,3 @@ export function TaskTable({
     </div>
   );
 }
-

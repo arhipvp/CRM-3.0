@@ -92,9 +92,6 @@ export const TasksTab: React.FC<TasksTabProps> = ({
         showDealColumn={false}
         showActions
         showClientColumn={false}
-        showReminderColumn={false}
-        showDeletedColumn={false}
-        taskColumnClassName="min-w-[360px]"
         onMarkTaskDone={onMarkTaskDone}
         onEditTask={onEditTaskClick}
         onDeleteTask={onDeleteTask}
@@ -104,4 +101,3 @@ export const TasksTab: React.FC<TasksTabProps> = ({
     </section>
   );
 };
-

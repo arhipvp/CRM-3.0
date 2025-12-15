@@ -428,6 +428,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           onClose={closeFinancialRecordModal}
           size="sm"
           zIndex={50}
+          closeOnOverlayClick={false}
         >
           <AddFinancialRecordForm
             paymentId={
