@@ -156,7 +156,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   return (
     <section className="app-panel p-6 shadow-none space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <p className="app-label">Полисы</p>
           <span className="text-xs text-slate-500">
             Сортировка: {sortLabel} {sortOrderSymbol}
@@ -355,4 +355,3 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     </section>
   );
 };
-
