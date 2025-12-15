@@ -13,6 +13,7 @@ import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/A
 import { ColoredLabel } from '../common/ColoredLabel';
 import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from '../policies/PaymentCard';
+import { Modal } from '../Modal';
 
 type PolicySortKey =
   | 'startDate'
@@ -422,41 +423,29 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         />
       )}
       {(creatingFinancialRecordContext || editingFinancialRecordId) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {editingFinancialRecordId ? 'Изменить запись' : 'Добавить запись'}
-              </h3>
-              <button
-                onClick={closeFinancialRecordModal}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6">
-              <AddFinancialRecordForm
-                paymentId={
-                  creatingFinancialRecordContext?.paymentId ||
-                  editingFinancialRecord?.paymentId ||
-                  ''
-                }
-                defaultRecordType={creatingFinancialRecordContext?.recordType}
-                record={editingFinancialRecord}
-                onSubmit={async (values) => {
-                  if (editingFinancialRecordId) {
-                    await onUpdateFinancialRecord(editingFinancialRecordId, values);
-                  } else {
-                    await onAddFinancialRecord(values);
-                  }
-                  closeFinancialRecordModal();
-                }}
-                onCancel={closeFinancialRecordModal}
-              />
-            </div>
-          </div>
-        </div>
+        <Modal
+          title={editingFinancialRecordId ? 'Изменить запись' : 'Добавить запись'}
+          onClose={closeFinancialRecordModal}
+          size="sm"
+          zIndex={50}
+        >
+          <AddFinancialRecordForm
+            paymentId={
+              creatingFinancialRecordContext?.paymentId || editingFinancialRecord?.paymentId || ''
+            }
+            defaultRecordType={creatingFinancialRecordContext?.recordType}
+            record={editingFinancialRecord}
+            onSubmit={async (values) => {
+              if (editingFinancialRecordId) {
+                await onUpdateFinancialRecord(editingFinancialRecordId, values);
+              } else {
+                await onAddFinancialRecord(values);
+              }
+              closeFinancialRecordModal();
+            }}
+            onCancel={closeFinancialRecordModal}
+          />
+        </Modal>
       )}
     </div>
   );
