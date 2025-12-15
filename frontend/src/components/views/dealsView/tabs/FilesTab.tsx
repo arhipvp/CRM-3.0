@@ -58,27 +58,28 @@ export const FilesTab: React.FC<FilesTabProps> = ({
 
   return (
     <section className="app-panel p-6 shadow-none space-y-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          {driveFolderLink ? (
-            <a
-              href={driveFolderLink}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm font-semibold text-slate-900 hover:text-sky-600"
-            >
-              Файлы Google Drive
-            </a>
-          ) : (
-            <p className="text-sm font-semibold text-slate-900">Файлы Google Drive</p>
-          )}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="app-label">Файлы</p>
+            {driveFolderLink && (
+              <a
+                href={driveFolderLink}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-semibold text-sky-700 hover:text-sky-900"
+              >
+                Открыть папку Google Drive
+              </a>
+            )}
+          </div>
           <p className="text-xs text-slate-500">Контент читается прямо из папки, привязанной к этой сделке.</p>
         </div>
         <button
           type="button"
           onClick={loadDriveFiles}
           disabled={!selectedDeal.driveFolderId || isDriveLoading}
-          className="btn btn-secondary btn-sm self-start rounded-xl text-slate-600"
+          className="btn btn-secondary btn-sm rounded-xl"
         >
           {isDriveLoading ? 'Обновляю...' : 'Обновить'}
         </button>
