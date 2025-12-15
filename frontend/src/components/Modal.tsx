@@ -14,6 +14,7 @@ interface ModalProps {
   onClose: () => void;
   children: React.ReactNode;
   closeOnOverlayClick?: boolean;
+  closeOnEscape?: boolean;
   size?: ModalSize;
   zIndex?: number;
 }
@@ -23,9 +24,12 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   closeOnOverlayClick = true,
+  closeOnEscape = true,
   size = 'md',
   zIndex = 40,
 }) => {
+  const titleId = React.useId();
+
   const handleOverlayClick = () => {
     if (closeOnOverlayClick) {
       onClose();
@@ -33,6 +37,21 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const sizeClass = MODAL_SIZE_TO_CLASS[size];
+
+  React.useEffect(() => {
+    if (!closeOnEscape) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closeOnEscape, onClose]);
 
   return (
     <div
@@ -43,9 +62,14 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         className={`w-full rounded-2xl border border-slate-200 bg-white shadow-2xl ${sizeClass}`}
         onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+            {title}
+          </h2>
           <button type="button" onClick={onClose} className="icon-btn" aria-label="Закрыть">
             ×
           </button>
@@ -55,4 +79,3 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
-

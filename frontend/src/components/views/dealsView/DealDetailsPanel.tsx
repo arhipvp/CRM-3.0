@@ -40,6 +40,7 @@ import { PoliciesTab } from './tabs/PoliciesTab';
 import { QuotesTab } from './tabs/QuotesTab';
 import { FilesTab } from './tabs/FilesTab';
 import { ChatTab } from './tabs/ChatTab';
+import { Modal } from '../../Modal';
 import { DealDelayModal, DealMergeModal } from './DealDetailsModals';
 import { DealTabs } from './DealTabs';
 import { DealHeader } from './DealHeader';
@@ -987,198 +988,161 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             )}
           </div>
       {isEditingDeal && selectedDeal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Редактировать сделку</h3>
-              <button
-                onClick={() => setIsEditingDeal(false)}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 space-y-3">
-              <DealForm
-                key={selectedDeal.id}
-                clients={clients}
-                users={users}
-                initialValues={{
-                  title: selectedDeal.title,
-                  description: selectedDeal.description ?? '',
-                  clientId: selectedDeal.clientId,
-                  executorId: selectedDeal.executor ?? null,
-                  sellerId: selectedDeal.seller ?? null,
-                  source: selectedDeal.source ?? '',
-                  nextContactDate: selectedDeal.nextContactDate ?? null,
-                  expectedClose: selectedDeal.expectedClose ?? null,
-                }}
-                mode="edit"
-                showSellerField
-                showNextContactField
-                quickNextContactOptions={quickInlineDateOptions}
-                expectedCloseRequired
-                onQuickNextContactShift={handleQuickNextContactShift}
-                onRequestAddClient={onRequestAddClient}
-                onSubmit={async (data) => {
-                  await onUpdateDeal(selectedDeal.id, data);
-                  setIsEditingDeal(false);
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setIsEditingDeal(false)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              >
-                Отмена
-              </button>
-            </div>
+        <Modal
+          title="Редактировать сделку"
+          onClose={() => setIsEditingDeal(false)}
+          size="sm"
+          zIndex={50}
+          closeOnOverlayClick={false}
+        >
+          <div className="space-y-3">
+            <DealForm
+              key={selectedDeal.id}
+              clients={clients}
+              users={users}
+              initialValues={{
+                title: selectedDeal.title,
+                description: selectedDeal.description ?? '',
+                clientId: selectedDeal.clientId,
+                executorId: selectedDeal.executor ?? null,
+                sellerId: selectedDeal.seller ?? null,
+                source: selectedDeal.source ?? '',
+                nextContactDate: selectedDeal.nextContactDate ?? null,
+                expectedClose: selectedDeal.expectedClose ?? null,
+              }}
+              mode="edit"
+              showSellerField
+              showNextContactField
+              quickNextContactOptions={quickInlineDateOptions}
+              expectedCloseRequired
+              onQuickNextContactShift={handleQuickNextContactShift}
+              onRequestAddClient={onRequestAddClient}
+              onSubmit={async (data) => {
+                await onUpdateDeal(selectedDeal.id, data);
+                setIsEditingDeal(false);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setIsEditingDeal(false)}
+              className="btn btn-secondary w-full"
+            >
+              Отмена
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
       {isCreatingTask && selectedDeal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Новая задача</h3>
-              <button
-                onClick={() => setIsCreatingTask(false)}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6">
-              <AddTaskForm
-                dealId={selectedDeal.id}
-                users={users}
-                defaultAssigneeId={selectedDeal.executor ?? null}
-                onSubmit={async (data) => {
-                  await onCreateTask(selectedDeal.id, data);
-                  setIsCreatingTask(false);
-                }}
-                onCancel={() => setIsCreatingTask(false)}
-              />
-            </div>
-          </div>
-        </div>
+        <Modal
+          title="Новая задача"
+          onClose={() => setIsCreatingTask(false)}
+          size="sm"
+          zIndex={50}
+          closeOnOverlayClick={false}
+        >
+          <AddTaskForm
+            dealId={selectedDeal.id}
+            users={users}
+            defaultAssigneeId={selectedDeal.executor ?? null}
+            onSubmit={async (data) => {
+              await onCreateTask(selectedDeal.id, data);
+              setIsCreatingTask(false);
+            }}
+            onCancel={() => setIsCreatingTask(false)}
+          />
+        </Modal>
       )}
       {editingTaskId && selectedDeal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Редактировать задачу</h3>
-              <button
-                onClick={() => setEditingTaskId(null)}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6">
-              {relatedTasks.find((t) => t.id === editingTaskId) && (
-                <AddTaskForm
-                  dealId={selectedDeal.id}
-                  task={relatedTasks.find((t) => t.id === editingTaskId)}
-                  users={users}
-                  defaultAssigneeId={selectedDeal.executor ?? null}
-                  onSubmit={async (data) => {
-                    await onUpdateTask(editingTaskId, data);
-                    setEditingTaskId(null);
-                  }}
-                  onCancel={() => setEditingTaskId(null)}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        <Modal
+          title="Редактировать задачу"
+          onClose={() => setEditingTaskId(null)}
+          size="sm"
+          zIndex={50}
+          closeOnOverlayClick={false}
+        >
+          {relatedTasks.find((t) => t.id === editingTaskId) && (
+            <AddTaskForm
+              dealId={selectedDeal.id}
+              task={relatedTasks.find((t) => t.id === editingTaskId)}
+              users={users}
+              defaultAssigneeId={selectedDeal.executor ?? null}
+              onSubmit={async (data) => {
+                await onUpdateTask(editingTaskId, data);
+                setEditingTaskId(null);
+              }}
+              onCancel={() => setEditingTaskId(null)}
+            />
+          )}
+        </Modal>
       )}
       {editingPaymentId && selectedDeal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {editingPaymentId === 'new' ? 'Создать платеж' : 'Редактировать платеж'}
-              </h3>
-              <button
-                onClick={() => setEditingPaymentId(null)}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6">
-              <AddPaymentForm
-                payment={
-                  editingPaymentId !== 'new'
-                    ? payments.find((p) => p.id === editingPaymentId)
-                    : undefined
-                }
-                dealId={selectedDeal.id}
-                dealTitle={selectedDeal.title}
-                policies={relatedPolicies}
-                fixedPolicyId={editingPaymentId === 'new' ? creatingPaymentPolicyId ?? undefined : undefined}
-                onSubmit={async (data) => {
-                  if (editingPaymentId === 'new') {
-                    await onAddPayment(data);
-                  } else {
-                    await onUpdatePayment(editingPaymentId, data);
-                  }
-                  setEditingPaymentId(null);
-                  setCreatingPaymentPolicyId(null);
-                }}
-                onCancel={() => {
-                  setEditingPaymentId(null);
-                  setCreatingPaymentPolicyId(null);
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        <Modal
+          title={editingPaymentId === 'new' ? 'Создать платеж' : 'Редактировать платеж'}
+          onClose={() => setEditingPaymentId(null)}
+          size="sm"
+          zIndex={50}
+          closeOnOverlayClick={false}
+        >
+          <AddPaymentForm
+            payment={
+              editingPaymentId !== 'new' ? payments.find((p) => p.id === editingPaymentId) : undefined
+            }
+            dealId={selectedDeal.id}
+            dealTitle={selectedDeal.title}
+            policies={relatedPolicies}
+            fixedPolicyId={
+              editingPaymentId === 'new' ? creatingPaymentPolicyId ?? undefined : undefined
+            }
+            onSubmit={async (data) => {
+              if (editingPaymentId === 'new') {
+                await onAddPayment(data);
+              } else {
+                await onUpdatePayment(editingPaymentId, data);
+              }
+              setEditingPaymentId(null);
+              setCreatingPaymentPolicyId(null);
+            }}
+            onCancel={() => {
+              setEditingPaymentId(null);
+              setCreatingPaymentPolicyId(null);
+            }}
+          />
+        </Modal>
       )}
       {(editingFinancialRecordId || creatingFinancialRecordContext) && selectedDeal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {editingFinancialRecordId ? 'Редактировать запись' : 'Новая финансовая запись'}
-              </h3>
-              <button
-                onClick={() => {
-                  setEditingFinancialRecordId(null);
-                  setCreatingFinancialRecordContext(null);
-                }}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6">
-              <AddFinancialRecordForm
-                paymentId={creatingFinancialRecordContext?.paymentId || ''}
-                defaultRecordType={creatingFinancialRecordContext?.recordType}
-                record={
-                  editingFinancialRecordId
-                    ? financialRecords.find((r) => r.id === editingFinancialRecordId)
-                    : undefined
-                }
-                onSubmit={async (data) => {
-                  if (editingFinancialRecordId) {
-                    await onUpdateFinancialRecord(editingFinancialRecordId, data);
-                  } else {
-                    await onAddFinancialRecord(data);
-                  }
-                  setEditingFinancialRecordId(null);
-                  setCreatingFinancialRecordContext(null);
-                }}
-                onCancel={() => {
-                  setEditingFinancialRecordId(null);
-                  setCreatingFinancialRecordContext(null);
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        <Modal
+          title={editingFinancialRecordId ? 'Редактировать запись' : 'Новая финансовая запись'}
+          onClose={() => {
+            setEditingFinancialRecordId(null);
+            setCreatingFinancialRecordContext(null);
+          }}
+          size="sm"
+          zIndex={50}
+          closeOnOverlayClick={false}
+        >
+          <AddFinancialRecordForm
+            paymentId={creatingFinancialRecordContext?.paymentId || ''}
+            defaultRecordType={creatingFinancialRecordContext?.recordType}
+            record={
+              editingFinancialRecordId
+                ? financialRecords.find((r) => r.id === editingFinancialRecordId)
+                : undefined
+            }
+            onSubmit={async (data) => {
+              if (editingFinancialRecordId) {
+                await onUpdateFinancialRecord(editingFinancialRecordId, data);
+              } else {
+                await onAddFinancialRecord(data);
+              }
+              setEditingFinancialRecordId(null);
+              setCreatingFinancialRecordContext(null);
+            }}
+            onCancel={() => {
+              setEditingFinancialRecordId(null);
+              setCreatingFinancialRecordContext(null);
+            }}
+          />
+        </Modal>
       )}
       {isDelayModalOpen && selectedDeal && (
         <DealDelayModal
