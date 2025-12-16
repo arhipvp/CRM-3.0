@@ -116,6 +116,19 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
     return result;
   }, [filters, tasks, currentUser?.id]);
 
+  const isTasksEmpty = tasks.length === 0;
+  const hasActiveFilters = Object.keys(filters).length > 0;
+
+  let emptyStateMessage = 'По текущим условиям задач не найдено.';
+  if (isTasksEmpty) {
+    emptyStateMessage = 'Пока нет задач. Создайте задачу в карточке сделки.';
+  } else if (hasActiveFilters) {
+    emptyStateMessage = 'По текущим фильтрам задач не найдено. Попробуйте сбросить фильтры.';
+  } else {
+    emptyStateMessage =
+      'Активных задач не найдено (по умолчанию скрыты выполненные и удалённые). Проверьте фильтры выше.';
+  }
+
   return (
     <div className="space-y-4">
       <FilterBar
@@ -152,7 +165,26 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
           },
         ]}
       />
-      <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
+      {filteredTasks.length ? (
+        <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
+      ) : (
+        <section className="app-panel p-6 shadow-none space-y-4">
+          <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
+            {emptyStateMessage}
+          </div>
+          {isTasksEmpty && (
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/deals')}
+                className="btn btn-secondary btn-sm rounded-xl"
+              >
+                Перейти к сделкам
+              </button>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 };
