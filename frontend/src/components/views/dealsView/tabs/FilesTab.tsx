@@ -51,6 +51,15 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     return null;
   }
 
+  const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
+    const className =
+      tone === 'danger'
+        ? 'rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700'
+        : 'app-panel-muted px-4 py-3 text-sm text-slate-600';
+
+    return <div className={className}>{message}</div>;
+  };
+
   const disableUpload = !selectedDeal.driveFolderId;
   const driveFolderLink = selectedDeal.driveFolderId
     ? `https://drive.google.com/drive/folders/${selectedDeal.driveFolderId}`
@@ -169,23 +178,19 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         </div>
       )}
 
-      {driveError && (
-        <p className="text-xs text-rose-500 bg-rose-50 p-3 rounded-lg">{driveError}</p>
-      )}
+      {driveError && renderStatusMessage(driveError, 'danger')}
 
       {!driveError && !selectedDeal.driveFolderId && (
-        <p className="text-xs text-slate-500">
-          Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.
-        </p>
+        renderStatusMessage('Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.')
       )}
 
       <div className="space-y-3 border-t border-slate-100 pt-4">
         {!driveError && selectedDeal.driveFolderId && isDriveLoading && (
-          <p className="text-sm text-slate-500">Загружаю файлы...</p>
+          renderStatusMessage('Загружаю файлы...')
         )}
 
         {!driveError && selectedDeal.driveFolderId && !isDriveLoading && sortedDriveFiles.length === 0 && (
-          <p className="text-sm text-slate-500">Папка пуста.</p>
+          renderStatusMessage('Папка пуста.')
         )}
 
         {!driveError && sortedDriveFiles.length > 0 && (
