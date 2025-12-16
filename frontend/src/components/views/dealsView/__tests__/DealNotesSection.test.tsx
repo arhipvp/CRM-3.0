@@ -31,15 +31,16 @@ describe('DealNotesSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
   it('renders filters, note form and invokes handlers', () => {
     render(<DealNotesSection {...baseProps} />);
 
-    const activeButton = screen.getByRole('button', { name: 'Активные' });
-    fireEvent.click(activeButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Активные' }));
     expect(baseProps.onSetFilter).toHaveBeenCalledWith('active');
 
-    const textarea = screen.getByPlaceholderText('Заметка к сделке');
-    fireEvent.change(textarea, { target: { value: 'New note' } });
+    fireEvent.change(screen.getByPlaceholderText('Заметка к сделке'), {
+      target: { value: 'New note' },
+    });
     expect(baseProps.onSetDraft).toHaveBeenCalledWith('New note');
 
     fireEvent.click(screen.getByRole('button', { name: 'Добавить заметку' }));
@@ -51,12 +52,7 @@ describe('DealNotesSection', () => {
 
   it('shows restore action when archived', () => {
     render(
-      <DealNotesSection
-        {...baseProps}
-        notes={[]}
-        notesFilter="archived"
-        notesAction={null}
-      />
+      <DealNotesSection {...baseProps} notes={[]} notesFilter="archived" notesAction={null} />
     );
 
     expect(screen.getByText('Заметок не найдено.')).toBeInTheDocument();
