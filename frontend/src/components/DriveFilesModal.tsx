@@ -91,7 +91,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                 <FileUploadManager onUpload={handleUpload} />
 
                 {error && (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm">
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
                         {error}
                     </div>
                 )}
@@ -99,19 +99,20 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                 {isLoading ? (
                     <div className="text-center py-8 text-slate-500">Загрузка...</div>
                 ) : (
-                    <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                    <div className="app-panel shadow-none overflow-hidden">
+                        <div className="overflow-x-auto bg-white">
+                        <table className="deals-table min-w-full border-collapse text-left text-sm">
+                            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
                                 <tr>
-                                    <th className="px-4 py-3">Имя</th>
-                                    <th className="px-4 py-3">Размер</th>
-                                    <th className="px-4 py-3">Изменен</th>
+                                    <th className="border border-slate-200 px-4 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900">Имя</th>
+                                    <th className="border border-slate-200 px-4 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[140px]">Размер</th>
+                                    <th className="border border-slate-200 px-4 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[180px]">Изменён</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="bg-white">
                                 {sortedFiles.map((file) => (
-                                    <tr key={file.id} className="hover:bg-slate-50">
-                                        <td className="px-4 py-3">
+                                    <tr key={file.id} className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500">
+                                        <td className="border border-slate-200 px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">
                                                     {getDriveItemIcon(file.isFolder)}
@@ -121,22 +122,22 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                                                         href={file.webViewLink}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="font-medium text-slate-900 hover:text-sky-600 hover:underline truncate max-w-[200px] sm:max-w-xs block"
+                                                        className="font-semibold text-slate-900 hover:text-sky-700 hover:underline truncate max-w-[220px] sm:max-w-md block"
                                                         title={file.name}
                                                     >
                                                         {file.name}
                                                     </a>
                                                 ) : (
-                                                    <span className="font-medium text-slate-900 truncate max-w-[200px] sm:max-w-xs block" title={file.name}>
+                                                    <span className="font-semibold text-slate-900 truncate max-w-[220px] sm:max-w-md block" title={file.name}>
                                                         {file.name}
                                                     </span>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                                        <td className="border border-slate-200 px-4 py-3 text-slate-600 whitespace-nowrap">
                                             {formatDriveFileSize(file.size)}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                                        <td className="border border-slate-200 px-4 py-3 text-slate-600 whitespace-nowrap">
                                             {formatDriveDate(file.modifiedAt || file.createdAt)}
                                         </td>
                                     </tr>
@@ -145,7 +146,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                                     <tr>
                                         <td
                                             colSpan={3}
-                                            className="px-4 py-8 text-center text-slate-500"
+                                            className="border border-slate-200 px-4 py-8 text-center text-slate-600"
                                         >
                                             Папка пуста
                                         </td>
@@ -153,6 +154,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                                 )}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 )}
             </div>

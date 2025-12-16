@@ -255,7 +255,9 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
             ref={fileInputRef}
           />
           <div className="text-center">
-            <p className="text-3xl mb-2">📁</p>
+            <p className="text-3xl mb-2" aria-hidden="true">
+              📎
+            </p>
             <p className="text-sm font-medium text-slate-700">
               {isUploading ? 'Загружаем файл...' : 'Нажмите или перетащите файл сюда'}
             </p>
@@ -276,7 +278,11 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
         </div>
       )}
 
-      {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>}
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          {error}
+        </div>
+      )}
     </div>
   );
 };
