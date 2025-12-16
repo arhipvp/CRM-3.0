@@ -135,13 +135,17 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     return null;
   }
 
+  const renderStatusMessage = (message: string) => (
+    <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">{message}</div>
+  );
+
   const sortLabel = POLICY_SORT_LABELS[policySortKey] ?? policySortKey;
   const sortOrderSymbol = policySortOrder === 'asc' ? '↑' : '↓';
 
   if (!sortedPolicies.length) {
     return (
       <section className="app-panel p-6 shadow-none space-y-4">
-        <p className="text-sm text-slate-600">Для сделки пока нет полисов.</p>
+        {renderStatusMessage('Для сделки пока нет полисов.')}
         <button
           type="button"
           onClick={() => onRequestAddPolicy(selectedDeal.id)}
@@ -323,7 +327,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 </div>
 
                 {payments.length === 0 ? (
-                  <p className="mt-3 text-sm text-slate-600">Платежей пока нет.</p>
+                  <div className="mt-3">{renderStatusMessage('Платежей пока нет.')}</div>
                 ) : expanded ? (
                   <div className="mt-3 space-y-2">
                     {payments.map((payment) => (
