@@ -23,6 +23,10 @@ export const TasksTab: React.FC<TasksTabProps> = ({
   onDeleteTask,
   completingTaskIds,
 }) => {
+  const renderStatusMessage = (message: string) => (
+    <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">{message}</div>
+  );
+
   const [showDeletedTasks, setShowDeletedTasks] = useState(false);
 
   const deletedTasksCount = useMemo(
@@ -45,7 +49,7 @@ export const TasksTab: React.FC<TasksTabProps> = ({
   if (!relatedTasks.length) {
     return (
       <section className="app-panel p-6 shadow-none space-y-4">
-        <p className="text-sm text-slate-600">Задач по сделке пока нет.</p>
+        {renderStatusMessage('Задач по сделке пока нет.')}
         <button
           type="button"
           onClick={onCreateTaskClick}
