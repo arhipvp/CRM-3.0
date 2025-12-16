@@ -67,26 +67,26 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="flex gap-4">
-            <div className="h-10 w-10 rounded-full bg-slate-200" />
-            <div className="flex-1 space-y-2 pt-1">
-              <div className="h-3 w-1/3 rounded bg-slate-200" />
-              <div className="h-3 w-2/3 rounded bg-slate-200" />
-              <div className="h-3 w-1/2 rounded bg-slate-200" />
+      <div className="app-panel-muted p-4">
+        <div className="space-y-4 animate-pulse">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="flex gap-4">
+              <div className="h-10 w-10 rounded-full bg-slate-200" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className="h-3 w-1/3 rounded bg-slate-200" />
+                <div className="h-3 w-2/3 rounded bg-slate-200" />
+                <div className="h-3 w-1/2 rounded bg-slate-200" />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
 
   if (activities.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
-        Пока нет событий по сделке.
-      </div>
+      <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">Пока нет событий по сделке.</div>
     );
   }
 
@@ -154,4 +154,3 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     </div>
   );
 };
-

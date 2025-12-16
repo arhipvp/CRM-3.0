@@ -207,6 +207,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const [isActivityLoading, setIsActivityLoading] = useState(false);
 
+  const [activityError, setActivityError] = useState<string | null>(null);
+
   const [isEditingDeal, setIsEditingDeal] = useState(false);
 
   const [isCreatingTask, setIsCreatingTask] = useState(false);
@@ -475,6 +477,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
     }
 
+    setActivityError(null);
     setIsActivityLoading(true);
 
     try {
@@ -486,6 +489,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     } catch (err) {
 
       console.error('Ошибка загрузки истории:', err);
+      setActivityError('Не удалось загрузить историю.');
 
     } finally {
 
@@ -865,6 +869,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       <div className="flex items-center justify-between">
         <p className="app-label">История</p>
       </div>
+      {activityError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {activityError}
+        </div>
+      )}
       <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
     </section>
   );
