@@ -861,10 +861,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   );
 
   const renderActivityTab = () => (
-    <section className="app-panel p-6 shadow-none">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="app-panel p-6 shadow-none space-y-4">
+      <div className="flex items-center justify-between">
         <p className="app-label">История</p>
-        {selectedDeal && <p className="text-xs text-slate-500">{selectedDeal.title}</p>}
       </div>
       <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
     </section>
@@ -914,20 +913,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   return (
     <>
       <div className="px-4 py-5 space-y-4">
-            <div className="hidden">
-              <p className="text-[10px] tracking-[0.4em] text-slate-400">
-                <span className="uppercase">Выбранная сделка:</span>
-                {selectedDeal ? (
-                  <span className="ml-2 inline-block text-base font-semibold text-slate-900">
-                    {selectedDeal.title}
-                  </span>
-                ) : (
-                  <span className="ml-2 inline-block text-sm font-semibold text-slate-500">
-                    Выберите сделку выше
-                  </span>
-                )}
-              </p>
-            </div>
             {selectedDeal ? (
               <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-6">
                 <div className="flex flex-col gap-4">
