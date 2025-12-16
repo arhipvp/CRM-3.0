@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
 import {

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { Deal, Quote } from '../../../../types';
 import { formatCurrency, formatDate } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
