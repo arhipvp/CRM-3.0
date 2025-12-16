@@ -60,11 +60,11 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
 
   return (
     <div className="space-y-6 px-6 py-6">
-      <section className="bg-white border border-slate-200 rounded-2xl shadow-sm space-y-6 p-6">
+      <section className="app-panel space-y-6 p-6 shadow-none">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Библиотека полезной документации</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Загрузите правила, методички и другие PDF-файлы — они попадут в общий доступ и будут
+            Загрузите правила, методички и другие PDF-файлы - они попадут в общий доступ и будут
             храниться на вашем Google Drive.
           </p>
         </div>
@@ -77,7 +77,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Имя или признак документа"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="field field-input"
               disabled={disabled}
             />
           </label>
@@ -88,7 +88,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Краткое описание содержания"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="field field-input"
               disabled={disabled}
             />
           </label>
@@ -97,13 +97,13 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         <FileUploadManager onUpload={handleUpload} disabled={disabled} />
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-100">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
             {error}
-          </p>
+          </div>
         )}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+      <section className="app-panel shadow-none">
         <div className="px-6 py-5 border-b border-slate-100">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -158,7 +158,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
                   href={doc.webViewLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                  className="btn btn-secondary btn-sm rounded-xl"
                 >
                   Открыть на Drive
                 </a>

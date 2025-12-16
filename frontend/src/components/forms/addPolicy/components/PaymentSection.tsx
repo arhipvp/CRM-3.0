@@ -50,7 +50,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           type="number"
           value={payment.amount}
           onChange={(e) => onFieldChange(paymentIndex, 'amount', e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="field field-input mt-1"
         />
       </div>
       <div>
@@ -59,7 +59,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           type="text"
           value={payment.description || ''}
           onChange={(e) => onFieldChange(paymentIndex, 'description', e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="field field-input mt-1"
         />
       </div>
       <div>
@@ -68,7 +68,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           type="date"
           value={payment.scheduledDate || ''}
           onChange={(e) => onFieldChange(paymentIndex, 'scheduledDate', e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="field field-input mt-1"
         />
       </div>
       <div>
@@ -77,7 +77,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           type="date"
           value={payment.actualDate || ''}
           onChange={(e) => onFieldChange(paymentIndex, 'actualDate', e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:ring-sky-500"
+          className="field field-input mt-1"
         />
       </div>
     </div>

@@ -81,27 +81,27 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     Object.values(customFilterValues).some((value) => value && value.length > 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-4">
+    <div className="app-panel p-4 shadow-none mb-4">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
           <div className="flex-1 min-w-48">
-            <label className="text-sm text-slate-600 mb-1 block">Поиск</label>
+            <label className="app-label mb-1 block">Поиск</label>
             <input
               type="text"
               value={search}
               onChange={(event) => handleSearchChange(event.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+              className="field field-input"
             />
           </div>
 
           {sortOptions.length > 0 && (
             <div className="w-full md:w-auto">
-              <label className="text-sm text-slate-600 mb-1 block">Сортировка</label>
+              <label className="app-label mb-1 block">Сортировка</label>
               <select
                 value={ordering}
                 onChange={(event) => handleOrderingChange(event.target.value)}
-                className="w-full md:w-auto px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                className="field field-select w-full md:w-auto"
               >
                 <option value="">Выбрать направление</option>
                 {sortOptions.map((option) => (
@@ -116,7 +116,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {customFilters.map((filter) => (
             <div key={filter.key} className="w-full md:w-auto">
               {filter.type === 'checkbox' ? (
-                <label className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 bg-slate-50">
+                <label className="app-panel-muted flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-700">
                   <input
                     type="checkbox"
                     checked={customFilterValues[filter.key] === 'true'}
@@ -127,28 +127,28 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 </label>
               ) : (
                 <>
-                  <label className="text-sm text-slate-600 mb-1 block">{filter.label}</label>
+                  <label className="app-label mb-1 block">{filter.label}</label>
                   {filter.type === 'text' ? (
                     <input
                       type="text"
                       value={customFilterValues[filter.key] || ''}
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
                       placeholder={filter.label}
-                      className="w-full md:w-auto px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                      className="field field-input w-full md:w-auto"
                     />
                   ) : (
-              <select
-                value={customFilterValues[filter.key] || ''}
-                onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
-                className="w-full md:w-auto px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-              >
-                <option value="">Не важно</option>
-                {filter.options.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                    <select
+                      value={customFilterValues[filter.key] || ''}
+                      onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
+                      className="field field-select w-full md:w-auto"
+                    >
+                      <option value="">Не важно</option>
+                      {filter.options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </>
               )}
@@ -158,7 +158,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {hasActiveFilters && (
             <button
               onClick={handleClearFilters}
-              className="px-3 py-2 text-sm border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 whitespace-nowrap"
+              className="btn btn-secondary btn-sm rounded-xl whitespace-nowrap"
             >
               Сбросить фильтры
             </button>

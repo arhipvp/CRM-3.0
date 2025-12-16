@@ -1760,7 +1760,7 @@ const AppContent: React.FC = () => {
             <button
               type="button"
               onClick={() => setClientDeleteTarget(null)}
-              className="px-3 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+              className="btn btn-secondary rounded-xl"
               disabled={isSyncing}
             >
               Отмена
@@ -1768,7 +1768,7 @@ const AppContent: React.FC = () => {
             <button
               type="button"
               onClick={handleDeleteClient}
-              className="px-3 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-danger rounded-xl"
               disabled={isSyncing}
             >
               {isSyncing ? 'Удаляем...' : 'Удалить'}
@@ -1821,7 +1821,7 @@ const AppContent: React.FC = () => {
             <button
               type="button"
               onClick={closeMergeModal}
-              className="px-3 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+              className="btn btn-secondary rounded-xl"
               disabled={isMergingClients}
             >
               Отмена
@@ -1830,7 +1830,7 @@ const AppContent: React.FC = () => {
               type="button"
               onClick={handleMergeSubmit}
               disabled={isMergingClients || !mergeSources.length}
-              className="px-3 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary rounded-xl"
             >
               {isMergingClients ? 'Объединяем...' : 'Объединить клиентов'}
             </button>
@@ -1840,19 +1840,33 @@ const AppContent: React.FC = () => {
       <NotificationDisplay />
 
       {error && (
-        <div className="fixed bottom-4 left-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50 max-w-md shadow-lg">
-          <strong className="font-bold">Ошибка!</strong>
-          <span className="block sm:inline"> {error}</span>
-          <button className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
-            <span className="text-2xl">&times;</span>
-          </button>
+        <div className="fixed bottom-4 left-4 z-50 w-[min(420px,calc(100vw-2rem))]">
+          <div className="rounded-2xl border border-rose-200 border-l-4 border-l-rose-500 bg-rose-50 text-rose-900 shadow-md">
+            <div className="flex items-start justify-between gap-3 p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">Ошибка</p>
+                <p className="text-sm leading-relaxed">{error}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="icon-btn h-8 w-8 text-rose-700 hover:bg-rose-100"
+                aria-label="Скрыть ошибку"
+                title="Скрыть"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {isSyncing && (
-        <div className="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2">
-          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-          <span className="text-sm font-medium">Синхронизация...</span>
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="app-panel flex items-center gap-3 px-4 py-3 shadow-md">
+            <div className="animate-spin h-4 w-4 border-2 border-slate-300 border-t-sky-600 rounded-full" />
+            <span className="text-sm font-semibold text-slate-700">Синхронизация...</span>
+          </div>
         </div>
       )}
     </MainLayout>

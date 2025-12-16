@@ -46,7 +46,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'amount', e.target.value)
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
+              className="field field-input mt-1"
             />
           </div>
           <div>
@@ -55,7 +55,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
               type="date"
               value={record.date || ''}
               onChange={(e) => onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
+              className="field field-input mt-1"
             />
           </div>
           <div>
@@ -66,7 +66,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'description', e.target.value)
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
+              className="field field-input mt-1"
             />
           </div>
         </div>
@@ -79,7 +79,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'source', e.target.value)
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
+              className="field field-input mt-1"
             />
           </div>
           <div>
@@ -90,7 +90,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'note', e.target.value)
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-sky-500 focus:ring-sky-500"
+              className="field field-input mt-1"
             />
           </div>
         </div>

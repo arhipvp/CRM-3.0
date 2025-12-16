@@ -37,7 +37,7 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
           value={nextContactValue}
           onChange={(event) => onNextContactChange(event.target.value)}
           onBlur={() => onNextContactBlur(nextContactValue)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+          className="field field-input font-semibold text-slate-900"
         />
         <div className="flex flex-wrap gap-2">
           {quickOptions.map((option) => (
@@ -45,7 +45,7 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
               key={option.label}
               type="button"
               onClick={() => onQuickShift(option.days)}
-              className="text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 px-3 py-1 transition hover:border-slate-300 hover:bg-slate-100"
+              className="btn btn-quiet btn-sm rounded-xl"
             >
               {option.label}
             </button>
@@ -60,7 +60,7 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
         value={expectedCloseValue}
         onChange={(event) => onExpectedCloseChange(event.target.value)}
         onBlur={(event) => onExpectedCloseBlur(event.target.value)}
-        className="mt-1 max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring focus:ring-sky-100"
+        className="field field-input mt-1 max-w-[220px] font-semibold text-slate-900"
       />
     </div>
   </div>
