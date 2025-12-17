@@ -21,7 +21,12 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Task.objects.all().order_by("-created_at")
+        show_deleted = self.request.query_params.get("show_deleted") == "true"
+        queryset = (
+            Task.objects.with_deleted().order_by("-created_at")
+            if show_deleted
+            else Task.objects.all().order_by("-created_at")
+        )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:

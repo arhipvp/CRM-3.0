@@ -81,3 +81,25 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         self.assertEqual(self.task.status, Task.TaskStatus.DONE)
         self.assertEqual(self.task.completed_by_id, self.executor.id)
         self.assertIsNotNone(self.task.completed_at)
+
+    def test_deleted_tasks_hidden_by_default(self):
+        self._delete_task(self.seller)
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/tasks/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data.get("results", response.data)
+        returned_ids = {item["id"] for item in payload}
+        self.assertNotIn(str(self.task.id), returned_ids)
+
+    def test_deleted_tasks_visible_with_show_deleted(self):
+        self._delete_task(self.seller)
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/tasks/?show_deleted=true")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data.get("results", response.data)
+        returned_ids = {item["id"] for item in payload}
+        self.assertIn(str(self.task.id), returned_ids)

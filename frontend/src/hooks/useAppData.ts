@@ -208,7 +208,7 @@ export const useAppData = () => {
         await Promise.all([
           fetchClients(),
           fetchPayments(),
-          fetchTasks(),
+          fetchTasks({ show_deleted: true }),
           fetchFinancialRecords(),
           fetchUsers(),
           fetchSalesChannels(),
