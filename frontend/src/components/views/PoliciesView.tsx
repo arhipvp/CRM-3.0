@@ -235,7 +235,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <section className="app-panel p-6 shadow-none space-y-4">
       <div className="flex flex-col gap-3">
         <FilterBar
           onFilterChange={setFilters}
@@ -385,7 +385,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   )}
                 </div>
                 {payments.length === 0 ? (
-                  <p className="mt-2 text-sm text-slate-500">Платежей пока нет.</p>
+                  <div className="mt-2 app-panel-muted px-4 py-3 text-sm text-slate-600">
+                    Платежей пока нет.
+                  </div>
                 ) : paymentsExpanded[policy.id] ? (
                   <div className="mt-2 space-y-2 text-sm text-slate-600">
                     {payments.map((payment) => (
@@ -448,6 +450,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           />
         </Modal>
       )}
-    </div>
+    </section>
   );
 };
