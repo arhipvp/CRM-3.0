@@ -303,11 +303,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   <div className="flex items-start justify-end gap-4 text-[10px] uppercase tracking-[0.35em] text-slate-400">
                     <div>
                       <p>Действия</p>
-                      <div className="flex gap-3 text-xs text-slate-600">
+                      <div className="flex flex-wrap gap-2 pt-2">
                         {onRequestEditPolicy && (
                           <button
                             type="button"
-                            className="font-semibold text-slate-500 hover:text-sky-600"
+                            className="btn btn-quiet btn-sm rounded-xl"
                             onClick={() => onRequestEditPolicy(policy)}
                           >
                             Ред.
@@ -315,7 +315,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                         )}
                         <button
                           type="button"
-                          className="font-semibold text-slate-500 hover:text-sky-600"
+                          className="btn btn-quiet btn-sm rounded-xl"
                           onClick={() => setFilesModalPolicy(policy)}
                         >
                           Файлы

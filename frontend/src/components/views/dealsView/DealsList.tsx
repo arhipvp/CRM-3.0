@@ -343,12 +343,12 @@ export const DealsList: React.FC<DealsListProps> = ({
       </div>
 
       {dealsHasMore && (
-        <div className="border-t border-slate-100 px-4 py-3 text-center">
+        <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center">
           <button
             type="button"
             onClick={onLoadMoreDeals}
             disabled={isLoadingMoreDeals}
-            className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:text-slate-400 disabled:hover:text-slate-400"
+            className="btn btn-quiet btn-sm rounded-xl"
           >
             {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
           </button>

@@ -217,7 +217,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onClientEdit(client)}
-                            className="text-sm font-semibold text-sky-700 hover:text-sky-900"
+                            className="btn btn-quiet btn-sm rounded-xl"
                           >
                             Редактировать
                           </button>
@@ -226,7 +226,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onClientDelete(client)}
-                            className="text-sm font-semibold text-rose-700 hover:text-rose-900"
+                            className="btn btn-danger btn-sm rounded-xl"
                           >
                             Удалить
                           </button>
@@ -235,7 +235,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onClientMerge(client)}
-                            className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                            className="btn btn-quiet btn-sm rounded-xl"
                           >
                             Объединить
                           </button>
