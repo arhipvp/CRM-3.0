@@ -8,6 +8,7 @@ import {
 } from '../api';
 import { FileUploadManager } from './FileUploadManager';
 import { Modal } from './Modal';
+import { TableHeadCell } from './common/TableHeadCell';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface DriveFilesModalProps {
@@ -100,13 +101,17 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                     <div className="app-panel shadow-none overflow-hidden">
                         <div className="overflow-x-auto bg-white">
                         <table className="deals-table min-w-full border-collapse text-left text-sm">
-                            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
-                                <tr>
-                                    <th className="border border-slate-200 px-4 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900">Имя</th>
-                                    <th className="border border-slate-200 px-4 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[140px]">Размер</th>
-                                    <th className="border border-slate-200 px-4 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[180px]">Изменён</th>
-                                </tr>
-                            </thead>
+                                    <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
+                                        <tr>
+                                            <TableHeadCell padding="md">Имя</TableHeadCell>
+                                            <TableHeadCell padding="md" className="w-[140px]">
+                                                Размер
+                                            </TableHeadCell>
+                                            <TableHeadCell padding="md" className="w-[180px]">
+                                                Изменён
+                                            </TableHeadCell>
+                                        </tr>
+                                    </thead>
                             <tbody className="bg-white">
                                 {sortedFiles.map((file) => (
                                     <tr key={file.id} className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500">

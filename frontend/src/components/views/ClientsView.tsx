@@ -4,6 +4,7 @@ import { FilterBar } from '../FilterBar';
 import { Pagination } from '../Pagination';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
+import { TableHeadCell } from '../common/TableHeadCell';
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('ru-RU') : '—';
@@ -142,32 +143,24 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
       <div className="app-panel shadow-none overflow-hidden">
         <div className="overflow-x-auto bg-white">
-        <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Список клиентов">
-          <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
-            <tr>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[220px]">
-                Имя
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[180px]">
-                Телефон
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
-                Дата рождения
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
-                Создан
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[110px]">
+         <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Список клиентов">
+           <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
+             <tr>
+              <TableHeadCell className="min-w-[220px]">Имя</TableHeadCell>
+              <TableHeadCell className="min-w-[180px]">Телефон</TableHeadCell>
+              <TableHeadCell className="min-w-[170px]">Дата рождения</TableHeadCell>
+              <TableHeadCell className="min-w-[170px]">Создан</TableHeadCell>
+              <TableHeadCell align="right" className="min-w-[110px]">
                 Сделок
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[120px]">
+              </TableHeadCell>
+              <TableHeadCell align="right" className="min-w-[120px]">
                 Файлы
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[200px]">
+              </TableHeadCell>
+              <TableHeadCell align="right" className="min-w-[200px]">
                 Действия
-              </th>
-            </tr>
-          </thead>
+              </TableHeadCell>
+             </tr>
+           </thead>
           <tbody className="bg-white">
             {paginatedClients.map((client) => {
               const clientDeals = deals.filter((deal) => deal.clientId === client.id);

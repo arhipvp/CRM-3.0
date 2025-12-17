@@ -1,5 +1,6 @@
 import type { Task } from '../../types';
 import { ColoredLabel } from '../common/ColoredLabel';
+import { TableHeadCell } from '../common/TableHeadCell';
 import { formatDate, formatDateTime } from '../views/dealsView/helpers';
 import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
 
@@ -51,13 +52,6 @@ export function TaskTable({
 
   const columnCount = baseColumnCount + (hasActions ? 1 : 0);
 
-  const taskHeaderClassName = [
-    'border border-slate-200 px-4 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900',
-    taskColumnClassName,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
   const taskCellClassName = [
     'border border-slate-200 px-4 py-2 align-top',
     taskColumnClassName,
@@ -95,50 +89,52 @@ export function TaskTable({
   return (
     <div className="app-panel shadow-none overflow-hidden">
       <div className="overflow-x-auto bg-white">
-        <table className="deals-table min-w-full table-fixed border-collapse text-left text-sm">
-          <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
-            <tr>
-              <th className={taskHeaderClassName}>Задача</th>
-              {showClientColumn && (
-                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[160px]">
-                  Клиент
-                </th>
-              )}
-              {showDealColumn && (
-                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[200px]">
-                  Сделка
-                </th>
-              )}
-              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[120px]">
-                Статус
-              </th>
-              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[120px]">
-                Приоритет
-              </th>
-              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[130px]">
-                Ответственный
-              </th>
-              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[120px]">
-                Срок
-              </th>
-              {showReminderColumn && (
-                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[140px]">
-                  Напоминание
-                </th>
-              )}
-              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[140px]">
-                Создано
-              </th>
-              <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 w-[160px]">
-                Выполнено
-              </th>
-              {hasActions && (
-                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right w-[120px]">
-                  Действия
-                </th>
-              )}
-            </tr>
-          </thead>
+          <table className="deals-table min-w-full table-fixed border-collapse text-left text-sm">
+            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
+              <tr>
+                <TableHeadCell padding="sm" className={taskColumnClassName}>
+                  Задача
+                </TableHeadCell>
+                {showClientColumn && (
+                  <TableHeadCell padding="sm" className="w-[160px]">
+                    Клиент
+                  </TableHeadCell>
+                )}
+                {showDealColumn && (
+                  <TableHeadCell padding="sm" className="w-[200px]">
+                    Сделка
+                  </TableHeadCell>
+                )}
+                <TableHeadCell padding="sm" className="w-[120px]">
+                  Статус
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[120px]">
+                  Приоритет
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[130px]">
+                  Ответственный
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[120px]">
+                  Срок
+                </TableHeadCell>
+                {showReminderColumn && (
+                  <TableHeadCell padding="sm" className="w-[140px]">
+                    Напоминание
+                  </TableHeadCell>
+                )}
+                <TableHeadCell padding="sm" className="w-[140px]">
+                  Создано
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[160px]">
+                  Выполнено
+                </TableHeadCell>
+                {hasActions && (
+                  <TableHeadCell padding="sm" align="right" className="w-[120px]">
+                    Действия
+                  </TableHeadCell>
+                )}
+              </tr>
+            </thead>
 
           <tbody className="bg-white">
             {tasks.map((task) => {

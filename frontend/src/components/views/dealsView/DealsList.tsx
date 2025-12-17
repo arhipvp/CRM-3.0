@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { Deal, User } from '../../../types';
 
 import { ColoredLabel } from '../../common/ColoredLabel';
+import { TableHeadCell } from '../../common/TableHeadCell';
 import { PanelMessage } from '../../PanelMessage';
 
 import {
@@ -210,23 +211,20 @@ export const DealsList: React.FC<DealsListProps> = ({
       </div>
 
       <div className="max-h-[360px] overflow-y-auto bg-white">
-        <table className="deals-table min-w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 bg-white/90 backdrop-blur border-b border-slate-200">
-            <tr>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[260px]">
-                Сделка
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[200px]">
-                Клиент
-              </th>
-              <th
-                className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-center text-slate-900 min-w-[180px]"
-                aria-sort={getAriaSort('deadline')}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleColumnSort('deadline')}
-                  aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
+          <table className="deals-table min-w-full border-collapse text-left text-sm">
+            <thead className="sticky top-0 bg-white/90 backdrop-blur border-b border-slate-200">
+              <tr>
+                <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
+                <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
+                <TableHeadCell
+                  align="center"
+                  className="min-w-[180px]"
+                  aria-sort={getAriaSort('deadline')}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleColumnSort('deadline')}
+                    aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
                     'deadline'
                   )}`}
                   className="flex w-full items-center justify-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
@@ -235,16 +233,17 @@ export const DealsList: React.FC<DealsListProps> = ({
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                     {getSortIndicator('deadline')}
                   </span>
-                </button>
-              </th>
-              <th
-                className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-right text-slate-900 min-w-[200px]"
-                aria-sort={getAriaSort('nextContact')}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleColumnSort('nextContact')}
-                  aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
+                  </button>
+                </TableHeadCell>
+                <TableHeadCell
+                  align="right"
+                  className="min-w-[200px]"
+                  aria-sort={getAriaSort('nextContact')}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleColumnSort('nextContact')}
+                    aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
                     'nextContact'
                   )}`}
                   className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
@@ -253,14 +252,12 @@ export const DealsList: React.FC<DealsListProps> = ({
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                     {getSortIndicator('nextContact')}
                   </span>
-                </button>
-              </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[190px]">
-                Исполнитель
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
+                  </button>
+                </TableHeadCell>
+                <TableHeadCell className="min-w-[190px]">Исполнитель</TableHeadCell>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
             {sortedDeals.length ? (
               sortedDeals.map((deal) => {
                 const deadlineTone = getDeadlineTone(deal.expectedClose);
@@ -297,7 +294,6 @@ export const DealsList: React.FC<DealsListProps> = ({
                         selectedRowRef.current = element;
                       }
                     }}
-                    style={{ minHeight: '56px' }}
                   >
                     <td className={`border border-slate-200 px-6 py-3 ${deletedTextClass}`}>
                       <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>

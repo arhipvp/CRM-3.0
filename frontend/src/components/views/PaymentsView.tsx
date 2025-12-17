@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
+import { TableHeadCell } from '../common/TableHeadCell';
 import { FilterParams } from '../../api';
 
 type PaymentSortKey = 'scheduledDate' | 'actualDate' | 'amount';
@@ -97,21 +98,13 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
           <table className="deals-table min-w-full border-collapse text-left text-sm">
             <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
               <tr>
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[260px]">
-                  Сделка
-                </th>
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[160px]">
-                  Сумма
-                </th>
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
-                  Плановая дата
-                </th>
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[170px]">
-                  Фактическая дата
-                </th>
-                <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right min-w-[200px]">
+                <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
+                <TableHeadCell className="min-w-[160px]">Сумма</TableHeadCell>
+                <TableHeadCell className="min-w-[170px]">Плановая дата</TableHeadCell>
+                <TableHeadCell className="min-w-[170px]">Фактическая дата</TableHeadCell>
+                <TableHeadCell align="right" className="min-w-[200px]">
                   Действие
-                </th>
+                </TableHeadCell>
               </tr>
             </thead>
             <tbody className="bg-white">
