@@ -76,7 +76,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 href={driveFolderLink}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs font-semibold text-sky-700 hover:text-sky-900"
+                className="link-action text-xs"
               >
                 Открыть папку Google Drive
               </a>

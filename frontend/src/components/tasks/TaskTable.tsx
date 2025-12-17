@@ -185,15 +185,15 @@ export function TaskTable({
 
                   {showDealColumn && (
                     <td className="border border-slate-200 px-3 py-2 align-top text-xs">
-                      {task.dealId ? (
-                        <button
-                          type="button"
-                          className="text-left font-semibold text-sky-700 hover:text-sky-900"
-                          onClick={() => handleDealClick(task)}
-                        >
-                          {task.dealTitle || task.dealId}
-                        </button>
-                      ) : (
+                          {task.dealId ? (
+                            <button
+                              type="button"
+                              className="link-action text-left"
+                              onClick={() => handleDealClick(task)}
+                            >
+                              {task.dealTitle || task.dealId}
+                            </button>
+                          ) : (
                         '-'
                       )}
                     </td>

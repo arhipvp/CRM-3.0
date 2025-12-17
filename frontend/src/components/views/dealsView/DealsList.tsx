@@ -217,7 +217,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
                     'deadline'
                   )}`}
-                  className="flex w-full items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
                   <span className={getColumnTitleClass('deadline')}>Крайний срок</span>
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
@@ -232,7 +232,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
                     'nextContact'
                   )}`}
-                  className="flex w-full items-center justify-end gap-2"
+                  className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
                   <span className={getColumnTitleClass('nextContact')}>След. контакт</span>
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
@@ -280,7 +280,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                         {deal.title}
                       </p>
                       {deal.deletedAt && (
-                        <p className="text-[11px] text-rose-500 mt-1">
+                        <p className="mt-1 text-xs font-semibold text-rose-600">
                           Удалена: {formatDeletedAt(deal.deletedAt)}
                         </p>
                       )}
@@ -296,7 +296,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                       {deal.expectedClose ? (
                         <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
                       ) : (
-                        <span className={`text-xs text-rose-500 font-semibold ${deletedTextClass || ''}`}>
+                        <span className={`text-xs font-semibold text-rose-600 ${deletedTextClass}`}>
                           Нет срока
                         </span>
                       )}
@@ -309,9 +309,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                           {formatDate(deal.nextContactDate)}
                         </span>
                       ) : (
-                        <span
-                          className={`text-xs text-rose-500 font-semibold uppercase tracking-wide ${deletedTextClass}`}
-                        >
+                        <span className={`text-xs font-semibold text-rose-600 ${deletedTextClass}`}>
                           Не назначено
                         </span>
                       )}

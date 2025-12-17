@@ -193,14 +193,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   </td>
                   <td className="border border-slate-200 px-3 py-2 align-top text-right space-x-3 whitespace-nowrap">
                     <button
-                      className="text-xs font-semibold text-sky-700 hover:text-sky-900"
+                      className="link-action text-xs"
                       onClick={() => onRequestEditQuote(quote)}
                       type="button"
                     >
                       Редактировать
                     </button>
                     <button
-                      className="text-xs font-semibold text-rose-500 hover:text-rose-600"
+                      className="link-danger text-xs"
                       onClick={() => onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(() => undefined)}
                       type="button"
                     >
