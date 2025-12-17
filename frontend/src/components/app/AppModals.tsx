@@ -5,8 +5,8 @@ import { DealForm } from '../forms/DealForm';
 import type { DealFormValues } from '../forms/DealForm';
 import { AddQuoteForm, QuoteFormValues } from '../forms/AddQuoteForm';
 import { AddPolicyForm } from '../forms/AddPolicyForm';
-import { AddPaymentForm, AddPaymentFormValues } from '../forms/AddPaymentForm';
-import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
+import type { AddPaymentFormValues } from '../forms/AddPaymentForm';
+import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import type {
   Client,
   FinancialRecord,
@@ -15,13 +15,13 @@ import type {
   Quote,
   SalesChannel,
   User,
-} from '../../types';
-import type {
   FinancialRecordModalState,
-  ModalType,
   PaymentModalState,
-} from './types';
+} from '../../types';
+import type { ModalType } from './types';
 import type { FinancialRecordDraft, PaymentDraft, PolicyFormValues } from '../forms/addPolicy/types';
+import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
+import { PaymentModal } from '../payments/PaymentModal';
 
 interface PolicyPrefill {
   values: PolicyFormValues;
@@ -264,26 +264,24 @@ export const AppModals: React.FC<AppModalsProps> = ({
       )}
 
       {paymentModal && (
-        <Modal title="Редактировать платёж" onClose={() => setPaymentModal(null)}>
-          <AddPaymentForm
-            payment={payments.find((p) => p.id === paymentModal.paymentId)}
-            onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
-            onCancel={() => setPaymentModal(null)}
-          />
-        </Modal>
+        <PaymentModal
+          isOpen
+          title="Редактировать платёж"
+          payment={payments.find((p) => p.id === paymentModal.paymentId)}
+          onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
+          onClose={() => setPaymentModal(null)}
+        />
       )}
 
       {financialRecordModal && (
-        <Modal title="Редактировать запись" onClose={() => setFinancialRecordModal(null)}>
-          <AddFinancialRecordForm
-            paymentId={financialRecordModal.paymentId!}
-            record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
-            onSubmit={(values) =>
-              handleUpdateFinancialRecord(financialRecordModal.recordId!, values)
-            }
-            onCancel={() => setFinancialRecordModal(null)}
-          />
-        </Modal>
+        <FinancialRecordModal
+          isOpen
+          title="Редактировать запись"
+          paymentId={financialRecordModal.paymentId!}
+          record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
+          onClose={() => setFinancialRecordModal(null)}
+          onSubmit={(values) => handleUpdateFinancialRecord(financialRecordModal.recordId!, values)}
+        />
       )}
 
       {isClientModalOverlayOpen && (

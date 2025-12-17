@@ -243,6 +243,21 @@ export interface Payment {
   deletedAt?: string | null;
 }
 
+export type FinancialRecordCreationContext = {
+  paymentId: string;
+  recordType: 'income' | 'expense';
+};
+
+export interface PaymentModalState {
+  policyId?: string;
+  paymentId?: string;
+}
+
+export interface FinancialRecordModalState {
+  paymentId?: string;
+  recordId?: string;
+}
+
 export interface Note {
   id: string;
   dealId: string;

@@ -1,15 +1,11 @@
 import { useMemo, useState } from 'react';
-import type { Deal, Payment, Policy } from '../../../../types';
+import type { Deal, FinancialRecordCreationContext, Payment, Policy } from '../../../../types';
 import {
-  FinancialRecordCreationContext,
-  formatCurrency,
   PolicySortKey,
   policyHasUnpaidActivity,
 } from '../helpers';
 import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
-import { ColoredLabel } from '../../../common/ColoredLabel';
-import { LabelValuePair } from '../../../common/LabelValuePair';
-import { PaymentCard } from '../../../policies/PaymentCard';
+import { PolicyCard } from '../../../policies/PolicyCard';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -185,134 +181,36 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           const expanded = paymentsExpanded[policy.id] ?? false;
 
           return (
-            <section key={policy.id} className="rounded-2xl border border-slate-200 bg-white">
-              <div className="p-4 space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="app-label">Номер</p>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {policy.number || '—'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm rounded-xl"
-                      onClick={() => onRequestEditPolicy(policy)}
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-sm rounded-xl"
-                      onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <LabelValuePair
-                    label="Клиент"
-                    value={(policy.insuredClientName ?? policy.clientName) || '—'}
-                  />
-                  <LabelValuePair
-                    label="Компания"
-                    value={
-                      <ColoredLabel
-                        value={policy.insuranceCompany}
-                        fallback="—"
-                        showDot
-                        className="font-semibold text-slate-900"
-                      />
-                    }
-                  />
-                  <LabelValuePair label="Канал" value={policy.salesChannel || '—'} />
-                  <LabelValuePair
-                    label="Сумма"
-                    value={`${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(
-                      policy.paymentsTotal
-                    )}`}
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-slate-200 bg-slate-50/70 p-4">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <LabelValuePair label="Тип" value={policy.insuranceType || '—'} />
-                  <LabelValuePair label="Марка" value={policy.brand || '—'} />
-                  <LabelValuePair label="Модель" value={policy.model || '—'} />
-                  <LabelValuePair label="VIN" value={policy.vin || '—'} />
-                </div>
-              </div>
-
-              <div className="border-t border-slate-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <p className="app-label">Платежи</p>
-                    {payments.length > 0 && (
-                      <span className="text-xs text-slate-500">
-                        {payments.length} запись{payments.length === 1 ? '' : 'ей'}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingPaymentId('new');
-                        setCreatingPaymentPolicyId(policy.id);
-                      }}
-                      className="btn btn-secondary btn-sm rounded-xl"
-                    >
-                      + Добавить платёж
-                    </button>
-                    {payments.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPaymentsExpanded((prev) => ({
-                            ...prev,
-                            [policy.id]: !expanded,
-                          }))
-                        }
-                        className="btn btn-quiet btn-sm rounded-xl"
-                      >
-                        {expanded ? 'Скрыть' : 'Показать'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {payments.length === 0 ? (
-                  <div className="mt-3">{renderStatusMessage('Платежей пока нет.')}</div>
-                ) : expanded ? (
-                  <div className="mt-3 space-y-2">
-                    {payments.map((payment) => (
-                      <PaymentCard
-                        key={payment.id}
-                        payment={payment}
-                        recordsExpandedOverride={recordsExpandedAll}
-                        onEditPayment={(paymentId) => {
-                          setCreatingPaymentPolicyId(null);
-                          setEditingPaymentId(paymentId);
-                        }}
-                        onRequestAddRecord={(paymentId, recordType) => {
-                          setCreatingFinancialRecordContext({ paymentId, recordType });
-                          setEditingFinancialRecordId(null);
-                        }}
-                        onEditFinancialRecord={(recordId) =>
-                          setEditingFinancialRecordId(recordId)
-                        }
-                        onDeleteFinancialRecord={onDeleteFinancialRecord}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </section>
+            <PolicyCard
+              key={policy.id}
+              variant="dealPoliciesTab"
+              policy={policy}
+              payments={payments}
+              recordsExpandedAll={recordsExpandedAll}
+              isPaymentsExpanded={expanded}
+              onTogglePaymentsExpanded={() =>
+                setPaymentsExpanded((prev) => ({
+                  ...prev,
+                  [policy.id]: !expanded,
+                }))
+              }
+              onRequestEditPolicy={() => onRequestEditPolicy(policy)}
+              onDeletePolicy={() => onDeletePolicy(policy.id).catch(() => undefined)}
+              onRequestAddPayment={() => {
+                setEditingPaymentId('new');
+                setCreatingPaymentPolicyId(policy.id);
+              }}
+              onEditPayment={(paymentId) => {
+                setCreatingPaymentPolicyId(null);
+                setEditingPaymentId(paymentId);
+              }}
+              onRequestAddRecord={(paymentId, recordType) => {
+                setCreatingFinancialRecordContext({ paymentId, recordType });
+                setEditingFinancialRecordId(null);
+              }}
+              onEditFinancialRecord={(recordId) => setEditingFinancialRecordId(recordId)}
+              onDeleteFinancialRecord={onDeleteFinancialRecord}
+            />
           );
         })}
       </div>

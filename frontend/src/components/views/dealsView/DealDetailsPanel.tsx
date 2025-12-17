@@ -18,14 +18,12 @@ import { useDealMerge } from './hooks/useDealMerge';
 import { ActivityTimeline } from '../../ActivityTimeline';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
 import { AddTaskForm, AddTaskFormValues } from '../../forms/AddTaskForm';
-import { AddPaymentForm, AddPaymentFormValues } from '../../forms/AddPaymentForm';
+import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import {
-  AddFinancialRecordForm,
   AddFinancialRecordFormValues,
 } from '../../forms/AddFinancialRecordForm';
 import {
   DealTabId,
-  FinancialRecordCreationContext,
   getDeadlineTone,
   getPolicySortValue,
   getUserDisplayName,
@@ -49,6 +47,10 @@ import { DealNotesSection } from './DealNotesSection';
 import { DealDateControls } from './DealDateControls';
 import { useDealNotes } from './hooks/useDealNotes';
 import { useDealDriveFiles } from './hooks/useDealDriveFiles';
+import { FinancialRecordModal } from '../../financialRecords/FinancialRecordModal';
+import { useFinancialRecordModal } from '../../../hooks/useFinancialRecordModal';
+import { PaymentModal } from '../../payments/PaymentModal';
+import { usePaymentModal } from '../../../hooks/usePaymentModal';
 
 
 interface DealDetailsPanelProps {
@@ -217,15 +219,26 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const [completingTaskIds, setCompletingTaskIds] = useState<string[]>([]);
 
-  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const {
+    isOpen: isFinancialRecordModalOpen,
+    paymentId: financialRecordPaymentId,
+    defaultRecordType: financialRecordDefaultRecordType,
+    editingFinancialRecord,
+    editingFinancialRecordId,
+    setEditingFinancialRecordId,
+    setCreatingFinancialRecordContext,
+    closeFinancialRecordModal,
+  } = useFinancialRecordModal(financialRecords);
 
-  const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
-
-  const [creatingFinancialRecordContext, setCreatingFinancialRecordContext] =
-
-    useState<FinancialRecordCreationContext | null>(null);
-
-  const [creatingPaymentPolicyId, setCreatingPaymentPolicyId] = useState<string | null>(null);
+  const {
+    isOpen: isPaymentModalOpen,
+    editingPaymentId,
+    setEditingPaymentId,
+    setCreatingPaymentPolicyId,
+    editingPayment,
+    fixedPolicyId: paymentFixedPolicyId,
+    closePaymentModal,
+  } = usePaymentModal(payments);
 
   const [policySortKey] = useState<PolicySortKey>('startDate');
 
@@ -1067,74 +1080,43 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           )}
         </Modal>
       )}
-      {editingPaymentId && selectedDeal && (
-        <Modal
+      {isPaymentModalOpen && selectedDeal && (
+        <PaymentModal
+          isOpen
           title={editingPaymentId === 'new' ? 'Создать платеж' : 'Редактировать платеж'}
-          onClose={() => setEditingPaymentId(null)}
-          size="sm"
-          zIndex={50}
-          closeOnOverlayClick={false}
-        >
-          <AddPaymentForm
-            payment={
-              editingPaymentId !== 'new' ? payments.find((p) => p.id === editingPaymentId) : undefined
+          payment={editingPayment}
+          dealId={selectedDeal.id}
+          dealTitle={selectedDeal.title}
+          policies={relatedPolicies}
+          fixedPolicyId={paymentFixedPolicyId}
+          onClose={closePaymentModal}
+          onSubmit={async (data) => {
+            if (editingPaymentId === 'new') {
+              await onAddPayment(data);
+            } else if (editingPaymentId) {
+              await onUpdatePayment(editingPaymentId, data);
             }
-            dealId={selectedDeal.id}
-            dealTitle={selectedDeal.title}
-            policies={relatedPolicies}
-            fixedPolicyId={
-              editingPaymentId === 'new' ? creatingPaymentPolicyId ?? undefined : undefined
-            }
-            onSubmit={async (data) => {
-              if (editingPaymentId === 'new') {
-                await onAddPayment(data);
-              } else {
-                await onUpdatePayment(editingPaymentId, data);
-              }
-              setEditingPaymentId(null);
-              setCreatingPaymentPolicyId(null);
-            }}
-            onCancel={() => {
-              setEditingPaymentId(null);
-              setCreatingPaymentPolicyId(null);
-            }}
-          />
-        </Modal>
-      )}
-      {(editingFinancialRecordId || creatingFinancialRecordContext) && selectedDeal && (
-        <Modal
-          title={editingFinancialRecordId ? 'Редактировать запись' : 'Новая финансовая запись'}
-          onClose={() => {
-            setEditingFinancialRecordId(null);
-            setCreatingFinancialRecordContext(null);
+            closePaymentModal();
           }}
-          size="sm"
-          zIndex={50}
-          closeOnOverlayClick={false}
-        >
-          <AddFinancialRecordForm
-            paymentId={creatingFinancialRecordContext?.paymentId || ''}
-            defaultRecordType={creatingFinancialRecordContext?.recordType}
-            record={
-              editingFinancialRecordId
-                ? financialRecords.find((r) => r.id === editingFinancialRecordId)
-                : undefined
+        />
+      )}
+      {isFinancialRecordModalOpen && selectedDeal && (
+        <FinancialRecordModal
+          isOpen
+          title={editingFinancialRecordId ? 'Редактировать запись' : 'Новая финансовая запись'}
+          onClose={closeFinancialRecordModal}
+          paymentId={financialRecordPaymentId}
+          defaultRecordType={financialRecordDefaultRecordType}
+          record={editingFinancialRecord}
+          onSubmit={async (data) => {
+            if (editingFinancialRecordId) {
+              await onUpdateFinancialRecord(editingFinancialRecordId, data);
+            } else {
+              await onAddFinancialRecord(data);
             }
-            onSubmit={async (data) => {
-              if (editingFinancialRecordId) {
-                await onUpdateFinancialRecord(editingFinancialRecordId, data);
-              } else {
-                await onAddFinancialRecord(data);
-              }
-              setEditingFinancialRecordId(null);
-              setCreatingFinancialRecordContext(null);
-            }}
-            onCancel={() => {
-              setEditingFinancialRecordId(null);
-              setCreatingFinancialRecordContext(null);
-            }}
-          />
-        </Modal>
+            closeFinancialRecordModal();
+          }}
+        />
       )}
       {isDelayModalOpen && selectedDeal && (
         <DealDelayModal

@@ -57,11 +57,8 @@ import { useDealFilters } from './hooks/useDealFilters';
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
-import type {
-  ModalType,
-  PaymentModalState,
-  FinancialRecordModalState,
-} from './components/app/types';
+import type { ModalType } from './components/app/types';
+import type { FinancialRecordModalState, PaymentModalState } from './types';
 import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
 import { parseNumericAmount } from './utils/parseNumericAmount';
 import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';

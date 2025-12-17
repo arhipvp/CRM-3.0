@@ -4,17 +4,13 @@ import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
 import {
-  formatCurrency,
-  formatDate,
-  FinancialRecordCreationContext,
   policyHasUnpaidActivity,
 } from './dealsView/helpers';
-import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
-import { ColoredLabel } from '../common/ColoredLabel';
-import { LabelValuePair } from '../common/LabelValuePair';
-import { PaymentCard } from '../policies/PaymentCard';
-import { Modal } from '../Modal';
+import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
+import { PolicyCard } from '../policies/PolicyCard';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
+import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
+import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 
 type PolicySortKey =
   | 'startDate'
@@ -80,9 +76,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 }) => {
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
-  const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
-  const [creatingFinancialRecordContext, setCreatingFinancialRecordContext] =
-    useState<FinancialRecordCreationContext | null>(null);
   const {
     paymentsExpanded,
     setPaymentsExpanded,
@@ -192,14 +185,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     [filteredPolicies, paymentsByPolicyMap]
   );
 
-  const editingFinancialRecord = editingFinancialRecordId
-    ? allFinancialRecords.find((record) => record.id === editingFinancialRecordId)
-    : undefined;
-
-  const closeFinancialRecordModal = () => {
-    setCreatingFinancialRecordContext(null);
-    setEditingFinancialRecordId(null);
-  };
+  const {
+    isOpen: isFinancialRecordModalOpen,
+    paymentId: financialRecordPaymentId,
+    defaultRecordType: financialRecordDefaultRecordType,
+    editingFinancialRecord,
+    editingFinancialRecordId,
+    openCreateFinancialRecord,
+    openEditFinancialRecord,
+    closeFinancialRecordModal,
+  } = useFinancialRecordModal(allFinancialRecords);
 
   return (
     <section aria-labelledby="policiesViewHeading" className="app-panel p-6 shadow-none space-y-4">
@@ -256,136 +251,32 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       {filteredPolicies.length ? (
         <div className="space-y-4">
           {paymentsByPolicy.map(({ policy, payments }) => {
-            const paymentsPanelId = `policy-${policy.id}-payments`;
             const isPaymentsExpanded = paymentsExpanded[policy.id] ?? false;
 
             return (
-              <section key={policy.id} className="app-panel shadow-none space-y-2">
-              <div className="px-5 py-4 text-sm text-slate-500 space-y-3">
-                <div className="grid gap-4 sm:grid-cols-[1.1fr_0.9fr_0.8fr]">
-                  <div>
-                    <p className="app-label">Номер</p>
-                    <p className="text-lg font-semibold text-slate-900">{policy.number || '-'}</p>
-                  </div>
-                  <div className="flex gap-8 text-[11px] uppercase tracking-[0.35em] text-slate-500 mt-3 sm:mt-0">
-                    <span>Начало: {formatDate(policy.startDate)}</span>
-                    <span>Окончание: {formatDate(policy.endDate)}</span>
-                  </div>
-                  <div className="flex items-start justify-end gap-4 text-[10px] uppercase tracking-[0.35em] text-slate-400">
-                    <div>
-                      <p>Действия</p>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {onRequestEditPolicy && (
-                          <button
-                            type="button"
-                            className="btn btn-quiet btn-sm rounded-xl"
-                            onClick={() => onRequestEditPolicy(policy)}
-                          >
-                            Ред.
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="btn btn-quiet btn-sm rounded-xl"
-                          onClick={() => setFilesModalPolicy(policy)}
-                        >
-                          Файлы
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-6">
-                  <LabelValuePair
-                    label="Клиент"
-                    value={(policy.insuredClientName ?? policy.clientName) || '—'}
-                    className="min-w-[180px]"
-                  />
-                  <LabelValuePair
-                    label="Компания"
-                    value={
-                      <ColoredLabel
-                        value={policy.insuranceCompany}
-                        fallback="—"
-                        showDot
-                        className="font-semibold text-slate-900"
-                      />
-                    }
-                    className="min-w-[160px]"
-                  />
-                  <LabelValuePair
-                    label="Канал"
-                    value={policy.salesChannel || '—'}
-                    className="min-w-[220px]"
-                  />
-                  <LabelValuePair
-                    label="Сумма"
-                    value={`${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(policy.paymentsTotal)}`}
-                  />
-                </div>
-              </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 space-y-3">
-                <div className="flex flex-wrap gap-6 text-sm text-slate-600">
-                  <LabelValuePair label="Тип" value={policy.insuranceType || '-'} />
-                  <LabelValuePair label="Марка" value={policy.brand || '-'} />
-                  <LabelValuePair label="Модель" value={policy.model || '-'} />
-                  <LabelValuePair label="VIN" value={policy.vin || '-'} />
-                </div>
-              </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 text-sm text-slate-600">
-                <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
-                  <div className="flex items-center gap-2">
-                    <span>Платежи</span>
-                    {payments.length > 0 && (
-                      <span className="text-[11px] text-slate-500">{payments.length} запись{payments.length === 1 ? '' : 'ей'}</span>
-                    )}
-                  </div>
-                  {payments.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPaymentsExpanded((prev) => ({
-                          ...prev,
-                          [policy.id]: !prev[policy.id],
-                        }))
-                      }
-                      aria-expanded={isPaymentsExpanded}
-                      aria-controls={paymentsPanelId}
-                      className="btn btn-secondary btn-sm rounded-xl"
-                    >
-                      {isPaymentsExpanded ? 'Скрыть' : 'Показать'}
-                    </button>
-                  )}
-                </div>
-                {payments.length === 0 ? (
-                  <div className="mt-2 app-panel-muted px-4 py-3 text-sm text-slate-600">
-                    Платежей пока нет.
-                  </div>
-                ) : (
-                  <div
-                    id={paymentsPanelId}
-                    className="mt-2 space-y-2 text-sm text-slate-600"
-                    hidden={!isPaymentsExpanded}
-                  >
-                    {isPaymentsExpanded
-                      ? payments.map((payment) => (
-                          <PaymentCard
-                            recordsExpandedOverride={recordsExpandedAll}
-                            key={payment.id}
-                            payment={payment}
-                            onRequestAddRecord={(paymentId, recordType) => {
-                              setCreatingFinancialRecordContext({ paymentId, recordType });
-                              setEditingFinancialRecordId(null);
-                            }}
-                            onEditFinancialRecord={(recordId) => setEditingFinancialRecordId(recordId)}
-                            onDeleteFinancialRecord={onDeleteFinancialRecord}
-                          />
-                        ))
-                      : null}
-                  </div>
-                )}
-              </div>
-              </section>
+              <PolicyCard
+                key={policy.id}
+                variant="policiesView"
+                policy={policy}
+                payments={payments}
+                recordsExpandedAll={recordsExpandedAll}
+                isPaymentsExpanded={isPaymentsExpanded}
+                onTogglePaymentsExpanded={() =>
+                  setPaymentsExpanded((prev) => ({
+                    ...prev,
+                    [policy.id]: !prev[policy.id],
+                  }))
+                }
+                onRequestEditPolicy={
+                  onRequestEditPolicy ? () => onRequestEditPolicy(policy) : undefined
+                }
+                onRequestFiles={() => setFilesModalPolicy(policy)}
+                onRequestAddRecord={(paymentId, recordType) => {
+                  openCreateFinancialRecord(paymentId, recordType);
+                }}
+                onEditFinancialRecord={openEditFinancialRecord}
+                onDeleteFinancialRecord={onDeleteFinancialRecord}
+              />
             );
           })}
         </div>
@@ -404,31 +295,23 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           title={`Файлы полиса: ${filesModalPolicy.number}`}
         />
       )}
-      {(creatingFinancialRecordContext || editingFinancialRecordId) && (
-        <Modal
+      {isFinancialRecordModalOpen && (
+        <FinancialRecordModal
+          isOpen
           title={editingFinancialRecordId ? 'Изменить запись' : 'Добавить запись'}
           onClose={closeFinancialRecordModal}
-          size="sm"
-          zIndex={50}
-          closeOnOverlayClick={false}
-        >
-          <AddFinancialRecordForm
-            paymentId={
-              creatingFinancialRecordContext?.paymentId || editingFinancialRecord?.paymentId || ''
+          paymentId={financialRecordPaymentId}
+          defaultRecordType={financialRecordDefaultRecordType}
+          record={editingFinancialRecord}
+          onSubmit={async (values) => {
+            if (editingFinancialRecordId) {
+              await onUpdateFinancialRecord(editingFinancialRecordId, values);
+            } else {
+              await onAddFinancialRecord(values);
             }
-            defaultRecordType={creatingFinancialRecordContext?.recordType}
-            record={editingFinancialRecord}
-            onSubmit={async (values) => {
-              if (editingFinancialRecordId) {
-                await onUpdateFinancialRecord(editingFinancialRecordId, values);
-              } else {
-                await onAddFinancialRecord(values);
-              }
-              closeFinancialRecordModal();
-            }}
-            onCancel={closeFinancialRecordModal}
-          />
-        </Modal>
+            closeFinancialRecordModal();
+          }}
+        />
       )}
     </section>
   );

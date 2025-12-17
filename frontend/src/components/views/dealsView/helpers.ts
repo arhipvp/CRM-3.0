@@ -27,11 +27,6 @@ export const DEAL_TABS = [
 
 export type DealTabId = (typeof DEAL_TABS)[number]['id'];
 
-export type FinancialRecordCreationContext = {
-  paymentId: string;
-  recordType: 'income' | 'expense';
-};
-
 export const formatDate = (value?: string | null) => {
   if (!value) {
     return '—';
