@@ -37,7 +37,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
   const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
     const className =
       tone === 'danger'
-        ? 'rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700'
+        ? 'app-alert app-alert-danger'
         : 'app-panel-muted px-4 py-3 text-sm text-slate-600';
 
     return <div className={className}>{message}</div>;

@@ -688,7 +688,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                     }
                     setIsVehicle(e.target.checked);
                   }}
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="check"
                 />
                 <span className="text-sm font-semibold text-slate-700">Да</span>
               </label>

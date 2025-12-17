@@ -1800,7 +1800,7 @@ const AppContent: React.FC = () => {
                       type="checkbox"
                       checked={mergeSources.includes(client.id)}
                       onChange={() => toggleMergeSource(client.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      className="check"
                     />
                     <div>
                       <p className="text-sm font-semibold text-slate-900">{client.name}</p>

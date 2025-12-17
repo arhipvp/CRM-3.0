@@ -870,9 +870,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         <p className="app-label">История</p>
       </div>
       {activityError && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {activityError}
-        </div>
+        <div className="app-alert app-alert-danger">{activityError}</div>
       )}
       <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
     </section>

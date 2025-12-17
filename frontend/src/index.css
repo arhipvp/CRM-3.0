@@ -59,6 +59,14 @@ body {
     @apply text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500;
   }
 
+  .app-alert {
+    @apply rounded-2xl border px-4 py-3 text-sm;
+  }
+
+  .app-alert-danger {
+    @apply border-rose-200 bg-rose-50 text-rose-800;
+  }
+
   .field {
     @apply w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0;
   }
