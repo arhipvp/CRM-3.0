@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Deal, Payment, Policy } from '../../../../types';
 import {
   FinancialRecordCreationContext,
@@ -6,6 +6,7 @@ import {
   PolicySortKey,
   policyHasUnpaidActivity,
 } from '../helpers';
+import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { LabelValuePair } from '../../../common/LabelValuePair';
 import { PaymentCard } from '../../../policies/PaymentCard';
@@ -54,54 +55,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onDeletePolicy,
   onRequestEditPolicy,
 }) => {
-  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>(
-    {}
-  );
-  const [recordsExpandedAll, setRecordsExpandedAll] = useState(false);
+  const {
+    paymentsExpanded,
+    setPaymentsExpanded,
+    recordsExpandedAll,
+    setRecordsExpandedAll,
+  } = usePoliciesExpansionState();
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
-  const STORAGE_PAYMENTS_KEY = 'crm:policies:payments-expanded';
-  const STORAGE_RECORDS_KEY = 'crm:policies:records-expanded';
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const storedPayments = window.localStorage.getItem(STORAGE_PAYMENTS_KEY);
-    if (storedPayments) {
-      try {
-        const parsed = JSON.parse(storedPayments);
-        if (parsed && typeof parsed === 'object') {
-          setPaymentsExpanded(parsed);
-        }
-      } catch {
-        // ignore parse error
-      }
-    }
-    const storedRecords = window.localStorage.getItem(STORAGE_RECORDS_KEY);
-    if (storedRecords) {
-      setRecordsExpandedAll(storedRecords === 'true');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.localStorage.setItem(
-      STORAGE_PAYMENTS_KEY,
-      JSON.stringify(paymentsExpanded)
-    );
-  }, [paymentsExpanded]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.localStorage.setItem(
-      STORAGE_RECORDS_KEY,
-      recordsExpandedAll ? 'true' : 'false'
-    );
-  }, [recordsExpandedAll]);
 
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();

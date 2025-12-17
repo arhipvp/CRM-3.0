@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Policy, Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
@@ -14,6 +14,7 @@ import { ColoredLabel } from '../common/ColoredLabel';
 import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from '../policies/PaymentCard';
 import { Modal } from '../Modal';
+import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 
 type PolicySortKey =
   | 'startDate'
@@ -82,46 +83,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const [editingFinancialRecordId, setEditingFinancialRecordId] = useState<string | null>(null);
   const [creatingFinancialRecordContext, setCreatingFinancialRecordContext] =
     useState<FinancialRecordCreationContext | null>(null);
-  const [paymentsExpanded, setPaymentsExpanded] = useState<Record<string, boolean>>({});
-  const [recordsExpandedAll, setRecordsExpandedAll] = useState(false);
-
-  const PAYMENTS_STORAGE_KEY = 'crm:policies:payments-expanded';
-  const RECORDS_STORAGE_KEY = 'crm:policies:records-expanded';
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const paymentsRaw = window.localStorage.getItem(PAYMENTS_STORAGE_KEY);
-    if (paymentsRaw) {
-      try {
-        const parsed = JSON.parse(paymentsRaw);
-        if (parsed && typeof parsed === 'object') {
-          setPaymentsExpanded(parsed);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    const recordsRaw = window.localStorage.getItem(RECORDS_STORAGE_KEY);
-    if (recordsRaw) {
-      setRecordsExpandedAll(recordsRaw === 'true');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(paymentsExpanded));
-  }, [paymentsExpanded]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.localStorage.setItem(RECORDS_STORAGE_KEY, recordsExpandedAll ? 'true' : 'false');
-  }, [recordsExpandedAll]);
+  const {
+    paymentsExpanded,
+    setPaymentsExpanded,
+    recordsExpandedAll,
+    setRecordsExpandedAll,
+  } = usePoliciesExpansionState();
 
   const statusOptions = useMemo(() => {
     const unique = Array.from(new Set(policies.map((policy) => policy.status).filter(Boolean)));
