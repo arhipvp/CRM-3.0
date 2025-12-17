@@ -332,7 +332,9 @@ export const DealsList: React.FC<DealsListProps> = ({
             ) : (
               <tr>
                 <td colSpan={5} className="border border-slate-200 px-6 py-4 text-center text-sm text-slate-500">
-                  Сделки не найдены.
+                  <div className="app-panel-muted inline-flex px-4 py-3 text-sm text-slate-600">
+                    Сделки не найдены.
+                  </div>
                 </td>
               </tr>
             )}
