@@ -3,6 +3,7 @@ import { Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
+import { TABLE_CELL_CLASS_LG, TABLE_THEAD_CLASS } from '../common/tableStyles';
 import { FilterParams } from '../../api';
 
 type PaymentSortKey = 'scheduledDate' | 'actualDate' | 'amount';
@@ -96,7 +97,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
       <div className="app-panel shadow-none overflow-hidden">
         <div className="overflow-x-auto bg-white">
           <table className="deals-table min-w-full border-collapse text-left text-sm">
-            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
+            <thead className={TABLE_THEAD_CLASS}>
               <tr>
                 <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
                 <TableHeadCell className="min-w-[160px]">Сумма</TableHeadCell>
@@ -117,23 +118,23 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
                     key={payment.id}
                     className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500"
                   >
-                    <td className="border border-slate-200 px-6 py-3">
+                    <td className={TABLE_CELL_CLASS_LG}>
                       <p className="text-base font-semibold text-slate-900">{dealTitle}</p>
                       <p className="text-xs text-slate-500 mt-1">{clientName}</p>
                     </td>
-                    <td className="border border-slate-200 px-6 py-3 text-slate-700 font-semibold">
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700 font-semibold`}>
                       {Number(payment.amount).toLocaleString('ru-RU', {
                         style: 'currency',
                         currency: 'RUB',
                       })}
                     </td>
-                    <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                       {formatDate(payment.scheduledDate)}
                     </td>
-                    <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                       {formatDate(payment.actualDate)}
                     </td>
-                    <td className="border border-slate-200 px-6 py-3 text-right">
+                    <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                       {!payment.actualDate ? (
                         <button
                           type="button"

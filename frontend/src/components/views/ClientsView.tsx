@@ -5,6 +5,7 @@ import { Pagination } from '../Pagination';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
 import { TableHeadCell } from '../common/TableHeadCell';
+import { TABLE_CELL_CLASS_LG, TABLE_THEAD_CLASS } from '../common/tableStyles';
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('ru-RU') : '—';
@@ -144,8 +145,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       <div className="app-panel shadow-none overflow-hidden">
         <div className="overflow-x-auto bg-white">
          <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Список клиентов">
-           <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
-             <tr>
+          <thead className={TABLE_THEAD_CLASS}>
+            <tr>
               <TableHeadCell className="min-w-[220px]">Имя</TableHeadCell>
               <TableHeadCell className="min-w-[180px]">Телефон</TableHeadCell>
               <TableHeadCell className="min-w-[170px]">Дата рождения</TableHeadCell>
@@ -169,10 +170,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   key={client.id}
                   className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500"
                 >
-                  <td className="border border-slate-200 px-6 py-3">
+                  <td className={TABLE_CELL_CLASS_LG}>
                     <p className="text-base font-semibold text-slate-900">{client.name}</p>
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                     {client.phone ? (
                       <a
                         href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
@@ -186,16 +187,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       '-'
                     )}
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                     {formatDate(client.birthDate)}
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 text-slate-700">
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                     {formatDate(client.createdAt)}
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 text-right font-semibold text-slate-900">
+                  <td className={`${TABLE_CELL_CLASS_LG} text-right font-semibold text-slate-900`}>
                     {clientDeals.length}
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 text-right">
+                  <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     <button
                       type="button"
                       onClick={() => setFilesModalClient(client)}
@@ -205,7 +206,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       Файлы
                     </button>
                   </td>
-                  <td className="border border-slate-200 px-6 py-3 text-right">
+                  <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     {onClientEdit || onClientDelete || onClientMerge ? (
                       <div className="flex flex-col items-end gap-1">
                         {onClientEdit && (

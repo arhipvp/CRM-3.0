@@ -9,6 +9,7 @@ import {
 import { FileUploadManager } from './FileUploadManager';
 import { Modal } from './Modal';
 import { TableHeadCell } from './common/TableHeadCell';
+import { TABLE_CELL_CLASS_MD, TABLE_THEAD_CLASS } from './common/tableStyles';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface DriveFilesModalProps {
@@ -101,7 +102,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                     <div className="app-panel shadow-none overflow-hidden">
                         <div className="overflow-x-auto bg-white">
                         <table className="deals-table min-w-full border-collapse text-left text-sm">
-                                    <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
+                                    <thead className={TABLE_THEAD_CLASS}>
                                         <tr>
                                             <TableHeadCell padding="md">Имя</TableHeadCell>
                                             <TableHeadCell padding="md" className="w-[140px]">
@@ -115,7 +116,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                             <tbody className="bg-white">
                                 {sortedFiles.map((file) => (
                                     <tr key={file.id} className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500">
-                                        <td className="border border-slate-200 px-4 py-3">
+                                        <td className={TABLE_CELL_CLASS_MD}>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">
                                                     {getDriveItemIcon(file.isFolder)}
@@ -137,10 +138,10 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="border border-slate-200 px-4 py-3 text-slate-600 whitespace-nowrap">
+                                        <td className={`${TABLE_CELL_CLASS_MD} text-slate-600 whitespace-nowrap`}>
                                             {formatDriveFileSize(file.size)}
                                         </td>
-                                        <td className="border border-slate-200 px-4 py-3 text-slate-600 whitespace-nowrap">
+                                        <td className={`${TABLE_CELL_CLASS_MD} text-slate-600 whitespace-nowrap`}>
                                             {formatDriveDate(file.modifiedAt || file.createdAt)}
                                         </td>
                                     </tr>

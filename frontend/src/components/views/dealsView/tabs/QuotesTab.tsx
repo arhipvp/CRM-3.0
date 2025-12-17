@@ -2,6 +2,8 @@ import React from 'react';
 import type { Deal, Quote } from '../../../../types';
 import { formatCurrency, formatDate } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
+import { TableHeadCell } from '../../../common/TableHeadCell';
+import { TABLE_CELL_CLASS_SM, TABLE_THEAD_CLASS } from '../../../common/tableStyles';
 
 type QuoteSortKey =
   | 'insuranceType'
@@ -102,10 +104,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
     const ariaSort = isActive ? (sortConfig?.direction === 'asc' ? 'ascending' : 'descending') : 'none';
 
     return (
-      <th
-        className={`border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 ${className ?? ''}`}
-        aria-sort={ariaSort}
-      >
+      <TableHeadCell padding="sm" className={className} aria-sort={ariaSort}>
         <button
           type="button"
           onClick={() => handleSort(sortKey)}
@@ -115,7 +114,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           <span>{label}</span>
           {isActive && <span className="text-[11px]">{sortConfig?.direction === 'asc' ? '↑' : '↓'}</span>}
         </button>
-      </th>
+      </TableHeadCell>
     );
   };
 
@@ -140,7 +139,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       ) : (
         <div className="overflow-x-auto bg-white">
           <table className="deals-table min-w-full border-collapse text-left text-sm">
-            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
+            <thead className={TABLE_THEAD_CLASS}>
               <tr>
                 <SortableHeader label="Тип" sortKey="insuranceType" />
                 <SortableHeader label="Компания" sortKey="insuranceCompany" />
@@ -150,18 +149,18 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 <SortableHeader label="Комментарии" sortKey="comments" />
                 <SortableHeader label="Добавлен" sortKey="seller" />
                 <SortableHeader label="Дата" sortKey="createdAt" />
-                <th className="border border-slate-200 px-3 py-2 text-[11px] uppercase tracking-[0.3em] text-slate-900 text-right w-[160px]">
+                <TableHeadCell padding="sm" align="right" className="w-[160px]">
                   Действия
-                </th>
+                </TableHeadCell>
               </tr>
             </thead>
             <tbody className="bg-white">
               {sortedQuotes.map((quote) => (
                 <tr key={quote.id} className="even:bg-slate-50/40 transition-colors hover:bg-slate-50/80">
-                  <td className="border border-slate-200 px-3 py-2 align-top font-semibold text-slate-900">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top font-semibold text-slate-900`}>
                     {quote.insuranceType}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top`}>
                     <ColoredLabel
                       value={quote.insuranceCompany}
                       fallback="-"
@@ -169,19 +168,19 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                       className="text-slate-600"
                     />
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-900 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap`}>
                     {formatCurrency(String(quote.sumInsured))}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-900 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap`}>
                     {formatCurrency(String(quote.premium))}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-900 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap`}>
                     {quote.deductible || '-'}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-600">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600`}>
                     {quote.comments || '-'}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top`}>
                     <ColoredLabel
                       value={quote.sellerName || quote.sellerId}
                       fallback="-"
@@ -189,10 +188,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                       className="text-slate-600"
                     />
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-slate-600 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 whitespace-nowrap`}>
                     {formatDate(quote.createdAt)}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-right space-x-3 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-right space-x-3 whitespace-nowrap`}>
                     <button
                       className="link-action text-xs"
                       onClick={() => onRequestEditQuote(quote)}

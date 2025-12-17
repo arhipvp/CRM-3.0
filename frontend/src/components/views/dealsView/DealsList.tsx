@@ -3,6 +3,7 @@ import type { Deal, User } from '../../../types';
 
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { TableHeadCell } from '../../common/TableHeadCell';
+import { TABLE_CELL_CLASS_LG, TABLE_THEAD_CLASS } from '../../common/tableStyles';
 import { PanelMessage } from '../../PanelMessage';
 
 import {
@@ -212,12 +213,12 @@ export const DealsList: React.FC<DealsListProps> = ({
 
       <div className="max-h-[360px] overflow-y-auto bg-white">
           <table className="deals-table min-w-full border-collapse text-left text-sm">
-            <thead className="sticky top-0 bg-white/90 backdrop-blur border-b border-slate-200">
-              <tr>
-                <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
-                <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
-                <TableHeadCell
-                  align="center"
+          <thead className={`sticky top-0 ${TABLE_THEAD_CLASS}`}>
+            <tr>
+              <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
+              <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
+              <TableHeadCell
+                align="center"
                   className="min-w-[180px]"
                   aria-sort={getAriaSort('deadline')}
                 >
@@ -295,7 +296,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                       }
                     }}
                   >
-                    <td className={`border border-slate-200 px-6 py-3 ${deletedTextClass}`}>
+                    <td className={`${TABLE_CELL_CLASS_LG} ${deletedTextClass}`}>
                       <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>
                         {deal.title}
                       </p>
@@ -306,12 +307,12 @@ export const DealsList: React.FC<DealsListProps> = ({
                       )}
                     </td>
                     <td
-                      className={`border border-slate-200 px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
+                      className={`${TABLE_CELL_CLASS_LG} text-sm text-slate-900 ${deletedTextClass}`}
                     >
                       <span className={deletedTextClass}>{deal.clientName || '—'}</span>
                     </td>
                     <td
-                      className={`border border-slate-200 px-6 py-3 text-sm font-semibold text-center ${deletedTextClass}`}
+                      className={`${TABLE_CELL_CLASS_LG} text-sm font-semibold text-center ${deletedTextClass}`}
                     >
                       {deal.expectedClose ? (
                         <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
@@ -322,7 +323,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                       )}
                     </td>
                     <td
-                      className={`border border-slate-200 px-6 py-3 text-sm text-right ${deletedTextClass}`}
+                      className={`${TABLE_CELL_CLASS_LG} text-sm text-right ${deletedTextClass}`}
                     >
                       {deal.nextContactDate ? (
                         <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
@@ -335,7 +336,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                       )}
                     </td>
                     <td
-                      className={`border border-slate-200 px-6 py-3 text-sm text-slate-900 ${deletedTextClass}`}
+                      className={`${TABLE_CELL_CLASS_LG} text-sm text-slate-900 ${deletedTextClass}`}
                     >
                       <ColoredLabel
                         value={deal.executorName}

@@ -1,6 +1,7 @@
 import type { Task } from '../../types';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
+import { TABLE_CELL_CLASS_SM, TABLE_THEAD_CLASS } from '../common/tableStyles';
 import { formatDate, formatDateTime } from '../views/dealsView/helpers';
 import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
 
@@ -90,11 +91,11 @@ export function TaskTable({
     <div className="app-panel shadow-none overflow-hidden">
       <div className="overflow-x-auto bg-white">
           <table className="deals-table min-w-full table-fixed border-collapse text-left text-sm">
-            <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
-              <tr>
-                <TableHeadCell padding="sm" className={taskColumnClassName}>
-                  Задача
-                </TableHeadCell>
+          <thead className={TABLE_THEAD_CLASS}>
+            <tr>
+              <TableHeadCell padding="sm" className={taskColumnClassName}>
+                Задача
+              </TableHeadCell>
                 {showClientColumn && (
                   <TableHeadCell padding="sm" className="w-[160px]">
                     Клиент
@@ -174,17 +175,17 @@ export function TaskTable({
                   </td>
 
                   {showClientColumn && (
-                    <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-900">
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-900`}>
                       {task.clientName || '-'}
                     </td>
                   )}
 
                   {showDealColumn && (
-                    <td className="border border-slate-200 px-3 py-2 align-top text-xs">
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs`}>
                           {task.dealId ? (
-                            <button
-                              type="button"
-                              className="link-action text-left"
+                             <button
+                               type="button"
+                               className="link-action text-left"
                               onClick={() => handleDealClick(task)}
                             >
                               {task.dealTitle || task.dealId}
@@ -195,34 +196,34 @@ export function TaskTable({
                     </td>
                   )}
 
-                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
                     {STATUS_LABELS[task.status] || task.status}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
                     {PRIORITY_LABELS[task.priority] || task.priority}
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700`}>
                     <ColoredLabel
                       value={task.assigneeName || task.assignee || undefined}
                       fallback="-"
                       className="truncate text-xs font-semibold text-slate-600"
                     />
                   </td>
-                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
                     {task.dueAt ? formatDate(task.dueAt) : '-'}
                   </td>
 
                   {showReminderColumn && (
-                    <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
                       {task.remindAt ? formatDate(task.remindAt) : '-'}
                     </td>
                   )}
 
-                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700 whitespace-nowrap">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
                     {formatDateTime(task.createdAt)}
                   </td>
 
-                  <td className="border border-slate-200 px-3 py-2 align-top text-xs text-slate-700">
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700`}>
                     {task.completedAt ? formatDateTime(task.completedAt) : '-'}
                     {isDone && (
                       <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
@@ -242,7 +243,7 @@ export function TaskTable({
                   </td>
 
                   {hasActions && (
-                    <td className="border border-slate-200 px-3 py-2 align-top text-right text-xs">
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top text-right text-xs`}>
                       <div className="inline-flex items-center justify-end gap-2">
                         {onMarkTaskDone && task.status !== 'done' && (
                           <button
