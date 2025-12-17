@@ -130,7 +130,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
   }
 
   return (
-    <div className="space-y-4">
+    <section className="app-panel p-6 shadow-none space-y-4">
       <FilterBar
         onFilterChange={setFilters}
         searchPlaceholder="Поиск задач, сделок или описаний..."
@@ -168,7 +168,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
       {filteredTasks.length ? (
         <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
       ) : (
-        <section className="app-panel p-6 shadow-none space-y-4">
+        <div className="space-y-4">
           <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
             {emptyStateMessage}
           </div>
@@ -183,8 +183,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
               </button>
             </div>
           )}
-        </section>
+        </div>
       )}
-    </div>
+    </section>
   );
 };

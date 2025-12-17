@@ -89,6 +89,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     clients: clients.length,
   };
 
+  const emptyClientsMessage = useMemo(() => {
+    const searchTerm = (filters.search ?? '').trim();
+    if (!clients.length) {
+      return 'Клиентов пока нет.';
+    }
+    if (searchTerm) {
+      return 'Поиск не дал результатов.';
+    }
+    return 'Клиентов не найдено.';
+  }, [clients.length, filters.search]);
+
   const newClientsCount = useMemo(() => {
     const threshold = Date.now() - 30 * 24 * 60 * 60 * 1000;
     return clients.filter((client) => {
@@ -243,7 +254,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   colSpan={7}
                   className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                 >
-                  Клиентов пока нет
+                  <div className="app-panel-muted inline-flex px-4 py-3 text-sm text-slate-600">
+                    {emptyClientsMessage}
+                  </div>
                 </td>
               </tr>
             )}

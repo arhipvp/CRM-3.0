@@ -97,7 +97,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         <FileUploadManager onUpload={handleUpload} disabled={disabled} />
 
         {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         )}
@@ -122,7 +122,9 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
 
         <div className="p-6 space-y-4">
           {sorted.length === 0 && !isLoading && (
-            <p className="text-sm text-slate-500">Пока нет загруженных документов.</p>
+            <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
+              Пока нет загруженных документов.
+            </div>
           )}
           {sorted.map((doc) => (
             <div
