@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
+import { PanelMessage } from '../PanelMessage';
 import { FilterParams } from '../../api';
 
 type PaymentSortKey = 'scheduledDate' | 'actualDate' | 'amount';
@@ -161,9 +162,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
                     colSpan={5}
                     className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                   >
-                    <div className="app-panel-muted inline-flex px-4 py-3 text-sm text-slate-600">
-                      Платежей пока нет
-                    </div>
+                    <PanelMessage>Платежей пока нет</PanelMessage>
                   </td>
                 </tr>
               )}
