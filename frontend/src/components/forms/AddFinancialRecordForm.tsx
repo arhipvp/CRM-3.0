@@ -108,9 +108,7 @@ export function AddFinancialRecordForm({
         {indicatorLabel} <span className="font-bold">{recordTypeLabel}</span>
       </div>
       {error && (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </p>
+        <p className="app-alert app-alert-danger">{error}</p>
       )}
 
       {record && (

@@ -111,9 +111,7 @@ export function AddPaymentForm({
   return (
     <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
       {error && (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
-        </p>
+        <p className="app-alert app-alert-danger">{error}</p>
       )}
 
       {payment && <PaymentMetadata payment={payment} />}

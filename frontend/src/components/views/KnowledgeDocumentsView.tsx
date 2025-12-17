@@ -96,11 +96,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
 
         <FileUploadManager onUpload={handleUpload} disabled={disabled} />
 
-        {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {error}
-          </div>
-        )}
+        {error && <div className="app-alert app-alert-danger">{error}</div>}
       </section>
 
       <section className="app-panel shadow-none">

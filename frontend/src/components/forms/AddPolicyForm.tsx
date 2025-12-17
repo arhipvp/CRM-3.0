@@ -533,9 +533,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   return (
     <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-6">
       {(error || optionsError) && (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error || optionsError}
-        </p>
+        <p className="app-alert app-alert-danger">{error || optionsError}</p>
       )}
 
       <div className="space-y-2">
