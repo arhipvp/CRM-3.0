@@ -5,10 +5,14 @@ import { Pagination } from '../Pagination';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
 import { TableHeadCell } from '../common/TableHeadCell';
-import { TABLE_CELL_CLASS_LG, TABLE_THEAD_CLASS } from '../common/tableStyles';
-
-const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
+import {
+  TABLE_ACTIONS_CLASS_COL,
+  TABLE_CELL_CLASS_LG,
+  TABLE_ROW_CLASS,
+  TABLE_THEAD_CLASS,
+} from '../common/tableStyles';
+import { formatDateRu } from '../../utils/formatting';
+import { buildWhatsAppLink } from '../../utils/links';
 
 const PAGE_SIZE = 20;
 
@@ -165,18 +169,19 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           <tbody className="bg-white">
             {paginatedClients.map((client) => {
               const clientDeals = deals.filter((deal) => deal.clientId === client.id);
+              const whatsAppLink = buildWhatsAppLink(client.phone);
               return (
                 <tr
                   key={client.id}
-                  className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500"
+                  className={TABLE_ROW_CLASS}
                 >
                   <td className={TABLE_CELL_CLASS_LG}>
                     <p className="text-base font-semibold text-slate-900">{client.name}</p>
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    {client.phone ? (
+                    {client.phone && whatsAppLink ? (
                       <a
-                        href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                        href={whatsAppLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="link-action"
@@ -188,10 +193,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     )}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    {formatDate(client.birthDate)}
+                    {formatDateRu(client.birthDate)}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    {formatDate(client.createdAt)}
+                    {formatDateRu(client.createdAt)}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right font-semibold text-slate-900`}>
                     {clientDeals.length}
@@ -208,7 +213,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     {onClientEdit || onClientDelete || onClientMerge ? (
-                      <div className="flex flex-col items-end gap-1">
+                      <div className={TABLE_ACTIONS_CLASS_COL}>
                         {onClientEdit && (
                           <button
                             type="button"

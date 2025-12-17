@@ -9,8 +9,9 @@ import {
 import { FileUploadManager } from './FileUploadManager';
 import { Modal } from './Modal';
 import { TableHeadCell } from './common/TableHeadCell';
-import { TABLE_CELL_CLASS_MD, TABLE_THEAD_CLASS } from './common/tableStyles';
+import { TABLE_CELL_CLASS_MD, TABLE_ROW_CLASS, TABLE_THEAD_CLASS } from './common/tableStyles';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
+import { formatDateTimeRu } from '../utils/formatting';
 
 interface DriveFilesModalProps {
     isOpen: boolean;
@@ -32,9 +33,6 @@ const formatDriveFileSize = (bytes?: number | null) => {
     const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
 };
-
-const formatDriveDate = (value?: string | null) =>
-    value ? new Date(value).toLocaleString('ru-RU') : '—';
 
 const getDriveItemIcon = (isFolder: boolean) => (isFolder ? '📁' : '📄');
 
@@ -115,7 +113,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                                     </thead>
                             <tbody className="bg-white">
                                 {sortedFiles.map((file) => (
-                                    <tr key={file.id} className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500">
+                                    <tr key={file.id} className={TABLE_ROW_CLASS}>
                                         <td className={TABLE_CELL_CLASS_MD}>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">
@@ -142,7 +140,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                                             {formatDriveFileSize(file.size)}
                                         </td>
                                         <td className={`${TABLE_CELL_CLASS_MD} text-slate-600 whitespace-nowrap`}>
-                                            {formatDriveDate(file.modifiedAt || file.createdAt)}
+                                            {formatDateTimeRu(file.modifiedAt || file.createdAt)}
                                         </td>
                                     </tr>
                                 ))}

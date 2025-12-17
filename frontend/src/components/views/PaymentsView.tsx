@@ -3,7 +3,13 @@ import { Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
-import { TABLE_CELL_CLASS_LG, TABLE_THEAD_CLASS } from '../common/tableStyles';
+import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
+import {
+  TABLE_ACTIONS_CLASS_ROW,
+  TABLE_CELL_CLASS_LG,
+  TABLE_ROW_CLASS,
+  TABLE_THEAD_CLASS,
+} from '../common/tableStyles';
 import { FilterParams } from '../../api';
 
 type PaymentSortKey = 'scheduledDate' | 'actualDate' | 'amount';
@@ -33,9 +39,6 @@ const getPaymentSortValue = (payment: Payment, key: PaymentSortKey): number => {
       return payment.scheduledDate ? new Date(payment.scheduledDate).getTime() : 0;
   }
 };
-
-const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
 
 interface PaymentsViewProps {
   payments: Payment[];
@@ -116,36 +119,35 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
                 return (
                   <tr
                     key={payment.id}
-                    className="transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500"
+                    className={TABLE_ROW_CLASS}
                   >
                     <td className={TABLE_CELL_CLASS_LG}>
                       <p className="text-base font-semibold text-slate-900">{dealTitle}</p>
                       <p className="text-xs text-slate-500 mt-1">{clientName}</p>
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700 font-semibold`}>
-                      {Number(payment.amount).toLocaleString('ru-RU', {
-                        style: 'currency',
-                        currency: 'RUB',
-                      })}
+                      {formatCurrencyRu(payment.amount)}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      {formatDate(payment.scheduledDate)}
+                      {formatDateRu(payment.scheduledDate)}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      {formatDate(payment.actualDate)}
+                      {formatDateRu(payment.actualDate)}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
-                      {!payment.actualDate ? (
-                        <button
-                          type="button"
-                          onClick={() => onMarkPaid(payment.id)}
-                          className="btn btn-secondary btn-sm rounded-xl"
-                        >
-                          Отметить оплаченным
-                        </button>
-                      ) : (
-                        <span className="text-xs text-emerald-700 font-semibold">Оплачен</span>
-                      )}
+                      <div className={TABLE_ACTIONS_CLASS_ROW}>
+                        {!payment.actualDate ? (
+                          <button
+                            type="button"
+                            onClick={() => onMarkPaid(payment.id)}
+                            className="btn btn-secondary btn-sm rounded-xl"
+                          >
+                            Отметить оплаченным
+                          </button>
+                        ) : (
+                          <span className="text-xs text-emerald-700 font-semibold">Оплачен</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

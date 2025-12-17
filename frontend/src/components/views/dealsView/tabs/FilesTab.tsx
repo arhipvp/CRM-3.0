@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
+import { buildDriveFolderLink } from '../../../../utils/links';
 import {
   formatDriveDate,
   formatDriveFileSize,
@@ -61,9 +62,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   };
 
   const disableUpload = !selectedDeal.driveFolderId;
-  const driveFolderLink = selectedDeal.driveFolderId
-    ? `https://drive.google.com/drive/folders/${selectedDeal.driveFolderId}`
-    : null;
+  const driveFolderLink = buildDriveFolderLink(selectedDeal.driveFolderId);
 
   return (
     <section className="app-panel p-6 shadow-none space-y-5">

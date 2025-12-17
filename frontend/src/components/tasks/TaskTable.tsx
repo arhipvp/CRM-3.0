@@ -1,7 +1,12 @@
 import type { Task } from '../../types';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
-import { TABLE_CELL_CLASS_SM, TABLE_THEAD_CLASS } from '../common/tableStyles';
+import {
+  TABLE_ACTIONS_CLASS_ROW_SM,
+  TABLE_CELL_CLASS_SM,
+  TABLE_ROW_CLASS,
+  TABLE_THEAD_CLASS,
+} from '../common/tableStyles';
 import { formatDate, formatDateTime } from '../views/dealsView/helpers';
 import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
 
@@ -146,10 +151,7 @@ export function TaskTable({
                 <tr
                   key={task.id}
                   className={[
-                    'transition-colors',
-                    'even:bg-slate-50/40',
-                    'border-l-4 border-transparent',
-                    'hover:bg-slate-50/80 hover:border-sky-500',
+                    TABLE_ROW_CLASS,
                     task.deletedAt ? 'bg-rose-50/30 border-rose-300' : '',
                   ]
                     .filter(Boolean)
@@ -244,7 +246,7 @@ export function TaskTable({
 
                   {hasActions && (
                     <td className={`${TABLE_CELL_CLASS_SM} align-top text-right text-xs`}>
-                      <div className="inline-flex items-center justify-end gap-2">
+                      <div className={TABLE_ACTIONS_CLASS_ROW_SM}>
                         {onMarkTaskDone && task.status !== 'done' && (
                           <button
                             type="button"

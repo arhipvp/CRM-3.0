@@ -1,24 +1,6 @@
 import { ColoredLabel } from '../../common/ColoredLabel';
 import type { Deal } from '../../../types';
-
-const getNormalizedPhoneDigits = (phone?: string) => {
-  if (!phone) {
-    return null;
-  }
-
-  const digitsOnly = phone.replace(/\D/g, '');
-  return digitsOnly || null;
-};
-
-const getWhatsAppLink = (phone?: string) => {
-  const digitsOnly = getNormalizedPhoneDigits(phone);
-  return digitsOnly ? `https://wa.me/${digitsOnly}` : null;
-};
-
-const getTelegramLink = (phone?: string) => {
-  const digitsOnly = getNormalizedPhoneDigits(phone);
-  return digitsOnly ? `https://t.me/+${digitsOnly}` : null;
-};
+import { buildTelegramLink, buildWhatsAppLink } from '../../../utils/links';
 
 interface DealHeaderProps {
   deal: Deal;
@@ -35,8 +17,8 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
   sellerDisplayName,
   executorDisplayName,
 }) => {
-  const whatsAppLink = getWhatsAppLink(clientPhone);
-  const telegramLink = getTelegramLink(clientPhone);
+  const whatsAppLink = buildWhatsAppLink(clientPhone);
+  const telegramLink = buildTelegramLink(clientPhone);
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

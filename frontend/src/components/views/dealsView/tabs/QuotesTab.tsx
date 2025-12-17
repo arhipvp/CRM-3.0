@@ -3,7 +3,12 @@ import type { Deal, Quote } from '../../../../types';
 import { formatCurrency, formatDate } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { TableHeadCell } from '../../../common/TableHeadCell';
-import { TABLE_CELL_CLASS_SM, TABLE_THEAD_CLASS } from '../../../common/tableStyles';
+import {
+  TABLE_ACTIONS_CLASS_ROW,
+  TABLE_CELL_CLASS_SM,
+  TABLE_ROW_CLASS_PLAIN,
+  TABLE_THEAD_CLASS,
+} from '../../../common/tableStyles';
 
 type QuoteSortKey =
   | 'insuranceType'
@@ -156,7 +161,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             </thead>
             <tbody className="bg-white">
               {sortedQuotes.map((quote) => (
-                <tr key={quote.id} className="even:bg-slate-50/40 transition-colors hover:bg-slate-50/80">
+                <tr key={quote.id} className={TABLE_ROW_CLASS_PLAIN}>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top font-semibold text-slate-900`}>
                     {quote.insuranceType}
                   </td>
@@ -191,21 +196,23 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 whitespace-nowrap`}>
                     {formatDate(quote.createdAt)}
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-right space-x-3 whitespace-nowrap`}>
-                    <button
-                      className="link-action text-xs"
-                      onClick={() => onRequestEditQuote(quote)}
-                      type="button"
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      className="link-danger text-xs"
-                      onClick={() => onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(() => undefined)}
-                      type="button"
-                    >
-                      Удалить
-                    </button>
+                  <td className={`${TABLE_CELL_CLASS_SM} align-top whitespace-nowrap`}>
+                    <div className={TABLE_ACTIONS_CLASS_ROW}>
+                      <button
+                        className="link-action text-xs"
+                        onClick={() => onRequestEditQuote(quote)}
+                        type="button"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        className="link-danger text-xs"
+                        onClick={() => onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(() => undefined)}
+                        type="button"
+                      >
+                        Удалить
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
