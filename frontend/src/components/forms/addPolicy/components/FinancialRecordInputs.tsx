@@ -31,7 +31,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
           </span>
           <button
             type="button"
-            className="text-xs text-red-500 hover:underline"
+            className="link-danger text-xs"
             onClick={() => onRemoveRecord(paymentIndex, type, recordIndex)}
           >
             Удалить

@@ -38,7 +38,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       <button
         type="button"
         onClick={() => onRemovePayment(paymentIndex)}
-        className="text-xs text-red-500 hover:underline"
+        className="link-danger text-xs"
       >
         Удалить платёж
       </button>
@@ -89,7 +89,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
             <button
               type="button"
-              className="text-xs text-sky-600 hover:underline"
+              className="link-action text-xs"
               onClick={() => onAddRecord(paymentIndex, 'incomes')}
             >
               + Добавить доход
@@ -111,7 +111,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Расходы</h4>
             <button
               type="button"
-              className="text-xs text-sky-600 hover:underline"
+              className="link-action text-xs"
               onClick={() => onAddRecord(paymentIndex, 'expenses')}
             >
               + Добавить расход

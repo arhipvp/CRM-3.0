@@ -69,9 +69,9 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn btn-secondary btn-sm"
         >
-          ← Назад
+          Назад
         </button>
 
         <div className="flex items-center gap-1">
@@ -82,11 +82,8 @@ export const Pagination: React.FC<PaginationProps> = ({
               ) : (
                 <button
                   onClick={() => onPageChange(page as number)}
-                  className={`px-3 py-1 text-sm border rounded ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-slate-300 hover:bg-slate-50'
-                  }`}
+                  aria-current={currentPage === page ? 'page' : undefined}
+                  className={`btn btn-sm ${currentPage === page ? 'btn-primary' : 'btn-secondary'}`}
                 >
                   {page}
                 </button>
@@ -98,9 +95,9 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 text-sm border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn btn-secondary btn-sm"
         >
-          Вперед →
+          Вперёд
         </button>
       </div>
     </div>

@@ -155,7 +155,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               type="checkbox"
               checked={dealShowClosed}
               onChange={(event) => onDealShowClosedChange(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              className="check"
             />
             <label htmlFor="dealShowClosed" className="text-xs font-semibold text-slate-500">
               Показать закрытые сделки
@@ -168,7 +168,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               type="checkbox"
               checked={dealShowDeleted}
               onChange={(event) => onDealShowDeletedChange(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              className="check"
             />
             <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
               Показать удалённые сделки

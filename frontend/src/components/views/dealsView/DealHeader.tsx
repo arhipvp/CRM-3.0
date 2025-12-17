@@ -68,7 +68,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="Написать клиенту в WhatsApp"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-white text-emerald-600 shadow-sm transition hover:bg-emerald-50"
+                className="icon-btn h-7 w-7 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -86,7 +86,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label="Написать клиенту в Telegram"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-600 shadow-sm transition hover:bg-sky-50"
+                className="icon-btn h-7 w-7 border-sky-200 text-sky-700 hover:bg-sky-50"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -132,4 +132,3 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
     </div>
   );
 };
-

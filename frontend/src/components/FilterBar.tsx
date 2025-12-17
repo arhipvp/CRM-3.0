@@ -121,7 +121,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     type="checkbox"
                     checked={customFilterValues[filter.key] === 'true'}
                     onChange={(event) => handleCheckboxFilterChange(filter.key, event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    className="check"
                   />
                   <span>{filter.label}</span>
                 </label>

@@ -225,7 +225,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                       href={file.webViewLink}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                      className="link-action text-xs"
                     >
                       Открыть
                     </a>

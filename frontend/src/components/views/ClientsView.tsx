@@ -184,7 +184,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sky-700 font-semibold hover:text-sky-900 hover:underline"
+                        className="link-action"
                       >
                         {client.phone}
                       </a>

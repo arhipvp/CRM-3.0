@@ -55,14 +55,14 @@ const renderRecordList = (
             <div className="flex gap-3 text-[11px] text-slate-500">
               <button
                 onClick={() => onEditRecord(record.id)}
-                className="font-semibold text-sky-600 hover:text-sky-800"
+                className="link-action text-[11px] font-semibold"
                 type="button"
               >
                 Изменить
               </button>
               <button
                 onClick={() => onDeleteRecord(record.id).catch(() => undefined)}
-                className="font-semibold text-rose-500 hover:text-rose-600"
+                className="link-danger text-[11px] font-semibold"
                 type="button"
               >
                 Удалить
@@ -129,7 +129,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             <button
               type="button"
               onClick={onAdd}
-              className="text-[11px] font-semibold text-sky-600 hover:text-sky-800"
+              className="link-action text-[11px] font-semibold"
             >
               Добавить
             </button>
@@ -174,7 +174,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           <button
             type="button"
             onClick={() => onEditPayment(payment.id)}
-            className="text-xs font-semibold text-sky-600 hover:text-sky-800 whitespace-nowrap"
+            className="link-action whitespace-nowrap text-xs font-semibold"
           >
             Изменить
           </button>

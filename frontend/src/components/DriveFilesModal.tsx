@@ -122,7 +122,7 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
                                                         href={file.webViewLink}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="font-semibold text-slate-900 hover:text-sky-700 hover:underline truncate max-w-[220px] sm:max-w-md block"
+                                                        className="link-action truncate max-w-[220px] sm:max-w-md block"
                                                         title={file.name}
                                                     >
                                                         {file.name}
