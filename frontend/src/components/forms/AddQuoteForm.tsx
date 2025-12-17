@@ -106,14 +106,10 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
-          {error}
-        </p>
+        <p className="app-alert app-alert-danger">{error}</p>
       )}
       {optionsError && (
-        <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
-          {optionsError}
-        </p>
+        <p className="app-alert app-alert-danger">{optionsError}</p>
       )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -232,4 +228,3 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
     </form>
   );
 };
-

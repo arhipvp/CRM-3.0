@@ -168,7 +168,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           <label className="flex items-center gap-2 text-xs text-slate-600">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border border-slate-300 text-sky-600 focus:ring-sky-500"
+              className="check"
               checked={showUnpaidOnly}
               onChange={(event) => setShowUnpaidOnly(event.target.checked)}
             />

@@ -58,9 +58,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <p className="rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">
-          {error}
-        </p>
+        <p className="app-alert app-alert-danger">{error}</p>
       )}
 
       <div>
@@ -123,4 +121,3 @@ export const ClientForm: React.FC<ClientFormProps> = ({
     </form>
   );
 };
-

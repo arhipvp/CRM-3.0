@@ -144,12 +144,11 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
                   <button
                     type="button"
                     onClick={() => handleDeleteClick(message)}
-                    className="opacity-0 transition group-hover:opacity-100"
+                    className="icon-btn h-7 w-7 text-rose-600 hover:bg-rose-50 opacity-0 transition group-hover:opacity-100"
                     aria-label="Удалить сообщение"
+                    title="Удалить сообщение"
                   >
-                    <span className="icon-btn h-7 w-7 text-rose-600 hover:bg-rose-50">
-                      ×
-                    </span>
+                    ×
                   </button>
                 )}
               </div>
@@ -159,11 +158,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
       </div>
 
       <div className="border-t border-slate-200 bg-white px-4 py-3">
-        {error && (
-          <p className="rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-700">
-            {error}
-          </p>
-        )}
+        {error && <p className="app-alert app-alert-danger">{error}</p>}
 
         <form onSubmit={handleSendMessage} className="space-y-2">
           <div className="text-xs text-slate-600">
@@ -220,4 +215,3 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
     </div>
   );
 };
-

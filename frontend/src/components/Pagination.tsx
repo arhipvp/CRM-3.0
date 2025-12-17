@@ -65,11 +65,13 @@ export const Pagination: React.FC<PaginationProps> = ({
         {Math.min(currentPage * pageSize, totalItems)} из {totalItems}
       </div>
 
-      <div className="flex items-center gap-2">
+      <nav className="flex items-center gap-2" aria-label="Пагинация">
         <button
+          type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="btn btn-secondary btn-sm"
+          aria-label="Предыдущая страница"
         >
           Назад
         </button>
@@ -78,11 +80,15 @@ export const Pagination: React.FC<PaginationProps> = ({
           {getPageNumbers().map((page, idx) => (
             <div key={idx}>
               {page === '...' ? (
-                <span className="px-2 py-1 text-slate-500">...</span>
+                <span className="px-2 py-1 text-slate-500" aria-hidden="true">
+                  ...
+                </span>
               ) : (
                 <button
+                  type="button"
                   onClick={() => onPageChange(page as number)}
                   aria-current={currentPage === page ? 'page' : undefined}
+                  aria-label={`Страница ${page}`}
                   className={`btn btn-sm ${currentPage === page ? 'btn-primary' : 'btn-secondary'}`}
                 >
                   {page}
@@ -93,13 +99,15 @@ export const Pagination: React.FC<PaginationProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className="btn btn-secondary btn-sm"
+          aria-label="Следующая страница"
         >
           Вперёд
         </button>
-      </div>
+      </nav>
     </div>
   );
 };

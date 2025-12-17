@@ -118,6 +118,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
     onAdd: () => void
   ) => {
     const isOpen = expandedSections[recordType];
+    const contentId = `payment-${payment.id}-${recordType}-records`;
     return (
       <section className="rounded-2xl border border-slate-200 bg-slate-50 shadow-inner">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -136,14 +137,16 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             <button
               type="button"
               onClick={() => toggleSection(recordType)}
-              className="text-[11px] font-semibold text-slate-500 hover:text-slate-700"
+              aria-controls={contentId}
+              aria-expanded={isOpen}
+              className="rounded-md text-[11px] font-semibold text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             >
               {isOpen ? 'Скрыть' : 'Показать'}
             </button>
           </div>
         </div>
         {isOpen && (
-          <div className="px-4 pb-4">
+          <div id={contentId} className="px-4 pb-4">
             <div className="space-y-2">
               {renderRecordList(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord)}
             </div>

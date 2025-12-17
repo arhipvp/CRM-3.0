@@ -209,7 +209,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                       checked={isSelected}
                       disabled={!canSelect}
                       onChange={() => toggleDriveFileSelection(file.id)}
-                      className="h-4 w-4 rounded-sm border border-slate-300 text-sky-600 focus:ring-0"
+                      className="check rounded-sm"
+                      aria-label={`Выбрать файл: ${file.name}`}
                     />
                     <span className="text-xl">{getDriveItemIcon(file.isFolder)}</span>
                     <div className="min-w-0">

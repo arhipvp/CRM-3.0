@@ -109,6 +109,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
         <button
           type="button"
           onClick={() => handleSort(sortKey)}
+          aria-label={`Сортировать по: ${label}. Текущий порядок: ${ariaSort === 'none' ? 'не задан' : ariaSort === 'ascending' ? 'по возрастанию' : 'по убыванию'}`}
           className="flex w-full items-center gap-2 text-left hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-md"
         >
           <span>{label}</span>
