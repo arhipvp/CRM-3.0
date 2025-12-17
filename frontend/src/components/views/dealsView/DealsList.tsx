@@ -119,6 +119,14 @@ export const DealsList: React.FC<DealsListProps> = ({
     return `${baseClass} text-slate-900`;
   };
 
+  const getAriaSort = (key: DealsSortKey): 'ascending' | 'descending' | 'none' => {
+    const direction = getSortDirection(key);
+    if (!direction) {
+      return 'none';
+    }
+    return direction === 'asc' ? 'ascending' : 'descending';
+  };
+
   return (
     <>
       <div className="px-4 py-4 bg-white">
@@ -210,7 +218,10 @@ export const DealsList: React.FC<DealsListProps> = ({
               <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[200px]">
                 Клиент
               </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-center text-slate-900 min-w-[180px]">
+              <th
+                className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-center text-slate-900 min-w-[180px]"
+                aria-sort={getAriaSort('deadline')}
+              >
                 <button
                   type="button"
                   onClick={() => toggleColumnSort('deadline')}
@@ -225,7 +236,10 @@ export const DealsList: React.FC<DealsListProps> = ({
                   </span>
                 </button>
               </th>
-              <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-right text-slate-900 min-w-[200px]">
+              <th
+                className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-right text-slate-900 min-w-[200px]"
+                aria-sort={getAriaSort('nextContact')}
+              >
                 <button
                   type="button"
                   onClick={() => toggleColumnSort('nextContact')}
@@ -258,6 +272,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   'even:bg-slate-50/40',
                   'border-l-4 border-transparent',
                   'hover:bg-slate-50/80 hover:border-sky-500',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                   isSelected ? 'bg-sky-50 border-sky-500 shadow-sm' : '',
                   isDeleted ? 'opacity-60' : '',
                 ]
@@ -267,6 +282,14 @@ export const DealsList: React.FC<DealsListProps> = ({
                   <tr
                     key={deal.id}
                     onClick={() => onSelectDeal(deal.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onSelectDeal(deal.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-selected={isSelected}
                     className={rowClassName}
                     ref={(element) => {
                       if (deal.id === selectedDeal?.id) {

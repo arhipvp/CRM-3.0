@@ -235,7 +235,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   };
 
   return (
-    <section className="app-panel p-6 shadow-none space-y-4">
+    <section aria-labelledby="policiesViewHeading" className="app-panel p-6 shadow-none space-y-4">
+      <h1 id="policiesViewHeading" className="sr-only">
+        Полисы
+      </h1>
       <div className="flex flex-col gap-3">
         <FilterBar
           onFilterChange={setFilters}
@@ -285,11 +288,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
       {filteredPolicies.length ? (
         <div className="space-y-4">
-          {paymentsByPolicy.map(({ policy, payments }) => (
-            <section
-              key={policy.id}
-              className="app-panel shadow-none space-y-2"
-            >
+          {paymentsByPolicy.map(({ policy, payments }) => {
+            const paymentsPanelId = `policy-${policy.id}-payments`;
+            const isPaymentsExpanded = paymentsExpanded[policy.id] ?? false;
+
+            return (
+              <section key={policy.id} className="app-panel shadow-none space-y-2">
               <div className="px-5 py-4 text-sm text-slate-500 space-y-3">
                 <div className="grid gap-4 sm:grid-cols-[1.1fr_0.9fr_0.8fr]">
                   <div>
@@ -378,9 +382,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           [policy.id]: !prev[policy.id],
                         }))
                       }
+                      aria-expanded={isPaymentsExpanded}
+                      aria-controls={paymentsPanelId}
                       className="btn btn-secondary btn-sm rounded-xl"
                     >
-                      {(paymentsExpanded[policy.id] ?? false) ? 'Скрыть' : 'Показать'}
+                      {isPaymentsExpanded ? 'Скрыть' : 'Показать'}
                     </button>
                   )}
                 </div>
@@ -388,26 +394,33 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   <div className="mt-2 app-panel-muted px-4 py-3 text-sm text-slate-600">
                     Платежей пока нет.
                   </div>
-                ) : paymentsExpanded[policy.id] ? (
-                  <div className="mt-2 space-y-2 text-sm text-slate-600">
-                    {payments.map((payment) => (
-                      <PaymentCard
-                        recordsExpandedOverride={recordsExpandedAll}
-                        key={payment.id}
-                        payment={payment}
-                        onRequestAddRecord={(paymentId, recordType) => {
-                          setCreatingFinancialRecordContext({ paymentId, recordType });
-                          setEditingFinancialRecordId(null);
-                        }}
-                        onEditFinancialRecord={(recordId) => setEditingFinancialRecordId(recordId)}
-                        onDeleteFinancialRecord={onDeleteFinancialRecord}
-                      />
-                    ))}
+                ) : (
+                  <div
+                    id={paymentsPanelId}
+                    className="mt-2 space-y-2 text-sm text-slate-600"
+                    hidden={!isPaymentsExpanded}
+                  >
+                    {isPaymentsExpanded
+                      ? payments.map((payment) => (
+                          <PaymentCard
+                            recordsExpandedOverride={recordsExpandedAll}
+                            key={payment.id}
+                            payment={payment}
+                            onRequestAddRecord={(paymentId, recordType) => {
+                              setCreatingFinancialRecordContext({ paymentId, recordType });
+                              setEditingFinancialRecordId(null);
+                            }}
+                            onEditFinancialRecord={(recordId) => setEditingFinancialRecordId(recordId)}
+                            onDeleteFinancialRecord={onDeleteFinancialRecord}
+                          />
+                        ))
+                      : null}
                   </div>
-                ) : null}
+                )}
               </div>
-            </section>
-          ))}
+              </section>
+            );
+          })}
         </div>
       ) : (
         <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">

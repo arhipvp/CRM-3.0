@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { FilterParams } from '../api';
 
 type CustomFilterDefinition =
@@ -19,9 +19,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   sortOptions = [],
   customFilters = [],
 }) => {
+  const idPrefix = useId();
   const [search, setSearch] = useState('');
   const [ordering, setOrdering] = useState('');
   const [customFilterValues, setCustomFilterValues] = useState<Record<string, string>>({});
+  const searchInputId = `${idPrefix}-search`;
+  const orderingSelectId = `${idPrefix}-ordering`;
 
   const applyFilters = (filters: Record<string, string>) => {
     const cleanFilters: FilterParams = {};
@@ -85,8 +88,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
           <div className="flex-1 min-w-48">
-            <label className="app-label mb-1 block">Поиск</label>
+            <label htmlFor={searchInputId} className="app-label mb-1 block">
+              Поиск
+            </label>
             <input
+              id={searchInputId}
               type="text"
               value={search}
               onChange={(event) => handleSearchChange(event.target.value)}
@@ -97,8 +103,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           {sortOptions.length > 0 && (
             <div className="w-full md:w-auto">
-              <label className="app-label mb-1 block">Сортировка</label>
+              <label htmlFor={orderingSelectId} className="app-label mb-1 block">
+                Сортировка
+              </label>
               <select
+                id={orderingSelectId}
                 value={ordering}
                 onChange={(event) => handleOrderingChange(event.target.value)}
                 className="field field-select w-full md:w-auto"
@@ -116,8 +125,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {customFilters.map((filter) => (
             <div key={filter.key} className="w-full md:w-auto">
               {filter.type === 'checkbox' ? (
+                <>
+                  {(() => {
+                    const checkboxId = `${idPrefix}-${filter.key}`;
+                    return (
                 <label className="app-panel-muted flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-700">
                   <input
+                    id={checkboxId}
                     type="checkbox"
                     checked={customFilterValues[filter.key] === 'true'}
                     onChange={(event) => handleCheckboxFilterChange(filter.key, event.target.checked)}
@@ -125,11 +139,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   />
                   <span>{filter.label}</span>
                 </label>
+                    );
+                  })()}
+                </>
               ) : (
                 <>
-                  <label className="app-label mb-1 block">{filter.label}</label>
+                  <label htmlFor={`${idPrefix}-${filter.key}`} className="app-label mb-1 block">
+                    {filter.label}
+                  </label>
                   {filter.type === 'text' ? (
                     <input
+                      id={`${idPrefix}-${filter.key}`}
                       type="text"
                       value={customFilterValues[filter.key] || ''}
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
@@ -138,6 +158,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     />
                   ) : (
                     <select
+                      id={`${idPrefix}-${filter.key}`}
                       value={customFilterValues[filter.key] || ''}
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
                       className="field field-select w-full md:w-auto"
@@ -157,6 +178,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           {hasActiveFilters && (
             <button
+              type="button"
               onClick={handleClearFilters}
               className="btn btn-secondary btn-sm rounded-xl whitespace-nowrap"
             >

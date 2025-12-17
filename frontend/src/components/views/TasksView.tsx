@@ -130,7 +130,10 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
   }
 
   return (
-    <section className="app-panel p-6 shadow-none space-y-4">
+    <section aria-labelledby="tasksViewHeading" className="app-panel p-6 shadow-none space-y-4">
+      <h1 id="tasksViewHeading" className="sr-only">
+        Задачи
+      </h1>
       <FilterBar
         onFilterChange={setFilters}
         searchPlaceholder="Поиск задач, сделок или описаний..."
@@ -169,7 +172,11 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
         <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
       ) : (
         <div className="space-y-4">
-          <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
+          <div
+            className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600"
+            role="status"
+            aria-live="polite"
+          >
             {emptyStateMessage}
           </div>
           {isTasksEmpty && (

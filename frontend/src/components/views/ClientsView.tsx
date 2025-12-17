@@ -113,6 +113,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
   return (
     <div className="space-y-6">
+      <h1 className="sr-only">Клиенты</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="app-panel p-5 shadow-none">
           <p className="text-sm text-slate-500">Клиентов</p>
@@ -141,7 +142,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
       <div className="app-panel shadow-none overflow-hidden">
         <div className="overflow-x-auto bg-white">
-        <table className="deals-table min-w-full border-collapse text-left text-sm">
+        <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Список клиентов">
           <thead className="bg-white/90 backdrop-blur border-b border-slate-200">
             <tr>
               <th className="border border-slate-200 px-6 py-3 text-[11px] uppercase tracking-[0.3em] text-slate-900 min-w-[220px]">
@@ -206,6 +207,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       type="button"
                       onClick={() => setFilesModalClient(client)}
                       className="btn btn-secondary btn-sm rounded-xl"
+                      aria-label={`Файлы клиента ${client.name}`}
                     >
                       Файлы
                     </button>
@@ -218,6 +220,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                             type="button"
                             onClick={() => onClientEdit(client)}
                             className="btn btn-quiet btn-sm rounded-xl"
+                            aria-label={`Редактировать клиента ${client.name}`}
                           >
                             Редактировать
                           </button>
@@ -227,6 +230,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                             type="button"
                             onClick={() => onClientDelete(client)}
                             className="btn btn-danger btn-sm rounded-xl"
+                            aria-label={`Удалить клиента ${client.name}`}
                           >
                             Удалить
                           </button>
@@ -236,6 +240,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                             type="button"
                             onClick={() => onClientMerge(client)}
                             className="btn btn-quiet btn-sm rounded-xl"
+                            aria-label={`Объединить клиента ${client.name}`}
                           >
                             Объединить
                           </button>
