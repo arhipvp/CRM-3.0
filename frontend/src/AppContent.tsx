@@ -12,6 +12,7 @@ import type { DealFormValues } from './components/forms/DealForm';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import { Modal } from './components/Modal';
 import { formatErrorMessage } from './utils/formatErrorMessage';
+import { markTaskAsDeleted } from './utils/tasks';
 import {
   createClient,
   updateClient,
@@ -1326,7 +1327,7 @@ const AppContent: React.FC = () => {
     async (taskId: string) => {
       try {
         await deleteTask(taskId);
-        updateAppData((prev) => ({ tasks: prev.tasks.filter((task) => task.id !== taskId) }));
+        updateAppData((prev) => ({ tasks: markTaskAsDeleted(prev.tasks, taskId) }));
       } catch (err) {
         setError(formatErrorMessage(err, 'Ошибка при удалении задачи'));
         throw err;

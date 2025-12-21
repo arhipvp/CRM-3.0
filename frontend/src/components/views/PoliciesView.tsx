@@ -10,6 +10,8 @@ import {
 } from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PolicyCard } from '../policies/PolicyCard';
+import { buildPolicyCardModel } from '../policies/policyCardModel';
+import { POLICY_TEXT } from '../policies/text';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
@@ -147,7 +149,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       : []),
     {
       key: 'unpaid',
-      label: 'Показывать только неоплаченные',
+      label: POLICY_TEXT.filters.unpaidOnly,
       type: 'checkbox' as const,
     },
   ];
@@ -235,6 +237,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 key={policy.id}
                 policy={policy}
                 payments={payments}
+                model={buildPolicyCardModel(policy, payments)}
                 recordsExpandedAll={recordsExpandedAll}
                 isPaymentsExpanded={isPaymentsExpanded}
                 onTogglePaymentsExpanded={() =>
@@ -248,7 +251,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     ? [
                         {
                           key: 'edit' as const,
-                          label: 'Редактировать',
+                          label: POLICY_TEXT.actions.edit,
                           onClick: () => onRequestEditPolicy(policy),
                           variant: 'secondary' as const,
                         },
@@ -256,7 +259,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     : []),
                   {
                     key: 'files' as const,
-                    label: 'Файлы',
+                    label: POLICY_TEXT.actions.files,
                     onClick: () => setFilesModalPolicy(policy),
                     variant: 'quiet' as const,
                   },

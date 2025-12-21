@@ -1,7 +1,9 @@
 import type { Payment, Policy } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
+import { POLICY_PLACEHOLDER } from './text';
 
-const fallback = (value?: string | null, empty = '—') => (value && value.trim() ? value : empty);
+const fallback = (value?: string | null, empty = POLICY_PLACEHOLDER) =>
+  value && value.trim() ? value : empty;
 
 const describeCount = (count: number, one: string, many: string) =>
   count === 1 ? `${count} ${one}` : `${count} ${many}`;
@@ -40,4 +42,3 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     paymentsCountLabel: describeCount(paymentsCount, 'запись', 'записей'),
   };
 };
-

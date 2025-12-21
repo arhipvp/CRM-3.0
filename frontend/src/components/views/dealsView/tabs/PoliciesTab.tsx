@@ -6,6 +6,8 @@ import {
 } from '../helpers';
 import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
 import { PolicyCard } from '../../../policies/PolicyCard';
+import { buildPolicyCardModel } from '../../../policies/policyCardModel';
+import { POLICY_TEXT } from '../../../policies/text';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -128,7 +130,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               checked={showUnpaidOnly}
               onChange={(event) => setShowUnpaidOnly(event.target.checked)}
             />
-            Только неоплаченные
+            {POLICY_TEXT.filters.unpaidOnly}
           </label>
         </div>
 
@@ -185,6 +187,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               key={policy.id}
               policy={policy}
               payments={payments}
+              model={buildPolicyCardModel(policy, payments)}
               recordsExpandedAll={recordsExpandedAll}
               isPaymentsExpanded={expanded}
               onTogglePaymentsExpanded={() =>
@@ -196,13 +199,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               actions={[
                 {
                   key: 'edit',
-                  label: 'Редактировать',
+                  label: POLICY_TEXT.actions.edit,
                   onClick: () => onRequestEditPolicy(policy),
                   variant: 'secondary',
                 },
                 {
                   key: 'delete',
-                  label: 'Удалить',
+                  label: POLICY_TEXT.actions.delete,
                   onClick: () => onDeletePolicy(policy.id).catch(() => undefined),
                   variant: 'danger',
                 },
