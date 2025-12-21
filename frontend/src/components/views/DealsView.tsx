@@ -25,6 +25,7 @@ interface DealsViewProps {
   onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
+  onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;
@@ -86,6 +87,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onCloseDeal,
   onReopenDeal,
   onUpdateDeal,
+  onPostponeDeal,
   onRequestAddQuote,
   onRequestEditQuote,
   onRequestAddPolicy,
@@ -174,6 +176,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onCloseDeal={onCloseDeal}
             onReopenDeal={onReopenDeal}
             onUpdateDeal={onUpdateDeal}
+            onPostponeDeal={onPostponeDeal}
             onMergeDeals={onMergeDeals}
             onRequestAddQuote={onRequestAddQuote}
             onRequestEditQuote={onRequestEditQuote}

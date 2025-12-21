@@ -73,6 +73,7 @@ interface DealDetailsPanelProps {
   onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
+  onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
   onMergeDeals: (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
@@ -126,6 +127,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onCloseDeal,
   onReopenDeal,
   onUpdateDeal,
+  onPostponeDeal,
   onMergeDeals,
   onRequestAddQuote,
   onRequestEditQuote,
@@ -301,6 +303,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     handleNextContactBlur,
     handleExpectedCloseBlur,
     handleQuickNextContactShift,
+    quickInlinePostponeShift,
     quickInlineShift,
     quickInlineDateOptions,
     updateDealDates,
@@ -309,6 +312,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     sortedDeals,
     onUpdateDeal,
     onSelectDeal,
+    onPostponeDeal,
   });
 
 
@@ -987,7 +991,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   onNextContactBlur={handleNextContactBlur}
                   onExpectedCloseChange={handleExpectedCloseChange}
                   onExpectedCloseBlur={handleExpectedCloseBlur}
-                  onQuickShift={quickInlineShift}
+                  onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
                 />
                 <div>
                   <DealTabs activeTab={activeTab} onChange={setActiveTab} />

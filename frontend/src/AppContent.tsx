@@ -759,6 +759,39 @@ const AppContent: React.FC = () => {
     },
     [addNotification, invalidateDealsCache, setError, setIsSyncing, setSelectedDealId, updateAppData]
   );
+
+  const handlePostponeDeal = useCallback(
+    async (dealId: string, data: DealFormValues) => {
+      invalidateDealsCache();
+      const previousSelection = selectedDealId;
+      setIsSyncing(true);
+      try {
+        await updateDeal(dealId, data);
+        const refreshed = await refreshDeals(dealFilters, { force: true });
+        setSelectedDealId(refreshed[0]?.id ?? null);
+      } catch (err) {
+        setSelectedDealId(previousSelection);
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Р?С?РёР+РєР° Р?Р?С?С'С?РїР° РїС?Рё Р?Р+Р?Р?Р?Р>РчР?РёРё С?Р?РчР>РєРё', 'error', 4000);
+        } else {
+          setError(formatErrorMessage(err, 'Р?С?РёР+РєР° РїС?Рё Р?Р+Р?Р?Р?Р>РчР?РёРё С?Р?РчР>РєРё'));
+        }
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [
+      addNotification,
+      dealFilters,
+      invalidateDealsCache,
+      refreshDeals,
+      selectedDealId,
+      setError,
+      setIsSyncing,
+      setSelectedDealId,
+    ]
+  );
   const handleDeleteDeal = useCallback(
     async (dealId: string) => {
       if (!confirm('Вы уверены, что хотите удалить эту сделку?')) {
@@ -1648,6 +1681,7 @@ const AppContent: React.FC = () => {
         onCloseDeal={handleCloseDeal}
         onReopenDeal={handleReopenDeal}
         onUpdateDeal={handleUpdateDeal}
+        onPostponeDeal={handlePostponeDeal}
         onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
         onRequestEditQuote={handleRequestEditQuote}
         onRequestAddPolicy={handleRequestAddPolicy}

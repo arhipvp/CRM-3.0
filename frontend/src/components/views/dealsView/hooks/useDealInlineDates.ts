@@ -23,6 +23,7 @@ interface UseDealInlineDatesParams {
   sortedDeals: Deal[];
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onSelectDeal: (dealId: string) => void;
+  onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
 }
 
 export const useDealInlineDates = ({
@@ -30,16 +31,18 @@ export const useDealInlineDates = ({
   sortedDeals,
   onUpdateDeal,
   onSelectDeal,
+  onPostponeDeal,
 }: UseDealInlineDatesParams) => {
   const [nextContactInputValue, setNextContactInputValue] = useState('');
   const [expectedCloseInputValue, setExpectedCloseInputValue] = useState('');
 
-  const updateDealDates = useCallback(
-    async (fields: { nextContactDate?: string | null; expectedClose?: string | null }) => {
+  const buildPayload = useCallback(
+    (fields: { nextContactDate?: string | null; expectedClose?: string | null }): DealFormValues | null => {
       if (!selectedDeal) {
-        return;
+        return null;
       }
-      const payload: DealFormValues = {
+
+      return {
         title: selectedDeal.title,
         description: selectedDeal.description || '',
         clientId: selectedDeal.clientId,
@@ -47,9 +50,19 @@ export const useDealInlineDates = ({
         nextContactDate: fields.nextContactDate ?? selectedDeal.nextContactDate ?? null,
         expectedClose: fields.expectedClose ?? selectedDeal.expectedClose ?? null,
       };
+    },
+    [selectedDeal]
+  );
+
+  const updateDealDates = useCallback(
+    async (fields: { nextContactDate?: string | null; expectedClose?: string | null }) => {
+      const payload = buildPayload(fields);
+      if (!payload || !selectedDeal) {
+        return;
+      }
       await onUpdateDeal(selectedDeal.id, payload);
     },
-    [onUpdateDeal, selectedDeal]
+    [buildPayload, onUpdateDeal, selectedDeal]
   );
 
   useEffect(() => {
@@ -125,6 +138,27 @@ export const useDealInlineDates = ({
     [handleInlineDateSave]
   );
 
+  const handleQuickNextContactPostpone = useCallback(
+    async (newValue: string) => {
+      if (!selectedDeal || !onPostponeDeal) {
+        return;
+      }
+
+      setNextContactInputValue(newValue);
+      const payload = buildPayload({ nextContactDate: newValue || null });
+      if (!payload) {
+        return;
+      }
+
+      try {
+        await onPostponeDeal(selectedDeal.id, payload);
+      } catch (err) {
+        console.error('Ошибка при быстром переносе следующего контакта:', err);
+      }
+    },
+    [buildPayload, onPostponeDeal, selectedDeal]
+  );
+
   const quickInlineShift = useCallback(
     (days: number) => {
       const today = new Date();
@@ -134,6 +168,17 @@ export const useDealInlineDates = ({
       handleQuickNextContactShift(formatDateForInput(targetDate));
     },
     [handleQuickNextContactShift]
+  );
+
+  const quickInlinePostponeShift = useCallback(
+    (days: number) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(today);
+      targetDate.setDate(targetDate.getDate() + days);
+      handleQuickNextContactPostpone(formatDateForInput(targetDate));
+    },
+    [handleQuickNextContactPostpone]
   );
 
   const quickInlineDateOptions = useMemo(
@@ -149,7 +194,9 @@ export const useDealInlineDates = ({
     handleNextContactBlur,
     handleExpectedCloseBlur,
     handleQuickNextContactShift,
+    handleQuickNextContactPostpone,
     quickInlineShift,
+    quickInlinePostponeShift,
     quickInlineDateOptions,
     updateDealDates,
   };
