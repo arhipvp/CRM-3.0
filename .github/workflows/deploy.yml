@@ -55,6 +55,10 @@ jobs:
 
           echo "Fetching ${BRANCH}..."
           git fetch origin "${BRANCH}" --quiet
+
+          # Ensure checkout cannot be blocked by local edits to tracked files
+          # (untracked files like .env.production must remain untouched).
+          git reset --hard --quiet
           git checkout "${COMMIT_SHA}"
 
           echo "Building and restarting stack"
