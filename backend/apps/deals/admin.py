@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from apps.common.admin import ShowDeletedFilter, SoftDeleteImportExportAdmin
+from apps.common.admin_widgets import SafeAdminFileWidget
 from apps.documents.models import Document
 from apps.finances.models import Payment
 from apps.notes.models import Note
@@ -8,6 +9,7 @@ from apps.tasks.models import Task
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -110,6 +112,7 @@ class DocumentInline(admin.TabularInline):
     extra = 1
     fields = ("doc_type", "file", "owner")
     readonly_fields = ("created_at",)
+    formfield_overrides = {models.FileField: {"widget": SafeAdminFileWidget}}
 
 
 class NoteInline(admin.TabularInline):
