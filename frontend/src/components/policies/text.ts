@@ -17,6 +17,8 @@ export const POLICY_TEXT = {
     edit: 'Редактировать',
     files: 'Файлы',
     delete: 'Удалить',
+    openDeal: 'Открыть сделку',
+    openClient: 'Открыть клиента',
     addPayment: '+ Добавить платёж',
     show: 'Показать',
     hide: 'Скрыть',
@@ -28,4 +30,3 @@ export const POLICY_TEXT = {
     unpaidOnly: 'Показывать только неоплаченные',
   },
 } as const;
-

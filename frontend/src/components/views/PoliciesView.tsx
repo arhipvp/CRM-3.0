@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Policy, Payment } from '../../types';
+import { useNavigate } from 'react-router-dom';
+import { Client, Payment, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
@@ -12,6 +13,7 @@ import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PolicyCard } from '../policies/PolicyCard';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
+import { buildPolicyNavigationActions } from '../policies/policyCardActions';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
@@ -38,6 +40,9 @@ const normalizeStatusLabel = (value: string) =>
 interface PoliciesViewProps {
   policies: Policy[];
   payments: Payment[];
+  clients?: Client[];
+  onDealSelect?: (dealId: string) => void;
+  onClientEdit?: (client: Client) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
   onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
@@ -47,11 +52,15 @@ interface PoliciesViewProps {
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policies,
   payments,
+  clients,
+  onDealSelect,
+  onClientEdit,
   onRequestEditPolicy,
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
 }) => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
   const {
@@ -174,6 +183,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     closeFinancialRecordModal,
   } = useFinancialRecordModal(allFinancialRecords);
 
+  const handleOpenDeal = (dealId: string) => {
+    onDealSelect?.(dealId);
+    navigate('/deals');
+  };
+
+  const handleOpenClient = (client: Client) => {
+    onClientEdit?.(client);
+    navigate('/clients');
+  };
+
   return (
     <section aria-labelledby="policiesViewHeading" className="app-panel p-6 shadow-none space-y-4">
       <h1 id="policiesViewHeading" className="sr-only">
@@ -231,13 +250,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         <div className="space-y-4">
           {paymentsByPolicy.map(({ policy, payments }) => {
             const isPaymentsExpanded = paymentsExpanded[policy.id] ?? false;
+            const model = buildPolicyCardModel(policy, payments);
 
             return (
               <PolicyCard
                 key={policy.id}
                 policy={policy}
                 payments={payments}
-                model={buildPolicyCardModel(policy, payments)}
+                model={model}
                 recordsExpandedAll={recordsExpandedAll}
                 isPaymentsExpanded={isPaymentsExpanded}
                 onTogglePaymentsExpanded={() =>
@@ -263,6 +283,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     onClick: () => setFilesModalPolicy(policy),
                     variant: 'quiet' as const,
                   },
+                  ...buildPolicyNavigationActions({
+                    model,
+                    onOpenDeal: onDealSelect ? handleOpenDeal : undefined,
+                    clients,
+                    onOpenClient: onClientEdit ? handleOpenClient : undefined,
+                  }),
                 ]}
                 onRequestAddRecord={(paymentId, recordType) => {
                   openCreateFinancialRecord(paymentId, recordType);

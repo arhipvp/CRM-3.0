@@ -22,6 +22,8 @@ export interface PolicyCardModel {
   vin: string;
   paymentsCount: number;
   paymentsCountLabel: string;
+  dealId: string;
+  clientId: string | null;
 }
 
 export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): PolicyCardModel => {
@@ -40,5 +42,7 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     vin: fallback(policy.vin),
     paymentsCount,
     paymentsCountLabel: describeCount(paymentsCount, 'запись', 'записей'),
+    dealId: policy.dealId,
+    clientId: policy.insuredClientId ?? policy.clientId ?? null,
   };
 };

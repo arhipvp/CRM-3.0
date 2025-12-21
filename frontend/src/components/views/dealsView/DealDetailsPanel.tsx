@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   ActivityLog,
@@ -56,6 +57,7 @@ import { usePaymentModal } from '../../../hooks/usePaymentModal';
 interface DealDetailsPanelProps {
   deals: Deal[];
   clients: Client[];
+  onClientEdit?: (client: Client) => void;
   policies: Policy[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
@@ -108,6 +110,7 @@ interface DealDetailsPanelProps {
 export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   deals,
   clients,
+  onClientEdit,
   policies,
   payments,
   financialRecords,
@@ -149,6 +152,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onDeleteDeal,
   onRestoreDeal,
 }) => {
+  const navigate = useNavigate();
   const sellerDisplayName = sellerUser
     ? getUserDisplayName(sellerUser)
     : selectedDeal?.sellerName || '—';
@@ -239,6 +243,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     fixedPolicyId: paymentFixedPolicyId,
     closePaymentModal,
   } = usePaymentModal(payments);
+
+  const handleOpenClient = useCallback(
+    (client: Client) => {
+      onClientEdit?.(client);
+      navigate('/clients');
+    },
+    [navigate, onClientEdit]
+  );
 
   const [policySortKey] = useState<PolicySortKey>('startDate');
 
@@ -783,6 +795,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         onRequestEditPolicy={onRequestEditPolicy}
 
         relatedPayments={relatedPayments}
+
+        clients={clients}
+
+        onOpenClient={handleOpenClient}
 
         setEditingPaymentId={setEditingPaymentId}
 

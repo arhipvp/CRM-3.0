@@ -57,6 +57,22 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   onRequestAddPayment,
   actions = [],
 }) => {
+  if (import.meta.env.DEV && actions.length > 1) {
+    const counts = new Map<string, number>();
+    actions.forEach((action) => {
+      counts.set(action.key, (counts.get(action.key) ?? 0) + 1);
+    });
+    const duplicates = Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([key]) => key);
+    if (duplicates.length > 0) {
+      console.warn('[PolicyCard] duplicate action keys', {
+        policyId: policy.id,
+        duplicates,
+      });
+    }
+  }
+
   const paymentsPanelId = `policy-${policy.id}-payments`;
 
   return (

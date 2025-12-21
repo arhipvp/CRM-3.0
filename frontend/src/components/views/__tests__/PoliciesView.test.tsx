@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type { Payment, Policy } from '../../../types';
 import { PoliciesView } from '../PoliciesView';
 import { vi } from 'vitest';
@@ -89,11 +90,13 @@ describe('PoliciesView', () => {
     ];
 
     render(
-      <PoliciesView
-        policies={policies}
-        payments={payments}
-        {...defaultProps}
-      />
+      <MemoryRouter>
+        <PoliciesView
+          policies={policies}
+          payments={payments}
+          {...defaultProps}
+        />
+      </MemoryRouter>
     );
 
     expect(screen.getByText('POL-ONE')).toBeInTheDocument();
@@ -113,11 +116,13 @@ describe('PoliciesView', () => {
     ];
 
     render(
-      <PoliciesView
-        policies={policies}
-        payments={payments}
-        {...defaultProps}
-      />
+      <MemoryRouter>
+        <PoliciesView
+          policies={policies}
+          payments={payments}
+          {...defaultProps}
+        />
+      </MemoryRouter>
     );
 
     fireEvent.click(screen.getByText('Показать'));

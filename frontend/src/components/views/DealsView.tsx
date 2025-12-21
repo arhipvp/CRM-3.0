@@ -13,6 +13,7 @@ import { useSelectedDeal } from '../../hooks/useSelectedDeal';
 interface DealsViewProps {
   deals: Deal[];
   clients: Client[];
+  onClientEdit?: (client: Client) => void;
   policies: Policy[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
@@ -73,6 +74,7 @@ interface DealsViewProps {
 export const DealsView: React.FC<DealsViewProps> = ({
   deals,
   clients,
+  onClientEdit,
   policies,
   payments,
   financialRecords,
@@ -156,6 +158,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <DealDetailsPanel
             deals={deals}
             clients={clients}
+            onClientEdit={onClientEdit}
             policies={policies}
             payments={payments}
             financialRecords={financialRecords}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Deal, FinancialRecordCreationContext, Payment, Policy } from '../../../../types';
+import type { Client, Deal, FinancialRecordCreationContext, Payment, Policy } from '../../../../types';
 import {
   PolicySortKey,
   policyHasUnpaidActivity,
@@ -7,6 +7,7 @@ import {
 import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
 import { PolicyCard } from '../../../policies/PolicyCard';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
+import { buildPolicyNavigationActions } from '../../../policies/policyCardActions';
 import { POLICY_TEXT } from '../../../policies/text';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
@@ -24,6 +25,8 @@ interface PoliciesTabProps {
   selectedDeal: Deal | null;
   sortedPolicies: Policy[];
   relatedPayments: Payment[];
+  clients: Client[];
+  onOpenClient: (client: Client) => void;
   policySortKey: PolicySortKey;
   policySortOrder: 'asc' | 'desc';
   setEditingPaymentId: (value: string | null) => void;
@@ -42,6 +45,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   selectedDeal,
   sortedPolicies,
   relatedPayments,
+  clients,
+  onOpenClient,
   policySortKey,
   policySortOrder,
   setEditingPaymentId,
@@ -181,13 +186,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
         {visiblePolicies.map((policy) => {
           const payments = paymentsByPolicyMap.get(policy.id) ?? [];
           const expanded = paymentsExpanded[policy.id] ?? false;
+          const model = buildPolicyCardModel(policy, payments);
 
           return (
             <PolicyCard
               key={policy.id}
               policy={policy}
               payments={payments}
-              model={buildPolicyCardModel(policy, payments)}
+              model={model}
               recordsExpandedAll={recordsExpandedAll}
               isPaymentsExpanded={expanded}
               onTogglePaymentsExpanded={() =>
@@ -209,6 +215,11 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   onClick: () => onDeletePolicy(policy.id).catch(() => undefined),
                   variant: 'danger',
                 },
+                ...buildPolicyNavigationActions({
+                  model,
+                  clients,
+                  onOpenClient,
+                }),
               ]}
               onRequestAddPayment={() => {
                 setEditingPaymentId('new');

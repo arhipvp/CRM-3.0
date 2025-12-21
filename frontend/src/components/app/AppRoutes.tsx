@@ -160,6 +160,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           <DealsView
             deals={deals}
             clients={clients}
+            onClientEdit={onClientEdit}
           policies={policies}
           payments={payments}
           financialRecords={financialRecords}
@@ -228,7 +229,10 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       element={
         <PoliciesView
           policies={policies}
+          clients={clients}
           payments={payments}
+          onDealSelect={onSelectDeal}
+          onClientEdit={onClientEdit}
           onRequestEditPolicy={onRequestEditPolicy}
           onAddFinancialRecord={onAddFinancialRecord}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
