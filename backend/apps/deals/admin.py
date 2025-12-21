@@ -103,7 +103,7 @@ class TaskInline(admin.TabularInline):
 class PolicyInline(admin.TabularInline):
     model = Policy
     extra = 1
-    fields = ("number", "insurance_type", "vin", "amount", "start_date", "end_date")
+    fields = ("number", "insurance_type", "vin", "start_date", "end_date", "status")
     readonly_fields = ("created_at",)
 
 
@@ -125,7 +125,7 @@ class NoteInline(admin.TabularInline):
 class PaymentInline(admin.TabularInline):
     model = Payment
     extra = 1
-    fields = ("amount", "status", "scheduled_date", "actual_date")
+    fields = ("policy", "amount", "scheduled_date", "actual_date", "description")
     readonly_fields = ("created_at",)
 
 
