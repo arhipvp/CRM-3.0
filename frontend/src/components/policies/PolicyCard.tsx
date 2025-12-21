@@ -18,6 +18,13 @@ export interface PolicyCardAction {
   title?: string;
 }
 
+export interface PolicyCardPrimaryAction {
+  label: string;
+  onClick: () => void;
+  ariaLabel?: string;
+  title?: string;
+}
+
 interface PolicyCardProps {
   policy: Policy;
   payments: Payment[];
@@ -31,6 +38,7 @@ interface PolicyCardProps {
   onEditPayment?: (paymentId: string) => void;
   onRequestAddPayment?: () => void;
   actions?: PolicyCardAction[];
+  primaryAction?: PolicyCardPrimaryAction;
 }
 
 const actionClassName = (variant: PolicyCardActionVariant | undefined) => {
@@ -56,6 +64,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   onEditPayment,
   onRequestAddPayment,
   actions = [],
+  primaryAction,
 }) => {
   if (import.meta.env.DEV && actions.length > 1) {
     const counts = new Map<string, number>();
@@ -79,12 +88,30 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
     <section className="rounded-2xl border border-slate-200 bg-white">
       <div className="p-4 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="app-label">{POLICY_TEXT.fields.number}</p>
+          <button
+            type="button"
+            onClick={primaryAction?.onClick}
+            disabled={!primaryAction}
+            aria-label={primaryAction?.ariaLabel ?? primaryAction?.label}
+            title={primaryAction?.title ?? primaryAction?.label}
+            className={[
+              'min-w-0',
+              'flex-1',
+              'text-left',
+              primaryAction ? 'cursor-pointer' : 'cursor-default',
+            ].join(' ')}
+          >
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold text-slate-900">
-              {model.number || POLICY_PLACEHOLDER}
-            </p>
+              <span className="app-label">{POLICY_TEXT.fields.number}:</span>
+              <span
+                className={[
+                  'text-sm font-semibold text-slate-900',
+                  primaryAction ? 'underline underline-offset-2 decoration-slate-300' : '',
+                ].join(' ')}
+              >
+                {model.number || POLICY_PLACEHOLDER}
+              </span>
+
               {model.statusRaw && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
                   {model.statusLabel}
@@ -94,24 +121,39 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
             <p className="mt-1 text-xs text-slate-500">
               Начало: {model.startDate} · Окончание: {model.endDate}
             </p>
-          </div>
+            {primaryAction && (
+              <p className="mt-2 text-xs font-semibold text-sky-700">
+                {primaryAction.label}
+              </p>
+            )}
+          </button>
 
-          {actions.length > 0 && (
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {actions.map((action) => (
-                <button
-                  key={action.key}
-                  type="button"
-                  className={actionClassName(action.variant)}
-                  onClick={action.onClick}
-                  aria-label={action.ariaLabel ?? action.label}
-                  title={action.title ?? action.label}
-                >
-                  {action.label}
-                </button>
-              ))}
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <div className="text-right">
+              <p className="app-label">{POLICY_TEXT.fields.sum}</p>
+              <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
             </div>
-          )}
+
+            {actions.length > 0 && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {actions.map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    className={actionClassName(action.variant)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      action.onClick();
+                    }}
+                    aria-label={action.ariaLabel ?? action.label}
+                    title={action.title ?? action.label}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -128,7 +170,6 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
             }
           />
           <LabelValuePair label={POLICY_TEXT.fields.channel} value={model.salesChannel} />
-          <LabelValuePair label={POLICY_TEXT.fields.sum} value={model.sum} />
         </div>
       </div>
 

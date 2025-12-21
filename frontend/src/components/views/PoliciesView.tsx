@@ -251,6 +251,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 policy={policy}
                 payments={payments}
                 model={model}
+                primaryAction={
+                  onDealSelect
+                    ? {
+                        label: POLICY_TEXT.actions.openDeal,
+                        onClick: () => handleOpenDeal(model.dealId),
+                      }
+                    : undefined
+                }
                 recordsExpandedAll={recordsExpandedAll}
                 isPaymentsExpanded={isPaymentsExpanded}
                 onTogglePaymentsExpanded={() =>
