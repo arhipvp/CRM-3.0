@@ -12,8 +12,8 @@ describe('markTaskAsDeleted', () => {
         description: '',
         priority: 'normal',
         status: 'todo',
+        checklist: [],
         createdAt: '2025-01-01T00:00:00.000Z',
-        updatedAt: '2025-01-01T00:00:00.000Z',
         deletedAt: null,
       },
       {
@@ -22,8 +22,8 @@ describe('markTaskAsDeleted', () => {
         description: '',
         priority: 'normal',
         status: 'todo',
+        checklist: [],
         createdAt: '2025-01-01T00:00:00.000Z',
-        updatedAt: '2025-01-01T00:00:00.000Z',
         deletedAt: null,
       },
     ];
@@ -44,8 +44,8 @@ describe('markTaskAsDeleted', () => {
         description: '',
         priority: 'normal',
         status: 'todo',
+        checklist: [],
         createdAt: '2025-01-01T00:00:00.000Z',
-        updatedAt: '2025-01-01T00:00:00.000Z',
         deletedAt: '2025-01-15T00:00:00.000Z',
       },
     ];
@@ -54,4 +54,3 @@ describe('markTaskAsDeleted', () => {
     expect(result[0].deletedAt).toBe('2025-01-15T00:00:00.000Z');
   });
 });
-
