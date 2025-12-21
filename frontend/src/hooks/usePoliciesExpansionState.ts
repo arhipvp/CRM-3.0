@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-const PAYMENTS_STORAGE_KEY = 'crm:policies:payments-expanded';
-const RECORDS_STORAGE_KEY = 'crm:policies:records-expanded';
+export const POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY = 'crm:policies:payments-expanded';
+export const POLICIES_RECORDS_EXPANDED_STORAGE_KEY = 'crm:policies:records-expanded';
 
 const parsePaymentsExpanded = (raw: string | null): Record<string, boolean> => {
   if (!raw) {
@@ -28,22 +28,30 @@ export const usePoliciesExpansionState = () => {
     if (typeof window === 'undefined') {
       return;
     }
-    setPaymentsExpanded(parsePaymentsExpanded(window.localStorage.getItem(PAYMENTS_STORAGE_KEY)));
-    setRecordsExpandedAll(window.localStorage.getItem(RECORDS_STORAGE_KEY) === 'true');
+    setPaymentsExpanded(
+      parsePaymentsExpanded(window.localStorage.getItem(POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY))
+    );
+    setRecordsExpandedAll(window.localStorage.getItem(POLICIES_RECORDS_EXPANDED_STORAGE_KEY) === 'true');
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
-    window.localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(paymentsExpanded));
+    window.localStorage.setItem(
+      POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY,
+      JSON.stringify(paymentsExpanded)
+    );
   }, [paymentsExpanded]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
-    window.localStorage.setItem(RECORDS_STORAGE_KEY, recordsExpandedAll ? 'true' : 'false');
+    window.localStorage.setItem(
+      POLICIES_RECORDS_EXPANDED_STORAGE_KEY,
+      recordsExpandedAll ? 'true' : 'false'
+    );
   }, [recordsExpandedAll]);
 
   return {
@@ -53,4 +61,3 @@ export const usePoliciesExpansionState = () => {
     setRecordsExpandedAll,
   };
 };
-

@@ -4,21 +4,15 @@ import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
 import {
+  getPolicySortValue,
   policyHasUnpaidActivity,
+  PolicySortKey,
 } from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PolicyCard } from '../policies/PolicyCard';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
-
-type PolicySortKey =
-  | 'startDate'
-  | 'endDate'
-  | 'number'
-  | 'clientName'
-  | 'salesChannel'
-  | 'status';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-startDate', label: 'Начало (убывание)' },
@@ -27,8 +21,8 @@ const POLICY_SORT_OPTIONS = [
   { value: 'endDate', label: 'Окончание (возрастание)' },
   { value: '-number', label: 'Номер (Z → A)' },
   { value: 'number', label: 'Номер (A → Z)' },
-  { value: '-clientName', label: 'Клиент (Z → A)' },
-  { value: 'clientName', label: 'Клиент (A → Z)' },
+  { value: '-client', label: 'Клиент (Z → A)' },
+  { value: 'client', label: 'Клиент (A → Z)' },
 ];
 
 const normalizeStatusLabel = (value: string) =>
@@ -38,24 +32,6 @@ const normalizeStatusLabel = (value: string) =>
     .map((part) => (part ? `${part[0].toUpperCase()}${part.slice(1)}` : ''))
     .join(' ')
     .trim();
-
-const getPolicySortValue = (policy: Policy, key: PolicySortKey): number | string => {
-  switch (key) {
-    case 'number':
-      return policy.number ?? '';
-    case 'clientName':
-      return policy.insuredClientName ?? policy.clientName ?? '';
-    case 'salesChannel':
-      return policy.salesChannel ?? '';
-    case 'status':
-      return policy.status ?? '';
-    case 'endDate':
-      return policy.endDate ? new Date(policy.endDate).getTime() : 0;
-    case 'startDate':
-    default:
-      return policy.startDate ? new Date(policy.startDate).getTime() : 0;
-  }
-};
 
 interface PoliciesViewProps {
   policies: Policy[];
@@ -205,6 +181,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         <FilterBar
           onFilterChange={setFilters}
           searchPlaceholder="Поиск по номеру, клиенту или компании..."
+          initialFilters={{ ordering: '-startDate' }}
           sortOptions={POLICY_SORT_OPTIONS}
           customFilters={customFilters}
         />
@@ -256,7 +233,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             return (
               <PolicyCard
                 key={policy.id}
-                variant="policiesView"
                 policy={policy}
                 payments={payments}
                 recordsExpandedAll={recordsExpandedAll}
@@ -267,10 +243,24 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     [policy.id]: !prev[policy.id],
                   }))
                 }
-                onRequestEditPolicy={
-                  onRequestEditPolicy ? () => onRequestEditPolicy(policy) : undefined
-                }
-                onRequestFiles={() => setFilesModalPolicy(policy)}
+                actions={[
+                  ...(onRequestEditPolicy
+                    ? [
+                        {
+                          key: 'edit' as const,
+                          label: 'Редактировать',
+                          onClick: () => onRequestEditPolicy(policy),
+                          variant: 'secondary' as const,
+                        },
+                      ]
+                    : []),
+                  {
+                    key: 'files' as const,
+                    label: 'Файлы',
+                    onClick: () => setFilesModalPolicy(policy),
+                    variant: 'quiet' as const,
+                  },
+                ]}
                 onRequestAddRecord={(paymentId, recordType) => {
                   openCreateFinancialRecord(paymentId, recordType);
                 }}

@@ -183,7 +183,6 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           return (
             <PolicyCard
               key={policy.id}
-              variant="dealPoliciesTab"
               policy={policy}
               payments={payments}
               recordsExpandedAll={recordsExpandedAll}
@@ -194,8 +193,20 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   [policy.id]: !expanded,
                 }))
               }
-              onRequestEditPolicy={() => onRequestEditPolicy(policy)}
-              onDeletePolicy={() => onDeletePolicy(policy.id).catch(() => undefined)}
+              actions={[
+                {
+                  key: 'edit',
+                  label: 'Редактировать',
+                  onClick: () => onRequestEditPolicy(policy),
+                  variant: 'secondary',
+                },
+                {
+                  key: 'delete',
+                  label: 'Удалить',
+                  onClick: () => onDeletePolicy(policy.id).catch(() => undefined),
+                  variant: 'danger',
+                },
+              ]}
               onRequestAddPayment={() => {
                 setEditingPaymentId('new');
                 setCreatingPaymentPolicyId(policy.id);

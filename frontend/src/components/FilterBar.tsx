@@ -8,6 +8,7 @@ type CustomFilterDefinition =
 
 export interface FilterBarProps {
   onFilterChange: (filters: FilterParams) => void;
+  initialFilters?: FilterParams;
   searchPlaceholder?: string;
   sortOptions?: Array<{ value: string; label: string }>;
   customFilters?: CustomFilterDefinition[];
@@ -15,13 +16,16 @@ export interface FilterBarProps {
 
 export const FilterBar: React.FC<FilterBarProps> = ({
   onFilterChange,
+  initialFilters,
   searchPlaceholder = 'Поиск...',
   sortOptions = [],
   customFilters = [],
 }) => {
   const idPrefix = useId();
-  const [search, setSearch] = useState('');
-  const [ordering, setOrdering] = useState('');
+  const initialSearch = (initialFilters?.search as string | undefined) ?? '';
+  const initialOrdering = (initialFilters?.ordering as string | undefined) ?? '';
+  const [search, setSearch] = useState(initialSearch);
+  const [ordering, setOrdering] = useState(initialOrdering);
   const [customFilterValues, setCustomFilterValues] = useState<Record<string, string>>({});
   const searchInputId = `${idPrefix}-search`;
   const orderingSelectId = `${idPrefix}-ordering`;
@@ -72,15 +76,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   const handleClearFilters = () => {
-    setSearch('');
-    setOrdering('');
+    setSearch(initialSearch);
+    setOrdering(initialOrdering);
     setCustomFilterValues({});
-    applyFilters({});
+    applyFilters({ search: initialSearch, ordering: initialOrdering });
   };
 
   const hasActiveFilters =
-    search ||
-    ordering ||
+    search !== initialSearch ||
+    ordering !== initialOrdering ||
     Object.values(customFilterValues).some((value) => value && value.length > 0);
 
   return (
