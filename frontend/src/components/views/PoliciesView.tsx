@@ -14,6 +14,7 @@ import { PolicyCard } from '../policies/PolicyCard';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
 import { buildPolicyNavigationActions } from '../policies/policyCardActions';
+import { normalizePolicyStatusLabel } from '../policies/policyStatus';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
@@ -28,14 +29,6 @@ const POLICY_SORT_OPTIONS = [
   { value: '-client', label: 'Клиент (Z → A)' },
   { value: 'client', label: 'Клиент (A → Z)' },
 ];
-
-const normalizeStatusLabel = (value: string) =>
-  value
-    .replace(/[_-]+/g, ' ')
-    .split(' ')
-    .map((part) => (part ? `${part[0].toUpperCase()}${part.slice(1)}` : ''))
-    .join(' ')
-    .trim();
 
 interface PoliciesViewProps {
   policies: Policy[];
@@ -74,7 +67,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     const unique = Array.from(new Set(policies.map((policy) => policy.status).filter(Boolean)));
     return unique.map((status) => ({
       value: status,
-      label: normalizeStatusLabel(status),
+      label: normalizePolicyStatusLabel(status),
     }));
   }, [policies]);
 

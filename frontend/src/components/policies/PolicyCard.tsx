@@ -81,9 +81,16 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="app-label">{POLICY_TEXT.fields.number}</p>
-            <p className="text-sm font-semibold text-slate-900">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-slate-900">
               {model.number || POLICY_PLACEHOLDER}
             </p>
+              {model.statusRaw && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                  {model.statusLabel}
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-xs text-slate-500">
               Начало: {model.startDate} · Окончание: {model.endDate}
             </p>
