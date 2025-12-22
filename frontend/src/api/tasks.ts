@@ -22,6 +22,32 @@ export async function fetchTasksWithPagination(
   };
 }
 
+export async function fetchTasksByDeal(
+  dealId: string,
+  options?: { showDeleted?: boolean; pageSize?: number }
+): Promise<Task[]> {
+  const pageSize = options?.pageSize ?? 200;
+  const showDeleted = options?.showDeleted ?? false;
+  const results: Task[] = [];
+  let page = 1;
+
+  while (true) {
+    const payload = await fetchTasksWithPagination({
+      deal: dealId,
+      show_deleted: showDeleted,
+      page,
+      page_size: pageSize,
+    });
+    results.push(...payload.results);
+    if (!payload.next) {
+      break;
+    }
+    page += 1;
+  }
+
+  return results;
+}
+
 export async function createTask(data: {
   dealId: string;
   title: string;

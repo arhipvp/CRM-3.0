@@ -32,6 +32,7 @@ import {
   updateDeal,
   mergeDeals,
   fetchDealHistory,
+  fetchTasksByDeal,
   createTask,
   updateTask,
   deleteTask,
@@ -51,7 +52,7 @@ import {
   deleteFinancialRecord,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Client, Deal, FinancialRecord, Payment, Policy, Quote, SalesChannel, User } from './types';
+import { Client, Deal, FinancialRecord, Payment, Policy, Quote, SalesChannel, Task, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
@@ -1368,6 +1369,30 @@ const AppContent: React.FC = () => {
     },
     [setError, updateAppData]
   );
+
+  const loadDealTasks = useCallback(
+    async (dealId: string) => {
+      try {
+        const dealTasks = await fetchTasksByDeal(dealId, { showDeleted: true });
+        updateAppData((prev) => ({
+          tasks: [
+            ...prev.tasks.filter((task) => task.dealId !== dealId),
+            ...dealTasks,
+          ],
+        }));
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
+      }
+    },
+    [setError, updateAppData]
+  );
+
+  useEffect(() => {
+    if (!selectedDealId || !isAuthenticated) {
+      return;
+    }
+    void loadDealTasks(selectedDealId);
+  }, [isAuthenticated, loadDealTasks, selectedDealId]);
 
   const handleAddPayment = useCallback(
     async (values: AddPaymentFormValues) => {
