@@ -25,7 +25,7 @@ class TaskFilterSet(django_filters.FilterSet):
         field_name="priority", choices=Task.PriorityChoices.choices, label="Priority"
     )
 
-    deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
+    deal = django_filters.UUIDFilter(field_name="deal__id", label="Deal ID")
 
     ordering = django_filters.OrderingFilter(
         fields=(

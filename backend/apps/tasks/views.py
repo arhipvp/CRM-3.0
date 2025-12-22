@@ -37,7 +37,11 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         if not is_admin:
             # Остальные видят только задачи для своих сделок (где user = seller или executor)
-            queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+            queryset = queryset.filter(
+                Q(deal__seller=user)
+                | Q(deal__executor=user)
+                | Q(deal__tasks__assignee=user)
+            ).distinct()
 
         return queryset
 
