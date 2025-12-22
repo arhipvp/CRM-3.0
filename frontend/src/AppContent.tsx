@@ -52,7 +52,7 @@ import {
   deleteFinancialRecord,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Client, Deal, FinancialRecord, Payment, Policy, Quote, SalesChannel, Task, User } from './types';
+import { Client, Deal, FinancialRecord, Payment, Policy, Quote, SalesChannel, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
