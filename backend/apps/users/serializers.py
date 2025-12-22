@@ -1,5 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -224,6 +226,40 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Пользователь неактивен")
 
         data["user"] = user
+        return data
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Проверяет текущий пароль и валидирует новый."""
+
+    current_password = serializers.CharField(max_length=128, write_only=True)
+    new_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate(self, data):
+        user = self.context.get("user")
+        if not user or not user.is_authenticated:
+            raise serializers.ValidationError("Требуется авторизация.")
+
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError(
+                {"current_password": "Текущий пароль неверный."}
+            )
+
+        if current_password == new_password:
+            raise serializers.ValidationError(
+                {"new_password": "Новый пароль должен отличаться от текущего."}
+            )
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                {"new_password": list(exc.messages)}
+            ) from exc
+
         return data
 
 

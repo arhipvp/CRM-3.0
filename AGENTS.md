@@ -38,3 +38,5 @@
 - Run `python manage.py check --deploy` before tagging releases and keep Docker images parameterized through compose env vars rather than hardcoding credentials.
 
 Отвечай на русском языке.
+
+запускай PowerShell без -windowstyle hidden

@@ -36,6 +36,10 @@ export interface CurrentUserResponse {
   roles?: string[];
 }
 
+export interface ChangePasswordResponse {
+  detail?: string;
+}
+
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE}/auth/login/`, {
     method: 'POST',
@@ -59,6 +63,19 @@ export async function login(username: string, password: string): Promise<LoginRe
 
 export function logout(): void {
   clearTokens();
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<ChangePasswordResponse> {
+  return request<ChangePasswordResponse>('/auth/password/', {
+    method: 'POST',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
 }
 
 export async function getCurrentUser(): Promise<CurrentUserResponse> {

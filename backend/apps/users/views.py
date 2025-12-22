@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import AuditLog, Permission, Role, RolePermission, UserRole
 from .serializers import (
     AuditLogSerializer,
+    ChangePasswordSerializer,
     LoginSerializer,
     PermissionSerializer,
     RefreshTokenSerializer,
@@ -379,6 +380,20 @@ def refresh_token_view(request):
         return Response(
             {"error": "Invalid refresh token"}, status=status.HTTP_400_BAD_REQUEST
         )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def change_password_view(request):
+    serializer = ChangePasswordSerializer(
+        data=request.data, context={"user": request.user}
+    )
+    serializer.is_valid(raise_exception=True)
+
+    request.user.set_password(serializer.validated_data["new_password"])
+    request.user.save(update_fields=["password"])
+
+    return Response({"detail": "Пароль обновлен."}, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])

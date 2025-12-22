@@ -17,7 +17,12 @@ Including another URLconf
 
 from apps.documents.views import DocumentRecognitionView
 from apps.finances.views import FinanceSummaryView
-from apps.users.views import current_user_view, login_view, refresh_token_view
+from apps.users.views import (
+    change_password_view,
+    current_user_view,
+    login_view,
+    refresh_token_view,
+)
 from config.admin import admin_site
 from config.api_router import api_urlpatterns
 from django.http import JsonResponse
@@ -28,6 +33,7 @@ urlpatterns = [
     path("health/", lambda request: JsonResponse({"status": "ok"})),
     path("api/v1/auth/login/", login_view, name="login"),
     path("api/v1/auth/refresh/", refresh_token_view, name="refresh-token"),
+    path("api/v1/auth/password/", change_password_view, name="change-password"),
     path("api/v1/auth/me/", current_user_view, name="current-user"),
     path(
         "api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"

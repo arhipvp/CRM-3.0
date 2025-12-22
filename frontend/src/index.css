@@ -67,6 +67,10 @@ body {
     @apply border-rose-200 bg-rose-50 text-rose-800;
   }
 
+  .app-alert-success {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-800;
+  }
+
   .field {
     @apply w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0;
   }
