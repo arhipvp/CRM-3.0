@@ -345,6 +345,12 @@ const AppContent: React.FC = () => {
           matchedInsuredClient?.name ??
           (recognizedInsuredName || undefined),
       };
+      const recognizedInsuranceType = normalizeStringValue(
+        policyObj.insurance_type ??
+          policyObj.insuranceType ??
+          parsed.insurance_type ??
+          parsed.insuranceType
+      );
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
       const resolvedFileIds = parsedFileIds?.length
@@ -358,7 +364,7 @@ const AppContent: React.FC = () => {
       setPolicyPrefill({
         values,
         insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
-        insuranceTypeName: '',
+        insuranceTypeName: recognizedInsuranceType,
       });
     },
     [salesChannels, clients]

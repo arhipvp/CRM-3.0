@@ -50,6 +50,17 @@ export const useDealDriveFiles = ({
     setTrashMessage(null);
   }, [selectedDeal?.id]);
 
+  useEffect(() => {
+    if (!selectedDriveFileIds.length) {
+      return;
+    }
+    const fileIds = new Set(driveFiles.map((file) => file.id));
+    setSelectedDriveFileIds((prev) => {
+      const filtered = prev.filter((id) => fileIds.has(id));
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [driveFiles, selectedDriveFileIds.length]);
+
   const loadDriveFiles = useCallback(async () => {
     const deal = selectedDeal;
     if (!deal) {
@@ -156,6 +167,7 @@ export const useDealDriveFiles = ({
         return;
       }
       setRecognitionResults(results);
+      setSelectedDriveFileIds([]);
       const parsedFileIds = results
         .filter((result) => result.status === 'parsed' && result.fileId)
         .map((result) => result.fileId!);
