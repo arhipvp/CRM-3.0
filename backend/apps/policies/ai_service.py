@@ -176,6 +176,9 @@ AMOUNT_PATTERN = r"^-?\d+(?:[.,]\d{1,2})?$"
 CODE_FENCE_RE = re.compile(
     r"```(?:json)?\s*(.*?)\s*```", flags=re.IGNORECASE | re.DOTALL
 )
+MISSING_VALUE_RE = re.compile(r'("[^"]+"\s*:\s*)(?=,|})')
+MISSING_QUOTE_VALUE_RE = re.compile(r'("[^"]+"\s*:\s*)"(?=\s*[,}])')
+TRAILING_COMMA_RE = re.compile(r",\s*([}\]])")
 
 POLICY_SCHEMA = {
     "type": "object",
@@ -366,6 +369,18 @@ def _extract_json_from_answer(answer: str) -> str:
     if extracted:
         return extracted
     return text
+
+
+def _repair_json_payload(payload: str) -> str:
+    """Попытаться поправить типовые ошибки в JSON (пустые значения, трейлинговые запятые)."""
+
+    if not isinstance(payload, str):
+        return ""
+    repaired = payload
+    repaired = MISSING_QUOTE_VALUE_RE.sub(r'\1""', repaired)
+    repaired = MISSING_VALUE_RE.sub(r'\1""', repaired)
+    repaired = TRAILING_COMMA_RE.sub(r"\1", repaired)
+    return repaired
 
 
 def _basic_policy_validate(data: dict) -> None:
@@ -655,7 +670,8 @@ def recognize_policy_interactive(
         messages.append({"role": "assistant", "content": answer})
         try:
             extracted = _extract_json_from_answer(answer)
-            data = json.loads(extracted, strict=False)
+            repaired = _repair_json_payload(extracted)
+            data = json.loads(repaired, strict=False)
             data = _normalize_policy_payload(data)
             if HAVE_JSONSCHEMA:
                 validate(instance=data, schema=POLICY_SCHEMA)
