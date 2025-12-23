@@ -37,6 +37,7 @@ export const useDealDriveFiles = ({
   const [recognitionMessage, setRecognitionMessage] = useState<string | null>(null);
   const [isTrashing, setIsTrashing] = useState(false);
   const [trashMessage, setTrashMessage] = useState<string | null>(null);
+  const [driveSortDirection, setDriveSortDirection] = useState<'asc' | 'desc'>('desc');
   const latestDealIdRef = useRef<string | null>(selectedDeal?.id ?? null);
 
   useEffect(() => {
@@ -252,12 +253,24 @@ export const useDealDriveFiles = ({
 
   const sortedDriveFiles = useMemo(() => {
     return [...driveFiles].sort((a, b) => {
+      const multiplier = driveSortDirection === 'asc' ? 1 : -1;
+      const rawDateA = new Date(a.modifiedAt ?? a.createdAt ?? 0).getTime();
+      const rawDateB = new Date(b.modifiedAt ?? b.createdAt ?? 0).getTime();
+      const dateA = Number.isNaN(rawDateA) ? 0 : rawDateA;
+      const dateB = Number.isNaN(rawDateB) ? 0 : rawDateB;
+      if (dateA !== dateB) {
+        return (dateA - dateB) * multiplier;
+      }
       if (a.isFolder !== b.isFolder) {
         return a.isFolder ? -1 : 1;
       }
       return a.name.localeCompare(b.name, 'ru-RU', { sensitivity: 'base' });
     });
-  }, [driveFiles]);
+  }, [driveFiles, driveSortDirection]);
+
+  const toggleDriveSortDirection = useCallback(() => {
+    setDriveSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  }, []);
 
   return {
     isDriveLoading,
@@ -270,9 +283,11 @@ export const useDealDriveFiles = ({
     isTrashing,
     trashMessage,
     sortedDriveFiles,
+    driveSortDirection,
     loadDriveFiles,
     handleDriveFileUpload,
     toggleDriveFileSelection,
+    toggleDriveSortDirection,
     handleRecognizePolicies,
     handleTrashSelectedFiles,
     resetDriveState,

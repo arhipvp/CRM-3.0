@@ -269,9 +269,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isTrashing,
     trashMessage,
     sortedDriveFiles,
+    driveSortDirection,
     loadDriveFiles,
     handleDriveFileUpload,
     toggleDriveFileSelection,
+    toggleDriveSortDirection,
     handleRecognizePolicies,
     handleTrashSelectedFiles,
     resetDriveState,
@@ -877,6 +879,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       driveError={driveError}
 
       sortedDriveFiles={sortedDriveFiles}
+
+      driveSortDirection={driveSortDirection}
+
+      toggleDriveSortDirection={toggleDriveSortDirection}
 
     />
 
