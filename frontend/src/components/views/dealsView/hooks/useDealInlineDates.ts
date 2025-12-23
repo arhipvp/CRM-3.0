@@ -67,11 +67,11 @@ export const useDealInlineDates = ({
 
   useEffect(() => {
     setNextContactInputValue(selectedDeal?.nextContactDate ?? '');
-  }, [selectedDeal?.nextContactDate]);
+  }, [selectedDeal?.id, selectedDeal?.nextContactDate]);
 
   useEffect(() => {
     setExpectedCloseInputValue(selectedDeal?.expectedClose ?? '');
-  }, [selectedDeal?.expectedClose]);
+  }, [selectedDeal?.id, selectedDeal?.expectedClose]);
 
   const handleInlineDateSave = useCallback(
     async (
