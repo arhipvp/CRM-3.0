@@ -83,6 +83,36 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   }
 
   const paymentsPanelId = `policy-${policy.id}-payments`;
+  const renderTruncatedText = (label: string, value: string) => (
+    <LabelValuePair
+      label={label}
+      className="min-w-0 flex-nowrap"
+      valueClassName="min-w-0 flex-1"
+      value={
+        <span className="block truncate" title={value}>
+          {value}
+        </span>
+      }
+    />
+  );
+
+  const renderTruncatedCompany = (label: string, value: string) => (
+    <LabelValuePair
+      label={label}
+      className="min-w-0 flex-nowrap"
+      valueClassName="min-w-0 flex-1"
+      value={
+        <span className="block min-w-0 truncate" title={value}>
+          <ColoredLabel
+            value={value}
+            fallback={POLICY_PLACEHOLDER}
+            showDot
+            className="max-w-full truncate font-semibold text-slate-900"
+          />
+        </span>
+      }
+    />
+  );
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white">
@@ -156,20 +186,10 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <LabelValuePair label={POLICY_TEXT.fields.client} value={model.client} />
-          <LabelValuePair
-            label={POLICY_TEXT.fields.company}
-            value={
-              <ColoredLabel
-                value={model.insuranceCompany}
-                fallback={POLICY_PLACEHOLDER}
-                showDot
-                className="font-semibold text-slate-900"
-              />
-            }
-          />
-          <LabelValuePair label={POLICY_TEXT.fields.channel} value={model.salesChannel} />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {renderTruncatedText(POLICY_TEXT.fields.client, model.client)}
+          {renderTruncatedCompany(POLICY_TEXT.fields.company, model.insuranceCompany)}
+          {renderTruncatedText(POLICY_TEXT.fields.channel, model.salesChannel)}
         </div>
       </div>
 
