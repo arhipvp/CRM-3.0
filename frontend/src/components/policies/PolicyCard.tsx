@@ -43,12 +43,12 @@ interface PolicyCardProps {
 
 const actionClassName = (variant: PolicyCardActionVariant | undefined) => {
   if (variant === 'danger') {
-    return 'btn btn-danger btn-sm rounded-xl';
+    return 'btn btn-danger btn-sm rounded-xl whitespace-nowrap';
   }
   if (variant === 'quiet') {
-    return 'btn btn-quiet btn-sm rounded-xl';
+    return 'btn btn-quiet btn-sm rounded-xl whitespace-nowrap';
   }
-  return 'btn btn-secondary btn-sm rounded-xl';
+  return 'btn btn-secondary btn-sm rounded-xl whitespace-nowrap';
 };
 
 export const PolicyCard: React.FC<PolicyCardProps> = ({
@@ -66,6 +66,8 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   actions = [],
   primaryAction,
 }) => {
+  const [isDetailsExpanded, setIsDetailsExpanded] = React.useState(false);
+
   if (import.meta.env.DEV && actions.length > 1) {
     const counts = new Map<string, number>();
     actions.forEach((action) => {
@@ -83,6 +85,13 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   }
 
   const paymentsPanelId = `policy-${policy.id}-payments`;
+  const hasAutoDetails = Boolean(
+    policy.insuranceType || policy.brand || policy.model || policy.vin
+  );
+  const shouldShowAutoFields = policy.isVehicle || isDetailsExpanded;
+  const paymentsToggleLabel = isPaymentsExpanded
+    ? POLICY_TEXT.actions.hide
+    : `${POLICY_TEXT.fields.payments} (${model.paymentsCount})`;
   const renderTruncatedText = (label: string, value: string) => (
     <LabelValuePair
       label={label}
@@ -165,7 +174,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
             </div>
 
             {actions.length > 0 && (
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="flex flex-nowrap items-center justify-end gap-2 overflow-x-auto">
                 {actions.map((action) => (
                   <button
                     key={action.key}
@@ -191,27 +200,43 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
           {renderTruncatedCompany(POLICY_TEXT.fields.company, model.insuranceCompany)}
           {renderTruncatedText(POLICY_TEXT.fields.channel, model.salesChannel)}
         </div>
-      </div>
 
-      <div className="border-t border-slate-200 bg-slate-50/70 p-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <LabelValuePair label={POLICY_TEXT.fields.type} value={model.insuranceType} />
-          <LabelValuePair label={POLICY_TEXT.fields.brand} value={model.brand} />
-          <LabelValuePair label={POLICY_TEXT.fields.model} value={model.model} />
-          <LabelValuePair label={POLICY_TEXT.fields.vin} value={model.vin} />
-        </div>
-      </div>
-
-      <div className="border-t border-slate-200 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <p className="app-label">{POLICY_TEXT.fields.payments}</p>
-            {model.paymentsCount > 0 && (
-              <span className="text-xs text-slate-500">{model.paymentsCountLabel}</span>
-            )}
+        {!policy.isVehicle && hasAutoDetails && (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setIsDetailsExpanded((prev) => !prev)}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            >
+              {isDetailsExpanded ? 'Скрыть детали' : 'Подробнее'}
+            </button>
           </div>
+        )}
+      </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+      {shouldShowAutoFields && (
+        <div className="border-t border-slate-200 bg-slate-50/70 p-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <LabelValuePair label={POLICY_TEXT.fields.type} value={model.insuranceType} />
+            <LabelValuePair label={POLICY_TEXT.fields.brand} value={model.brand} />
+            <LabelValuePair label={POLICY_TEXT.fields.model} value={model.model} />
+            <LabelValuePair label={POLICY_TEXT.fields.vin} value={model.vin} />
+          </div>
+        </div>
+      )}
+
+      {payments.length > 0 && !isPaymentsExpanded ? (
+        <div className="border-t border-slate-200 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onTogglePaymentsExpanded}
+              aria-expanded={false}
+              aria-controls={paymentsPanelId}
+              className="btn btn-primary btn-sm rounded-xl"
+            >
+              {paymentsToggleLabel}
+            </button>
             {onRequestAddPayment && (
               <button
                 type="button"
@@ -221,45 +246,66 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                 {POLICY_TEXT.actions.addPayment}
               </button>
             )}
-
-            {payments.length > 0 && (
-              <button
-                type="button"
-                onClick={onTogglePaymentsExpanded}
-                aria-expanded={isPaymentsExpanded}
-                aria-controls={paymentsPanelId}
-                className="btn btn-quiet btn-sm rounded-xl"
-              >
-                {isPaymentsExpanded ? POLICY_TEXT.actions.hide : POLICY_TEXT.actions.show}
-              </button>
-            )}
           </div>
         </div>
+      ) : (
+        <div className="border-t border-slate-200 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <p className="app-label">{POLICY_TEXT.fields.payments}</p>
+              {model.paymentsCount > 0 && (
+                <span className="text-xs text-slate-500">{model.paymentsCountLabel}</span>
+              )}
+            </div>
 
-        {payments.length === 0 ? (
-          <div className="mt-3">
-            <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              {POLICY_TEXT.messages.noPayments}
+            <div className="flex flex-wrap items-center gap-2">
+              {onRequestAddPayment && (
+                <button
+                  type="button"
+                  onClick={onRequestAddPayment}
+                  className="btn btn-secondary btn-sm rounded-xl"
+                >
+                  {POLICY_TEXT.actions.addPayment}
+                </button>
+              )}
+
+              {payments.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onTogglePaymentsExpanded}
+                  aria-expanded={isPaymentsExpanded}
+                  aria-controls={paymentsPanelId}
+                  className="btn btn-quiet btn-sm rounded-xl"
+                >
+                  {paymentsToggleLabel}
+                </button>
+              )}
             </div>
           </div>
-        ) : (
-          <div id={paymentsPanelId} className="mt-3 space-y-2" hidden={!isPaymentsExpanded}>
-            {isPaymentsExpanded
-              ? payments.map((payment) => (
-                  <PaymentCard
-                    key={payment.id}
-                    payment={payment}
-                    recordsExpandedOverride={recordsExpandedAll}
-                    onEditPayment={onEditPayment}
-                    onRequestAddRecord={onRequestAddRecord}
-                    onEditFinancialRecord={onEditFinancialRecord}
-                    onDeleteFinancialRecord={onDeleteFinancialRecord}
-                  />
-                ))
-              : null}
-          </div>
-        )}
-      </div>
+
+          {payments.length === 0 ? (
+            <div className="mt-3">
+              <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
+                {POLICY_TEXT.messages.noPayments}
+              </div>
+            </div>
+          ) : (
+            <div id={paymentsPanelId} className="mt-3 space-y-2">
+              {payments.map((payment) => (
+                <PaymentCard
+                  key={payment.id}
+                  payment={payment}
+                  recordsExpandedOverride={recordsExpandedAll}
+                  onEditPayment={onEditPayment}
+                  onRequestAddRecord={onRequestAddRecord}
+                  onEditFinancialRecord={onEditFinancialRecord}
+                  onDeleteFinancialRecord={onDeleteFinancialRecord}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 };

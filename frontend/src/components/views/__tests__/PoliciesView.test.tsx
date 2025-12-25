@@ -125,7 +125,7 @@ describe('PoliciesView', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Показать'));
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи (1)' }));
     const paymentCard = screen.getByTestId('payment-card-payment-1');
     expect(paymentCard.dataset.expanded).toBe('false');
 
