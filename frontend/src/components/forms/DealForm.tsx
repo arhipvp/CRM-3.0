@@ -380,9 +380,9 @@ export const DealForm: React.FC<DealFormProps> = ({
                 type="button"
                 onClick={() => onRequestEditClient?.(selectedClient)}
                 className="btn btn-quiet btn-sm rounded-xl"
-                aria-label={`Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РєР»РёРµРЅС‚Р° ${selectedClient.name}`}
+                aria-label={`Редактировать клиента ${selectedClient.name}`}
               >
-                Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ
+                Редактировать
               </button>
             )}
 
