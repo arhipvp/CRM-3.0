@@ -1048,6 +1048,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               expectedCloseRequired
               onQuickNextContactShift={handleQuickNextContactShift}
               onRequestAddClient={onRequestAddClient}
+              onRequestEditClient={onClientEdit}
               onSubmit={async (data) => {
                 await onUpdateDeal(selectedDeal.id, data);
                 setIsEditingDeal(false);
