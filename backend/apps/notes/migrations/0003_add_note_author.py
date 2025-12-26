@@ -1,0 +1,24 @@
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("notes", "0002_alter_note_options_remove_note_client_and_more"),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name="note",
+            name="author",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Автор",
+                null=True,
+                on_delete=models.SET_NULL,
+                related_name="notes",
+                to=settings.AUTH_USER_MODEL,
+            ),
+        ),
+    ]

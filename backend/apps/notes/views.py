@@ -47,37 +47,70 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        author_name = serializer.validated_data.get("author_name")
         deal = serializer.validated_data.get("deal")
-        self._ensure_user_is_deal_seller(deal)
-        if not author_name and user and user.is_authenticated:
+        self._ensure_user_can_create_note(deal)
+        author = None
+        author_name = serializer.validated_data.get("author_name")
+        if user and user.is_authenticated:
+            author = user
             full_name = (user.get_full_name() or "").strip()
             author_name = full_name or user.username
-        serializer.save(author_name=author_name or "")
+        serializer.save(author=author, author_name=author_name or "")
 
-    def _is_deal_seller(self, user, instance):
-        """Разрешить действия над заметкой только её продавцу."""
-        if not user or not user.is_authenticated or not instance:
+    def _is_deal_seller(self, user, deal):
+        if not user or not user.is_authenticated or not deal:
             return False
-        deal = getattr(instance, "deal", None)
         return bool(deal and deal.seller_id == user.id)
 
-    def _ensure_user_is_deal_seller(self, deal):
+    def _is_deal_executor(self, user, deal):
+        if not user or not user.is_authenticated or not deal:
+            return False
+        return deal.executor_id == user.id
+
+    def _get_user_name_variants(self, user):
+        names = set()
+        if not user or not user.is_authenticated:
+            return names
+        full_name = (user.get_full_name() or "").strip()
+        if full_name:
+            names.add(full_name.casefold())
+        username = (user.username or "").strip()
+        if username:
+            names.add(username.casefold())
+        return names
+
+    def _is_note_author(self, user, instance):
+        if not user or not user.is_authenticated or not instance:
+            return False
+        author_id = getattr(instance, "author_id", None)
+        if author_id and author_id == user.id:
+            return True
+        author_name = (getattr(instance, "author_name", "") or "").strip()
+        if not author_name:
+            return False
+        return author_name.casefold() in self._get_user_name_variants(user)
+
+    def _ensure_user_can_create_note(self, deal):
         user = self.request.user
         if not user or not user.is_authenticated or not deal:
             raise PermissionDenied(
-                "Только владелец сделки (продавец) может создавать заметки."
+                "Только владелец сделки (продавец) или исполнитель может создавать заметки."
             )
 
-        if deal.seller_id != user.id:
+        if not (self._is_deal_seller(user, deal) or self._is_deal_executor(user, deal)):
             raise PermissionDenied(
-                "Только владелец сделки (продавец) может создавать заметки."
+                "Только владелец сделки (продавец) или исполнитель может создавать заметки."
             )
 
     def _can_modify(self, user, instance):
         if self._is_admin(user):
             return True
-        return self._is_deal_seller(user, instance)
+        deal = getattr(instance, "deal", None)
+        if self._is_deal_seller(user, deal):
+            return True
+        return self._is_deal_executor(user, deal) and self._is_note_author(
+            user, instance
+        )
 
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
