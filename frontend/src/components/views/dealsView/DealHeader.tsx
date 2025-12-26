@@ -52,10 +52,18 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
               <button
                 type="button"
                 onClick={() => onClientEdit(client)}
-                className="btn btn-quiet btn-sm rounded-full"
+                className="icon-btn h-7 w-7"
                 aria-label={`Редактировать клиента ${client.name}`}
+                title="Редактировать"
               >
-                Редактировать
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="currentColor"
+                >
+                  <path d="M15.2 4.5a1 1 0 0 1 1.4 0l2.9 2.9a1 1 0 0 1 0 1.4l-9.8 9.8-3.8.9a1 1 0 0 1-1.2-1.2l.9-3.8 9.6-10zM5.7 19.3l1.9-.5-.7-.7-.7-.7-.5 1.9z" />
+                </svg>
               </button>
             )}
             {whatsAppLink && (
