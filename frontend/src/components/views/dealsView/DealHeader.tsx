@@ -1,21 +1,25 @@
 import { ColoredLabel } from '../../common/ColoredLabel';
-import type { Deal } from '../../../types';
+import type { Client, Deal } from '../../../types';
 import { buildTelegramLink, buildWhatsAppLink } from '../../../utils/links';
 
 interface DealHeaderProps {
   deal: Deal;
   clientDisplayName: string;
+  client?: Client | null;
   clientPhone?: string;
   sellerDisplayName: string;
   executorDisplayName: string;
+  onClientEdit?: (client: Client) => void;
 }
 
 export const DealHeader: React.FC<DealHeaderProps> = ({
   deal,
   clientDisplayName,
+  client,
   clientPhone,
   sellerDisplayName,
   executorDisplayName,
+  onClientEdit,
 }) => {
   const whatsAppLink = buildWhatsAppLink(clientPhone);
   const telegramLink = buildTelegramLink(clientPhone);
@@ -44,6 +48,16 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
           </span>
           <span className="inline-flex items-center gap-2 font-semibold text-slate-900">
             {clientDisplayName}
+            {client && onClientEdit && (
+              <button
+                type="button"
+                onClick={() => onClientEdit(client)}
+                className="btn btn-quiet btn-sm rounded-full"
+                aria-label={`Редактировать клиента ${client.name}`}
+              >
+                Редактировать
+              </button>
+            )}
             {whatsAppLink && (
               <a
                 href={whatsAppLink}

@@ -965,9 +965,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   <DealHeader
                     deal={selectedDeal}
                     clientDisplayName={selectedClientDisplayName}
+                    client={selectedClient}
                     clientPhone={selectedClient?.phone}
                     sellerDisplayName={sellerDisplayName}
                     executorDisplayName={executorDisplayName}
+                    onClientEdit={onClientEdit}
                   />
                   <DealActions
                     isSelectedDealDeleted={isSelectedDealDeleted}
@@ -1048,7 +1050,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               expectedCloseRequired
               onQuickNextContactShift={handleQuickNextContactShift}
               onRequestAddClient={onRequestAddClient}
-              onRequestEditClient={onClientEdit}
               onSubmit={async (data) => {
                 await onUpdateDeal(selectedDeal.id, data);
                 setIsEditingDeal(false);

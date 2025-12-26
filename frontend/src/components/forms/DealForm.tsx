@@ -30,7 +30,6 @@ interface DealFormProps {
   preselectedClientId?: string | null;
   onPreselectedClientConsumed?: () => void;
   onRequestAddClient?: () => void;
-  onRequestEditClient?: (client: Client) => void;
   onQuickNextContactShift?: (newNextContactDate: string) => Promise<void>;
   showAddClientButton?: boolean;
   showSellerField?: boolean;
@@ -83,7 +82,6 @@ export const DealForm: React.FC<DealFormProps> = ({
   preselectedClientId,
   onPreselectedClientConsumed,
   onRequestAddClient,
-  onRequestEditClient,
   onQuickNextContactShift,
   showAddClientButton = true,
   showSellerField = false,
@@ -211,8 +209,6 @@ export const DealForm: React.FC<DealFormProps> = ({
     return clients.filter((client) => client.name.toLowerCase().includes(normalized));
   }, [clients, clientQuery]);
 
-  const selectedClient = useMemo(() => clientsById.get(clientId) ?? null, [clientId, clientsById]);
-
   const resolveClientFromQuery = () => {
     const trimmed = clientQuery.trim();
     if (!trimmed) {
@@ -261,7 +257,6 @@ export const DealForm: React.FC<DealFormProps> = ({
   };
 
   const shouldShowAddClient = showAddClientButton && Boolean(onRequestAddClient);
-  const canEditClient = Boolean(selectedClient && onRequestEditClient);
   const submitText = submitLabel ?? (mode === 'edit' ? 'Сохранить' : 'Создать сделку');
   const submittingText = submittingLabel ?? 'Сохраняем...';
 
@@ -374,17 +369,6 @@ export const DealForm: React.FC<DealFormProps> = ({
                 </div>
               )}
             </div>
-
-            {canEditClient && selectedClient && (
-              <button
-                type="button"
-                onClick={() => onRequestEditClient?.(selectedClient)}
-                className="btn btn-quiet btn-sm rounded-xl"
-                aria-label={`Редактировать клиента ${selectedClient.name}`}
-              >
-                Редактировать
-              </button>
-            )}
 
             {shouldShowAddClient && (
               <button
