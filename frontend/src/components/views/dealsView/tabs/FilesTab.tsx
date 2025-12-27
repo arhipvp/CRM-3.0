@@ -65,6 +65,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   renameMessage,
   handleRenameDriveFile,
 }) => {
+  const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+
   if (!selectedDeal) {
     return null;
   }
@@ -89,9 +93,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   };
   const getAriaSort = (): 'ascending' | 'descending' =>
     driveSortDirection === 'asc' ? 'ascending' : 'descending';
-  const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
-  const [renameDraft, setRenameDraft] = useState('');
-  const [renameError, setRenameError] = useState<string | null>(null);
   const isRenameDisabled =
     isRenaming ||
     isDriveLoading ||
