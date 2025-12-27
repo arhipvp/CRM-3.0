@@ -303,10 +303,21 @@ class DealViewSet(
 class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
 
+    def _include_deleted_flag(self) -> bool:
+        raw_value = self.request.query_params.get("show_deleted")
+        if raw_value is None:
+            return False
+        return str(raw_value).lower() in ("1", "true", "yes", "on")
+
     def get_queryset(self):
         user = self.request.user
+        manager = (
+            Quote.objects.with_deleted()
+            if self._include_deleted_flag()
+            else Quote.objects
+        )
         queryset = (
-            Quote.objects.select_related(
+            manager.select_related(
                 "deal",
                 "deal__client",
                 "insurance_company",

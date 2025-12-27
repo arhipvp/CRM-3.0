@@ -180,6 +180,45 @@ export async function updateQuote(
   return mapQuote(payload);
 }
 
+export async function fetchQuotesWithPagination(
+  filters?: FilterParams
+): Promise<PaginatedResponse<Quote>> {
+  const qs = buildQueryString(filters);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/quotes/${qs}`);
+  return {
+    count: payload.count || 0,
+    next: payload.next || null,
+    previous: payload.previous || null,
+    results: unwrapList<Record<string, unknown>>(payload).map(mapQuote),
+  };
+}
+
+export async function fetchQuotesByDeal(
+  dealId: string,
+  options?: { showDeleted?: boolean; pageSize?: number }
+): Promise<Quote[]> {
+  const pageSize = options?.pageSize ?? 200;
+  const showDeleted = options?.showDeleted ?? false;
+  const results: Quote[] = [];
+  let page = 1;
+
+  while (true) {
+    const payload = await fetchQuotesWithPagination({
+      deal: dealId,
+      show_deleted: showDeleted,
+      page,
+      page_size: pageSize,
+    });
+    results.push(...payload.results);
+    if (!payload.next) {
+      break;
+    }
+    page += 1;
+  }
+
+  return results;
+}
+
 export async function deleteQuote(id: string): Promise<void> {
   await request(`/quotes/${id}/`, { method: 'DELETE' });
 }

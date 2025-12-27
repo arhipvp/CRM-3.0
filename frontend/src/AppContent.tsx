@@ -33,6 +33,7 @@ import {
   mergeDeals,
   fetchDealHistory,
   fetchTasksByDeal,
+  fetchQuotesByDeal,
   createTask,
   updateTask,
   deleteTask,
@@ -62,6 +63,7 @@ import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { ModalType } from './components/app/types';
 import type { FinancialRecordModalState, PaymentModalState } from './types';
 import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
+import { markQuoteAsDeleted } from './utils/quotes';
 import { parseNumericAmount } from './utils/parseNumericAmount';
 import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
 const resolveRoleNames = (userData: CurrentUserResponse): string[] => {
@@ -931,7 +933,7 @@ const AppContent: React.FC = () => {
         updateAppData((prev) => ({
           deals: prev.deals.map((deal) =>
             deal.id === dealId
-              ? { ...deal, quotes: deal.quotes?.filter((quote) => quote.id !== quoteId) ?? [] }
+              ? { ...deal, quotes: markQuoteAsDeleted(deal.quotes ?? [], quoteId) }
               : deal
           ),
         }));
@@ -1393,12 +1395,29 @@ const AppContent: React.FC = () => {
     [setError, updateAppData]
   );
 
+  const loadDealQuotes = useCallback(
+    async (dealId: string) => {
+      try {
+        const dealQuotes = await fetchQuotesByDeal(dealId, { showDeleted: true });
+        updateAppData((prev) => ({
+          deals: prev.deals.map((deal) =>
+            deal.id === dealId ? { ...deal, quotes: dealQuotes } : deal
+          ),
+        }));
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
+      }
+    },
+    [setError, updateAppData]
+  );
+
   useEffect(() => {
     if (!selectedDealId || !isAuthenticated) {
       return;
     }
     void loadDealTasks(selectedDealId);
-  }, [isAuthenticated, loadDealTasks, selectedDealId]);
+    void loadDealQuotes(selectedDealId);
+  }, [isAuthenticated, loadDealQuotes, loadDealTasks, selectedDealId]);
 
   const handleAddPayment = useCallback(
     async (values: AddPaymentFormValues) => {
