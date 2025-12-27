@@ -189,70 +189,89 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white">
-              {sortedQuotes.map((quote) => (
-                <tr
-                  key={quote.id}
-                  className={[
-                    TABLE_ROW_CLASS_PLAIN,
-                    quote.deletedAt ? 'bg-rose-50/30 border-rose-300' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top font-semibold text-slate-900`}>
-                    {quote.insuranceType}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top`}>
-                    <ColoredLabel
-                      value={quote.insuranceCompany}
-                      fallback="-"
-                      showDot
-                      className="text-slate-600"
-                    />
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap`}>
-                    {formatCurrency(String(quote.sumInsured))}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap`}>
-                    {formatCurrency(String(quote.premium))}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap`}>
-                    {quote.deductible || '-'}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600`}>
-                    {quote.comments || '-'}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top`}>
-                    <ColoredLabel
-                      value={quote.sellerName || quote.sellerId}
-                      fallback="-"
-                      showDot={false}
-                      className="text-slate-600"
-                    />
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 whitespace-nowrap`}>
-                    {formatDate(quote.createdAt)}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top whitespace-nowrap`}>
-                    <div className={TABLE_ACTIONS_CLASS_ROW}>
-                      <button
-                        className="link-action text-xs"
-                        onClick={() => onRequestEditQuote(quote)}
-                        type="button"
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        className="link-danger text-xs"
-                        onClick={() => onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(() => undefined)}
-                        type="button"
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {sortedQuotes.map((quote) => {
+                const deletedTextClass = quote.deletedAt
+                  ? 'line-through decoration-rose-500/80 text-slate-500'
+                  : '';
+                return (
+                  <tr
+                    key={quote.id}
+                    className={[
+                      TABLE_ROW_CLASS_PLAIN,
+                      quote.deletedAt ? 'bg-rose-50/30 border-rose-300' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <td
+                      className={`${TABLE_CELL_CLASS_SM} align-top font-semibold text-slate-900 ${deletedTextClass}`}
+                    >
+                      {quote.insuranceType}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
+                      <ColoredLabel
+                        value={quote.insuranceCompany}
+                        fallback="-"
+                        showDot
+                        className={`text-slate-600 ${deletedTextClass}`}
+                      />
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
+                    >
+                      {formatCurrency(String(quote.sumInsured))}
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
+                    >
+                      {formatCurrency(String(quote.premium))}
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
+                    >
+                      {quote.deductible || '-'}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 ${deletedTextClass}`}>
+                      {quote.comments || '-'}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
+                      <ColoredLabel
+                        value={quote.sellerName || quote.sellerId}
+                        fallback="-"
+                        showDot={false}
+                        className={`text-slate-600 ${deletedTextClass}`}
+                      />
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 whitespace-nowrap ${deletedTextClass}`}
+                    >
+                      {formatDate(quote.createdAt)}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top whitespace-nowrap`}>
+                      <div className={TABLE_ACTIONS_CLASS_ROW}>
+                        <button
+                          className="link-action text-xs"
+                          onClick={() => onRequestEditQuote(quote)}
+                          type="button"
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          className="link-danger text-xs"
+                          onClick={() =>
+                            onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(
+                              () => undefined
+                            )
+                          }
+                          type="button"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
