@@ -163,3 +163,4 @@ tools/run_full_import.ps1
 transform_deals.py
 ToDo.md
 docker-compose.prod.yml
+OPEN_NOTEBOOK_PLAN.md

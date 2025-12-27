@@ -42,6 +42,20 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       }
     | null
   >(null);
+  const [showDeletedQuotes, setShowDeletedQuotes] = React.useState(false);
+
+  const deletedQuotesCount = React.useMemo(
+    () => quotes.filter((quote) => Boolean(quote.deletedAt)).length,
+    [quotes]
+  );
+
+  const visibleQuotes = React.useMemo(() => {
+    if (showDeletedQuotes) {
+      return quotes;
+    }
+
+    return quotes.filter((quote) => !quote.deletedAt);
+  }, [quotes, showDeletedQuotes]);
 
   const handleSort = React.useCallback((key: QuoteSortKey) => {
     setSortConfig((prev) => {
@@ -53,8 +67,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   }, []);
 
   const sortedQuotes = React.useMemo(() => {
+    const baseQuotes = visibleQuotes;
     if (!sortConfig) {
-      return quotes;
+      return baseQuotes;
     }
 
     const directionMultiplier = sortConfig.direction === 'asc' ? 1 : -1;
@@ -88,7 +103,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       }
     };
 
-    return quotes
+    return baseQuotes
       .map((quote, index) => ({ quote, index }))
       .sort((left, right) => {
         const result = compareQuotes(left.quote, right.quote);
@@ -98,7 +113,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
         return left.index - right.index;
       })
       .map(({ quote }) => quote);
-  }, [quotes, sortConfig]);
+  }, [sortConfig, visibleQuotes]);
 
   const SortableHeader: React.FC<{ label: string; sortKey: QuoteSortKey; className?: string }> = ({
     label,
@@ -130,7 +145,21 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   return (
     <section className="app-panel p-6 shadow-none space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="app-label">Расчёты</p>
+        <div className="flex items-center gap-3">
+          <p className="app-label">Расчёты</p>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={showDeletedQuotes}
+              onChange={(event) => setShowDeletedQuotes(event.target.checked)}
+              className="check"
+            />
+            <span>Показывать удалённые</span>
+            {deletedQuotesCount > 0 && (
+              <span className="text-[11px] text-slate-400">({deletedQuotesCount})</span>
+            )}
+          </label>
+        </div>
         <button
           type="button"
           onClick={() => onRequestAddQuote(selectedDeal.id)}
@@ -139,7 +168,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           + Добавить расчёт
         </button>
       </div>
-      {!quotes.length ? (
+      {!visibleQuotes.length ? (
         <p className="text-sm text-slate-600">Расчётов пока нет.</p>
       ) : (
         <div className="overflow-x-auto bg-white">
@@ -161,7 +190,15 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             </thead>
             <tbody className="bg-white">
               {sortedQuotes.map((quote) => (
-                <tr key={quote.id} className={TABLE_ROW_CLASS_PLAIN}>
+                <tr
+                  key={quote.id}
+                  className={[
+                    TABLE_ROW_CLASS_PLAIN,
+                    quote.deletedAt ? 'bg-rose-50/30 border-rose-300' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
                   <td className={`${TABLE_CELL_CLASS_SM} align-top font-semibold text-slate-900`}>
                     {quote.insuranceType}
                   </td>

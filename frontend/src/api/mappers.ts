@@ -100,6 +100,7 @@ export const mapQuote = (raw: Record<string, unknown>): Quote => ({
   deductible: toOptionalString(raw.deductible),
   comments: toOptionalString(raw.comments),
   createdAt: toStringValue(raw.created_at),
+  deletedAt: raw.deleted_at === undefined ? null : toNullableString(raw.deleted_at),
 });
 
 export const mapInsuranceCompany = (raw: Record<string, unknown>): InsuranceCompany => ({

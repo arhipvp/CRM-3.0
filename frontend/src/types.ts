@@ -51,6 +51,7 @@ export interface Quote {
   deductible?: string;
   comments?: string;
   createdAt: string;
+  deletedAt?: string | null;
 }
 
 export interface InsuranceCompany {
