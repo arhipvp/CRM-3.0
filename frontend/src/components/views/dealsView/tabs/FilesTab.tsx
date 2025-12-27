@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
 import { TableHeadCell } from '../../../common/TableHeadCell';
+import { Modal } from '../../../Modal';
 import {
   TABLE_CELL_CLASS_SM,
   TABLE_ROW_CLASS_PLAIN,
@@ -35,6 +36,9 @@ interface FilesTabProps {
   canRecognizeSelectedFiles: boolean;
   driveSortDirection: 'asc' | 'desc';
   toggleDriveSortDirection: () => void;
+  isRenaming: boolean;
+  renameMessage: string | null;
+  handleRenameDriveFile: (fileId: string, name: string) => Promise<void>;
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({
@@ -57,6 +61,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   sortedDriveFiles,
   driveSortDirection,
   toggleDriveSortDirection,
+  isRenaming,
+  renameMessage,
+  handleRenameDriveFile,
 }) => {
   if (!selectedDeal) {
     return null;
@@ -82,6 +89,40 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   };
   const getAriaSort = (): 'ascending' | 'descending' =>
     driveSortDirection === 'asc' ? 'ascending' : 'descending';
+  const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const isRenameDisabled =
+    isRenaming ||
+    isDriveLoading ||
+    isTrashing ||
+    isSelectedDealDeleted ||
+    !selectedDeal.driveFolderId;
+
+  const openRenameModal = (file: DriveFile) => {
+    setRenamingFile(file);
+    setRenameDraft(file.name);
+    setRenameError(null);
+  };
+
+  const closeRenameModal = () => {
+    setRenamingFile(null);
+    setRenameDraft('');
+    setRenameError(null);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!renamingFile) {
+      return;
+    }
+    const trimmedName = renameDraft.trim();
+    if (!trimmedName) {
+      setRenameError('РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.');
+      return;
+    }
+    await handleRenameDriveFile(renamingFile.id, trimmedName);
+    closeRenameModal();
+  };
 
   return (
     <section className="app-panel p-6 shadow-none space-y-5">
@@ -168,6 +209,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       )}
 
       {trashMessage && <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{trashMessage}</p>}
+
+      {renameMessage && (
+        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{renameMessage}</p>
+      )}
 
       {recognitionResults.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3 text-xs">
@@ -278,18 +323,30 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           {formatDriveDate(file.modifiedAt ?? file.createdAt)}
                         </td>
                         <td className={`${TABLE_CELL_CLASS_SM} text-right`}>
-                          {file.webViewLink ? (
-                            <a
-                              href={file.webViewLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="link-action text-xs"
-                            >
-                              Открыть
-                            </a>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
+                          <div className="flex items-center justify-end gap-3">
+                            {file.webViewLink ? (
+                              <a
+                                href={file.webViewLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="link-action text-xs"
+                              >
+                                Открыть
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                            {!file.isFolder && (
+                              <button
+                                type="button"
+                                onClick={() => openRenameModal(file)}
+                                disabled={isRenameDisabled}
+                                className="link-action text-xs disabled:text-slate-300"
+                              >
+                                Переименовать
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -300,6 +357,49 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           </div>
         )}
       </div>
+      {renamingFile && (
+        <Modal
+          title="Переименовать файл"
+          onClose={closeRenameModal}
+          size="sm"
+          zIndex={50}
+          closeOnOverlayClick={false}
+        >
+          <div className="space-y-4">
+            {renameError && (
+              <p className="app-alert app-alert-danger">{renameError}</p>
+            )}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700">
+                Новое имя
+              </label>
+              <input
+                type="text"
+                value={renameDraft}
+                onChange={(event) => setRenameDraft(event.target.value)}
+                className="mt-1 field field-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleRenameSubmit}
+                disabled={isRenaming}
+                className="btn btn-primary w-full rounded-xl"
+              >
+                {isRenaming ? 'Сохраняем...' : 'Сохранить'}
+              </button>
+              <button
+                type="button"
+                onClick={closeRenameModal}
+                className="btn btn-secondary w-full"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 };

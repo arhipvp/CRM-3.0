@@ -6,6 +6,7 @@ import {
   fetchDealDriveFiles,
   trashDealDriveFiles,
   uploadDealDriveFile,
+  renameDealDriveFile,
   recognizeDealPolicies,
 } from '../../../../api';
 
@@ -38,6 +39,8 @@ export const useDealDriveFiles = ({
   const [isTrashing, setIsTrashing] = useState(false);
   const [trashMessage, setTrashMessage] = useState<string | null>(null);
   const [driveSortDirection, setDriveSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameMessage, setRenameMessage] = useState<string | null>(null);
   const latestDealIdRef = useRef<string | null>(selectedDeal?.id ?? null);
 
   useEffect(() => {
@@ -49,6 +52,7 @@ export const useDealDriveFiles = ({
     setRecognitionResults([]);
     setRecognitionMessage(null);
     setTrashMessage(null);
+    setRenameMessage(null);
   }, [selectedDeal?.id]);
 
   useEffect(() => {
@@ -251,6 +255,54 @@ export const useDealDriveFiles = ({
     }
   }, [loadDriveFiles, selectedDeal, selectedDriveFileIds]);
 
+  const handleRenameDriveFile = useCallback(
+    async (fileId: string, name: string) => {
+      const deal = selectedDeal;
+      if (!deal) {
+        return;
+      }
+
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        setRenameMessage('РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.');
+        return;
+      }
+
+      const currentDealId = deal.id;
+      latestDealIdRef.current = currentDealId;
+      setIsRenaming(true);
+      setRenameMessage(null);
+
+      try {
+        const updated = await renameDealDriveFile(
+          currentDealId,
+          fileId,
+          trimmedName,
+          Boolean(deal.deletedAt)
+        );
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        setDriveFiles((prev) =>
+          prev.map((file) => (file.id === updated.id ? { ...file, ...updated } : file))
+        );
+      } catch (error) {
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        console.error('РћС€РёР±РєР° РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёСЏ С„Р°Р№Р»Р°:', error);
+        setRenameMessage(
+          formatErrorMessage(error, 'РќРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ С„Р°Р№Р».')
+        );
+      } finally {
+        if (latestDealIdRef.current === currentDealId) {
+          setIsRenaming(false);
+        }
+      }
+    },
+    [selectedDeal]
+  );
+
   const sortedDriveFiles = useMemo(() => {
     return [...driveFiles].sort((a, b) => {
       const multiplier = driveSortDirection === 'asc' ? 1 : -1;
@@ -282,6 +334,8 @@ export const useDealDriveFiles = ({
     recognitionMessage,
     isTrashing,
     trashMessage,
+    isRenaming,
+    renameMessage,
     sortedDriveFiles,
     driveSortDirection,
     loadDriveFiles,
@@ -290,6 +344,7 @@ export const useDealDriveFiles = ({
     toggleDriveSortDirection,
     handleRecognizePolicies,
     handleTrashSelectedFiles,
+    handleRenameDriveFile,
     resetDriveState,
   };
 };

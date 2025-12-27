@@ -533,6 +533,40 @@ def move_drive_file_to_folder(file_id: str, target_folder_id: str) -> None:
         raise DriveOperationError("Unable to move Drive file.") from exc
 
 
+def rename_drive_file(file_id: str, new_name: str) -> DriveFileInfo:
+    """Rename a Drive file and return updated metadata."""
+
+    if not file_id or not new_name:
+        raise DriveOperationError("File ID and new name must be provided.")
+
+    service = _get_drive_service()
+    try:
+        updated = (
+            service.files()
+            .update(
+                fileId=file_id,
+                body={"name": new_name},
+                fields="id, name, mimeType, size, createdTime, modifiedTime, webViewLink",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+    except Exception as exc:
+        logger.exception("Error while renaming Drive file")
+        raise DriveOperationError("Unable to rename Drive file.") from exc
+
+    return DriveFileInfo(
+        id=updated["id"],
+        name=updated["name"],
+        mime_type=updated.get("mimeType", ""),
+        size=_safe_int(updated.get("size")),
+        created_at=updated.get("createdTime"),
+        modified_at=updated.get("modifiedTime"),
+        web_view_link=updated.get("webViewLink"),
+        is_folder=updated.get("mimeType") == FOLDER_MIME_TYPE,
+    )
+
+
 def move_drive_folder_contents(source_folder_id: str, target_folder_id: str) -> None:
     """Move the contents of one Drive folder into another folder."""
 

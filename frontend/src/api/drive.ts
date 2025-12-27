@@ -64,6 +64,28 @@ export async function trashDealDriveFiles(
   return normalizeTrashResponse(payload);
 }
 
+export async function renameDealDriveFile(
+  dealId: string,
+  fileId: string,
+  name: string,
+  includeDeleted = false
+): Promise<DriveFile> {
+  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const payload = await request<{ file?: unknown }>(
+    `/deals/${dealId}/drive-files/${suffix}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ file_id: fileId, name }),
+    }
+  );
+
+  if (!payload?.file) {
+    throw new Error('Failed to rename Drive file');
+  }
+
+  return mapDriveFile(payload.file as Record<string, unknown>);
+}
+
 export async function fetchClientDriveFiles(clientId: string): Promise<DriveFilesResponse> {
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
     `/clients/${clientId}/drive-files/`

@@ -4,6 +4,7 @@ from apps.common.drive import (
     ensure_trash_folder,
     list_drive_folder_contents,
     move_drive_file_to_folder,
+    rename_drive_file,
 )
 from apps.common.services import manage_drive_files
 from django.shortcuts import get_object_or_404
@@ -23,10 +24,23 @@ class DealDriveTrashSerializer(serializers.Serializer):
     )
 
 
+class DealDriveRenameSerializer(serializers.Serializer):
+    file_id = serializers.CharField()
+    name = serializers.CharField()
+
+    def validate_name(self, value: str) -> str:
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValidationError(
+                "РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј."
+            )
+        return trimmed
+
+
 class DealDriveMixin:
     @action(
         detail=True,
-        methods=["get", "post", "delete"],
+        methods=["get", "post", "delete", "patch"],
         url_path="drive-files",
         parser_classes=[MultiPartParser, FormParser, JSONParser],
     )
@@ -34,6 +48,50 @@ class DealDriveMixin:
         queryset = self.filter_queryset(self.get_queryset())
         deal = get_object_or_404(queryset, pk=pk)
         uploaded_file = request.FILES.get("file") if request.method == "POST" else None
+
+        if request.method == "PATCH":
+            serializer = DealDriveRenameSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            file_id = serializer.validated_data["file_id"].strip()
+            new_name = serializer.validated_data["name"]
+            if not file_id:
+                raise ValidationError(
+                    {"file_id": "РќСѓР¶РЅРѕ РїРµСЂРµРґР°С‚СЊ ID С„Р°Р№Р»Р°."}
+                )
+
+            try:
+                folder_id = deal.drive_folder_id
+                if not folder_id:
+                    folder_id = ensure_deal_folder(deal)
+                if not folder_id:
+                    return Response(
+                        {
+                            "detail": "РџР°РїРєР° Google Drive РґР»СЏ СЃРґРµР»РєРё РЅРµ РЅР°Р№РґРµРЅР°."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                drive_files = list_drive_folder_contents(folder_id)
+                drive_file_map = {item["id"]: item for item in drive_files}
+                target_file = drive_file_map.get(file_id)
+                if not target_file or target_file["is_folder"]:
+                    return Response(
+                        {
+                            "detail": "Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ РёР»Рё СЌС‚Рѕ РїР°РїРєР°."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                if target_file["name"] == new_name:
+                    return Response({"file": target_file})
+
+                updated_file = rename_drive_file(file_id, new_name)
+                return Response({"file": updated_file})
+            except DriveError as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
 
         if request.method == "DELETE":
             serializer = DealDriveTrashSerializer(data=request.data)
