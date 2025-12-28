@@ -149,9 +149,9 @@ export const KnowledgeDocumentsView: React.FC = () => {
       .then(([sourcesData, sessionsData, savedData]) => {
         setSources(sourcesData);
         setChatSessions(sessionsData);
-        if (!selectedSessionId && sessionsData.length > 0) {
-          setSelectedSessionId(sessionsData[0].id);
-        }
+        setSelectedSessionId(
+          (prev) => prev || sessionsData[0]?.id || ''
+        );
         setSavedAnswers(savedData);
         setAskError(null);
         setSavedError(null);
@@ -471,15 +471,41 @@ export const KnowledgeDocumentsView: React.FC = () => {
     }
   };
 
+  const collectReferenceItems = (
+    text: string,
+    sourceCitations: KnowledgeCitation[]
+  ) => {
+    const regex = /\[source:([^\]]+)\]/g;
+    const orderedIds: string[] = [];
+    let match = regex.exec(text);
+    while (match) {
+      const sourceId = match[1];
+      if (!orderedIds.includes(sourceId)) {
+        orderedIds.push(sourceId);
+      }
+      match = regex.exec(text);
+    }
+
+    return orderedIds.map((sourceId) => {
+      const citation = sourceCitations.find((item) => item.sourceId === sourceId);
+      return {
+        sourceId,
+        title: citation?.title || 'Источник',
+        fileUrl: citation?.fileUrl || null,
+      };
+    });
+  };
+
   const renderAnswerWithCitations = (
     text: string,
     sourceCitations: KnowledgeCitation[]
   ) => {
-    if (!sourceCitations.length) {
+    const references = collectReferenceItems(text, sourceCitations);
+    if (!references.length) {
       return text;
     }
     const indexBySource = new Map(
-      sourceCitations.map((item, index) => [item.sourceId, index + 1])
+      references.map((item, index) => [item.sourceId, index + 1])
     );
     const parts: Array<string | React.ReactNode> = [];
     const regex = /\[source:([^\]]+)\]/g;
@@ -493,7 +519,17 @@ export const KnowledgeDocumentsView: React.FC = () => {
       const sourceId = match[1];
       const number = indexBySource.get(sourceId);
       if (number) {
-        parts.push(<sup key={`cite-${key}`}>[{number}]</sup>);
+        parts.push(
+          <sup key={`cite-${key}`}>
+            <button
+              type="button"
+              className="text-blue-600 hover:text-blue-700"
+              onClick={() => handleOpenSource(sourceId)}
+            >
+              [{number}]
+            </button>
+          </sup>
+        );
         key += 1;
       }
       lastIndex = end;
@@ -584,77 +620,6 @@ export const KnowledgeDocumentsView: React.FC = () => {
 
       <section className="app-panel space-y-6 p-6 shadow-none">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">Файлы блокнота</h3>
-          <p className="text-xs text-slate-500">Загрузка файлов идёт напрямую в Open Notebook.</p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="block space-y-1 text-sm text-slate-600">
-            Заголовок (пояснение)
-            <input
-              type="text"
-              value={uploadTitle}
-              onChange={(event) => setUploadTitle(event.target.value)}
-              placeholder="Название файла"
-              className="field field-input"
-              disabled={!selectedNotebookId}
-            />
-          </label>
-        </div>
-        <FileUploadManager onUpload={handleUpload} disabled={!selectedNotebookId} />
-        {sourcesError && <div className="app-alert app-alert-danger">{sourcesError}</div>}
-        <div className="space-y-4">
-          {sourcesLoading && (
-            <div className="text-xs uppercase tracking-wide text-slate-400">Загрузка...</div>
-          )}
-          {sortedSources.length === 0 && !sourcesLoading && (
-            <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              Пока нет загруженных файлов.
-            </div>
-          )}
-          {sortedSources.map((source) => (
-            <div
-              key={source.id}
-              className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2 shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-base font-semibold text-slate-900">{source.title || 'Без названия'}</p>
-                  <p className="text-xs text-slate-500">{formatDateTime(source.createdAt)}</p>
-                </div>
-                {source.embedded !== null && (
-                  <span className="text-xs text-slate-500">
-                    {source.embedded ? 'Векторизирован' : 'Без эмбеддингов'}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {source.fileUrl ? (
-                  <a
-                    href={source.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-secondary btn-sm rounded-xl"
-                  >
-                    Открыть файл
-                  </a>
-                ) : (
-                  <span className="text-xs text-slate-400">Ссылка недоступна</span>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm rounded-xl"
-                  onClick={() => handleDeleteSource(source.id)}
-                >
-                  Удалить
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="app-panel space-y-6 p-6 shadow-none">
-        <div>
           <h3 className="text-lg font-semibold text-slate-900">Задать вопрос</h3>
           <p className="text-xs text-slate-500">Вопрос будет задан внутри выбранного блокнота.</p>
         </div>
@@ -708,11 +673,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
         </div>
         {answer && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
-            <div>{renderAnswerWithCitations(answer, citations)}</div>
-            {citations.length > 0 && (
+            <div className="text-blue-700">
+              {renderAnswerWithCitations(answer, citations)}
+            </div>
+            {collectReferenceItems(answer, citations).length > 0 && (
               <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
                 <div className="font-semibold text-slate-700">Источники</div>
-                {citations.map((item, index) => (
+                {collectReferenceItems(answer, citations).map((item, index) => (
                   <div key={item.sourceId} className="flex flex-wrap gap-2">
                     <span className="text-slate-500">[{index + 1}]</span>
                     <button
@@ -781,13 +748,19 @@ export const KnowledgeDocumentsView: React.FC = () => {
               <div className="text-xs text-slate-500">{formatDate(item.createdAt)}</div>
               <div className="text-sm font-semibold text-slate-900">{item.question}</div>
               <div className="text-sm text-slate-700 whitespace-pre-line">
-                {renderAnswerWithCitations(item.answer, item.citations)}
+                <span className="text-blue-700">
+                  {renderAnswerWithCitations(item.answer, item.citations)}
+                </span>
               </div>
-              {item.citations.length > 0 && (
+              {collectReferenceItems(item.answer, item.citations).length > 0 && (
                 <div className="text-xs text-slate-600 space-y-1">
                   <div className="font-semibold text-slate-700">Источники</div>
-                  {item.citations.map((cite, index) => (
-                    <div key={`${item.id}-${cite.sourceId}`} className="flex flex-wrap gap-2">
+                  {collectReferenceItems(item.answer, item.citations).map(
+                    (cite, index) => (
+                      <div
+                        key={`${item.id}-${cite.sourceId}`}
+                        className="flex flex-wrap gap-2"
+                      >
                       <span className="text-slate-500">[{index + 1}]</span>
                       <button
                         type="button"
@@ -806,8 +779,9 @@ export const KnowledgeDocumentsView: React.FC = () => {
                           Файл
                         </a>
                       )}
-                    </div>
-                  ))}
+                      </div>
+                    )
+                  )}
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-3">
@@ -815,6 +789,76 @@ export const KnowledgeDocumentsView: React.FC = () => {
                   type="button"
                   className="btn btn-danger btn-sm rounded-xl"
                   onClick={() => handleDeleteSavedAnswer(item.id)}
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="app-panel space-y-6 p-6 shadow-none">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">Файлы блокнота</h3>
+          <p className="text-xs text-slate-500">Загрузка файлов идёт напрямую в Open Notebook.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block space-y-1 text-sm text-slate-600">
+            Заголовок (пояснение)
+            <input
+              type="text"
+              value={uploadTitle}
+              onChange={(event) => setUploadTitle(event.target.value)}
+              placeholder="Название файла"
+              className="field field-input"
+              disabled={!selectedNotebookId}
+            />
+          </label>
+        </div>
+        <FileUploadManager onUpload={handleUpload} disabled={!selectedNotebookId} />
+        {sourcesError && <div className="app-alert app-alert-danger">{sourcesError}</div>}
+        <div className="space-y-4">
+          {sourcesLoading && (
+            <div className="text-xs uppercase tracking-wide text-slate-400">Загрузка...</div>
+          )}
+          {sortedSources.length === 0 && !sourcesLoading && (
+            <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
+              Пока нет загруженных файлов.
+            </div>
+          )}
+          {sortedSources.map((source) => (
+            <div
+              key={source.id}
+              className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2 shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-slate-900">{source.title || 'Без названия'}</p>
+                  <p className="text-xs text-slate-500">{formatDateTime(source.createdAt)}</p>
+                </div>
+                {source.embedded !== null && (
+                  <span className="text-xs text-slate-500">
+                    {source.embedded ? 'Векторизирован' : 'Без эмбеддингов'}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {source.fileUrl ? (
+                  <a
+                    href={source.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-secondary btn-sm rounded-xl"
+                  >
+                    Открыть файл
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400">Ссылка недоступна</span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm rounded-xl"
+                  onClick={() => handleDeleteSource(source.id)}
                 >
                   Удалить
                 </button>
