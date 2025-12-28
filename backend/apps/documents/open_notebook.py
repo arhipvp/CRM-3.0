@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from django.conf import settings
 
-from .models import KnowledgeChatSession, KnowledgeDocument, KnowledgeNotebook
+from .models import KnowledgeDocument, KnowledgeNotebook
 
 
 class OpenNotebookError(Exception):
@@ -192,6 +192,26 @@ class OpenNotebookClient:
     def delete_source(self, source_id: str) -> dict:
         return self._request("DELETE", f"/api/sources/{source_id}")
 
+    def list_notes(self, notebook_id: str) -> list[dict]:
+        response = self._request("GET", f"/api/notes?notebook_id={notebook_id}")
+        if isinstance(response, list):
+            return response
+        return [response]
+
+    def create_note(
+        self, notebook_id: str, title: str, content: str, note_type: str = "human"
+    ) -> dict:
+        payload = {
+            "notebook_id": notebook_id,
+            "title": title,
+            "content": content,
+            "note_type": note_type,
+        }
+        return self._request("POST", "/api/notes", payload)
+
+    def delete_note(self, note_id: str) -> dict:
+        return self._request("DELETE", f"/api/notes/{note_id}")
+
 
 class OpenNotebookSyncService:
     def __init__(self):
@@ -344,50 +364,31 @@ class OpenNotebookSyncService:
         if source_id:
             self.client.delete_source(source_id)
 
-    def _get_or_create_session_id(self, user, insurance_type, notebook_id: str) -> str:
-        if not user or not getattr(user, "is_authenticated", False):
-            session = self.client.create_chat_session(
-                notebook_id=notebook_id, title="CRM Ask"
-            )
-            session_id = session.get("id")
-            if not session_id:
-                raise OpenNotebookError("Open Notebook не вернул id сессии чата.")
-            return session_id
-
-        session_record = KnowledgeChatSession.objects.filter(
-            user=user, insurance_type=insurance_type
-        ).first()
-        if session_record:
-            return session_record.session_id
+    def _get_or_create_session_id(self, notebook: KnowledgeNotebook) -> str:
+        if notebook.chat_session_id:
+            return notebook.chat_session_id
 
         session = self.client.create_chat_session(
-            notebook_id=notebook_id, title="CRM Ask"
+            notebook_id=notebook.notebook_id, title="CRM Ask"
         )
         session_id = session.get("id")
         if not session_id:
             raise OpenNotebookError("Open Notebook не вернул id сессии чата.")
 
-        KnowledgeChatSession.objects.create(
-            user=user,
-            insurance_type=insurance_type,
-            session_id=session_id,
-        )
+        notebook.chat_session_id = session_id
+        notebook.save(update_fields=["chat_session_id", "updated_at"])
         return session_id
 
-    def _reset_session_id(self, user, insurance_type, notebook_id: str) -> str:
+    def _reset_session_id(self, notebook: KnowledgeNotebook) -> str:
         session = self.client.create_chat_session(
-            notebook_id=notebook_id, title="CRM Ask"
+            notebook_id=notebook.notebook_id, title="CRM Ask"
         )
         session_id = session.get("id")
         if not session_id:
             raise OpenNotebookError("Open Notebook не вернул id сессии чата.")
 
-        if user and getattr(user, "is_authenticated", False):
-            KnowledgeChatSession.objects.update_or_create(
-                user=user,
-                insurance_type=insurance_type,
-                defaults={"session_id": session_id},
-            )
+        notebook.chat_session_id = session_id
+        notebook.save(update_fields=["chat_session_id", "updated_at"])
         return session_id
 
     def ask(self, insurance_type_id: str, question: str, user=None) -> dict:
@@ -406,9 +407,7 @@ class OpenNotebookSyncService:
             raise OpenNotebookError("Вид страхования не найден.")
 
         notebook = self.ensure_notebook(insurance_type)
-        session_id = self._get_or_create_session_id(
-            user=user, insurance_type=insurance_type, notebook_id=notebook.notebook_id
-        )
+        session_id = self._get_or_create_session_id(notebook)
 
         context_config = {
             "sources": {
@@ -430,11 +429,7 @@ class OpenNotebookSyncService:
                 session_id=session_id, message=question, context=context
             )
         except OpenNotebookError:
-            session_id = self._reset_session_id(
-                user=user,
-                insurance_type=insurance_type,
-                notebook_id=notebook.notebook_id,
-            )
+            session_id = self._reset_session_id(notebook)
             chat_response = self.client.execute_chat(
                 session_id=session_id, message=question, context=context
             )
@@ -446,7 +441,7 @@ class OpenNotebookSyncService:
                     "answer": content,
                     "citations": self._collect_citations(content, documents),
                 }
-        raise OpenNotebookError("Open Notebook РЅРµ РІРµСЂРЅСѓР» РѕС‚РІРµС‚.")
+        raise OpenNotebookError("Open Notebook не вернул ответ.")
 
     @staticmethod
     def _collect_citations(content: str, documents) -> list[dict]:

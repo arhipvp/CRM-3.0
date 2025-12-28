@@ -332,7 +332,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
     const indexBySource = new Map(
       sourceCitations.map((item, index) => [item.sourceId, index + 1])
     );
-    const parts: Array<string | JSX.Element> = [];
+    const parts: Array<string | React.ReactNode> = [];
     const regex = /\[source:([^\]]+)\]/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null = regex.exec(text);

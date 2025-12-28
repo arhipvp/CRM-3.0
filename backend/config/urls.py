@@ -15,7 +15,12 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from apps.documents.views import DocumentRecognitionView, KnowledgeAskView
+from apps.documents.views import (
+    DocumentRecognitionView,
+    KnowledgeAskView,
+    KnowledgeNoteDetailView,
+    KnowledgeNotesView,
+)
 from apps.finances.views import FinanceSummaryView
 from apps.users.views import (
     change_password_view,
@@ -46,6 +51,16 @@ urlpatterns = [
         name="document-recognize",
     ),
     path("api/v1/knowledge/ask/", KnowledgeAskView.as_view(), name="knowledge-ask"),
+    path(
+        "api/v1/knowledge/notes/",
+        KnowledgeNotesView.as_view(),
+        name="knowledge-notes",
+    ),
+    path(
+        "api/v1/knowledge/notes/<str:note_id>/",
+        KnowledgeNoteDetailView.as_view(),
+        name="knowledge-note-detail",
+    ),
     path("api/v1/", include(api_urlpatterns)),
 ]
 

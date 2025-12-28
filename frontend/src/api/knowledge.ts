@@ -25,7 +25,7 @@ export async function fetchSavedAnswers(
   insuranceTypeId: string
 ): Promise<KnowledgeSavedAnswer[]> {
   const data = await request<Record<string, unknown>[]>(
-    `/knowledge_saved_answers/?insurance_type=${encodeURIComponent(insuranceTypeId)}`
+    `/knowledge/notes/?insurance_type=${encodeURIComponent(insuranceTypeId)}`
   );
   return data.map(mapKnowledgeSavedAnswer);
 }
@@ -37,7 +37,7 @@ export async function saveKnowledgeAnswer(payload: {
   citations?: KnowledgeCitation[];
 }): Promise<KnowledgeSavedAnswer> {
   const response = await request<Record<string, unknown>>(
-    '/knowledge_saved_answers/',
+    '/knowledge/notes/',
     {
       method: 'POST',
       body: JSON.stringify({
@@ -52,7 +52,7 @@ export async function saveKnowledgeAnswer(payload: {
 }
 
 export async function deleteKnowledgeAnswer(answerId: string): Promise<void> {
-  await request<void>(`/knowledge_saved_answers/${answerId}/`, {
+  await request<void>(`/knowledge/notes/${answerId}/`, {
     method: 'DELETE',
   });
 }

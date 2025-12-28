@@ -162,6 +162,11 @@ class KnowledgeNotebook(SoftDeleteModel):
         max_length=255,
         help_text="Имя блокнота в Open Notebook",
     )
+    chat_session_id = models.CharField(
+        max_length=128,
+        blank=True,
+        help_text="ID сессии чата Open Notebook",
+    )
 
     class Meta:
         ordering = ["-created_at"]
