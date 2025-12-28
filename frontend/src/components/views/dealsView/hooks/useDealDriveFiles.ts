@@ -94,10 +94,10 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      console.error('Ошибка загрузки файлов Google Drive:', error);
+      console.error('   Google Drive:', error);
       setDriveFiles([]);
       setDriveError(
-        formatErrorMessage(error, 'Не удалось загрузить файлы из Google Drive.')
+        formatErrorMessage(error, '     Google Drive.')
       );
     } finally {
       if (latestDealIdRef.current === currentDealId) {
@@ -152,12 +152,12 @@ export const useDealDriveFiles = ({
     }
 
     if (!selectedDriveFileIds.length) {
-      setRecognitionMessage('Выберите хотя бы один файл для распознавания.');
+      setRecognitionMessage('      .');
       return;
     }
 
     if (!canRecognizeSelectedFiles) {
-      setRecognitionMessage('Можно распознавать только PDF-файлы.');
+      setRecognitionMessage('   PDF-.');
       return;
     }
 
@@ -195,11 +195,11 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      console.error('Ошибка распознавания полисов:', error);
+      console.error('  :', error);
       setRecognitionMessage(
         error instanceof Error
           ? error.message
-          : 'Не удалось распознать полисы. Попробуйте позже.'
+          : '   .  .'
       );
     } finally {
       if (latestDealIdRef.current === currentDealId) {
@@ -221,11 +221,11 @@ export const useDealDriveFiles = ({
     }
 
     if (!selectedDriveFileIds.length) {
-      setTrashMessage('Выберите файлы для удаления.');
+      setTrashMessage('   .');
       return;
     }
 
-    const confirmText = `Переместить ${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} в корзину?`;
+    const confirmText = ` ${selectedDriveFileIds.length} ${selectedDriveFileIds.length === 1 ? '' : ''}  ?`;
     if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
       return;
     }
@@ -246,8 +246,8 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      console.error('Ошибка перемещения файлов в корзину:', error);
-      setTrashMessage(formatErrorMessage(error, 'Не удалось переместить файлы в корзину.'));
+      console.error('    :', error);
+      setTrashMessage(formatErrorMessage(error, '     .'));
     } finally {
       if (latestDealIdRef.current === currentDealId) {
         setIsTrashing(false);
@@ -264,7 +264,7 @@ export const useDealDriveFiles = ({
 
       const trimmedName = name.trim();
       if (!trimmedName) {
-        setRenameMessage('Название файла не должно быть пустым.');
+        setRenameMessage('     .');
         return;
       }
 
@@ -290,9 +290,9 @@ export const useDealDriveFiles = ({
         if (latestDealIdRef.current !== currentDealId) {
           return;
         }
-        console.error('РћС€РёР±РєР° РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёСЏ С„Р°Р№Р»Р°:', error);
+        console.error('Ошибка переименования файла:', error);
         setRenameMessage(
-          formatErrorMessage(error, 'Не удалось переименовать файл.')
+          formatErrorMessage(error, '   .')
         );
       } finally {
         if (latestDealIdRef.current === currentDealId) {

@@ -35,7 +35,9 @@ ALLOWED_EXTRA_CHARS = {
     "•",
     "\u00a0",
 }
-CYRILLIC_RANGE = (0x0400, 0x052F)
+RUSSIAN_LETTERS = set(
+    "абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+)
 FORM_DIRECTORIES = (
     REPO_ROOT / "frontend" / "src" / "components" / "forms",
     REPO_ROOT / "frontend" / "src" / "components" / "app",
@@ -70,12 +72,11 @@ def is_supported_text_char(char: str) -> bool:
         return True
     if char == "\ufeff":
         return True
-    code = ord(char)
-    return CYRILLIC_RANGE[0] <= code <= CYRILLIC_RANGE[1]
+    return char in RUSSIAN_LETTERS
 
 
 class SourceEncodingTestCase(TestCase):
-    REPLACEMENT_CHAR = "\ufffd"
+    REPLACEMENT_CHAR = chr(0xFFFD)
 
     def assert_no_replacement_char(self, paths: Iterable[Path]) -> None:
         failures: list[str] = []
@@ -89,7 +90,7 @@ class SourceEncodingTestCase(TestCase):
                 + "\n".join(failures)
             )
 
-    def assert_only_allowed_form_characters(self, paths: Iterable[Path]) -> None:
+    def assert_only_supported_characters(self, paths: Iterable[Path]) -> None:
         failures: list[str] = []
         for path in paths:
             text = path.read_text(encoding="utf-8", errors="ignore")
@@ -110,7 +111,7 @@ class SourceEncodingTestCase(TestCase):
                 break
         if failures:
             self.fail(
-                "Found characters outside of the allowed English/Cyrillic set in form sources:\n"
+                "Found characters outside of the allowed English/Russian set in source files:\n"
                 + "\n".join(failures)
             )
 
@@ -123,8 +124,18 @@ class SourceEncodingTestCase(TestCase):
             self.skipTest("Frontend directory is missing in this checkout")
         self.assert_no_replacement_char(iter_files(frontend_dir, FRONTEND_EXTENSIONS))
 
+    def test_python_has_only_supported_characters(self):
+        self.assert_only_supported_characters(iter_files(REPO_ROOT, PYTHON_EXTENSIONS))
+
+    def test_frontend_has_only_supported_characters(self):
+        frontend_dir = REPO_ROOT / "frontend"
+        if not frontend_dir.exists():
+            self.skipTest("Frontend directory is missing in this checkout")
+        paths = list(iter_files(frontend_dir, FRONTEND_EXTENSIONS))
+        self.assert_only_supported_characters(paths)
+
     def test_forms_use_only_english_or_russian(self):
         paths = list(iter_form_files())
         if not paths:
             self.skipTest("Form directories are missing in this checkout")
-        self.assert_only_allowed_form_characters(paths)
+        self.assert_only_supported_characters(paths)

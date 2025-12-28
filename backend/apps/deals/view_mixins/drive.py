@@ -31,9 +31,7 @@ class DealDriveRenameSerializer(serializers.Serializer):
     def validate_name(self, value: str) -> str:
         trimmed = value.strip()
         if not trimmed:
-            raise ValidationError(
-                "РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј."
-            )
+            raise ValidationError("Название файла не должно быть пустым.")
         return trimmed
 
 
@@ -55,9 +53,7 @@ class DealDriveMixin:
             file_id = serializer.validated_data["file_id"].strip()
             new_name = serializer.validated_data["name"]
             if not file_id:
-                raise ValidationError(
-                    {"file_id": "РќСѓР¶РЅРѕ РїРµСЂРµРґР°С‚СЊ ID С„Р°Р№Р»Р°."}
-                )
+                raise ValidationError({"file_id": "Нужно передать ID файла."})
 
             try:
                 folder_id = deal.drive_folder_id
@@ -65,9 +61,7 @@ class DealDriveMixin:
                     folder_id = ensure_deal_folder(deal)
                 if not folder_id:
                     return Response(
-                        {
-                            "detail": "РџР°РїРєР° Google Drive РґР»СЏ СЃРґРµР»РєРё РЅРµ РЅР°Р№РґРµРЅР°."
-                        },
+                        {"detail": "Папка Google Drive для сделки не найдена."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
@@ -76,9 +70,7 @@ class DealDriveMixin:
                 target_file = drive_file_map.get(file_id)
                 if not target_file or target_file["is_folder"]:
                     return Response(
-                        {
-                            "detail": "Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ РёР»Рё СЌС‚Рѕ РїР°РїРєР°."
-                        },
+                        {"detail": "Файл не найден или это папка."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
@@ -102,9 +94,7 @@ class DealDriveMixin:
                 if isinstance(file_id, str) and file_id.strip()
             ]
             if not file_ids:
-                raise ValidationError(
-                    {"file_ids": "Нужно передать хотя бы один ID файла."}
-                )
+                raise ValidationError({"file_ids": "     ID ."})
 
             try:
                 folder_id = deal.drive_folder_id
@@ -112,7 +102,7 @@ class DealDriveMixin:
                     folder_id = ensure_deal_folder(deal)
                 if not folder_id:
                     return Response(
-                        {"detail": "Папка Google Drive для сделки не найдена."},
+                        {"detail": " Google Drive    ."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
@@ -127,7 +117,7 @@ class DealDriveMixin:
                 if missing_file_ids:
                     return Response(
                         {
-                            "detail": "Некоторые файлы не найдены в папке сделки.",
+                            "detail": "      .",
                             "missing_file_ids": missing_file_ids,
                         },
                         status=status.HTTP_400_BAD_REQUEST,
