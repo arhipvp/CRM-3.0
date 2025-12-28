@@ -4,7 +4,7 @@ from typing import Iterable
 from django.test import TestCase
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXCLUDED_PARTS = {".venv", "__pycache__", "migrations", "node_modules"}
+EXCLUDED_PARTS = {".venv", "__pycache__", "migrations", "node_modules", "dist"}
 PYTHON_EXTENSIONS = {".py"}
 FRONTEND_EXTENSIONS = {
     ".ts",
@@ -36,6 +36,11 @@ ALLOWED_EXTRA_CHARS = {
     chr(0x00A0),
     chr(0x2713),
     chr(0x2192),
+    chr(0x21BB),
+    chr(0x23F3),
+    chr(0x26AB),
+    chr(0x2705),
+    chr(0x2717),
 }
 RUSSIAN_LETTERS = (
     {chr(code) for code in range(0x0410, 0x0430)}
