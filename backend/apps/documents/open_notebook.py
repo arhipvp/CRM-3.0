@@ -81,6 +81,16 @@ class OpenNotebookClient:
         }
         return self._request("POST", "/api/sources/json", payload)
 
+    def generate_embeddings(
+        self, item_id: str, item_type: str = "source", async_processing: bool = False
+    ) -> dict:
+        payload = {
+            "item_id": item_id,
+            "item_type": item_type,
+            "async_processing": async_processing,
+        }
+        return self._request("POST", "/api/embed", payload)
+
     def create_chat_session(self, notebook_id: str, title: str | None = None) -> dict:
         payload = {"notebook_id": notebook_id}
         if title:
@@ -149,7 +159,7 @@ class OpenNotebookSyncService:
             notebook_id=notebook.notebook_id,
             file_path=file_path,
             title=document.title,
-            embed=settings.OPEN_NOTEBOOK_EMBED_ON_UPLOAD,
+            embed=False,
         )
         source_id = response.get("id")
         if not source_id:
@@ -166,6 +176,20 @@ class OpenNotebookSyncService:
                 "updated_at",
             ]
         )
+        if settings.OPEN_NOTEBOOK_EMBED_ON_UPLOAD:
+            try:
+                self.client.generate_embeddings(item_id=source_id, item_type="source")
+            except OpenNotebookError as exc:
+                document.open_notebook_status = "error"
+                document.open_notebook_error = str(exc)
+                document.save(
+                    update_fields=[
+                        "open_notebook_status",
+                        "open_notebook_error",
+                        "updated_at",
+                    ]
+                )
+                raise
 
     def delete_document(self, document: KnowledgeDocument) -> None:
         if not self.is_configured():
