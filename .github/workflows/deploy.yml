@@ -61,6 +61,11 @@ jobs:
           git reset --hard --quiet
           git checkout "${COMMIT_SHA}"
 
+          if [ ! -f .env.production ]; then
+            echo "Missing .env.production on server. Configure secrets via SSH before deploy."
+            exit 1
+          fi
+
           echo "Building and restarting stack"
           docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d
 
