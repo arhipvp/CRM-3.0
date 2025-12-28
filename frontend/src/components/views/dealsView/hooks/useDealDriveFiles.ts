@@ -94,10 +94,10 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      console.error('   Google Drive:', error);
+      console.error('Ошибка Google Drive:', error);
       setDriveFiles([]);
       setDriveError(
-        formatErrorMessage(error, '     Google Drive.')
+        formatErrorMessage(error, 'Не удалось загрузить файлы из Google Drive.')
       );
     } finally {
       if (latestDealIdRef.current === currentDealId) {
@@ -152,12 +152,12 @@ export const useDealDriveFiles = ({
     }
 
     if (!selectedDriveFileIds.length) {
-      setRecognitionMessage('      .');
+      setRecognitionMessage('Выберите хотя бы один файл для распознавания.');
       return;
     }
 
     if (!canRecognizeSelectedFiles) {
-      setRecognitionMessage('   PDF-.');
+      setRecognitionMessage('Выберите только PDF-файлы.');
       return;
     }
 
@@ -195,11 +195,11 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      console.error('  :', error);
+      console.error('Ошибка распознавания:', error);
       setRecognitionMessage(
         error instanceof Error
           ? error.message
-          : '   .  .'
+          : 'Не удалось распознать документы. Попробуйте еще раз.'
       );
     } finally {
       if (latestDealIdRef.current === currentDealId) {
@@ -221,11 +221,11 @@ export const useDealDriveFiles = ({
     }
 
     if (!selectedDriveFileIds.length) {
-      setTrashMessage('   .');
+      setTrashMessage('Выберите хотя бы один файл для удаления.');
       return;
     }
 
-    const confirmText = ` ${selectedDriveFileIds.length} ${selectedDriveFileIds.length === 1 ? '' : ''}  ?`;
+    const confirmText = `Удалить выбранные файлы (${selectedDriveFileIds.length})?`;
     if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
       return;
     }
@@ -246,8 +246,8 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      console.error('    :', error);
-      setTrashMessage(formatErrorMessage(error, '     .'));
+      console.error('Ошибка удаления:', error);
+      setTrashMessage(formatErrorMessage(error, 'Не удалось удалить файлы.'));
     } finally {
       if (latestDealIdRef.current === currentDealId) {
         setIsTrashing(false);
@@ -264,7 +264,7 @@ export const useDealDriveFiles = ({
 
       const trimmedName = name.trim();
       if (!trimmedName) {
-        setRenameMessage('     .');
+        setRenameMessage('Название файла не должно быть пустым.');
         return;
       }
 
@@ -292,7 +292,7 @@ export const useDealDriveFiles = ({
         }
         console.error('Ошибка переименования файла:', error);
         setRenameMessage(
-          formatErrorMessage(error, '   .')
+          formatErrorMessage(error, 'Не удалось переименовать файл.')
         );
       } finally {
         if (latestDealIdRef.current === currentDealId) {
