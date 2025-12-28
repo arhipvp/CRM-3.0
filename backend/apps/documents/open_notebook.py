@@ -2,6 +2,7 @@ import json
 import urllib.error
 import urllib.request
 from pathlib import Path
+from uuid import uuid4
 
 from django.conf import settings
 
@@ -81,6 +82,75 @@ class OpenNotebookClient:
         }
         return self._request("POST", "/api/sources/json", payload)
 
+    def create_source_upload(
+        self,
+        notebook_id: str,
+        file_path: str,
+        title: str,
+        embed: bool,
+        mime_type: str | None = None,
+    ) -> dict:
+        boundary = f"----crm3-open-notebook-{uuid4().hex}"
+        fields = {
+            "notebook_id": notebook_id,
+            "type": "upload",
+            "title": title,
+            "embed": "true" if embed else "false",
+        }
+        file_name = Path(file_path).name
+        content_type = mime_type or "application/octet-stream"
+        body = bytearray()
+
+        def add_line(value: str) -> None:
+            body.extend(value.encode("utf-8"))
+            body.extend(b"\r\n")
+
+        for key, value in fields.items():
+            add_line(f"--{boundary}")
+            add_line(f'Content-Disposition: form-data; name="{key}"')
+            add_line("")
+            add_line(str(value))
+
+        add_line(f"--{boundary}")
+        add_line(f'Content-Disposition: form-data; name="file"; filename="{file_name}"')
+        add_line(f"Content-Type: {content_type}")
+        add_line("")
+        with open(file_path, "rb") as handle:
+            body.extend(handle.read())
+        body.extend(b"\r\n")
+        add_line(f"--{boundary}--")
+
+        headers = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
+        if self.password:
+            headers["Authorization"] = f"Bearer {self.password}"
+
+        request = urllib.request.Request(
+            url=f"{self.base_url}/api/sources",
+            data=bytes(body),
+            headers=headers,
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                body_bytes = response.read()
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            raise OpenNotebookError(
+                f"Open Notebook error {exc.code}: {detail}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise OpenNotebookError(f"Open Notebook connection error: {exc}") from exc
+
+        if not body_bytes:
+            return {}
+        try:
+            return json.loads(body_bytes.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            raise OpenNotebookError(
+                "Open Notebook returned invalid JSON response."
+            ) from exc
+
     def generate_embeddings(
         self, item_id: str, item_type: str = "source", async_processing: bool = False
     ) -> dict:
@@ -134,7 +204,7 @@ class OpenNotebookSyncService:
             notebook_name=name,
         )
 
-    def sync_document(self, document: KnowledgeDocument) -> None:
+    def sync_document(self, document: KnowledgeDocument, force: bool = False) -> None:
         if not self.is_configured():
             document.open_notebook_status = "disabled"
             document.open_notebook_error = ""
@@ -153,13 +223,47 @@ class OpenNotebookSyncService:
         if not document.insurance_type:
             raise OpenNotebookError("Вид страхования не задан.")
 
+        if document.open_notebook_source_id and not force:
+            if settings.OPEN_NOTEBOOK_EMBED_ON_UPLOAD:
+                try:
+                    self.client.generate_embeddings(
+                        item_id=document.open_notebook_source_id, item_type="source"
+                    )
+                except OpenNotebookError as exc:
+                    document.open_notebook_status = "error"
+                    document.open_notebook_error = str(exc)
+                    document.save(
+                        update_fields=[
+                            "open_notebook_status",
+                            "open_notebook_error",
+                            "updated_at",
+                        ]
+                    )
+                    raise
+            else:
+                document.open_notebook_status = "synced"
+                document.open_notebook_error = ""
+                document.save(
+                    update_fields=[
+                        "open_notebook_status",
+                        "open_notebook_error",
+                        "updated_at",
+                    ]
+                )
+            return
+
+        if force and document.open_notebook_source_id:
+            self.client.delete_source(document.open_notebook_source_id)
+            document.open_notebook_source_id = ""
+
         notebook = self.ensure_notebook(document.insurance_type)
         file_path = self._resolve_file_path(document)
-        response = self.client.create_source(
+        response = self.client.create_source_upload(
             notebook_id=notebook.notebook_id,
             file_path=file_path,
             title=document.title,
             embed=False,
+            mime_type=document.mime_type or None,
         )
         source_id = response.get("id")
         if not source_id:

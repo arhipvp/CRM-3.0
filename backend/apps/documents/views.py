@@ -129,18 +129,10 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
                 {"detail": "Open Notebook не настроен."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-
-        if document.open_notebook_source_id:
-            try:
-                sync_service.delete_document(document)
-            except OpenNotebookError as exc:
-                return Response(
-                    {"detail": str(exc)},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
+        force = request.query_params.get("force") in {"1", "true", "True"}
 
         try:
-            sync_service.sync_document(document)
+            sync_service.sync_document(document, force=force)
         except OpenNotebookError as exc:
             document.open_notebook_status = "error"
             document.open_notebook_error = str(exc)
