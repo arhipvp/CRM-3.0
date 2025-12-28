@@ -111,6 +111,21 @@ class KnowledgeDocument(SoftDeleteModel):
         blank=True,
         help_text="Вид страхования",
     )
+    open_notebook_source_id = models.CharField(
+        max_length=128,
+        blank=True,
+        help_text="ID источника в Open Notebook",
+    )
+    open_notebook_status = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text="Статус синхронизации с Open Notebook",
+    )
+    open_notebook_error = models.TextField(
+        blank=True,
+        help_text="Текст последней ошибки синхронизации",
+    )
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -127,3 +142,31 @@ class KnowledgeDocument(SoftDeleteModel):
 
     def __str__(self) -> str:
         return self.title
+
+
+class KnowledgeNotebook(SoftDeleteModel):
+    """Связь вида страхования с блокнотом Open Notebook."""
+
+    insurance_type = models.OneToOneField(
+        "deals.InsuranceType",
+        related_name="knowledge_notebook",
+        on_delete=models.CASCADE,
+        help_text="Вид страхования",
+    )
+    notebook_id = models.CharField(
+        max_length=128,
+        unique=True,
+        help_text="ID блокнота в Open Notebook",
+    )
+    notebook_name = models.CharField(
+        max_length=255,
+        help_text="Имя блокнота в Open Notebook",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Блокнот Open Notebook"
+        verbose_name_plural = "Блокноты Open Notebook"
+
+    def __str__(self) -> str:
+        return f"{self.insurance_type_id}: {self.notebook_name}"

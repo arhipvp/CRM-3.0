@@ -1,0 +1,225 @@
+import json
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+from django.conf import settings
+
+from .models import KnowledgeDocument, KnowledgeNotebook
+
+
+class OpenNotebookError(Exception):
+    pass
+
+
+class OpenNotebookClient:
+    def __init__(self):
+        self.base_url = settings.OPEN_NOTEBOOK_API_URL.rstrip("/")
+        self.password = settings.OPEN_NOTEBOOK_PASSWORD
+        self.timeout = settings.OPEN_NOTEBOOK_TIMEOUT_SECONDS
+
+    def is_configured(self) -> bool:
+        return bool(self.base_url)
+
+    def _request(self, method: str, path: str, payload: dict | None = None) -> dict:
+        url = f"{self.base_url}{path}"
+        headers = {"Content-Type": "application/json"}
+        if self.password:
+            headers["Authorization"] = f"Bearer {self.password}"
+
+        data = None
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+
+        request = urllib.request.Request(
+            url=url,
+            data=data,
+            headers=headers,
+            method=method,
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                body = response.read()
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            raise OpenNotebookError(
+                f"Open Notebook error {exc.code}: {detail}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise OpenNotebookError(f"Open Notebook connection error: {exc}") from exc
+
+        if not body:
+            return {}
+        try:
+            return json.loads(body.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            raise OpenNotebookError(
+                "Open Notebook returned invalid JSON response."
+            ) from exc
+
+    def get_notebooks(self) -> list[dict]:
+        response = self._request("GET", "/api/notebooks")
+        if isinstance(response, list):
+            return response
+        return [response]
+
+    def create_notebook(self, name: str, description: str = "") -> dict:
+        return self._request(
+            "POST", "/api/notebooks", {"name": name, "description": description}
+        )
+
+    def create_source(
+        self, notebook_id: str, file_path: str, title: str, embed: bool
+    ) -> dict:
+        payload = {
+            "notebook_id": notebook_id,
+            "type": "upload",
+            "file_path": file_path,
+            "title": title,
+            "embed": embed,
+        }
+        return self._request("POST", "/api/sources/json", payload)
+
+    def create_chat_session(self, notebook_id: str, title: str | None = None) -> dict:
+        payload = {"notebook_id": notebook_id}
+        if title:
+            payload["title"] = title
+        return self._request("POST", "/api/chat/sessions", payload)
+
+    def build_context(self, notebook_id: str, context_config: dict) -> dict:
+        payload = {"notebook_id": notebook_id, "context_config": context_config}
+        return self._request("POST", "/api/chat/context", payload)
+
+    def execute_chat(self, session_id: str, message: str, context: dict) -> dict:
+        payload = {"session_id": session_id, "message": message, "context": context}
+        return self._request("POST", "/api/chat/execute", payload)
+
+
+class OpenNotebookSyncService:
+    def __init__(self):
+        self.client = OpenNotebookClient()
+
+    def is_configured(self) -> bool:
+        return self.client.is_configured()
+
+    def ensure_notebook(self, insurance_type) -> KnowledgeNotebook:
+        existing = getattr(insurance_type, "knowledge_notebook", None)
+        if existing:
+            return existing
+
+        name = f"Страхование: {insurance_type.name}"
+        description = insurance_type.description or ""
+        response = self.client.create_notebook(name=name, description=description)
+        notebook_id = response.get("id")
+        if not notebook_id:
+            raise OpenNotebookError("Open Notebook не вернул id блокнота.")
+
+        return KnowledgeNotebook.objects.create(
+            insurance_type=insurance_type,
+            notebook_id=notebook_id,
+            notebook_name=name,
+        )
+
+    def sync_document(self, document: KnowledgeDocument) -> None:
+        if not self.is_configured():
+            document.open_notebook_status = "disabled"
+            document.open_notebook_error = ""
+            document.save(
+                update_fields=[
+                    "open_notebook_status",
+                    "open_notebook_error",
+                    "updated_at",
+                ]
+            )
+            return
+
+        if not document.file:
+            raise OpenNotebookError("Файл документа отсутствует.")
+
+        if not document.insurance_type:
+            raise OpenNotebookError("Вид страхования не задан.")
+
+        notebook = self.ensure_notebook(document.insurance_type)
+        file_path = self._resolve_file_path(document)
+        response = self.client.create_source(
+            notebook_id=notebook.notebook_id,
+            file_path=file_path,
+            title=document.title,
+            embed=settings.OPEN_NOTEBOOK_EMBED_ON_UPLOAD,
+        )
+        source_id = response.get("id")
+        if not source_id:
+            raise OpenNotebookError("Open Notebook не вернул id источника.")
+
+        document.open_notebook_source_id = source_id
+        document.open_notebook_status = "synced"
+        document.open_notebook_error = ""
+        document.save(
+            update_fields=[
+                "open_notebook_source_id",
+                "open_notebook_status",
+                "open_notebook_error",
+                "updated_at",
+            ]
+        )
+
+    def ask(self, insurance_type_id: str, question: str) -> str:
+        if not self.is_configured():
+            raise OpenNotebookError("Open Notebook не настроен.")
+
+        documents = KnowledgeDocument.objects.filter(
+            insurance_type_id=insurance_type_id,
+            open_notebook_source_id__isnull=False,
+        ).exclude(open_notebook_source_id="")
+        if not documents.exists():
+            raise OpenNotebookError("Нет синхронизированных документов для вопроса.")
+
+        insurance_type = documents.first().insurance_type
+        if not insurance_type:
+            raise OpenNotebookError("Вид страхования не найден.")
+
+        notebook = self.ensure_notebook(insurance_type)
+        session = self.client.create_chat_session(
+            notebook_id=notebook.notebook_id, title="CRM Ask"
+        )
+        session_id = session.get("id")
+        if not session_id:
+            raise OpenNotebookError("Open Notebook не вернул id сессии чата.")
+
+        context_config = {
+            "sources": {
+                doc.open_notebook_source_id: settings.OPEN_NOTEBOOK_CONTEXT_LEVEL
+                for doc in documents
+                if doc.open_notebook_source_id
+            },
+            "notes": {},
+        }
+        context_response = self.client.build_context(
+            notebook_id=notebook.notebook_id, context_config=context_config
+        )
+        context = context_response.get("context")
+        if not context:
+            raise OpenNotebookError("Open Notebook не вернул контекст.")
+
+        chat_response = self.client.execute_chat(
+            session_id=session_id, message=question, context=context
+        )
+        messages = chat_response.get("messages") or []
+        for message in reversed(messages):
+            if message.get("type") == "ai":
+                return message.get("content", "")
+        raise OpenNotebookError("Open Notebook не вернул ответ.")
+
+    @staticmethod
+    def _resolve_file_path(document: KnowledgeDocument) -> str:
+        if not document.file:
+            raise OpenNotebookError("Файл документа отсутствует.")
+
+        media_root = Path(settings.MEDIA_ROOT)
+        target_root = Path(settings.OPEN_NOTEBOOK_MEDIA_ROOT)
+        try:
+            relative = Path(document.file.path).relative_to(media_root)
+        except ValueError:
+            return document.file.path
+        return str(target_root / relative)

@@ -195,6 +195,17 @@ OPENROUTER_MODEL = config("OPENROUTER_MODEL", default="")
 AI_POLICY_PROMPT = config("AI_POLICY_PROMPT", default="")
 AI_DOCUMENT_PROMPT = config("AI_DOCUMENT_PROMPT", default="")
 
+OPEN_NOTEBOOK_API_URL = config("OPEN_NOTEBOOK_API_URL", default="")
+OPEN_NOTEBOOK_PASSWORD = config("OPEN_NOTEBOOK_PASSWORD", default="")
+OPEN_NOTEBOOK_TIMEOUT_SECONDS = float(
+    config("OPEN_NOTEBOOK_TIMEOUT_SECONDS", default="300")
+)
+OPEN_NOTEBOOK_EMBED_ON_UPLOAD = _bool_env("OPEN_NOTEBOOK_EMBED_ON_UPLOAD", "true")
+OPEN_NOTEBOOK_MEDIA_ROOT = config("OPEN_NOTEBOOK_MEDIA_ROOT", default=str(MEDIA_ROOT))
+OPEN_NOTEBOOK_CONTEXT_LEVEL = config(
+    "OPEN_NOTEBOOK_CONTEXT_LEVEL", default="full content"
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",

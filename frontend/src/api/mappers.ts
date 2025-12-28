@@ -196,6 +196,15 @@ export const mapKnowledgeDocument = (raw: Record<string, unknown>): KnowledgeDoc
   fileSize: toNullableNumber(raw.file_size ?? raw.fileSize),
   insuranceTypeId: toNullableString(raw.insurance_type ?? raw.insuranceType),
   insuranceTypeName: toNullableString(raw.insurance_type_name ?? raw.insuranceTypeName),
+  openNotebookSourceId: toNullableString(
+    raw.open_notebook_source_id ?? raw.openNotebookSourceId
+  ),
+  openNotebookStatus: toNullableString(
+    raw.open_notebook_status ?? raw.openNotebookStatus
+  ),
+  openNotebookError: toNullableString(
+    raw.open_notebook_error ?? raw.openNotebookError
+  ),
   driveFileId: toNullableString(raw.drive_file_id ?? raw.driveFileId),
   ownerId: toNullableString(raw.owner_id ?? raw.ownerId),
   ownerUsername: toNullableString(raw.owner_username ?? raw.ownerUsername),

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FileUploadManager } from '../FileUploadManager';
 import { ColoredLabel } from '../common/ColoredLabel';
-import { fetchInsuranceTypes } from '../../api';
+import { askKnowledgeBase, fetchInsuranceTypes } from '../../api';
 import { InsuranceType, KnowledgeDocument } from '../../types';
 
 const formatDate = (value?: string | null): string => {
@@ -52,6 +52,10 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
   const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([]);
   const [selectedInsuranceTypeId, setSelectedInsuranceTypeId] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [isAsking, setIsAsking] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
 
   const sorted = useMemo(
     () =>
@@ -90,6 +94,11 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
     }
   }, [insuranceTypes, selectedInsuranceTypeId]);
 
+  useEffect(() => {
+    setAnswer('');
+    setAskError(null);
+  }, [selectedInsuranceTypeId]);
+
   const filtered = useMemo(
     () =>
       selectedInsuranceTypeId
@@ -111,6 +120,33 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
     setTitle('');
     setDescription('');
     setLocalError(null);
+  };
+
+  const handleAsk = async () => {
+    if (!selectedInsuranceTypeId) {
+      setAskError('Выберите вид страхования для вопроса.');
+      return;
+    }
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion) {
+      setAskError('Введите вопрос.');
+      return;
+    }
+    setIsAsking(true);
+    setAskError(null);
+    try {
+      const response = await askKnowledgeBase(
+        selectedInsuranceTypeId,
+        trimmedQuestion
+      );
+      setAnswer(response.answer);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Ошибка запроса к базе знаний';
+      setAskError(message);
+    } finally {
+      setIsAsking(false);
+    }
   };
 
   return (
@@ -169,6 +205,39 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         </div>
 
         <FileUploadManager onUpload={handleUpload} disabled={disabled} />
+
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Задать вопрос</h3>
+            <p className="text-xs text-slate-500">
+              Вопрос будет задан только внутри выбранного вида страхования.
+            </p>
+          </div>
+          <textarea
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+            placeholder="Например: Какие исключения есть в правилах страхования?"
+            rows={3}
+            className="field field-input"
+            disabled={isAsking || disabled}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm rounded-xl"
+              onClick={handleAsk}
+              disabled={isAsking || disabled}
+            >
+              {isAsking ? 'Отвечаем...' : 'Спросить'}
+            </button>
+            {askError && <span className="text-xs text-rose-600">{askError}</span>}
+          </div>
+          {answer && (
+            <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line">
+              {answer}
+            </div>
+          )}
+        </div>
 
         {localError && <div className="app-alert app-alert-danger">{localError}</div>}
         {error && <div className="app-alert app-alert-danger">{error}</div>}

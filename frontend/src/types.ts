@@ -91,6 +91,9 @@ export interface KnowledgeDocument {
   fileSize?: number | null;
   insuranceTypeId?: string | null;
   insuranceTypeName?: string | null;
+  openNotebookSourceId?: string | null;
+  openNotebookStatus?: string | null;
+  openNotebookError?: string | null;
   driveFileId?: string | null;
   webViewLink?: string | null;
   ownerId?: string | null;

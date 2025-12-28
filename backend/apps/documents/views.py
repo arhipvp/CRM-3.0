@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Document, KnowledgeDocument
+from .open_notebook import OpenNotebookError, OpenNotebookSyncService
 from .serializers import DocumentSerializer, KnowledgeDocumentSerializer
 
 
@@ -72,7 +73,7 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
             }
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save(
+        document = serializer.save(
             owner=(
                 request.user if request.user and request.user.is_authenticated else None
             ),
@@ -80,10 +81,61 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
             mime_type=file_obj.content_type or "",
             file_size=file_obj.size,
         )
-        headers = self.get_success_headers(serializer.data)
+        sync_service = OpenNotebookSyncService()
+        try:
+            sync_service.sync_document(document)
+        except OpenNotebookError as exc:
+            document.open_notebook_status = "error"
+            document.open_notebook_error = str(exc)
+            document.save(
+                update_fields=[
+                    "open_notebook_status",
+                    "open_notebook_error",
+                    "updated_at",
+                ]
+            )
+        response_serializer = self.get_serializer(document)
+        headers = self.get_success_headers(response_serializer.data)
         return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers,
         )
+
+
+class KnowledgeAskView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        question = request.data.get("question")
+        insurance_type = request.data.get("insurance_type")
+        if not question:
+            return Response(
+                {"detail": "Поле question обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not insurance_type:
+            return Response(
+                {"detail": "Поле insurance_type обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            answer = service.ask(str(insurance_type), str(question))
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({"question": question, "answer": answer})
 
 
 class DocumentRecognitionView(APIView):
