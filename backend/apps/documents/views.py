@@ -177,7 +177,7 @@ class KnowledgeAskView(APIView):
             )
 
         try:
-            result = service.ask(str(insurance_type), str(question), user=request.user)
+            result = service.ask(str(insurance_type), str(question))
         except OpenNotebookError as exc:
             return Response(
                 {"detail": str(exc)},

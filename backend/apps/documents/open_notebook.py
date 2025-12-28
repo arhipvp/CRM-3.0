@@ -391,7 +391,7 @@ class OpenNotebookSyncService:
         notebook.save(update_fields=["chat_session_id", "updated_at"])
         return session_id
 
-    def ask(self, insurance_type_id: str, question: str, user=None) -> dict:
+    def ask(self, insurance_type_id: str, question: str) -> dict:
         if not self.is_configured():
             raise OpenNotebookError("Open Notebook не настроен.")
 
