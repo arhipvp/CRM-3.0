@@ -18,8 +18,13 @@ Including another URLconf
 from apps.documents.views import (
     DocumentRecognitionView,
     KnowledgeAskView,
+    KnowledgeNotebookDetailView,
+    KnowledgeNotebooksView,
     KnowledgeNoteDetailView,
     KnowledgeNotesView,
+    KnowledgeSourceDetailView,
+    KnowledgeSourceDownloadView,
+    KnowledgeSourcesView,
 )
 from apps.finances.views import FinanceSummaryView
 from apps.users.views import (
@@ -52,9 +57,32 @@ urlpatterns = [
     ),
     path("api/v1/knowledge/ask/", KnowledgeAskView.as_view(), name="knowledge-ask"),
     path(
-        "api/v1/knowledge/notes/",
-        KnowledgeNotesView.as_view(),
-        name="knowledge-notes",
+        "api/v1/knowledge/notebooks/",
+        KnowledgeNotebooksView.as_view(),
+        name="knowledge-notebooks",
+    ),
+    path(
+        "api/v1/knowledge/notebooks/<str:notebook_id>/",
+        KnowledgeNotebookDetailView.as_view(),
+        name="knowledge-notebook-detail",
+    ),
+    path(
+        "api/v1/knowledge/sources/",
+        KnowledgeSourcesView.as_view(),
+        name="knowledge-sources",
+    ),
+    path(
+        "api/v1/knowledge/sources/<str:source_id>/",
+        KnowledgeSourceDetailView.as_view(),
+        name="knowledge-source-detail",
+    ),
+    path(
+        "api/v1/knowledge/sources/<str:source_id>/download/",
+        KnowledgeSourceDownloadView.as_view(),
+        name="knowledge-source-download",
+    ),
+    path(
+        "api/v1/knowledge/notes/", KnowledgeNotesView.as_view(), name="knowledge-notes"
     ),
     path(
         "api/v1/knowledge/notes/<str:note_id>/",

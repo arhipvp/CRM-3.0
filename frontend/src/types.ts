@@ -81,28 +81,6 @@ export interface Document {
   created_at: string;
 }
 
-export interface KnowledgeDocument {
-  id: string;
-  title: string;
-  description?: string | null;
-  fileName: string;
-  fileUrl?: string | null;
-  mimeType?: string | null;
-  fileSize?: number | null;
-  insuranceTypeId?: string | null;
-  insuranceTypeName?: string | null;
-  openNotebookSourceId?: string | null;
-  openNotebookStatus?: string | null;
-  openNotebookError?: string | null;
-  driveFileId?: string | null;
-  webViewLink?: string | null;
-  ownerId?: string | null;
-  ownerUsername?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  driveFolderId?: string | null;
-}
-
 export interface KnowledgeCitation {
   sourceId: string;
   documentId: string;
@@ -110,10 +88,25 @@ export interface KnowledgeCitation {
   fileUrl?: string | null;
 }
 
+export interface KnowledgeNotebook {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface KnowledgeSource {
+  id: string;
+  title?: string | null;
+  embedded?: boolean | null;
+  fileUrl?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface KnowledgeSavedAnswer {
   id: string;
-  insuranceTypeId?: string | null;
-  insuranceTypeName?: string | null;
   question: string;
   answer: string;
   citations: KnowledgeCitation[];

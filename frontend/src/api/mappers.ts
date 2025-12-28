@@ -11,7 +11,8 @@
   InsuranceCompany,
   InsuranceType,
   KnowledgeCitation,
-  KnowledgeDocument,
+  KnowledgeNotebook,
+  KnowledgeSource,
   KnowledgeSavedAnswer,
   Note,
   Payment,
@@ -187,52 +188,47 @@ export const mapDriveFile = (raw: Record<string, unknown>): DriveFile => {
   };
 };
 
-export const mapKnowledgeDocument = (raw: Record<string, unknown>): KnowledgeDocument => ({
+export const mapKnowledgeNotebook = (raw: Record<string, unknown>): KnowledgeNotebook => ({
   id: toStringValue(raw.id),
-  title: toStringValue(raw.title),
+  name: toStringValue(raw.name ?? ''),
   description: toNullableString(raw.description),
-  fileName: toStringValue(raw.file_name ?? raw.fileName ?? ''),
-  fileUrl: toNullableString(raw.file_url ?? raw.fileUrl ?? raw.file),
-  webViewLink: toNullableString(raw.web_view_link ?? raw.webViewLink),
-  mimeType: toNullableString(raw.mime_type ?? raw.mimeType),
-  fileSize: toNullableNumber(raw.file_size ?? raw.fileSize),
-  insuranceTypeId: toNullableString(raw.insurance_type ?? raw.insuranceType),
-  insuranceTypeName: toNullableString(raw.insurance_type_name ?? raw.insuranceTypeName),
-  openNotebookSourceId: toNullableString(
-    raw.open_notebook_source_id ?? raw.openNotebookSourceId
-  ),
-  openNotebookStatus: toNullableString(
-    raw.open_notebook_status ?? raw.openNotebookStatus
-  ),
-  openNotebookError: toNullableString(
-    raw.open_notebook_error ?? raw.openNotebookError
-  ),
-  driveFileId: toNullableString(raw.drive_file_id ?? raw.driveFileId),
-  ownerId: toNullableString(raw.owner_id ?? raw.ownerId),
-  ownerUsername: toNullableString(raw.owner_username ?? raw.ownerUsername),
-  createdAt: toStringValue(raw.created_at ?? raw.createdAt),
-  updatedAt: toStringValue(raw.updated_at ?? raw.updatedAt),
+  createdAt: toNullableString(raw.created ?? raw.created_at ?? raw.createdAt),
+  updatedAt: toNullableString(raw.updated ?? raw.updated_at ?? raw.updatedAt),
+});
+
+export const mapKnowledgeSource = (raw: Record<string, unknown>): KnowledgeSource => ({
+  id: toStringValue(raw.id),
+  title: toNullableString(raw.title),
+  embedded: raw.embedded === undefined ? null : Boolean(raw.embedded),
+  fileUrl: toNullableString(raw.file_url ?? raw.fileUrl),
+  createdAt: toNullableString(raw.created ?? raw.created_at ?? raw.createdAt),
+  updatedAt: toNullableString(raw.updated ?? raw.updated_at ?? raw.updatedAt),
 });
 
 const mapKnowledgeCitation = (raw: Record<string, unknown>): KnowledgeCitation => ({
-  sourceId: toStringValue(raw.source_id ?? raw.sourceId),
-  documentId: toStringValue(raw.document_id ?? raw.documentId),
+  sourceId: toStringValue(raw.source_id ?? raw.sourceId ?? raw.id),
+  documentId: toStringValue(
+    raw.document_id ?? raw.documentId ?? raw.source_id ?? raw.sourceId ?? raw.id
+  ),
   title: toStringValue(raw.title ?? ''),
   fileUrl: toNullableString(raw.file_url ?? raw.fileUrl),
 });
 
-export const mapKnowledgeSavedAnswer = (raw: Record<string, unknown>): KnowledgeSavedAnswer => ({
-  id: toStringValue(raw.id),
-  insuranceTypeId: toNullableString(raw.insurance_type ?? raw.insuranceType),
-  insuranceTypeName: toNullableString(raw.insurance_type_name ?? raw.insuranceTypeName),
-  question: toStringValue(raw.question ?? ''),
-  answer: toStringValue(raw.answer ?? ''),
-  citations: Array.isArray(raw.citations)
-    ? (raw.citations as Record<string, unknown>[]).map(mapKnowledgeCitation)
-    : [],
-  createdAt: toStringValue(raw.created_at ?? raw.createdAt),
-  updatedAt: toStringValue(raw.updated_at ?? raw.updatedAt),
-});
+export const mapKnowledgeSavedAnswer = (
+  raw: Record<string, unknown>
+): KnowledgeSavedAnswer => {
+  const citations = Array.isArray(raw.citations) ? raw.citations : [];
+  return {
+    id: toStringValue(raw.id),
+    question: toStringValue(raw.question ?? raw.title ?? ''),
+    answer: toStringValue(raw.answer ?? raw.content ?? ''),
+    citations: citations.map((item) =>
+      mapKnowledgeCitation(item as Record<string, unknown>)
+    ),
+    createdAt: toStringValue(raw.created_at ?? raw.created ?? raw.createdAt ?? ''),
+    updatedAt: toStringValue(raw.updated_at ?? raw.updated ?? raw.updatedAt ?? ''),
+  };
+};
 
 export const mapUser = (raw: Record<string, unknown>): User => {
   const legacyRoles = Array.isArray(raw.roles)

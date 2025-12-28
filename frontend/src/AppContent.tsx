@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
 import { useNotification } from './contexts/NotificationContext';
@@ -41,9 +40,6 @@ import {
   hasStoredTokens,
   clearTokens,
   APIError,
-  uploadKnowledgeDocument,
-  deleteKnowledgeDocument,
-  syncKnowledgeDocument,
   fetchDeal,
   createPolicy,
   updatePolicy,
@@ -179,7 +175,6 @@ const AppContent: React.FC = () => {
     refreshDeals,
     invalidateDealsCache,
     refreshPolicies,
-    refreshKnowledgeDocuments,
     updateAppData,
     setAppData,
     loadMoreDeals,
@@ -200,10 +195,6 @@ const AppContent: React.FC = () => {
     financialRecords,
     tasks,
     users,
-    knowledgeDocs,
-    knowledgeLoading,
-    knowledgeError,
-    knowledgeUploading,
   } = dataState;
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const {
@@ -234,7 +225,6 @@ const AppContent: React.FC = () => {
   const policyDealExecutorName = getDealExecutorName(policyDealId);
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const searchInitialized = useRef(false);
-  const location = useLocation();
 
   const refreshDealsWithSelection = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
@@ -405,14 +395,6 @@ const AppContent: React.FC = () => {
     isAuthenticated,
     setError,
   ]);
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    if (location.pathname === '/knowledge') {
-      refreshKnowledgeDocuments();
-    }
-  }, [isAuthenticated, refreshKnowledgeDocuments, location.pathname]);
 
   // Check authentication on app load
   useEffect(() => {
@@ -672,63 +654,6 @@ const AppContent: React.FC = () => {
       setModal(null);
     },
     [invalidateDealsCache, setModal, setSelectedDealId, updateAppData]
-  );
-
-  const handleKnowledgeUpload = useCallback(
-    async (
-      file: File,
-      metadata: { title?: string; description?: string; insuranceTypeId?: string }
-    ) => {
-      setAppData({ knowledgeUploading: true });
-      try {
-        await uploadKnowledgeDocument(file, metadata);
-        await refreshKnowledgeDocuments();
-      } catch (err) {
-        const message = err instanceof Error ? err : new Error('Ошибка при загрузке справочной базы');
-        throw message;
-      } finally {
-        setAppData({ knowledgeUploading: false });
-      }
-    },
-    [refreshKnowledgeDocuments, setAppData]
-  );
-
-  const handleKnowledgeDelete = useCallback(
-    async (documentId: string) => {
-      try {
-        await deleteKnowledgeDocument(documentId);
-        updateAppData((prev) => ({
-          knowledgeDocs: prev.knowledgeDocs.filter((doc) => doc.id !== documentId),
-        }));
-      } catch (err) {
-        const message =
-          err instanceof Error
-            ? err
-            : new Error('Ошибка при удалении документа');
-        throw message;
-      }
-    },
-    [updateAppData]
-  );
-
-  const handleKnowledgeSync = useCallback(
-    async (documentId: string) => {
-      try {
-        const updated = await syncKnowledgeDocument(documentId);
-        updateAppData((prev) => ({
-          knowledgeDocs: prev.knowledgeDocs.map((doc) =>
-            doc.id === updated.id ? updated : doc
-          ),
-        }));
-      } catch (err) {
-        const message =
-          err instanceof Error
-            ? err
-            : new Error('Ошибка при синхронизации документа');
-        throw message;
-      }
-    },
-    [updateAppData]
   );
 
   const handleCloseDeal = useCallback(
@@ -1719,10 +1644,6 @@ const AppContent: React.FC = () => {
       financialRecords: [],
       tasks: [],
       users: [],
-      knowledgeDocs: [],
-      knowledgeLoading: false,
-      knowledgeError: null,
-      knowledgeUploading: false,
     });
   }, [setAppData]);
 
@@ -1809,13 +1730,6 @@ const AppContent: React.FC = () => {
         dealOrdering={dealOrdering}
         onDealOrderingChange={setDealOrdering}
         onPolicyDraftReady={handlePolicyDraftReady}
-        knowledgeDocs={knowledgeDocs}
-        knowledgeLoading={knowledgeLoading}
-        knowledgeUploading={knowledgeUploading}
-        knowledgeError={knowledgeError}
-        handleKnowledgeUpload={handleKnowledgeUpload}
-        handleKnowledgeDelete={handleKnowledgeDelete}
-        handleKnowledgeSync={handleKnowledgeSync}
         onLoadMoreDeals={loadMoreDeals}
         dealsHasMore={dealsHasMore}
         isLoadingMoreDeals={isLoadingMoreDeals}

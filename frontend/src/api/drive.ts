@@ -1,7 +1,6 @@
 ﻿import { request } from './request';
-import { PaginatedResponse, unwrapList } from './helpers';
-import { mapDriveFile, mapKnowledgeDocument } from './mappers';
-import type { DriveFile, KnowledgeDocument } from '../types';
+import { mapDriveFile } from './mappers';
+import type { DriveFile } from '../types';
 
 export interface DriveFilesResponse {
   files: DriveFile[];
@@ -98,51 +97,6 @@ export async function fetchPolicyDriveFiles(policyId: string): Promise<DriveFile
     `/policies/${policyId}/drive-files/`
   );
   return normalizeDriveResponse(payload);
-}
-
-export async function fetchKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/knowledge_documents/`);
-  return unwrapList<Record<string, unknown>>(payload).map(mapKnowledgeDocument);
-}
-
-export async function uploadKnowledgeDocument(
-  file: File,
-  metadata?: { title?: string; description?: string; insuranceTypeId?: string }
-): Promise<KnowledgeDocument> {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (metadata?.title) {
-    formData.append('title', metadata.title);
-  }
-  if (metadata?.description) {
-    formData.append('description', metadata.description);
-  }
-  if (metadata?.insuranceTypeId) {
-    formData.append('insurance_type', metadata.insuranceTypeId);
-  }
-
-  const payload = await request<Record<string, unknown>>('/knowledge_documents/', {
-    method: 'POST',
-    body: formData,
-  });
-
-  return mapKnowledgeDocument(payload);
-}
-
-export async function deleteKnowledgeDocument(documentId: string): Promise<void> {
-  await request<void>(`/knowledge_documents/${documentId}/`, {
-    method: 'DELETE',
-  });
-}
-
-export async function syncKnowledgeDocument(documentId: string): Promise<KnowledgeDocument> {
-  const payload = await request<Record<string, unknown>>(
-    `/knowledge_documents/${documentId}/sync/`,
-    {
-      method: 'POST',
-    }
-  );
-  return mapKnowledgeDocument(payload);
 }
 
 export async function uploadDealDriveFile(

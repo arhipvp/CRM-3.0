@@ -4,7 +4,6 @@ import {
   fetchClients,
   fetchDealsWithPagination,
   fetchFinancialRecords,
-  fetchKnowledgeDocuments,
   fetchPayments,
   fetchPoliciesWithPagination,
   fetchSalesChannels,
@@ -16,7 +15,6 @@ import type {
   Client,
   Deal,
   FinancialRecord,
-  KnowledgeDocument,
   Payment,
   Policy,
   SalesChannel,
@@ -34,10 +32,6 @@ interface AppDataState {
   financialRecords: FinancialRecord[];
   tasks: Task[];
   users: User[];
-  knowledgeDocs: KnowledgeDocument[];
-  knowledgeLoading: boolean;
-  knowledgeError: string | null;
-  knowledgeUploading: boolean;
 }
 
 const DEALS_PAGE_SIZE = 10;
@@ -51,10 +45,6 @@ const INITIAL_APP_DATA_STATE: AppDataState = {
   financialRecords: [],
   tasks: [],
   users: [],
-  knowledgeDocs: [],
-  knowledgeLoading: false,
-  knowledgeError: null,
-  knowledgeUploading: false,
 };
 
 type AppDataAction =
@@ -184,21 +174,6 @@ export const useAppData = () => {
     setAppData({ policies: retrieved });
   }, [setAppData]);
 
-  const refreshKnowledgeDocuments = useCallback(async () => {
-    setAppData({ knowledgeLoading: true, knowledgeError: null });
-    try {
-      const docs = await fetchKnowledgeDocuments();
-      setAppData({ knowledgeDocs: docs });
-    } catch (err) {
-      setAppData({
-        knowledgeError: formatErrorMessage(err, 'Ошибка при загрузке справочной базы'),
-      });
-      throw err;
-    } finally {
-      setAppData({ knowledgeLoading: false });
-    }
-  }, [setAppData]);
-
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -239,7 +214,6 @@ export const useAppData = () => {
     refreshDeals,
     invalidateDealsCache,
     refreshPolicies,
-    refreshKnowledgeDocuments,
     updateAppData,
     setAppData,
     loadMoreDeals,

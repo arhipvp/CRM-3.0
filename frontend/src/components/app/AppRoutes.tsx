@@ -12,7 +12,6 @@ import type {
   Client,
   Deal,
   FinancialRecord,
-  KnowledgeDocument,
   Payment,
   Policy,
   Quote,
@@ -84,16 +83,6 @@ export interface AppRoutesProps {
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   isLoadingMoreDeals: boolean;
-  knowledgeDocs: KnowledgeDocument[];
-  knowledgeLoading: boolean;
-  knowledgeUploading: boolean;
-  knowledgeError: string | null;
-  handleKnowledgeUpload: (
-    file: File,
-    metadata: { title?: string; description?: string; insuranceTypeId?: string }
-  ) => Promise<void>;
-  handleKnowledgeDelete: (documentId: string) => Promise<void>;
-  handleKnowledgeSync: (documentId: string) => Promise<void>;
 }
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({
@@ -151,13 +140,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onLoadMoreDeals,
   dealsHasMore,
   isLoadingMoreDeals,
-  knowledgeDocs,
-  knowledgeLoading,
-  knowledgeUploading,
-  knowledgeError,
-  handleKnowledgeUpload,
-  handleKnowledgeDelete,
-  handleKnowledgeSync,
 }) => (
   <Routes>
     <Route
@@ -256,17 +238,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     />
     <Route
       path="/knowledge"
-      element={
-        <KnowledgeDocumentsView
-          documents={knowledgeDocs}
-          isLoading={knowledgeLoading}
-          disabled={knowledgeUploading}
-          error={knowledgeError}
-          onUpload={handleKnowledgeUpload}
-          onDelete={handleKnowledgeDelete}
-          onSync={handleKnowledgeSync}
-        />
-      }
+      element={<KnowledgeDocumentsView />}
     />
     <Route path="/settings" element={<SettingsView />} />
     <Route path="*" element={<Navigate to="/deals" replace />} />

@@ -76,102 +76,23 @@ class Document(SoftDeleteModel):
         return self.title
 
 
-class KnowledgeDocument(SoftDeleteModel):
-    """Общие документы, доступные всей команде."""
+class OpenNotebookSession(SoftDeleteModel):
+    """Сохраненная сессия чата Open Notebook по блокноту."""
 
-    title = models.CharField(max_length=255, help_text="Название файла")
-    description = models.TextField(blank=True, help_text="Краткое описание")
-    file_name = models.CharField(max_length=255, help_text="Оригинальное имя файла")
-    file = models.FileField(
-        upload_to=knowledge_document_upload_path,
-        null=True,
-        blank=True,
-        help_text="Файл документа",
-    )
-    drive_file_id = models.CharField(
-        max_length=128,
-        blank=True,
-        null=True,
-        help_text="ID файла в Google Drive (legacy)",
-    )
-    web_view_link = models.URLField(
-        max_length=512,
-        blank=True,
-        help_text="Ссылка для просмотра файла (legacy)",
-    )
-    mime_type = models.CharField(max_length=120, blank=True, help_text="MIME тип файла")
-    file_size = models.PositiveBigIntegerField(
-        null=True, blank=True, help_text="Размер файла в байтах"
-    )
-    insurance_type = models.ForeignKey(
-        "deals.InsuranceType",
-        related_name="knowledge_documents",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        help_text="Вид страхования",
-    )
-    open_notebook_source_id = models.CharField(
-        max_length=128,
-        blank=True,
-        help_text="ID источника в Open Notebook",
-    )
-    open_notebook_status = models.CharField(
-        max_length=32,
-        blank=True,
-        help_text="Статус синхронизации с Open Notebook",
-    )
-    open_notebook_error = models.TextField(
-        blank=True,
-        help_text="Текст последней ошибки синхронизации",
-    )
-
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="knowledge_documents",
-        help_text="Пользователь, загрузивший документ",
-    )
-
-    class Meta:
-        ordering = ["-created_at"]
-        verbose_name = "Библиотечный документ"
-        verbose_name_plural = "Библиотечные документы"
-
-    def __str__(self) -> str:
-        return self.title
-
-
-class KnowledgeNotebook(SoftDeleteModel):
-    """Связь вида страхования с блокнотом Open Notebook."""
-
-    insurance_type = models.OneToOneField(
-        "deals.InsuranceType",
-        related_name="knowledge_notebook",
-        on_delete=models.CASCADE,
-        help_text="Вид страхования",
-    )
     notebook_id = models.CharField(
         max_length=128,
         unique=True,
         help_text="ID блокнота в Open Notebook",
     )
-    notebook_name = models.CharField(
-        max_length=255,
-        help_text="Имя блокнота в Open Notebook",
-    )
     chat_session_id = models.CharField(
         max_length=128,
-        blank=True,
-        help_text="ID сессии чата Open Notebook",
+        help_text="ID сессии чата в Open Notebook",
     )
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Блокнот Open Notebook"
-        verbose_name_plural = "Блокноты Open Notebook"
+        verbose_name = "Сессия чата Open Notebook"
+        verbose_name_plural = "Сессии чата Open Notebook"
 
     def __str__(self) -> str:
-        return f"{self.insurance_type_id}: {self.notebook_name}"
+        return self.notebook_id

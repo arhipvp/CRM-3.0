@@ -1,173 +1,91 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FileUploadManager } from '../FileUploadManager';
-import { ColoredLabel } from '../common/ColoredLabel';
 import {
   askKnowledgeBase,
+  createNotebook,
   deleteKnowledgeAnswer,
-  fetchInsuranceTypes,
+  deleteNotebook,
+  deleteSource,
+  fetchNotebooks,
   fetchSavedAnswers,
+  fetchSources,
   saveKnowledgeAnswer,
+  updateNotebook,
+  uploadSource,
 } from '../../api';
 import {
-  InsuranceType,
   KnowledgeCitation,
-  KnowledgeDocument,
+  KnowledgeNotebook,
   KnowledgeSavedAnswer,
+  KnowledgeSource,
 } from '../../types';
 
 const formatDate = (value?: string | null): string => {
   if (!value) {
-    return 'вЂ”';
+    return '—';
   }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return 'вЂ”';
+    return '—';
   }
   return parsed.toLocaleDateString('ru-RU');
 };
 
-const formatSize = (value?: number | null): string => {
-  if (!value || value <= 0) {
-    return 'вЂ”';
+const formatDateTime = (value?: string | null): string => {
+  if (!value) {
+    return '—';
   }
-  const units = ['Р‘', 'РљР‘', 'РњР‘', 'Р“Р‘'];
-  let size = value;
-  let index = 0;
-  while (size >= 1024 && index < units.length - 1) {
-    size /= 1024;
-    index += 1;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
   }
-  return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[index]}`;
+  return parsed.toLocaleString('ru-RU');
 };
 
-interface KnowledgeDocumentsViewProps {
-  documents: KnowledgeDocument[];
-  isLoading: boolean;
-  error?: string | null;
-  onUpload: (
-    file: File,
-    metadata: { title?: string; description?: string; insuranceTypeId?: string }
-  ) => Promise<void>;
-  onDelete: (documentId: string) => Promise<void>;
-  onSync: (documentId: string) => Promise<void>;
-  disabled?: boolean;
-}
+export const KnowledgeDocumentsView: React.FC = () => {
+  const [notebooks, setNotebooks] = useState<KnowledgeNotebook[]>([]);
+  const [selectedNotebookId, setSelectedNotebookId] = useState('');
+  const [selectedNotebookName, setSelectedNotebookName] = useState('');
+  const [newNotebookName, setNewNotebookName] = useState('');
+  const [notebookError, setNotebookError] = useState<string | null>(null);
+  const [isNotebookBusy, setIsNotebookBusy] = useState(false);
 
-export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
-  documents,
-  isLoading,
-  error,
-  onUpload,
-  onDelete,
-  onSync,
-  disabled,
-}) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([]);
-  const [selectedInsuranceTypeId, setSelectedInsuranceTypeId] = useState('');
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [sources, setSources] = useState<KnowledgeSource[]>([]);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState('');
+
   const [question, setQuestion] = useState('');
   const [lastQuestion, setLastQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [citations, setCitations] = useState<KnowledgeCitation[]>([]);
   const [isAsking, setIsAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+
   const [savedAnswers, setSavedAnswers] = useState<KnowledgeSavedAnswer[]>([]);
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [savedError, setSavedError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [syncingId, setSyncingId] = useState<string | null>(null);
 
-  const resolveSyncStatus = (doc: KnowledgeDocument) => {
-    const status = (doc.openNotebookStatus || '').trim().toLowerCase();
-    if (status === 'synced') {
-      return { label: 'РЎРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅ', tone: 'success' as const };
-    }
-    if (status === 'queued' || status === 'running' || status === 'new') {
-      return { label: 'Р’ РѕР±СЂР°Р±РѕС‚РєРµ', tone: 'pending' as const };
-    }
-    if (status === 'error' || status === 'failed') {
-      return { label: 'РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё', tone: 'error' as const };
-    }
-    if (status === 'disabled') {
-      return { label: 'РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ РІС‹РєР»СЋС‡РµРЅР°', tone: 'muted' as const };
-    }
-    if (doc.openNotebookSourceId) {
-      return { label: 'РЎРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅ', tone: 'success' as const };
-    }
-    return { label: 'РћР¶РёРґР°РµС‚ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё', tone: 'pending' as const };
-  };
-
-  const resolveSyncBadgeClass = (tone: 'success' | 'error' | 'muted' | 'pending') => {
-    if (tone === 'success') {
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    }
-    if (tone === 'error') {
-      return 'border-rose-200 bg-rose-50 text-rose-700';
-    }
-    if (tone === 'muted') {
-      return 'border-slate-200 bg-slate-100 text-slate-600';
-    }
-    return 'border-amber-200 bg-amber-50 text-amber-700';
-  };
-
-  const sorted = useMemo(
-    () =>
-      [...documents].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-    [documents]
-  );
+  const sortedSources = useMemo(() => {
+    return [...sources].sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [sources]);
 
   useEffect(() => {
     let isMounted = true;
-    fetchInsuranceTypes()
-      .then((types) => {
-        if (!isMounted) {
-          return;
-        }
-        setInsuranceTypes(types);
-      })
-      .catch((err) => {
-        if (!isMounted) {
-          return;
-        }
-        const message =
-          err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РІРёРґС‹ СЃС‚СЂР°С…РѕРІР°РЅРёСЏ';
-        setLocalError(message);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedInsuranceTypeId && insuranceTypes.length > 0) {
-      setSelectedInsuranceTypeId(insuranceTypes[0].id);
-    }
-  }, [insuranceTypes, selectedInsuranceTypeId]);
-
-  useEffect(() => {
-    setAnswer('');
-    setAskError(null);
-    setCitations([]);
-    setSavedError(null);
-  }, [selectedInsuranceTypeId]);
-
-  useEffect(() => {
-    if (!selectedInsuranceTypeId) {
-      setSavedAnswers([]);
-      return;
-    }
-    let isMounted = true;
-    fetchSavedAnswers(selectedInsuranceTypeId)
+    fetchNotebooks()
       .then((items) => {
         if (!isMounted) {
           return;
         }
-        setSavedAnswers(items);
+        setNotebooks(items);
+        if (!selectedNotebookId && items.length > 0) {
+          setSelectedNotebookId(items[0].id);
+          setSelectedNotebookName(items[0].name);
+        }
       })
       .catch((err) => {
         if (!isMounted) {
@@ -176,132 +94,227 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         const message =
           err instanceof Error
             ? err.message
-            : 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Рµ РѕС‚РІРµС‚С‹';
-        setSavedError(message);
+            : 'Не удалось загрузить блокноты.';
+        setNotebookError(message);
       });
+
     return () => {
       isMounted = false;
     };
-  }, [selectedInsuranceTypeId]);
+  }, [selectedNotebookId]);
 
-  const filtered = useMemo(
-    () =>
-      selectedInsuranceTypeId
-        ? sorted.filter((doc) => doc.insuranceTypeId === selectedInsuranceTypeId)
-        : [],
-    [sorted, selectedInsuranceTypeId]
-  );
-
-  const handleUpload = async (file: File) => {
-    if (!selectedInsuranceTypeId) {
-      setLocalError('Р’С‹Р±РµСЂРёС‚Рµ РІРёРґ СЃС‚СЂР°С…РѕРІР°РЅРёСЏ РїРµСЂРµРґ Р·Р°РіСЂСѓР·РєРѕР№.');
+  useEffect(() => {
+    if (!selectedNotebookId) {
+      setSources([]);
+      setSavedAnswers([]);
+      setAnswer('');
+      setCitations([]);
       return;
     }
-    await onUpload(file, {
-      title: title.trim() || undefined,
-      description: description.trim() || undefined,
-      insuranceTypeId: selectedInsuranceTypeId,
-    });
-    setTitle('');
-    setDescription('');
-    setLocalError(null);
+    setSourcesLoading(true);
+    setSourcesError(null);
+    Promise.all([
+      fetchSources(selectedNotebookId),
+      fetchSavedAnswers(selectedNotebookId),
+    ])
+      .then(([sourcesData, savedData]) => {
+        setSources(sourcesData);
+        setSavedAnswers(savedData);
+        setAskError(null);
+        setSavedError(null);
+      })
+      .catch((err) => {
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Не удалось загрузить данные блокнота.';
+        setSourcesError(message);
+      })
+      .finally(() => setSourcesLoading(false));
+  }, [selectedNotebookId]);
+
+  const handleNotebookSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const notebookId = event.target.value;
+    setSelectedNotebookId(notebookId);
+    const notebook = notebooks.find((item) => item.id === notebookId);
+    setSelectedNotebookName(notebook?.name ?? '');
+  };
+
+  const handleCreateNotebook = async () => {
+    const name = newNotebookName.trim();
+    if (!name) {
+      setNotebookError('Введите название блокнота.');
+      return;
+    }
+    setNotebookError(null);
+    setIsNotebookBusy(true);
+    try {
+      const notebook = await createNotebook({ name });
+      setNotebooks((prev) => [notebook, ...prev]);
+      setSelectedNotebookId(notebook.id);
+      setSelectedNotebookName(notebook.name);
+      setNewNotebookName('');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось создать блокнот.';
+      setNotebookError(message);
+    } finally {
+      setIsNotebookBusy(false);
+    }
+  };
+
+  const handleRenameNotebook = async () => {
+    if (!selectedNotebookId) {
+      return;
+    }
+    const name = selectedNotebookName.trim();
+    if (!name) {
+      setNotebookError('Введите название блокнота.');
+      return;
+    }
+    setNotebookError(null);
+    setIsNotebookBusy(true);
+    try {
+      const updated = await updateNotebook({
+        notebookId: selectedNotebookId,
+        name,
+      });
+      setNotebooks((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+      setSelectedNotebookName(updated.name);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось переименовать блокнот.';
+      setNotebookError(message);
+    } finally {
+      setIsNotebookBusy(false);
+    }
+  };
+
+  const handleDeleteNotebook = async () => {
+    if (!selectedNotebookId) {
+      return;
+    }
+    const current = notebooks.find((item) => item.id === selectedNotebookId);
+    const confirmed = window.confirm(
+      `Удалить блокнот "${current?.name ?? ''}"? Все файлы и заметки будут удалены.`
+    );
+    if (!confirmed) {
+      return;
+    }
+    setNotebookError(null);
+    setIsNotebookBusy(true);
+    try {
+      await deleteNotebook(selectedNotebookId);
+      const next = notebooks.filter((item) => item.id !== selectedNotebookId);
+      setNotebooks(next);
+      const nextNotebook = next[0];
+      setSelectedNotebookId(nextNotebook?.id ?? '');
+      setSelectedNotebookName(nextNotebook?.name ?? '');
+      setSources([]);
+      setSavedAnswers([]);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось удалить блокнот.';
+      setNotebookError(message);
+    } finally {
+      setIsNotebookBusy(false);
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!selectedNotebookId) {
+      setSourcesError('Выберите блокнот перед загрузкой файла.');
+      return;
+    }
+    try {
+      await uploadSource({
+        notebookId: selectedNotebookId,
+        title: uploadTitle.trim() || undefined,
+        file,
+      });
+      setUploadTitle('');
+      const refreshed = await fetchSources(selectedNotebookId);
+      setSources(refreshed);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось загрузить файл.';
+      setSourcesError(message);
+    }
+  };
+
+  const handleDeleteSource = async (sourceId: string) => {
+    if (!selectedNotebookId) {
+      return;
+    }
+    const confirmed = window.confirm('Удалить файл из блокнота?');
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await deleteSource(sourceId);
+      setSources((prev) => prev.filter((item) => item.id !== sourceId));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось удалить файл.';
+      setSourcesError(message);
+    }
   };
 
   const handleAsk = async () => {
-    if (!selectedInsuranceTypeId) {
-      setAskError('Р’С‹Р±РµСЂРёС‚Рµ РІРёРґ СЃС‚СЂР°С…РѕРІР°РЅРёСЏ РґР»СЏ РІРѕРїСЂРѕСЃР°.');
+    if (!selectedNotebookId) {
+      setAskError('Выберите блокнот для вопроса.');
       return;
     }
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
-      setAskError('Р’РІРµРґРёС‚Рµ РІРѕРїСЂРѕСЃ.');
+      setAskError('Введите вопрос.');
       return;
     }
     setIsAsking(true);
     setAskError(null);
     try {
-      const response = await askKnowledgeBase(
-        selectedInsuranceTypeId,
-        trimmedQuestion
-      );
+      const response = await askKnowledgeBase(selectedNotebookId, trimmedQuestion);
       setAnswer(response.answer);
       setCitations(response.citations ?? []);
       setLastQuestion(trimmedQuestion);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'РћС€РёР±РєР° Р·Р°РїСЂРѕСЃР° Рє Р±Р°Р·Рµ Р·РЅР°РЅРёР№';
+        err instanceof Error
+          ? err.message
+          : 'Ошибка запроса к базе знаний';
       setAskError(message);
     } finally {
       setIsAsking(false);
     }
   };
 
-  const handleDelete = async (doc: KnowledgeDocument) => {
-    if (disabled || deletingId) {
-      return;
-    }
-    const confirmed = window.confirm(
-      `РЈРґР°Р»РёС‚СЊ РґРѕРєСѓРјРµРЅС‚ "${doc.title}"? РћРЅ Р±СѓРґРµС‚ СѓРґР°Р»РµРЅ Рё РёР· Open Notebook.`
-    );
-    if (!confirmed) {
-      return;
-    }
-    setDeletingId(doc.id);
-    setLocalError(null);
-    try {
-      await onDelete(doc.id);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'РћС€РёР±РєР° РїСЂРё СѓРґР°Р»РµРЅРёРё РґРѕРєСѓРјРµРЅС‚Р°';
-      setLocalError(message);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const handleSync = async (doc: KnowledgeDocument) => {
-    if (disabled || syncingId) {
-      return;
-    }
-    setSyncingId(doc.id);
-    setLocalError(null);
-    try {
-      await onSync(doc.id);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'РћС€РёР±РєР° РїСЂРё СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РґРѕРєСѓРјРµРЅС‚Р°';
-      setLocalError(message);
-    } finally {
-      setSyncingId(null);
-    }
-  };
-
   const handleSaveAnswer = async () => {
-    if (!selectedInsuranceTypeId) {
-      setSavedError('Р’С‹Р±РµСЂРёС‚Рµ РІРёРґ СЃС‚СЂР°С…РѕРІР°РЅРёСЏ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ РѕС‚РІРµС‚Р°.');
+    if (!selectedNotebookId) {
+      setSavedError('Выберите блокнот для сохранения ответа.');
       return;
     }
     if (!answer.trim()) {
-      setSavedError('РќРµС‚ РѕС‚РІРµС‚Р° РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ.');
+      setSavedError('Нет ответа для сохранения.');
       return;
     }
     if (!lastQuestion.trim()) {
-      setSavedError('РќРµ РЅР°Р№РґРµРЅ РІРѕРїСЂРѕСЃ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ.');
+      setSavedError('Не найден вопрос для сохранения.');
       return;
     }
     setSavingAnswer(true);
     setSavedError(null);
     try {
       const saved = await saveKnowledgeAnswer({
-        insuranceTypeId: selectedInsuranceTypeId,
+        notebookId: selectedNotebookId,
         question: lastQuestion,
         answer,
-        citations,
       });
       setSavedAnswers((prev) => [saved, ...prev]);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РѕС‚РІРµС‚.';
+        err instanceof Error ? err.message : 'Не удалось сохранить ответ.';
       setSavedError(message);
     } finally {
       setSavingAnswer(false);
@@ -309,15 +322,14 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
   };
 
   const handleDeleteSavedAnswer = async (answerId: string) => {
-    if (disabled) {
-      return;
-    }
     try {
       await deleteKnowledgeAnswer(answerId);
       setSavedAnswers((prev) => prev.filter((item) => item.id !== answerId));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ РѕС‚РІРµС‚.';
+        err instanceof Error
+          ? err.message
+          : 'Не удалось удалить сохранённый ответ.';
       setSavedError(message);
     }
   };
@@ -344,9 +356,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
       const sourceId = match[1];
       const number = indexBySource.get(sourceId);
       if (number) {
-        parts.push(
-          <sup key={`cite-${key}`}>[{number}]</sup>
-        );
+        parts.push(<sup key={`cite-${key}`}>[{number}]</sup>);
         key += 1;
       }
       lastIndex = end;
@@ -360,241 +370,145 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
     <div className="space-y-6 px-6 py-6">
       <section className="app-panel space-y-6 p-6 shadow-none">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Р‘РёР±Р»РёРѕС‚РµРєР° РїРѕР»РµР·РЅРѕР№ РґРѕРєСѓРјРµРЅС‚Р°С†РёРё</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Библиотека полезной документации</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Р—Р°РіСЂСѓР¶Р°Р№С‚Рµ РїСЂР°РІРёР»Р°, РјРµС‚РѕРґРёС‡РєРё Рё РґСЂСѓРіРёРµ PDF-С„Р°Р№Р»С‹ вЂ” РѕРЅРё Р±СѓРґСѓС‚ С…СЂР°РЅРёС‚СЊСЃСЏ
-            Р»РѕРєР°Р»СЊРЅРѕ РЅР° СЃРµСЂРІРµСЂРµ Рё РґРѕСЃС‚СѓРїРЅС‹ РІСЃРµР№ РєРѕРјР°РЅРґРµ.
+            Управляйте блокнотами Open Notebook прямо из CRM: создавайте, загружайте файлы и задавайте вопросы.
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block space-y-1 text-sm text-slate-600">
-            Р’РёРґ СЃС‚СЂР°С…РѕРІР°РЅРёСЏ
+            Блокнот
             <select
-              value={selectedInsuranceTypeId}
-              onChange={(event) => {
-                setSelectedInsuranceTypeId(event.target.value);
-                setLocalError(null);
-              }}
+              value={selectedNotebookId}
+              onChange={handleNotebookSelect}
               className="field field-input"
-              disabled={disabled || insuranceTypes.length === 0}
+              disabled={isNotebookBusy}
             >
-              <option value="">Р’С‹Р±РµСЂРёС‚Рµ РІРёРґ СЃС‚СЂР°С…РѕРІР°РЅРёСЏ</option>
-              {insuranceTypes.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
+              <option value="">Выберите блокнот</option>
+              {notebooks.map((notebook) => (
+                <option key={notebook.id} value={notebook.id}>
+                  {notebook.name}
                 </option>
               ))}
             </select>
           </label>
           <label className="block space-y-1 text-sm text-slate-600">
-            Р—Р°РіРѕР»РѕРІРѕРє (РїРѕСЏСЃРЅРµРЅРёРµ)
+            Название блока
             <input
               type="text"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="РРјСЏ РёР»Рё РїСЂРёР·РЅР°Рє РґРѕРєСѓРјРµРЅС‚Р°"
+              value={selectedNotebookName}
+              onChange={(event) => setSelectedNotebookName(event.target.value)}
+              placeholder="Название выбранного блокнота"
               className="field field-input"
-              disabled={disabled}
+              disabled={!selectedNotebookId || isNotebookBusy}
             />
           </label>
-          <label className="block space-y-1 text-sm text-slate-600">
-            РћРїРёСЃР°РЅРёРµ
-            <input
-              type="text"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="РљСЂР°С‚РєРѕРµ РѕРїРёСЃР°РЅРёРµ СЃРѕРґРµСЂР¶Р°РЅРёСЏ"
-              className="field field-input"
-              disabled={disabled}
-            />
-          </label>
-        </div>
-
-        <FileUploadManager onUpload={handleUpload} disabled={disabled} />
-
-        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Р—Р°РґР°С‚СЊ РІРѕРїСЂРѕСЃ</h3>
-            <p className="text-xs text-slate-500">
-              Р’РѕРїСЂРѕСЃ Р±СѓРґРµС‚ Р·Р°РґР°РЅ С‚РѕР»СЊРєРѕ РІРЅСѓС‚СЂРё РІС‹Р±СЂР°РЅРЅРѕРіРѕ РІРёРґР° СЃС‚СЂР°С…РѕРІР°РЅРёСЏ.
-            </p>
-          </div>
-          <textarea
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="РќР°РїСЂРёРјРµСЂ: РљР°РєРёРµ РёСЃРєР»СЋС‡РµРЅРёСЏ РµСЃС‚СЊ РІ РїСЂР°РІРёР»Р°С… СЃС‚СЂР°С…РѕРІР°РЅРёСЏ?"
-            rows={3}
-            className="field field-input"
-            disabled={isAsking || disabled}
-          />
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-2">
             <button
               type="button"
-              className="btn btn-primary btn-sm rounded-xl"
-              onClick={handleAsk}
-              disabled={isAsking || disabled}
+              className="btn btn-secondary btn-sm rounded-xl"
+              onClick={handleRenameNotebook}
+              disabled={!selectedNotebookId || isNotebookBusy}
             >
-              {isAsking ? 'РћС‚РІРµС‡Р°РµРј...' : 'РЎРїСЂРѕСЃРёС‚СЊ'}
+              Сохранить название
             </button>
-            {askError && <span className="text-xs text-rose-600">{askError}</span>}
+            <button
+              type="button"
+              className="btn btn-danger btn-sm rounded-xl"
+              onClick={handleDeleteNotebook}
+              disabled={!selectedNotebookId || isNotebookBusy}
+            >
+              Удалить блокнот
+            </button>
           </div>
-          {answer && (
-            <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
-              <div>{renderAnswerWithCitations(answer, citations)}</div>
-              {citations.length > 0 && (
-                <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
-                  <div className="font-semibold text-slate-700">РСЃС‚РѕС‡РЅРёРєРё</div>
-                  {citations.map((item, index) => (
-                    <div key={item.sourceId} className="flex flex-wrap gap-2">
-                      <span className="text-slate-500">[{index + 1}]</span>
-                      {item.fileUrl ? (
-                        <a
-                          href={item.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          {item.title}
-                        </a>
-                      ) : (
-                        <span>{item.title}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm rounded-xl"
-                  onClick={handleSaveAnswer}
-                  disabled={savingAnswer || disabled}
-                >
-                  {savingAnswer ? 'РЎРѕС…СЂР°РЅСЏРµРј...' : 'РЎРѕС…СЂР°РЅРёС‚СЊ РѕС‚РІРµС‚'}
-                </button>
-                {savedError && (
-                  <span className="text-xs text-rose-600">{savedError}</span>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
-        {localError && <div className="app-alert app-alert-danger">{localError}</div>}
-        {error && <div className="app-alert app-alert-danger">{error}</div>}
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <input
+            type="text"
+            value={newNotebookName}
+            onChange={(event) => setNewNotebookName(event.target.value)}
+            placeholder="Название нового блокнота"
+            className="field field-input"
+            disabled={isNotebookBusy}
+          />
+          <button
+            type="button"
+            className="btn btn-primary btn-sm rounded-xl"
+            onClick={handleCreateNotebook}
+            disabled={isNotebookBusy}
+          >
+            Создать блокнот
+          </button>
+        </div>
+        {notebookError && <div className="app-alert app-alert-danger">{notebookError}</div>}
       </section>
 
-      <section className="app-panel shadow-none">
-        <div className="px-6 py-5 border-b border-slate-100">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">РЎРѕС…СЂР°РЅРµРЅРЅС‹Рµ РґРѕРєСѓРјРµРЅС‚С‹</h3>
-              <p className="text-xs text-slate-500">
-                {filtered.length} С„Р°Р№Р»{filtered.length === 1 ? "" : "РѕРІ"}
-              </p>
-            </div>
-            {isLoading && (
-              <span className="text-xs uppercase tracking-wide text-slate-400">
-                Р—Р°РіСЂСѓР·РєР°...
-              </span>
-            )}
-          </div>
+      <section className="app-panel space-y-6 p-6 shadow-none">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">Файлы блокнота</h3>
+          <p className="text-xs text-slate-500">Загрузка файлов идёт напрямую в Open Notebook.</p>
         </div>
-
-        <div className="p-6 space-y-4">
-          {filtered.length === 0 && !isLoading && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block space-y-1 text-sm text-slate-600">
+            Заголовок (пояснение)
+            <input
+              type="text"
+              value={uploadTitle}
+              onChange={(event) => setUploadTitle(event.target.value)}
+              placeholder="Название файла"
+              className="field field-input"
+              disabled={!selectedNotebookId}
+            />
+          </label>
+        </div>
+        <FileUploadManager onUpload={handleUpload} disabled={!selectedNotebookId} />
+        {sourcesError && <div className="app-alert app-alert-danger">{sourcesError}</div>}
+        <div className="space-y-4">
+          {sourcesLoading && (
+            <div className="text-xs uppercase tracking-wide text-slate-400">Загрузка...</div>
+          )}
+          {sortedSources.length === 0 && !sourcesLoading && (
             <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              РџРѕРєР° РЅРµС‚ Р·Р°РіСЂСѓР¶РµРЅРЅС‹С… РґРѕРєСѓРјРµРЅС‚РѕРІ.
+              Пока нет загруженных файлов.
             </div>
           )}
-          {filtered.map((doc) => (
+          {sortedSources.map((source) => (
             <div
-              key={doc.id}
+              key={source.id}
               className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2 shadow-sm"
             >
-              {(() => {
-                const syncStatus = resolveSyncStatus(doc);
-                return (
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-slate-500">РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ:</span>
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 font-semibold ${resolveSyncBadgeClass(
-                        syncStatus.tone
-                      )}`}
-                    >
-                      {syncStatus.label}
-                    </span>
-                  </div>
-                );
-              })()}
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-base font-semibold text-slate-900">{doc.title}</p>
-                  <p className="text-[13px] text-slate-500">{doc.fileName}</p>
+                  <p className="text-base font-semibold text-slate-900">{source.title || 'Без названия'}</p>
+                  <p className="text-xs text-slate-500">{formatDateTime(source.createdAt)}</p>
                 </div>
-                <span className="text-xs text-slate-500">{formatSize(doc.fileSize)}</span>
+                {source.embedded !== null && (
+                  <span className="text-xs text-slate-500">
+                    {source.embedded ? 'Векторизирован' : 'Без эмбеддингов'}
+                  </span>
+                )}
               </div>
-              {doc.description && (
-                <p className="text-sm text-slate-600">{doc.description}</p>
-              )}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                <span>Р—Р°Р»РёС‚: {formatDate(doc.createdAt)}</span>
-                <span>
-                  РђРІС‚РѕСЂ:{" "}
-                  <ColoredLabel
-                    value={doc.ownerUsername}
-                    fallback="вЂ”"
-                    showDot={false}
-                    className="text-xs text-slate-500"
-                  />
-                  {doc.ownerId ? ` (${doc.ownerId})` : ''}
-                </span>
-                <span>РўРёРї: {doc.mimeType || "вЂ”"}</span>
-                <span>Р’РёРґ: {doc.insuranceTypeName || "вЂ”"}</span>
-              </div>
-              {doc.openNotebookStatus === 'error' && doc.openNotebookError && (
-                <div className="text-xs text-rose-600">
-                  {doc.openNotebookError}
-                </div>
-              )}
               <div className="flex flex-wrap items-center gap-3">
-                {doc.fileUrl ? (
+                {source.fileUrl ? (
                   <a
-                    href={doc.fileUrl}
+                    href={source.fileUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="btn btn-secondary btn-sm rounded-xl"
                   >
-                    РћС‚РєСЂС‹С‚СЊ С„Р°Р№Р»
-                  </a>
-                ) : doc.webViewLink ? (
-                  <a
-                    href={doc.webViewLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-secondary btn-sm rounded-xl"
-                  >
-                    РћС‚РєСЂС‹С‚СЊ РЅР° Drive
+                    Открыть файл
                   </a>
                 ) : (
-                  <span className="text-xs text-slate-400">РЎСЃС‹Р»РєР° РЅРµРґРѕСЃС‚СѓРїРЅР°</span>
+                  <span className="text-xs text-slate-400">Ссылка недоступна</span>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm rounded-xl"
-                  onClick={() => handleSync(doc)}
-                  disabled={disabled || syncingId === doc.id}
-                >
-                  {syncingId === doc.id ? 'РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ...' : 'РЎРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ'}
-                </button>
                 <button
                   type="button"
                   className="btn btn-danger btn-sm rounded-xl"
-                  onClick={() => handleDelete(doc)}
-                  disabled={disabled || deletingId === doc.id}
+                  onClick={() => handleDeleteSource(source.id)}
                 >
-                  {deletingId === doc.id ? 'РЈРґР°Р»СЏРµРј...' : 'РЈРґР°Р»РёС‚СЊ'}
+                  Удалить
                 </button>
               </div>
             </div>
@@ -602,13 +516,79 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         </div>
       </section>
 
+      <section className="app-panel space-y-6 p-6 shadow-none">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">Задать вопрос</h3>
+          <p className="text-xs text-slate-500">Вопрос будет задан внутри выбранного блокнота.</p>
+        </div>
+        <textarea
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          placeholder="Например: Какие исключения есть в правилах?"
+          rows={3}
+          className="field field-input"
+          disabled={isAsking || !selectedNotebookId}
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm rounded-xl"
+            onClick={handleAsk}
+            disabled={isAsking || !selectedNotebookId}
+          >
+            {isAsking ? 'Отвечаем...' : 'Спросить'}
+          </button>
+          {askError && <span className="text-xs text-rose-600">{askError}</span>}
+        </div>
+        {answer && (
+          <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
+            <div>{renderAnswerWithCitations(answer, citations)}</div>
+            {citations.length > 0 && (
+              <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
+                <div className="font-semibold text-slate-700">Источники</div>
+                {citations.map((item, index) => (
+                  <div key={item.sourceId} className="flex flex-wrap gap-2">
+                    <span className="text-slate-500">[{index + 1}]</span>
+                    {item.fileUrl ? (
+                      <a
+                        href={item.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        {item.title}
+                      </a>
+                    ) : (
+                      <span>{item.title}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm rounded-xl"
+                onClick={handleSaveAnswer}
+                disabled={savingAnswer || !selectedNotebookId}
+              >
+                {savingAnswer ? 'Сохраняем...' : 'Сохранить ответ'}
+              </button>
+              {savedError && (
+                <span className="text-xs text-rose-600">{savedError}</span>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
       <section className="app-panel shadow-none">
         <div className="px-6 py-5 border-b border-slate-100">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">РЎРѕС…СЂР°РЅС‘РЅРЅС‹Рµ РѕС‚РІРµС‚С‹</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Сохранённые ответы</h3>
               <p className="text-xs text-slate-500">
-                {savedAnswers.length} РѕС‚РІРµС‚{savedAnswers.length === 1 ? '' : 'РѕРІ'}
+                {savedAnswers.length} ответ{savedAnswers.length === 1 ? '' : 'ов'}
               </p>
             </div>
           </div>
@@ -619,7 +599,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
           )}
           {savedAnswers.length === 0 && (
             <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              РџРѕРєР° РЅРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… РѕС‚РІРµС‚РѕРІ.
+              Пока нет сохранённых ответов.
             </div>
           )}
           {savedAnswers.map((item) => (
@@ -627,18 +607,14 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
               key={item.id}
               className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2 shadow-sm"
             >
-              <div className="text-xs text-slate-500">
-                {formatDate(item.createdAt)}
-              </div>
-              <div className="text-sm font-semibold text-slate-900">
-                {item.question}
-              </div>
+              <div className="text-xs text-slate-500">{formatDate(item.createdAt)}</div>
+              <div className="text-sm font-semibold text-slate-900">{item.question}</div>
               <div className="text-sm text-slate-700 whitespace-pre-line">
                 {renderAnswerWithCitations(item.answer, item.citations)}
               </div>
               {item.citations.length > 0 && (
                 <div className="text-xs text-slate-600 space-y-1">
-                  <div className="font-semibold text-slate-700">РСЃС‚РѕС‡РЅРёРєРё</div>
+                  <div className="font-semibold text-slate-700">Источники</div>
                   {item.citations.map((cite, index) => (
                     <div key={`${item.id}-${cite.sourceId}`} className="flex flex-wrap gap-2">
                       <span className="text-slate-500">[{index + 1}]</span>
@@ -663,9 +639,8 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
                   type="button"
                   className="btn btn-danger btn-sm rounded-xl"
                   onClick={() => handleDeleteSavedAnswer(item.id)}
-                  disabled={disabled}
                 >
-                  РЈРґР°Р»РёС‚СЊ
+                  Удалить
                 </button>
               </div>
             </div>

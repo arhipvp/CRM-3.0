@@ -1,18 +1,17 @@
 from apps.common.permissions import EditProtectedMixin
-from apps.deals.models import InsuranceType
 from apps.notes.models import Note
 from apps.users.models import UserRole
 from django.db.models import Q
-from rest_framework import permissions, status, viewsets
-from rest_framework.decorators import action
+from django.http import HttpResponse
+from rest_framework import status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Document, KnowledgeDocument, KnowledgeNotebook
+from .models import Document
 from .open_notebook import OpenNotebookError, OpenNotebookSyncService
-from .serializers import DocumentSerializer, KnowledgeDocumentSerializer
+from .serializers import DocumentSerializer
 
 
 class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -41,131 +40,20 @@ class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         serializer.save(owner=owner)
 
 
-class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
-    queryset = KnowledgeDocument.objects.select_related("insurance_type").all()
-    serializer_class = KnowledgeDocumentSerializer
-    permission_classes = [permissions.AllowAny]
-    parser_classes = (MultiPartParser, FormParser)
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        insurance_type_id = self.request.query_params.get("insurance_type")
-        if insurance_type_id:
-            queryset = queryset.filter(insurance_type_id=insurance_type_id)
-        return queryset
-
-    def create(self, request, *args, **kwargs):
-        file_obj = request.FILES.get("file")
-        if not file_obj:
-            return Response(
-                {"detail": "Поле file обязательно."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        title = request.data.get("title") or file_obj.name
-        description = request.data.get("description", "")
-        insurance_type = request.data.get("insurance_type")
-
-        serializer = self.get_serializer(
-            data={
-                "title": title,
-                "description": description,
-                "insurance_type": insurance_type,
-                "file": file_obj,
-            }
-        )
-        serializer.is_valid(raise_exception=True)
-        document = serializer.save(
-            owner=(
-                request.user if request.user and request.user.is_authenticated else None
-            ),
-            file_name=file_obj.name,
-            mime_type=file_obj.content_type or "",
-            file_size=file_obj.size,
-        )
-        sync_service = OpenNotebookSyncService()
-        try:
-            sync_service.sync_document(document)
-        except OpenNotebookError as exc:
-            document.open_notebook_status = "error"
-            document.open_notebook_error = str(exc)
-            document.save(
-                update_fields=[
-                    "open_notebook_status",
-                    "open_notebook_error",
-                    "updated_at",
-                ]
-            )
-        response_serializer = self.get_serializer(document)
-        headers = self.get_success_headers(response_serializer.data)
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_201_CREATED,
-            headers=headers,
-        )
-
-    def destroy(self, request, *args, **kwargs):
-        document = self.get_object()
-        sync_service = OpenNotebookSyncService()
-        if sync_service.is_configured() and document.open_notebook_source_id:
-            try:
-                sync_service.delete_document(document)
-            except OpenNotebookError as exc:
-                return Response(
-                    {"detail": str(exc)},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-
-        if document.file:
-            document.file.delete(save=False)
-        document.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=True, methods=["post"], url_path="sync")
-    def sync(self, request, pk=None):
-        document = self.get_object()
-        sync_service = OpenNotebookSyncService()
-        if not sync_service.is_configured():
-            return Response(
-                {"detail": "Open Notebook не настроен."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-        force = request.query_params.get("force") in {"1", "true", "True"}
-
-        try:
-            sync_service.sync_document(document, force=force)
-        except OpenNotebookError as exc:
-            document.open_notebook_status = "error"
-            document.open_notebook_error = str(exc)
-            document.save(
-                update_fields=[
-                    "open_notebook_status",
-                    "open_notebook_error",
-                    "updated_at",
-                ]
-            )
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        return Response(self.get_serializer(document).data)
-
-
 class KnowledgeAskView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         question = request.data.get("question")
-        insurance_type = request.data.get("insurance_type")
+        notebook_id = request.data.get("notebook_id")
         if not question:
             return Response(
                 {"detail": "Поле question обязательно."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not insurance_type:
+        if not notebook_id:
             return Response(
-                {"detail": "Поле insurance_type обязательно."},
+                {"detail": "Поле notebook_id обязательно."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -177,7 +65,7 @@ class KnowledgeAskView(APIView):
             )
 
         try:
-            result = service.ask(str(insurance_type), str(question))
+            result = service.ask_notebook(str(notebook_id), str(question))
         except OpenNotebookError as exc:
             return Response(
                 {"detail": str(exc)},
@@ -187,14 +75,33 @@ class KnowledgeAskView(APIView):
         return Response({"question": question, **result})
 
 
-class KnowledgeNotesView(APIView):
+class KnowledgeNotebooksView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        insurance_type_id = request.query_params.get("insurance_type")
-        if not insurance_type_id:
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
             return Response(
-                {"detail": "Поле insurance_type обязательно."},
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            notebooks = service.client.get_notebooks()
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(notebooks)
+
+    def post(self, request):
+        name = request.data.get("name")
+        description = request.data.get("description") or ""
+        if not name:
+            return Response(
+                {"detail": "Поле name обязательно."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -205,19 +112,226 @@ class KnowledgeNotesView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        notebook = KnowledgeNotebook.objects.filter(
-            insurance_type_id=insurance_type_id
-        ).first()
-        if not notebook:
-            return Response([])
+        try:
+            notebook = service.client.create_notebook(
+                name=str(name), description=str(description)
+            )
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
-        documents = KnowledgeDocument.objects.filter(
-            insurance_type_id=insurance_type_id,
-            open_notebook_source_id__isnull=False,
-        ).exclude(open_notebook_source_id="")
+        return Response(notebook, status=status.HTTP_201_CREATED)
+
+
+class KnowledgeNotebookDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def put(self, request, notebook_id: str):
+        name = request.data.get("name")
+        description = request.data.get("description")
+        if name is None and description is None:
+            return Response(
+                {"detail": "Нужно передать name или description."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         try:
-            notes = service.client.list_notes(notebook.notebook_id)
+            notebook = service.client.update_notebook(
+                notebook_id,
+                name=str(name) if name is not None else None,
+                description=str(description) if description is not None else None,
+            )
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(notebook)
+
+    def delete(self, request, notebook_id: str):
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            service.client.delete_notebook(notebook_id)
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class KnowledgeSourcesView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        notebook_id = request.query_params.get("notebook_id")
+        if not notebook_id:
+            return Response(
+                {"detail": "Поле notebook_id обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            sources = service.list_sources(str(notebook_id))
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        response_items = []
+        for source in sources:
+            source_id = source.get("id")
+            response_items.append(
+                {
+                    "id": source_id,
+                    "title": source.get("title"),
+                    "created": source.get("created"),
+                    "updated": source.get("updated"),
+                    "embedded": source.get("embedded"),
+                    "file_url": (
+                        f"/api/v1/knowledge/sources/{source_id}/download/"
+                        if source_id
+                        else None
+                    ),
+                }
+            )
+        return Response(response_items)
+
+    def post(self, request):
+        notebook_id = request.data.get("notebook_id")
+        file_obj = request.FILES.get("file")
+        title = request.data.get("title") or (file_obj.name if file_obj else "")
+        if not notebook_id:
+            return Response(
+                {"detail": "Поле notebook_id обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not file_obj:
+            return Response(
+                {"detail": "Поле file обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            file_obj.seek(0)
+            uploaded = service.create_source_upload_bytes(
+                notebook_id=str(notebook_id),
+                file_name=file_obj.name,
+                content=file_obj.read(),
+                title=str(title),
+                mime_type=file_obj.content_type or None,
+            )
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(uploaded, status=status.HTTP_201_CREATED)
+
+
+class KnowledgeSourceDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def delete(self, request, source_id: str):
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            service.delete_source(source_id)
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class KnowledgeSourceDownloadView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, source_id: str):
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            content, content_type, content_disposition = service.client.download_source(
+                source_id
+            )
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        response = HttpResponse(content, content_type=content_type)
+        if content_disposition:
+            response["Content-Disposition"] = content_disposition
+        return response
+
+
+class KnowledgeNotesView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        notebook_id = request.query_params.get("notebook_id")
+        if not notebook_id:
+            return Response(
+                {"detail": "Поле notebook_id обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            notes = service.list_notes(str(notebook_id))
+            sources = service.list_sources(str(notebook_id))
         except OpenNotebookError as exc:
             return Response(
                 {"detail": str(exc)},
@@ -231,13 +345,11 @@ class KnowledgeNotesView(APIView):
             response_items.append(
                 {
                     "id": note.get("id"),
-                    "insurance_type": insurance_type_id,
-                    "insurance_type_name": (
-                        notebook.insurance_type.name if notebook.insurance_type else ""
-                    ),
                     "question": title,
                     "answer": content,
-                    "citations": service._collect_citations(content, documents),
+                    "citations": service._collect_citations_from_sources(
+                        content, sources
+                    ),
                     "created_at": note.get("created"),
                     "updated_at": note.get("updated"),
                 }
@@ -246,12 +358,12 @@ class KnowledgeNotesView(APIView):
         return Response(response_items)
 
     def post(self, request):
-        insurance_type_id = request.data.get("insurance_type")
+        notebook_id = request.data.get("notebook_id")
         question = request.data.get("question")
         answer = request.data.get("answer")
-        if not insurance_type_id:
+        if not notebook_id:
             return Response(
-                {"detail": "Поле insurance_type обязательно."},
+                {"detail": "Поле notebook_id обязательно."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if not question:
@@ -272,24 +384,13 @@ class KnowledgeNotesView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        insurance_type = InsuranceType.objects.filter(id=insurance_type_id).first()
-        if not insurance_type:
-            return Response(
-                {"detail": "Вид страхования не найден."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        notebook = service.ensure_notebook(insurance_type)
-        documents = KnowledgeDocument.objects.filter(
-            insurance_type_id=insurance_type_id,
-            open_notebook_source_id__isnull=False,
-        ).exclude(open_notebook_source_id="")
         try:
-            note = service.client.create_note(
-                notebook_id=notebook.notebook_id,
+            note = service.create_note(
+                notebook_id=str(notebook_id),
                 title=str(question),
                 content=str(answer),
             )
+            sources = service.list_sources(str(notebook_id))
         except OpenNotebookError as exc:
             return Response(
                 {"detail": str(exc)},
@@ -300,11 +401,9 @@ class KnowledgeNotesView(APIView):
         return Response(
             {
                 "id": note.get("id"),
-                "insurance_type": insurance_type_id,
-                "insurance_type_name": insurance_type.name,
                 "question": note.get("title") or question,
                 "answer": content,
-                "citations": service._collect_citations(content, documents),
+                "citations": service._collect_citations_from_sources(content, sources),
                 "created_at": note.get("created"),
                 "updated_at": note.get("updated"),
             },
@@ -324,7 +423,7 @@ class KnowledgeNoteDetailView(APIView):
             )
 
         try:
-            service.client.delete_note(note_id)
+            service.delete_note(note_id)
         except OpenNotebookError as exc:
             return Response(
                 {"detail": str(exc)},
