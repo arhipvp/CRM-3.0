@@ -34,6 +34,8 @@ ALLOWED_EXTRA_CHARS = {
     chr(0x2116),
     chr(0x2022),
     chr(0x00A0),
+    chr(0x2713),
+    chr(0x2192),
 }
 RUSSIAN_LETTERS = (
     {chr(code) for code in range(0x0410, 0x0430)}
