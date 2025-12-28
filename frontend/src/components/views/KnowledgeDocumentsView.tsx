@@ -22,22 +22,22 @@ import {
 
 const formatDate = (value?: string | null): string => {
   if (!value) {
-    return '—';
+    return 'вЂ”';
   }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return '—';
+    return 'вЂ”';
   }
   return parsed.toLocaleDateString('ru-RU');
 };
 
 const formatDateTime = (value?: string | null): string => {
   if (!value) {
-    return '—';
+    return 'вЂ”';
   }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    return '—';
+    return 'вЂ”';
   }
   return parsed.toLocaleString('ru-RU');
 };
@@ -94,7 +94,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
         const message =
           err instanceof Error
             ? err.message
-            : 'Не удалось загрузить блокноты.';
+            : 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ Р±Р»РѕРєРЅРѕС‚С‹.';
         setNotebookError(message);
       });
 
@@ -127,7 +127,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
         const message =
           err instanceof Error
             ? err.message
-            : 'Не удалось загрузить данные блокнота.';
+            : 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґР°РЅРЅС‹Рµ Р±Р»РѕРєРЅРѕС‚Р°.';
         setSourcesError(message);
       })
       .finally(() => setSourcesLoading(false));
@@ -143,7 +143,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
   const handleCreateNotebook = async () => {
     const name = newNotebookName.trim();
     if (!name) {
-      setNotebookError('Введите название блокнота.');
+      setNotebookError('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ Р±Р»РѕРєРЅРѕС‚Р°.');
       return;
     }
     setNotebookError(null);
@@ -156,7 +156,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setNewNotebookName('');
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Не удалось создать блокнот.';
+        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ Р±Р»РѕРєРЅРѕС‚.';
       setNotebookError(message);
     } finally {
       setIsNotebookBusy(false);
@@ -169,7 +169,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
     }
     const name = selectedNotebookName.trim();
     if (!name) {
-      setNotebookError('Введите название блокнота.');
+      setNotebookError('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ Р±Р»РѕРєРЅРѕС‚Р°.');
       return;
     }
     setNotebookError(null);
@@ -185,7 +185,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSelectedNotebookName(updated.name);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Не удалось переименовать блокнот.';
+        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ Р±Р»РѕРєРЅРѕС‚.';
       setNotebookError(message);
     } finally {
       setIsNotebookBusy(false);
@@ -198,7 +198,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
     }
     const current = notebooks.find((item) => item.id === selectedNotebookId);
     const confirmed = window.confirm(
-      `Удалить блокнот "${current?.name ?? ''}"? Все файлы и заметки будут удалены.`
+      `РЈРґР°Р»РёС‚СЊ Р±Р»РѕРєРЅРѕС‚ "${current?.name ?? ''}"? Р’СЃРµ С„Р°Р№Р»С‹ Рё Р·Р°РјРµС‚РєРё Р±СѓРґСѓС‚ СѓРґР°Р»РµРЅС‹.`
     );
     if (!confirmed) {
       return;
@@ -216,7 +216,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSavedAnswers([]);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Не удалось удалить блокнот.';
+        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ Р±Р»РѕРєРЅРѕС‚.';
       setNotebookError(message);
     } finally {
       setIsNotebookBusy(false);
@@ -225,7 +225,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
 
   const handleUpload = async (file: File) => {
     if (!selectedNotebookId) {
-      setSourcesError('Выберите блокнот перед загрузкой файла.');
+      setSourcesError('Р’С‹Р±РµСЂРёС‚Рµ Р±Р»РѕРєРЅРѕС‚ РїРµСЂРµРґ Р·Р°РіСЂСѓР·РєРѕР№ С„Р°Р№Р»Р°.');
       return;
     }
     try {
@@ -239,7 +239,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSources(refreshed);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Не удалось загрузить файл.';
+        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ С„Р°Р№Р».';
       setSourcesError(message);
     }
   };
@@ -248,7 +248,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
     if (!selectedNotebookId) {
       return;
     }
-    const confirmed = window.confirm('Удалить файл из блокнота?');
+    const confirmed = window.confirm('РЈРґР°Р»РёС‚СЊ С„Р°Р№Р» РёР· Р±Р»РѕРєРЅРѕС‚Р°?');
     if (!confirmed) {
       return;
     }
@@ -257,19 +257,19 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSources((prev) => prev.filter((item) => item.id !== sourceId));
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Не удалось удалить файл.';
+        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ С„Р°Р№Р».';
       setSourcesError(message);
     }
   };
 
   const handleAsk = async () => {
     if (!selectedNotebookId) {
-      setAskError('Выберите блокнот для вопроса.');
+      setAskError('Р’С‹Р±РµСЂРёС‚Рµ Р±Р»РѕРєРЅРѕС‚ РґР»СЏ РІРѕРїСЂРѕСЃР°.');
       return;
     }
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
-      setAskError('Введите вопрос.');
+      setAskError('Р’РІРµРґРёС‚Рµ РІРѕРїСЂРѕСЃ.');
       return;
     }
     setIsAsking(true);
@@ -283,7 +283,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       const message =
         err instanceof Error
           ? err.message
-          : 'Ошибка запроса к базе знаний';
+          : 'РћС€РёР±РєР° Р·Р°РїСЂРѕСЃР° Рє Р±Р°Р·Рµ Р·РЅР°РЅРёР№';
       setAskError(message);
     } finally {
       setIsAsking(false);
@@ -292,15 +292,15 @@ export const KnowledgeDocumentsView: React.FC = () => {
 
   const handleSaveAnswer = async () => {
     if (!selectedNotebookId) {
-      setSavedError('Выберите блокнот для сохранения ответа.');
+      setSavedError('Р’С‹Р±РµСЂРёС‚Рµ Р±Р»РѕРєРЅРѕС‚ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ РѕС‚РІРµС‚Р°.');
       return;
     }
     if (!answer.trim()) {
-      setSavedError('Нет ответа для сохранения.');
+      setSavedError('РќРµС‚ РѕС‚РІРµС‚Р° РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ.');
       return;
     }
     if (!lastQuestion.trim()) {
-      setSavedError('Не найден вопрос для сохранения.');
+      setSavedError('РќРµ РЅР°Р№РґРµРЅ РІРѕРїСЂРѕСЃ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ.');
       return;
     }
     setSavingAnswer(true);
@@ -314,7 +314,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSavedAnswers((prev) => [saved, ...prev]);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Не удалось сохранить ответ.';
+        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РѕС‚РІРµС‚.';
       setSavedError(message);
     } finally {
       setSavingAnswer(false);
@@ -329,7 +329,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       const message =
         err instanceof Error
           ? err.message
-          : 'Не удалось удалить сохранённый ответ.';
+          : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ РѕС‚РІРµС‚.';
       setSavedError(message);
     }
   };
@@ -370,22 +370,22 @@ export const KnowledgeDocumentsView: React.FC = () => {
     <div className="space-y-6 px-6 py-6">
       <section className="app-panel space-y-6 p-6 shadow-none">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Библиотека полезной документации</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Р‘РёР±Р»РёРѕС‚РµРєР° РїРѕР»РµР·РЅРѕР№ РґРѕРєСѓРјРµРЅС‚Р°С†РёРё</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Управляйте блокнотами Open Notebook прямо из CRM: создавайте, загружайте файлы и задавайте вопросы.
+            РЈРїСЂР°РІР»СЏР№С‚Рµ Р±Р»РѕРєРЅРѕС‚Р°РјРё Open Notebook РїСЂСЏРјРѕ РёР· CRM: СЃРѕР·РґР°РІР°Р№С‚Рµ, Р·Р°РіСЂСѓР¶Р°Р№С‚Рµ С„Р°Р№Р»С‹ Рё Р·Р°РґР°РІР°Р№С‚Рµ РІРѕРїСЂРѕСЃС‹.
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block space-y-1 text-sm text-slate-600">
-            Блокнот
+            Р‘Р»РѕРєРЅРѕС‚
             <select
               value={selectedNotebookId}
               onChange={handleNotebookSelect}
               className="field field-input"
               disabled={isNotebookBusy}
             >
-              <option value="">Выберите блокнот</option>
+              <option value="">Р’С‹Р±РµСЂРёС‚Рµ Р±Р»РѕРєРЅРѕС‚</option>
               {notebooks.map((notebook) => (
                 <option key={notebook.id} value={notebook.id}>
                   {notebook.name}
@@ -394,12 +394,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
             </select>
           </label>
           <label className="block space-y-1 text-sm text-slate-600">
-            Название блока
+            РќР°Р·РІР°РЅРёРµ Р±Р»РѕРєР°
             <input
               type="text"
               value={selectedNotebookName}
               onChange={(event) => setSelectedNotebookName(event.target.value)}
-              placeholder="Название выбранного блокнота"
+              placeholder="РќР°Р·РІР°РЅРёРµ РІС‹Р±СЂР°РЅРЅРѕРіРѕ Р±Р»РѕРєРЅРѕС‚Р°"
               className="field field-input"
               disabled={!selectedNotebookId || isNotebookBusy}
             />
@@ -411,7 +411,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               onClick={handleRenameNotebook}
               disabled={!selectedNotebookId || isNotebookBusy}
             >
-              Сохранить название
+              РЎРѕС…СЂР°РЅРёС‚СЊ РЅР°Р·РІР°РЅРёРµ
             </button>
             <button
               type="button"
@@ -419,7 +419,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               onClick={handleDeleteNotebook}
               disabled={!selectedNotebookId || isNotebookBusy}
             >
-              Удалить блокнот
+              РЈРґР°Р»РёС‚СЊ Р±Р»РѕРєРЅРѕС‚
             </button>
           </div>
         </div>
@@ -429,7 +429,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             type="text"
             value={newNotebookName}
             onChange={(event) => setNewNotebookName(event.target.value)}
-            placeholder="Название нового блокнота"
+            placeholder="РќР°Р·РІР°РЅРёРµ РЅРѕРІРѕРіРѕ Р±Р»РѕРєРЅРѕС‚Р°"
             className="field field-input"
             disabled={isNotebookBusy}
           />
@@ -439,7 +439,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             onClick={handleCreateNotebook}
             disabled={isNotebookBusy}
           >
-            Создать блокнот
+            РЎРѕР·РґР°С‚СЊ Р±Р»РѕРєРЅРѕС‚
           </button>
         </div>
         {notebookError && <div className="app-alert app-alert-danger">{notebookError}</div>}
@@ -447,17 +447,17 @@ export const KnowledgeDocumentsView: React.FC = () => {
 
       <section className="app-panel space-y-6 p-6 shadow-none">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">Файлы блокнота</h3>
-          <p className="text-xs text-slate-500">Загрузка файлов идёт напрямую в Open Notebook.</p>
+          <h3 className="text-lg font-semibold text-slate-900">Р¤Р°Р№Р»С‹ Р±Р»РѕРєРЅРѕС‚Р°</h3>
+          <p className="text-xs text-slate-500">Р—Р°РіСЂСѓР·РєР° С„Р°Р№Р»РѕРІ РёРґС‘С‚ РЅР°РїСЂСЏРјСѓСЋ РІ Open Notebook.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block space-y-1 text-sm text-slate-600">
-            Заголовок (пояснение)
+            Р—Р°РіРѕР»РѕРІРѕРє (РїРѕСЏСЃРЅРµРЅРёРµ)
             <input
               type="text"
               value={uploadTitle}
               onChange={(event) => setUploadTitle(event.target.value)}
-              placeholder="Название файла"
+              placeholder="РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р°"
               className="field field-input"
               disabled={!selectedNotebookId}
             />
@@ -467,11 +467,11 @@ export const KnowledgeDocumentsView: React.FC = () => {
         {sourcesError && <div className="app-alert app-alert-danger">{sourcesError}</div>}
         <div className="space-y-4">
           {sourcesLoading && (
-            <div className="text-xs uppercase tracking-wide text-slate-400">Загрузка...</div>
+            <div className="text-xs uppercase tracking-wide text-slate-400">Р—Р°РіСЂСѓР·РєР°...</div>
           )}
           {sortedSources.length === 0 && !sourcesLoading && (
             <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              Пока нет загруженных файлов.
+              РџРѕРєР° РЅРµС‚ Р·Р°РіСЂСѓР¶РµРЅРЅС‹С… С„Р°Р№Р»РѕРІ.
             </div>
           )}
           {sortedSources.map((source) => (
@@ -481,12 +481,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-base font-semibold text-slate-900">{source.title || 'Без названия'}</p>
+                  <p className="text-base font-semibold text-slate-900">{source.title || 'Р‘РµР· РЅР°Р·РІР°РЅРёСЏ'}</p>
                   <p className="text-xs text-slate-500">{formatDateTime(source.createdAt)}</p>
                 </div>
                 {source.embedded !== null && (
                   <span className="text-xs text-slate-500">
-                    {source.embedded ? 'Векторизирован' : 'Без эмбеддингов'}
+                    {source.embedded ? 'Р’РµРєС‚РѕСЂРёР·РёСЂРѕРІР°РЅ' : 'Р‘РµР· СЌРјР±РµРґРґРёРЅРіРѕРІ'}
                   </span>
                 )}
               </div>
@@ -498,17 +498,17 @@ export const KnowledgeDocumentsView: React.FC = () => {
                     rel="noreferrer"
                     className="btn btn-secondary btn-sm rounded-xl"
                   >
-                    Открыть файл
+                    РћС‚РєСЂС‹С‚СЊ С„Р°Р№Р»
                   </a>
                 ) : (
-                  <span className="text-xs text-slate-400">Ссылка недоступна</span>
+                  <span className="text-xs text-slate-400">РЎСЃС‹Р»РєР° РЅРµРґРѕСЃС‚СѓРїРЅР°</span>
                 )}
                 <button
                   type="button"
                   className="btn btn-danger btn-sm rounded-xl"
                   onClick={() => handleDeleteSource(source.id)}
                 >
-                  Удалить
+                  РЈРґР°Р»РёС‚СЊ
                 </button>
               </div>
             </div>
@@ -518,13 +518,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
 
       <section className="app-panel space-y-6 p-6 shadow-none">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">Задать вопрос</h3>
-          <p className="text-xs text-slate-500">Вопрос будет задан внутри выбранного блокнота.</p>
+          <h3 className="text-lg font-semibold text-slate-900">Р—Р°РґР°С‚СЊ РІРѕРїСЂРѕСЃ</h3>
+          <p className="text-xs text-slate-500">Р’РѕРїСЂРѕСЃ Р±СѓРґРµС‚ Р·Р°РґР°РЅ РІРЅСѓС‚СЂРё РІС‹Р±СЂР°РЅРЅРѕРіРѕ Р±Р»РѕРєРЅРѕС‚Р°.</p>
         </div>
         <textarea
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder="Например: Какие исключения есть в правилах?"
+          placeholder="РќР°РїСЂРёРјРµСЂ: РљР°РєРёРµ РёСЃРєР»СЋС‡РµРЅРёСЏ РµСЃС‚СЊ РІ РїСЂР°РІРёР»Р°С…?"
           rows={3}
           className="field field-input"
           disabled={isAsking || !selectedNotebookId}
@@ -536,7 +536,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             onClick={handleAsk}
             disabled={isAsking || !selectedNotebookId}
           >
-            {isAsking ? 'Отвечаем...' : 'Спросить'}
+            {isAsking ? 'РћС‚РІРµС‡Р°РµРј...' : 'РЎРїСЂРѕСЃРёС‚СЊ'}
           </button>
           {askError && <span className="text-xs text-rose-600">{askError}</span>}
         </div>
@@ -545,7 +545,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             <div>{renderAnswerWithCitations(answer, citations)}</div>
             {citations.length > 0 && (
               <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
-                <div className="font-semibold text-slate-700">Источники</div>
+                <div className="font-semibold text-slate-700">РСЃС‚РѕС‡РЅРёРєРё</div>
                 {citations.map((item, index) => (
                   <div key={item.sourceId} className="flex flex-wrap gap-2">
                     <span className="text-slate-500">[{index + 1}]</span>
@@ -572,7 +572,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                 onClick={handleSaveAnswer}
                 disabled={savingAnswer || !selectedNotebookId}
               >
-                {savingAnswer ? 'Сохраняем...' : 'Сохранить ответ'}
+                {savingAnswer ? 'РЎРѕС…СЂР°РЅСЏРµРј...' : 'РЎРѕС…СЂР°РЅРёС‚СЊ РѕС‚РІРµС‚'}
               </button>
               {savedError && (
                 <span className="text-xs text-rose-600">{savedError}</span>
@@ -586,9 +586,9 @@ export const KnowledgeDocumentsView: React.FC = () => {
         <div className="px-6 py-5 border-b border-slate-100">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Сохранённые ответы</h3>
+              <h3 className="text-lg font-semibold text-slate-900">РЎРѕС…СЂР°РЅС‘РЅРЅС‹Рµ РѕС‚РІРµС‚С‹</h3>
               <p className="text-xs text-slate-500">
-                {savedAnswers.length} ответ{savedAnswers.length === 1 ? '' : 'ов'}
+                {savedAnswers.length} РѕС‚РІРµС‚{savedAnswers.length === 1 ? '' : 'РѕРІ'}
               </p>
             </div>
           </div>
@@ -599,7 +599,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
           )}
           {savedAnswers.length === 0 && (
             <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              Пока нет сохранённых ответов.
+              РџРѕРєР° РЅРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… РѕС‚РІРµС‚РѕРІ.
             </div>
           )}
           {savedAnswers.map((item) => (
@@ -614,7 +614,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               </div>
               {item.citations.length > 0 && (
                 <div className="text-xs text-slate-600 space-y-1">
-                  <div className="font-semibold text-slate-700">Источники</div>
+                  <div className="font-semibold text-slate-700">РСЃС‚РѕС‡РЅРёРєРё</div>
                   {item.citations.map((cite, index) => (
                     <div key={`${item.id}-${cite.sourceId}`} className="flex flex-wrap gap-2">
                       <span className="text-slate-500">[{index + 1}]</span>
@@ -640,7 +640,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                   className="btn btn-danger btn-sm rounded-xl"
                   onClick={() => handleDeleteSavedAnswer(item.id)}
                 >
-                  Удалить
+                  РЈРґР°Р»РёС‚СЊ
                 </button>
               </div>
             </div>
@@ -649,4 +649,4 @@ export const KnowledgeDocumentsView: React.FC = () => {
       </section>
     </div>
   );
-};
+};
