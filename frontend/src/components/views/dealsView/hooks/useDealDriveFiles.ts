@@ -264,7 +264,7 @@ export const useDealDriveFiles = ({
 
       const trimmedName = name.trim();
       if (!trimmedName) {
-        setRenameMessage('РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.');
+        setRenameMessage('Название файла не должно быть пустым.');
         return;
       }
 
@@ -292,7 +292,7 @@ export const useDealDriveFiles = ({
         }
         console.error('РћС€РёР±РєР° РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёСЏ С„Р°Р№Р»Р°:', error);
         setRenameMessage(
-          formatErrorMessage(error, 'РќРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ С„Р°Р№Р».')
+          formatErrorMessage(error, 'Не удалось переименовать файл.')
         );
       } finally {
         if (latestDealIdRef.current === currentDealId) {

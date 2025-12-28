@@ -118,7 +118,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     }
     const trimmedName = renameDraft.trim();
     if (!trimmedName) {
-      setRenameError('РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.');
+      setRenameError('Название файла не должно быть пустым.');
       return;
     }
     await handleRenameDriveFile(renamingFile.id, trimmedName);
