@@ -1,6 +1,10 @@
 from rest_framework import serializers
 
-from .models import Document, KnowledgeDocument
+from .models import (
+    Document,
+    KnowledgeDocument,
+    KnowledgeSavedAnswer,
+)
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -67,6 +71,41 @@ class KnowledgeDocumentSerializer(serializers.ModelSerializer):
         if obj.file:
             return obj.file.url
         return None
+
+    def validate(self, attrs):
+        if self.instance is None and not attrs.get("insurance_type"):
+            raise serializers.ValidationError(
+                {"insurance_type": "Поле 'insurance_type' обязательно."}
+            )
+        return attrs
+
+
+class KnowledgeSavedAnswerSerializer(serializers.ModelSerializer):
+    user_id = serializers.UUIDField(source="user.id", read_only=True)
+    insurance_type_name = serializers.CharField(
+        source="insurance_type.name", read_only=True
+    )
+
+    class Meta:
+        model = KnowledgeSavedAnswer
+        fields = (
+            "id",
+            "user_id",
+            "insurance_type",
+            "insurance_type_name",
+            "question",
+            "answer",
+            "citations",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "user_id",
+            "insurance_type_name",
+            "created_at",
+            "updated_at",
+        )
 
     def validate(self, attrs):
         if self.instance is None and not attrs.get("insurance_type"):

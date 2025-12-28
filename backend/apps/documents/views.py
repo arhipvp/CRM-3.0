@@ -9,9 +9,13 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Document, KnowledgeDocument
+from .models import Document, KnowledgeDocument, KnowledgeSavedAnswer
 from .open_notebook import OpenNotebookError, OpenNotebookSyncService
-from .serializers import DocumentSerializer, KnowledgeDocumentSerializer
+from .serializers import (
+    DocumentSerializer,
+    KnowledgeDocumentSerializer,
+    KnowledgeSavedAnswerSerializer,
+)
 
 
 class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -176,14 +180,31 @@ class KnowledgeAskView(APIView):
             )
 
         try:
-            answer = service.ask(str(insurance_type), str(question))
+            result = service.ask(str(insurance_type), str(question), user=request.user)
         except OpenNotebookError as exc:
             return Response(
                 {"detail": str(exc)},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        return Response({"question": question, "answer": answer})
+        return Response({"question": question, **result})
+
+
+class KnowledgeSavedAnswerViewSet(viewsets.ModelViewSet):
+    queryset = KnowledgeSavedAnswer.objects.select_related("insurance_type").all()
+    serializer_class = KnowledgeSavedAnswerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.filter(user=self.request.user)
+        insurance_type_id = self.request.query_params.get("insurance_type")
+        if insurance_type_id:
+            queryset = queryset.filter(insurance_type_id=insurance_type_id)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class DocumentRecognitionView(APIView):

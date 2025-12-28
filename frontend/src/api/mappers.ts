@@ -10,7 +10,9 @@
   FinancialRecordType,
   InsuranceCompany,
   InsuranceType,
+  KnowledgeCitation,
   KnowledgeDocument,
+  KnowledgeSavedAnswer,
   Note,
   Payment,
   Policy,
@@ -208,6 +210,26 @@ export const mapKnowledgeDocument = (raw: Record<string, unknown>): KnowledgeDoc
   driveFileId: toNullableString(raw.drive_file_id ?? raw.driveFileId),
   ownerId: toNullableString(raw.owner_id ?? raw.ownerId),
   ownerUsername: toNullableString(raw.owner_username ?? raw.ownerUsername),
+  createdAt: toStringValue(raw.created_at ?? raw.createdAt),
+  updatedAt: toStringValue(raw.updated_at ?? raw.updatedAt),
+});
+
+const mapKnowledgeCitation = (raw: Record<string, unknown>): KnowledgeCitation => ({
+  sourceId: toStringValue(raw.source_id ?? raw.sourceId),
+  documentId: toStringValue(raw.document_id ?? raw.documentId),
+  title: toStringValue(raw.title ?? ''),
+  fileUrl: toNullableString(raw.file_url ?? raw.fileUrl),
+});
+
+export const mapKnowledgeSavedAnswer = (raw: Record<string, unknown>): KnowledgeSavedAnswer => ({
+  id: toStringValue(raw.id),
+  insuranceTypeId: toNullableString(raw.insurance_type ?? raw.insuranceType),
+  insuranceTypeName: toNullableString(raw.insurance_type_name ?? raw.insuranceTypeName),
+  question: toStringValue(raw.question ?? ''),
+  answer: toStringValue(raw.answer ?? ''),
+  citations: Array.isArray(raw.citations)
+    ? (raw.citations as Record<string, unknown>[]).map(mapKnowledgeCitation)
+    : [],
   createdAt: toStringValue(raw.created_at ?? raw.createdAt),
   updatedAt: toStringValue(raw.updated_at ?? raw.updatedAt),
 });

@@ -103,6 +103,24 @@ export interface KnowledgeDocument {
   driveFolderId?: string | null;
 }
 
+export interface KnowledgeCitation {
+  sourceId: string;
+  documentId: string;
+  title: string;
+  fileUrl?: string | null;
+}
+
+export interface KnowledgeSavedAnswer {
+  id: string;
+  insuranceTypeId?: string | null;
+  insuranceTypeName?: string | null;
+  question: string;
+  answer: string;
+  citations: KnowledgeCitation[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 export interface SalesChannel {
   id: string;

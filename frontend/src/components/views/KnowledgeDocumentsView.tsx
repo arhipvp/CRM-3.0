@@ -1,8 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FileUploadManager } from '../FileUploadManager';
 import { ColoredLabel } from '../common/ColoredLabel';
-import { askKnowledgeBase, fetchInsuranceTypes } from '../../api';
-import { InsuranceType, KnowledgeDocument } from '../../types';
+import {
+  askKnowledgeBase,
+  deleteKnowledgeAnswer,
+  fetchInsuranceTypes,
+  fetchSavedAnswers,
+  saveKnowledgeAnswer,
+} from '../../api';
+import {
+  InsuranceType,
+  KnowledgeCitation,
+  KnowledgeDocument,
+  KnowledgeSavedAnswer,
+} from '../../types';
 
 const formatDate = (value?: string | null): string => {
   if (!value) {
@@ -57,9 +68,14 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
   const [selectedInsuranceTypeId, setSelectedInsuranceTypeId] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
+  const [lastQuestion, setLastQuestion] = useState('');
   const [answer, setAnswer] = useState('');
+  const [citations, setCitations] = useState<KnowledgeCitation[]>([]);
   const [isAsking, setIsAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+  const [savedAnswers, setSavedAnswers] = useState<KnowledgeSavedAnswer[]>([]);
+  const [savingAnswer, setSavingAnswer] = useState(false);
+  const [savedError, setSavedError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
@@ -136,6 +152,36 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
   useEffect(() => {
     setAnswer('');
     setAskError(null);
+    setCitations([]);
+    setSavedError(null);
+  }, [selectedInsuranceTypeId]);
+
+  useEffect(() => {
+    if (!selectedInsuranceTypeId) {
+      setSavedAnswers([]);
+      return;
+    }
+    let isMounted = true;
+    fetchSavedAnswers(selectedInsuranceTypeId)
+      .then((items) => {
+        if (!isMounted) {
+          return;
+        }
+        setSavedAnswers(items);
+      })
+      .catch((err) => {
+        if (!isMounted) {
+          return;
+        }
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Не удалось загрузить сохранённые ответы';
+        setSavedError(message);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, [selectedInsuranceTypeId]);
 
   const filtered = useMemo(
@@ -179,6 +225,8 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         trimmedQuestion
       );
       setAnswer(response.answer);
+      setCitations(response.citations ?? []);
+      setLastQuestion(trimmedQuestion);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Ошибка запроса к базе знаний';
@@ -226,6 +274,86 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
     } finally {
       setSyncingId(null);
     }
+  };
+
+  const handleSaveAnswer = async () => {
+    if (!selectedInsuranceTypeId) {
+      setSavedError('Выберите вид страхования для сохранения ответа.');
+      return;
+    }
+    if (!answer.trim()) {
+      setSavedError('Нет ответа для сохранения.');
+      return;
+    }
+    if (!lastQuestion.trim()) {
+      setSavedError('Не найден вопрос для сохранения.');
+      return;
+    }
+    setSavingAnswer(true);
+    setSavedError(null);
+    try {
+      const saved = await saveKnowledgeAnswer({
+        insuranceTypeId: selectedInsuranceTypeId,
+        question: lastQuestion,
+        answer,
+        citations,
+      });
+      setSavedAnswers((prev) => [saved, ...prev]);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось сохранить ответ.';
+      setSavedError(message);
+    } finally {
+      setSavingAnswer(false);
+    }
+  };
+
+  const handleDeleteSavedAnswer = async (answerId: string) => {
+    if (disabled) {
+      return;
+    }
+    try {
+      await deleteKnowledgeAnswer(answerId);
+      setSavedAnswers((prev) => prev.filter((item) => item.id !== answerId));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось удалить сохранённый ответ.';
+      setSavedError(message);
+    }
+  };
+
+  const renderAnswerWithCitations = (
+    text: string,
+    sourceCitations: KnowledgeCitation[]
+  ) => {
+    if (!sourceCitations.length) {
+      return text;
+    }
+    const indexBySource = new Map(
+      sourceCitations.map((item, index) => [item.sourceId, index + 1])
+    );
+    const parts: Array<string | JSX.Element> = [];
+    const regex = /\[source:([^\]]+)\]/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null = regex.exec(text);
+    let key = 0;
+    while (match) {
+      const start = match.index;
+      const end = regex.lastIndex;
+      parts.push(text.slice(lastIndex, start));
+      const sourceId = match[1];
+      const number = indexBySource.get(sourceId);
+      if (number) {
+        parts.push(
+          <sup key={`cite-${key}`}>[{number}]</sup>
+        );
+        key += 1;
+      }
+      lastIndex = end;
+      match = regex.exec(text);
+    }
+    parts.push(text.slice(lastIndex));
+    return parts;
   };
 
   return (
@@ -312,8 +440,43 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
             {askError && <span className="text-xs text-rose-600">{askError}</span>}
           </div>
           {answer && (
-            <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line">
-              {answer}
+            <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
+              <div>{renderAnswerWithCitations(answer, citations)}</div>
+              {citations.length > 0 && (
+                <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
+                  <div className="font-semibold text-slate-700">Источники</div>
+                  {citations.map((item, index) => (
+                    <div key={item.sourceId} className="flex flex-wrap gap-2">
+                      <span className="text-slate-500">[{index + 1}]</span>
+                      {item.fileUrl ? (
+                        <a
+                          href={item.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          {item.title}
+                        </a>
+                      ) : (
+                        <span>{item.title}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm rounded-xl"
+                  onClick={handleSaveAnswer}
+                  disabled={savingAnswer || disabled}
+                >
+                  {savingAnswer ? 'Сохраняем...' : 'Сохранить ответ'}
+                </button>
+                {savedError && (
+                  <span className="text-xs text-rose-600">{savedError}</span>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -432,6 +595,77 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
                   disabled={disabled || deletingId === doc.id}
                 >
                   {deletingId === doc.id ? 'Удаляем...' : 'Удалить'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="app-panel shadow-none">
+        <div className="px-6 py-5 border-b border-slate-100">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Сохранённые ответы</h3>
+              <p className="text-xs text-slate-500">
+                {savedAnswers.length} ответ{savedAnswers.length === 1 ? '' : 'ов'}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          {savedError && (
+            <div className="app-alert app-alert-danger">{savedError}</div>
+          )}
+          {savedAnswers.length === 0 && (
+            <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
+              Пока нет сохранённых ответов.
+            </div>
+          )}
+          {savedAnswers.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2 shadow-sm"
+            >
+              <div className="text-xs text-slate-500">
+                {formatDate(item.createdAt)}
+              </div>
+              <div className="text-sm font-semibold text-slate-900">
+                {item.question}
+              </div>
+              <div className="text-sm text-slate-700 whitespace-pre-line">
+                {renderAnswerWithCitations(item.answer, item.citations)}
+              </div>
+              {item.citations.length > 0 && (
+                <div className="text-xs text-slate-600 space-y-1">
+                  <div className="font-semibold text-slate-700">Источники</div>
+                  {item.citations.map((cite, index) => (
+                    <div key={`${item.id}-${cite.sourceId}`} className="flex flex-wrap gap-2">
+                      <span className="text-slate-500">[{index + 1}]</span>
+                      {cite.fileUrl ? (
+                        <a
+                          href={cite.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          {cite.title}
+                        </a>
+                      ) : (
+                        <span>{cite.title}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm rounded-xl"
+                  onClick={() => handleDeleteSavedAnswer(item.id)}
+                  disabled={disabled}
+                >
+                  Удалить
                 </button>
               </div>
             </div>

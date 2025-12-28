@@ -7,7 +7,11 @@ from apps.deals.views import (
     QuoteViewSet,
     SalesChannelViewSet,
 )
-from apps.documents.views import DocumentViewSet, KnowledgeDocumentViewSet
+from apps.documents.views import (
+    DocumentViewSet,
+    KnowledgeDocumentViewSet,
+    KnowledgeSavedAnswerViewSet,
+)
 from apps.finances.views import FinancialRecordViewSet, PaymentViewSet
 from apps.notes.views import NoteViewSet
 from apps.notifications.views import NotificationViewSet
@@ -40,6 +44,11 @@ router.register(
     "knowledge_documents",
     KnowledgeDocumentViewSet,
     basename="knowledge_document",
+)
+router.register(
+    "knowledge_saved_answers",
+    KnowledgeSavedAnswerViewSet,
+    basename="knowledge_saved_answer",
 )
 router.register("notifications", NotificationViewSet, basename="notification")
 router.register("payments", PaymentViewSet, basename="payment")
