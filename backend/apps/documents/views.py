@@ -1,9 +1,3 @@
-from apps.common.drive import (
-    DriveConfigurationError,
-    DriveError,
-    get_document_library_folder_id,
-    upload_file_to_drive,
-)
 from apps.common.permissions import EditProtectedMixin
 from apps.notes.models import Note
 from apps.users.models import UserRole
@@ -44,28 +38,18 @@ class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         serializer.save(owner=owner)
 
 
-class KnowledgeDocumentPermission(permissions.BasePermission):
-    def _is_admin(self, request):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return UserRole.objects.filter(user=request.user, role__name="Admin").exists()
-
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS or request.method == "POST":
-            return True
-        return self._is_admin(request)
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return self._is_admin(request)
-
-
 class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
-    queryset = KnowledgeDocument.objects.all()
+    queryset = KnowledgeDocument.objects.select_related("insurance_type").all()
     serializer_class = KnowledgeDocumentSerializer
-    permission_classes = [KnowledgeDocumentPermission]
+    permission_classes = [permissions.AllowAny]
     parser_classes = (MultiPartParser, FormParser)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        insurance_type_id = self.request.query_params.get("insurance_type")
+        if insurance_type_id:
+            queryset = queryset.filter(insurance_type_id=insurance_type_id)
+        return queryset
 
     def create(self, request, *args, **kwargs):
         file_obj = request.FILES.get("file")
@@ -77,27 +61,15 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
 
         title = request.data.get("title") or file_obj.name
         description = request.data.get("description", "")
-        try:
-            folder_id = get_document_library_folder_id()
-            upload_info = upload_file_to_drive(
-                folder_id,
-                file_obj,
-                file_obj.name,
-                file_obj.content_type,
-            )
-        except DriveConfigurationError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        except DriveError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        insurance_type = request.data.get("insurance_type")
 
         serializer = self.get_serializer(
-            data={"title": title, "description": description}
+            data={
+                "title": title,
+                "description": description,
+                "insurance_type": insurance_type,
+                "file": file_obj,
+            }
         )
         serializer.is_valid(raise_exception=True)
         serializer.save(
@@ -105,10 +77,8 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
                 request.user if request.user and request.user.is_authenticated else None
             ),
             file_name=file_obj.name,
-            drive_file_id=upload_info["id"],
-            web_view_link=upload_info["web_view_link"] or "",
-            mime_type=upload_info["mime_type"] or file_obj.content_type or "",
-            file_size=upload_info["size"] or file_obj.size,
+            mime_type=file_obj.content_type or "",
+            file_size=file_obj.size,
         )
         headers = self.get_success_headers(serializer.data)
         return Response(

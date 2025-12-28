@@ -673,7 +673,10 @@ const AppContent: React.FC = () => {
   );
 
   const handleKnowledgeUpload = useCallback(
-    async (file: File, metadata: { title?: string; description?: string }) => {
+    async (
+      file: File,
+      metadata: { title?: string; description?: string; insuranceTypeId?: string }
+    ) => {
       setAppData({ knowledgeUploading: true });
       try {
         await uploadKnowledgeDocument(file, metadata);

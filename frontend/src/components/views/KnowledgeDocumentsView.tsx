@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FileUploadManager } from '../FileUploadManager';
 import { ColoredLabel } from '../common/ColoredLabel';
-import { KnowledgeDocument } from '../../types';
+import { fetchInsuranceTypes } from '../../api';
+import { InsuranceType, KnowledgeDocument } from '../../types';
 
 const formatDate = (value?: string | null): string => {
   if (!value) {
@@ -34,7 +35,7 @@ interface KnowledgeDocumentsViewProps {
   error?: string | null;
   onUpload: (
     file: File,
-    metadata: { title?: string; description?: string }
+    metadata: { title?: string; description?: string; insuranceTypeId?: string }
   ) => Promise<void>;
   disabled?: boolean;
 }
@@ -48,6 +49,9 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([]);
+  const [selectedInsuranceTypeId, setSelectedInsuranceTypeId] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const sorted = useMemo(
     () =>
@@ -57,13 +61,56 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
     [documents]
   );
 
+  useEffect(() => {
+    let isMounted = true;
+    fetchInsuranceTypes()
+      .then((types) => {
+        if (!isMounted) {
+          return;
+        }
+        setInsuranceTypes(types);
+      })
+      .catch((err) => {
+        if (!isMounted) {
+          return;
+        }
+        const message =
+          err instanceof Error ? err.message : 'Не удалось загрузить виды страхования';
+        setLocalError(message);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedInsuranceTypeId && insuranceTypes.length > 0) {
+      setSelectedInsuranceTypeId(insuranceTypes[0].id);
+    }
+  }, [insuranceTypes, selectedInsuranceTypeId]);
+
+  const filtered = useMemo(
+    () =>
+      selectedInsuranceTypeId
+        ? sorted.filter((doc) => doc.insuranceTypeId === selectedInsuranceTypeId)
+        : [],
+    [sorted, selectedInsuranceTypeId]
+  );
+
   const handleUpload = async (file: File) => {
+    if (!selectedInsuranceTypeId) {
+      setLocalError('Выберите вид страхования перед загрузкой.');
+      return;
+    }
     await onUpload(file, {
       title: title.trim() || undefined,
       description: description.trim() || undefined,
+      insuranceTypeId: selectedInsuranceTypeId,
     });
     setTitle('');
     setDescription('');
+    setLocalError(null);
   };
 
   return (
@@ -72,12 +119,31 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Библиотека полезной документации</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Загрузите правила, методички и другие PDF-файлы - они попадут в общий доступ и будут
-            храниться на вашем Google Drive.
+            Загружайте правила, методички и другие PDF-файлы — они будут храниться
+            локально на сервере и доступны всей команде.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
+          <label className="block space-y-1 text-sm text-slate-600">
+            Вид страхования
+            <select
+              value={selectedInsuranceTypeId}
+              onChange={(event) => {
+                setSelectedInsuranceTypeId(event.target.value);
+                setLocalError(null);
+              }}
+              className="field field-input"
+              disabled={disabled || insuranceTypes.length === 0}
+            >
+              <option value="">Выберите вид страхования</option>
+              {insuranceTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block space-y-1 text-sm text-slate-600">
             Заголовок (пояснение)
             <input
@@ -104,6 +170,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
 
         <FileUploadManager onUpload={handleUpload} disabled={disabled} />
 
+        {localError && <div className="app-alert app-alert-danger">{localError}</div>}
         {error && <div className="app-alert app-alert-danger">{error}</div>}
       </section>
 
@@ -113,7 +180,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
             <div>
               <h3 className="text-lg font-semibold text-slate-900">Сохраненные документы</h3>
               <p className="text-xs text-slate-500">
-                {documents.length} файл{documents.length === 1 ? '' : 'ов'}
+                {filtered.length} файл{filtered.length === 1 ? "" : "ов"}
               </p>
             </div>
             {isLoading && (
@@ -125,12 +192,12 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
         </div>
 
         <div className="p-6 space-y-4">
-          {sorted.length === 0 && !isLoading && (
+          {filtered.length === 0 && !isLoading && (
             <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
               Пока нет загруженных документов.
             </div>
           )}
-          {sorted.map((doc) => (
+          {filtered.map((doc) => (
             <div
               key={doc.id}
               className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2 shadow-sm"
@@ -148,7 +215,7 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
                 <span>Залит: {formatDate(doc.createdAt)}</span>
                 <span>
-                  Автор:{' '}
+                  Автор:{" "}
                   <ColoredLabel
                     value={doc.ownerUsername}
                     fallback="—"
@@ -157,9 +224,19 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
                   />
                   {doc.ownerId ? ` (${doc.ownerId})` : ''}
                 </span>
-                <span>Тип: {doc.mimeType || '—'}</span>
+                <span>Тип: {doc.mimeType || "—"}</span>
+                <span>Вид: {doc.insuranceTypeName || "—"}</span>
               </div>
-              {doc.webViewLink ? (
+              {doc.fileUrl ? (
+                <a
+                  href={doc.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-secondary btn-sm rounded-xl"
+                >
+                  Открыть файл
+                </a>
+              ) : doc.webViewLink ? (
                 <a
                   href={doc.webViewLink}
                   target="_blank"

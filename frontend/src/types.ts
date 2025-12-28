@@ -86,10 +86,13 @@ export interface KnowledgeDocument {
   title: string;
   description?: string | null;
   fileName: string;
-  driveFileId: string;
-  webViewLink?: string | null;
+  fileUrl?: string | null;
   mimeType?: string | null;
   fileSize?: number | null;
+  insuranceTypeId?: string | null;
+  insuranceTypeName?: string | null;
+  driveFileId?: string | null;
+  webViewLink?: string | null;
   ownerId?: string | null;
   ownerUsername?: string | null;
   createdAt: string;

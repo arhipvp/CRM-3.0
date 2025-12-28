@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.db import models
@@ -5,6 +7,10 @@ from django.db import models
 
 def document_upload_path(instance, filename):
     return f"documents/{instance.deal_id}/{filename}"
+
+
+def knowledge_document_upload_path(instance, filename):
+    return f"knowledge_documents/{uuid4()}_{filename}"
 
 
 class DocumentStatus(models.TextChoices):
@@ -76,19 +82,34 @@ class KnowledgeDocument(SoftDeleteModel):
     title = models.CharField(max_length=255, help_text="Название файла")
     description = models.TextField(blank=True, help_text="Краткое описание")
     file_name = models.CharField(max_length=255, help_text="Оригинальное имя файла")
+    file = models.FileField(
+        upload_to=knowledge_document_upload_path,
+        null=True,
+        blank=True,
+        help_text="Файл документа",
+    )
     drive_file_id = models.CharField(
         max_length=128,
-        unique=True,
-        help_text="ID файла в Google Drive",
+        blank=True,
+        null=True,
+        help_text="ID файла в Google Drive (legacy)",
     )
     web_view_link = models.URLField(
         max_length=512,
         blank=True,
-        help_text="Ссылка для просмотра файла",
+        help_text="Ссылка для просмотра файла (legacy)",
     )
     mime_type = models.CharField(max_length=120, blank=True, help_text="MIME тип файла")
     file_size = models.PositiveBigIntegerField(
         null=True, blank=True, help_text="Размер файла в байтах"
+    )
+    insurance_type = models.ForeignKey(
+        "deals.InsuranceType",
+        related_name="knowledge_documents",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Вид страхования",
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

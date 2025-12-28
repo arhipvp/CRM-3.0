@@ -16,6 +16,10 @@ class DocumentSerializer(serializers.ModelSerializer):
 class KnowledgeDocumentSerializer(serializers.ModelSerializer):
     owner_id = serializers.UUIDField(source="owner.id", read_only=True)
     owner_username = serializers.CharField(source="owner.username", read_only=True)
+    insurance_type_name = serializers.CharField(
+        source="insurance_type.name", read_only=True
+    )
+    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = KnowledgeDocument
@@ -24,13 +28,43 @@ class KnowledgeDocumentSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "file_name",
+            "file",
+            "file_url",
             "mime_type",
             "file_size",
             "web_view_link",
             "drive_file_id",
+            "insurance_type",
+            "insurance_type_name",
             "owner_id",
             "owner_username",
             "created_at",
             "updated_at",
         )
-        read_only_fields = fields
+        read_only_fields = (
+            "id",
+            "file_url",
+            "file_name",
+            "mime_type",
+            "file_size",
+            "web_view_link",
+            "drive_file_id",
+            "insurance_type_name",
+            "owner_id",
+            "owner_username",
+            "created_at",
+            "updated_at",
+        )
+        extra_kwargs = {"file": {"write_only": True}}
+
+    def get_file_url(self, obj):
+        if obj.file:
+            return obj.file.url
+        return None
+
+    def validate(self, attrs):
+        if self.instance is None and not attrs.get("insurance_type"):
+            raise serializers.ValidationError(
+                {"insurance_type": "Поле 'insurance_type' обязательно."}
+            )
+        return attrs

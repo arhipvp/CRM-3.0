@@ -90,7 +90,7 @@ export interface AppRoutesProps {
   knowledgeError: string | null;
   handleKnowledgeUpload: (
     file: File,
-    metadata: { title?: string; description?: string }
+    metadata: { title?: string; description?: string; insuranceTypeId?: string }
   ) => Promise<void>;
 }
 

@@ -107,7 +107,7 @@ export async function fetchKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
 
 export async function uploadKnowledgeDocument(
   file: File,
-  metadata?: { title?: string; description?: string }
+  metadata?: { title?: string; description?: string; insuranceTypeId?: string }
 ): Promise<KnowledgeDocument> {
   const formData = new FormData();
   formData.append('file', file);
@@ -116,6 +116,9 @@ export async function uploadKnowledgeDocument(
   }
   if (metadata?.description) {
     formData.append('description', metadata.description);
+  }
+  if (metadata?.insuranceTypeId) {
+    formData.append('insurance_type', metadata.insuranceTypeId);
   }
 
   const payload = await request<Record<string, unknown>>('/knowledge_documents/', {
