@@ -38,8 +38,16 @@ export const formatDate = (value?: string | null) => {
   return DATE_FORMATTER.format(parsed);
 };
 
-export const formatDateTime = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('ru-RU') : '—';
+export const formatDateTime = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
+  }
+  return parsed.toLocaleString('ru-RU');
+};
 
 export const QUICK_NEXT_CONTACT_OPTIONS = [
   { label: 'Завтра', days: 1 },
@@ -84,8 +92,16 @@ export const formatCurrency = (value?: string) => {
   return amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
 };
 
-export const formatDriveDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('ru-RU') : '—';
+export const formatDriveDate = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
+  }
+  return parsed.toLocaleString('ru-RU');
+};
 
 export const formatDriveFileSize = (bytes?: number | null) => {
   if (bytes === undefined || bytes === null) {
@@ -103,8 +119,16 @@ export const formatDriveFileSize = (bytes?: number | null) => {
   return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
 };
 
-export const formatDeletedAt = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('ru-RU') : '-';
+export const formatDeletedAt = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
+  }
+  return parsed.toLocaleString('ru-RU');
+};
 
 export const getUserDisplayName = (user: { firstName?: string | null; lastName?: string | null; username: string }) => {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();

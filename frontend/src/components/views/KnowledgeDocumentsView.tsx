@@ -3,8 +3,16 @@ import { FileUploadManager } from '../FileUploadManager';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { KnowledgeDocument } from '../../types';
 
-const formatDate = (value?: string | null): string =>
-  value ? new Date(value).toLocaleDateString('ru-RU') : '—';
+const formatDate = (value?: string | null): string => {
+  if (!value) {
+    return '—';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
+  }
+  return parsed.toLocaleDateString('ru-RU');
+};
 
 const formatSize = (value?: number | null): string => {
   if (!value || value <= 0) {

@@ -92,6 +92,54 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   const paymentsToggleLabel = isPaymentsExpanded
     ? POLICY_TEXT.actions.hide
     : `${POLICY_TEXT.fields.payments} (${model.paymentsCount})`;
+  const allFinancialRecords = React.useMemo(
+    () => payments.flatMap((payment) => payment.financialRecords ?? []),
+    [payments]
+  );
+  const hasUnpaidPayment = React.useMemo(
+    () =>
+      payments.some((payment) => {
+        if (payment.deletedAt) {
+          return false;
+        }
+        const actualDate = (payment.actualDate ?? '').trim();
+        if (!actualDate) {
+          return true;
+        }
+        const records = payment.financialRecords?.length
+          ? payment.financialRecords
+          : allFinancialRecords.filter((record) => record.paymentId === payment.id);
+        return records.some((record) => !record.deletedAt && !(record.date ?? '').trim());
+      }),
+    [payments, allFinancialRecords]
+  );
+  const expiryBadge = React.useMemo(() => {
+    if (!policy.endDate) {
+      return null;
+    }
+    const endDate = new Date(policy.endDate);
+    if (Number.isNaN(endDate.getTime())) {
+      return null;
+    }
+    const today = new Date();
+    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) {
+      return { label: 'Просрочен', tone: 'red' as const };
+    }
+    if (diffDays <= 3) {
+      return { label: 'Истекает ≤ 3 дн.', tone: 'orange' as const };
+    }
+    if (diffDays <= 7) {
+      return { label: 'Истекает ≤ 7 дн.', tone: 'orange' as const };
+    }
+    if (diffDays <= 15) {
+      return { label: 'Истекает ≤ 15 дн.', tone: 'orange' as const };
+    }
+    if (diffDays <= 30) {
+      return { label: 'Истекает ≤ 30 дн.', tone: 'orange' as const };
+    }
+    return null;
+  }, [policy.endDate]);
   const renderTruncatedText = (label: string, value: string) => (
     <LabelValuePair
       label={label}
@@ -154,6 +202,30 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
               {model.statusRaw && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
                   {model.statusLabel}
+                </span>
+              )}
+              {hasUnpaidPayment && (
+                <span
+                  className={[
+                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                    expiryBadge?.tone === 'red'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-orange-100 text-orange-700',
+                  ].join(' ')}
+                >
+                  Неоплачено
+                </span>
+              )}
+              {expiryBadge && (
+                <span
+                  className={[
+                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                    expiryBadge.tone === 'red'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-orange-100 text-orange-700',
+                  ].join(' ')}
+                >
+                  {expiryBadge.label}
                 </span>
               )}
             </div>

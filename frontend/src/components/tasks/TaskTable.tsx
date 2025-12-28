@@ -212,12 +212,12 @@ export function TaskTable({
                     />
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
-                    {task.dueAt ? formatDate(task.dueAt) : '-'}
+                    {formatDate(task.dueAt)}
                   </td>
 
                   {showReminderColumn && (
                     <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
-                      {task.remindAt ? formatDate(task.remindAt) : '-'}
+                      {formatDate(task.remindAt)}
                     </td>
                   )}
 
@@ -226,7 +226,7 @@ export function TaskTable({
                   </td>
 
                   <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700`}>
-                    {task.completedAt ? formatDateTime(task.completedAt) : '-'}
+                    {formatDateTime(task.completedAt)}
                     {isDone && (
                       <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
                         Выполнил{' '}

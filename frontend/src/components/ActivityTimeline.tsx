@@ -51,7 +51,13 @@ const getActionColorClass = (actionType: string) => {
 };
 
 const formatDateTime = (dateString: string) => {
+  if (!dateString) {
+    return '—';
+  }
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
   return new Intl.DateTimeFormat('ru-RU', {
     day: '2-digit',
     month: 'short',
