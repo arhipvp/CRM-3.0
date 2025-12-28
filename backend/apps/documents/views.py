@@ -46,6 +46,7 @@ class KnowledgeAskView(APIView):
     def post(self, request):
         question = request.data.get("question")
         notebook_id = request.data.get("notebook_id")
+        session_id = request.data.get("session_id")
         if not question:
             return Response(
                 {"detail": "Поле question обязательно."},
@@ -65,7 +66,11 @@ class KnowledgeAskView(APIView):
             )
 
         try:
-            result = service.ask_notebook(str(notebook_id), str(question))
+            result = service.ask_notebook(
+                str(notebook_id),
+                str(question),
+                str(session_id) if session_id else None,
+            )
         except OpenNotebookError as exc:
             return Response(
                 {"detail": str(exc)},
@@ -177,6 +182,129 @@ class KnowledgeNotebookDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class KnowledgeChatSessionsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        notebook_id = request.query_params.get("notebook_id")
+        if not notebook_id:
+            return Response(
+                {"detail": "Поле notebook_id обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            sessions = service.client.list_chat_sessions(str(notebook_id))
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(sessions)
+
+    def post(self, request):
+        notebook_id = request.data.get("notebook_id")
+        title = request.data.get("title")
+        if not notebook_id:
+            return Response(
+                {"detail": "Поле notebook_id обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            session = service.client.create_chat_session(
+                notebook_id=str(notebook_id),
+                title=str(title) if title else None,
+            )
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(session, status=status.HTTP_201_CREATED)
+
+
+class KnowledgeChatSessionDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, session_id: str):
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            session = service.client.get_chat_session(session_id)
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(session)
+
+    def put(self, request, session_id: str):
+        title = request.data.get("title")
+        if not title:
+            return Response(
+                {"detail": "Поле title обязательно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            session = service.client.update_chat_session(session_id, str(title))
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(session)
+
+    def delete(self, request, session_id: str):
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            service.client.delete_chat_session(session_id)
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class KnowledgeSourcesView(APIView):
     permission_classes = [AllowAny]
 
@@ -264,6 +392,39 @@ class KnowledgeSourcesView(APIView):
 
 class KnowledgeSourceDetailView(APIView):
     permission_classes = [AllowAny]
+
+    def get(self, request, source_id: str):
+        service = OpenNotebookSyncService()
+        if not service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            source = service.client.get_source(source_id)
+        except OpenNotebookError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        asset = source.get("asset") if isinstance(source, dict) else None
+        asset_url = None
+        if isinstance(asset, dict):
+            asset_url = asset.get("url")
+
+        return Response(
+            {
+                "id": source.get("id"),
+                "title": source.get("title"),
+                "content": source.get("full_text") or source.get("content"),
+                "created": source.get("created"),
+                "updated": source.get("updated"),
+                "asset_url": asset_url,
+                "file_url": f"/api/v1/knowledge/sources/{source_id}/download/",
+            }
+        )
 
     def delete(self, request, source_id: str):
         service = OpenNotebookSyncService()

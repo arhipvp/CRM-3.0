@@ -18,6 +18,8 @@ Including another URLconf
 from apps.documents.views import (
     DocumentRecognitionView,
     KnowledgeAskView,
+    KnowledgeChatSessionDetailView,
+    KnowledgeChatSessionsView,
     KnowledgeNotebookDetailView,
     KnowledgeNotebooksView,
     KnowledgeNoteDetailView,
@@ -56,6 +58,16 @@ urlpatterns = [
         name="document-recognize",
     ),
     path("api/v1/knowledge/ask/", KnowledgeAskView.as_view(), name="knowledge-ask"),
+    path(
+        "api/v1/knowledge/chat/sessions/",
+        KnowledgeChatSessionsView.as_view(),
+        name="knowledge-chat-sessions",
+    ),
+    path(
+        "api/v1/knowledge/chat/sessions/<str:session_id>/",
+        KnowledgeChatSessionDetailView.as_view(),
+        name="knowledge-chat-session-detail",
+    ),
     path(
         "api/v1/knowledge/notebooks/",
         KnowledgeNotebooksView.as_view(),

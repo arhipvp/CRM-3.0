@@ -105,6 +105,25 @@ export interface KnowledgeSource {
   updatedAt?: string | null;
 }
 
+export interface KnowledgeSourceDetail {
+  id: string;
+  title?: string | null;
+  content?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  assetUrl?: string | null;
+  fileUrl?: string | null;
+}
+
+export interface KnowledgeChatSession {
+  id: string;
+  title?: string | null;
+  notebookId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  messageCount?: number | null;
+}
+
 export interface KnowledgeSavedAnswer {
   id: string;
   question: string;

@@ -2,23 +2,31 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FileUploadManager } from '../FileUploadManager';
 import {
   askKnowledgeBase,
+  createChatSession,
   createNotebook,
+  deleteChatSession,
   deleteKnowledgeAnswer,
   deleteNotebook,
   deleteSource,
+  fetchChatSessions,
   fetchNotebooks,
+  fetchSourceDetail,
   fetchSavedAnswers,
   fetchSources,
   saveKnowledgeAnswer,
+  updateChatSession,
   updateNotebook,
   uploadSource,
 } from '../../api';
 import {
   KnowledgeCitation,
+  KnowledgeChatSession,
   KnowledgeNotebook,
   KnowledgeSavedAnswer,
   KnowledgeSource,
+  KnowledgeSourceDetail,
 } from '../../types';
+import { Modal } from '../Modal';
 
 const formatDate = (value?: string | null): string => {
   if (!value) {
@@ -55,6 +63,15 @@ export const KnowledgeDocumentsView: React.FC = () => {
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
 
+  const [chatSessions, setChatSessions] = useState<KnowledgeChatSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState('');
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
+  const [newSessionTitle, setNewSessionTitle] = useState('');
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState('');
+
   const [question, setQuestion] = useState('');
   const [lastQuestion, setLastQuestion] = useState('');
   const [answer, setAnswer] = useState('');
@@ -65,6 +82,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
   const [savedAnswers, setSavedAnswers] = useState<KnowledgeSavedAnswer[]>([]);
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [savedError, setSavedError] = useState<string | null>(null);
+
+  const [sourceDetail, setSourceDetail] = useState<KnowledgeSourceDetail | null>(
+    null
+  );
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [sourceError, setSourceError] = useState<string | null>(null);
 
   const sortedSources = useMemo(() => {
     return [...sources].sort((a, b) => {
@@ -106,6 +130,8 @@ export const KnowledgeDocumentsView: React.FC = () => {
   useEffect(() => {
     if (!selectedNotebookId) {
       setSources([]);
+      setChatSessions([]);
+      setSelectedSessionId('');
       setSavedAnswers([]);
       setAnswer('');
       setCitations([]);
@@ -113,12 +139,19 @@ export const KnowledgeDocumentsView: React.FC = () => {
     }
     setSourcesLoading(true);
     setSourcesError(null);
+    setSessionsLoading(true);
+    setSessionsError(null);
     Promise.all([
       fetchSources(selectedNotebookId),
+      fetchChatSessions(selectedNotebookId),
       fetchSavedAnswers(selectedNotebookId),
     ])
-      .then(([sourcesData, savedData]) => {
+      .then(([sourcesData, sessionsData, savedData]) => {
         setSources(sourcesData);
+        setChatSessions(sessionsData);
+        if (!selectedSessionId && sessionsData.length > 0) {
+          setSelectedSessionId(sessionsData[0].id);
+        }
         setSavedAnswers(savedData);
         setAskError(null);
         setSavedError(null);
@@ -129,8 +162,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
             ? err.message
             : 'Не удалось загрузить данные блокнота.';
         setSourcesError(message);
+        setSessionsError(message);
       })
-      .finally(() => setSourcesLoading(false));
+      .finally(() => {
+        setSourcesLoading(false);
+        setSessionsLoading(false);
+      });
   }, [selectedNotebookId]);
 
   const handleNotebookSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -262,6 +299,102 @@ export const KnowledgeDocumentsView: React.FC = () => {
     }
   };
 
+  const handleOpenSource = async (sourceId: string) => {
+    setIsSourceModalOpen(true);
+    setSourceLoading(true);
+    setSourceError(null);
+    try {
+      const detail = await fetchSourceDetail(sourceId);
+      setSourceDetail(detail);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось загрузить источник.';
+      setSourceError(message);
+      setSourceDetail(null);
+    } finally {
+      setSourceLoading(false);
+    }
+  };
+
+  const handleCreateSession = async () => {
+    if (!selectedNotebookId) {
+      setSessionsError('Выберите блокнот для создания сессии.');
+      return;
+    }
+    setSessionsError(null);
+    try {
+      const session = await createChatSession({
+        notebookId: selectedNotebookId,
+        title: newSessionTitle.trim() || undefined,
+      });
+      setChatSessions((prev) => [session, ...prev]);
+      setSelectedSessionId(session.id);
+      setNewSessionTitle('');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось создать сессию.';
+      setSessionsError(message);
+    }
+  };
+
+  const handleStartEditSession = (session: KnowledgeChatSession) => {
+    setEditingSessionId(session.id);
+    setEditingSessionTitle(session.title ?? '');
+  };
+
+  const handleCancelEditSession = () => {
+    setEditingSessionId(null);
+    setEditingSessionTitle('');
+  };
+
+  const handleSaveSessionTitle = async () => {
+    if (!editingSessionId) {
+      return;
+    }
+    const title = editingSessionTitle.trim();
+    if (!title) {
+      setSessionsError('Введите название сессии.');
+      return;
+    }
+    setSessionsError(null);
+    try {
+      const updated = await updateChatSession({
+        sessionId: editingSessionId,
+        title,
+      });
+      setChatSessions((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+      if (selectedSessionId === updated.id) {
+        setSelectedSessionId(updated.id);
+      }
+      handleCancelEditSession();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось обновить сессию.';
+      setSessionsError(message);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    const confirmed = window.confirm('Удалить сессию чата?');
+    if (!confirmed) {
+      return;
+    }
+    setSessionsError(null);
+    try {
+      await deleteChatSession(sessionId);
+      setChatSessions((prev) => prev.filter((item) => item.id !== sessionId));
+      if (selectedSessionId === sessionId) {
+        setSelectedSessionId('');
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Не удалось удалить сессию.';
+      setSessionsError(message);
+    }
+  };
+
   const handleAsk = async () => {
     if (!selectedNotebookId) {
       setAskError('Выберите блокнот для вопроса.');
@@ -275,7 +408,11 @@ export const KnowledgeDocumentsView: React.FC = () => {
     setIsAsking(true);
     setAskError(null);
     try {
-      const response = await askKnowledgeBase(selectedNotebookId, trimmedQuestion);
+      const response = await askKnowledgeBase(
+        selectedNotebookId,
+        trimmedQuestion,
+        selectedSessionId || undefined
+      );
       setAnswer(response.answer);
       setCitations(response.citations ?? []);
       setLastQuestion(trimmedQuestion);
@@ -521,6 +658,35 @@ export const KnowledgeDocumentsView: React.FC = () => {
           <h3 className="text-lg font-semibold text-slate-900">Задать вопрос</h3>
           <p className="text-xs text-slate-500">Вопрос будет задан внутри выбранного блокнота.</p>
         </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block flex-1 min-w-[220px] space-y-1 text-sm text-slate-600">
+            Сессия чата
+            <select
+              value={selectedSessionId}
+              onChange={(event) => setSelectedSessionId(event.target.value)}
+              className="field field-input"
+              disabled={!selectedNotebookId || sessionsLoading}
+            >
+              <option value="">
+                {sessionsLoading ? 'Загрузка сессий...' : 'Выберите сессию'}
+              </option>
+              {chatSessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.title || 'Без названия'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm rounded-xl"
+            onClick={() => setIsSessionsModalOpen(true)}
+            disabled={!selectedNotebookId}
+          >
+            Сессии чата
+          </button>
+          {sessionsError && <span className="text-xs text-rose-600">{sessionsError}</span>}
+        </div>
         <textarea
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
@@ -549,17 +715,22 @@ export const KnowledgeDocumentsView: React.FC = () => {
                 {citations.map((item, index) => (
                   <div key={item.sourceId} className="flex flex-wrap gap-2">
                     <span className="text-slate-500">[{index + 1}]</span>
-                    {item.fileUrl ? (
+                    <button
+                      type="button"
+                      className="text-blue-600 hover:text-blue-700"
+                      onClick={() => handleOpenSource(item.sourceId)}
+                    >
+                      {item.title}
+                    </button>
+                    {item.fileUrl && (
                       <a
                         href={item.fileUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 hover:text-blue-700"
+                        className="text-slate-500 hover:text-slate-700"
                       >
-                        {item.title}
+                        Файл
                       </a>
-                    ) : (
-                      <span>{item.title}</span>
                     )}
                   </div>
                 ))}
@@ -618,17 +789,22 @@ export const KnowledgeDocumentsView: React.FC = () => {
                   {item.citations.map((cite, index) => (
                     <div key={`${item.id}-${cite.sourceId}`} className="flex flex-wrap gap-2">
                       <span className="text-slate-500">[{index + 1}]</span>
-                      {cite.fileUrl ? (
+                      <button
+                        type="button"
+                        className="text-blue-600 hover:text-blue-700"
+                        onClick={() => handleOpenSource(cite.sourceId)}
+                      >
+                        {cite.title}
+                      </button>
+                      {cite.fileUrl && (
                         <a
                           href={cite.fileUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-blue-600 hover:text-blue-700"
+                          className="text-slate-500 hover:text-slate-700"
                         >
-                          {cite.title}
+                          Файл
                         </a>
-                      ) : (
-                        <span>{cite.title}</span>
                       )}
                     </div>
                   ))}
@@ -647,6 +823,173 @@ export const KnowledgeDocumentsView: React.FC = () => {
           ))}
         </div>
       </section>
+      {isSessionsModalOpen && (
+        <Modal
+          title="Сессии чата"
+          onClose={() => {
+            setIsSessionsModalOpen(false);
+            handleCancelEditSession();
+          }}
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+              <input
+                type="text"
+                value={newSessionTitle}
+                onChange={(event) => setNewSessionTitle(event.target.value)}
+                placeholder="Название новой сессии"
+                className="field field-input"
+              />
+              <button
+                type="button"
+                className="btn btn-primary btn-sm rounded-xl"
+                onClick={handleCreateSession}
+                disabled={!selectedNotebookId}
+              >
+                Создать
+              </button>
+            </div>
+            {sessionsError && (
+              <div className="text-xs text-rose-600">{sessionsError}</div>
+            )}
+            <div className="space-y-2">
+              {chatSessions.length === 0 && (
+                <div className="text-sm text-slate-500">Сессий пока нет.</div>
+              )}
+              {chatSessions.map((session) => {
+                const isSelected = session.id === selectedSessionId;
+                const isEditing = session.id === editingSessionId;
+                return (
+                  <div
+                    key={session.id}
+                    className={`rounded-xl border p-3 space-y-2 ${
+                      isSelected ? 'border-blue-200 bg-blue-50' : 'border-slate-200'
+                    }`}
+                  >
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editingSessionTitle}
+                          onChange={(event) =>
+                            setEditingSessionTitle(event.target.value)
+                          }
+                          className="field field-input"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm rounded-xl"
+                            onClick={handleSaveSessionTitle}
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm rounded-xl"
+                            onClick={handleCancelEditSession}
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">
+                              {session.title || 'Без названия'}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {formatDateTime(session.updatedAt || session.createdAt)}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm rounded-xl"
+                              onClick={() => setSelectedSessionId(session.id)}
+                            >
+                              Использовать
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm rounded-xl"
+                              onClick={() => handleStartEditSession(session)}
+                            >
+                              Переименовать
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm rounded-xl"
+                              onClick={() => handleDeleteSession(session.id)}
+                            >
+                              Удалить
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Modal>
+      )}
+      {isSourceModalOpen && (
+        <Modal
+          title={sourceDetail?.title || 'Источник'}
+          onClose={() => {
+            setIsSourceModalOpen(false);
+            setSourceDetail(null);
+            setSourceError(null);
+          }}
+          size="xl"
+        >
+          <div className="space-y-3">
+            {sourceLoading && (
+              <div className="text-sm text-slate-500">Загрузка источника...</div>
+            )}
+            {sourceError && (
+              <div className="text-sm text-rose-600">{sourceError}</div>
+            )}
+            {!sourceLoading && !sourceError && (
+              <>
+                <div className="text-xs text-slate-500">
+                  {formatDateTime(sourceDetail?.createdAt)}
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
+                  {sourceDetail?.content || 'Текст источника недоступен.'}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sourceDetail?.fileUrl && (
+                    <a
+                      href={sourceDetail.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-secondary btn-sm rounded-xl"
+                    >
+                      Открыть файл
+                    </a>
+                  )}
+                  {sourceDetail?.assetUrl && (
+                    <a
+                      href={sourceDetail.assetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-secondary btn-sm rounded-xl"
+                    >
+                      Оригинал
+                    </a>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
-};
+};

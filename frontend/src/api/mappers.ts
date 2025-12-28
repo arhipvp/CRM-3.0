@@ -11,8 +11,10 @@
   InsuranceCompany,
   InsuranceType,
   KnowledgeCitation,
+  KnowledgeChatSession,
   KnowledgeNotebook,
   KnowledgeSource,
+  KnowledgeSourceDetail,
   KnowledgeSavedAnswer,
   Note,
   Payment,
@@ -203,6 +205,30 @@ export const mapKnowledgeSource = (raw: Record<string, unknown>): KnowledgeSourc
   fileUrl: toNullableString(raw.file_url ?? raw.fileUrl),
   createdAt: toNullableString(raw.created ?? raw.created_at ?? raw.createdAt),
   updatedAt: toNullableString(raw.updated ?? raw.updated_at ?? raw.updatedAt),
+});
+
+export const mapKnowledgeSourceDetail = (
+  raw: Record<string, unknown>
+): KnowledgeSourceDetail => ({
+  id: toStringValue(raw.id),
+  title: toNullableString(raw.title),
+  content: toNullableString(raw.content ?? raw.full_text ?? raw.fullText),
+  createdAt: toNullableString(raw.created ?? raw.created_at ?? raw.createdAt),
+  updatedAt: toNullableString(raw.updated ?? raw.updated_at ?? raw.updatedAt),
+  assetUrl: toNullableString(raw.asset_url ?? raw.assetUrl),
+  fileUrl: toNullableString(raw.file_url ?? raw.fileUrl),
+});
+
+export const mapKnowledgeChatSession = (
+  raw: Record<string, unknown>
+): KnowledgeChatSession => ({
+  id: toStringValue(raw.id),
+  title: toNullableString(raw.title),
+  notebookId: toNullableString(raw.notebook_id ?? raw.notebookId),
+  createdAt: toNullableString(raw.created ?? raw.created_at ?? raw.createdAt),
+  updatedAt: toNullableString(raw.updated ?? raw.updated_at ?? raw.updatedAt),
+  messageCount:
+    raw.message_count === undefined ? null : toNullableNumber(raw.message_count),
 });
 
 const mapKnowledgeCitation = (raw: Record<string, unknown>): KnowledgeCitation => ({

@@ -194,6 +194,23 @@ class OpenNotebookClient:
             payload["title"] = title
         return self._request("POST", "/api/chat/sessions", payload)
 
+    def list_chat_sessions(self, notebook_id: str) -> list[dict]:
+        response = self._request("GET", f"/api/chat/sessions?notebook_id={notebook_id}")
+        if isinstance(response, list):
+            return response
+        return [response]
+
+    def get_chat_session(self, session_id: str) -> dict:
+        return self._request("GET", f"/api/chat/sessions/{session_id}")
+
+    def update_chat_session(self, session_id: str, title: str) -> dict:
+        return self._request(
+            "PUT", f"/api/chat/sessions/{session_id}", {"title": title}
+        )
+
+    def delete_chat_session(self, session_id: str) -> dict:
+        return self._request("DELETE", f"/api/chat/sessions/{session_id}")
+
     def build_context(self, notebook_id: str, context_config: dict) -> dict:
         payload = {"notebook_id": notebook_id, "context_config": context_config}
         return self._request("POST", "/api/chat/context", payload)
@@ -210,6 +227,9 @@ class OpenNotebookClient:
         if isinstance(response, list):
             return response
         return [response]
+
+    def get_source(self, source_id: str) -> dict:
+        return self._request("GET", f"/api/sources/{source_id}")
 
     def download_source(self, source_id: str) -> tuple[bytes, str, str | None]:
         url = f"{self.base_url}/api/sources/{source_id}/download"
@@ -364,7 +384,9 @@ class OpenNotebookSyncService:
         )
         return session_id
 
-    def ask_notebook(self, notebook_id: str, question: str) -> dict:
+    def ask_notebook(
+        self, notebook_id: str, question: str, session_id: str | None = None
+    ) -> dict:
         if not self.is_configured():
             raise OpenNotebookError("Open Notebook не настроен.")
 
@@ -372,7 +394,8 @@ class OpenNotebookSyncService:
         if not sources:
             raise OpenNotebookError("Нет документов в блокноте для вопроса.")
 
-        session_id = self._get_or_create_session_id(notebook_id)
+        if not session_id:
+            session_id = self._get_or_create_session_id(notebook_id)
 
         context_config = {
             "sources": {
