@@ -199,7 +199,7 @@ export const useDealDriveFiles = ({
       setRecognitionMessage(
         error instanceof Error
           ? error.message
-          : 'Не удалось распознать документы. Попробуйте еще раз.'
+          : 'Не удалось распознать документы. Попробуйте ещё раз.'
       );
     } finally {
       if (latestDealIdRef.current === currentDealId) {

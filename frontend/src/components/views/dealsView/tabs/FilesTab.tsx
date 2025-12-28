@@ -138,11 +138,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 rel="noreferrer"
                 className="link-action text-xs"
               >
-                Открыть папку Google Drive
+                Открыть папку в Google Drive
               </a>
             )}
           </div>
-          <p className="text-xs text-slate-500">Контент читается прямо из папки, привязанной к этой сделке.</p>
+          <p className="text-xs text-slate-500">
+            Файлы загружаются прямо из папки, привязанной к этой сделке.
+          </p>
         </div>
         <button
           type="button"
@@ -176,7 +178,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           }
           className="btn btn-primary btn-sm rounded-xl"
         >
-          {isRecognizing ? 'Распознаем...' : 'Распознать полис (только PDF)'}
+          {isRecognizing ? 'Распознаём...' : 'Распознать полис (только PDF)'}
         </button>
         <button
           type="button"
@@ -197,10 +199,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             canRecognizeSelectedFiles ? (
               `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
             ) : (
-              'Можно распознавать только PDF-файлы'
+              'Можно распознавать только PDF-файлы.'
             )
           ) : (
-            'Выберите файлы для распознавания'
+            'Выберите файлы для распознавания.'
           )}
         </p>
       </div>

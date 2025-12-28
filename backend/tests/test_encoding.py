@@ -35,7 +35,9 @@ ALLOWED_EXTRA_CHARS = {
     chr(0x2022),
     chr(0x00A0),
     chr(0x2713),
+    chr(0x2191),
     chr(0x2192),
+    chr(0x2193),
     chr(0x21BB),
     chr(0x23F3),
     chr(0x26AB),
@@ -84,13 +86,23 @@ def is_supported_text_char(char: str) -> bool:
     return char in RUSSIAN_LETTERS
 
 
+def read_text_strict(path: Path, failures: list[str]) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        failures.append(f"{path} is not valid UTF-8: {exc}")
+        return None
+
+
 class SourceEncodingTestCase(TestCase):
     REPLACEMENT_CHAR = chr(0xFFFD)
 
     def assert_no_replacement_char(self, paths: Iterable[Path]) -> None:
         failures: list[str] = []
         for path in paths:
-            text = path.read_text(encoding="utf-8", errors="ignore")
+            text = read_text_strict(path, failures)
+            if text is None:
+                continue
             if self.REPLACEMENT_CHAR in text:
                 failures.append(str(path))
         if failures:
@@ -102,7 +114,9 @@ class SourceEncodingTestCase(TestCase):
     def assert_only_supported_characters(self, paths: Iterable[Path]) -> None:
         failures: list[str] = []
         for path in paths:
-            text = path.read_text(encoding="utf-8", errors="ignore")
+            text = read_text_strict(path, failures)
+            if text is None:
+                continue
             for line_no, line in enumerate(text.splitlines(), start=1):
                 for char in line:
                     if not is_supported_text_char(char):
