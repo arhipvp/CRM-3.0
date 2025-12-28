@@ -20,23 +20,25 @@ FRONTEND_EXTENSIONS = {
 ASCII_PRINTABLE = {chr(code) for code in range(0x20, 0x7F)}
 WHITESPACE_CHARS = {"\n", "\r", "\t"}
 ALLOWED_EXTRA_CHARS = {
-    "«",
-    "»",
-    "—",
-    "–",
-    "‘",
-    "’",
-    "“",
-    "”",
-    "…",
-    "·",
-    "₽",
-    "№",
-    "•",
-    "\u00a0",
+    chr(0x00AB),
+    chr(0x00BB),
+    chr(0x2014),
+    chr(0x2013),
+    chr(0x2018),
+    chr(0x2019),
+    chr(0x201C),
+    chr(0x201D),
+    chr(0x2026),
+    chr(0x00B7),
+    chr(0x20BD),
+    chr(0x2116),
+    chr(0x2022),
+    chr(0x00A0),
 }
-RUSSIAN_LETTERS = set(
-    "абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+RUSSIAN_LETTERS = (
+    {chr(code) for code in range(0x0410, 0x0430)}
+    | {chr(code) for code in range(0x0430, 0x0450)}
+    | {chr(0x0401), chr(0x0451)}
 )
 FORM_DIRECTORIES = (
     REPO_ROOT / "frontend" / "src" / "components" / "forms",

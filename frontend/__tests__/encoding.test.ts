@@ -7,27 +7,30 @@ const rootDir = resolve(__dirname, '..');
 const readUtf8 = (path: string) => readFileSync(path, 'utf-8');
 
 describe('frontend encoding', () => {
-  const russianLetters = new Set(
-    'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
-  );
+  const russianLetters = new Set([
+    ...Array.from({ length: 32 }, (_, i) => String.fromCharCode(0x0410 + i)),
+    ...Array.from({ length: 32 }, (_, i) => String.fromCharCode(0x0430 + i)),
+    String.fromCharCode(0x0401),
+    String.fromCharCode(0x0451),
+  ]);
   const allowedExtras = new Set([
-    '«',
-    '»',
-    '—',
-    '–',
-    '‘',
-    '’',
-    '“',
-    '”',
-    '…',
-    '·',
-    '₽',
-    '№',
-    '•',
-    ' ',
+    String.fromCharCode(0x00ab),
+    String.fromCharCode(0x00bb),
+    String.fromCharCode(0x2014),
+    String.fromCharCode(0x2013),
+    String.fromCharCode(0x2018),
+    String.fromCharCode(0x2019),
+    String.fromCharCode(0x201c),
+    String.fromCharCode(0x201d),
+    String.fromCharCode(0x2026),
+    String.fromCharCode(0x00b7),
+    String.fromCharCode(0x20bd),
+    String.fromCharCode(0x2116),
+    String.fromCharCode(0x2022),
+    String.fromCharCode(0x00a0),
   ]);
   const isSupportedChar = (char: string) => {
-    if (char === '﻿') {
+    if (char === String.fromCharCode(0xfeff)) {
       return true;
     }
     const code = char.codePointAt(0);
@@ -37,8 +40,7 @@ describe('frontend encoding', () => {
     if (code >= 0x20 && code <= 0x7e) {
       return true;
     }
-    if (char === '
-' || char === '' || char === '	') {
+    if (char === '\n' || char === '\r' || char === '\t') {
       return true;
     }
     if (russianLetters.has(char)) {
@@ -90,12 +92,12 @@ describe('frontend encoding', () => {
     for (const path of [...files, ...extraFiles]) {
       const content = readUtf8(path);
       if (content.includes(replacementChar)) {
-        failed.push(`${path} contains \uFFFD`);
+        failed.push(`${path} contains \\uFFFD`);
         continue;
       }
       for (const char of content) {
         if (!isSupportedChar(char)) {
-          failed.push(`${path} contains unexpected символ ${JSON.stringify(char)}`);
+          failed.push(`${path} contains unexpected character ${JSON.stringify(char)}`);
           break;
         }
       }
