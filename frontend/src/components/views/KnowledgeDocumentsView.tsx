@@ -65,14 +65,20 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
 
   const resolveSyncStatus = (doc: KnowledgeDocument) => {
     const status = (doc.openNotebookStatus || '').trim().toLowerCase();
-    if (status === 'synced' || doc.openNotebookSourceId) {
+    if (status === 'synced') {
       return { label: 'Синхронизирован', tone: 'success' as const };
     }
-    if (status === 'error') {
+    if (status === 'queued' || status === 'running' || status === 'new') {
+      return { label: 'В обработке', tone: 'pending' as const };
+    }
+    if (status === 'error' || status === 'failed') {
       return { label: 'Ошибка синхронизации', tone: 'error' as const };
     }
     if (status === 'disabled') {
       return { label: 'Синхронизация выключена', tone: 'muted' as const };
+    }
+    if (doc.openNotebookSourceId) {
+      return { label: 'Синхронизирован', tone: 'success' as const };
     }
     return { label: 'Ожидает синхронизации', tone: 'pending' as const };
   };

@@ -71,7 +71,12 @@ class OpenNotebookClient:
         )
 
     def create_source(
-        self, notebook_id: str, file_path: str, title: str, embed: bool
+        self,
+        notebook_id: str,
+        file_path: str,
+        title: str,
+        embed: bool,
+        async_processing: bool = False,
     ) -> dict:
         payload = {
             "notebook_id": notebook_id,
@@ -79,6 +84,7 @@ class OpenNotebookClient:
             "file_path": file_path,
             "title": title,
             "embed": embed,
+            "async_processing": async_processing,
         }
         return self._request("POST", "/api/sources/json", payload)
 
@@ -88,6 +94,7 @@ class OpenNotebookClient:
         file_path: str,
         title: str,
         embed: bool,
+        async_processing: bool = False,
         mime_type: str | None = None,
     ) -> dict:
         boundary = f"----crm3-open-notebook-{uuid4().hex}"
@@ -96,6 +103,7 @@ class OpenNotebookClient:
             "type": "upload",
             "title": title,
             "embed": "true" if embed else "false",
+            "async_processing": "true" if async_processing else "false",
         }
         file_name = Path(file_path).name
         content_type = mime_type or "application/octet-stream"
@@ -161,6 +169,12 @@ class OpenNotebookClient:
         }
         return self._request("POST", "/api/embed", payload)
 
+    def get_source_status(self, source_id: str) -> dict:
+        return self._request("GET", f"/api/sources/{source_id}/status")
+
+    def retry_source(self, source_id: str) -> dict:
+        return self._request("POST", f"/api/sources/{source_id}/retry")
+
     def create_chat_session(self, notebook_id: str, title: str | None = None) -> dict:
         payload = {"notebook_id": notebook_id}
         if title:
@@ -224,10 +238,38 @@ class OpenNotebookSyncService:
             raise OpenNotebookError("Вид страхования не задан.")
 
         if document.open_notebook_source_id and not force:
-            if settings.OPEN_NOTEBOOK_EMBED_ON_UPLOAD:
+            try:
+                status_response = self.client.get_source_status(
+                    document.open_notebook_source_id
+                )
+            except OpenNotebookError as exc:
+                document.open_notebook_status = "error"
+                document.open_notebook_error = str(exc)
+                document.save(
+                    update_fields=[
+                        "open_notebook_status",
+                        "open_notebook_error",
+                        "updated_at",
+                    ]
+                )
+                raise
+
+            status = (status_response.get("status") or "").lower()
+            if status in {"queued", "running", "new"}:
+                document.open_notebook_status = status
+                document.open_notebook_error = ""
+                document.save(
+                    update_fields=[
+                        "open_notebook_status",
+                        "open_notebook_error",
+                        "updated_at",
+                    ]
+                )
+                return
+            if status == "failed":
                 try:
-                    self.client.generate_embeddings(
-                        item_id=document.open_notebook_source_id, item_type="source"
+                    retry_response = self.client.retry_source(
+                        document.open_notebook_source_id
                     )
                 except OpenNotebookError as exc:
                     document.open_notebook_status = "error"
@@ -240,8 +282,8 @@ class OpenNotebookSyncService:
                         ]
                     )
                     raise
-            else:
-                document.open_notebook_status = "synced"
+
+                document.open_notebook_status = retry_response.get("status") or "queued"
                 document.open_notebook_error = ""
                 document.save(
                     update_fields=[
@@ -250,6 +292,17 @@ class OpenNotebookSyncService:
                         "updated_at",
                     ]
                 )
+                return
+
+            document.open_notebook_status = "synced"
+            document.open_notebook_error = ""
+            document.save(
+                update_fields=[
+                    "open_notebook_status",
+                    "open_notebook_error",
+                    "updated_at",
+                ]
+            )
             return
 
         if force and document.open_notebook_source_id:
@@ -258,11 +311,13 @@ class OpenNotebookSyncService:
 
         notebook = self.ensure_notebook(document.insurance_type)
         file_path = self._resolve_file_path(document)
+        embed_on_upload = settings.OPEN_NOTEBOOK_EMBED_ON_UPLOAD
         response = self.client.create_source_upload(
             notebook_id=notebook.notebook_id,
             file_path=file_path,
             title=document.title,
-            embed=False,
+            embed=embed_on_upload,
+            async_processing=True,
             mime_type=document.mime_type or None,
         )
         source_id = response.get("id")
@@ -270,7 +325,7 @@ class OpenNotebookSyncService:
             raise OpenNotebookError("Open Notebook не вернул id источника.")
 
         document.open_notebook_source_id = source_id
-        document.open_notebook_status = "synced"
+        document.open_notebook_status = response.get("status") or "queued"
         document.open_notebook_error = ""
         document.save(
             update_fields=[
@@ -280,20 +335,6 @@ class OpenNotebookSyncService:
                 "updated_at",
             ]
         )
-        if settings.OPEN_NOTEBOOK_EMBED_ON_UPLOAD:
-            try:
-                self.client.generate_embeddings(item_id=source_id, item_type="source")
-            except OpenNotebookError as exc:
-                document.open_notebook_status = "error"
-                document.open_notebook_error = str(exc)
-                document.save(
-                    update_fields=[
-                        "open_notebook_status",
-                        "open_notebook_error",
-                        "updated_at",
-                    ]
-                )
-                raise
 
     def delete_document(self, document: KnowledgeDocument) -> None:
         if not self.is_configured():
