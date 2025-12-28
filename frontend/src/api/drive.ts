@@ -129,6 +129,22 @@ export async function uploadKnowledgeDocument(
   return mapKnowledgeDocument(payload);
 }
 
+export async function deleteKnowledgeDocument(documentId: string): Promise<void> {
+  await request<void>(`/knowledge_documents/${documentId}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function syncKnowledgeDocument(documentId: string): Promise<KnowledgeDocument> {
+  const payload = await request<Record<string, unknown>>(
+    `/knowledge_documents/${documentId}/sync/`,
+    {
+      method: 'POST',
+    }
+  );
+  return mapKnowledgeDocument(payload);
+}
+
 export async function uploadDealDriveFile(
   dealId: string,
   file: File,

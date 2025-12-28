@@ -3,6 +3,7 @@ from apps.notes.models import Note
 from apps.users.models import UserRole
 from django.db.models import Q
 from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -101,6 +102,61 @@ class KnowledgeDocumentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
             headers=headers,
         )
+
+    def destroy(self, request, *args, **kwargs):
+        document = self.get_object()
+        sync_service = OpenNotebookSyncService()
+        if sync_service.is_configured() and document.open_notebook_source_id:
+            try:
+                sync_service.delete_document(document)
+            except OpenNotebookError as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        if document.file:
+            document.file.delete(save=False)
+        document.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"], url_path="sync")
+    def sync(self, request, pk=None):
+        document = self.get_object()
+        sync_service = OpenNotebookSyncService()
+        if not sync_service.is_configured():
+            return Response(
+                {"detail": "Open Notebook не настроен."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        if document.open_notebook_source_id:
+            try:
+                sync_service.delete_document(document)
+            except OpenNotebookError as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        try:
+            sync_service.sync_document(document)
+        except OpenNotebookError as exc:
+            document.open_notebook_status = "error"
+            document.open_notebook_error = str(exc)
+            document.save(
+                update_fields=[
+                    "open_notebook_status",
+                    "open_notebook_error",
+                    "updated_at",
+                ]
+            )
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(self.get_serializer(document).data)
 
 
 class KnowledgeAskView(APIView):

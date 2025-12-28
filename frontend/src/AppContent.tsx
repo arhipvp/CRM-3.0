@@ -42,6 +42,8 @@ import {
   clearTokens,
   APIError,
   uploadKnowledgeDocument,
+  deleteKnowledgeDocument,
+  syncKnowledgeDocument,
   fetchDeal,
   createPolicy,
   updatePolicy,
@@ -689,6 +691,44 @@ const AppContent: React.FC = () => {
       }
     },
     [refreshKnowledgeDocuments, setAppData]
+  );
+
+  const handleKnowledgeDelete = useCallback(
+    async (documentId: string) => {
+      try {
+        await deleteKnowledgeDocument(documentId);
+        updateAppData((prev) => ({
+          knowledgeDocs: prev.knowledgeDocs.filter((doc) => doc.id !== documentId),
+        }));
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err
+            : new Error('Ошибка при удалении документа');
+        throw message;
+      }
+    },
+    [updateAppData]
+  );
+
+  const handleKnowledgeSync = useCallback(
+    async (documentId: string) => {
+      try {
+        const updated = await syncKnowledgeDocument(documentId);
+        updateAppData((prev) => ({
+          knowledgeDocs: prev.knowledgeDocs.map((doc) =>
+            doc.id === updated.id ? updated : doc
+          ),
+        }));
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err
+            : new Error('Ошибка при синхронизации документа');
+        throw message;
+      }
+    },
+    [updateAppData]
   );
 
   const handleCloseDeal = useCallback(
@@ -1774,6 +1814,8 @@ const AppContent: React.FC = () => {
         knowledgeUploading={knowledgeUploading}
         knowledgeError={knowledgeError}
         handleKnowledgeUpload={handleKnowledgeUpload}
+        handleKnowledgeDelete={handleKnowledgeDelete}
+        handleKnowledgeSync={handleKnowledgeSync}
         onLoadMoreDeals={loadMoreDeals}
         dealsHasMore={dealsHasMore}
         isLoadingMoreDeals={isLoadingMoreDeals}

@@ -92,6 +92,8 @@ export interface AppRoutesProps {
     file: File,
     metadata: { title?: string; description?: string; insuranceTypeId?: string }
   ) => Promise<void>;
+  handleKnowledgeDelete: (documentId: string) => Promise<void>;
+  handleKnowledgeSync: (documentId: string) => Promise<void>;
 }
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({
@@ -154,6 +156,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   knowledgeUploading,
   knowledgeError,
   handleKnowledgeUpload,
+  handleKnowledgeDelete,
+  handleKnowledgeSync,
 }) => (
   <Routes>
     <Route
@@ -259,6 +263,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           disabled={knowledgeUploading}
           error={knowledgeError}
           onUpload={handleKnowledgeUpload}
+          onDelete={handleKnowledgeDelete}
+          onSync={handleKnowledgeSync}
         />
       }
     />

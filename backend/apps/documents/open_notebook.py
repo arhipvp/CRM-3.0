@@ -95,6 +95,9 @@ class OpenNotebookClient:
         payload = {"session_id": session_id, "message": message, "context": context}
         return self._request("POST", "/api/chat/execute", payload)
 
+    def delete_source(self, source_id: str) -> dict:
+        return self._request("DELETE", f"/api/sources/{source_id}")
+
 
 class OpenNotebookSyncService:
     def __init__(self):
@@ -163,6 +166,14 @@ class OpenNotebookSyncService:
                 "updated_at",
             ]
         )
+
+    def delete_document(self, document: KnowledgeDocument) -> None:
+        if not self.is_configured():
+            return
+
+        source_id = document.open_notebook_source_id
+        if source_id:
+            self.client.delete_source(source_id)
 
     def ask(self, insurance_type_id: str, question: str) -> str:
         if not self.is_configured():

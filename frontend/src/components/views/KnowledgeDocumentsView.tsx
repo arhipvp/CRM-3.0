@@ -37,6 +37,8 @@ interface KnowledgeDocumentsViewProps {
     file: File,
     metadata: { title?: string; description?: string; insuranceTypeId?: string }
   ) => Promise<void>;
+  onDelete: (documentId: string) => Promise<void>;
+  onSync: (documentId: string) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -45,6 +47,8 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
   isLoading,
   error,
   onUpload,
+  onDelete,
+  onSync,
   disabled,
 }) => {
   const [title, setTitle] = useState('');
@@ -56,6 +60,35 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
   const [answer, setAnswer] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  const resolveSyncStatus = (doc: KnowledgeDocument) => {
+    const status = (doc.openNotebookStatus || '').trim().toLowerCase();
+    if (status === 'synced' || doc.openNotebookSourceId) {
+      return { label: 'Синхронизирован', tone: 'success' as const };
+    }
+    if (status === 'error') {
+      return { label: 'Ошибка синхронизации', tone: 'error' as const };
+    }
+    if (status === 'disabled') {
+      return { label: 'Синхронизация выключена', tone: 'muted' as const };
+    }
+    return { label: 'Ожидает синхронизации', tone: 'pending' as const };
+  };
+
+  const resolveSyncBadgeClass = (tone: 'success' | 'error' | 'muted' | 'pending') => {
+    if (tone === 'success') {
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    }
+    if (tone === 'error') {
+      return 'border-rose-200 bg-rose-50 text-rose-700';
+    }
+    if (tone === 'muted') {
+      return 'border-slate-200 bg-slate-100 text-slate-600';
+    }
+    return 'border-amber-200 bg-amber-50 text-amber-700';
+  };
 
   const sorted = useMemo(
     () =>
@@ -146,6 +179,46 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
       setAskError(message);
     } finally {
       setIsAsking(false);
+    }
+  };
+
+  const handleDelete = async (doc: KnowledgeDocument) => {
+    if (disabled || deletingId) {
+      return;
+    }
+    const confirmed = window.confirm(
+      `Удалить документ "${doc.title}"? Он будет удален и из Open Notebook.`
+    );
+    if (!confirmed) {
+      return;
+    }
+    setDeletingId(doc.id);
+    setLocalError(null);
+    try {
+      await onDelete(doc.id);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Ошибка при удалении документа';
+      setLocalError(message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSync = async (doc: KnowledgeDocument) => {
+    if (disabled || syncingId) {
+      return;
+    }
+    setSyncingId(doc.id);
+    setLocalError(null);
+    try {
+      await onSync(doc.id);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Ошибка при синхронизации документа';
+      setLocalError(message);
+    } finally {
+      setSyncingId(null);
     }
   };
 
@@ -271,6 +344,21 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
               key={doc.id}
               className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2 shadow-sm"
             >
+              {(() => {
+                const syncStatus = resolveSyncStatus(doc);
+                return (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-slate-500">Синхронизация:</span>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 font-semibold ${resolveSyncBadgeClass(
+                        syncStatus.tone
+                      )}`}
+                    >
+                      {syncStatus.label}
+                    </span>
+                  </div>
+                );
+              })()}
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-base font-semibold text-slate-900">{doc.title}</p>
@@ -296,27 +384,50 @@ export const KnowledgeDocumentsView: React.FC<KnowledgeDocumentsViewProps> = ({
                 <span>Тип: {doc.mimeType || "—"}</span>
                 <span>Вид: {doc.insuranceTypeName || "—"}</span>
               </div>
-              {doc.fileUrl ? (
-                <a
-                  href={doc.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-secondary btn-sm rounded-xl"
-                >
-                  Открыть файл
-                </a>
-              ) : doc.webViewLink ? (
-                <a
-                  href={doc.webViewLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-secondary btn-sm rounded-xl"
-                >
-                  Открыть на Drive
-                </a>
-              ) : (
-                <span className="text-xs text-slate-400">Ссылка недоступна</span>
+              {doc.openNotebookStatus === 'error' && doc.openNotebookError && (
+                <div className="text-xs text-rose-600">
+                  {doc.openNotebookError}
+                </div>
               )}
+              <div className="flex flex-wrap items-center gap-3">
+                {doc.fileUrl ? (
+                  <a
+                    href={doc.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-secondary btn-sm rounded-xl"
+                  >
+                    Открыть файл
+                  </a>
+                ) : doc.webViewLink ? (
+                  <a
+                    href={doc.webViewLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-secondary btn-sm rounded-xl"
+                  >
+                    Открыть на Drive
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400">Ссылка недоступна</span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm rounded-xl"
+                  onClick={() => handleSync(doc)}
+                  disabled={disabled || syncingId === doc.id}
+                >
+                  {syncingId === doc.id ? 'Синхронизация...' : 'Синхронизировать'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm rounded-xl"
+                  onClick={() => handleDelete(doc)}
+                  disabled={disabled || deletingId === doc.id}
+                >
+                  {deletingId === doc.id ? 'Удаляем...' : 'Удалить'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
