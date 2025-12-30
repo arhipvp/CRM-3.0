@@ -274,19 +274,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
   const toggleRecordSelection = useCallback(
     (row: IncomeExpenseRow) => {
-      if (!selectedStatement) {
-        if (row.statementId) {
-          setSelectedStatementId(row.statementId);
-          setSelectedRecordIds([]);
-          return;
-        }
-        const desiredType = row.recordAmount > 0 ? 'income' : 'expense';
-        const fallback = statements.find((statement) => statement.statementType === desiredType);
-        if (!fallback) {
-          return;
-        }
-        setSelectedStatementId(fallback.id);
-        setSelectedRecordIds([row.recordId]);
+      if (selectedStatement && !canAttachRow(row)) {
         return;
       }
       setSelectedRecordIds((prev) =>
@@ -295,7 +283,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           : [...prev, row.recordId]
       );
     },
-    [selectedStatement, statements]
+    [canAttachRow, selectedStatement]
   );
 
   const handleAttachSelected = useCallback(async () => {
