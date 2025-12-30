@@ -1,4 +1,5 @@
 from apps.common.models import SoftDeleteModel
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -57,6 +58,55 @@ class Payment(SoftDeleteModel):
         super().delete(using=using, keep_parents=keep_parents)
 
 
+class Statement(SoftDeleteModel):
+    """Ведомость доходов или расходов."""
+
+    TYPE_INCOME = "income"
+    TYPE_EXPENSE = "expense"
+    TYPE_CHOICES = (
+        (TYPE_INCOME, "Доход"),
+        (TYPE_EXPENSE, "Расход"),
+    )
+
+    STATUS_DRAFT = "draft"
+    STATUS_PAID = "paid"
+    STATUS_CHOICES = (
+        (STATUS_DRAFT, "Черновик"),
+        (STATUS_PAID, "Выплачена"),
+    )
+
+    name = models.CharField(max_length=255, help_text="Название")
+    statement_type = models.CharField(
+        max_length=20, choices=TYPE_CHOICES, help_text="Тип ведомости"
+    )
+    counterparty = models.CharField(max_length=255, blank=True, help_text="Контрагент")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT
+    )
+    paid_at = models.DateField(null=True, blank=True, help_text="Дата оплаты")
+    comment = models.TextField(blank=True, help_text="Комментарий")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finance_statements",
+        help_text="Создал",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Ведомость"
+        verbose_name_plural = "Ведомости"
+        indexes = [
+            models.Index(fields=["statement_type"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Ведомость {self.name}"
+
+
 class FinancialRecord(SoftDeleteModel):
     """Финансовая запись (доход/расход) для платежа
 
@@ -69,6 +119,14 @@ class FinancialRecord(SoftDeleteModel):
         related_name="financial_records",
         on_delete=models.CASCADE,
         help_text="Платёж",
+    )
+    statement = models.ForeignKey(
+        "finances.Statement",
+        related_name="records",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Ведомость",
     )
     amount = models.DecimalField(
         max_digits=12,

@@ -3,7 +3,7 @@ from decimal import Decimal
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
-from apps.finances.models import FinancialRecord, Payment
+from apps.finances.models import FinancialRecord, Payment, Statement
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -169,4 +169,112 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
         self.authenticate(self.seller)
         response = self.api_client.delete(f"/api/v1/payments/{paid_payment.id}/")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class FinanceStatementTests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.seller = User.objects.create_user(username="seller", password="pass")
+        self.executor = User.objects.create_user(username="executor", password="pass")
+        client = Client.objects.create(name="Client")
+        self.deal = Deal.objects.create(
+            title="Statement Deal",
+            client=client,
+            seller=self.seller,
+            executor=self.executor,
+            status="open",
+            stage_name="initial",
+        )
+        self.payment = Payment.objects.create(
+            deal=self.deal, amount=Decimal("1000.00"), description="Initial"
+        )
+        self.income_record = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("150.00"), description="Income"
+        )
+        self.expense_record = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("-75.00"), description="Expense"
+        )
+
+    def test_create_statement_with_income_records(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Income Sheet",
+                "statement_type": "income",
+                "record_ids": [str(self.income_record.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.income_record.refresh_from_db()
+        self.assertIsNotNone(self.income_record.statement_id)
+
+    def test_cannot_add_expense_to_income_statement(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Income Sheet",
+                "statement_type": "income",
+                "record_ids": [str(self.expense_record.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_record_cannot_be_used_in_multiple_statements(self):
+        self.authenticate(self.seller)
+        first = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Income Sheet",
+                "statement_type": "income",
+                "record_ids": [str(self.income_record.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Another Sheet",
+                "statement_type": "income",
+                "record_ids": [str(self.income_record.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_edit_record_in_paid_statement(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Paid Sheet",
+            statement_type="income",
+            status=Statement.STATUS_PAID,
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+        response = self.api_client.patch(
+            f"/api/v1/financial_records/{self.income_record.id}/",
+            {"amount": "120.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_delete_record_in_paid_statement(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Paid Sheet",
+            statement_type="income",
+            status=Statement.STATUS_PAID,
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+        response = self.api_client.delete(
+            f"/api/v1/financial_records/{self.income_record.id}/"
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

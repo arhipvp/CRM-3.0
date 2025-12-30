@@ -4,7 +4,7 @@ from django.db.models import Sum
 from django.utils.html import format_html
 from import_export import resources
 
-from .models import FinancialRecord, Payment
+from .models import FinancialRecord, Payment, Statement
 
 # ============ IMPORT/EXPORT RESOURCES ============
 
@@ -44,6 +44,7 @@ class FinancialRecordResource(resources.ModelResource):
         fields = (
             "id",
             "payment",
+            "statement",
             "amount",
             "date",
             "description",
@@ -56,11 +57,43 @@ class FinancialRecordResource(resources.ModelResource):
         export_order = (
             "id",
             "payment",
+            "statement",
             "amount",
             "date",
             "description",
             "source",
             "note",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
+
+
+class StatementResource(resources.ModelResource):
+    class Meta:
+        model = Statement
+        fields = (
+            "id",
+            "name",
+            "statement_type",
+            "status",
+            "counterparty",
+            "paid_at",
+            "comment",
+            "created_by",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
+        export_order = (
+            "id",
+            "name",
+            "statement_type",
+            "status",
+            "counterparty",
+            "paid_at",
+            "comment",
+            "created_by",
             "created_at",
             "updated_at",
             "deleted_at",
@@ -75,7 +108,7 @@ class FinancialRecordInline(admin.TabularInline):
 
     model = FinancialRecord
     extra = 1
-    fields = ("amount", "date", "description", "source", "note")
+    fields = ("amount", "date", "description", "source", "note", "statement")
     readonly_fields = ("created_at", "updated_at")
 
 
@@ -154,12 +187,45 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
     restore_payments.short_description = "✓ Восстановить выбранные платежи"
 
 
+@admin.register(Statement)
+class StatementAdmin(SoftDeleteImportExportAdmin):
+    resource_class = StatementResource
+
+    list_display = (
+        "name",
+        "statement_type",
+        "status",
+        "counterparty",
+        "paid_at",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("statement_type", "status", "paid_at", "created_at", "deleted_at")
+    search_fields = ("name", "counterparty", "comment")
+    readonly_fields = ("id", "created_at", "updated_at", "deleted_at", "created_by")
+    ordering = ("-created_at",)
+
+    fieldsets = (
+        (
+            "Основная информация",
+            {"fields": ("id", "name", "statement_type", "status")},
+        ),
+        ("Контрагент", {"fields": ("counterparty",)}),
+        ("Оплата", {"fields": ("paid_at",)}),
+        ("Комментарий", {"fields": ("comment",)}),
+        ("Автор", {"fields": ("created_by",)}),
+        ("Статус удаления", {"fields": ("deleted_at",)}),
+        ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+
 @admin.register(FinancialRecord)
 class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
     resource_class = FinancialRecordResource
 
     list_display = (
         "payment",
+        "statement",
         "amount_display",
         "record_type_badge",
         "date",
@@ -183,7 +249,7 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
     fieldsets = (
         (
             "Основная информация",
-            {"fields": ("id", "payment", "amount", "record_type_badge")},
+            {"fields": ("id", "payment", "statement", "amount", "record_type_badge")},
         ),
         ("Детали", {"fields": ("date", "description", "source")}),
         ("Примечание", {"fields": ("note",)}),

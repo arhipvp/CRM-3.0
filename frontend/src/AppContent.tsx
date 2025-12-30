@@ -49,9 +49,21 @@ import {
   createFinancialRecord,
   updateFinancialRecord,
   deleteFinancialRecord,
+  createFinanceStatement,
+  updateFinanceStatement,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
-import { Client, Deal, FinancialRecord, Payment, Policy, Quote, SalesChannel, User } from './types';
+import {
+  Client,
+  Deal,
+  FinancialRecord,
+  Payment,
+  Policy,
+  Quote,
+  SalesChannel,
+  Statement,
+  User,
+} from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
@@ -193,6 +205,7 @@ const AppContent: React.FC = () => {
     salesChannels,
     payments,
     financialRecords,
+    statements,
     tasks,
     users,
   } = dataState;
@@ -1631,20 +1644,88 @@ const AppContent: React.FC = () => {
     [setError, setFinancialRecordModal, updateAppData]
   );
 
+  const handleCreateFinanceStatement = useCallback(
+    async (values: {
+      name: string;
+      statementType: Statement['statementType'];
+      counterparty?: string;
+      comment?: string;
+      recordIds?: string[];
+    }) => {
+      const created = await createFinanceStatement({
+        name: values.name,
+        statementType: values.statementType,
+        counterparty: values.counterparty,
+        comment: values.comment,
+        recordIds: values.recordIds,
+      });
+      updateAppData((prev) => ({
+        statements: [created, ...(prev.statements ?? [])],
+      }));
+      return created;
+    },
+    [updateAppData]
+  );
+
+  const handleUpdateFinanceStatement = useCallback(
+    async (
+      statementId: string,
+      values: Partial<{
+        name: string;
+        statementType: Statement['statementType'];
+        status: Statement['status'];
+        counterparty: string;
+        comment: string;
+        paidAt: string | null;
+        recordIds: string[];
+      }>
+    ) => {
+      const updated = await updateFinanceStatement(statementId, values);
+      updateAppData((prev) => {
+        const statements = (prev.statements ?? []).map((statement) =>
+          statement.id === updated.id ? updated : statement
+        );
+        const updatedRecordIds = values.recordIds ?? [];
+        const recordIdSet = new Set(updatedRecordIds);
+        const financialRecords = updatedRecordIds.length
+          ? prev.financialRecords.map((record) =>
+              recordIdSet.has(record.id)
+                ? { ...record, statementId: updated.id }
+                : record
+            )
+          : prev.financialRecords;
+        const payments = updatedRecordIds.length
+          ? prev.payments.map((payment) => ({
+              ...payment,
+              financialRecords: (payment.financialRecords ?? []).map((record) =>
+                recordIdSet.has(record.id)
+                  ? { ...record, statementId: updated.id }
+                  : record
+              ),
+            }))
+          : prev.payments;
+        return { statements, financialRecords, payments };
+      });
+      return updated;
+    },
+    [updateAppData]
+  );
+
   const handleLogout = useCallback(() => {
     clearTokens();
     setCurrentUser(null);
     setIsAuthenticated(false);
-    setAppData({
-      clients: [],
-      deals: [],
-      policies: [],
-      salesChannels: [],
-      payments: [],
-      financialRecords: [],
-      tasks: [],
-      users: [],
-    });
+      setAppData({
+        clients: [],
+        deals: [],
+        policies: [],
+        salesChannels: [],
+        payments: [],
+        financialRecords: [],
+        statements: [],
+        tasks: [],
+        users: [],
+      });
   }, [setAppData]);
 
   if (authLoading || isLoading) {
@@ -1687,6 +1768,7 @@ const AppContent: React.FC = () => {
         policies={policies}
         payments={payments}
         financialRecords={financialRecords}
+        statements={statements}
         tasks={tasks}
         users={users}
         currentUser={currentUser}
@@ -1708,6 +1790,8 @@ const AppContent: React.FC = () => {
         onAddFinancialRecord={handleAddFinancialRecord}
         onUpdateFinancialRecord={handleUpdateFinancialRecord}
         onDeleteFinancialRecord={handleDeleteFinancialRecord}
+        onCreateFinanceStatement={handleCreateFinanceStatement}
+        onUpdateFinanceStatement={handleUpdateFinanceStatement}
         onDriveFolderCreated={handleDriveFolderCreated}
         onFetchChatMessages={handleFetchChatMessages}
         onSendChatMessage={handleSendChatMessage}

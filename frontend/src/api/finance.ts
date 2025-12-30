@@ -1,7 +1,7 @@
 ﻿import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
-import { mapFinancialRecord, mapPayment } from './mappers';
-import type { FinancialRecord, Payment } from '../types';
+import { mapFinancialRecord, mapPayment, mapStatement } from './mappers';
+import type { FinancialRecord, Payment, Statement } from '../types';
 
 export async function fetchPayments(filters?: FilterParams): Promise<Payment[]> {
   const qs = buildQueryString(filters);
@@ -121,4 +121,57 @@ export async function updateFinancialRecord(
 
 export async function deleteFinancialRecord(id: string): Promise<void> {
   await request(`/financial_records/${id}/`, { method: 'DELETE' });
+}
+
+export async function fetchFinanceStatements(filters?: FilterParams): Promise<Statement[]> {
+  const qs = buildQueryString(filters);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/finance_statements/${qs}`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapStatement);
+}
+
+export async function createFinanceStatement(data: {
+  name: string;
+  statementType: Statement['statementType'];
+  counterparty?: string;
+  comment?: string;
+  recordIds?: string[];
+}): Promise<Statement> {
+  const payload = await request<Record<string, unknown>>('/finance_statements/', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: data.name,
+      statement_type: data.statementType,
+      counterparty: data.counterparty || '',
+      comment: data.comment || '',
+      record_ids: data.recordIds ?? [],
+    }),
+  });
+  return mapStatement(payload);
+}
+
+export async function updateFinanceStatement(
+  id: string,
+  data: Partial<{
+    name: string;
+    statementType: Statement['statementType'];
+    status: Statement['status'];
+    counterparty: string;
+    comment: string;
+    paidAt: string | null;
+    recordIds: string[];
+  }>
+): Promise<Statement> {
+  const payload = await request<Record<string, unknown>>(`/finance_statements/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      name: data.name,
+      statement_type: data.statementType,
+      status: data.status,
+      counterparty: data.counterparty,
+      comment: data.comment,
+      paid_at: data.paidAt,
+      record_ids: data.recordIds,
+    }),
+  });
+  return mapStatement(payload);
 }

@@ -4,6 +4,7 @@ import {
   fetchClients,
   fetchDealsWithPagination,
   fetchFinancialRecords,
+  fetchFinanceStatements,
   fetchPayments,
   fetchPoliciesWithPagination,
   fetchSalesChannels,
@@ -18,6 +19,7 @@ import type {
   Payment,
   Policy,
   SalesChannel,
+  Statement,
   Task,
   User,
 } from '../types';
@@ -30,6 +32,7 @@ interface AppDataState {
   salesChannels: SalesChannel[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
+  statements: Statement[];
   tasks: Task[];
   users: User[];
 }
@@ -43,6 +46,7 @@ const INITIAL_APP_DATA_STATE: AppDataState = {
   salesChannels: [],
   payments: [],
   financialRecords: [],
+  statements: [],
   tasks: [],
   users: [],
 };
@@ -179,7 +183,15 @@ export const useAppData = () => {
     setError(null);
     try {
       const dealsPromise = refreshDeals();
-      const [clientsData, paymentsData, tasksData, financialRecordsData, usersData, salesChannelsData] =
+      const [
+        clientsData,
+        paymentsData,
+        tasksData,
+        financialRecordsData,
+        usersData,
+        salesChannelsData,
+        statementsData,
+      ] =
         await Promise.all([
           fetchClients(),
           fetchPayments(),
@@ -187,6 +199,7 @@ export const useAppData = () => {
           fetchFinancialRecords(),
           fetchUsers(),
           fetchSalesChannels(),
+          fetchFinanceStatements(),
         ]);
       await dealsPromise;
       await refreshPolicies();
@@ -195,6 +208,7 @@ export const useAppData = () => {
         payments: paymentsData,
         tasks: tasksData,
         financialRecords: financialRecordsData,
+        statements: statementsData,
         users: usersData,
         salesChannels: salesChannelsData,
       });

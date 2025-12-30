@@ -21,6 +21,7 @@
   Policy,
   Quote,
   SalesChannel,
+  Statement,
   Task,
   TaskPriority,
   TaskStatus,
@@ -316,6 +317,7 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
 export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecord => ({
   id: toStringValue(raw.id),
   paymentId: toStringValue(raw.payment),
+  statementId: toNullableString(raw.statement ?? raw.statement_id ?? raw.statementId),
   paymentDescription: toOptionalString(raw.payment_description),
   paymentAmount: toOptionalString(raw.payment_amount),
   amount: toStringValue(raw.amount),
@@ -324,6 +326,22 @@ export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecor
   source: toOptionalString(raw.source),
   note: toOptionalString(raw.note),
   recordType: resolveFinancialRecordType(raw.record_type ?? raw.recordType),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
+});
+
+export const mapStatement = (raw: Record<string, unknown>): Statement => ({
+  id: toStringValue(raw.id),
+  name: toStringValue(raw.name ?? ''),
+  statementType: toStringValue(raw.statement_type ?? raw.statementType) as Statement['statementType'],
+  status: toStringValue(raw.status ?? '') as Statement['status'],
+  counterparty: toNullableString(raw.counterparty),
+  paidAt: raw.paid_at === undefined ? undefined : toNullableString(raw.paid_at),
+  comment: toNullableString(raw.comment),
+  createdBy: toNullableString(raw.created_by ?? raw.createdBy),
+  recordsCount: toNullableNumber(raw.records_count ?? raw.recordsCount),
+  totalAmount: toOptionalString(raw.total_amount ?? raw.totalAmount),
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
   deletedAt: toNullableString(raw.deleted_at),

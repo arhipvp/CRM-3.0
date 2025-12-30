@@ -16,6 +16,8 @@ export type ActivityActionType =
   | 'custom';
 
 export type FinancialRecordType = 'Доход' | 'Расход';
+export type StatementType = 'income' | 'expense';
+export type StatementStatus = 'draft' | 'paid';
 
 export interface User {
   id: string;
@@ -247,6 +249,7 @@ export interface Policy {
 export interface FinancialRecord {
   id: string;
   paymentId: string;
+  statementId?: string | null;
   paymentDescription?: string;
   paymentAmount?: string;
   amount: string; // Положительное = доход, отрицательное = расход
@@ -275,6 +278,22 @@ export interface Payment {
   actualDate?: string | null;
   financialRecords?: FinancialRecord[];
   canDelete?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Statement {
+  id: string;
+  name: string;
+  statementType: StatementType;
+  status: StatementStatus;
+  counterparty?: string | null;
+  paidAt?: string | null;
+  comment?: string | null;
+  createdBy?: string | null;
+  recordsCount?: number;
+  totalAmount?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

@@ -3,14 +3,18 @@ from apps.users.models import UserRole
 from django.db.models import Q, Sum
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .filters import PaymentFilterSet
-from .models import FinancialRecord, Payment
-from .serializers import FinancialRecordSerializer, PaymentSerializer
+from .models import FinancialRecord, Payment, Statement
+from .serializers import (
+    FinancialRecordSerializer,
+    PaymentSerializer,
+    StatementSerializer,
+)
 
 
 def _is_admin_user(user):
@@ -85,12 +89,75 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             raise PermissionDenied("Нет доступа к платежу или сделке.")
         serializer.save()
 
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        statement = getattr(instance, "statement", None)
+        if statement and statement.status == Statement.STATUS_PAID:
+            raise ValidationError("Нельзя изменять записи в выплаченной ведомости.")
+        super().perform_update(serializer)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        statement = getattr(instance, "statement", None)
+        if statement and statement.status == Statement.STATUS_PAID:
+            raise ValidationError("Нельзя удалять записи из выплаченной ведомости.")
+        return super().destroy(request, *args, **kwargs)
+
     def get_object(self):
         from django.shortcuts import get_object_or_404
 
         kwargs = {self.lookup_field: self.kwargs.get(self.lookup_field)}
         lookup = FinancialRecord.objects.select_related("payment")
         return get_object_or_404(lookup, **kwargs)
+
+
+class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
+    serializer_class = StatementSerializer
+    ordering_fields = [
+        "created_at",
+        "updated_at",
+        "paid_at",
+        "status",
+        "statement_type",
+    ]
+    ordering = ["-created_at"]
+    owner_field = "created_by"
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = (
+            Statement.objects.prefetch_related(
+                "records", "records__payment", "records__payment__deal"
+            )
+            .all()
+            .order_by("-created_at")
+        )
+        if not user.is_authenticated:
+            return queryset.none()
+        if _is_admin_user(user):
+            return queryset
+        return queryset.filter(
+            Q(created_by=user)
+            | Q(records__payment__deal__seller=user)
+            | Q(records__payment__deal__executor=user)
+        ).distinct()
+
+    def perform_create(self, serializer):
+        record_ids = serializer.validated_data.get("record_ids") or []
+        self._validate_record_access(record_ids)
+        serializer.save(created_by=self.request.user)
+
+    def _validate_record_access(self, records):
+        for record in records:
+            deal = _get_deal_from_payment(getattr(record, "payment", None))
+            if not _user_has_deal_access(self.request.user, deal, allow_executor=False):
+                raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
+
+    def perform_update(self, serializer):
+        record_ids = serializer.validated_data.get("record_ids") or []
+        if record_ids:
+            self._validate_record_access(record_ids)
+        serializer.save()
 
 
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):

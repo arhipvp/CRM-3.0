@@ -16,6 +16,7 @@ import type {
   Payment,
   Policy,
   Quote,
+  Statement,
   Task,
   User,
 } from '../../types';
@@ -33,6 +34,7 @@ export interface AppRoutesProps {
   policies: Policy[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
+  statements: Statement[];
   tasks: Task[];
   users: User[];
   currentUser: User | null;
@@ -54,6 +56,25 @@ export interface AppRoutesProps {
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
   onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
+  onCreateFinanceStatement: (values: {
+    name: string;
+    statementType: Statement['statementType'];
+    counterparty?: string;
+    comment?: string;
+    recordIds?: string[];
+  }) => Promise<Statement>;
+  onUpdateFinanceStatement: (
+    statementId: string,
+    values: Partial<{
+      name: string;
+      statementType: Statement['statementType'];
+      status: Statement['status'];
+      counterparty: string;
+      comment: string;
+      paidAt: string | null;
+      recordIds: string[];
+    }>
+  ) => Promise<Statement>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
@@ -95,6 +116,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   policies,
   payments,
   financialRecords,
+  statements,
   tasks,
   users,
   currentUser,
@@ -116,6 +138,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
+  onCreateFinanceStatement,
+  onUpdateFinanceStatement,
   onDriveFolderCreated,
   onFetchChatMessages,
   onSendChatMessage,
@@ -236,9 +260,12 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         <CommissionsView
           payments={payments}
           policies={policies}
+          statements={statements}
           onDealSelect={onSelectDeal}
           onRequestEditPolicy={onRequestEditPolicy}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
+          onCreateStatement={onCreateFinanceStatement}
+          onUpdateStatement={onUpdateFinanceStatement}
         />
       }
     />

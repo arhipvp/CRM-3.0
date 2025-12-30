@@ -8,7 +8,11 @@ from apps.deals.views import (
     SalesChannelViewSet,
 )
 from apps.documents.views import DocumentViewSet
-from apps.finances.views import FinancialRecordViewSet, PaymentViewSet
+from apps.finances.views import (
+    FinancialRecordViewSet,
+    PaymentViewSet,
+    StatementViewSet,
+)
 from apps.notes.views import NoteViewSet
 from apps.notifications.views import NotificationViewSet
 from apps.policies.views import PolicyViewSet
@@ -41,6 +45,7 @@ router.register("payments", PaymentViewSet, basename="payment")
 router.register(
     "financial_records", FinancialRecordViewSet, basename="financial_record"
 )
+router.register("finance_statements", StatementViewSet, basename="finance_statement")
 router.register("notes", NoteViewSet, basename="note")
 router.register("policies", PolicyViewSet, basename="policy")
 router.register("users", UserViewSet, basename="user")
