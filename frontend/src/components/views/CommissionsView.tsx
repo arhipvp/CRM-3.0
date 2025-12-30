@@ -454,7 +454,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${recordStatement.name}`
                     : `Ведомость: ${recordStatement.name}`
                   : null;
-                const isSelectable = Boolean(selectedStatement && canAttachRow(row));
+                const isSelectable = selectedStatement ? canAttachRow(row) : true;
                 const isSelected = selectedRecordIds.includes(row.recordId);
 
                 return (
@@ -464,12 +464,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleRecordSelection(row)}
-                        disabled={!selectedStatement || !isSelectable || isSelectedStatementPaid}
+                        disabled={isSelectedStatementPaid || !isSelectable}
                         className="check"
                         title={
-                          !selectedStatement
-                            ? 'Выберите ведомость'
-                            : !isSelectable
+                          !isSelectable
                             ? 'Запись нельзя добавить в выбранную ведомость'
                             : undefined
                         }
