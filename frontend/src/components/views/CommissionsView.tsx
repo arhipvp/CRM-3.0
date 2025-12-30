@@ -67,6 +67,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [statementForm, setStatementForm] = useState({
     name: '',
@@ -85,6 +86,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   );
 
   useEffect(() => {
+    if (viewMode === 'all') {
+      setSelectedStatementId(null);
+      return;
+    }
     if (!statements.length) {
       setSelectedStatementId(null);
       return;
@@ -92,11 +97,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     if (!selectedStatementId || !statementsById.has(selectedStatementId)) {
       setSelectedStatementId(statements[0].id);
     }
-  }, [selectedStatementId, statements, statementsById]);
+  }, [selectedStatementId, statements, statementsById, viewMode]);
 
   useEffect(() => {
     setSelectedRecordIds([]);
   }, [selectedStatementId]);
+
+  useEffect(() => {
+    setSelectedRecordIds([]);
+  }, [viewMode]);
 
   const rows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
@@ -124,17 +133,20 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   }, [payments]);
 
   const filteredRows = useMemo(() => {
-    if (!selectedStatementId) {
+    if (viewMode === 'statements' && !selectedStatementId) {
       return [];
     }
-    const result = rows.filter((row) => row.statementId === selectedStatementId);
+    const result =
+      viewMode === 'all'
+        ? [...rows]
+        : rows.filter((row) => row.statementId === selectedStatementId);
     result.sort((a, b) => {
       const aTime = a.recordDate ? new Date(a.recordDate).getTime() : 0;
       const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
       return bTime - aTime;
     });
     return result;
-  }, [rows, selectedStatementId]);
+  }, [rows, selectedStatementId, viewMode]);
 
   const handleOpenDeal = useCallback(
     (dealId: string | undefined) => {
@@ -211,7 +223,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
   const canAttachRow = useCallback(
     (row: IncomeExpenseRow) => {
-      if (!selectedStatement) {
+      if (!selectedStatement || viewMode === 'all') {
         return false;
       }
       if (row.statementId && row.statementId !== selectedStatement.id) {
@@ -226,7 +238,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       }
       return true;
     },
-    [selectedStatement]
+    [selectedStatement, viewMode]
   );
 
   const toggleRecordSelection = useCallback(
@@ -282,99 +294,165 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       <h1 id="commissionsViewHeading" className="sr-only">
         Доходы и расходы
       </h1>
+      <div
+        role="tablist"
+        aria-label="Разделы доходов и расходов"
+        className="flex w-full flex-nowrap gap-2 overflow-x-auto app-panel-muted p-1 shadow-none scrollbar-none"
+      >
+        <button
+          id="financial-tab-statements"
+          role="tab"
+          type="button"
+          aria-selected={viewMode === 'statements'}
+          aria-controls="financial-tabpanel-statements"
+          onClick={() => setViewMode('statements')}
+          className={`min-w-[200px] flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+            viewMode === 'statements'
+              ? 'bg-white font-semibold text-sky-700 border border-slate-200 shadow-sm'
+              : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
+          }`}
+        >
+          Ведомости
+        </button>
+        <button
+          id="financial-tab-all"
+          role="tab"
+          type="button"
+          aria-selected={viewMode === 'all'}
+          aria-controls="financial-tabpanel-all"
+          onClick={() => setViewMode('all')}
+          className={`min-w-[240px] flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+            viewMode === 'all'
+              ? 'bg-white font-semibold text-sky-700 border border-slate-200 shadow-sm'
+              : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
+          }`}
+        >
+          Все финансовые записи
+        </button>
+      </div>
+
       <div className="app-panel overflow-hidden">
         <div className="divide-y divide-slate-200">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомости</p>
-              <p className="text-sm text-slate-600">
-                Выберите ведомость, чтобы посмотреть ее записи.
-              </p>
-            </div>
-            {onCreateStatement && (
-              <button
-                type="button"
-                onClick={() => setStatementModalOpen(true)}
-                className="btn btn-secondary btn-sm rounded-xl"
-              >
-                + Создать ведомость
-              </button>
-            )}
-          </div>
-          <div className="max-h-72 overflow-y-auto bg-white">
-            {statements.length ? (
-              <ul className="divide-y divide-slate-200">
-                {statements.map((statement) => {
-                  const isActive = statement.id === selectedStatementId;
-                  const totalAmount = Number(statement.totalAmount ?? 0);
-                  const totalLabel = Number.isFinite(totalAmount)
-                    ? formatCurrencyRu(totalAmount)
-                    : '—';
-                  const recordsCount = statement.recordsCount ?? 0;
-                  const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
-                  const statusLabel =
-                    statement.status === 'paid' ? 'Выплачена' : 'Черновик';
-                  const typeLabel =
-                    statement.statementType === 'income' ? 'Доходы' : 'Расходы';
-
-                  return (
-                    <li key={statement.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStatementId(statement.id)}
-                        className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition ${
-                          isActive ? 'bg-slate-50' : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-slate-900">{statement.name}</p>
-                          <p className="text-xs text-slate-500">
-                            {typeLabel} · {statusLabel}
-                            {statement.counterparty ? ` · ${statement.counterparty}` : ''}
-                            {paidAt ? ` · Выплата ${paidAt}` : ''}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
-                          <p className="text-xs text-slate-500">Записей: {recordsCount}</p>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="px-6 py-10 text-center">
-                <PanelMessage>Ведомостей пока нет</PanelMessage>
+          {viewMode === 'statements' && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомости</p>
+                  <p className="text-sm text-slate-600">
+                    Выберите ведомость, чтобы посмотреть ее записи.
+                  </p>
+                </div>
+                {onCreateStatement && (
+                  <button
+                    type="button"
+                    onClick={() => setStatementModalOpen(true)}
+                    className="btn btn-secondary btn-sm rounded-xl"
+                  >
+                    + Создать ведомость
+                  </button>
+                )}
               </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-slate-900">
-                {selectedStatement ? selectedStatement.name : 'Записи'}
-              </p>
-              {selectedStatement && selectedStatement.status === 'paid' && (
-                <p className="text-xs text-rose-600">
-                  Выплаченная ведомость недоступна для редактирования и удаления.
+              <div className="max-h-72 overflow-y-auto bg-white">
+                {statements.length ? (
+                  <ul className="divide-y divide-slate-200">
+                    {statements.map((statement) => {
+                      const isActive = statement.id === selectedStatementId;
+                      const totalAmount = Number(statement.totalAmount ?? 0);
+                      const totalLabel = Number.isFinite(totalAmount)
+                        ? formatCurrencyRu(totalAmount)
+                        : '—';
+                      const recordsCount = statement.recordsCount ?? 0;
+                      const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
+                      const statusLabel =
+                        statement.status === 'paid' ? 'Выплачена' : 'Черновик';
+                      const typeLabel =
+                        statement.statementType === 'income' ? 'Доходы' : 'Расходы';
+
+                      return (
+                        <li key={statement.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStatementId(statement.id)}
+                            className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition ${
+                              isActive ? 'bg-slate-50' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {statement.name}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {typeLabel} · {statusLabel}
+                                {statement.counterparty ? ` · ${statement.counterparty}` : ''}
+                                {paidAt ? ` · Выплата ${paidAt}` : ''}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
+                              <p className="text-xs text-slate-500">
+                                Записей: {recordsCount}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="px-6 py-10 text-center">
+                    <PanelMessage>Ведомостей пока нет</PanelMessage>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+          <div
+            role="tabpanel"
+            id="financial-tabpanel-statements"
+            aria-labelledby="financial-tab-statements"
+            tabIndex={0}
+            className="outline-none"
+            hidden={viewMode !== 'statements'}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-900">
+                  {selectedStatement?.name || 'Записи'}
                 </p>
+                {selectedStatement && selectedStatement.status === 'paid' && (
+                  <p className="text-xs text-rose-600">
+                    Выплаченная ведомость недоступна для редактирования и удаления.
+                  </p>
+                )}
+              </div>
+              {selectedRecordIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void handleAttachSelected()}
+                  className="btn btn-primary btn-sm rounded-xl"
+                  disabled={
+                    !selectedRecordIds.length ||
+                    !onUpdateStatement ||
+                    !selectedStatement ||
+                    isSelectedStatementPaid
+                  }
+                >
+                  Добавить выбранные
+                </button>
               )}
             </div>
-            {selectedRecordIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void handleAttachSelected()}
-                className="btn btn-primary btn-sm rounded-xl"
-                disabled={
-                  !selectedRecordIds.length ||
-                  !onUpdateStatement ||
-                  !selectedStatement ||
-                  isSelectedStatementPaid
-                }
-              >
-                Добавить выбранные
-              </button>
-            )}
+          </div>
+          <div
+            role="tabpanel"
+            id="financial-tabpanel-all"
+            aria-labelledby="financial-tab-all"
+            tabIndex={0}
+            className="outline-none"
+            hidden={viewMode !== 'all'}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">Все финансовые записи</p>
+            </div>
           </div>
           <div className="overflow-x-auto bg-white">
             <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Доходы и расходы">
@@ -440,8 +518,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${recordStatement.name}`
                     : `Ведомость: ${recordStatement.name}`
                   : null;
-                const isSelectable = selectedStatement ? canAttachRow(row) : true;
-                const isSelected = selectedRecordIds.includes(row.recordId);
+                const isSelectable =
+                  viewMode === 'statements' && selectedStatement
+                    ? canAttachRow(row)
+                    : false;
+                const isSelected =
+                  viewMode === 'statements' && selectedRecordIds.includes(row.recordId);
 
                 return (
                   <tr key={row.key} className={TABLE_ROW_CLASS}>
@@ -450,10 +532,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleRecordSelection(row)}
-                        disabled={isSelectedStatementPaid || !isSelectable}
+                        disabled={viewMode === 'all' || isSelectedStatementPaid || !isSelectable}
                         className="check"
                         title={
-                          !isSelectable
+                          viewMode === 'statements' && !isSelectable
                             ? 'Запись нельзя добавить в выбранную ведомость'
                             : undefined
                         }
@@ -550,7 +632,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                   >
                     <PanelMessage>
-                      {selectedStatement ? 'Записей в ведомости пока нет' : 'Записей пока нет'}
+                      {viewMode === 'statements' && selectedStatement
+                        ? 'Записей в ведомости пока нет'
+                        : 'Записей пока нет'}
                     </PanelMessage>
                   </td>
                 </tr>
