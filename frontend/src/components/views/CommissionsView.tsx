@@ -427,6 +427,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   ? statementsById.get(row.statementId)
                   : undefined;
                 const isRecordLocked = recordStatement?.status === 'paid';
+                const statementNote = recordStatement
+                  ? recordStatement.paidAt
+                    ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${recordStatement.name}`
+                    : `Ведомость: ${recordStatement.name}`
+                  : null;
                 const isSelectable = Boolean(selectedStatement && canAttachRow(row));
                 const isSelected = selectedRecordIds.includes(row.recordId);
 
@@ -514,6 +519,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                       <p className="text-sm text-slate-900">{recordDateLabel}</p>
+                      {statementNote && (
+                        <p className="text-xs text-slate-500 mt-1">{statementNote}</p>
+                      )}
                       {onUpdateFinancialRecord && (
                         <input
                           type="date"
