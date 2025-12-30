@@ -63,6 +63,7 @@ export interface AppRoutesProps {
     comment?: string;
     recordIds?: string[];
   }) => Promise<Statement>;
+  onDeleteFinanceStatement: (statementId: string) => Promise<void>;
   onUpdateFinanceStatement: (
     statementId: string,
     values: Partial<{
@@ -139,6 +140,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
   onCreateFinanceStatement,
+  onDeleteFinanceStatement,
   onUpdateFinanceStatement,
   onDriveFolderCreated,
   onFetchChatMessages,
@@ -265,6 +267,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onRequestEditPolicy={onRequestEditPolicy}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
           onCreateStatement={onCreateFinanceStatement}
+          onDeleteStatement={onDeleteFinanceStatement}
           onUpdateStatement={onUpdateFinanceStatement}
         />
       }

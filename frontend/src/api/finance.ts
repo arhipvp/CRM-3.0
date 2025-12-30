@@ -175,3 +175,7 @@ export async function updateFinanceStatement(
   });
   return mapStatement(payload);
 }
+
+export async function deleteFinanceStatement(id: string): Promise<void> {
+  await request(`/finance_statements/${id}/`, { method: 'DELETE' });
+}

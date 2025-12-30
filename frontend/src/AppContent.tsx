@@ -51,6 +51,7 @@ import {
   deleteFinancialRecord,
   createFinanceStatement,
   updateFinanceStatement,
+  deleteFinanceStatement,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
 import {
@@ -1711,6 +1712,36 @@ const AppContent: React.FC = () => {
     [updateAppData]
   );
 
+  const handleDeleteFinanceStatement = useCallback(
+    async (statementId: string) => {
+      try {
+        await deleteFinanceStatement(statementId);
+        updateAppData((prev) => ({
+          statements: (prev.statements ?? []).filter(
+            (statement) => statement.id !== statementId
+          ),
+          financialRecords: prev.financialRecords.map((record) =>
+            record.statementId === statementId
+              ? { ...record, statementId: null }
+              : record
+          ),
+          payments: prev.payments.map((payment) => ({
+            ...payment,
+            financialRecords: (payment.financialRecords ?? []).map((record) =>
+              record.statementId === statementId
+                ? { ...record, statementId: null }
+                : record
+            ),
+          })),
+        }));
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при удалении ведомости'));
+        throw err;
+      }
+    },
+    [setError, updateAppData]
+  );
+
   const handleLogout = useCallback(() => {
     clearTokens();
     setCurrentUser(null);
@@ -1791,6 +1822,7 @@ const AppContent: React.FC = () => {
         onUpdateFinancialRecord={handleUpdateFinancialRecord}
         onDeleteFinancialRecord={handleDeleteFinancialRecord}
         onCreateFinanceStatement={handleCreateFinanceStatement}
+        onDeleteFinanceStatement={handleDeleteFinanceStatement}
         onUpdateFinanceStatement={handleUpdateFinanceStatement}
         onDriveFolderCreated={handleDriveFolderCreated}
         onFetchChatMessages={handleFetchChatMessages}

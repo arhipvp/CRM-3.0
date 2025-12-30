@@ -20,6 +20,7 @@ interface CommissionsViewProps {
   onDealSelect?: (dealId: string) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
   onUpdateFinancialRecord?: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  onDeleteStatement?: (statementId: string) => Promise<void>;
   onCreateStatement?: (values: {
     name: string;
     statementType: Statement['statementType'];
@@ -69,6 +70,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
+  const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
+  const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
+  const [editStatementForm, setEditStatementForm] = useState({
+    name: '',
+    statementType: 'income' as Statement['statementType'],
+    status: 'draft' as Statement['status'],
+    counterparty: '',
+    comment: '',
+    paidAt: '',
+  });
   const [statementForm, setStatementForm] = useState({
     name: '',
     statementType: 'income' as Statement['statementType'],
@@ -289,6 +300,45 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setSelectedRecordIds([]);
   }, [onCreateStatement, statementForm]);
 
+  const handleEditStatementOpen = useCallback((statement: Statement) => {
+    setEditingStatement(statement);
+    setEditStatementForm({
+      name: statement.name ?? '',
+      statementType: statement.statementType,
+      status: statement.status,
+      counterparty: statement.counterparty ?? '',
+      comment: statement.comment ?? '',
+      paidAt: statement.paidAt ?? '',
+    });
+  }, []);
+
+  const handleEditStatementSubmit = useCallback(async () => {
+    if (!editingStatement || !onUpdateStatement) {
+      return;
+    }
+    const normalizedPaidAt =
+      editStatementForm.status === 'paid'
+        ? editStatementForm.paidAt || null
+        : null;
+    await onUpdateStatement(editingStatement.id, {
+      name: editStatementForm.name.trim(),
+      statementType: editStatementForm.statementType,
+      status: editStatementForm.status,
+      counterparty: editStatementForm.counterparty.trim(),
+      comment: editStatementForm.comment.trim(),
+      paidAt: normalizedPaidAt,
+    });
+    setEditingStatement(null);
+  }, [editStatementForm, editingStatement, onUpdateStatement]);
+
+  const handleDeleteStatementConfirm = useCallback(async () => {
+    if (!deletingStatement || !onDeleteStatement) {
+      return;
+    }
+    await onDeleteStatement(deletingStatement.id);
+    setDeletingStatement(null);
+  }, [deletingStatement, onDeleteStatement]);
+
   return (
     <section aria-labelledby="commissionsViewHeading" className="flex h-full flex-col gap-6">
       <h1 id="commissionsViewHeading" className="sr-only">
@@ -367,33 +417,68 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         statement.status === 'paid' ? 'Выплачена' : 'Черновик';
                       const typeLabel =
                         statement.statementType === 'income' ? 'Доходы' : 'Расходы';
+                      const isLocked = statement.status === 'paid';
 
                       return (
                         <li key={statement.id}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedStatementId(statement.id)}
-                            className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition ${
+                          <div
+                            className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition ${
                               isActive ? 'bg-slate-50' : 'hover:bg-slate-50'
                             }`}
                           >
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold text-slate-900">
-                                {statement.name}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {typeLabel} · {statusLabel}
-                                {statement.counterparty ? ` · ${statement.counterparty}` : ''}
-                                {paidAt ? ` · Выплата ${paidAt}` : ''}
-                              </p>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStatementId(statement.id)}
+                              className="flex flex-1 flex-wrap items-center justify-between gap-3 text-left"
+                            >
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-slate-900">
+                                  {statement.name}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {typeLabel} · {statusLabel}
+                                  {statement.counterparty ? ` · ${statement.counterparty}` : ''}
+                                  {paidAt ? ` · Выплата ${paidAt}` : ''}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
+                                <p className="text-xs text-slate-500">
+                                  Записей: {recordsCount}
+                                </p>
+                              </div>
+                            </button>
+                            <div className="flex items-center gap-2">
+                              {onUpdateStatement && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditStatementOpen(statement)}
+                                  disabled={isLocked}
+                                  className={`text-xs font-semibold transition ${
+                                    isLocked
+                                      ? 'text-slate-300'
+                                      : 'text-slate-500 hover:text-slate-900'
+                                  }`}
+                                >
+                                  Редактировать
+                                </button>
+                              )}
+                              {onDeleteStatement && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingStatement(statement)}
+                                  disabled={isLocked}
+                                  className={`text-xs font-semibold transition ${
+                                    isLocked
+                                      ? 'text-slate-300'
+                                      : 'text-rose-500 hover:text-rose-600'
+                                  }`}
+                                >
+                                  Удалить
+                                </button>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
-                              <p className="text-xs text-slate-500">
-                                Записей: {recordsCount}
-                              </p>
-                            </div>
-                          </button>
+                          </div>
                         </li>
                       );
                     })}
@@ -736,6 +821,165 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+      {editingStatement && (
+        <Modal
+          title="Редактировать ведомость"
+          onClose={() => setEditingStatement(null)}
+          size="sm"
+          closeOnOverlayClick={false}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleEditStatementSubmit();
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <label htmlFor="editStatementName" className="app-label">
+                Название *
+              </label>
+              <input
+                id="editStatementName"
+                value={editStatementForm.name}
+                onChange={(event) =>
+                  setEditStatementForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+                className="field field-input"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="editStatementType" className="app-label">
+                Тип
+              </label>
+              <select
+                id="editStatementType"
+                value={editStatementForm.statementType}
+                onChange={(event) =>
+                  setEditStatementForm((prev) => ({
+                    ...prev,
+                    statementType: event.target.value as Statement['statementType'],
+                  }))
+                }
+                className="field field-input"
+              >
+                <option value="income">Доходы</option>
+                <option value="expense">Расходы</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="editStatementStatus" className="app-label">
+                Статус
+              </label>
+              <select
+                id="editStatementStatus"
+                value={editStatementForm.status}
+                onChange={(event) =>
+                  setEditStatementForm((prev) => ({
+                    ...prev,
+                    status: event.target.value as Statement['status'],
+                  }))
+                }
+                className="field field-input"
+              >
+                <option value="draft">Черновик</option>
+                <option value="paid">Выплачена</option>
+              </select>
+              <p className="text-xs text-slate-500">
+                После пометки ведомости как «Выплачена» редактирование и удаление будут недоступны.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="editStatementPaidAt" className="app-label">
+                Дата выплаты
+              </label>
+              <input
+                id="editStatementPaidAt"
+                type="date"
+                value={editStatementForm.paidAt}
+                onChange={(event) =>
+                  setEditStatementForm((prev) => ({ ...prev, paidAt: event.target.value }))
+                }
+                className="field field-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="editStatementCounterparty" className="app-label">
+                Контрагент
+              </label>
+              <input
+                id="editStatementCounterparty"
+                value={editStatementForm.counterparty}
+                onChange={(event) =>
+                  setEditStatementForm((prev) => ({
+                    ...prev,
+                    counterparty: event.target.value,
+                  }))
+                }
+                className="field field-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="editStatementComment" className="app-label">
+                Комментарий
+              </label>
+              <textarea
+                id="editStatementComment"
+                value={editStatementForm.comment}
+                onChange={(event) =>
+                  setEditStatementForm((prev) => ({
+                    ...prev,
+                    comment: event.target.value,
+                  }))
+                }
+                rows={3}
+                className="field-textarea"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingStatement(null)}
+                className="btn btn-secondary rounded-xl"
+              >
+                Отмена
+              </button>
+              <button type="submit" className="btn btn-primary rounded-xl">
+                Сохранить
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {deletingStatement && (
+        <Modal
+          title="Удалить ведомость"
+          onClose={() => setDeletingStatement(null)}
+          closeOnOverlayClick={false}
+        >
+          <p className="text-sm text-slate-700">
+            Ведомость <span className="font-bold">{deletingStatement.name}</span> будет удалена.
+            Все записи отвяжутся от ведомости.
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDeletingStatement(null)}
+              className="btn btn-secondary rounded-xl"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDeleteStatementConfirm()}
+              className="btn btn-danger rounded-xl"
+            >
+              Удалить
+            </button>
+          </div>
         </Modal>
       )}
     </section>
