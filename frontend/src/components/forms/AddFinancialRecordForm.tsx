@@ -42,10 +42,10 @@ const formatRecordTypeLabel = (type: 'income' | 'expense'): string =>
 
 const getCleanAmount = (value?: string): string => {
   if (!value) {
-    return '0';
+    return '';
   }
   const parsed = parseFloat(value);
-  return Number.isFinite(parsed) ? Math.abs(parsed).toString() : '0';
+  return Number.isFinite(parsed) ? Math.abs(parsed).toString() : '';
 };
 
 export function AddFinancialRecordForm({
@@ -58,7 +58,7 @@ export function AddFinancialRecordForm({
   const [formData, setFormData] = useState<AddFinancialRecordFormValues>({
     paymentId,
     recordType: resolveRecordType(record) ?? defaultRecordType ?? 'income',
-    amount: record ? getCleanAmount(record.amount) : '0',
+    amount: record ? getCleanAmount(record.amount) : '',
     date: record?.date || '',
     description: record?.description || '',
     source: record?.source || '',
@@ -90,6 +90,10 @@ export function AddFinancialRecordForm({
     setLoading(true);
 
     try {
+      if (!formData.amount) {
+        throw new Error('Сумма обязательна');
+      }
+
       await onSubmit(formData);
     } catch (err) {
       setError(formatErrorMessage(err, 'Ошибка при сохранении записи'));
@@ -155,16 +159,32 @@ export function AddFinancialRecordForm({
 
 
       <div className="space-y-2">
-        <label htmlFor="description" className="app-label">
-          Описание
+        <label htmlFor="amount" className="app-label">
+          Сумма (руб.) *
         </label>
         <input
-          type="text"
-          id="description"
-          name="description"
-          value={formData.description || ''}
+          type="number"
+          id="amount"
+          name="amount"
+          value={formData.amount}
           onChange={handleChange}
-          placeholder="Описание операции"
+          placeholder="0.00"
+          step="0.01"
+          disabled={loading}
+          required
+          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+        />
+      </div>
+      <div className="space-y-2">
+        <label htmlFor="date" className="app-label">
+          Дата
+        </label>
+        <input
+          type="date"
+          id="date"
+          name="date"
+          value={formData.date || ''}
+          onChange={handleChange}
           disabled={loading}
           className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />

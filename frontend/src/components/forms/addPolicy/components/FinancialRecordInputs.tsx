@@ -39,16 +39,27 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600">Описание</label>
+            <label className="block text-xs font-medium text-slate-600">Сумма, ₽</label>
             <input
-              type="text"
-              value={record.description || ''}
+              type="number"
+              value={record.amount}
               onChange={(e) =>
-                onUpdateRecord(paymentIndex, type, recordIndex, 'description', e.target.value)
+                onUpdateRecord(paymentIndex, type, recordIndex, 'amount', e.target.value)
               }
               className="field field-input mt-1"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600">Фактическая дата</label>
+            <input
+              type="date"
+              value={record.date || ''}
+              onChange={(e) => onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)}
+              className="field field-input mt-1"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-600">Примечание</label>
             <input

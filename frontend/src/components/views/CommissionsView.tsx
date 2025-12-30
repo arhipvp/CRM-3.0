@@ -53,6 +53,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({});
+  const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
 
   const policiesById = useMemo(
     () => new Map(policies.map((policy) => [policy.id, policy])),
@@ -105,7 +106,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           payment.dealTitle,
           payment.dealClientName,
           payment.description,
-          row.recordDescription,
         ]
           .filter(Boolean)
           .join(' ')
@@ -163,6 +163,43 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       });
     },
     [onUpdateFinancialRecord]
+  );
+
+  const handleRecordAmountChange = useCallback((recordId: string, value: string) => {
+    setAmountDrafts((prev) => ({ ...prev, [recordId]: value }));
+  }, []);
+
+  const handleRecordAmountBlur = useCallback(
+    async (row: IncomeExpenseRow) => {
+      if (!onUpdateFinancialRecord) {
+        return;
+      }
+      const draft = amountDrafts[row.recordId];
+      if (draft === undefined) {
+        return;
+      }
+      const parsed = Number(draft);
+      if (!Number.isFinite(parsed)) {
+        return;
+      }
+      const recordType: AddFinancialRecordFormValues['recordType'] =
+        row.recordAmount >= 0 ? 'income' : 'expense';
+      await onUpdateFinancialRecord(row.recordId, {
+        paymentId: row.payment.id,
+        recordType,
+        amount: Math.abs(parsed).toString(),
+        date: row.recordDate ?? null,
+        description: row.recordDescription ?? '',
+        source: row.recordSource ?? '',
+        note: row.recordNote ?? '',
+      });
+      setAmountDrafts((prev) => {
+        const next = { ...prev };
+        delete next[row.recordId];
+        return next;
+      });
+    },
+    [amountDrafts, onUpdateFinancialRecord]
   );
 
   return (
@@ -229,6 +266,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   .map((value) => value?.toString().trim())
                   .filter(Boolean)
                   .join(' · ');
+                const amountValue =
+                  amountDrafts[row.recordId] ?? Math.abs(recordAmount).toString();
 
                 return (
                   <tr key={row.key} className={TABLE_ROW_CLASS}>
@@ -281,6 +320,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         <p className="text-xs text-slate-500 mt-1">{recordNotes}</p>
                       ) : (
                         <p className="text-xs text-slate-400 mt-1">Примечаний нет</p>
+                      )}
+                      {onUpdateFinancialRecord && (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={amountValue}
+                          onChange={(event) =>
+                            handleRecordAmountChange(row.recordId, event.target.value)
+                          }
+                          onBlur={() => void handleRecordAmountBlur(row)}
+                          className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                        />
                       )}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
