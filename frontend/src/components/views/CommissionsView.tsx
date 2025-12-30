@@ -12,13 +12,11 @@ import {
 } from '../common/tableStyles';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 
-type IncomeExpenseSortKey = 'actualDate' | 'scheduledDate' | 'payment' | 'record';
+type IncomeExpenseSortKey = 'recordDate' | 'payment' | 'record';
 
 const INCOME_EXPENSE_SORT_OPTIONS = [
-  { value: '-actualDate', label: 'Фактическая дата (новые)' },
-  { value: 'actualDate', label: 'Фактическая дата (старые)' },
-  { value: '-scheduledDate', label: 'Плановая дата (новые)' },
-  { value: 'scheduledDate', label: 'Плановая дата (старые)' },
+  { value: '-recordDate', label: 'Дата оплаты (новые)' },
+  { value: 'recordDate', label: 'Дата оплаты (старые)' },
   { value: '-payment', label: 'Платеж (больше)' },
   { value: 'payment', label: 'Платеж (меньше)' },
   { value: '-record', label: 'Расход/доход (больше)' },
@@ -30,21 +28,12 @@ interface CommissionsViewProps {
   policies: Policy[];
 }
 
-const buildPaymentTotals = (payment: Payment): { income: number; expense: number } => {
-  const records = payment.financialRecords ?? [];
-  return records.reduce(
-    (acc, record) => {
-      const amount = Number(record.amount);
-      if (!Number.isFinite(amount) || amount === 0) {
-        return acc;
-      }
-      if (amount > 0) {
-        return { ...acc, income: acc.income + amount };
-      }
-      return { ...acc, expense: acc.expense + Math.abs(amount) };
-    },
-    { income: 0, expense: 0 }
-  );
+type IncomeExpenseRow = {
+  key: string;
+  payment: Payment;
+  recordAmount: number;
+  recordDate?: string | null;
+  recordDescription?: string;
 };
 
 export const CommissionsView: React.FC<CommissionsViewProps> = ({
@@ -58,20 +47,34 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [policies]
   );
 
-  const totalsByPaymentId = useMemo(() => {
-    const map = new Map<string, { income: number; expense: number }>();
+  const rows = useMemo<IncomeExpenseRow[]>(() => {
+    const result: IncomeExpenseRow[] = [];
     payments.forEach((payment) => {
-      map.set(payment.id, buildPaymentTotals(payment));
+      const records = payment.financialRecords ?? [];
+      records.forEach((record) => {
+        const amount = Number(record.amount);
+        if (!Number.isFinite(amount) || amount === 0) {
+          return;
+        }
+        result.push({
+          key: `${payment.id}-${record.id}`,
+          payment,
+          recordAmount: amount,
+          recordDate: record.date ?? null,
+          recordDescription: record.description,
+        });
+      });
     });
-    return map;
+    return result;
   }, [payments]);
 
-  const filteredPayments = useMemo(() => {
-    let result = [...payments];
+  const filteredRows = useMemo(() => {
+    let result = [...rows];
     const search = (filters.search ?? '').toString().toLowerCase().trim();
 
     if (search) {
-      result = result.filter((payment) => {
+      result = result.filter((row) => {
+        const payment = row.payment;
         const policyNumber =
           payment.policyNumber ??
           policiesById.get(payment.policyId ?? '')?.number ??
@@ -82,6 +85,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           payment.dealTitle,
           payment.dealClientName,
           payment.description,
+          row.recordDescription,
         ]
           .filter(Boolean)
           .join(' ')
@@ -90,29 +94,25 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       });
     }
 
-    const ordering = (filters.ordering as string) || '-actualDate';
+    const ordering = (filters.ordering as string) || '-recordDate';
     const direction = ordering.startsWith('-') ? -1 : 1;
-    const field = (ordering.replace(/^-/, '') as IncomeExpenseSortKey) || 'actualDate';
+    const field = (ordering.replace(/^-/, '') as IncomeExpenseSortKey) || 'recordDate';
 
-    const resolveSortValue = (payment: Payment): number => {
+    const resolveSortValue = (row: IncomeExpenseRow): number => {
       switch (field) {
         case 'payment':
-          return Number(payment.amount) || 0;
-        case 'record': {
-          const totals = totalsByPaymentId.get(payment.id) ?? { income: 0, expense: 0 };
-          return totals.income - totals.expense;
-        }
-        case 'scheduledDate':
-          return payment.scheduledDate ? new Date(payment.scheduledDate).getTime() : 0;
-        case 'actualDate':
+          return Number(row.payment.amount) || 0;
+        case 'record':
+          return Math.abs(row.recordAmount) || 0;
+        case 'recordDate':
         default:
-          return payment.actualDate ? new Date(payment.actualDate).getTime() : 0;
+          return row.recordDate ? new Date(row.recordDate).getTime() : 0;
       }
     };
 
     result.sort((a, b) => (resolveSortValue(a) - resolveSortValue(b)) * direction);
     return result;
-  }, [filters, payments, policiesById, totalsByPaymentId]);
+  }, [filters, policiesById, rows]);
 
   return (
     <section aria-labelledby="commissionsViewHeading" className="app-panel p-6 shadow-none space-y-4">
@@ -133,13 +133,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <TableHeadCell className="min-w-[260px]">ФИО клиента</TableHeadCell>
                 <TableHeadCell className="min-w-[160px]">Номер полиса</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Полис</TableHeadCell>
-                <TableHeadCell className="min-w-[160px]">Платеж</TableHeadCell>
+                <TableHeadCell className="min-w-[180px]">Платеж</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Расход/доход</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Дата оплаты</TableHeadCell>
               </tr>
             </thead>
             <tbody className="bg-white">
-              {filteredPayments.map((payment) => {
+              {filteredRows.map((row) => {
+                const payment = row.payment;
                 const policyNumber =
                   payment.policyNumber ??
                   policiesById.get(payment.policyId ?? '')?.number ??
@@ -150,16 +151,20 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   '-';
                 const clientName = payment.dealClientName ?? '-';
                 const dealTitle = payment.dealTitle ?? '-';
-                const totals = totalsByPaymentId.get(payment.id) ?? { income: 0, expense: 0 };
-                const incomeLabel =
-                  totals.income > 0 ? `Доход ${formatCurrencyRu(totals.income)}` : 'Доход —';
-                const expenseLabel =
-                  totals.expense > 0 ? `Расход ${formatCurrencyRu(totals.expense)}` : 'Расход —';
-                const actualDate = payment.actualDate ? formatDateRu(payment.actualDate) : null;
-                const scheduledDate = payment.scheduledDate ? formatDateRu(payment.scheduledDate) : null;
+                const paymentActualDate = payment.actualDate ? formatDateRu(payment.actualDate) : null;
+                const paymentScheduledDate = payment.scheduledDate
+                  ? formatDateRu(payment.scheduledDate)
+                  : null;
+                const recordAmount = row.recordAmount;
+                const isIncome = recordAmount > 0;
+                const recordLabel = isIncome
+                  ? `Доход ${formatCurrencyRu(recordAmount)}`
+                  : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
+                const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
+                const recordDateLabel = formatDateRu(row.recordDate);
 
                 return (
-                  <tr key={payment.id} className={TABLE_ROW_CLASS}>
+                  <tr key={row.key} className={TABLE_ROW_CLASS}>
                     <td className={TABLE_CELL_CLASS_LG}>
                       <p className="text-base font-semibold text-slate-900">{clientName}</p>
                       <p className="text-xs text-slate-500 mt-1">
@@ -170,28 +175,26 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       {policyNumber}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
-                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700 font-semibold`}>
-                      {formatCurrencyRu(payment.amount)}
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                      <p className="text-base font-semibold">{formatCurrencyRu(payment.amount)}</p>
+                      {paymentActualDate ? (
+                        <p className="text-xs text-slate-500 mt-1">Оплата: {paymentActualDate}</p>
+                      ) : paymentScheduledDate ? (
+                        <p className="text-xs text-slate-500 mt-1">План: {paymentScheduledDate}</p>
+                      ) : (
+                        <p className="text-xs text-slate-500 mt-1">Оплата: —</p>
+                      )}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      <p className="text-sm font-semibold text-emerald-700">{incomeLabel}</p>
-                      <p className="text-sm font-semibold text-rose-700">{expenseLabel}</p>
+                      <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      <p className="text-sm text-slate-900">
-                        {actualDate ?? scheduledDate ?? formatDateRu(undefined)}
-                      </p>
-                      {actualDate && scheduledDate && actualDate !== scheduledDate && (
-                        <p className="text-xs text-slate-500">План: {scheduledDate}</p>
-                      )}
-                      {!actualDate && scheduledDate && (
-                        <p className="text-xs text-slate-500">Плановая дата</p>
-                      )}
+                      <p className="text-sm text-slate-900">{recordDateLabel}</p>
                     </td>
                   </tr>
                 );
               })}
-              {!filteredPayments.length && (
+              {!filteredRows.length && (
                 <tr>
                   <td
                     colSpan={6}

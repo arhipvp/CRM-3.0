@@ -4,9 +4,14 @@ import type { DealTabId } from './helpers';
 interface DealTabsProps {
   activeTab: DealTabId;
   onChange: (tabId: DealTabId) => void;
+  tabCounts?: Partial<Record<DealTabId, number>>;
 }
 
-export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange }) => (
+export const DealTabs: React.FC<DealTabsProps> = ({
+  activeTab,
+  onChange,
+  tabCounts,
+}) => (
   <div
     role="tablist"
     aria-label="Разделы выбранной сделки"
@@ -14,11 +19,15 @@ export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange }) => (
   >
     {DEAL_TABS.map((tab) => {
       const isActive = activeTab === tab.id;
+      const count = tabCounts?.[tab.id];
+      const hasCount = typeof count === 'number';
+      const ariaLabel = hasCount ? `${tab.label} ${count}` : tab.label;
       return (
         <button
           key={tab.id}
           id={`deal-tab-${tab.id}`}
           role="tab"
+          aria-label={ariaLabel}
           aria-selected={isActive}
           aria-controls={`deal-tabpanel-${tab.id}`}
           type="button"
@@ -29,8 +38,15 @@ export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange }) => (
               : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
           }`}
         >
-          <span className={isActive ? 'font-semibold' : 'font-medium'}>
-            {tab.label}
+          <span className="flex items-center justify-center gap-2">
+            <span className={isActive ? 'font-semibold' : 'font-medium'}>
+              {tab.label}
+            </span>
+            {hasCount && (
+              <span className="app-counter" aria-hidden="true">
+                {count}
+              </span>
+            )}
           </span>
         </button>
       );

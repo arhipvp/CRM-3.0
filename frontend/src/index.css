@@ -59,6 +59,10 @@ body {
     @apply text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500;
   }
 
+  .app-counter {
+    @apply inline-flex min-w-[20px] items-center justify-center rounded-full bg-slate-100 px-2 text-[11px] font-semibold text-slate-600;
+  }
+
   .app-alert {
     @apply rounded-2xl border px-4 py-3 text-sm;
   }

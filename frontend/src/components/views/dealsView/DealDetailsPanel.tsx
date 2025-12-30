@@ -328,6 +328,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   }, [selectedDeal?.id]);
 
+  useEffect(() => {
+    setChatMessages([]);
+  }, [selectedDeal?.id]);
+
 
 
   const loadChatMessages = useCallback(async () => {
@@ -610,20 +614,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   };
 
   useEffect(() => {
-
     if (activeTab === 'files') {
-
       void loadDriveFiles();
-
-      return;
-
     }
+  }, [activeTab, loadDriveFiles]);
 
-
-
+  useEffect(() => {
     resetDriveState();
-
-  }, [activeTab, loadDriveFiles, resetDriveState]);
+  }, [resetDriveState, selectedDeal?.id]);
 
 
 
@@ -744,6 +742,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   }, [isDelayModalOpen]);
 
   const quotes = selectedDeal?.quotes ?? [];
+  const tasksCount = useMemo(
+    () => relatedTasks.filter((task) => !task.deletedAt).length,
+    [relatedTasks]
+  );
+  const quotesCount = useMemo(
+    () => quotes.filter((quote) => !quote.deletedAt).length,
+    [quotes]
+  );
+  const policiesCount = relatedPolicies.length;
+  const chatCount = chatMessages.length;
+  const filesCount = sortedDriveFiles.length;
 
 
 
@@ -1011,7 +1020,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
                 />
                 <div>
-                  <DealTabs activeTab={activeTab} onChange={setActiveTab} />
+                  <DealTabs
+                    activeTab={activeTab}
+                    onChange={setActiveTab}
+                    tabCounts={{
+                      tasks: tasksCount,
+                      quotes: quotesCount,
+                      policies: policiesCount,
+                      chat: chatCount,
+                      files: filesCount,
+                    }}
+                  />
                   <div
                     className="pt-6"
                     role="tabpanel"
