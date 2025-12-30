@@ -61,6 +61,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onDealSelect,
   onRequestEditPolicy,
   onUpdateFinancialRecord,
+  onDeleteStatement,
   onCreateStatement,
   onUpdateStatement,
 }) => {
