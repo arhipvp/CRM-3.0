@@ -236,10 +236,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         <CommissionsView
           payments={payments}
           policies={policies}
-          onAddPayment={onAddPayment}
-          onUpdatePayment={onUpdatePayment}
-          onAddFinancialRecord={onAddFinancialRecord}
-          onUpdateFinancialRecord={onUpdateFinancialRecord}
         />
       }
     />

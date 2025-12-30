@@ -24,7 +24,7 @@ const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
   { path: '/deals', label: 'Сделки', icon: '📝' },
   { path: '/clients', label: 'Клиенты', icon: '👥' },
   { path: '/policies', label: 'Полисы', icon: '📄' },
-  { path: '/commissions', label: 'Комиссии', icon: '💸' },
+  { path: '/commissions', label: 'Доходы и расходы', icon: '💸' },
   { path: '/tasks', label: 'Задачи', icon: '🗂️' },
   { path: '/knowledge', label: 'Библиотека', icon: '📚' },
   { path: '/settings', label: 'Настройки', icon: '⚙️' },
