@@ -190,6 +190,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 const policyType =
                   payment.policyInsuranceType ??
                   policiesById.get(payment.policyId ?? '')?.insuranceType ??
+                  '-';
                 const salesChannelLabel =
                   policiesById.get(payment.policyId ?? '')?.salesChannelName ??
                   policiesById.get(payment.policyId ?? '')?.salesChannel ??
