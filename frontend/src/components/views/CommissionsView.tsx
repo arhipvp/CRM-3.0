@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import type { FilterParams } from '../../api';
 import type { Payment, Policy } from '../../types';
+import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
@@ -29,7 +30,7 @@ interface CommissionsViewProps {
   policies: Policy[];
   onDealSelect?: (dealId: string) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
-  onUpdateFinancialRecord?: (recordId: string, values: { date?: string | null }) => Promise<void>;
+  onUpdateFinancialRecord?: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
 }
 
 type IncomeExpenseRow = {
@@ -39,6 +40,7 @@ type IncomeExpenseRow = {
   recordAmount: number;
   recordDate?: string | null;
   recordDescription?: string;
+  recordSource?: string;
   recordNote?: string;
 };
 
@@ -73,6 +75,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           recordAmount: amount,
           recordDate: record.date ?? null,
           recordDescription: record.description,
+          recordSource: record.source,
           recordNote: record.note,
         });
       });
@@ -143,11 +146,21 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   );
 
   const handleRecordDateChange = useCallback(
-    async (recordId: string, value: string) => {
+    async (row: IncomeExpenseRow, value: string) => {
       if (!onUpdateFinancialRecord) {
         return;
       }
-      await onUpdateFinancialRecord(recordId, { date: value || null });
+      const recordType: AddFinancialRecordFormValues['recordType'] =
+        row.recordAmount >= 0 ? 'income' : 'expense';
+      await onUpdateFinancialRecord(row.recordId, {
+        paymentId: row.payment.id,
+        recordType,
+        amount: Math.abs(row.recordAmount).toString(),
+        date: value || null,
+        description: row.recordDescription ?? '',
+        source: row.recordSource ?? '',
+        note: row.recordNote ?? '',
+      });
     },
     [onUpdateFinancialRecord]
   );
@@ -210,6 +223,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 const recordDateLabel = formatDateRu(row.recordDate);
                 const recordNotes = [
                   row.recordDescription,
+                  row.recordSource,
                   row.recordNote,
                 ]
                   .map((value) => value?.toString().trim())
@@ -276,7 +290,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                           type="date"
                           value={row.recordDate ?? ''}
                           onChange={(event) =>
-                            handleRecordDateChange(row.recordId, event.target.value)
+                            handleRecordDateChange(row, event.target.value)
                           }
                           className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
                         />
