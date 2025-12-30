@@ -106,6 +106,11 @@ class Statement(SoftDeleteModel):
     def __str__(self) -> str:
         return f"Ведомость {self.name}"
 
+    def delete(self, *args, **kwargs):
+        """Мягкое удаление: отвязать записи от ведомости."""
+        self.records.update(statement=None)
+        super().delete(*args, **kwargs)
+
 
 class FinancialRecord(SoftDeleteModel):
     """Финансовая запись (доход/расход) для платежа

@@ -278,3 +278,28 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
             f"/api/v1/financial_records/{self.income_record.id}/"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_delete_statement_unlinks_records(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Draft Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+        response = self.api_client.delete(f"/api/v1/finance_statements/{statement.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.income_record.refresh_from_db()
+        self.assertIsNone(self.income_record.statement_id)
+
+    def test_cannot_delete_paid_statement(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Paid Sheet",
+            statement_type="income",
+            status=Statement.STATUS_PAID,
+            created_by=self.seller,
+        )
+        response = self.api_client.delete(f"/api/v1/finance_statements/{statement.id}/")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

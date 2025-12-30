@@ -273,12 +273,29 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   );
 
   const toggleRecordSelection = useCallback(
-    (recordId: string) => {
+    (row: IncomeExpenseRow) => {
+      if (!selectedStatement) {
+        if (row.statementId) {
+          setSelectedStatementId(row.statementId);
+          setSelectedRecordIds([]);
+          return;
+        }
+        const desiredType = row.recordAmount > 0 ? 'income' : 'expense';
+        const fallback = statements.find((statement) => statement.statementType === desiredType);
+        if (!fallback) {
+          return;
+        }
+        setSelectedStatementId(fallback.id);
+        setSelectedRecordIds([row.recordId]);
+        return;
+      }
       setSelectedRecordIds((prev) =>
-        prev.includes(recordId) ? prev.filter((id) => id !== recordId) : [...prev, recordId]
+        prev.includes(row.recordId)
+          ? prev.filter((id) => id !== row.recordId)
+          : [...prev, row.recordId]
       );
     },
-    []
+    [selectedStatement, statements]
   );
 
   const handleAttachSelected = useCallback(async () => {
@@ -344,6 +361,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 </option>
               ))}
             </select>
+            {selectedStatement && selectedStatement.status === 'paid' && (
+              <span className="text-xs text-rose-600">
+                Выплаченная ведомость недоступна для редактирования и удаления.
+              </span>
+            )}
           </div>
           {onCreateStatement && (
             <button
@@ -441,7 +463,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleRecordSelection(row.recordId)}
+                        onChange={() => toggleRecordSelection(row)}
                         disabled={!selectedStatement || !isSelectable || isSelectedStatementPaid}
                         className="check"
                         title={
@@ -598,6 +620,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <option value="income">Доходы</option>
                 <option value="expense">Расходы</option>
               </select>
+              <p className="text-xs text-slate-500">
+                После пометки ведомости как «Выплачена» редактирование и удаление будут
+                недоступны.
+              </p>
             </div>
             <div className="space-y-2">
               <label htmlFor="statementCounterparty" className="app-label">

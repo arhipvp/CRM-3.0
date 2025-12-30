@@ -159,6 +159,12 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             self._validate_record_access(record_ids)
         serializer.save()
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.status == Statement.STATUS_PAID:
+            raise ValidationError("Нельзя удалять выплаченную ведомость.")
+        return super().destroy(request, *args, **kwargs)
+
 
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для платежей с поддержкой проверки удаления"""
