@@ -37,27 +37,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             Удалить
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Сумма, ₽</label>
-            <input
-              type="number"
-              value={record.amount}
-              onChange={(e) =>
-                onUpdateRecord(paymentIndex, type, recordIndex, 'amount', e.target.value)
-              }
-              className="field field-input mt-1"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Фактическая дата</label>
-            <input
-              type="date"
-              value={record.date || ''}
-              onChange={(e) => onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)}
-              className="field field-input mt-1"
-            />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-600">Описание</label>
             <input
@@ -65,19 +45,6 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
               value={record.description || ''}
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'description', e.target.value)
-              }
-              className="field field-input mt-1"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Источник</label>
-            <input
-              type="text"
-              value={record.source || ''}
-              onChange={(e) =>
-                onUpdateRecord(paymentIndex, type, recordIndex, 'source', e.target.value)
               }
               className="field field-input mt-1"
             />

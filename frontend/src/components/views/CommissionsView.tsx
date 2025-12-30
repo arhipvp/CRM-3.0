@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import type { FilterParams } from '../../api';
 import type { Payment, Policy } from '../../types';
@@ -26,20 +27,29 @@ const INCOME_EXPENSE_SORT_OPTIONS = [
 interface CommissionsViewProps {
   payments: Payment[];
   policies: Policy[];
+  onDealSelect?: (dealId: string) => void;
+  onRequestEditPolicy?: (policy: Policy) => void;
+  onUpdateFinancialRecord?: (recordId: string, values: { date?: string | null }) => Promise<void>;
 }
 
 type IncomeExpenseRow = {
   key: string;
   payment: Payment;
+  recordId: string;
   recordAmount: number;
   recordDate?: string | null;
   recordDescription?: string;
+  recordNote?: string;
 };
 
 export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
   policies,
+  onDealSelect,
+  onRequestEditPolicy,
+  onUpdateFinancialRecord,
 }) => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({});
 
   const policiesById = useMemo(
@@ -59,9 +69,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         result.push({
           key: `${payment.id}-${record.id}`,
           payment,
+          recordId: record.id,
           recordAmount: amount,
           recordDate: record.date ?? null,
           recordDescription: record.description,
+          recordNote: record.note,
         });
       });
     });
@@ -79,9 +91,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           payment.policyNumber ??
           policiesById.get(payment.policyId ?? '')?.number ??
           '';
+        const salesChannel =
+          policiesById.get(payment.policyId ?? '')?.salesChannelName ??
+          policiesById.get(payment.policyId ?? '')?.salesChannel ??
+          '';
         const haystack = [
           payment.policyInsuranceType,
           policyNumber,
+          salesChannel,
           payment.dealTitle,
           payment.dealClientName,
           payment.description,
@@ -114,6 +131,27 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     return result;
   }, [filters, policiesById, rows]);
 
+  const handleOpenDeal = useCallback(
+    (dealId: string | undefined) => {
+      if (!dealId) {
+        return;
+      }
+      onDealSelect?.(dealId);
+      navigate('/deals');
+    },
+    [navigate, onDealSelect]
+  );
+
+  const handleRecordDateChange = useCallback(
+    async (recordId: string, value: string) => {
+      if (!onUpdateFinancialRecord) {
+        return;
+      }
+      await onUpdateFinancialRecord(recordId, { date: value || null });
+    },
+    [onUpdateFinancialRecord]
+  );
+
   return (
     <section aria-labelledby="commissionsViewHeading" className="app-panel p-6 shadow-none space-y-4">
       <h1 id="commissionsViewHeading" className="sr-only">
@@ -133,6 +171,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <TableHeadCell className="min-w-[260px]">ФИО клиента</TableHeadCell>
                 <TableHeadCell className="min-w-[160px]">Номер полиса</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Полис</TableHeadCell>
+                <TableHeadCell className="min-w-[180px]">Канал продаж</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Платеж</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Расход/доход</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Дата оплаты</TableHeadCell>
@@ -145,9 +184,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   payment.policyNumber ??
                   policiesById.get(payment.policyId ?? '')?.number ??
                   '-';
+                const policyEntity = payment.policyId
+                  ? policiesById.get(payment.policyId) ?? null
+                  : null;
                 const policyType =
                   payment.policyInsuranceType ??
                   policiesById.get(payment.policyId ?? '')?.insuranceType ??
+                const salesChannelLabel =
+                  policiesById.get(payment.policyId ?? '')?.salesChannelName ??
+                  policiesById.get(payment.policyId ?? '')?.salesChannel ??
+                  '-';
                   '-';
                 const clientName = payment.dealClientName ?? '-';
                 const dealTitle = payment.dealTitle ?? '-';
@@ -162,19 +208,49 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
                 const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
                 const recordDateLabel = formatDateRu(row.recordDate);
+                const recordNotes = [
+                  row.recordDescription,
+                  row.recordNote,
+                ]
+                  .map((value) => value?.toString().trim())
+                  .filter(Boolean)
+                  .join(' · ');
 
                 return (
                   <tr key={row.key} className={TABLE_ROW_CLASS}>
                     <td className={TABLE_CELL_CLASS_LG}>
                       <p className="text-base font-semibold text-slate-900">{clientName}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {dealTitle} · {clientName}
-                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                        {payment.dealId && onDealSelect ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDeal(payment.dealId)}
+                            className="link-action text-xs font-semibold"
+                          >
+                            {dealTitle}
+                          </button>
+                        ) : (
+                          <span>{dealTitle}</span>
+                        )}
+                        <span>·</span>
+                        <span>{clientName}</span>
+                      </div>
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      {policyNumber}
+                      {policyEntity && onRequestEditPolicy ? (
+                        <button
+                          type="button"
+                          onClick={() => onRequestEditPolicy(policyEntity)}
+                          className="link-action text-left"
+                        >
+                          {policyNumber}
+                        </button>
+                      ) : (
+                        policyNumber
+                      )}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{salesChannelLabel}</td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                       <p className="text-base font-semibold">{formatCurrencyRu(payment.amount)}</p>
                       {paymentActualDate ? (
@@ -187,9 +263,24 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                       <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
+                      {recordNotes ? (
+                        <p className="text-xs text-slate-500 mt-1">{recordNotes}</p>
+                      ) : (
+                        <p className="text-xs text-slate-400 mt-1">Примечаний нет</p>
+                      )}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                       <p className="text-sm text-slate-900">{recordDateLabel}</p>
+                      {onUpdateFinancialRecord && (
+                        <input
+                          type="date"
+                          value={row.recordDate ?? ''}
+                          onChange={(event) =>
+                            handleRecordDateChange(row.recordId, event.target.value)
+                          }
+                          className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                        />
+                      )}
                     </td>
                   </tr>
                 );
@@ -197,7 +288,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               {!filteredRows.length && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                   >
                     <PanelMessage>Записей пока нет</PanelMessage>

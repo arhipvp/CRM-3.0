@@ -741,7 +741,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
   }, [isDelayModalOpen]);
 
-  const quotes = selectedDeal?.quotes ?? [];
+  const quotes = useMemo(() => selectedDeal?.quotes ?? [], [selectedDeal?.quotes]);
   const tasksCount = useMemo(
     () => relatedTasks.filter((task) => !task.deletedAt).length,
     [relatedTasks]
