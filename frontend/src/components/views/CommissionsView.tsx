@@ -195,7 +195,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   policiesById.get(payment.policyId ?? '')?.salesChannelName ??
                   policiesById.get(payment.policyId ?? '')?.salesChannel ??
                   '-';
-                  '-';
                 const clientName = payment.dealClientName ?? '-';
                 const dealTitle = payment.dealTitle ?? '-';
                 const paymentActualDate = payment.actualDate ? formatDateRu(payment.actualDate) : null;
