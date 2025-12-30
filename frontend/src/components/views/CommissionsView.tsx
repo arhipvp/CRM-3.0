@@ -1,10 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { FilterParams } from '../../api';
 import type { Payment, Policy, Statement } from '../../types';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
-import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
 import { Modal } from '../Modal';
@@ -14,17 +12,6 @@ import {
   TABLE_THEAD_CLASS,
 } from '../common/tableStyles';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
-
-type IncomeExpenseSortKey = 'recordDate' | 'payment' | 'record';
-
-const INCOME_EXPENSE_SORT_OPTIONS = [
-  { value: '-recordDate', label: 'Дата оплаты (новые)' },
-  { value: 'recordDate', label: 'Дата оплаты (старые)' },
-  { value: '-payment', label: 'Платеж (больше)' },
-  { value: 'payment', label: 'Платеж (меньше)' },
-  { value: '-record', label: 'Расход/доход (больше)' },
-  { value: 'record', label: 'Расход/доход (меньше)' },
-];
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -77,9 +64,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateStatement,
 }) => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<FilterParams>({});
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
-  const [selectedStatementId, setSelectedStatementId] = useState<string>('all');
+  const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [statementForm, setStatementForm] = useState({
@@ -97,6 +83,20 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     () => new Map(statements.map((statement) => [statement.id, statement])),
     [statements]
   );
+
+  useEffect(() => {
+    if (!statements.length) {
+      setSelectedStatementId(null);
+      return;
+    }
+    if (!selectedStatementId || !statementsById.has(selectedStatementId)) {
+      setSelectedStatementId(statements[0].id);
+    }
+  }, [selectedStatementId, statements, statementsById]);
+
+  useEffect(() => {
+    setSelectedRecordIds([]);
+  }, [selectedStatementId]);
 
   const rows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
@@ -124,61 +124,17 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   }, [payments]);
 
   const filteredRows = useMemo(() => {
-    let result = [...rows];
-    const search = (filters.search ?? '').toString().toLowerCase().trim();
-
-    if (search) {
-      result = result.filter((row) => {
-        const payment = row.payment;
-        const policyNumber =
-          payment.policyNumber ??
-          policiesById.get(payment.policyId ?? '')?.number ??
-          '';
-        const salesChannel =
-          policiesById.get(payment.policyId ?? '')?.salesChannelName ??
-          policiesById.get(payment.policyId ?? '')?.salesChannel ??
-          '';
-        const haystack = [
-          payment.policyInsuranceType,
-          policyNumber,
-          salesChannel,
-          payment.dealTitle,
-          payment.dealClientName,
-          payment.description,
-          row.recordDescription,
-          row.recordSource,
-          row.recordNote,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(search);
-      });
+    if (!selectedStatementId) {
+      return [];
     }
-
-    if (selectedStatementId !== 'all') {
-      result = result.filter((row) => row.statementId === selectedStatementId);
-    }
-
-    const ordering = (filters.ordering as string) || '-recordDate';
-    const direction = ordering.startsWith('-') ? -1 : 1;
-    const field = (ordering.replace(/^-/, '') as IncomeExpenseSortKey) || 'recordDate';
-
-    const resolveSortValue = (row: IncomeExpenseRow): number => {
-      switch (field) {
-        case 'payment':
-          return Number(row.payment.amount) || 0;
-        case 'record':
-          return Math.abs(row.recordAmount) || 0;
-        case 'recordDate':
-        default:
-          return row.recordDate ? new Date(row.recordDate).getTime() : 0;
-      }
-    };
-
-    result.sort((a, b) => (resolveSortValue(a) - resolveSortValue(b)) * direction);
+    const result = rows.filter((row) => row.statementId === selectedStatementId);
+    result.sort((a, b) => {
+      const aTime = a.recordDate ? new Date(a.recordDate).getTime() : 0;
+      const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
+      return bTime - aTime;
+    });
     return result;
-  }, [filters, policiesById, rows, selectedStatementId]);
+  }, [rows, selectedStatementId]);
 
   const handleOpenDeal = useCallback(
     (dealId: string | undefined) => {
@@ -248,8 +204,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [amountDrafts, onUpdateFinancialRecord]
   );
 
-  const selectedStatement =
-    selectedStatementId !== 'all' ? statementsById.get(selectedStatementId) : undefined;
+  const selectedStatement = selectedStatementId
+    ? statementsById.get(selectedStatementId)
+    : undefined;
   const isSelectedStatementPaid = selectedStatement?.status === 'paid';
 
   const canAttachRow = useCallback(
@@ -274,7 +231,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
   const toggleRecordSelection = useCallback(
     (row: IncomeExpenseRow) => {
-      if (selectedStatement && !canAttachRow(row)) {
+      if (!selectedStatement || !canAttachRow(row)) {
         return;
       }
       setSelectedRecordIds((prev) =>
@@ -317,69 +274,110 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       comment: '',
     });
     setSelectedStatementId(created.id);
+    setSelectedRecordIds([]);
   }, [onCreateStatement, statementForm]);
 
   return (
-    <section aria-labelledby="commissionsViewHeading" className="app-panel p-6 shadow-none space-y-4">
+    <section aria-labelledby="commissionsViewHeading" className="flex h-full flex-col gap-6">
       <h1 id="commissionsViewHeading" className="sr-only">
         Доходы и расходы
       </h1>
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-        <FilterBar
-          onFilterChange={setFilters}
-          searchPlaceholder="Поиск по полису, сделке или клиенту..."
-          sortOptions={INCOME_EXPENSE_SORT_OPTIONS}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомость</span>
-            <select
-              value={selectedStatementId}
-              onChange={(event) => {
-                setSelectedStatementId(event.target.value);
-                setSelectedRecordIds([]);
-              }}
-              className="field field-input h-9 min-w-[220px] text-sm"
-            >
-              <option value="all">Все записи</option>
-              {statements.map((statement) => (
-                <option key={statement.id} value={statement.id}>
-                  {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
-                  {statement.name}
-                </option>
-              ))}
-            </select>
-            {selectedStatement && selectedStatement.status === 'paid' && (
-              <span className="text-xs text-rose-600">
-                Выплаченная ведомость недоступна для редактирования и удаления.
-              </span>
+      <div className="app-panel overflow-hidden">
+        <div className="divide-y divide-slate-200">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомости</p>
+              <p className="text-sm text-slate-600">
+                Выберите ведомость, чтобы посмотреть ее записи.
+              </p>
+            </div>
+            {onCreateStatement && (
+              <button
+                type="button"
+                onClick={() => setStatementModalOpen(true)}
+                className="btn btn-secondary btn-sm rounded-xl"
+              >
+                + Создать ведомость
+              </button>
             )}
           </div>
-          {onCreateStatement && (
-            <button
-              type="button"
-              onClick={() => setStatementModalOpen(true)}
-              className="btn btn-secondary btn-sm rounded-xl"
-            >
-              + Создать ведомость
-            </button>
-          )}
-          {selectedStatement && (
-            <button
-              type="button"
-              onClick={() => void handleAttachSelected()}
-              className="btn btn-primary btn-sm rounded-xl"
-              disabled={!selectedRecordIds.length || !onUpdateStatement || isSelectedStatementPaid}
-            >
-              Добавить выбранные
-            </button>
-          )}
-        </div>
-      </div>
+          <div className="max-h-72 overflow-y-auto bg-white">
+            {statements.length ? (
+              <ul className="divide-y divide-slate-200">
+                {statements.map((statement) => {
+                  const isActive = statement.id === selectedStatementId;
+                  const totalAmount = Number(statement.totalAmount ?? 0);
+                  const totalLabel = Number.isFinite(totalAmount)
+                    ? formatCurrencyRu(totalAmount)
+                    : '—';
+                  const recordsCount = statement.recordsCount ?? 0;
+                  const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
+                  const statusLabel =
+                    statement.status === 'paid' ? 'Выплачена' : 'Черновик';
+                  const typeLabel =
+                    statement.statementType === 'income' ? 'Доходы' : 'Расходы';
 
-      <div className="app-panel shadow-none overflow-hidden">
-        <div className="overflow-x-auto bg-white">
-          <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Доходы и расходы">
+                  return (
+                    <li key={statement.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStatementId(statement.id)}
+                        className={`flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition ${
+                          isActive ? 'bg-slate-50' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-slate-900">{statement.name}</p>
+                          <p className="text-xs text-slate-500">
+                            {typeLabel} · {statusLabel}
+                            {statement.counterparty ? ` · ${statement.counterparty}` : ''}
+                            {paidAt ? ` · Выплата ${paidAt}` : ''}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
+                          <p className="text-xs text-slate-500">Записей: {recordsCount}</p>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="px-6 py-10 text-center">
+                <PanelMessage>Ведомостей пока нет</PanelMessage>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-slate-900">
+                {selectedStatement ? selectedStatement.name : 'Записи'}
+              </p>
+              {selectedStatement && selectedStatement.status === 'paid' && (
+                <p className="text-xs text-rose-600">
+                  Выплаченная ведомость недоступна для редактирования и удаления.
+                </p>
+              )}
+            </div>
+            {selectedRecordIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleAttachSelected()}
+                className="btn btn-primary btn-sm rounded-xl"
+                disabled={
+                  !selectedRecordIds.length ||
+                  !onUpdateStatement ||
+                  !selectedStatement ||
+                  isSelectedStatementPaid
+                }
+              >
+                Добавить выбранные
+              </button>
+            )}
+          </div>
+          <div className="overflow-x-auto bg-white">
+            <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Доходы и расходы">
             <thead className={TABLE_THEAD_CLASS}>
               <tr>
                 <TableHeadCell padding="sm" className="w-10" />
@@ -551,12 +549,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     colSpan={8}
                     className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                   >
-                    <PanelMessage>Записей пока нет</PanelMessage>
+                    <PanelMessage>
+                      {selectedStatement ? 'Записей в ведомости пока нет' : 'Записей пока нет'}
+                    </PanelMessage>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
