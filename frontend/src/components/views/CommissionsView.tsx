@@ -66,6 +66,7 @@ type IncomeExpenseRow = {
   statementId?: string | null;
   recordAmount: number;
   paymentPaidBalance?: number;
+  paymentPaidEntries?: Array<{ amount: string; date: string }>;
   recordDate?: string | null;
   recordDescription?: string;
   recordSource?: string;
@@ -284,6 +285,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       }
       const paidBalanceValue = record.paymentPaidBalance;
       const paidBalance = paidBalanceValue ? Number(paidBalanceValue) : undefined;
+      const paidEntries =
+        record.paymentPaidEntries?.map((entry) => ({
+          amount: entry.amount,
+          date: entry.date,
+        })) ?? [];
       result.push({
         key: `${payment.id}-${record.id}`,
         payment,
@@ -291,6 +297,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         statementId: record.statementId,
         recordAmount: amount,
         paymentPaidBalance: Number.isFinite(paidBalance) ? paidBalance : undefined,
+        paymentPaidEntries: paidEntries,
         recordDate: record.date ?? null,
         recordDescription: record.description,
         recordSource: record.source,
@@ -1098,6 +1105,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   paymentBalance === undefined
                     ? '—'
                     : formatCurrencyRu(paymentBalance);
+                const paymentEntries = (row.paymentPaidEntries ?? []).slice().sort((a, b) => {
+                  const aTime = new Date(a.date).getTime();
+                  const bTime = new Date(b.date).getTime();
+                  return bTime - aTime;
+                });
                 const recordNotes = [
                   row.recordDescription,
                   row.recordSource,
@@ -1184,7 +1196,25 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     {viewMode === 'all' && (
                       <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                         <p className="text-base font-semibold">{paymentBalanceLabel}</p>
-                        <p className="text-xs text-slate-500 mt-1">Только оплаченные</p>
+                        {paymentEntries.length ? (
+                          <div className="mt-1 space-y-1 text-xs text-slate-500">
+                            {paymentEntries.map((entry, index) => {
+                              const entryAmount = Number(entry.amount);
+                              const entryLabel = Number.isFinite(entryAmount)
+                                ? formatCurrencyRu(Math.abs(entryAmount))
+                                : entry.amount;
+                              const entryDate = formatDateRu(entry.date);
+                              const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
+                              return (
+                                <p key={`${row.payment.id}-${index}`}>
+                                  {entryType} {entryLabel} · {entryDate}
+                                </p>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500 mt-1">Операций нет</p>
+                        )}
                       </td>
                     )}
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>

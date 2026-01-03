@@ -102,6 +102,7 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
     payment_paid_balance = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    payment_paid_entries = serializers.SerializerMethodField()
     record_type = serializers.SerializerMethodField()
 
     class Meta:
@@ -115,6 +116,25 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
             "statement",
             "payment_paid_balance",
         )
+
+    def get_payment_paid_entries(self, obj):
+        payment = getattr(obj, "payment", None)
+        if not payment:
+            return []
+        paid_records = getattr(payment, "paid_records", None)
+        if paid_records is None:
+            paid_records = (
+                payment.financial_records.filter(
+                    date__isnull=False, deleted_at__isnull=True
+                )
+                .only("amount", "date")
+                .order_by("-date")
+            )
+        return [
+            {"amount": str(record.amount), "date": record.date.isoformat()}
+            for record in paid_records
+            if record.date
+        ]
 
     def get_record_type(self, obj):
         """Возвращает 'Доход' или 'Расход' в зависимости от знака amount"""

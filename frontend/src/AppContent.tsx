@@ -279,6 +279,19 @@ const AppContent: React.FC = () => {
     [invalidateDealsCache, updateAppData]
   );
 
+  const handleSelectDeal = useCallback(
+    (dealId: string) => {
+      setSelectedDealId(dealId);
+      if (!dealId || dealsById.has(dealId)) {
+        return;
+      }
+      syncDealsByIds([dealId]).catch((err) => {
+        setError(formatErrorMessage(err, 'Не удалось загрузить сделку'));
+      });
+    },
+    [dealsById, setError, setSelectedDealId, syncDealsByIds]
+  );
+
   const adjustPaymentsTotals = useCallback(
     <T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }>(
       items: T[],
@@ -1866,7 +1879,7 @@ const AppContent: React.FC = () => {
         users={users}
         currentUser={currentUser}
         selectedDealId={selectedDealId}
-        onSelectDeal={setSelectedDealId}
+        onSelectDeal={handleSelectDeal}
         onCloseDeal={handleCloseDeal}
         onReopenDeal={handleReopenDeal}
         onUpdateDeal={handleUpdateDeal}

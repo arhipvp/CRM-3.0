@@ -321,6 +321,14 @@ export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecor
   paymentDescription: toOptionalString(raw.payment_description),
   paymentAmount: toOptionalString(raw.payment_amount),
   paymentPaidBalance: toOptionalString(raw.payment_paid_balance ?? raw.paymentPaidBalance),
+  paymentPaidEntries: Array.isArray(raw.payment_paid_entries)
+    ? (raw.payment_paid_entries as Record<string, unknown>[])
+        .map((entry) => ({
+          amount: toStringValue(entry.amount),
+          date: toStringValue(entry.date),
+        }))
+        .filter((entry) => Boolean(entry.date))
+    : undefined,
   amount: toStringValue(raw.amount),
   date: raw.date === undefined ? undefined : toNullableString(raw.date),
   description: toOptionalString(raw.description),

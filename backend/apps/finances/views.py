@@ -9,7 +9,7 @@ from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.users.models import UserRole
 from django.db import transaction
-from django.db.models import DecimalField, Q, Sum
+from django.db.models import DecimalField, Prefetch, Q, Sum
 from django.db.models.functions import Coalesce
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -94,6 +94,18 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "payment__policy__sales_channel",
                 "payment__deal",
                 "payment__deal__client",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "payment__financial_records",
+                    queryset=FinancialRecord.objects.filter(
+                        date__isnull=False,
+                        deleted_at__isnull=True,
+                    )
+                    .only("id", "amount", "date", "payment_id")
+                    .order_by("-date"),
+                    to_attr="paid_records",
+                )
             )
             .all()
             .order_by("-date", "-created_at")
