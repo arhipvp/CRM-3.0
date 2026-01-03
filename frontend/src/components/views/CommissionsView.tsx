@@ -531,17 +531,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     if (!editingStatement || !onUpdateStatement) {
       return;
     }
-    const normalizedPaidAt =
-      editStatementForm.status === 'paid'
-        ? editStatementForm.paidAt || null
-        : null;
     await onUpdateStatement(editingStatement.id, {
       name: editStatementForm.name.trim(),
       statementType: editStatementForm.statementType,
       status: editStatementForm.status,
       counterparty: editStatementForm.counterparty.trim(),
       comment: editStatementForm.comment.trim(),
-      paidAt: normalizedPaidAt,
+      paidAt: editStatementForm.paidAt || null,
     });
     setEditingStatement(null);
   }, [editStatementForm, editingStatement, onUpdateStatement]);
