@@ -5,7 +5,6 @@ import {
   fetchDealsWithPagination,
   fetchFinancialRecords,
   fetchFinanceStatements,
-  fetchPayments,
   fetchPaymentsWithPagination,
   fetchPoliciesWithPagination,
   fetchSalesChannels,
@@ -194,7 +193,7 @@ export const useAppData = () => {
     }
 
     return retrieved;
-  }, []);
+  }, [fetchPaymentsWithPagination]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
