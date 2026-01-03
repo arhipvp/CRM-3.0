@@ -407,7 +407,7 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
     def test_filter_paid_balance_not_zero(self):
         self.authenticate(self.seller)
         paid_income = FinancialRecord.objects.create(
-            payment=self.payment, amount=Decimal("50.00"), date=timezone.now().date()
+            payment=self.payment, amount=Decimal("60.00"), date=timezone.now().date()
         )
         response = self.api_client.get(
             "/api/v1/financial_records/?paid_balance_not_zero=true"
