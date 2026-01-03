@@ -404,6 +404,20 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.assertIn(str(self.income_record.id), record_ids)
         self.assertNotIn(str(self.expense_record.id), record_ids)
 
+    def test_filter_paid_balance_not_zero(self):
+        self.authenticate(self.seller)
+        paid_income = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("50.00"), date=timezone.now().date()
+        )
+        response = self.api_client.get(
+            "/api/v1/financial_records/?paid_balance_not_zero=true"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        record_ids = {str(item["id"]) for item in results}
+        self.assertIn(str(paid_income.id), record_ids)
+
 
 class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):
     def setUp(self):

@@ -137,6 +137,9 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if _parse_bool(self.request.query_params.get("without_statement")):
             queryset = queryset.filter(statement__isnull=True)
 
+        if _parse_bool(self.request.query_params.get("paid_balance_not_zero")):
+            queryset = queryset.exclude(payment_paid_balance=0)
+
         search_term = (self.request.query_params.get("search") or "").strip()
         if len(search_term) >= 5:
             queryset = queryset.filter(

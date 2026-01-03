@@ -93,6 +93,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const [showWithoutStatementOnly, setShowWithoutStatementOnly] = useState(false);
+  const [showNonZeroBalanceOnly, setShowNonZeroBalanceOnly] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [targetStatementId, setTargetStatementId] = useState('');
   const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
@@ -180,6 +181,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     if (showWithoutStatementOnly) {
       filters.without_statement = true;
     }
+    if (showNonZeroBalanceOnly) {
+      filters.paid_balance_not_zero = true;
+    }
     if (recordTypeFilter !== 'all') {
       filters.record_type = recordTypeFilter;
     }
@@ -205,7 +209,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     } finally {
       setIsAllRecordsLoading(false);
     }
-  }, [effectiveSearch, recordTypeFilter, showUnpaidOnly, showWithoutStatementOnly]);
+  }, [
+    effectiveSearch,
+    recordTypeFilter,
+    showNonZeroBalanceOnly,
+    showUnpaidOnly,
+    showWithoutStatementOnly,
+  ]);
 
   useEffect(() => {
     if (viewMode !== 'all') {
@@ -979,6 +989,17 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   />
                   Только не в ведомостях
                 </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showNonZeroBalanceOnly}
+                    onChange={(event) =>
+                      setShowNonZeroBalanceOnly(event.target.checked)
+                    }
+                    className="check"
+                  />
+                  Скрыть нулевой итог по платежу
+                </label>
                 <select
                   value={recordTypeFilter}
                   onChange={(event) =>
@@ -1029,16 +1050,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             <thead className={TABLE_THEAD_CLASS}>
               <tr>
                 <TableHeadCell padding="sm" className="w-10" />
-                <TableHeadCell className="min-w-[260px]">ФИО клиента</TableHeadCell>
-                <TableHeadCell className="min-w-[160px]">Номер полиса</TableHeadCell>
-                <TableHeadCell className="min-w-[180px]">Полис</TableHeadCell>
-                <TableHeadCell className="min-w-[180px]">Канал продаж</TableHeadCell>
-                <TableHeadCell className="min-w-[180px]">Платеж</TableHeadCell>
+                <TableHeadCell className="min-w-[220px]">ФИО клиента</TableHeadCell>
+                <TableHeadCell className="min-w-[140px]">Номер полиса</TableHeadCell>
+                <TableHeadCell className="min-w-[160px]">Полис</TableHeadCell>
+                <TableHeadCell className="min-w-[160px]">Канал продаж</TableHeadCell>
+                <TableHeadCell className="min-w-[160px]">Платеж</TableHeadCell>
                 {viewMode === 'all' && (
-                  <TableHeadCell className="min-w-[180px]">Итог по платежу</TableHeadCell>
+                  <TableHeadCell className="min-w-[150px]">Итог по платежу</TableHeadCell>
                 )}
-                <TableHeadCell className="min-w-[180px]">Расход/доход</TableHeadCell>
-                <TableHeadCell className="min-w-[180px]">Дата оплаты</TableHeadCell>
+                <TableHeadCell className="min-w-[160px]">Расход/доход</TableHeadCell>
+                <TableHeadCell className="min-w-[160px]">Дата оплаты</TableHeadCell>
               </tr>
             </thead>
             <tbody className="bg-white">
