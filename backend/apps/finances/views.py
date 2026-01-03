@@ -10,6 +10,7 @@ from apps.common.services import manage_drive_files
 from apps.users.models import UserRole
 from django.db import transaction
 from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -96,6 +97,18 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
             .all()
             .order_by("-date", "-created_at")
+        )
+        queryset = queryset.annotate(
+            payment_paid_balance=Coalesce(
+                Sum(
+                    "payment__financial_records__amount",
+                    filter=Q(
+                        payment__financial_records__date__isnull=False,
+                        payment__financial_records__deleted_at__isnull=True,
+                    ),
+                ),
+                0,
+            )
         )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)

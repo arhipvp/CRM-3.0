@@ -252,6 +252,7 @@ export interface FinancialRecord {
   statementId?: string | null;
   paymentDescription?: string;
   paymentAmount?: string;
+  paymentPaidBalance?: string;
   amount: string; // Положительное = доход, отрицательное = расход
   date?: string | null;
   description?: string;

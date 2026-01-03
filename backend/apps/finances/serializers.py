@@ -99,12 +99,22 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
     payment_amount = serializers.DecimalField(
         source="payment.amount", read_only=True, max_digits=12, decimal_places=2
     )
+    payment_paid_balance = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
     record_type = serializers.SerializerMethodField()
 
     class Meta:
         model = FinancialRecord
         fields = "__all__"
-        read_only_fields = ("id", "created_at", "updated_at", "deleted_at", "statement")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+            "statement",
+            "payment_paid_balance",
+        )
 
     def get_record_type(self, obj):
         """Возвращает 'Доход' или 'Расход' в зависимости от знака amount"""

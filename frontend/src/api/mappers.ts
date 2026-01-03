@@ -320,6 +320,7 @@ export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecor
   statementId: toNullableString(raw.statement ?? raw.statement_id ?? raw.statementId),
   paymentDescription: toOptionalString(raw.payment_description),
   paymentAmount: toOptionalString(raw.payment_amount),
+  paymentPaidBalance: toOptionalString(raw.payment_paid_balance ?? raw.paymentPaidBalance),
   amount: toStringValue(raw.amount),
   date: raw.date === undefined ? undefined : toNullableString(raw.date),
   description: toOptionalString(raw.description),

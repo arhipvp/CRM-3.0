@@ -65,6 +65,7 @@ type IncomeExpenseRow = {
   recordId: string;
   statementId?: string | null;
   recordAmount: number;
+  paymentPaidBalance?: number;
   recordDate?: string | null;
   recordDescription?: string;
   recordSource?: string;
@@ -271,12 +272,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (!Number.isFinite(amount) || amount === 0) {
         return;
       }
+      const paidBalanceValue = record.paymentPaidBalance;
+      const paidBalance = paidBalanceValue ? Number(paidBalanceValue) : undefined;
       result.push({
         key: `${payment.id}-${record.id}`,
         payment,
         recordId: record.id,
         statementId: record.statementId,
         recordAmount: amount,
+        paymentPaidBalance: Number.isFinite(paidBalance) ? paidBalance : undefined,
         recordDate: record.date ?? null,
         recordDescription: record.description,
         recordSource: record.source,
@@ -628,7 +632,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         <div className="divide-y divide-slate-200">
           {viewMode === 'statements' && (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 bg-white">
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомости</p>
                   <p className="text-sm font-semibold text-slate-900">
@@ -648,7 +652,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </button>
                 )}
               </div>
-              <div className="max-h-72 overflow-y-auto bg-white">
+              <div className="max-h-[360px] overflow-y-auto bg-white">
                 {statements.length ? (
                   <ul className="divide-y divide-slate-200">
                     {statements.map((statement) => {
@@ -665,12 +669,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         statement.statementType === 'income' ? 'Доходы' : 'Расходы';
 
                       return (
-                        <li key={statement.id}>
-                          <div
-                            className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition ${
-                              isActive ? 'bg-slate-50' : 'hover:bg-slate-50'
-                            }`}
-                          >
+                        <li
+                          key={statement.id}
+                          className={`border-l-4 transition-colors ${
+                            isActive
+                              ? 'bg-sky-50 border-sky-500'
+                              : 'border-transparent hover:bg-slate-50/80 hover:border-sky-500 even:bg-slate-50/40'
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                             <button
                               type="button"
                               onClick={() => setSelectedStatementId(statement.id)}
@@ -715,11 +722,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             </>
           )}
           {viewMode === 'statements' && (
-            <div className="flex items-center gap-4 bg-slate-50 px-4 py-2">
-              <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Выбранная ведомость
-              </span>
-              <div className="h-px flex-1 bg-slate-200" />
+            <div className="app-panel-muted px-4 py-2">
+              <div className="flex items-center gap-4">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Выбранная ведомость
+                </span>
+                <div className="h-px flex-1 bg-slate-200" />
+              </div>
             </div>
           )}
           <div
@@ -1025,6 +1034,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <TableHeadCell className="min-w-[180px]">Полис</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Канал продаж</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Платеж</TableHeadCell>
+                {viewMode === 'all' && (
+                  <TableHeadCell className="min-w-[180px]">Итог по платежу</TableHeadCell>
+                )}
                 <TableHeadCell className="min-w-[180px]">Расход/доход</TableHeadCell>
                 <TableHeadCell className="min-w-[180px]">Дата оплаты</TableHeadCell>
               </tr>
@@ -1060,6 +1072,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
                 const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
                 const recordDateLabel = formatDateRu(row.recordDate);
+                const paymentBalance = row.paymentPaidBalance;
+                const paymentBalanceLabel =
+                  paymentBalance === undefined
+                    ? '—'
+                    : formatCurrencyRu(paymentBalance);
                 const recordNotes = [
                   row.recordDescription,
                   row.recordSource,
@@ -1143,6 +1160,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         <p className="text-xs text-slate-500 mt-1">Оплата: —</p>
                       )}
                     </td>
+                    {viewMode === 'all' && (
+                      <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                        <p className="text-base font-semibold">{paymentBalanceLabel}</p>
+                        <p className="text-xs text-slate-500 mt-1">Только оплаченные</p>
+                      </td>
+                    )}
                     <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                       <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
                       {recordNotes ? (
@@ -1187,7 +1210,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               {!filteredRows.length && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={viewMode === 'all' ? 9 : 8}
                     className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                   >
                     <PanelMessage>
