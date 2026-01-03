@@ -677,7 +677,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                               className="flex flex-1 flex-wrap items-center justify-between gap-3 text-left"
                             >
                               <div className="space-y-1">
-                                <p className="text-sm font-semibold text-slate-900">
+                                <p
+                                  className={`text-sm font-semibold ${
+                                    statement.status !== 'paid'
+                                      ? 'text-slate-900'
+                                      : statement.statementType === 'income'
+                                      ? 'text-emerald-700'
+                                      : 'text-rose-700'
+                                  }`}
+                                >
                                   {statement.name}
                                 </p>
                                 <p className="text-xs text-slate-500">
@@ -705,6 +713,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 )}
               </div>
             </>
+          )}
+          {viewMode === 'statements' && (
+            <div className="flex items-center gap-4 bg-slate-50 px-4 py-2">
+              <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Выбранная ведомость
+              </span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
           )}
           <div
             role="tabpanel"
