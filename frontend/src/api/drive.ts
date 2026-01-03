@@ -99,6 +99,15 @@ export async function fetchPolicyDriveFiles(policyId: string): Promise<DriveFile
   return normalizeDriveResponse(payload);
 }
 
+export async function fetchStatementDriveFiles(
+  statementId: string
+): Promise<DriveFilesResponse> {
+  const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
+    `/finance_statements/${statementId}/drive-files/`
+  );
+  return normalizeDriveResponse(payload);
+}
+
 export async function uploadDealDriveFile(
   dealId: string,
   file: File,
@@ -158,4 +167,41 @@ export async function uploadPolicyDriveFile(policyId: string, file: File): Promi
   }
 
   return mapDriveFile(payload.file as Record<string, unknown>);
+}
+
+export async function uploadStatementDriveFile(
+  statementId: string,
+  file: File
+): Promise<DriveFile> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const payload = await request<{ file?: unknown; folder_id?: string | null }>(
+    `/finance_statements/${statementId}/drive-files/`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  if (!payload?.file) {
+    throw new Error('Failed to attach file to Google Drive');
+  }
+
+  return mapDriveFile(payload.file as Record<string, unknown>);
+}
+
+export async function trashStatementDriveFiles(
+  statementId: string,
+  fileIds: string[]
+): Promise<DriveTrashResponse> {
+  const payload = await request<{ moved_file_ids?: unknown; trash_folder_id?: string | null }>(
+    `/finance_statements/${statementId}/drive-files/`,
+    {
+      method: 'DELETE',
+      body: JSON.stringify({ file_ids: fileIds }),
+    }
+  );
+
+  return normalizeTrashResponse(payload);
 }

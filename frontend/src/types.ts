@@ -292,6 +292,7 @@ export interface Statement {
   paidAt?: string | null;
   comment?: string | null;
   createdBy?: string | null;
+  driveFolderId?: string | null;
   recordsCount?: number;
   totalAmount?: string;
   createdAt: string;

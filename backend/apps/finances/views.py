@@ -1,9 +1,18 @@
+from apps.common.drive import (
+    DriveError,
+    ensure_statement_folder,
+    ensure_trash_folder,
+    list_drive_folder_contents,
+    move_drive_file_to_folder,
+)
 from apps.common.permissions import EditProtectedMixin
+from apps.common.services import manage_drive_files
 from apps.users.models import UserRole
 from django.db.models import Q, Sum
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -51,6 +60,15 @@ def _parse_bool(value):
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+class StatementDriveTrashSerializer(serializers.Serializer):
+    file_ids = serializers.ListField(
+        child=serializers.CharField(),
+        min_length=1,
+        allow_empty=False,
+        required=True,
+    )
 
 
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -220,6 +238,89 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         self._validate_record_access(records)
         records.update(statement=None)
         return Response({"removed": records.count()})
+
+    @action(
+        detail=True,
+        methods=["get", "post", "delete"],
+        url_path="drive-files",
+        parser_classes=[MultiPartParser, FormParser, JSONParser],
+    )
+    def drive_files(self, request, *args, **kwargs):
+        statement = self.get_object()
+        uploaded_file = request.FILES.get("file") if request.method == "POST" else None
+
+        if request.method == "DELETE":
+            serializer = StatementDriveTrashSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            file_ids = [
+                file_id.strip()
+                for file_id in serializer.validated_data["file_ids"]
+                if isinstance(file_id, str) and file_id.strip()
+            ]
+            if not file_ids:
+                raise ValidationError({"file_ids": "Нужно передать ID файлов."})
+
+            try:
+                folder_id = statement.drive_folder_id or ensure_statement_folder(
+                    statement
+                )
+                if not folder_id:
+                    return Response(
+                        {"detail": "Папка Google Drive для ведомости не найдена."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                drive_files = list_drive_folder_contents(folder_id)
+                drive_file_map = {item["id"]: item for item in drive_files}
+                missing_file_ids = [
+                    file_id
+                    for file_id in file_ids
+                    if file_id not in drive_file_map
+                    or drive_file_map[file_id]["is_folder"]
+                ]
+                if missing_file_ids:
+                    return Response(
+                        {
+                            "detail": "Файлы не найдены или это папки.",
+                            "missing_file_ids": missing_file_ids,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                trash_folder_id = ensure_trash_folder(folder_id)
+                for file_id in file_ids:
+                    move_drive_file_to_folder(file_id, trash_folder_id)
+
+                return Response(
+                    {
+                        "moved_file_ids": file_ids,
+                        "trash_folder_id": trash_folder_id,
+                    }
+                )
+            except DriveError as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+        if request.method == "POST" and not uploaded_file:
+            return Response(
+                {"detail": "No file provided for upload."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = manage_drive_files(
+                instance=statement,
+                ensure_folder_func=ensure_statement_folder,
+                uploaded_file=uploaded_file,
+            )
+            return Response(result)
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
 
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):

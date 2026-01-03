@@ -85,6 +85,12 @@ class Statement(SoftDeleteModel):
     )
     paid_at = models.DateField(null=True, blank=True, help_text="Дата оплаты")
     comment = models.TextField(blank=True, help_text="Комментарий")
+    drive_folder_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Google Drive folder ID",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

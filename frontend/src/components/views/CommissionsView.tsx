@@ -1,9 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { FinancialRecord, Payment, Policy, Statement } from '../../types';
+import type { DriveFile, FinancialRecord, Payment, Policy, Statement } from '../../types';
 import type { FilterParams } from '../../api';
-import { fetchFinancialRecordsWithPagination } from '../../api';
+import {
+  fetchFinancialRecordsWithPagination,
+  fetchStatementDriveFiles,
+  trashStatementDriveFiles,
+  uploadStatementDriveFile,
+} from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
@@ -15,6 +20,13 @@ import {
 } from '../common/tableStyles';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { buildDriveFolderLink } from '../../utils/links';
+import {
+  formatDriveDate,
+  formatDriveFileSize,
+  getDriveItemIcon,
+} from './dealsView/helpers';
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -99,6 +111,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     counterparty: '',
     comment: '',
   });
+  const [statementDriveFiles, setStatementDriveFiles] = useState<DriveFile[]>([]);
+  const [statementDriveFolderIds, setStatementDriveFolderIds] = useState<
+    Record<string, string | null>
+  >({});
+  const [isStatementDriveLoading, setStatementDriveLoading] = useState(false);
+  const [isStatementDriveUploading, setStatementDriveUploading] = useState(false);
+  const [isStatementDriveTrashing, setStatementDriveTrashing] = useState(false);
+  const [statementDriveError, setStatementDriveError] = useState<string | null>(null);
 
   const policiesById = useMemo(
     () => new Map(policies.map((policy) => [policy.id, policy])),
@@ -186,6 +206,28 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     }
     void loadAllRecords();
   }, [loadAllRecords, viewMode]);
+
+  const loadStatementDriveFiles = useCallback(async (statementId: string) => {
+    setStatementDriveLoading(true);
+    try {
+      const { files, folderId } = await fetchStatementDriveFiles(statementId);
+      setStatementDriveFiles(files);
+      setStatementDriveError(null);
+      if (folderId !== undefined) {
+        setStatementDriveFolderIds((prev) => ({
+          ...prev,
+          [statementId]: folderId,
+        }));
+      }
+    } catch (error) {
+      setStatementDriveFiles([]);
+      setStatementDriveError(
+        formatErrorMessage(error, 'Не удалось загрузить файлы ведомости.')
+      );
+    } finally {
+      setStatementDriveLoading(false);
+    }
+  }, []);
 
   const statementRows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
@@ -326,11 +368,24 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     ? statementsById.get(selectedStatementId)
     : undefined;
   const isSelectedStatementPaid = selectedStatement?.status === 'paid';
+  const selectedStatementDriveFolderId = selectedStatement
+    ? statementDriveFolderIds[selectedStatement.id] ?? selectedStatement.driveFolderId ?? null
+    : null;
+  const statementDriveFolderLink = buildDriveFolderLink(selectedStatementDriveFolderId);
   const attachStatement =
     viewMode === 'all'
       ? (targetStatementId ? statementsById.get(targetStatementId) : undefined)
       : selectedStatement;
   const isAttachStatementPaid = attachStatement?.status === 'paid';
+
+  useEffect(() => {
+    if (viewMode !== 'statements' || !selectedStatement) {
+      setStatementDriveFiles([]);
+      setStatementDriveError(null);
+      return;
+    }
+    void loadStatementDriveFiles(selectedStatement.id);
+  }, [loadStatementDriveFiles, selectedStatement, viewMode]);
 
   const canAttachRow = useCallback(
     (row: IncomeExpenseRow) => {
@@ -383,6 +438,52 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     await onRemoveStatementRecords(selectedStatement.id, selectedRecordIds);
     setSelectedRecordIds([]);
   }, [onRemoveStatementRecords, selectedRecordIds, selectedStatement]);
+
+  const handleStatementDriveUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file || !selectedStatement) {
+        return;
+      }
+      setStatementDriveUploading(true);
+      try {
+        await uploadStatementDriveFile(selectedStatement.id, file);
+        await loadStatementDriveFiles(selectedStatement.id);
+      } catch (error) {
+        setStatementDriveError(
+          formatErrorMessage(error, 'Не удалось загрузить файл.')
+        );
+      } finally {
+        setStatementDriveUploading(false);
+        event.target.value = '';
+      }
+    },
+    [loadStatementDriveFiles, selectedStatement]
+  );
+
+  const handleStatementDriveDelete = useCallback(
+    async (file: DriveFile) => {
+      if (!selectedStatement || file.isFolder) {
+        return;
+      }
+      const shouldDelete = window.confirm(`Удалить файл "${file.name}"?`);
+      if (!shouldDelete) {
+        return;
+      }
+      setStatementDriveTrashing(true);
+      try {
+        await trashStatementDriveFiles(selectedStatement.id, [file.id]);
+        await loadStatementDriveFiles(selectedStatement.id);
+      } catch (error) {
+        setStatementDriveError(
+          formatErrorMessage(error, 'Не удалось удалить файл.')
+        );
+      } finally {
+        setStatementDriveTrashing(false);
+      }
+    },
+    [loadStatementDriveFiles, selectedStatement]
+  );
 
   const handleCreateStatement = useCallback(async () => {
     if (!onCreateStatement) {
@@ -618,11 +719,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </p>
                 )}
               </div>
-              {selectedRecordIds.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => void handleRemoveSelected()}
-                  className="btn btn-danger btn-sm rounded-xl"
+            {selectedRecordIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleRemoveSelected()}
+                className="btn btn-danger btn-sm rounded-xl"
                   disabled={
                     !selectedRecordIds.length ||
                     !onRemoveStatementRecords ||
@@ -634,6 +735,119 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 </button>
               )}
             </div>
+            {selectedStatement && (
+              <div className="border-t border-slate-200 bg-white px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                      Файлы ведомости
+                    </p>
+                    <p className="text-xs text-slate-500">Google Drive</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {statementDriveFolderLink ? (
+                      <a
+                        href={statementDriveFolderLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary btn-sm rounded-xl"
+                      >
+                        Открыть папку
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-400">
+                        Папка создаётся...
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void loadStatementDriveFiles(selectedStatement.id)}
+                      className="btn btn-secondary btn-sm rounded-xl"
+                      disabled={isStatementDriveLoading}
+                    >
+                      {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
+                    </button>
+                    <label
+                      className={`btn btn-secondary btn-sm rounded-xl ${
+                        isStatementDriveUploading ? 'opacity-70' : ''
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        onChange={handleStatementDriveUpload}
+                        disabled={isStatementDriveUploading}
+                        className="hidden"
+                      />
+                      {isStatementDriveUploading ? 'Загрузка...' : 'Загрузить файл'}
+                    </label>
+                  </div>
+                </div>
+                {statementDriveError && (
+                  <div className="app-alert app-alert-danger mt-3">
+                    {statementDriveError}
+                  </div>
+                )}
+                <div className="mt-4">
+                  {isStatementDriveLoading ? (
+                    <PanelMessage>Загрузка файлов...</PanelMessage>
+                  ) : statementDriveFiles.length === 0 ? (
+                    <PanelMessage>Файлов пока нет</PanelMessage>
+                  ) : (
+                    <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
+                      {statementDriveFiles.map((file) => {
+                        const fileDate = formatDriveDate(file.modifiedAt ?? file.createdAt);
+                        const fileSize = formatDriveFileSize(file.size);
+                        const canDelete =
+                          !file.isFolder && !isStatementDriveTrashing && !isStatementDriveLoading;
+                        return (
+                          <li
+                            key={file.id}
+                            className="flex flex-wrap items-center justify-between gap-3 px-3 py-2"
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className="text-lg" aria-hidden="true">
+                                {getDriveItemIcon(file.isFolder)}
+                              </span>
+                              <div className="min-w-0">
+                                {file.webViewLink ? (
+                                  <a
+                                    href={file.webViewLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="truncate text-sm font-semibold text-slate-700 hover:text-slate-900"
+                                  >
+                                    {file.name}
+                                  </a>
+                                ) : (
+                                  <p className="truncate text-sm font-semibold text-slate-700">
+                                    {file.name}
+                                  </p>
+                                )}
+                                <p className="text-xs text-slate-500">
+                                  {fileSize} · {fileDate}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleStatementDriveDelete(file)}
+                              disabled={!canDelete}
+                              className={`text-xs font-semibold ${
+                                canDelete
+                                  ? 'text-rose-600 hover:text-rose-700'
+                                  : 'text-slate-300'
+                              }`}
+                            >
+                              Удалить
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div
             role="tabpanel"

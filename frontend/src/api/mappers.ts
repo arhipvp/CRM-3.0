@@ -340,6 +340,7 @@ export const mapStatement = (raw: Record<string, unknown>): Statement => ({
   paidAt: raw.paid_at === undefined ? undefined : toNullableString(raw.paid_at),
   comment: toNullableString(raw.comment),
   createdBy: toNullableString(raw.created_by ?? raw.createdBy),
+  driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
   recordsCount: toNullableNumber(raw.records_count ?? raw.recordsCount) ?? undefined,
   totalAmount: toOptionalString(raw.total_amount ?? raw.totalAmount),
   createdAt: toStringValue(raw.created_at),

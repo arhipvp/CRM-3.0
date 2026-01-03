@@ -23,6 +23,7 @@ class StatementSerializer(serializers.ModelSerializer):
             "updated_at",
             "deleted_at",
             "created_by",
+            "drive_folder_id",
         )
 
     def get_total_amount(self, obj):

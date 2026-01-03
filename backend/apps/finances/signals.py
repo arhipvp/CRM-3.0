@@ -1,15 +1,20 @@
 """Django signals для логирования изменений Payment и FinancialRecord."""
 
+import logging
+
 from apps.common.audit_helpers import (
     get_changed_fields,
     serialize_model_fields,
     store_old_values,
 )
+from apps.common.drive import DriveError, ensure_statement_folder
 from apps.users.models import AuditLog
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import FinancialRecord, Payment
+from .models import FinancialRecord, Payment, Statement
+
+logger = logging.getLogger(__name__)
 
 # ============ PAYMENT SIGNALS ============
 
@@ -175,3 +180,16 @@ def log_financial_record_delete(sender, instance, **kwargs):
         action="hard_delete",
         description=f"Окончательно удалена {record_name}",
     )
+
+
+# ============ STATEMENT SIGNALS ============
+
+
+@receiver(post_save, sender=Statement)
+def sync_statement_drive_folder(sender, instance, **kwargs):
+    try:
+        ensure_statement_folder(instance)
+    except DriveError:
+        logger.exception(
+            "Failed to sync Google Drive folder for statement %s", instance.pk
+        )

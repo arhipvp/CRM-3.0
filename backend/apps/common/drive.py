@@ -30,6 +30,7 @@ else:
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 TRASH_FOLDER_NAME = "Корзина"
+STATEMENTS_ROOT_FOLDER_NAME = "Ведомости"
 
 
 class DriveError(Exception):
@@ -362,6 +363,43 @@ def ensure_policy_folder(policy) -> Optional[str]:
     name = _format_folder_name(policy.number or "policy", "policy")
     folder_id = _ensure_folder(name, deal_folder)
     _update_instance_folder(policy, folder_id)
+    return folder_id
+
+
+def ensure_statement_folder(statement) -> Optional[str]:
+    """Ensure a Statement folder exists inside the statements root folder."""
+
+    root_folder = getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "").strip()
+    if not root_folder:
+        raise DriveConfigurationError("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured.")
+
+    statements_root = _ensure_folder(STATEMENTS_ROOT_FOLDER_NAME, root_folder)
+    name = _format_folder_name(statement.name or "statement", "statement")
+    folder_id = getattr(statement, "drive_folder_id", None)
+    if folder_id:
+        metadata = _get_folder_metadata(folder_id)
+        if metadata:
+            if metadata.get("name") != name:
+                try:
+                    _rename_drive_folder(folder_id, name)
+                except DriveError:
+                    logger.exception(
+                        "Failed to rename Drive folder for statement %s", statement.pk
+                    )
+            parents = metadata.get("parents") or []
+            if statements_root and statements_root not in parents:
+                try:
+                    move_drive_folder_to_parent(folder_id, statements_root)
+                except DriveError:
+                    logger.exception(
+                        "Failed to move Drive folder for statement %s", statement.pk
+                    )
+            _update_instance_folder(statement, folder_id)
+            return folder_id
+        folder_id = None
+
+    folder_id = _ensure_folder(name, statements_root)
+    _update_instance_folder(statement, folder_id)
     return folder_id
 
 
