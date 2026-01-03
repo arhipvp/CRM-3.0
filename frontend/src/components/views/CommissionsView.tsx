@@ -70,6 +70,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
+  const [allRecordsSearch, setAllRecordsSearch] = useState('');
+  const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
+  const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [targetStatementId, setTargetStatementId] = useState('');
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
   const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
@@ -119,6 +123,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setSelectedRecordIds([]);
   }, [viewMode]);
 
+  useEffect(() => {
+    setSelectedRecordIds([]);
+  }, [targetStatementId]);
+
   const rows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
     payments.forEach((payment) => {
@@ -152,13 +160,68 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       viewMode === 'all'
         ? [...rows]
         : rows.filter((row) => row.statementId === selectedStatementId);
+    if (viewMode === 'all') {
+      if (showUnpaidOnly) {
+        const unpaid = result.filter((row) => !row.recordDate);
+        result.length = 0;
+        result.push(...unpaid);
+      }
+      if (recordTypeFilter !== 'all') {
+        const filtered = result.filter((row) =>
+          recordTypeFilter === 'income' ? row.recordAmount > 0 : row.recordAmount < 0
+        );
+        result.length = 0;
+        result.push(...filtered);
+      }
+      const search = allRecordsSearch.trim().toLowerCase();
+      if (search) {
+        return result.filter((row) => {
+          const payment = row.payment;
+          const policyNumber =
+            payment.policyNumber ??
+            policiesById.get(payment.policyId ?? '')?.number ??
+            '';
+          const policyType =
+            payment.policyInsuranceType ??
+            policiesById.get(payment.policyId ?? '')?.insuranceType ??
+            '';
+          const salesChannel =
+            policiesById.get(payment.policyId ?? '')?.salesChannelName ??
+            policiesById.get(payment.policyId ?? '')?.salesChannel ??
+            '';
+          const haystack = [
+            policyNumber,
+            policyType,
+            salesChannel,
+            payment.dealTitle,
+            payment.dealClientName,
+            payment.description,
+            row.recordDescription,
+            row.recordSource,
+            row.recordNote,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(search);
+        });
+      }
+    }
     result.sort((a, b) => {
       const aTime = a.recordDate ? new Date(a.recordDate).getTime() : 0;
       const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
       return bTime - aTime;
     });
     return result;
-  }, [rows, selectedStatementId, viewMode]);
+  }, [
+    allRecordsSearch,
+    policiesById,
+    recordTypeFilter,
+    rows,
+    selectedStatementId,
+    showUnpaidOnly,
+    viewMode,
+  ]);
 
   const handleOpenDeal = useCallback(
     (dealId: string | undefined) => {
@@ -232,30 +295,35 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     ? statementsById.get(selectedStatementId)
     : undefined;
   const isSelectedStatementPaid = selectedStatement?.status === 'paid';
+  const attachStatement =
+    viewMode === 'all'
+      ? (targetStatementId ? statementsById.get(targetStatementId) : undefined)
+      : selectedStatement;
+  const isAttachStatementPaid = attachStatement?.status === 'paid';
 
   const canAttachRow = useCallback(
     (row: IncomeExpenseRow) => {
-      if (!selectedStatement || viewMode === 'all') {
+      if (!attachStatement) {
         return false;
       }
-      if (row.statementId && row.statementId !== selectedStatement.id) {
+      if (row.statementId && row.statementId !== attachStatement.id) {
         return false;
       }
       const isIncome = row.recordAmount > 0;
-      if (selectedStatement.statementType === 'income' && !isIncome) {
+      if (attachStatement.statementType === 'income' && !isIncome) {
         return false;
       }
-      if (selectedStatement.statementType === 'expense' && isIncome) {
+      if (attachStatement.statementType === 'expense' && isIncome) {
         return false;
       }
       return true;
     },
-    [selectedStatement, viewMode]
+    [attachStatement]
   );
 
   const toggleRecordSelection = useCallback(
     (row: IncomeExpenseRow) => {
-      if (!selectedStatement || !canAttachRow(row)) {
+      if (!attachStatement || !canAttachRow(row)) {
         return;
       }
       setSelectedRecordIds((prev) =>
@@ -264,18 +332,21 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           : [...prev, row.recordId]
       );
     },
-    [canAttachRow, selectedStatement]
+    [attachStatement, canAttachRow]
   );
 
   const handleAttachSelected = useCallback(async () => {
-    if (!selectedStatement || !onUpdateStatement || !selectedRecordIds.length) {
+    if (!attachStatement || !onUpdateStatement || !selectedRecordIds.length) {
       return;
     }
-    await onUpdateStatement(selectedStatement.id, {
+    await onUpdateStatement(attachStatement.id, {
       recordIds: selectedRecordIds,
     });
     setSelectedRecordIds([]);
-  }, [onUpdateStatement, selectedRecordIds, selectedStatement]);
+    if (viewMode === 'all') {
+      setTargetStatementId('');
+    }
+  }, [attachStatement, onUpdateStatement, selectedRecordIds, viewMode]);
 
   const handleCreateStatement = useCallback(async () => {
     if (!onCreateStatement) {
@@ -538,6 +609,67 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           >
             <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
               <p className="text-sm font-semibold text-slate-900">Все финансовые записи</p>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <div className="w-full max-w-sm">
+                  <label htmlFor="allFinancialSearch" className="sr-only">
+                    Поиск по записям
+                  </label>
+                  <input
+                    id="allFinancialSearch"
+                    type="search"
+                    value={allRecordsSearch}
+                    onChange={(event) => setAllRecordsSearch(event.target.value)}
+                    placeholder="Поиск по записям"
+                    className="field field-input"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showUnpaidOnly}
+                    onChange={(event) => setShowUnpaidOnly(event.target.checked)}
+                    className="check"
+                  />
+                  Только не оплаченные
+                </label>
+                <select
+                  value={recordTypeFilter}
+                  onChange={(event) =>
+                    setRecordTypeFilter(event.target.value as 'all' | 'income' | 'expense')
+                  }
+                  className="field field-input h-10 min-w-[200px] text-sm"
+                >
+                  <option value="all">Все записи</option>
+                  <option value="income">Только доходы</option>
+                  <option value="expense">Только расходы</option>
+                </select>
+                <select
+                  value={targetStatementId}
+                  onChange={(event) => setTargetStatementId(event.target.value)}
+                  className="field field-input h-10 min-w-[220px] text-sm"
+                >
+                  <option value="">Выберите ведомость</option>
+                  {statements.map((statement) => (
+                    <option key={statement.id} value={statement.id}>
+                      {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
+                      {statement.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void handleAttachSelected()}
+                  className="btn btn-primary btn-sm rounded-xl"
+                  disabled={
+                    !selectedRecordIds.length ||
+                    !onUpdateStatement ||
+                    !attachStatement ||
+                    isAttachStatementPaid
+                  }
+                >
+                  Добавить выбранные
+                </button>
+              </div>
             </div>
           </div>
           <div className="overflow-x-auto bg-white">
@@ -604,12 +736,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${recordStatement.name}`
                     : `Ведомость: ${recordStatement.name}`
                   : null;
-                const isSelectable =
-                  viewMode === 'statements' && selectedStatement
-                    ? canAttachRow(row)
-                    : false;
-                const isSelected =
-                  viewMode === 'statements' && selectedRecordIds.includes(row.recordId);
+                const isSelectable = attachStatement ? canAttachRow(row) : false;
+                const isSelected = selectedRecordIds.includes(row.recordId);
 
                 return (
                   <tr key={row.key} className={TABLE_ROW_CLASS}>
@@ -618,10 +746,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleRecordSelection(row)}
-                        disabled={viewMode === 'all' || isSelectedStatementPaid || !isSelectable}
+                        disabled={!isSelectable || isAttachStatementPaid}
                         className="check"
                         title={
-                          viewMode === 'statements' && !isSelectable
+                          !attachStatement
+                            ? 'Выберите ведомость для добавления записей'
+                            : !isSelectable
                             ? 'Запись нельзя добавить в выбранную ведомость'
                             : undefined
                         }
