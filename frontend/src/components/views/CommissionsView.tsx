@@ -663,7 +663,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         statement.status === 'paid' ? 'Выплачена' : 'Черновик';
                       const typeLabel =
                         statement.statementType === 'income' ? 'Доходы' : 'Расходы';
-                      const isLocked = statement.status === 'paid';
 
                       return (
                         <li key={statement.id}>
