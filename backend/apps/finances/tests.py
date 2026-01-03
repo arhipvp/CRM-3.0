@@ -304,6 +304,42 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         response = self.api_client.delete(f"/api/v1/finance_statements/{statement.id}/")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_cannot_mark_paid_without_date(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Draft Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/mark-paid/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_mark_paid_updates_record_dates(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="To Pay",
+            statement_type="income",
+            status=Statement.STATUS_DRAFT,
+            paid_at=timezone.now().date(),
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/mark-paid/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        statement.refresh_from_db()
+        self.assertEqual(statement.status, Statement.STATUS_PAID)
+        self.income_record.refresh_from_db()
+        self.assertEqual(self.income_record.date, statement.paid_at)
+
 
 class FinancialRecordFilterTests(AuthenticatedAPITestCase):
     def setUp(self):

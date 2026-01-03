@@ -204,3 +204,17 @@ export async function removeFinanceStatementRecords(
     body: JSON.stringify({ record_ids: recordIds }),
   });
 }
+
+export async function markFinanceStatementPaid(
+  id: string,
+  paidAt?: string | null
+): Promise<Statement> {
+  const payload = await request<Record<string, unknown>>(
+    `/finance_statements/${id}/mark-paid/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ paid_at: paidAt }),
+    }
+  );
+  return mapStatement(payload);
+}

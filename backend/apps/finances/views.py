@@ -8,6 +8,7 @@ from apps.common.drive import (
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.users.models import UserRole
+from django.db import transaction
 from django.db.models import Q, Sum
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -69,6 +70,10 @@ class StatementDriveTrashSerializer(serializers.Serializer):
         allow_empty=False,
         required=True,
     )
+
+
+class StatementMarkPaidSerializer(serializers.Serializer):
+    paid_at = serializers.DateField(required=False, allow_null=True)
 
 
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -238,6 +243,34 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         self._validate_record_access(records)
         records.update(statement=None)
         return Response({"removed": records.count()})
+
+    @action(detail=True, methods=["post"], url_path="mark-paid")
+    def mark_paid(self, request, *args, **kwargs):
+        statement = self.get_object()
+        if statement.status == Statement.STATUS_PAID:
+            raise ValidationError("Ведомость уже отмечена как выплаченная.")
+
+        serializer = StatementMarkPaidSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        paid_at = serializer.validated_data.get("paid_at") or statement.paid_at
+        if not paid_at:
+            raise ValidationError({"paid_at": "Укажите дату оплаты ведомости."})
+
+        with transaction.atomic():
+            if (
+                statement.paid_at != paid_at
+                or statement.status != Statement.STATUS_PAID
+            ):
+                statement.paid_at = paid_at
+                statement.status = Statement.STATUS_PAID
+                statement.save(update_fields=["paid_at", "status", "updated_at"])
+
+            FinancialRecord.objects.filter(
+                statement=statement, deleted_at__isnull=True
+            ).update(date=paid_at)
+
+        payload = StatementSerializer(statement, context={"request": request}).data
+        return Response(payload)
 
     @action(
         detail=True,

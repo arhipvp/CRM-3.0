@@ -37,6 +37,7 @@ interface CommissionsViewProps {
   onUpdateFinancialRecord?: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
   onDeleteStatement?: (statementId: string) => Promise<void>;
   onRemoveStatementRecords?: (statementId: string, recordIds: string[]) => Promise<void>;
+  onMarkStatementPaid?: (statementId: string) => Promise<Statement>;
   onCreateStatement?: (values: {
     name: string;
     statementType: Statement['statementType'];
@@ -79,6 +80,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateFinancialRecord,
   onDeleteStatement,
   onRemoveStatementRecords,
+  onMarkStatementPaid,
   onCreateStatement,
   onUpdateStatement,
 }) => {
@@ -97,6 +99,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
   const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
+  const [payingStatement, setPayingStatement] = useState<Statement | null>(null);
+  const [missingPaidAtStatement, setMissingPaidAtStatement] = useState<Statement | null>(
+    null
+  );
   const [editStatementForm, setEditStatementForm] = useState({
     name: '',
     statementType: 'income' as Statement['statementType'],
@@ -548,6 +554,25 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setDeletingStatement(null);
   }, [deletingStatement, onDeleteStatement]);
 
+  const handleMarkPaidClick = useCallback(() => {
+    if (!selectedStatement || isSelectedStatementPaid) {
+      return;
+    }
+    if (!selectedStatement.paidAt) {
+      setMissingPaidAtStatement(selectedStatement);
+      return;
+    }
+    setPayingStatement(selectedStatement);
+  }, [isSelectedStatementPaid, selectedStatement]);
+
+  const handleMarkPaidConfirm = useCallback(async () => {
+    if (!payingStatement || !onMarkStatementPaid) {
+      return;
+    }
+    await onMarkStatementPaid(payingStatement.id);
+    setPayingStatement(null);
+  }, [onMarkStatementPaid, payingStatement]);
+
   return (
     <section aria-labelledby="commissionsViewHeading" className="flex h-full flex-col gap-6">
       <h1 id="commissionsViewHeading" className="sr-only">
@@ -719,21 +744,37 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </p>
                 )}
               </div>
-            {selectedRecordIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void handleRemoveSelected()}
-                className="btn btn-danger btn-sm rounded-xl"
-                  disabled={
-                    !selectedRecordIds.length ||
-                    !onRemoveStatementRecords ||
-                    !selectedStatement ||
-                    isSelectedStatementPaid
-                  }
-                >
-                  Убрать из ведомости
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedStatement && (
+                  <button
+                    type="button"
+                    onClick={handleMarkPaidClick}
+                    disabled={isSelectedStatementPaid || !onMarkStatementPaid}
+                    className={`btn btn-primary btn-sm rounded-xl px-4 py-2 text-sm shadow-sm ${
+                      isSelectedStatementPaid
+                        ? 'opacity-60'
+                        : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600'
+                    }`}
+                  >
+                    Оплачено!
+                  </button>
+                )}
+                {selectedRecordIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void handleRemoveSelected()}
+                    className="btn btn-danger btn-sm rounded-xl"
+                    disabled={
+                      !selectedRecordIds.length ||
+                      !onRemoveStatementRecords ||
+                      !selectedStatement ||
+                      isSelectedStatementPaid
+                    }
+                  >
+                    Убрать из ведомости
+                  </button>
+                )}
+              </div>
             </div>
             {selectedStatement && (
               <div className="border-t border-slate-200 bg-white px-4 py-4">
@@ -1372,6 +1413,55 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               className="btn btn-danger rounded-xl"
             >
               Удалить
+            </button>
+          </div>
+        </Modal>
+      )}
+      {missingPaidAtStatement && (
+        <Modal
+          title="Нужна дата оплаты"
+          onClose={() => setMissingPaidAtStatement(null)}
+          closeOnOverlayClick={false}
+        >
+          <p className="text-sm text-slate-700">
+            Укажите дату оплаты ведомости в карточке редактирования, затем снова
+            нажмите «Оплачено!».
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setMissingPaidAtStatement(null)}
+              className="btn btn-secondary rounded-xl"
+            >
+              Понял
+            </button>
+          </div>
+        </Modal>
+      )}
+      {payingStatement && (
+        <Modal
+          title="Отметить как оплачено"
+          onClose={() => setPayingStatement(null)}
+          closeOnOverlayClick={false}
+        >
+          <p className="text-sm text-slate-700">
+            После подтверждения ведомость станет недоступной для редактирования и
+            удаления. Дата оплаты будет проставлена всем записям ведомости.
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setPayingStatement(null)}
+              className="btn btn-secondary rounded-xl"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleMarkPaidConfirm()}
+              className="btn btn-primary rounded-xl"
+            >
+              Оплачено!
             </button>
           </div>
         </Modal>

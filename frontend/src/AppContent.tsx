@@ -53,6 +53,7 @@ import {
   updateFinanceStatement,
   deleteFinanceStatement,
   removeFinanceStatementRecords,
+  markFinanceStatementPaid,
 } from './api';
 import type { CurrentUserResponse, FilterParams } from './api';
 import {
@@ -1770,6 +1771,39 @@ const AppContent: React.FC = () => {
     [setError, updateAppData]
   );
 
+  const handleMarkFinanceStatementPaid = useCallback(
+    async (statementId: string) => {
+      const statement = statements.find((item) => item.id === statementId);
+      const paidAt = statement?.paidAt ?? null;
+      try {
+        const updated = await markFinanceStatementPaid(statementId, paidAt);
+        updateAppData((prev) => ({
+          statements: (prev.statements ?? []).map((item) =>
+            item.id === updated.id ? updated : item
+          ),
+          financialRecords: prev.financialRecords.map((record) =>
+            record.statementId === updated.id
+              ? { ...record, date: updated.paidAt ?? record.date }
+              : record
+          ),
+          payments: prev.payments.map((payment) => ({
+            ...payment,
+            financialRecords: (payment.financialRecords ?? []).map((record) =>
+              record.statementId === updated.id
+                ? { ...record, date: updated.paidAt ?? record.date }
+                : record
+            ),
+          })),
+        }));
+        return updated;
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при оплате ведомости'));
+        throw err;
+      }
+    },
+    [setError, statements, updateAppData]
+  );
+
   const handleLogout = useCallback(() => {
     clearTokens();
     setCurrentUser(null);
@@ -1853,6 +1887,7 @@ const AppContent: React.FC = () => {
         onDeleteFinanceStatement={handleDeleteFinanceStatement}
         onUpdateFinanceStatement={handleUpdateFinanceStatement}
         onRemoveFinanceStatementRecords={handleRemoveFinanceStatementRecords}
+        onMarkFinanceStatementPaid={handleMarkFinanceStatementPaid}
         onDriveFolderCreated={handleDriveFolderCreated}
         onFetchChatMessages={handleFetchChatMessages}
         onSendChatMessage={handleSendChatMessage}
