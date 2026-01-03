@@ -9,7 +9,7 @@ from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.users.models import UserRole
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import DecimalField, Q, Sum
 from django.db.models.functions import Coalesce
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -108,6 +108,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     ),
                 ),
                 0,
+                output_field=DecimalField(max_digits=12, decimal_places=2),
             )
         )
 
