@@ -77,6 +77,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
+  const [showWithoutStatementOnly, setShowWithoutStatementOnly] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [targetStatementId, setTargetStatementId] = useState('');
   const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
@@ -149,6 +150,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     if (showUnpaidOnly) {
       filters.unpaid_only = true;
     }
+    if (showWithoutStatementOnly) {
+      filters.without_statement = true;
+    }
     if (recordTypeFilter !== 'all') {
       filters.record_type = recordTypeFilter;
     }
@@ -174,7 +178,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     } finally {
       setIsAllRecordsLoading(false);
     }
-  }, [effectiveSearch, recordTypeFilter, showUnpaidOnly]);
+  }, [effectiveSearch, recordTypeFilter, showUnpaidOnly, showWithoutStatementOnly]);
 
   useEffect(() => {
     if (viewMode !== 'all') {
@@ -370,10 +374,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       recordIds: selectedRecordIds,
     });
     setSelectedRecordIds([]);
-    if (viewMode === 'all') {
-      setTargetStatementId('');
-    }
-  }, [attachStatement, onUpdateStatement, selectedRecordIds, viewMode]);
+  }, [attachStatement, onUpdateStatement, selectedRecordIds]);
 
   const handleRemoveSelected = useCallback(async () => {
     if (!selectedStatement || !onRemoveStatementRecords || !selectedRecordIds.length) {
@@ -666,6 +667,17 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     className="check"
                   />
                   Только не оплаченные
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showWithoutStatementOnly}
+                    onChange={(event) =>
+                      setShowWithoutStatementOnly(event.target.checked)
+                    }
+                    className="check"
+                  />
+                  Только не в ведомостях
                 </label>
                 <select
                   value={recordTypeFilter}

@@ -193,7 +193,7 @@ export const useAppData = () => {
     }
 
     return retrieved;
-  }, [fetchPaymentsWithPagination]);
+  }, []);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -235,7 +235,7 @@ export const useAppData = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [refreshDeals, refreshPolicies, setAppData]);
+  }, [fetchAllPayments, refreshDeals, refreshPolicies, setAppData]);
 
   const dealsHasMore = Boolean(dealsNextPage);
 

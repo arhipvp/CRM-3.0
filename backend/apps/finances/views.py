@@ -97,6 +97,9 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if _parse_bool(self.request.query_params.get("unpaid_only")):
             queryset = queryset.filter(date__isnull=True)
 
+        if _parse_bool(self.request.query_params.get("without_statement")):
+            queryset = queryset.filter(statement__isnull=True)
+
         search_term = (self.request.query_params.get("search") or "").strip()
         if len(search_term) >= 5:
             queryset = queryset.filter(
