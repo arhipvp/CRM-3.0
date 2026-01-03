@@ -374,6 +374,19 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     ? statementsById.get(selectedStatementId)
     : undefined;
   const isSelectedStatementPaid = selectedStatement?.status === 'paid';
+  const selectedStatementTypeLabel = selectedStatement
+    ? selectedStatement.statementType === 'income'
+      ? 'Доходы'
+      : 'Расходы'
+    : '';
+  const selectedStatementStatusLabel = selectedStatement
+    ? selectedStatement.status === 'paid'
+      ? 'Выплачена'
+      : 'Черновик'
+    : '';
+  const selectedStatementPaidAt = selectedStatement?.paidAt
+    ? formatDateRu(selectedStatement.paidAt)
+    : null;
   const selectedStatementDriveFolderId = selectedStatement
     ? statementDriveFolderIds[selectedStatement.id] ?? selectedStatement.driveFolderId ?? null
     : null;
@@ -616,8 +629,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           {viewMode === 'statements' && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                <div>
+                <div className="space-y-1">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомости</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Всего: {statements.length}
+                  </p>
                   <p className="text-sm text-slate-600">
                     Выберите ведомость, чтобы посмотреть ее записи.
                   </p>
@@ -678,36 +694,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                                 </p>
                               </div>
                             </button>
-                            <div className="flex items-center gap-2">
-                              {onUpdateStatement && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditStatementOpen(statement)}
-                                  disabled={isLocked}
-                                  className={`text-xs font-semibold transition ${
-                                    isLocked
-                                      ? 'text-slate-300'
-                                      : 'text-slate-500 hover:text-slate-900'
-                                  }`}
-                                >
-                                  Редактировать
-                                </button>
-                              )}
-                              {onDeleteStatement && (
-                                <button
-                                  type="button"
-                                  onClick={() => setDeletingStatement(statement)}
-                                  disabled={isLocked}
-                                  className={`text-xs font-semibold transition ${
-                                    isLocked
-                                      ? 'text-slate-300'
-                                      : 'text-rose-500 hover:text-rose-600'
-                                  }`}
-                                >
-                                  Удалить
-                                </button>
-                              )}
-                            </div>
                           </div>
                         </li>
                       );
@@ -729,46 +715,85 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             className="outline-none"
             hidden={viewMode !== 'statements'}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-900">
-                  {selectedStatement?.name || 'Записи'}
-                </p>
-                {selectedStatement && selectedStatement.status === 'paid' && (
-                  <p className="text-xs text-rose-600">
-                    Выплаченная ведомость недоступна для редактирования и удаления.
+            <div className="app-panel-muted p-3 shadow-none">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомость</p>
+                  <p className="text-lg font-semibold text-slate-900">
+                    {selectedStatement ? selectedStatement.name : 'Ведомость не выбрана'}
                   </p>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
+                  {selectedStatement ? (
+                    <p className="text-xs text-slate-500">
+                      {selectedStatementTypeLabel} · {selectedStatementStatusLabel}
+                      {selectedStatement.counterparty
+                        ? ` · ${selectedStatement.counterparty}`
+                        : ''}
+                      {selectedStatementPaidAt
+                        ? ` · Выплата ${selectedStatementPaidAt}`
+                        : ''}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Выберите ведомость из списка выше.
+                    </p>
+                  )}
+                  {selectedStatement && selectedStatement.status === 'paid' && (
+                    <p className="text-xs text-rose-600">
+                      Выплаченная ведомость недоступна для редактирования и удаления.
+                    </p>
+                  )}
+                </div>
                 {selectedStatement && (
-                  <button
-                    type="button"
-                    onClick={handleMarkPaidClick}
-                    disabled={isSelectedStatementPaid || !onMarkStatementPaid}
-                    className={`btn btn-primary btn-sm rounded-xl px-4 py-2 text-sm shadow-sm ${
-                      isSelectedStatementPaid
-                        ? 'opacity-60'
-                        : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600'
-                    }`}
-                  >
-                    Оплачено!
-                  </button>
-                )}
-                {selectedRecordIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => void handleRemoveSelected()}
-                    className="btn btn-danger btn-sm rounded-xl"
-                    disabled={
-                      !selectedRecordIds.length ||
-                      !onRemoveStatementRecords ||
-                      !selectedStatement ||
-                      isSelectedStatementPaid
-                    }
-                  >
-                    Убрать из ведомости
-                  </button>
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {onUpdateStatement && (
+                        <button
+                          type="button"
+                          onClick={() => handleEditStatementOpen(selectedStatement)}
+                          disabled={isSelectedStatementPaid}
+                          className="btn btn-primary"
+                        >
+                          Редактировать
+                        </button>
+                      )}
+                      {onDeleteStatement && (
+                        <button
+                          type="button"
+                          onClick={() => setDeletingStatement(selectedStatement)}
+                          disabled={isSelectedStatementPaid}
+                          className="btn btn-danger"
+                        >
+                          Удалить
+                        </button>
+                      )}
+                      {selectedRecordIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveSelected()}
+                          className="btn btn-danger"
+                          disabled={
+                            !selectedRecordIds.length ||
+                            !onRemoveStatementRecords ||
+                            isSelectedStatementPaid
+                          }
+                        >
+                          Убрать из ведомости
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleMarkPaidClick}
+                        disabled={isSelectedStatementPaid || !onMarkStatementPaid}
+                        className="btn btn-success"
+                      >
+                        {selectedStatement?.statementType === 'income'
+                          ? 'Получено!'
+                          : 'Оплачено!'}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -970,6 +995,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               </div>
             </div>
           </div>
+          {viewMode === 'statements' && !selectedStatement ? (
+            <div className="bg-white px-6 py-10 text-center">
+              <PanelMessage>Выберите ведомость в списке выше.</PanelMessage>
+            </div>
+          ) : (
           <div className="overflow-x-auto bg-white">
             <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Доходы и расходы">
             <thead className={TABLE_THEAD_CLASS}>
@@ -1158,6 +1188,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             </tbody>
           </table>
           </div>
+          )}
         </div>
       </div>
 
