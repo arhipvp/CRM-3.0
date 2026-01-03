@@ -74,6 +74,21 @@ export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
   return unwrapList<Record<string, unknown>>(payload).map(mapFinancialRecord);
 }
 
+export async function fetchFinancialRecordsWithPagination(
+  filters?: FilterParams
+): Promise<PaginatedResponse<FinancialRecord>> {
+  const qs = buildQueryString(filters);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(
+    `/financial_records/${qs}`
+  );
+  return {
+    count: payload.count || 0,
+    next: payload.next || null,
+    previous: payload.previous || null,
+    results: unwrapList<Record<string, unknown>>(payload).map(mapFinancialRecord),
+  };
+}
+
 export async function createFinancialRecord(data: {
   paymentId: string;
   amount: number;
@@ -178,4 +193,14 @@ export async function updateFinanceStatement(
 
 export async function deleteFinanceStatement(id: string): Promise<void> {
   await request(`/finance_statements/${id}/`, { method: 'DELETE' });
+}
+
+export async function removeFinanceStatementRecords(
+  id: string,
+  recordIds: string[]
+): Promise<{ removed: number }> {
+  return request<{ removed: number }>(`/finance_statements/${id}/remove-records/`, {
+    method: 'POST',
+    body: JSON.stringify({ record_ids: recordIds }),
+  });
 }

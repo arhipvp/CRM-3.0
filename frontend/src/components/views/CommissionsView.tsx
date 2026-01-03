@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { Payment, Policy, Statement } from '../../types';
+import type { FinancialRecord, Payment, Policy, Statement } from '../../types';
+import type { FilterParams } from '../../api';
+import { fetchFinancialRecordsWithPagination } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
@@ -12,6 +14,7 @@ import {
   TABLE_THEAD_CLASS,
 } from '../common/tableStyles';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -21,6 +24,7 @@ interface CommissionsViewProps {
   onRequestEditPolicy?: (policy: Policy) => void;
   onUpdateFinancialRecord?: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
   onDeleteStatement?: (statementId: string) => Promise<void>;
+  onRemoveStatementRecords?: (statementId: string, recordIds: string[]) => Promise<void>;
   onCreateStatement?: (values: {
     name: string;
     statementType: Statement['statementType'];
@@ -62,6 +66,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onRequestEditPolicy,
   onUpdateFinancialRecord,
   onDeleteStatement,
+  onRemoveStatementRecords,
   onCreateStatement,
   onUpdateStatement,
 }) => {
@@ -74,6 +79,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [targetStatementId, setTargetStatementId] = useState('');
+  const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
+  const [isAllRecordsLoading, setIsAllRecordsLoading] = useState(false);
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
   const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
@@ -96,10 +103,17 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     () => new Map(policies.map((policy) => [policy.id, policy])),
     [policies]
   );
+  const paymentsById = useMemo(
+    () => new Map(payments.map((payment) => [payment.id, payment])),
+    [payments]
+  );
   const statementsById = useMemo(
     () => new Map(statements.map((statement) => [statement.id, statement])),
     [statements]
   );
+
+  const debouncedSearch = useDebouncedValue(allRecordsSearch.trim(), 450);
+  const effectiveSearch = debouncedSearch.length >= 5 ? debouncedSearch : '';
 
   useEffect(() => {
     if (viewMode === 'all') {
@@ -127,7 +141,49 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setSelectedRecordIds([]);
   }, [targetStatementId]);
 
-  const rows = useMemo<IncomeExpenseRow[]>(() => {
+  const loadAllRecords = useCallback(async () => {
+    const filters: FilterParams = {};
+    if (effectiveSearch) {
+      filters.search = effectiveSearch;
+    }
+    if (showUnpaidOnly) {
+      filters.unpaid_only = true;
+    }
+    if (recordTypeFilter !== 'all') {
+      filters.record_type = recordTypeFilter;
+    }
+    let page = 1;
+    const pageSize = 200;
+    const collected: FinancialRecord[] = [];
+
+    setIsAllRecordsLoading(true);
+    try {
+      while (true) {
+        const payload = await fetchFinancialRecordsWithPagination({
+          ...filters,
+          page,
+          page_size: pageSize,
+        });
+        collected.push(...payload.results);
+        if (!payload.next) {
+          break;
+        }
+        page += 1;
+      }
+      setAllRecords(collected);
+    } finally {
+      setIsAllRecordsLoading(false);
+    }
+  }, [effectiveSearch, recordTypeFilter, showUnpaidOnly]);
+
+  useEffect(() => {
+    if (viewMode !== 'all') {
+      return;
+    }
+    void loadAllRecords();
+  }, [loadAllRecords, viewMode]);
+
+  const statementRows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
     payments.forEach((payment) => {
       const records = payment.financialRecords ?? [];
@@ -152,76 +208,47 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     return result;
   }, [payments]);
 
+  const allRows = useMemo<IncomeExpenseRow[]>(() => {
+    const result: IncomeExpenseRow[] = [];
+    allRecords.forEach((record) => {
+      const payment = paymentsById.get(record.paymentId);
+      if (!payment) {
+        return;
+      }
+      const amount = Number(record.amount);
+      if (!Number.isFinite(amount) || amount === 0) {
+        return;
+      }
+      result.push({
+        key: `${payment.id}-${record.id}`,
+        payment,
+        recordId: record.id,
+        statementId: record.statementId,
+        recordAmount: amount,
+        recordDate: record.date ?? null,
+        recordDescription: record.description,
+        recordSource: record.source,
+        recordNote: record.note,
+      });
+    });
+    return result;
+  }, [allRecords, paymentsById]);
+
   const filteredRows = useMemo(() => {
     if (viewMode === 'statements' && !selectedStatementId) {
       return [];
     }
     const result =
       viewMode === 'all'
-        ? [...rows]
-        : rows.filter((row) => row.statementId === selectedStatementId);
-    if (viewMode === 'all') {
-      if (showUnpaidOnly) {
-        const unpaid = result.filter((row) => !row.recordDate);
-        result.length = 0;
-        result.push(...unpaid);
-      }
-      if (recordTypeFilter !== 'all') {
-        const filtered = result.filter((row) =>
-          recordTypeFilter === 'income' ? row.recordAmount > 0 : row.recordAmount < 0
-        );
-        result.length = 0;
-        result.push(...filtered);
-      }
-      const search = allRecordsSearch.trim().toLowerCase();
-      if (search) {
-        return result.filter((row) => {
-          const payment = row.payment;
-          const policyNumber =
-            payment.policyNumber ??
-            policiesById.get(payment.policyId ?? '')?.number ??
-            '';
-          const policyType =
-            payment.policyInsuranceType ??
-            policiesById.get(payment.policyId ?? '')?.insuranceType ??
-            '';
-          const salesChannel =
-            policiesById.get(payment.policyId ?? '')?.salesChannelName ??
-            policiesById.get(payment.policyId ?? '')?.salesChannel ??
-            '';
-          const haystack = [
-            policyNumber,
-            policyType,
-            salesChannel,
-            payment.dealTitle,
-            payment.dealClientName,
-            payment.description,
-            row.recordDescription,
-            row.recordSource,
-            row.recordNote,
-          ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
-          return haystack.includes(search);
-        });
-      }
-    }
+        ? [...allRows]
+        : statementRows.filter((row) => row.statementId === selectedStatementId);
     result.sort((a, b) => {
       const aTime = a.recordDate ? new Date(a.recordDate).getTime() : 0;
       const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
       return bTime - aTime;
     });
     return result;
-  }, [
-    allRecordsSearch,
-    policiesById,
-    recordTypeFilter,
-    rows,
-    selectedStatementId,
-    showUnpaidOnly,
-    viewMode,
-  ]);
+  }, [allRows, selectedStatementId, statementRows, viewMode]);
 
   const handleOpenDeal = useCallback(
     (dealId: string | undefined) => {
@@ -347,6 +374,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       setTargetStatementId('');
     }
   }, [attachStatement, onUpdateStatement, selectedRecordIds, viewMode]);
+
+  const handleRemoveSelected = useCallback(async () => {
+    if (!selectedStatement || !onRemoveStatementRecords || !selectedRecordIds.length) {
+      return;
+    }
+    await onRemoveStatementRecords(selectedStatement.id, selectedRecordIds);
+    setSelectedRecordIds([]);
+  }, [onRemoveStatementRecords, selectedRecordIds, selectedStatement]);
 
   const handleCreateStatement = useCallback(async () => {
     if (!onCreateStatement) {
@@ -585,16 +620,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               {selectedRecordIds.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => void handleAttachSelected()}
-                  className="btn btn-primary btn-sm rounded-xl"
+                  onClick={() => void handleRemoveSelected()}
+                  className="btn btn-danger btn-sm rounded-xl"
                   disabled={
                     !selectedRecordIds.length ||
-                    !onUpdateStatement ||
+                    !onRemoveStatementRecords ||
                     !selectedStatement ||
                     isSelectedStatementPaid
                   }
                 >
-                  Добавить выбранные
+                  Убрать из ведомости
                 </button>
               )}
             </div>
@@ -848,7 +883,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                   >
                     <PanelMessage>
-                      {viewMode === 'statements' && selectedStatement
+                      {viewMode === 'all' && isAllRecordsLoading
+                        ? 'Загрузка записей...'
+                        : viewMode === 'statements' && selectedStatement
                         ? 'Записей в ведомости пока нет'
                         : 'Записей пока нет'}
                     </PanelMessage>

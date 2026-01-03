@@ -47,6 +47,12 @@ def _user_has_deal_access(user, deal, *, allow_executor=True):
     return deal.seller_id == user.id
 
 
+def _parse_bool(value):
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
 
@@ -57,7 +63,14 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = (
-            FinancialRecord.objects.select_related("payment")
+            FinancialRecord.objects.select_related(
+                "payment",
+                "payment__policy",
+                "payment__policy__insurance_type",
+                "payment__policy__sales_channel",
+                "payment__deal",
+                "payment__deal__client",
+            )
             .all()
             .order_by("-date", "-created_at")
         )
@@ -73,6 +86,29 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             # Остальные видят только записи для своих сделок (где user = seller или executor)
             queryset = queryset.filter(
                 Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
+            )
+
+        record_type = self.request.query_params.get("record_type")
+        if record_type == Statement.TYPE_INCOME:
+            queryset = queryset.filter(amount__gt=0)
+        elif record_type == Statement.TYPE_EXPENSE:
+            queryset = queryset.filter(amount__lt=0)
+
+        if _parse_bool(self.request.query_params.get("unpaid_only")):
+            queryset = queryset.filter(date__isnull=True)
+
+        search_term = (self.request.query_params.get("search") or "").strip()
+        if len(search_term) >= 5:
+            queryset = queryset.filter(
+                Q(payment__policy__number__icontains=search_term)
+                | Q(payment__policy__insurance_type__name__icontains=search_term)
+                | Q(payment__policy__sales_channel__name__icontains=search_term)
+                | Q(payment__deal__title__icontains=search_term)
+                | Q(payment__deal__client__name__icontains=search_term)
+                | Q(payment__description__icontains=search_term)
+                | Q(description__icontains=search_term)
+                | Q(source__icontains=search_term)
+                | Q(note__icontains=search_term)
             )
 
         return queryset
@@ -164,6 +200,23 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if instance.status == Statement.STATUS_PAID:
             raise ValidationError("Нельзя удалять выплаченную ведомость.")
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"], url_path="remove-records")
+    def remove_records(self, request, *args, **kwargs):
+        statement = self.get_object()
+        if statement.status == Statement.STATUS_PAID:
+            raise ValidationError("Нельзя изменять выплаченную ведомость.")
+
+        record_ids = request.data.get("record_ids") or []
+        if not isinstance(record_ids, list):
+            raise ValidationError({"record_ids": "Ожидается список идентификаторов."})
+
+        records = FinancialRecord.objects.filter(
+            id__in=record_ids, statement=statement, deleted_at__isnull=True
+        )
+        self._validate_record_access(records)
+        records.update(statement=None)
+        return Response({"removed": records.count()})
 
 
 class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):

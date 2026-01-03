@@ -6,6 +6,7 @@ import {
   fetchFinancialRecords,
   fetchFinanceStatements,
   fetchPayments,
+  fetchPaymentsWithPagination,
   fetchPoliciesWithPagination,
   fetchSalesChannels,
   fetchTasks,
@@ -178,6 +179,23 @@ export const useAppData = () => {
     setAppData({ policies: retrieved });
   }, [setAppData]);
 
+  const fetchAllPayments = useCallback(async () => {
+    const PAGE_SIZE = 200;
+    let page = 1;
+    const retrieved: Payment[] = [];
+
+    while (true) {
+      const payload = await fetchPaymentsWithPagination({ page, page_size: PAGE_SIZE });
+      retrieved.push(...payload.results);
+      if (!payload.next) {
+        break;
+      }
+      page += 1;
+    }
+
+    return retrieved;
+  }, []);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -194,7 +212,7 @@ export const useAppData = () => {
       ] =
         await Promise.all([
           fetchClients(),
-          fetchPayments(),
+          fetchAllPayments(),
           fetchTasks({ show_deleted: true }),
           fetchFinancialRecords(),
           fetchUsers(),

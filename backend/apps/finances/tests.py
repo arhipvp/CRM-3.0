@@ -303,3 +303,105 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         )
         response = self.api_client.delete(f"/api/v1/finance_statements/{statement.id}/")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class FinancialRecordFilterTests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.seller = User.objects.create_user(username="seller", password="pass")
+        client = Client.objects.create(name="Search Client")
+        self.deal = Deal.objects.create(
+            title="Search Deal",
+            client=client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        self.payment = Payment.objects.create(
+            deal=self.deal, amount=Decimal("1000.00"), description="Payment seed"
+        )
+        self.income_record = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("250.00"), note="AlphaNote"
+        )
+        self.expense_record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("-50.00"),
+            description="Beta expense",
+            date=timezone.now().date(),
+        )
+
+    def test_filter_unpaid_only(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/financial_records/?unpaid_only=true")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        record_ids = {str(item["id"]) for item in results}
+        self.assertIn(str(self.income_record.id), record_ids)
+        self.assertNotIn(str(self.expense_record.id), record_ids)
+
+    def test_filter_record_type_income(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/financial_records/?record_type=income")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        record_ids = {str(item["id"]) for item in results}
+        self.assertIn(str(self.income_record.id), record_ids)
+        self.assertNotIn(str(self.expense_record.id), record_ids)
+
+    def test_search_applies_only_after_five_chars(self):
+        self.authenticate(self.seller)
+        response_short = self.api_client.get("/api/v1/financial_records/?search=Alph")
+        self.assertEqual(response_short.status_code, status.HTTP_200_OK)
+        payload_short = response_short.json()
+        results_short = payload_short.get("results", payload_short)
+        record_ids_short = {str(item["id"]) for item in results_short}
+        self.assertIn(str(self.income_record.id), record_ids_short)
+        self.assertIn(str(self.expense_record.id), record_ids_short)
+
+        response = self.api_client.get("/api/v1/financial_records/?search=AlphaNote")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        record_ids = {str(item["id"]) for item in results}
+        self.assertIn(str(self.income_record.id), record_ids)
+        self.assertNotIn(str(self.expense_record.id), record_ids)
+
+
+class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.seller = User.objects.create_user(username="seller", password="pass")
+        client = Client.objects.create(name="Remove Client")
+        self.deal = Deal.objects.create(
+            title="Remove Deal",
+            client=client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        self.payment = Payment.objects.create(
+            deal=self.deal, amount=Decimal("1000.00"), description="Seed"
+        )
+        self.income_record = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("120.00")
+        )
+        self.statement = Statement.objects.create(
+            name="Remove Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        self.income_record.statement = self.statement
+        self.income_record.save(update_fields=["statement"])
+
+    def test_can_remove_record_from_statement(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{self.statement.id}/remove-records/",
+            {"record_ids": [str(self.income_record.id)]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.income_record.refresh_from_db()
+        self.assertIsNone(self.income_record.statement_id)
