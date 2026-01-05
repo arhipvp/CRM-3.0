@@ -5,6 +5,7 @@ import { ColoredLabel } from '../common/ColoredLabel';
 import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from './PaymentCard';
 import type { PolicyCardModel } from './policyCardModel';
+import { getPolicyExpiryBadge } from './policyIndicators';
 import { POLICY_PLACEHOLDER, POLICY_TEXT } from './text';
 
 export type PolicyCardActionVariant = 'secondary' | 'quiet' | 'danger';
@@ -113,33 +114,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
       }),
     [payments, allFinancialRecords]
   );
-  const expiryBadge = React.useMemo(() => {
-    if (!policy.endDate) {
-      return null;
-    }
-    const endDate = new Date(policy.endDate);
-    if (Number.isNaN(endDate.getTime())) {
-      return null;
-    }
-    const today = new Date();
-    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 0) {
-      return { label: 'Просрочен', tone: 'red' as const };
-    }
-    if (diffDays <= 3) {
-      return { label: 'Истекает ≤ 3 дн.', tone: 'orange' as const };
-    }
-    if (diffDays <= 7) {
-      return { label: 'Истекает ≤ 7 дн.', tone: 'orange' as const };
-    }
-    if (diffDays <= 15) {
-      return { label: 'Истекает ≤ 15 дн.', tone: 'orange' as const };
-    }
-    if (diffDays <= 30) {
-      return { label: 'Истекает ≤ 30 дн.', tone: 'orange' as const };
-    }
-    return null;
-  }, [policy.endDate]);
+  const expiryBadge = React.useMemo(() => getPolicyExpiryBadge(policy.endDate), [policy.endDate]);
   const renderTruncatedText = (label: string, value: string) => (
     <LabelValuePair
       label={label}

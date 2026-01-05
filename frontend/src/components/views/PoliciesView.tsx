@@ -2,14 +2,25 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Payment, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
+import { PanelMessage } from '../PanelMessage';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
-import { policyHasUnpaidActivity } from './dealsView/helpers';
+import { getPolicyTransportSummary, policyHasUnpaidActivity } from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
-import { PolicyCard } from '../policies/PolicyCard';
+import { ColoredLabel } from '../common/ColoredLabel';
+import { TableHeadCell } from '../common/TableHeadCell';
+import {
+  TABLE_ACTIONS_CLASS_ROW_SM,
+  TABLE_CELL_CLASS_LG,
+  TABLE_ROW_CLASS,
+  TABLE_ROW_CLASS_PLAIN,
+  TABLE_THEAD_CLASS,
+} from '../common/tableStyles';
+import { PaymentCard } from '../policies/PaymentCard';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
 import { buildPolicyNavigationActions } from '../policies/policyCardActions';
+import { getPolicyExpiryBadge } from '../policies/policyIndicators';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
@@ -163,6 +174,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     navigate('/clients');
   };
 
+  const actionClassName = (variant?: 'secondary' | 'quiet' | 'danger') => {
+    if (variant === 'danger') {
+      return 'btn btn-danger btn-sm rounded-xl whitespace-nowrap';
+    }
+    if (variant === 'quiet') {
+      return 'btn btn-quiet btn-sm rounded-xl whitespace-nowrap';
+    }
+    return 'btn btn-secondary btn-sm rounded-xl whitespace-nowrap';
+  };
+
   return (
     <section aria-labelledby="policiesViewHeading" className="app-panel p-6 shadow-none space-y-4">
       <h1 id="policiesViewHeading" className="sr-only">
@@ -220,65 +241,192 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       </div>
 
       {filteredPolicies.length ? (
-        <div className="space-y-4">
-          {paymentsByPolicy.map(({ policy, payments }) => {
-            const isPaymentsExpanded = paymentsExpanded[policy.id] ?? false;
-            const model = buildPolicyCardModel(policy, payments);
+        <div className="app-panel shadow-none overflow-hidden">
+          <div className="overflow-x-auto bg-white">
+            <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Список полисов">
+              <thead className={TABLE_THEAD_CLASS}>
+                <tr>
+                  <TableHeadCell className="min-w-[220px]">Полис</TableHeadCell>
+                  <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
+                  <TableHeadCell className="min-w-[220px]">Компания</TableHeadCell>
+                  <TableHeadCell className="min-w-[220px]">Тип / ТС</TableHeadCell>
+                  <TableHeadCell className="min-w-[180px]">Канал</TableHeadCell>
+                  <TableHeadCell align="right" className="min-w-[150px]">Сумма</TableHeadCell>
+                  <TableHeadCell align="right" className="min-w-[150px]">Платежи</TableHeadCell>
+                  <TableHeadCell align="right" className="min-w-[220px]">Действия</TableHeadCell>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {paymentsByPolicy.map(({ policy, payments }) => {
+                  const isPaymentsExpanded = paymentsExpanded[policy.id] ?? false;
+                  const paymentsPanelId = `policy-${policy.id}-payments`;
+                  const model = buildPolicyCardModel(policy, payments);
+                  const hasUnpaidPayment = policyHasUnpaidActivity(
+                    policy.id,
+                    paymentsByPolicyMap,
+                    allFinancialRecords
+                  );
+                  const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+                  const transportSummary = policy.isVehicle ? getPolicyTransportSummary(policy) : '';
+                  const actions = [
+                    ...(onRequestEditPolicy
+                      ? [
+                          {
+                            key: 'edit' as const,
+                            label: POLICY_TEXT.actions.edit,
+                            onClick: () => onRequestEditPolicy(policy),
+                            variant: 'secondary' as const,
+                          },
+                        ]
+                      : []),
+                    {
+                      key: 'files' as const,
+                      label: POLICY_TEXT.actions.files,
+                      onClick: () => setFilesModalPolicy(policy),
+                      variant: 'quiet' as const,
+                    },
+                    ...buildPolicyNavigationActions({
+                      model,
+                      onOpenDeal: onDealSelect || onDealPreview ? handleOpenDeal : undefined,
+                      clients,
+                      onOpenClient: onClientEdit ? handleOpenClient : undefined,
+                    }),
+                  ];
 
-            return (
-              <PolicyCard
-                key={policy.id}
-                policy={policy}
-                payments={payments}
-                model={model}
-                primaryAction={
-                  onDealSelect
-                    ? {
-                        label: POLICY_TEXT.actions.openDeal,
-                        onClick: () => handleOpenDeal(model.dealId),
-                      }
-                    : undefined
-                }
-                recordsExpandedAll={recordsExpandedAll}
-                isPaymentsExpanded={isPaymentsExpanded}
-                onTogglePaymentsExpanded={() =>
-                  setPaymentsExpanded((prev) => ({
-                    ...prev,
-                    [policy.id]: !prev[policy.id],
-                  }))
-                }
-                actions={[
-                  ...(onRequestEditPolicy
-                    ? [
-                        {
-                          key: 'edit' as const,
-                          label: POLICY_TEXT.actions.edit,
-                          onClick: () => onRequestEditPolicy(policy),
-                          variant: 'secondary' as const,
-                        },
-                      ]
-                    : []),
-                  {
-                    key: 'files' as const,
-                    label: POLICY_TEXT.actions.files,
-                    onClick: () => setFilesModalPolicy(policy),
-                    variant: 'quiet' as const,
-                  },
-                  ...buildPolicyNavigationActions({
-                    model,
-                    onOpenDeal: onDealSelect ? handleOpenDeal : undefined,
-                    clients,
-                    onOpenClient: onClientEdit ? handleOpenClient : undefined,
-                  }),
-                ]}
-                onRequestAddRecord={(paymentId, recordType) => {
-                  openCreateFinancialRecord(paymentId, recordType);
-                }}
-                onEditFinancialRecord={openEditFinancialRecord}
-                onDeleteFinancialRecord={onDeleteFinancialRecord}
-              />
-            );
-          })}
+                  return (
+                    <React.Fragment key={policy.id}>
+                      <tr className={TABLE_ROW_CLASS}>
+                        <td className={TABLE_CELL_CLASS_LG}>
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-slate-900">{model.number}</span>
+                              {hasUnpaidPayment && (
+                                <span
+                                  className={[
+                                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                    expiryBadge?.tone === 'red'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-orange-100 text-orange-700',
+                                  ].join(' ')}
+                                >
+                                  Неоплачено
+                                </span>
+                              )}
+                              {expiryBadge && (
+                                <span
+                                  className={[
+                                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                    expiryBadge.tone === 'red'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-orange-100 text-orange-700',
+                                  ].join(' ')}
+                                >
+                                  {expiryBadge.label}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              Начало: {model.startDate} · Окончание: {model.endDate}
+                            </p>
+                          </div>
+                        </td>
+                        <td className={TABLE_CELL_CLASS_LG}>
+                          <p className="text-sm font-semibold text-slate-900">{model.client}</p>
+                        </td>
+                        <td className={TABLE_CELL_CLASS_LG}>
+                          <ColoredLabel
+                            value={policy.insuranceCompany}
+                            showDot
+                            className="max-w-full truncate font-semibold text-slate-900"
+                          />
+                        </td>
+                        <td className={TABLE_CELL_CLASS_LG}>
+                          <p className="text-sm font-semibold text-slate-900">{model.insuranceType}</p>
+                          {transportSummary && (
+                            <p className="mt-1 text-xs text-slate-500">{transportSummary}</p>
+                          )}
+                        </td>
+                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                          {model.salesChannel}
+                        </td>
+                        <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                          <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
+                        </td>
+                        <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                          {payments.length ? (
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="text-xs text-slate-500">{model.paymentsCountLabel}</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPaymentsExpanded((prev) => ({
+                                    ...prev,
+                                    [policy.id]: !prev[policy.id],
+                                  }))
+                                }
+                                aria-expanded={isPaymentsExpanded}
+                                aria-controls={paymentsPanelId}
+                                className="btn btn-quiet btn-sm rounded-xl"
+                              >
+                                {isPaymentsExpanded ? POLICY_TEXT.actions.hide : POLICY_TEXT.actions.show}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">{POLICY_TEXT.messages.noPayments}</span>
+                          )}
+                        </td>
+                        <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                          {actions.length ? (
+                            <div className={TABLE_ACTIONS_CLASS_ROW_SM}>
+                              {actions.map((action) => (
+                                <button
+                                  key={action.key}
+                                  type="button"
+                                  className={actionClassName(action.variant)}
+                                  onClick={action.onClick}
+                                  aria-label={action.ariaLabel ?? action.label}
+                                  title={action.title ?? action.label}
+                                >
+                                  {action.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs uppercase tracking-wide text-slate-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                      {isPaymentsExpanded && (
+                        <tr className={TABLE_ROW_CLASS_PLAIN}>
+                          <td
+                            colSpan={8}
+                            className="border border-slate-200 bg-slate-50/70 px-6 py-4"
+                          >
+                            <div id={paymentsPanelId} className="space-y-2">
+                              {payments.length ? (
+                                payments.map((payment) => (
+                                  <PaymentCard
+                                    key={payment.id}
+                                    payment={payment}
+                                    recordsExpandedOverride={recordsExpandedAll}
+                                    onRequestAddRecord={openCreateFinancialRecord}
+                                    onEditFinancialRecord={openEditFinancialRecord}
+                                    onDeleteFinancialRecord={onDeleteFinancialRecord}
+                                  />
+                                ))
+                              ) : (
+                                <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
