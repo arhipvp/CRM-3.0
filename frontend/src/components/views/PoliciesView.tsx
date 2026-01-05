@@ -64,7 +64,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
-  const debouncedSearch = useDebouncedValue((filters.search ?? '').trim(), 450);
+  const rawSearch = (filters.search ?? '').trim();
+  const debouncedSearch = useDebouncedValue(rawSearch, 450);
+  const isDebouncePending = Boolean(onRefreshPoliciesList) && rawSearch !== debouncedSearch;
   const serverFilters = useMemo(
     () => ({
       ordering: filters.ordering,
@@ -110,7 +112,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     }
 
     return result;
-  }, [filters, policies, paymentsByPolicyMap, allFinancialRecords]);
+  }, [allFinancialRecords, filters, onRefreshPoliciesList, paymentsByPolicyMap, policies]);
 
   useEffect(() => {
     if (!onRefreshPoliciesList) {
@@ -174,6 +176,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           sortOptions={POLICY_SORT_OPTIONS}
           customFilters={customFilters}
         />
+        {isDebouncePending && (
+          <div className="text-xs text-slate-500">РџСЂРёРјРµРЅСЏСЋ С„РёР»СЊС‚СЂ...</div>
+        )}
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
