@@ -63,6 +63,10 @@ def log_task_change(sender, instance, created, **kwargs):
         old_value=old_value,
         new_value=new_value if action != "soft_delete" else None,
     )
+    if action == "create":
+        from apps.notifications.telegram_notifications import notify_task_created
+
+        notify_task_created(instance)
 
     if hasattr(instance, "_was_deleted"):
         delattr(instance, "_was_deleted")

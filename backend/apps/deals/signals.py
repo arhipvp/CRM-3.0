@@ -81,6 +81,33 @@ def log_deal_change(sender, instance, created, **kwargs):
         old_value=old_value,
         new_value=new_value if action != "soft_delete" else None,
     )
+    if action == "update":
+        changes = get_changed_fields(instance, old_value)
+        messages = []
+        if "status" in changes:
+            messages.append(
+                "статус: '{old}' -> '{new}'".format(
+                    old=changes["status"]["old"],
+                    new=changes["status"]["new"],
+                )
+            )
+        if "stage_name" in changes:
+            messages.append(
+                "стадия: '{old}' -> '{new}'".format(
+                    old=changes["stage_name"]["old"],
+                    new=changes["stage_name"]["new"],
+                )
+            )
+        if messages:
+            from apps.notifications.telegram_notifications import notify_deal_event
+
+            notify_deal_event(
+                instance,
+                "Сделка '{title}': {changes}.".format(
+                    title=instance.title,
+                    changes="; ".join(messages),
+                ),
+            )
 
     # Очистить временные атрибуты
     if hasattr(instance, "_was_deleted"):

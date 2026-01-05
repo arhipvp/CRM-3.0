@@ -206,6 +206,13 @@ OPEN_NOTEBOOK_CONTEXT_LEVEL = config(
     "OPEN_NOTEBOOK_CONTEXT_LEVEL", default="full content"
 )
 
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_POLL_TIMEOUT = int(config("TELEGRAM_POLL_TIMEOUT", default="30"))
+TELEGRAM_REMINDER_INTERVAL = int(config("TELEGRAM_REMINDER_INTERVAL", default="300"))
+TELEGRAM_LINK_CODE_TTL_MINUTES = int(
+    config("TELEGRAM_LINK_CODE_TTL_MINUTES", default="10")
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
