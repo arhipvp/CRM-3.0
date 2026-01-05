@@ -69,6 +69,34 @@ services:
       retries: 3
       start_period: 40s
 
+  telegram_bot:
+    image: crm30-backend:${IMAGE_TAG:-latest}
+    container_name: crm3-telegram-bot
+    command: python manage.py run_telegram_bot
+    environment:
+      DEBUG: ${DEBUG:-False}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DB_ENGINE: django.db.backends.postgresql
+      DJANGO_DB_HOST: db
+      DJANGO_DB_PORT: 5432
+      DJANGO_DB_NAME: ${DJANGO_DB_NAME:-crm3}
+      DJANGO_DB_USER: ${DJANGO_DB_USER:-crm3}
+      DJANGO_DB_PASSWORD: ${DJANGO_DB_PASSWORD:-crm3}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_POLL_TIMEOUT: ${TELEGRAM_POLL_TIMEOUT:-30}
+      TELEGRAM_REMINDER_INTERVAL: ${TELEGRAM_REMINDER_INTERVAL:-300}
+      TELEGRAM_LINK_CODE_TTL_MINUTES: ${TELEGRAM_LINK_CODE_TTL_MINUTES:-10}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - backend_media:/app/media
+      - backend_static:/app/staticfiles
+    networks:
+      - crm_network
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
