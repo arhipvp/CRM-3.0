@@ -29,6 +29,7 @@ from apps.documents.views import (
     KnowledgeSourcesView,
 )
 from apps.finances.views import FinanceSummaryView
+from apps.notifications.views import NotificationSettingsView, TelegramLinkView
 from apps.users.views import (
     change_password_view,
     current_user_view,
@@ -49,6 +50,16 @@ urlpatterns = [
     path("api/v1/auth/refresh/", refresh_token_view, name="refresh-token"),
     path("api/v1/auth/password/", change_password_view, name="change-password"),
     path("api/v1/auth/me/", current_user_view, name="current-user"),
+    path(
+        "api/v1/notifications/settings/",
+        NotificationSettingsView.as_view(),
+        name="notification-settings",
+    ),
+    path(
+        "api/v1/notifications/telegram-link/",
+        TelegramLinkView.as_view(),
+        name="telegram-link",
+    ),
     path(
         "api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"
     ),

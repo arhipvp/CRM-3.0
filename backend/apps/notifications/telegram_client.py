@@ -1,5 +1,6 @@
 ﻿import json
 import logging
+import socket
 import urllib.error
 import urllib.request
 from typing import Any
@@ -49,6 +50,9 @@ class TelegramClient:
         try:
             with urllib.request.urlopen(request, timeout=self._timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
+        except (socket.timeout, TimeoutError) as exc:
+            logger.warning("Telegram request timeout: %s", exc)
+            return None
         except (urllib.error.URLError, json.JSONDecodeError) as exc:
             logger.warning("Telegram request failed: %s", exc)
             return None
