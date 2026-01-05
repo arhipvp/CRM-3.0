@@ -1,7 +1,8 @@
 """FilterSets for Policies app"""
 
 import django_filters
-from django.db.models import Q
+from apps.finances.models import FinancialRecord, Payment
+from django.db.models import Exists, OuterRef, Q
 
 from .models import Policy
 
@@ -76,12 +77,18 @@ class PolicyFilterSet(django_filters.FilterSet):
     def filter_unpaid(self, queryset, name, value):
         if not value:
             return queryset
-        unpaid_query = Q(
-            payments__deleted_at__isnull=True,
-            payments__actual_date__isnull=True,
-        ) | Q(
-            payments__deleted_at__isnull=True,
-            payments__financial_records__deleted_at__isnull=True,
-            payments__financial_records__date__isnull=True,
+        unpaid_payment_exists = Payment.objects.filter(
+            policy=OuterRef("pk"),
+            deleted_at__isnull=True,
+            actual_date__isnull=True,
         )
-        return queryset.filter(unpaid_query).distinct()
+        unpaid_record_exists = FinancialRecord.objects.filter(
+            payment__policy=OuterRef("pk"),
+            payment__deleted_at__isnull=True,
+            deleted_at__isnull=True,
+            date__isnull=True,
+        )
+        return queryset.annotate(
+            has_unpaid_payment=Exists(unpaid_payment_exists),
+            has_unpaid_record=Exists(unpaid_record_exists),
+        ).filter(Q(has_unpaid_payment=True) | Q(has_unpaid_record=True))

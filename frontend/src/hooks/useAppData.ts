@@ -82,6 +82,7 @@ export const useAppData = () => {
   const [isPoliciesListLoading, setIsPoliciesListLoading] = useState(false);
   const [isLoadingMorePolicies, setIsLoadingMorePolicies] = useState(false);
   const [policiesFilters, setPoliciesFilters] = useState<FilterParams>({ ordering: '-start_date' });
+  const policiesListRequestRef = useRef(0);
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
@@ -228,11 +229,10 @@ export const useAppData = () => {
   };
 
   const refreshPoliciesList = useCallback(async (filters?: FilterParams) => {
-    if (isPoliciesListLoading) {
-      return;
-    }
     setIsPoliciesListLoading(true);
     setError(null);
+    policiesListRequestRef.current += 1;
+    const requestId = policiesListRequestRef.current;
     const resolvedFilters: FilterParams = {
       ordering: '-start_date',
       ...(filters ?? {}),
@@ -251,6 +251,9 @@ export const useAppData = () => {
         page: 1,
         page_size: POLICIES_PAGE_SIZE,
       });
+      if (policiesListRequestRef.current !== requestId) {
+        return;
+      }
       setPoliciesList(payload.results);
       setPoliciesListNextPage(payload.next ? 2 : null);
       setPoliciesFilters(resolvedFilters);
@@ -258,9 +261,11 @@ export const useAppData = () => {
       setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
       throw err;
     } finally {
-      setIsPoliciesListLoading(false);
+      if (policiesListRequestRef.current === requestId) {
+        setIsPoliciesListLoading(false);
+      }
     }
-  }, [isPoliciesListLoading, setError]);
+  }, [setError]);
 
   const loadMorePolicies = useCallback(async () => {
     if (!policiesListNextPage || isLoadingMorePolicies) {
@@ -268,12 +273,16 @@ export const useAppData = () => {
     }
     setIsLoadingMorePolicies(true);
     setError(null);
+    const requestId = policiesListRequestRef.current;
     try {
       const payload = await fetchPoliciesWithPagination({
         ...policiesFilters,
         page: policiesListNextPage,
         page_size: POLICIES_PAGE_SIZE,
       });
+      if (policiesListRequestRef.current !== requestId) {
+        return;
+      }
       setPoliciesList((prev) => [...prev, ...payload.results]);
       setPoliciesListNextPage(payload.next ? policiesListNextPage + 1 : null);
     } catch (err) {

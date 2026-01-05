@@ -13,6 +13,7 @@ import { buildPolicyNavigationActions } from '../policies/policyCardActions';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-start_date', label: 'Начало (убывание)' },
@@ -63,9 +64,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
+  const debouncedSearch = useDebouncedValue((filters.search ?? '').trim(), 450);
   const serverFilters = useMemo(
-    () => ({ search: filters.search, ordering: filters.ordering }),
-    [filters.ordering, filters.search]
+    () => ({
+      ordering: filters.ordering,
+      search: debouncedSearch || undefined,
+      unpaid: filters.unpaid,
+    }),
+    [debouncedSearch, filters.ordering, filters.unpaid]
   );
   const {
     paymentsExpanded,
@@ -96,7 +102,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const filteredPolicies = useMemo(() => {
     let result = [...policies];
 
-    const showUnpaidOnly = filters.unpaid === 'true';
+    const showUnpaidOnly = !onRefreshPoliciesList && filters.unpaid === 'true';
     if (showUnpaidOnly) {
       result = result.filter((policy) =>
         policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords)
