@@ -1,7 +1,6 @@
 import type { Payment, Policy } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 import { POLICY_PLACEHOLDER } from './text';
-import { normalizePolicyStatusLabel } from './policyStatus';
 
 const fallback = (value?: string | null, empty = POLICY_PLACEHOLDER) =>
   value && value.trim() ? value : empty;
@@ -13,8 +12,6 @@ export interface PolicyCardModel {
   number: string;
   startDate: string;
   endDate: string;
-  statusRaw: string;
-  statusLabel: string;
   client: string;
   insuranceCompany: string;
   salesChannel: string;
@@ -31,13 +28,10 @@ export interface PolicyCardModel {
 
 export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): PolicyCardModel => {
   const paymentsCount = payments.length;
-  const statusRaw = (policy.status ?? '').trim();
   return {
     number: fallback(policy.number),
     startDate: formatDate(policy.startDate),
     endDate: formatDate(policy.endDate),
-    statusRaw,
-    statusLabel: statusRaw ? normalizePolicyStatusLabel(statusRaw) : POLICY_PLACEHOLDER,
     client: fallback(policy.insuredClientName ?? policy.clientName),
     insuranceCompany: fallback(policy.insuranceCompany),
     salesChannel: fallback(policy.salesChannel),

@@ -1,6 +1,7 @@
 """FilterSets for Policies app"""
 
 import django_filters
+from django.db.models import Q
 
 from .models import Policy
 
@@ -40,8 +41,14 @@ class PolicyFilterSet(django_filters.FilterSet):
 
     deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
 
+    unpaid = django_filters.BooleanFilter(
+        method="filter_unpaid", label="Unpaid policies"
+    )
+
     ordering = django_filters.OrderingFilter(
         fields=(
+            ("number", "number"),
+            ("client__name", "client"),
             ("created_at", "created_at"),
             ("updated_at", "updated_at"),
             ("start_date", "start_date"),
@@ -63,4 +70,18 @@ class PolicyFilterSet(django_filters.FilterSet):
             "deal",
             "is_vehicle",
             "sales_channel",
+            "unpaid",
         )
+
+    def filter_unpaid(self, queryset, name, value):
+        if not value:
+            return queryset
+        unpaid_query = Q(
+            payments__deleted_at__isnull=True,
+            payments__actual_date__isnull=True,
+        ) | Q(
+            payments__deleted_at__isnull=True,
+            payments__financial_records__deleted_at__isnull=True,
+            payments__financial_records__date__isnull=True,
+        )
+        return queryset.filter(unpaid_query).distinct()

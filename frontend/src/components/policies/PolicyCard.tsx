@@ -199,11 +199,6 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                 {model.number || POLICY_PLACEHOLDER}
               </span>
 
-              {model.statusRaw && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                  {model.statusLabel}
-                </span>
-              )}
               {hasUnpaidPayment && (
                 <span
                   className={[

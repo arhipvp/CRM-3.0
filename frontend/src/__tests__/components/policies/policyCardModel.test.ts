@@ -21,12 +21,11 @@ const createPolicy = (overrides: Partial<Policy> = {}): Policy => ({
 
 describe('buildPolicyCardModel', () => {
   it('uses placeholders for empty values', () => {
-    const policy = createPolicy({ number: '', insuranceCompany: '', insuranceType: '', status: '' });
+    const policy = createPolicy({ number: '', insuranceCompany: '', insuranceType: '' });
     const model = buildPolicyCardModel(policy, []);
     expect(model.number).toBe(POLICY_PLACEHOLDER);
     expect(model.insuranceCompany).toBe(POLICY_PLACEHOLDER);
     expect(model.insuranceType).toBe(POLICY_PLACEHOLDER);
-    expect(model.statusLabel).toBe(POLICY_PLACEHOLDER);
   });
 
   it('formats payments count label', () => {
@@ -40,9 +39,9 @@ describe('buildPolicyCardModel', () => {
     expect(model.paymentsCountLabel).toBe('2 записей');
   });
 
-  it('normalizes status label', () => {
-    const policy = createPolicy({ status: 'in_progress' });
+  it('keeps insured client name when present', () => {
+    const policy = createPolicy({ insuredClientName: 'Insured' });
     const model = buildPolicyCardModel(policy, []);
-    expect(model.statusLabel).toBe('In Progress');
+    expect(model.client).toBe('Insured');
   });
 });

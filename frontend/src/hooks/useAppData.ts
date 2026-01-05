@@ -81,7 +81,7 @@ export const useAppData = () => {
   const [policiesListNextPage, setPoliciesListNextPage] = useState<number | null>(null);
   const [isPoliciesListLoading, setIsPoliciesListLoading] = useState(false);
   const [isLoadingMorePolicies, setIsLoadingMorePolicies] = useState(false);
-  const [policiesFilters, setPoliciesFilters] = useState<FilterParams>({ ordering: '-startDate' });
+  const [policiesFilters, setPoliciesFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
@@ -110,7 +110,7 @@ export const useAppData = () => {
     setPoliciesListNextPage(null);
     setIsPoliciesListLoading(false);
     setIsLoadingMorePolicies(false);
-    setPoliciesFilters({ ordering: '-startDate' });
+    setPoliciesFilters({ ordering: '-start_date' });
   }, []);
 
   const updateAppData = useCallback((updater: (prev: AppDataState) => Partial<AppDataState>) => {
@@ -212,13 +212,39 @@ export const useAppData = () => {
     }
   }, [isPoliciesLoading, policiesLoaded, setAppData]);
 
+  const normalizePolicyOrdering = (value?: string) => {
+    if (!value) {
+      return value;
+    }
+    const mapping: Record<string, string> = {
+      startDate: 'start_date',
+      '-startDate': '-start_date',
+      endDate: 'end_date',
+      '-endDate': '-end_date',
+      client__name: 'client',
+      '-client__name': '-client',
+    };
+    return mapping[value] ?? value;
+  };
+
   const refreshPoliciesList = useCallback(async (filters?: FilterParams) => {
     if (isPoliciesListLoading) {
       return;
     }
     setIsPoliciesListLoading(true);
     setError(null);
-    const resolvedFilters = { ordering: '-startDate', ...(filters ?? {}) };
+    const resolvedFilters: FilterParams = {
+      ordering: '-start_date',
+      ...(filters ?? {}),
+    };
+    const normalizedOrdering = normalizePolicyOrdering(
+      resolvedFilters.ordering as string | undefined
+    );
+    if (normalizedOrdering) {
+      resolvedFilters.ordering = normalizedOrdering;
+    } else {
+      delete resolvedFilters.ordering;
+    }
     try {
       const payload = await fetchPoliciesWithPagination({
         ...resolvedFilters,

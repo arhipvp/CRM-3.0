@@ -10,16 +10,15 @@ import { PolicyCard } from '../policies/PolicyCard';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
 import { buildPolicyNavigationActions } from '../policies/policyCardActions';
-import { normalizePolicyStatusLabel } from '../policies/policyStatus';
 import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 
 const POLICY_SORT_OPTIONS = [
-  { value: '-startDate', label: 'Начало (убывание)' },
-  { value: 'startDate', label: 'Начало (возрастание)' },
-  { value: '-endDate', label: 'Окончание (убывание)' },
-  { value: 'endDate', label: 'Окончание (возрастание)' },
+  { value: '-start_date', label: 'Начало (убывание)' },
+  { value: 'start_date', label: 'Начало (возрастание)' },
+  { value: '-end_date', label: 'Окончание (убывание)' },
+  { value: 'end_date', label: 'Окончание (возрастание)' },
   { value: '-number', label: 'Номер (Z → A)' },
   { value: 'number', label: 'Номер (A → Z)' },
   { value: '-client', label: 'Клиент (Z → A)' },
@@ -62,7 +61,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onDeleteFinancialRecord,
 }) => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<FilterParams>({ ordering: '-startDate' });
+  const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
   const serverFilters = useMemo(
     () => ({ search: filters.search, ordering: filters.ordering }),
@@ -74,14 +73,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     recordsExpandedAll,
     setRecordsExpandedAll,
   } = usePoliciesExpansionState();
-
-  const statusOptions = useMemo(() => {
-    const unique = Array.from(new Set(policies.map((policy) => policy.status).filter(Boolean)));
-    return unique.map((status) => ({
-      value: status,
-      label: normalizePolicyStatusLabel(status),
-    }));
-  }, [policies]);
 
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();
@@ -105,10 +96,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const filteredPolicies = useMemo(() => {
     let result = [...policies];
 
-    if (filters.status) {
-      result = result.filter((policy) => policy.status === filters.status);
-    }
-
     const showUnpaidOnly = filters.unpaid === 'true';
     if (showUnpaidOnly) {
       result = result.filter((policy) =>
@@ -127,16 +114,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   }, [onRefreshPoliciesList, serverFilters]);
 
   const customFilters = [
-    ...(statusOptions.length
-      ? [
-          {
-            key: 'status',
-            label: 'Статус',
-            type: 'select' as const,
-            options: statusOptions,
-          },
-        ]
-      : []),
     {
       key: 'unpaid',
       label: POLICY_TEXT.filters.unpaidOnly,
@@ -187,7 +164,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         <FilterBar
           onFilterChange={setFilters}
           searchPlaceholder="Поиск по номеру, клиенту или компании..."
-          initialFilters={{ ordering: '-startDate' }}
+          initialFilters={{ ordering: '-start_date' }}
           sortOptions={POLICY_SORT_OPTIONS}
           customFilters={customFilters}
         />

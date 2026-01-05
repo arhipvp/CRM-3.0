@@ -49,11 +49,17 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     filterset_class = PolicyFilterSet
     search_fields = [
         "number",
+        "deal__title",
+        "client__name",
+        "insured_client__name",
         "insurance_company__name",
         "insurance_type__name",
         "sales_channel__name",
     ]
     ordering_fields = [
+        "number",
+        "client__name",
+        "insured_client__name",
         "created_at",
         "updated_at",
         "start_date",

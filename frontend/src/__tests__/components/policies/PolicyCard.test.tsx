@@ -22,13 +22,11 @@ const createPolicy = (): Policy => ({
 
 const createModel = (): PolicyCardModel => ({
   number: 'POL-1',
-  startDate: '—',
-  endDate: '—',
-  statusRaw: 'active',
-  statusLabel: 'Active',
+  startDate: '-',
+  endDate: '-',
   client: 'Client',
   insuranceCompany: 'Alpha',
-  salesChannel: '—',
+  salesChannel: '-',
   sum: '—',
   insuranceType: 'OSAGO',
   brand: '—',
