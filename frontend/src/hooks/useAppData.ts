@@ -74,6 +74,8 @@ export const useAppData = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [policiesLoaded, setPoliciesLoaded] = useState(false);
+  const [isPoliciesLoading, setIsPoliciesLoading] = useState(false);
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
@@ -90,6 +92,11 @@ export const useAppData = () => {
 
   const setAppData = useCallback((payload: Partial<AppDataState>) => {
     dispatch({ type: 'assign', payload });
+  }, []);
+
+  const resetPoliciesState = useCallback(() => {
+    setPoliciesLoaded(false);
+    setIsPoliciesLoading(false);
   }, []);
 
   const updateAppData = useCallback((updater: (prev: AppDataState) => Partial<AppDataState>) => {
@@ -161,22 +168,35 @@ export const useAppData = () => {
   ]);
 
 
-  const refreshPolicies = useCallback(async () => {
-    const PAGE_SIZE = 200;
-    let page = 1;
-    const retrieved: Policy[] = [];
-
-    while (true) {
-      const payload = await fetchPoliciesWithPagination({ page, page_size: PAGE_SIZE });
-      retrieved.push(...payload.results);
-      if (!payload.next) {
-        break;
-      }
-      page += 1;
+  const refreshPolicies = useCallback(async (options?: { force?: boolean }) => {
+    const force = options?.force ?? false;
+    if (policiesLoaded && !force) {
+      return;
     }
+    if (isPoliciesLoading) {
+      return;
+    }
+    setIsPoliciesLoading(true);
+    try {
+      const PAGE_SIZE = 200;
+      let page = 1;
+      const retrieved: Policy[] = [];
 
-    setAppData({ policies: retrieved });
-  }, [setAppData]);
+      while (true) {
+        const payload = await fetchPoliciesWithPagination({ page, page_size: PAGE_SIZE });
+        retrieved.push(...payload.results);
+        if (!payload.next) {
+          break;
+        }
+        page += 1;
+      }
+
+      setAppData({ policies: retrieved });
+      setPoliciesLoaded(true);
+    } finally {
+      setIsPoliciesLoading(false);
+    }
+  }, [isPoliciesLoading, policiesLoaded, setAppData]);
 
   const fetchAllPayments = useCallback(async () => {
     const PAGE_SIZE = 200;
@@ -219,7 +239,6 @@ export const useAppData = () => {
           fetchFinanceStatements(),
         ]);
       await dealsPromise;
-      await refreshPolicies();
       setAppData({
         clients: clientsData,
         payments: paymentsData,
@@ -235,7 +254,7 @@ export const useAppData = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchAllPayments, refreshDeals, refreshPolicies, setAppData]);
+  }, [fetchAllPayments, refreshDeals, setAppData]);
 
   const dealsHasMore = Boolean(dealsNextPage);
 
@@ -247,8 +266,10 @@ export const useAppData = () => {
     refreshPolicies,
     updateAppData,
     setAppData,
+    resetPoliciesState,
     loadMoreDeals,
     dealsHasMore,
+    isPoliciesLoading,
     isLoading,
     isSyncing,
     setIsSyncing,

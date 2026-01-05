@@ -86,6 +86,7 @@ export interface AppRoutesProps {
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
+  onRefreshPolicies?: () => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
@@ -155,6 +156,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onFetchDealHistory,
   onCreateTask,
   onUpdateTask,
+  onRefreshPolicies,
   onDeleteTask,
   onDeleteDeal,
   onRestoreDeal,
@@ -226,10 +228,11 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
             onDealShowClosedChange={onDealShowClosedChange}
             dealOrdering={dealOrdering}
             onDealOrderingChange={onDealOrderingChange}
-            onRequestAddClient={onRequestAddClient}
-            onPolicyDraftReady={onPolicyDraftReady}
-            onLoadMoreDeals={onLoadMoreDeals}
-            dealsHasMore={dealsHasMore}
+          onRequestAddClient={onRequestAddClient}
+          onPolicyDraftReady={onPolicyDraftReady}
+          onRefreshPolicies={onRefreshPolicies}
+          onLoadMoreDeals={onLoadMoreDeals}
+          dealsHasMore={dealsHasMore}
             isLoadingMoreDeals={isLoadingMoreDeals}
           />
       }

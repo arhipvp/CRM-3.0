@@ -195,6 +195,7 @@ const AppContent: React.FC = () => {
     refreshPolicies,
     updateAppData,
     setAppData,
+    resetPoliciesState,
     loadMoreDeals,
     dealsHasMore,
     isLoadingMoreDeals,
@@ -239,6 +240,21 @@ const AppContent: React.FC = () => {
       setSelectedDealId(dealId);
     }
   }, [location.search, setSelectedDealId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    const shouldLoadPolicies =
+      location.pathname.startsWith('/policies') ||
+      location.pathname.startsWith('/commissions');
+    if (!shouldLoadPolicies) {
+      return;
+    }
+    refreshPolicies().catch((err) => {
+      setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+    });
+  }, [isAuthenticated, location.pathname, refreshPolicies, setError]);
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
     deals.forEach((deal) => {
@@ -1868,10 +1884,11 @@ const AppContent: React.FC = () => {
     clearTokens();
     setCurrentUser(null);
     setIsAuthenticated(false);
-      setAppData({
-        clients: [],
-        deals: [],
-        policies: [],
+    resetPoliciesState();
+    setAppData({
+      clients: [],
+      deals: [],
+      policies: [],
         salesChannels: [],
         payments: [],
         financialRecords: [],
@@ -1879,7 +1896,7 @@ const AppContent: React.FC = () => {
         tasks: [],
         users: [],
       });
-  }, [setAppData]);
+  }, [resetPoliciesState, setAppData]);
 
   if (authLoading || isLoading) {
     return (
@@ -1956,6 +1973,7 @@ const AppContent: React.FC = () => {
         onFetchDealHistory={fetchDealHistory}
         onCreateTask={handleCreateTask}
         onUpdateTask={handleUpdateTask}
+        onRefreshPolicies={refreshPolicies}
         onDeleteTask={handleDeleteTask}
         onDeleteDeal={handleDeleteDeal}
         onRestoreDeal={handleRestoreDeal}
@@ -2013,6 +2031,7 @@ const AppContent: React.FC = () => {
                 onRequestAddClient={() => openClientModal('deal')}
                 onDeleteQuote={handleDeleteQuote}
                 onDeletePolicy={handleDeletePolicy}
+                onRefreshPolicies={refreshPolicies}
                 onPolicyDraftReady={handlePolicyDraftReady}
                 onAddPayment={handleAddPayment}
                 onUpdatePayment={handleUpdatePayment}

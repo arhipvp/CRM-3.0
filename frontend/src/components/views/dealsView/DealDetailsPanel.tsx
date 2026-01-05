@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -206,6 +206,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
   const [selectedDelayEventId, setSelectedDelayEventId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
+  const hasRequestedPoliciesRef = useRef(false);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
@@ -257,6 +258,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [policySortKey] = useState<PolicySortKey>('startDate');
 
   const [policySortOrder] = useState<'asc' | 'desc'>('asc');
+
+  useEffect(() => {
+    if (activeTab !== 'policies') {
+      return;
+    }
+    if (!onRefreshPolicies || hasRequestedPoliciesRef.current) {
+      return;
+    }
+    hasRequestedPoliciesRef.current = true;
+    onRefreshPolicies().catch(() => undefined);
+  }, [activeTab, onRefreshPolicies]);
 
   const {
     isDriveLoading,
