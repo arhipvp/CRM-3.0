@@ -33,6 +33,7 @@ interface CommissionsViewProps {
   policies: Policy[];
   statements: Statement[];
   onDealSelect?: (dealId: string) => void;
+  onDealPreview?: (dealId: string) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
   onUpdateFinancialRecord?: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
   onDeleteStatement?: (statementId: string) => Promise<void>;
@@ -78,6 +79,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   policies,
   statements,
   onDealSelect,
+  onDealPreview,
   onRequestEditPolicy,
   onUpdateFinancialRecord,
   onDeleteStatement,
@@ -328,10 +330,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (!dealId) {
         return;
       }
+      if (onDealPreview) {
+        onDealPreview(dealId);
+        return;
+      }
       onDealSelect?.(dealId);
       navigate('/deals');
     },
-    [navigate, onDealSelect]
+    [navigate, onDealPreview, onDealSelect]
   );
 
   const handleRecordDateChange = useCallback(

@@ -6,10 +6,12 @@ import { NotificationDisplay } from './components/NotificationDisplay';
 import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
 import { ClientForm } from './components/forms/ClientForm';
+import { PanelMessage } from './components/PanelMessage';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { DealFormValues } from './components/forms/DealForm';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import { Modal } from './components/Modal';
+import { DealDetailsPanel } from './components/views/dealsView/DealDetailsPanel';
 import { formatErrorMessage } from './utils/formatErrorMessage';
 import { markTaskAsDeleted } from './utils/tasks';
 import {
@@ -213,6 +215,7 @@ const AppContent: React.FC = () => {
     users,
   } = dataState;
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [previewDealId, setPreviewDealId] = useState<string | null>(null);
   const {
     dealSearch,
     setDealSearch,
@@ -233,6 +236,20 @@ const AppContent: React.FC = () => {
     });
     return map;
   }, [deals]);
+  const clientsById = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients.forEach((client) => {
+      map.set(client.id, client);
+    });
+    return map;
+  }, [clients]);
+  const usersById = useMemo(() => {
+    const map = new Map<string, User>();
+    users.forEach((user) => {
+      map.set(user.id, user);
+    });
+    return map;
+  }, [users]);
   const getDealExecutorName = useCallback(
     (dealId: string | null) =>
       dealId ? dealsById.get(dealId)?.executorName ?? null : null,
@@ -291,6 +308,26 @@ const AppContent: React.FC = () => {
     },
     [dealsById, setError, setSelectedDealId, syncDealsByIds]
   );
+  const handleOpenDealPreview = useCallback(
+    (dealId: string) => {
+      setPreviewDealId(dealId);
+      handleSelectDeal(dealId);
+    },
+    [handleSelectDeal]
+  );
+  const handleCloseDealPreview = useCallback(() => {
+    setPreviewDealId(null);
+  }, []);
+  const previewDeal = previewDealId ? dealsById.get(previewDealId) ?? null : null;
+  const previewClient = previewDeal
+    ? clientsById.get(previewDeal.clientId) ?? null
+    : null;
+  const previewSellerUser = previewDeal
+    ? usersById.get(previewDeal.seller ?? '')
+    : undefined;
+  const previewExecutorUser = previewDeal
+    ? usersById.get(previewDeal.executor ?? '')
+    : undefined;
 
   const adjustPaymentsTotals = useCallback(
     <T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }>(
@@ -1880,6 +1917,7 @@ const AppContent: React.FC = () => {
         currentUser={currentUser}
         selectedDealId={selectedDealId}
         onSelectDeal={handleSelectDeal}
+        onDealPreview={handleOpenDealPreview}
         onCloseDeal={handleCloseDeal}
         onReopenDeal={handleReopenDeal}
         onUpdateDeal={handleUpdateDeal}
@@ -1928,6 +1966,66 @@ const AppContent: React.FC = () => {
         isLoadingMoreDeals={isLoadingMoreDeals}
       />
 
+      {previewDealId && (
+        <Modal
+          title={previewDeal?.title ? `Сделка: ${previewDeal.title}` : 'Сделка'}
+          onClose={handleCloseDealPreview}
+          size="xl"
+          zIndex={60}
+        >
+          <div className="max-h-[75vh] overflow-y-auto">
+            {previewDeal ? (
+              <DealDetailsPanel
+                deals={deals}
+                clients={clients}
+                onClientEdit={handleClientEditRequest}
+                policies={policies}
+                payments={payments}
+                financialRecords={financialRecords}
+                tasks={tasks}
+                users={users}
+                currentUser={currentUser}
+                sortedDeals={deals}
+                selectedDeal={previewDeal}
+                selectedClient={previewClient}
+                sellerUser={previewSellerUser}
+                executorUser={previewExecutorUser}
+                onSelectDeal={handleSelectDeal}
+                onCloseDeal={handleCloseDeal}
+                onReopenDeal={handleReopenDeal}
+                onUpdateDeal={handleUpdateDeal}
+                onPostponeDeal={handlePostponeDeal}
+                onMergeDeals={handleMergeDeals}
+                onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
+                onRequestEditQuote={handleRequestEditQuote}
+                onRequestAddPolicy={handleRequestAddPolicy}
+                onRequestEditPolicy={handleRequestEditPolicy}
+                onRequestAddClient={() => openClientModal('deal')}
+                onDeleteQuote={handleDeleteQuote}
+                onDeletePolicy={handleDeletePolicy}
+                onPolicyDraftReady={handlePolicyDraftReady}
+                onAddPayment={handleAddPayment}
+                onUpdatePayment={handleUpdatePayment}
+                onAddFinancialRecord={handleAddFinancialRecord}
+                onUpdateFinancialRecord={handleUpdateFinancialRecord}
+                onDeleteFinancialRecord={handleDeleteFinancialRecord}
+                onDriveFolderCreated={handleDriveFolderCreated}
+                onFetchChatMessages={handleFetchChatMessages}
+                onSendChatMessage={handleSendChatMessage}
+                onDeleteChatMessage={handleDeleteChatMessage}
+                onFetchDealHistory={fetchDealHistory}
+                onCreateTask={handleCreateTask}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onDeleteDeal={handleDeleteDeal}
+                onRestoreDeal={handleRestoreDeal}
+              />
+            ) : (
+              <PanelMessage>Загрузка сделки...</PanelMessage>
+            )}
+          </div>
+        </Modal>
+      )}
 
       <AppModals
         modal={modal}

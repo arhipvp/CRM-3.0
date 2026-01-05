@@ -35,6 +35,7 @@ interface PoliciesViewProps {
   payments: Payment[];
   clients?: Client[];
   onDealSelect?: (dealId: string) => void;
+  onDealPreview?: (dealId: string) => void;
   onClientEdit?: (client: Client) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
@@ -47,6 +48,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   payments,
   clients,
   onDealSelect,
+  onDealPreview,
   onClientEdit,
   onRequestEditPolicy,
   onAddFinancialRecord,
@@ -177,6 +179,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   } = useFinancialRecordModal(allFinancialRecords);
 
   const handleOpenDeal = (dealId: string) => {
+    if (onDealPreview) {
+      onDealPreview(dealId);
+      return;
+    }
     onDealSelect?.(dealId);
     navigate('/deals');
   };

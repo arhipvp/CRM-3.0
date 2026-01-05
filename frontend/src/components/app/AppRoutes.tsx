@@ -40,6 +40,7 @@ export interface AppRoutesProps {
   currentUser: User | null;
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
+  onDealPreview?: (dealId: string) => void;
   onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -125,6 +126,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   currentUser,
   selectedDealId,
   onSelectDeal,
+  onDealPreview,
   onCloseDeal,
   onReopenDeal,
   onUpdateDeal,
@@ -252,6 +254,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           clients={clients}
           payments={payments}
           onDealSelect={onSelectDeal}
+          onDealPreview={onDealPreview}
           onClientEdit={onClientEdit}
           onRequestEditPolicy={onRequestEditPolicy}
           onAddFinancialRecord={onAddFinancialRecord}
@@ -268,6 +271,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           policies={policies}
           statements={statements}
           onDealSelect={onSelectDeal}
+          onDealPreview={onDealPreview}
           onRequestEditPolicy={onRequestEditPolicy}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
           onCreateStatement={onCreateFinanceStatement}
@@ -282,7 +286,12 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     <Route
       path="/tasks"
       element={
-        <TasksView tasks={tasks} currentUser={currentUser} onDealSelect={onSelectDeal} />
+        <TasksView
+          tasks={tasks}
+          currentUser={currentUser}
+          onDealSelect={onSelectDeal}
+          onDealPreview={onDealPreview}
+        />
       }
     />
     <Route

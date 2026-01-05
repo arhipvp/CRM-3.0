@@ -48,9 +48,15 @@ interface TasksViewProps {
   tasks: Task[];
   currentUser: User | null;
   onDealSelect?: (dealId: string) => void;
+  onDealPreview?: (dealId: string) => void;
 }
 
-export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDealSelect }) => {
+export const TasksView: React.FC<TasksViewProps> = ({
+  tasks,
+  currentUser,
+  onDealSelect,
+  onDealPreview,
+}) => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({});
 
@@ -59,10 +65,14 @@ export const TasksView: React.FC<TasksViewProps> = ({ tasks, currentUser, onDeal
       if (!dealId) {
         return;
       }
+      if (onDealPreview) {
+        onDealPreview(dealId);
+        return;
+      }
       onDealSelect?.(dealId);
       navigate('/deals');
     },
-    [navigate, onDealSelect]
+    [navigate, onDealPreview, onDealSelect]
   );
 
   const filteredTasks = useMemo(() => {
