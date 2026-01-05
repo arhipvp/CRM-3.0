@@ -1,4 +1,6 @@
 # -*- coding: cp866 -*-
+from decimal import Decimal
+
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
@@ -50,7 +52,7 @@ class PolicyFilterTests(AuthenticatedAPITestCase):
         )
         FinancialRecord.objects.create(
             payment=paid_payment,
-            amount="50.00",
+            amount=Decimal("50.00"),
             date="2024-01-06",
         )
 
@@ -62,7 +64,7 @@ class PolicyFilterTests(AuthenticatedAPITestCase):
         )
         FinancialRecord.objects.create(
             payment=record_payment,
-            amount="200.00",
+            amount=Decimal("200.00"),
             date=None,
         )
 
