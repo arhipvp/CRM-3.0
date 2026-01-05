@@ -45,3 +45,9 @@ export async function createTelegramLink(): Promise<TelegramLinkResponse> {
     method: 'POST',
   });
 }
+
+export async function unlinkTelegram(): Promise<{ linked: boolean }> {
+  return request<{ linked: boolean }>('/notifications/telegram-unlink/', {
+    method: 'POST',
+  });
+}

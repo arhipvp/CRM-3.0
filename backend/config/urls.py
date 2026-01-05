@@ -29,7 +29,11 @@ from apps.documents.views import (
     KnowledgeSourcesView,
 )
 from apps.finances.views import FinanceSummaryView
-from apps.notifications.views import NotificationSettingsView, TelegramLinkView
+from apps.notifications.views import (
+    NotificationSettingsView,
+    TelegramLinkView,
+    TelegramUnlinkView,
+)
 from apps.users.views import (
     change_password_view,
     current_user_view,
@@ -59,6 +63,11 @@ urlpatterns = [
         "api/v1/notifications/telegram-link/",
         TelegramLinkView.as_view(),
         name="telegram-link",
+    ),
+    path(
+        "api/v1/notifications/telegram-unlink/",
+        TelegramUnlinkView.as_view(),
+        name="telegram-unlink",
     ),
     path(
         "api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"

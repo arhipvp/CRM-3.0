@@ -83,3 +83,23 @@ class TelegramLinkView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class TelegramUnlinkView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        profile = get_or_create_profile(request.user)
+        profile.chat_id = None
+        profile.linked_at = None
+        profile.link_code = ""
+        profile.link_code_expires_at = None
+        profile.save(
+            update_fields=[
+                "chat_id",
+                "linked_at",
+                "link_code",
+                "link_code_expires_at",
+            ]
+        )
+        return Response({"linked": False}, status=status.HTTP_200_OK)

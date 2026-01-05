@@ -44,6 +44,28 @@ def generate_link_code(user) -> TelegramProfile:
     return profile
 
 
+def _build_deal_link(deal_id: str | int | None) -> str:
+    if not deal_id:
+        return ""
+    base_url = getattr(settings, "CRM_PUBLIC_URL", "").strip().rstrip("/")
+    if not base_url:
+        return ""
+    return f"{base_url}/deals?dealId={deal_id}"
+
+
+def _append_link(text: str, deal_id: str | int | None) -> str:
+    link = _build_deal_link(deal_id)
+    if not link:
+        return text
+    return f"{text}\n{link}"
+
+
+def _format_date(value) -> str:
+    if not value:
+        return ""
+    return value.strftime("%d.%m.%Y")
+
+
 def send_notification(
     *,
     user,
@@ -105,7 +127,9 @@ def notify_task_created(task) -> None:
         return
     deal = getattr(task, "deal", None)
     deal_part = f" (сделка: {deal.title})" if deal else ""
-    text = f"Новая задача: {task.title}{deal_part}"
+    text = _append_link(
+        f"Новая задача: {task.title}{deal_part}", getattr(deal, "id", None)
+    )
     send_notification(
         user=assignee,
         text=text,
@@ -118,10 +142,11 @@ def notify_task_created(task) -> None:
 
 
 def notify_deal_event(deal, message: str) -> None:
+    message_with_link = _append_link(message, getattr(deal, "id", None))
     for user in _get_deal_recipients(deal):
         send_notification(
             user=user,
-            text=message,
+            text=message_with_link,
             event_type="deal_event",
             object_type="deal",
             object_id=deal.id,
@@ -144,9 +169,10 @@ def send_expected_close_reminders() -> None:
             settings_obj = get_or_create_settings(user)
             if delta_days not in (settings_obj.remind_days or []):
                 continue
-            text = (
-                f"Напоминание: до даты 'Застраховать до' по сделке "
-                f"'{deal.title}' осталось {delta_days} дн."
+            formatted_date = _format_date(deal.expected_close)
+            text = _append_link(
+                f"Внимаение! Застраховать до {formatted_date}, сделка {deal.title}",
+                deal.id,
             )
             send_notification(
                 user=user,
@@ -178,9 +204,12 @@ def send_payment_due_reminders() -> None:
             settings_obj = get_or_create_settings(user)
             if delta_days not in (settings_obj.remind_days or []):
                 continue
-            text = (
-                f"Напоминание: до оплаты платежа {payment.amount} руб. "
-                f"по сделке '{payment.deal.title}' осталось {delta_days} дн."
+            text = _append_link(
+                (
+                    f"Напоминание: до оплаты платежа {payment.amount} руб. "
+                    f"по сделке '{payment.deal.title}' осталось {delta_days} дн."
+                ),
+                payment.deal.id,
             )
             send_notification(
                 user=user,

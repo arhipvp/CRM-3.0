@@ -4,6 +4,7 @@ import {
   changePassword,
   createTelegramLink,
   fetchNotificationSettings,
+  unlinkTelegram,
   updateNotificationSettings,
   type NotificationSettings,
   type TelegramLinkResponse,
@@ -127,6 +128,21 @@ export const SettingsView: React.FC = () => {
     }
   };
 
+  const handleUnlinkTelegram = async () => {
+    setTelegramError('');
+    setTelegramSaving(true);
+    try {
+      await unlinkTelegram();
+      setTelegramLinked(false);
+      setTelegramLinkedAt(null);
+      setTelegramLink(null);
+    } catch (err) {
+      setTelegramError(formatErrorMessage(err, 'Не удалось отвязать Telegram.'));
+    } finally {
+      setTelegramSaving(false);
+    }
+  };
+
   const handleGenerateTelegramCode = async () => {
     setTelegramError('');
     setTelegramSaving(true);
@@ -175,37 +191,50 @@ export const SettingsView: React.FC = () => {
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleGenerateTelegramCode}
-                disabled={telegramSaving}
-              >
-                Получить код привязки
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleGenerateTelegramCode}
+                  disabled={telegramSaving}
+                >
+                  Получить код привязки
+                </button>
+                {telegramLinked && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handleUnlinkTelegram}
+                    disabled={telegramSaving}
+                  >
+                    Отвязать
+                  </button>
+                )}
+              </div>
             </div>
 
             {telegramLink && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm space-y-2">
                 <p className="text-slate-700">
-                  Код для /start: <span className="font-semibold">{telegramLink.link_code}</span>
+                  Код для /start:{' '}
+                  <span className="font-semibold">{telegramLink.link_code}</span>
                 </p>
                 {telegramLink.deep_link ? (
                   <a
                     href={telegramLink.deep_link}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-indigo-600 hover:text-indigo-700 underline"
+                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-indigo-600 hover:text-indigo-700 hover:border-indigo-300"
                   >
-                    Открыть бота
+                    Открыть бота с кодом
                   </a>
                 ) : (
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500">
                     Откройте бота вручную и отправьте команду: /start {telegramLink.link_code}
                   </p>
                 )}
                 {telegramBotUsername && (
-                  <p className="text-xs text-slate-500 mt-1">Бот: @{telegramBotUsername}</p>
+                  <p className="text-xs text-slate-500">Бот: @{telegramBotUsername}</p>
                 )}
               </div>
             )}

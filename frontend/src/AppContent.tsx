@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
 import { useNotification } from './contexts/NotificationContext';
@@ -216,6 +217,7 @@ const AppContent: React.FC = () => {
   } = dataState;
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [previewDealId, setPreviewDealId] = useState<string | null>(null);
+  const location = useLocation();
   const {
     dealSearch,
     setDealSearch,
@@ -229,6 +231,14 @@ const AppContent: React.FC = () => {
     setDealOrdering,
     filters: dealFilters,
   } = useDealFilters();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const dealId = params.get('dealId');
+    if (dealId) {
+      setSelectedDealId(dealId);
+    }
+  }, [location.search, setSelectedDealId]);
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
     deals.forEach((deal) => {
