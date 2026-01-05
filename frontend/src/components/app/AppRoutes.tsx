@@ -20,6 +20,7 @@ import type {
   Task,
   User,
 } from '../../types';
+import type { FilterParams } from '../../api';
 import type { AddFinancialRecordFormValues } from '../../components/forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../../components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
@@ -32,6 +33,7 @@ export interface AppRoutesProps {
   onClientDelete: (client: Client) => void;
   onClientMerge: (client: Client) => void;
   policies: Policy[];
+  policiesList: Policy[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
   statements: Statement[];
@@ -88,6 +90,7 @@ export interface AppRoutesProps {
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onRefreshPolicies?: () => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
+  onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
   onMergeDeals: (targetDealId: string, sourceDealIds: string[], resultingClientId?: string | undefined) => Promise<void>;
@@ -110,6 +113,10 @@ export interface AppRoutesProps {
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   isLoadingMoreDeals: boolean;
+  onLoadMorePolicies: () => Promise<void>;
+  policiesHasMore: boolean;
+  isLoadingMorePolicies: boolean;
+  isPoliciesListLoading: boolean;
 }
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({
@@ -119,6 +126,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onClientDelete,
   onClientMerge,
   policies,
+  policiesList,
   payments,
   financialRecords,
   statements,
@@ -158,6 +166,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onUpdateTask,
   onRefreshPolicies,
   onDeleteTask,
+  onRefreshPoliciesList,
   onDeleteDeal,
   onRestoreDeal,
   onMergeDeals,
@@ -175,6 +184,10 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onLoadMoreDeals,
   dealsHasMore,
   isLoadingMoreDeals,
+  onLoadMorePolicies,
+  policiesHasMore,
+  isLoadingMorePolicies,
+  isPoliciesListLoading,
 }) => (
   <Routes>
     <Route
@@ -253,7 +266,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       path="/policies"
       element={
         <PoliciesView
-          policies={policies}
+          policies={policiesList}
           clients={clients}
           payments={payments}
           onDealSelect={onSelectDeal}
@@ -263,6 +276,11 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onAddFinancialRecord={onAddFinancialRecord}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
           onDeleteFinancialRecord={onDeleteFinancialRecord}
+          onRefreshPoliciesList={onRefreshPoliciesList}
+          onLoadMorePolicies={onLoadMorePolicies}
+          policiesHasMore={policiesHasMore}
+          isLoadingMorePolicies={isLoadingMorePolicies}
+          isPoliciesLoading={isPoliciesListLoading}
         />
       }
     />

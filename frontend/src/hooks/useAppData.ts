@@ -38,6 +38,7 @@ interface AppDataState {
 }
 
 const DEALS_PAGE_SIZE = 10;
+const POLICIES_PAGE_SIZE = 50;
 
 const INITIAL_APP_DATA_STATE: AppDataState = {
   clients: [],
@@ -76,6 +77,11 @@ export const useAppData = () => {
   const [error, setError] = useState<string | null>(null);
   const [policiesLoaded, setPoliciesLoaded] = useState(false);
   const [isPoliciesLoading, setIsPoliciesLoading] = useState(false);
+  const [policiesList, setPoliciesList] = useState<Policy[]>([]);
+  const [policiesListNextPage, setPoliciesListNextPage] = useState<number | null>(null);
+  const [isPoliciesListLoading, setIsPoliciesListLoading] = useState(false);
+  const [isLoadingMorePolicies, setIsLoadingMorePolicies] = useState(false);
+  const [policiesFilters, setPoliciesFilters] = useState<FilterParams>({ ordering: '-startDate' });
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
@@ -97,6 +103,14 @@ export const useAppData = () => {
   const resetPoliciesState = useCallback(() => {
     setPoliciesLoaded(false);
     setIsPoliciesLoading(false);
+  }, []);
+
+  const resetPoliciesListState = useCallback(() => {
+    setPoliciesList([]);
+    setPoliciesListNextPage(null);
+    setIsPoliciesListLoading(false);
+    setIsLoadingMorePolicies(false);
+    setPoliciesFilters({ ordering: '-startDate' });
   }, []);
 
   const updateAppData = useCallback((updater: (prev: AppDataState) => Partial<AppDataState>) => {
@@ -198,6 +212,52 @@ export const useAppData = () => {
     }
   }, [isPoliciesLoading, policiesLoaded, setAppData]);
 
+  const refreshPoliciesList = useCallback(async (filters?: FilterParams) => {
+    if (isPoliciesListLoading) {
+      return;
+    }
+    setIsPoliciesListLoading(true);
+    setError(null);
+    const resolvedFilters = { ordering: '-startDate', ...(filters ?? {}) };
+    try {
+      const payload = await fetchPoliciesWithPagination({
+        ...resolvedFilters,
+        page: 1,
+        page_size: POLICIES_PAGE_SIZE,
+      });
+      setPoliciesList(payload.results);
+      setPoliciesListNextPage(payload.next ? 2 : null);
+      setPoliciesFilters(resolvedFilters);
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+      throw err;
+    } finally {
+      setIsPoliciesListLoading(false);
+    }
+  }, [isPoliciesListLoading, setError]);
+
+  const loadMorePolicies = useCallback(async () => {
+    if (!policiesListNextPage || isLoadingMorePolicies) {
+      return;
+    }
+    setIsLoadingMorePolicies(true);
+    setError(null);
+    try {
+      const payload = await fetchPoliciesWithPagination({
+        ...policiesFilters,
+        page: policiesListNextPage,
+        page_size: POLICIES_PAGE_SIZE,
+      });
+      setPoliciesList((prev) => [...prev, ...payload.results]);
+      setPoliciesListNextPage(payload.next ? policiesListNextPage + 1 : null);
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+      throw err;
+    } finally {
+      setIsLoadingMorePolicies(false);
+    }
+  }, [isLoadingMorePolicies, policiesFilters, policiesListNextPage, setError]);
+
   const fetchAllPayments = useCallback(async () => {
     const PAGE_SIZE = 200;
     let page = 1;
@@ -257,6 +317,7 @@ export const useAppData = () => {
   }, [fetchAllPayments, refreshDeals, setAppData]);
 
   const dealsHasMore = Boolean(dealsNextPage);
+  const policiesHasMore = Boolean(policiesListNextPage);
 
   return {
     dataState,
@@ -264,11 +325,18 @@ export const useAppData = () => {
     refreshDeals,
     invalidateDealsCache,
     refreshPolicies,
+    refreshPoliciesList,
     updateAppData,
     setAppData,
     resetPoliciesState,
+    resetPoliciesListState,
     loadMoreDeals,
     dealsHasMore,
+    policiesList,
+    loadMorePolicies,
+    policiesHasMore,
+    isPoliciesListLoading,
+    isLoadingMorePolicies,
     isPoliciesLoading,
     isLoading,
     isSyncing,

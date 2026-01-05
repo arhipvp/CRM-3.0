@@ -193,11 +193,18 @@ const AppContent: React.FC = () => {
     refreshDeals,
     invalidateDealsCache,
     refreshPolicies,
+    refreshPoliciesList,
     updateAppData,
     setAppData,
     resetPoliciesState,
+    resetPoliciesListState,
     loadMoreDeals,
     dealsHasMore,
+    policiesList,
+    loadMorePolicies,
+    policiesHasMore,
+    isPoliciesListLoading,
+    isLoadingMorePolicies,
     isLoadingMoreDeals,
     isLoading,
     isSyncing,
@@ -245,15 +252,11 @@ const AppContent: React.FC = () => {
     if (!isAuthenticated) {
       return;
     }
-    const shouldLoadPolicies =
-      location.pathname.startsWith('/policies') ||
-      location.pathname.startsWith('/commissions');
-    if (!shouldLoadPolicies) {
-      return;
+    if (location.pathname.startsWith('/commissions')) {
+      refreshPolicies().catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+      });
     }
-    refreshPolicies().catch((err) => {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
-    });
   }, [isAuthenticated, location.pathname, refreshPolicies, setError]);
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
@@ -1885,6 +1888,7 @@ const AppContent: React.FC = () => {
     setCurrentUser(null);
     setIsAuthenticated(false);
     resetPoliciesState();
+    resetPoliciesListState();
     setAppData({
       clients: [],
       deals: [],
@@ -1896,7 +1900,7 @@ const AppContent: React.FC = () => {
         tasks: [],
         users: [],
       });
-  }, [resetPoliciesState, setAppData]);
+  }, [resetPoliciesListState, resetPoliciesState, setAppData]);
 
   if (authLoading || isLoading) {
     return (
@@ -1936,6 +1940,7 @@ const AppContent: React.FC = () => {
         onClientDelete={handleClientDeleteRequest}
         onClientMerge={handleClientMergeRequest}
         policies={policies}
+        policiesList={policiesList}
         payments={payments}
         financialRecords={financialRecords}
         statements={statements}
@@ -1992,6 +1997,11 @@ const AppContent: React.FC = () => {
         onLoadMoreDeals={loadMoreDeals}
         dealsHasMore={dealsHasMore}
         isLoadingMoreDeals={isLoadingMoreDeals}
+        onRefreshPoliciesList={refreshPoliciesList}
+        onLoadMorePolicies={loadMorePolicies}
+        policiesHasMore={policiesHasMore}
+        isLoadingMorePolicies={isLoadingMorePolicies}
+        isPoliciesListLoading={isPoliciesListLoading}
       />
 
       {previewDealId && (

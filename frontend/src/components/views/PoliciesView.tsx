@@ -1,14 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Payment, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 import { DriveFilesModal } from '../DriveFilesModal';
-import {
-  getPolicySortValue,
-  policyHasUnpaidActivity,
-  PolicySortKey,
-} from './dealsView/helpers';
+import { policyHasUnpaidActivity } from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PolicyCard } from '../policies/PolicyCard';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
@@ -38,6 +34,11 @@ interface PoliciesViewProps {
   onDealPreview?: (dealId: string) => void;
   onClientEdit?: (client: Client) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
+  onLoadMorePolicies?: () => Promise<void>;
+  policiesHasMore?: boolean;
+  isLoadingMorePolicies?: boolean;
+  isPoliciesLoading?: boolean;
+  onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
   onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
@@ -51,13 +52,22 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onDealPreview,
   onClientEdit,
   onRequestEditPolicy,
+  onLoadMorePolicies,
+  policiesHasMore = false,
+  isLoadingMorePolicies = false,
+  isPoliciesLoading = false,
+  onRefreshPoliciesList,
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
 }) => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<FilterParams>({});
+  const [filters, setFilters] = useState<FilterParams>({ ordering: '-startDate' });
   const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
+  const serverFilters = useMemo(
+    () => ({ search: filters.search, ordering: filters.ordering }),
+    [filters.ordering, filters.search]
+  );
   const {
     paymentsExpanded,
     setPaymentsExpanded,
@@ -95,24 +105,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const filteredPolicies = useMemo(() => {
     let result = [...policies];
 
-    const search = (filters.search ?? '').toString().toLowerCase().trim();
-    if (search) {
-      result = result.filter((policy) => {
-        const haystack = [
-          policy.number,
-          policy.dealTitle,
-          policy.insuredClientName ?? policy.clientName,
-          policy.insuranceCompany,
-          policy.insuranceType,
-          policy.salesChannel,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(search);
-      });
-    }
-
     if (filters.status) {
       result = result.filter((policy) => policy.status === filters.status);
     }
@@ -124,21 +116,15 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       );
     }
 
-    const ordering = (filters.ordering as string) || '-startDate';
-    const direction = ordering.startsWith('-') ? -1 : 1;
-    const field = (ordering.replace(/^-/, '') as PolicySortKey) || 'startDate';
-
-    result.sort((a, b) => {
-      const aValue = getPolicySortValue(a, field);
-      const bValue = getPolicySortValue(b, field);
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return (aValue - bValue) * direction;
-      }
-      return aValue.toString().localeCompare(bValue.toString()) * direction;
-    });
-
     return result;
   }, [filters, policies, paymentsByPolicyMap, allFinancialRecords]);
+
+  useEffect(() => {
+    if (!onRefreshPoliciesList) {
+      return;
+    }
+    void onRefreshPoliciesList(serverFilters);
+  }, [onRefreshPoliciesList, serverFilters]);
 
   const customFilters = [
     ...(statusOptions.length
@@ -308,7 +294,22 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         </div>
       ) : (
         <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
-          Нет полисов для отображения
+          {isPoliciesLoading ? 'Загрузка полисов...' : 'Нет полисов для отображения'}
+        </div>
+      )}
+
+      {policiesHasMore && onLoadMorePolicies && (
+        <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              void onLoadMorePolicies();
+            }}
+            disabled={isLoadingMorePolicies}
+            className="btn btn-quiet btn-sm rounded-xl"
+          >
+            {isLoadingMorePolicies ? 'Загрузка...' : 'Показать ещё'}
+          </button>
         </div>
       )}
 
