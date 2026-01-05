@@ -44,5 +44,10 @@ else:
     print(f"Superuser {username} password reset")
 PY
 
+if [ "$#" -gt 0 ]; then
+  echo "Running custom command: $*"
+  exec "$@"
+fi
+
 echo "Starting Gunicorn..."
 exec gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 config.wsgi:application
