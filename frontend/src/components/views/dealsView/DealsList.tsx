@@ -272,7 +272,9 @@ export const DealsList: React.FC<DealsListProps> = ({
                   'border-l-4 border-transparent',
                   'hover:bg-slate-50/80 hover:border-sky-500',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                  isSelected ? 'bg-sky-50 border-sky-500 shadow-sm' : '',
+                  isSelected
+                    ? 'bg-sky-100/80 border-sky-600 shadow-sm ring-2 ring-sky-400/60 ring-inset'
+                    : '',
                   isDeleted ? 'opacity-60' : '',
                 ]
                   .filter(Boolean)
