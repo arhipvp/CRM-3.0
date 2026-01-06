@@ -20,9 +20,13 @@ const baseProps = {
   noteDraft: '',
   notesError: null,
   notesAction: null,
+  noteAttachments: [],
+  noteAttachmentsUploading: false,
   onSetFilter: vi.fn(),
   onSetDraft: vi.fn(),
   onAddNote: vi.fn(),
+  onAttachNoteFile: vi.fn(),
+  onRemoveNoteAttachment: vi.fn(),
   onArchiveNote: vi.fn(),
   onRestoreNote: vi.fn(),
 };

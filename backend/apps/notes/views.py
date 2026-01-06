@@ -1,8 +1,17 @@
+from apps.common.drive import (
+    DriveError,
+    DriveOperationError,
+    download_drive_file,
+    ensure_deal_folder,
+    ensure_trash_folder,
+    move_drive_file_to_folder,
+)
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -112,6 +121,39 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             user, instance
         )
 
+    def _move_attachments_to_trash(self, note: Note) -> None:
+        attachments = note.attachments or []
+        if not attachments:
+            return
+
+        deal = getattr(note, "deal", None)
+        if not deal:
+            return
+
+        folder_id = getattr(deal, "drive_folder_id", None)
+        if not folder_id:
+            folder_id = ensure_deal_folder(deal)
+        if not folder_id:
+            raise DriveOperationError("Google Drive папка для сделки не найдена.")
+
+        trash_folder_id = ensure_trash_folder(folder_id)
+        for item in attachments:
+            file_id = str(item.get("id") or "").strip()
+            if file_id:
+                move_drive_file_to_folder(file_id, trash_folder_id)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            self._move_attachments_to_trash(instance)
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
         queryset = self.get_base_queryset()
@@ -120,3 +162,37 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         note.restore()
         serializer = self.get_serializer(note)
         return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="attachments/(?P<file_id>[^/.]+)/download",
+    )
+    def download_attachment(self, request, pk=None, file_id=None):
+        queryset = self.get_base_queryset()
+        queryset = self._apply_access_control(queryset)
+        note = get_object_or_404(queryset, pk=pk)
+        attachments = note.attachments or []
+        attachment = next(
+            (item for item in attachments if str(item.get("id")) == str(file_id)),
+            None,
+        )
+        if not attachment:
+            return Response(
+                {"detail": "Файл не найден."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            content = download_drive_file(str(file_id))
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        content_type = attachment.get("mime_type") or "application/octet-stream"
+        response = HttpResponse(content, content_type=content_type)
+        filename = attachment.get("name") or "attachment"
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
+        return response

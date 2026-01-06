@@ -444,6 +444,9 @@ export const mapNote = (raw: Record<string, unknown>): Note => ({
   dealTitle: toOptionalString(raw.deal_title ?? raw.dealTitle),
   body: toStringValue(raw.body ?? ''),
   authorName: toNullableString(raw.author_name ?? raw.authorName),
+  attachments: Array.isArray(raw.attachments)
+    ? (raw.attachments as Record<string, unknown>[]).map(mapDriveFile)
+    : [],
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
   deletedAt: toNullableString(raw.deleted_at),

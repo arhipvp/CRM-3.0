@@ -306,9 +306,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     noteDraft,
     notesError,
     notesAction,
+    noteAttachments,
+    noteAttachmentsUploading,
     setNoteDraft,
     setNotesFilter,
     addNote: handleAddNote,
+    attachNoteFile,
+    removeNoteAttachment,
     archiveNote: handleArchiveNote,
     restoreNote: handleRestoreNote,
   } = useDealNotes(selectedDeal?.id);
@@ -957,9 +961,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               noteDraft={noteDraft}
               notesError={notesError}
               notesAction={notesAction}
+              noteAttachments={noteAttachments}
+              noteAttachmentsUploading={noteAttachmentsUploading}
               onSetFilter={setNotesFilter}
               onSetDraft={setNoteDraft}
               onAddNote={handleAddNote}
+              onAttachNoteFile={attachNoteFile}
+              onRemoveNoteAttachment={removeNoteAttachment}
               onArchiveNote={handleArchiveNote}
               onRestoreNote={handleRestoreNote}
             />

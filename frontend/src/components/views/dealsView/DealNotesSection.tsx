@@ -1,6 +1,7 @@
-import type { Note } from '../../../types';
+import type { DriveFile, Note } from '../../../types';
 import { formatDate } from './helpers';
 import { ColoredLabel } from '../../common/ColoredLabel';
+import { FileUploadManager } from '../../FileUploadManager';
 
 interface DealNotesSectionProps {
   notes: Note[];
@@ -9,9 +10,13 @@ interface DealNotesSectionProps {
   noteDraft: string;
   notesError: string | null;
   notesAction: string | null;
+  noteAttachments: DriveFile[];
+  noteAttachmentsUploading: boolean;
   onSetFilter: (filter: 'active' | 'archived') => void;
   onSetDraft: (value: string) => void;
   onAddNote: () => void;
+  onAttachNoteFile: (file: File) => Promise<void>;
+  onRemoveNoteAttachment: (file: DriveFile) => void;
   onArchiveNote: (noteId: string) => void;
   onRestoreNote: (noteId: string) => void;
 }
@@ -28,9 +33,13 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
   noteDraft,
   notesError,
   notesAction,
+  noteAttachments,
+  noteAttachmentsUploading,
   onSetFilter,
   onSetDraft,
   onAddNote,
+  onAttachNoteFile,
+  onRemoveNoteAttachment,
   onArchiveNote,
   onRestoreNote,
 }) => {
@@ -42,6 +51,11 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
 
     return <div className={className}>{message}</div>;
   };
+
+  const buildAttachmentUrl = (noteId: string, fileId: string) =>
+    `/api/v1/notes/${noteId}/attachments/${fileId}/download/`;
+
+  const isImageAttachment = (file: DriveFile) => file.mimeType?.startsWith('image/');
 
   return (
     <section className="app-panel p-6 shadow-none space-y-6">
@@ -77,12 +91,43 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
             placeholder="Заметка к сделке"
             className="field-textarea"
           />
+          <div className="mt-4">
+            <FileUploadManager
+              onUpload={onAttachNoteFile}
+              disabled={notesAction === 'create' || noteAttachmentsUploading}
+            />
+          </div>
+          {noteAttachments.length > 0 && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Вложения: {noteAttachments.length}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {noteAttachments.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs"
+                  >
+                    <span className="max-w-[180px] truncate text-slate-700">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveNoteAttachment(file)}
+                      className="text-slate-400 transition hover:text-slate-600"
+                      aria-label={`Удалить ${file.name}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-slate-500">Все заметки видны всем участникам</p>
             <button
               type="button"
               onClick={onAddNote}
-              disabled={notesAction === 'create'}
+              disabled={notesAction === 'create' || noteAttachmentsUploading}
               className="btn btn-primary btn-sm rounded-xl"
             >
               {notesAction === 'create' ? 'Добавляем...' : 'Добавить заметку'}
@@ -118,6 +163,52 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
               <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
                 {note.body || '—'}
               </p>
+              {note.attachments && note.attachments.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                    Вложения
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {note.attachments.map((file) => {
+                      const previewUrl = buildAttachmentUrl(note.id, file.id);
+                      const href = file.webViewLink || previewUrl;
+                      if (isImageAttachment(file)) {
+                        return (
+                          <a
+                            key={file.id}
+                            href={href ?? previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group block overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm"
+                          >
+                            <img
+                              src={previewUrl}
+                              alt={file.name}
+                              className="h-24 w-full object-cover transition duration-200 group-hover:scale-[1.02]"
+                              loading="lazy"
+                            />
+                            <div className="px-2 py-1 text-[10px] text-slate-600 truncate">
+                              {file.name}
+                            </div>
+                          </a>
+                        );
+                      }
+                      return (
+                        <a
+                          key={file.id}
+                          href={href ?? previewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-2 py-2 text-xs text-slate-700 shadow-sm transition hover:bg-amber-100"
+                        >
+                          <span className="text-base">📎</span>
+                          <span className="truncate">{file.name}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="mt-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 <span className="text-[11px] font-normal text-slate-500">
                   {formatDate(note.createdAt)}

@@ -25,6 +25,11 @@ class Note(SoftDeleteModel):
         related_name="notes",
         help_text="Автор",
     )
+    attachments = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Drive attachments metadata",
+    )
 
     class Meta:
         ordering = ["-created_at"]

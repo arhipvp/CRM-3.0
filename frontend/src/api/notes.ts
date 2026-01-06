@@ -13,13 +13,27 @@ export async function fetchDealNotes(dealId: string, archived?: boolean): Promis
   return unwrapList<Record<string, unknown>>(payload).map(mapNote);
 }
 
-export async function createNote(dealId: string, body: string): Promise<Note> {
+export async function createNote(
+  dealId: string,
+  body: string,
+  attachments?: Note['attachments']
+): Promise<Note> {
+  const payloadBody: Record<string, unknown> = {
+    deal: dealId,
+    body,
+  };
+  if (attachments && attachments.length > 0) {
+    payloadBody.attachments = attachments.map((file) => ({
+      id: file.id,
+      name: file.name,
+      mime_type: file.mimeType,
+      size: file.size,
+      web_view_link: file.webViewLink,
+    }));
+  }
   const payload = await request<Record<string, unknown>>('/notes/', {
     method: 'POST',
-    body: JSON.stringify({
-      deal: dealId,
-      body,
-    }),
+    body: JSON.stringify(payloadBody),
   });
   return mapNote(payload);
 }

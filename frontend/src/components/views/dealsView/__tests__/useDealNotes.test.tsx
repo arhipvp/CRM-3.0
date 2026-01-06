@@ -10,6 +10,8 @@ vi.mock('../../../../api', () => ({
   createNote: vi.fn(),
   archiveNote: vi.fn(),
   restoreNote: vi.fn(),
+  uploadDealDriveFile: vi.fn(),
+  trashDealDriveFiles: vi.fn(),
 }));
 
 import { fetchDealNotes, createNote } from '../../../../api';
@@ -111,7 +113,7 @@ describe('useDealNotes', () => {
       await resultRef.current?.addNote();
     });
 
-    expect(createNoteMock).toHaveBeenCalledWith('deal-1', 'New note');
+    expect(createNoteMock).toHaveBeenCalledWith('deal-1', 'New note', []);
     await waitFor(() => expect(fetchDealNotes).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(resultRef.current?.noteDraft).toBe(''));
   });

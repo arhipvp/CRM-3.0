@@ -326,6 +326,7 @@ export interface Note {
   dealTitle?: string;
   body: string;
   authorName?: string | null;
+  attachments?: DriveFile[];
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

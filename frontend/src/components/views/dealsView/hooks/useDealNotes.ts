@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { Note } from '../../../../types';
+import type { DriveFile, Note } from '../../../../types';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import {
   fetchDealNotes,
   createNote,
   archiveNote as archiveNoteApi,
   restoreNote as restoreNoteApi,
+  uploadDealDriveFile,
+  trashDealDriveFiles,
 } from '../../../../api';
 
 type NotesFilter = 'active' | 'archived';
@@ -18,6 +20,8 @@ export const useDealNotes = (dealId?: string | null) => {
   const [noteDraft, setNoteDraft] = useState('');
   const [notesError, setNotesError] = useState<string | null>(null);
   const [notesAction, setNotesAction] = useState<string | null>(null);
+  const [noteAttachments, setNoteAttachments] = useState<DriveFile[]>([]);
+  const [noteAttachmentsUploading, setNoteAttachmentsUploading] = useState(false);
   const latestDealIdRef = useRef<string | null | undefined>(dealId);
 
   useEffect(() => {
@@ -26,6 +30,8 @@ export const useDealNotes = (dealId?: string | null) => {
       setNotes([]);
       setNotesLoading(false);
     }
+    setNoteAttachments([]);
+    setNoteAttachmentsUploading(false);
   }, [dealId]);
 
   const loadNotes = useCallback(
@@ -81,11 +87,12 @@ export const useDealNotes = (dealId?: string | null) => {
     setNotesAction('create');
     setNotesError(null);
     try {
-      await createNote(currentDealId, trimmed);
+      await createNote(currentDealId, trimmed, noteAttachments);
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
       setNoteDraft('');
+      setNoteAttachments([]);
       await loadNotes(notesFilter);
     } catch (err) {
       if (latestDealIdRef.current !== currentDealId) {
@@ -98,7 +105,52 @@ export const useDealNotes = (dealId?: string | null) => {
         setNotesAction(null);
       }
     }
-  }, [dealId, noteDraft, loadNotes, notesFilter]);
+  }, [dealId, noteDraft, noteAttachments, loadNotes, notesFilter]);
+
+  const attachNoteFile = useCallback(
+    async (file: File) => {
+      const currentDealId = dealId;
+      if (!currentDealId) {
+        return;
+      }
+      setNotesError(null);
+      setNoteAttachmentsUploading(true);
+      try {
+        const uploaded = await uploadDealDriveFile(currentDealId, file);
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        setNoteAttachments((prev) => [...prev, uploaded]);
+      } catch (err) {
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        console.error('Ошибка загрузки файла заметки:', err);
+        setNotesError(formatErrorMessage(err, 'Не удалось загрузить файл заметки'));
+      } finally {
+        if (latestDealIdRef.current === currentDealId) {
+          setNoteAttachmentsUploading(false);
+        }
+      }
+    },
+    [dealId]
+  );
+
+  const removeNoteAttachment = useCallback(
+    async (file: DriveFile) => {
+      const currentDealId = dealId;
+      if (!currentDealId) {
+        return;
+      }
+      setNoteAttachments((prev) => prev.filter((item) => item.id !== file.id));
+      try {
+        await trashDealDriveFiles(currentDealId, [file.id]);
+      } catch (err) {
+        console.error('Ошибка удаления файла заметки:', err);
+      }
+    },
+    [dealId]
+  );
 
   const archiveNote = useCallback(
     async (noteId: string) => {
@@ -167,9 +219,13 @@ export const useDealNotes = (dealId?: string | null) => {
     noteDraft,
     notesError,
     notesAction,
+    noteAttachments,
+    noteAttachmentsUploading,
     setNoteDraft,
     setNotesFilter,
     addNote,
+    attachNoteFile,
+    removeNoteAttachment,
     archiveNote,
     restoreNote,
   };
