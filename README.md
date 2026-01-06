@@ -32,7 +32,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - **nginx** используется для отдачи статических файлов, кэширования и проксирования API к backend.
 - **Автобэкап**: скрипт `scripts/backup_project_to_drive.py` и systemd-юниты `systemd/crm3-drive-backup.service`, `systemd/crm3-drive-backup.timer` (требуют настроенные env-переменные для Google Drive и доступа к БД; лог по умолчанию пишется в `/root/crm3/cron-backup.log` согласно юниту).
 - **Переменные окружения**: общий `.env`, `backend/.env` и `frontend/.env` (можно подключить `.env.production`, `.env.vps.secure`). Не коммитить реальные секреты.
-- **Telegram-бот**: запускается отдельным процессом (`python manage.py run_telegram_bot`) и в `docker-compose.prod.yml` выделен сервис `telegram_bot`. Требует `TELEGRAM_BOT_TOKEN`, опционально `TELEGRAM_BOT_USERNAME` для deep-link и `CRM_PUBLIC_URL` для кликабельных ссылок на сделки.
+- **Telegram-бот**: запускается отдельным процессом (`python manage.py run_telegram_bot`) и в `docker-compose.prod.yml` выделен сервис `telegram_bot`. Требует `TELEGRAM_BOT_TOKEN`, опционально `TELEGRAM_BOT_USERNAME` для deep-link и `CRM_PUBLIC_URL` для кликабельных ссылок на сделки; для фронтенда добавьте `VITE_TELEGRAM_BOT_USERNAME`, чтобы в настройках показывалась кликабельная ссылка на бота.
 
 ### Приложения Django
 - `clients`: догоняет данные о клиентах (контакты, email, документы), хранит `Client` и связи с менеджерами.

@@ -111,6 +111,7 @@ services:
     container_name: crm3-frontend
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
+      VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME:-${TELEGRAM_BOT_USERNAME:-}}
     ports:
       - "3000:5173"
     depends_on:

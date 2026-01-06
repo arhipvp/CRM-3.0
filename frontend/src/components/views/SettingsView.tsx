@@ -23,11 +23,15 @@ export const SettingsView: React.FC = () => {
   );
   const [telegramLinked, setTelegramLinked] = useState(false);
   const [telegramLinkedAt, setTelegramLinkedAt] = useState<string | null>(null);
-  const [telegramBotUsername, setTelegramBotUsername] = useState('');
   const [telegramLink, setTelegramLink] = useState<TelegramLinkResponse | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(true);
   const [telegramSaving, setTelegramSaving] = useState(false);
   const [telegramError, setTelegramError] = useState('');
+  const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? '').trim();
+  const normalizedTelegramBotUsername = telegramBotUsername.replace(/^@/, '');
+  const telegramBotLink = normalizedTelegramBotUsername
+    ? `https://t.me/${normalizedTelegramBotUsername}`
+    : '';
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -71,7 +75,6 @@ export const SettingsView: React.FC = () => {
         setTelegramSettings(response.settings);
         setTelegramLinked(response.telegram?.linked ?? false);
         setTelegramLinkedAt(response.telegram?.linked_at ?? null);
-        setTelegramBotUsername(response.bot_username ?? '');
       } catch (err) {
         if (mounted) {
           setTelegramError(
@@ -94,15 +97,11 @@ export const SettingsView: React.FC = () => {
   const applyTelegramSettings = (response: {
     settings: NotificationSettings;
     telegram?: { linked?: boolean; linked_at?: string | null };
-    bot_username?: string;
   }) => {
     setTelegramSettings(response.settings);
     if (response.telegram) {
       setTelegramLinked(response.telegram.linked ?? false);
       setTelegramLinkedAt(response.telegram.linked_at ?? null);
-    }
-    if (response.bot_username !== undefined) {
-      setTelegramBotUsername(response.bot_username ?? '');
     }
   };
 
@@ -190,6 +189,19 @@ export const SettingsView: React.FC = () => {
                     Привязан: {new Date(telegramLinkedAt).toLocaleString('ru-RU')}
                   </p>
                 )}
+                {telegramBotLink && (
+                  <p className="text-xs text-slate-500">
+                    Бот:{' '}
+                    <a
+                      href={telegramBotLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      @{normalizedTelegramBotUsername}
+                    </a>
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -232,9 +244,6 @@ export const SettingsView: React.FC = () => {
                   <p className="text-xs text-slate-500">
                     Откройте бота вручную и отправьте команду: /start {telegramLink.link_code}
                   </p>
-                )}
-                {telegramBotUsername && (
-                  <p className="text-xs text-slate-500">Бот: @{telegramBotUsername}</p>
                 )}
               </div>
             )}
