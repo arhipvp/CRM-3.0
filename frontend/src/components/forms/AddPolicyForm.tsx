@@ -17,6 +17,11 @@ import {
 import { FinancialRecordInputs } from './addPolicy/components/FinancialRecordInputs';
 import { PaymentSection } from './addPolicy/components/PaymentSection';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import {
+  buildCommissionIncomeNote,
+  resolveSalesChannelName,
+  shouldAutofillCommissionNote,
+} from '../../utils/financialRecordNotes';
 
 interface AddPolicyFormProps {
   onSubmit: (values: PolicyFormValues) => Promise<void>;
@@ -61,10 +66,20 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [counterparty, setCounterparty] = useState('');
   const [counterpartyTouched, setCounterpartyTouched] = useState(false);
   const [salesChannelId, setSalesChannelId] = useState('');
+  const salesChannelName = useMemo(
+    () => resolveSalesChannelName(salesChannels, salesChannelId),
+    [salesChannels, salesChannelId]
+  );
+  const commissionNote = useMemo(
+    () => buildCommissionIncomeNote(salesChannelName),
+    [salesChannelName]
+  );
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [insuredClientId, setInsuredClientId] = useState('');
-  const [payments, setPayments] = useState<PaymentDraft[]>(() => [createPaymentWithDefaultIncome()]);
+  const [payments, setPayments] = useState<PaymentDraft[]>(() => [
+    createPaymentWithDefaultIncome(buildCommissionIncomeNote()),
+  ]);
   const [insuredQuery, setInsuredQuery] = useState('');
   const [showInsuredSuggestions, setShowInsuredSuggestions] = useState(false);
   const filteredInsuredClients = useMemo(() => {
@@ -76,6 +91,19 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       : clients;
     return candidates.slice(0, MAX_INSURED_SUGGESTIONS);
   }, [clients, insuredQuery]);
+
+  useEffect(() => {
+    setPayments((prev) =>
+      prev.map((payment) => ({
+        ...payment,
+        incomes: payment.incomes.map((income) =>
+          shouldAutofillCommissionNote(income.note)
+            ? { ...income, note: commissionNote }
+            : income
+        ),
+      }))
+    );
+  }, [commissionNote]);
 
   const resolveInsuredFromQuery = () => {
     const query = insuredQuery.trim().toLowerCase();
@@ -146,7 +174,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setStartDate('');
       setEndDate('');
       setHasManualEndDate(false);
-      setPayments([createPaymentWithDefaultIncome()]);
+      setPayments([createPaymentWithDefaultIncome(buildCommissionIncomeNote())]);
       setCurrentStep(1);
       setInsuredClientId('');
       setInsuredQuery('');
@@ -349,7 +377,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   };
 
   const handleAddPayment = () => {
-    setPayments((prev) => [...prev, createPaymentWithDefaultIncome()]);
+    setPayments((prev) => [...prev, createPaymentWithDefaultIncome(commissionNote)]);
   };
 
   const handleRemovePayment = (index: number) => {
@@ -421,7 +449,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               ...payment,
               [type]: [
                 ...payment[type],
-                type === 'expenses' ? createEmptyRecord('1') : createEmptyRecord(),
+                  type === 'expenses'
+                    ? createEmptyRecord('1')
+                    : createEmptyRecord('0', commissionNote),
               ],
             }
           : payment

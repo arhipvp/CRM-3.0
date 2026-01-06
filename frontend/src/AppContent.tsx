@@ -82,6 +82,11 @@ import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
 import { markQuoteAsDeleted } from './utils/quotes';
 import { parseNumericAmount } from './utils/parseNumericAmount';
 import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
+import {
+  buildCommissionIncomeNote,
+  resolveSalesChannelName,
+  shouldAutofillCommissionNote,
+} from './utils/financialRecordNotes';
 const resolveRoleNames = (userData: CurrentUserResponse): string[] => {
   const parsed = userData.user_roles
     ?.map((ur) => ur.role?.name)
@@ -408,7 +413,16 @@ const AppContent: React.FC = () => {
           policyObj.salesChannel ??
           policyObj.salesChannelName
       );
-      const matchedChannel = matchSalesChannel(salesChannels, recognizedSalesChannel);
+        const matchedChannel = matchSalesChannel(salesChannels, recognizedSalesChannel);
+        const commissionNote = buildCommissionIncomeNote(matchedChannel?.name);
+        const paymentsWithNotes = draft.payments.map((payment) => ({
+          ...payment,
+          incomes: payment.incomes.map((income) =>
+            shouldAutofillCommissionNote(income.note)
+              ? { ...income, note: commissionNote }
+              : income
+          ),
+        }));
 
       const recognizedInsuredName = normalizeStringValue(
         parsed.insured_client_name ??
@@ -426,14 +440,15 @@ const AppContent: React.FC = () => {
             )
           : undefined;
 
-      const values = {
-        ...draft,
-        salesChannelId: matchedChannel?.id,
-        insuredClientId: matchedInsuredClient?.id ?? undefined,
-        insuredClientName:
-          matchedInsuredClient?.name ??
-          (recognizedInsuredName || undefined),
-      };
+        const values = {
+          ...draft,
+          salesChannelId: matchedChannel?.id,
+          payments: paymentsWithNotes,
+          insuredClientId: matchedInsuredClient?.id ?? undefined,
+          insuredClientName:
+            matchedInsuredClient?.name ??
+            (recognizedInsuredName || undefined),
+        };
       const recognizedInsuranceType = normalizeStringValue(
         policyObj.insurance_type ??
           policyObj.insuranceType ??
@@ -1095,13 +1110,15 @@ const AppContent: React.FC = () => {
         const ensureExpenses = hasCounterparty || hasExecutor;
         const expenseTargetName =
           counterparty?.trim() || executorName || 'контрагент';
-        const expenseNote = `Расход контрагенту ${expenseTargetName}`;
-        const paymentsToProcess = paymentDrafts.map((payment) =>
-          normalizePaymentDraft(payment, ensureExpenses, {
-            autoIncomeNote: 'Комиссионное вознаграждение',
-            autoExpenseNote: ensureExpenses ? expenseNote : undefined,
-          })
-        );
+          const expenseNote = `Расход контрагенту ${expenseTargetName}`;
+          const salesChannelName = resolveSalesChannelName(salesChannels, salesChannelId);
+          const autoIncomeNote = buildCommissionIncomeNote(salesChannelName);
+          const paymentsToProcess = paymentDrafts.map((payment) =>
+            normalizePaymentDraft(payment, ensureExpenses, {
+              autoIncomeNote,
+              autoExpenseNote: ensureExpenses ? expenseNote : undefined,
+            })
+          );
 
         let dealPaymentsTotalDelta = 0;
         let dealPaymentsPaidDelta = 0;

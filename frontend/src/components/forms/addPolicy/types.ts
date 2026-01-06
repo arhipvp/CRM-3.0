@@ -32,12 +32,12 @@ export interface PolicyFormValues {
   insuredClientName?: string;
 }
 
-export const createEmptyRecord = (amount = '0'): FinancialRecordDraft => ({
+export const createEmptyRecord = (amount = '0', note = ''): FinancialRecordDraft => ({
   amount,
   date: '',
   description: '',
   source: '',
-  note: '',
+  note,
 });
 
 export const createEmptyPayment = (): PaymentDraft => ({
@@ -49,7 +49,7 @@ export const createEmptyPayment = (): PaymentDraft => ({
   expenses: [],
 });
 
-export const createPaymentWithDefaultIncome = (): PaymentDraft => ({
+export const createPaymentWithDefaultIncome = (note?: string): PaymentDraft => ({
   ...createEmptyPayment(),
-  incomes: [createEmptyRecord()],
+  incomes: [createEmptyRecord('0', note ?? '')],
 });
