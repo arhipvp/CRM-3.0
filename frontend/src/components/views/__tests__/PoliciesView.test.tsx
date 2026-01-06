@@ -109,7 +109,7 @@ describe('PoliciesView', () => {
     expect(screen.queryByText('POL-TWO')).toBeNull();
   });
 
-  it('toggles expansion state via Раскрыть все / Скрыть все', () => {
+  it('renders payments expanded by default', () => {
     const policies = [buildPolicy({ id: 'policy-one', number: 'POL-ONE' })];
     const payments: Payment[] = [
       buildPayment({ id: 'payment-1', policyId: 'policy-one', actualDate: '' }),
@@ -125,14 +125,9 @@ describe('PoliciesView', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Платежи (1)' }));
     const paymentCard = screen.getByTestId('payment-card-payment-1');
     expect(paymentCard.dataset.expanded).toBe('false');
-
-    fireEvent.click(screen.getByText('Раскрыть все'));
-    expect(paymentCard.dataset.expanded).toBe('true');
-
-    fireEvent.click(screen.getByText('Скрыть все'));
-    expect(screen.queryByTestId('payment-card-payment-1')).toBeNull();
+    expect(screen.queryByText('Раскрыть все')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Платежи (1)' })).toBeNull();
   });
 });

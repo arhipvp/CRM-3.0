@@ -33,7 +33,7 @@ const renderRecordList = (
   }
 
   const recordClassName = compact
-    ? 'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs'
+    ? 'flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs'
     : 'flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm';
 
   return (
@@ -103,6 +103,13 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   const containerClassName = compact
     ? 'rounded-xl border border-slate-200 bg-white p-3'
     : 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm';
+  const headerClassName = compact
+    ? 'flex flex-wrap items-start justify-between gap-2'
+    : 'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between';
+  const metaClassName = compact
+    ? 'flex flex-wrap items-center gap-4 text-[9px] uppercase tracking-[0.3em] text-slate-500'
+    : 'flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.3em] text-slate-500';
+  const recordsLayoutClassName = compact ? 'grid gap-2 lg:grid-cols-2' : 'space-y-3';
 
   const renderSection = (
     title: string,
@@ -136,14 +143,14 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
 
   return (
     <div className={`${containerClassName} space-y-3`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className={headerClassName}>
         <div className="min-w-0 space-y-1">
           <p className={compact ? 'text-base font-semibold text-slate-900' : 'text-lg font-semibold text-slate-900'}>
             {formatCurrency(payment.amount)}
           </p>
           <p className="text-sm text-slate-500 truncate">{payment.note || payment.description || 'Без описания'}</p>
         </div>
-        <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.3em] text-slate-500">
+        <div className={metaClassName}>
           <div>
             <p className="leading-none text-[9px]">Оплатить до...</p>
             <p className="text-sm font-semibold text-slate-800">{formatDate(payment.scheduledDate)}</p>
@@ -163,7 +170,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           </button>
         )}
       </div>
-      <div className={compact ? 'space-y-2' : 'space-y-3'}>
+      <div className={recordsLayoutClassName}>
         {renderSection(RECORD_TITLES.income, incomes, 'income', () =>
           onRequestAddRecord(payment.id, 'income')
         )}

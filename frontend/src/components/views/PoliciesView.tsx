@@ -1,16 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Client, Payment, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { FilterParams } from '../../api';
-import { DriveFilesModal } from '../DriveFilesModal';
 import { getPolicyTransportSummary, policyHasUnpaidActivity } from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
-  TABLE_ACTIONS_CLASS_COL,
   TABLE_CELL_CLASS_MD,
   TABLE_ROW_CLASS,
   TABLE_ROW_CLASS_PLAIN,
@@ -19,9 +16,7 @@ import {
 import { PaymentCard } from '../policies/PaymentCard';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
-import { buildPolicyNavigationActions } from '../policies/policyCardActions';
 import { getPolicyExpiryBadge } from '../policies/policyIndicators';
-import { usePoliciesExpansionState } from '../../hooks/usePoliciesExpansionState';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -58,11 +53,6 @@ interface PoliciesViewProps {
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policies,
   payments,
-  clients,
-  onDealSelect,
-  onDealPreview,
-  onClientEdit,
-  onRequestEditPolicy,
   onLoadMorePolicies,
   policiesHasMore = false,
   isLoadingMorePolicies = false,
@@ -72,9 +62,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
 }) => {
-  const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
-  const [filesModalPolicy, setFilesModalPolicy] = useState<Policy | null>(null);
   const rawSearch = (filters.search ?? '').trim();
   const debouncedSearch = useDebouncedValue(rawSearch, 450);
   const isDebouncePending = Boolean(onRefreshPoliciesList) && rawSearch !== debouncedSearch;
@@ -86,13 +74,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     }),
     [debouncedSearch, filters.ordering, filters.unpaid]
   );
-  const {
-    paymentsExpanded,
-    setPaymentsExpanded,
-    recordsExpandedAll,
-    setRecordsExpandedAll,
-  } = usePoliciesExpansionState();
-
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();
     payments.forEach((payment) => {
@@ -160,30 +141,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     closeFinancialRecordModal,
   } = useFinancialRecordModal(allFinancialRecords);
 
-  const handleOpenDeal = (dealId: string) => {
-    if (onDealPreview) {
-      onDealPreview(dealId);
-      return;
-    }
-    onDealSelect?.(dealId);
-    navigate('/deals');
-  };
-
-  const handleOpenClient = (client: Client) => {
-    onClientEdit?.(client);
-    navigate('/clients');
-  };
-
-  const actionClassName = (variant?: 'secondary' | 'quiet' | 'danger') => {
-    if (variant === 'danger') {
-      return 'btn btn-danger btn-sm rounded-xl whitespace-nowrap';
-    }
-    if (variant === 'quiet') {
-      return 'btn btn-quiet btn-sm rounded-xl whitespace-nowrap';
-    }
-    return 'btn btn-secondary btn-sm rounded-xl whitespace-nowrap';
-  };
-
   return (
     <section aria-labelledby="policiesViewHeading" className="app-panel p-6 shadow-none space-y-4">
       <h1 id="policiesViewHeading" className="sr-only">
@@ -200,44 +157,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         {isDebouncePending && (
           <div className="text-xs text-slate-500">РџСЂРёРјРµРЅСЏСЋ С„РёР»СЊС‚СЂ...</div>
         )}
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm rounded-xl"
-            onClick={() =>
-              {
-                setPaymentsExpanded((prev) => {
-                  const next = { ...prev };
-                  filteredPolicies.forEach((policy) => {
-                    next[policy.id] = true;
-                  });
-                  return next;
-                });
-                setRecordsExpandedAll(true);
-              }
-            }
-          >
-            Раскрыть все
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm rounded-xl"
-            onClick={() =>
-              {
-                setPaymentsExpanded((prev) => {
-                  const next = { ...prev };
-                  filteredPolicies.forEach((policy) => {
-                    next[policy.id] = false;
-                  });
-                  return next;
-                });
-                setRecordsExpandedAll(false);
-              }
-            }
-          >
-            Скрыть все
-          </button>
-        </div>
+        <div className="flex flex-wrap gap-3" />
       </div>
 
       {filteredPolicies.length ? (
@@ -246,19 +166,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             <table className="deals-table w-full table-fixed border-collapse text-left text-sm" aria-label="Список полисов">
               <thead className={TABLE_THEAD_CLASS}>
                 <tr>
-                  <TableHeadCell padding="md" className="w-[16%]">Полис</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[14%]">Клиент</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[16%]">Компания</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[16%]">Тип / ТС</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[10%]">Канал</TableHeadCell>
-                  <TableHeadCell padding="md" align="right" className="w-[10%]">Сумма</TableHeadCell>
-                  <TableHeadCell padding="md" align="right" className="w-[8%]">Платежи</TableHeadCell>
-                  <TableHeadCell padding="md" align="right" className="w-[10%]">Действия</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[18%]">Полис</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[16%]">Клиент</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[18%]">Компания</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[18%]">Тип / ТС</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[12%]">Канал</TableHeadCell>
+                  <TableHeadCell padding="md" align="right" className="w-[18%]">Сумма</TableHeadCell>
                 </tr>
               </thead>
               <tbody className="bg-white">
                 {paymentsByPolicy.map(({ policy, payments }) => {
-                  const isPaymentsExpanded = paymentsExpanded[policy.id] ?? false;
                   const paymentsPanelId = `policy-${policy.id}-payments`;
                   const model = buildPolicyCardModel(policy, payments);
                   const hasUnpaidPayment = policyHasUnpaidActivity(
@@ -268,30 +185,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   );
                   const expiryBadge = getPolicyExpiryBadge(policy.endDate);
                   const transportSummary = policy.isVehicle ? getPolicyTransportSummary(policy) : '';
-                  const actions = [
-                    ...(onRequestEditPolicy
-                      ? [
-                          {
-                            key: 'edit' as const,
-                            label: POLICY_TEXT.actions.edit,
-                            onClick: () => onRequestEditPolicy(policy),
-                            variant: 'secondary' as const,
-                          },
-                        ]
-                      : []),
-                    {
-                      key: 'files' as const,
-                      label: POLICY_TEXT.actions.files,
-                      onClick: () => setFilesModalPolicy(policy),
-                      variant: 'quiet' as const,
-                    },
-                    ...buildPolicyNavigationActions({
-                      model,
-                      onOpenDeal: onDealSelect || onDealPreview ? handleOpenDeal : undefined,
-                      clients,
-                      onOpenClient: onClientEdit ? handleOpenClient : undefined,
-                    }),
-                  ];
 
                   return (
                     <React.Fragment key={policy.id}>
@@ -355,76 +248,32 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                         </td>
                         <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
-                          {payments.length ? (
-                            <div className="flex flex-col items-end gap-1">
-                              <span className="text-xs text-slate-500">{model.paymentsCountLabel}</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPaymentsExpanded((prev) => ({
-                                    ...prev,
-                                    [policy.id]: !prev[policy.id],
-                                  }))
-                                }
-                                aria-label={`${POLICY_TEXT.fields.payments} (${model.paymentsCount})`}
-                                aria-expanded={isPaymentsExpanded}
-                                aria-controls={paymentsPanelId}
-                                className="btn btn-quiet btn-sm rounded-xl"
-                              >
-                                {isPaymentsExpanded ? POLICY_TEXT.actions.hide : POLICY_TEXT.actions.show}
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">{POLICY_TEXT.messages.noPayments}</span>
-                          )}
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
-                          {actions.length ? (
-                            <div className={TABLE_ACTIONS_CLASS_COL}>
-                              {actions.map((action) => (
-                                <button
-                                  key={action.key}
-                                  type="button"
-                                  className={actionClassName(action.variant)}
-                                  onClick={action.onClick}
-                                  aria-label={action.ariaLabel ?? action.label}
-                                  title={action.title ?? action.label}
-                                >
-                                  {action.label}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs uppercase tracking-wide text-slate-400">—</span>
-                          )}
+                          <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                         </td>
                       </tr>
-                        {isPaymentsExpanded && (
-                          <tr className={TABLE_ROW_CLASS_PLAIN}>
-                            <td
-                              colSpan={8}
-                              className="border border-slate-200 bg-slate-50/70 px-4 py-3"
-                            >
-                              <div id={paymentsPanelId} className="space-y-2">
-                                {payments.length ? (
-                                  payments.map((payment) => (
-                                    <PaymentCard
-                                      key={payment.id}
-                                      payment={payment}
-                                      recordsExpandedOverride={recordsExpandedAll}
-                                      onRequestAddRecord={openCreateFinancialRecord}
-                                      onEditFinancialRecord={openEditFinancialRecord}
-                                      onDeleteFinancialRecord={onDeleteFinancialRecord}
-                                      variant="table"
-                                    />
-                                  ))
-                                ) : (
-                                <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
+                      <tr className={TABLE_ROW_CLASS_PLAIN}>
+                        <td
+                          colSpan={6}
+                          className="border border-slate-200 bg-slate-50/70 px-4 py-3"
+                        >
+                          <div id={paymentsPanelId} className="space-y-2">
+                            {payments.length ? (
+                              payments.map((payment) => (
+                                <PaymentCard
+                                  key={payment.id}
+                                  payment={payment}
+                                  onRequestAddRecord={openCreateFinancialRecord}
+                                  onEditFinancialRecord={openEditFinancialRecord}
+                                  onDeleteFinancialRecord={onDeleteFinancialRecord}
+                                  variant="table"
+                                />
+                              ))
+                            ) : (
+                              <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     </React.Fragment>
                   );
                 })}
@@ -453,15 +302,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         </div>
       )}
 
-      {filesModalPolicy && (
-        <DriveFilesModal
-          isOpen={!!filesModalPolicy}
-          onClose={() => setFilesModalPolicy(null)}
-          entityId={filesModalPolicy.id}
-          entityType="policy"
-          title={`Файлы полиса: ${filesModalPolicy.number}`}
-        />
-      )}
       {isFinancialRecordModalOpen && (
         <FinancialRecordModal
           isOpen
