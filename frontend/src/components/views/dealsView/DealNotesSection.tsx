@@ -5,6 +5,7 @@ import { API_BASE, requestBlob } from '../../../api/request';
 import { formatDate } from './helpers';
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { FileUploadManager } from '../../FileUploadManager';
+import { dedupeFiles } from '../../../utils/fileUpload';
 
 interface DealNotesSectionProps {
   notes: Note[];
@@ -62,6 +63,32 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     `${API_BASE}${buildAttachmentPath(noteId, fileId)}`;
 
   const isImageAttachment = (file: DriveFile) => file.mimeType?.startsWith('image/');
+
+  const handleDraftPaste = async (
+    event: React.ClipboardEvent<HTMLTextAreaElement>
+  ) => {
+    if (noteAttachmentsUploading || notesAction === 'create') {
+      return;
+    }
+
+    const items = Array.from(event.clipboardData?.items ?? []);
+    const filesFromItems = items
+      .filter((item) => item.kind === 'file')
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => Boolean(file));
+    const filesFromList = Array.from(event.clipboardData?.files ?? []);
+    const files = dedupeFiles([...filesFromItems, ...filesFromList]);
+
+    if (!files.length) {
+      return;
+    }
+
+    event.preventDefault();
+    for (const file of files) {
+      await onAttachNoteFile(file);
+    }
+  };
+
 
   const NoteAttachmentImage = ({ noteId, file }: { noteId: string; file: DriveFile }) => {
     const [src, setSrc] = useState<string | null>(null);
@@ -167,6 +194,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
             rows={4}
             value={noteDraft}
             onChange={(event) => onSetDraft(event.target.value)}
+            onPaste={handleDraftPaste}
             placeholder="Заметка к сделке"
             className="field-textarea"
           />
