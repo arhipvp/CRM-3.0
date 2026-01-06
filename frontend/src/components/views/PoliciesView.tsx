@@ -10,8 +10,8 @@ import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
-  TABLE_ACTIONS_CLASS_ROW_SM,
-  TABLE_CELL_CLASS_LG,
+  TABLE_ACTIONS_CLASS_COL,
+  TABLE_CELL_CLASS_MD,
   TABLE_ROW_CLASS,
   TABLE_ROW_CLASS_PLAIN,
   TABLE_THEAD_CLASS,
@@ -243,17 +243,17 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       {filteredPolicies.length ? (
         <div className="app-panel shadow-none overflow-hidden">
           <div className="overflow-x-auto bg-white">
-            <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Список полисов">
+            <table className="deals-table w-full table-fixed border-collapse text-left text-sm" aria-label="Список полисов">
               <thead className={TABLE_THEAD_CLASS}>
                 <tr>
-                  <TableHeadCell className="min-w-[220px]">Полис</TableHeadCell>
-                  <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
-                  <TableHeadCell className="min-w-[220px]">Компания</TableHeadCell>
-                  <TableHeadCell className="min-w-[220px]">Тип / ТС</TableHeadCell>
-                  <TableHeadCell className="min-w-[180px]">Канал</TableHeadCell>
-                  <TableHeadCell align="right" className="min-w-[150px]">Сумма</TableHeadCell>
-                  <TableHeadCell align="right" className="min-w-[150px]">Платежи</TableHeadCell>
-                  <TableHeadCell align="right" className="min-w-[220px]">Действия</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[16%]">Полис</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[14%]">Клиент</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[16%]">Компания</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[16%]">Тип / ТС</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[10%]">Канал</TableHeadCell>
+                  <TableHeadCell padding="md" align="right" className="w-[10%]">Сумма</TableHeadCell>
+                  <TableHeadCell padding="md" align="right" className="w-[8%]">Платежи</TableHeadCell>
+                  <TableHeadCell padding="md" align="right" className="w-[10%]">Действия</TableHeadCell>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -296,10 +296,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   return (
                     <React.Fragment key={policy.id}>
                       <tr className={TABLE_ROW_CLASS}>
-                        <td className={TABLE_CELL_CLASS_LG}>
+                        <td className={TABLE_CELL_CLASS_MD}>
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-semibold text-slate-900">{model.number}</span>
+                              <span className="text-sm font-semibold text-slate-900 break-all">{model.number}</span>
                               {hasUnpaidPayment && (
                                 <span
                                   className={[
@@ -330,29 +330,31 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             </p>
                           </div>
                         </td>
-                        <td className={TABLE_CELL_CLASS_LG}>
-                          <p className="text-sm font-semibold text-slate-900">{model.client}</p>
+                        <td className={TABLE_CELL_CLASS_MD}>
+                          <p className="text-sm font-semibold text-slate-900 break-words">{model.client}</p>
                         </td>
-                        <td className={TABLE_CELL_CLASS_LG}>
-                          <ColoredLabel
-                            value={policy.insuranceCompany}
-                            showDot
-                            className="max-w-full truncate font-semibold text-slate-900"
-                          />
+                        <td className={TABLE_CELL_CLASS_MD}>
+                          <div className="min-w-0">
+                            <ColoredLabel
+                              value={policy.insuranceCompany}
+                              showDot
+                              className="max-w-full truncate font-semibold text-slate-900"
+                            />
+                          </div>
                         </td>
-                        <td className={TABLE_CELL_CLASS_LG}>
-                          <p className="text-sm font-semibold text-slate-900">{model.insuranceType}</p>
+                        <td className={TABLE_CELL_CLASS_MD}>
+                          <p className="text-sm font-semibold text-slate-900 break-words">{model.insuranceType}</p>
                           {transportSummary && (
                             <p className="mt-1 text-xs text-slate-500">{transportSummary}</p>
                           )}
                         </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                        <td className={`${TABLE_CELL_CLASS_MD} text-slate-700 break-words`}>
                           {model.salesChannel}
                         </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                        <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
                           <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                         </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                        <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
                           {payments.length ? (
                             <div className="flex flex-col items-end gap-1">
                               <span className="text-xs text-slate-500">{model.paymentsCountLabel}</span>
@@ -376,9 +378,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             <span className="text-xs text-slate-400">{POLICY_TEXT.messages.noPayments}</span>
                           )}
                         </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                        <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
                           {actions.length ? (
-                            <div className={TABLE_ACTIONS_CLASS_ROW_SM}>
+                            <div className={TABLE_ACTIONS_CLASS_COL}>
                               {actions.map((action) => (
                                 <button
                                   key={action.key}
@@ -397,25 +399,26 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           )}
                         </td>
                       </tr>
-                      {isPaymentsExpanded && (
-                        <tr className={TABLE_ROW_CLASS_PLAIN}>
-                          <td
-                            colSpan={8}
-                            className="border border-slate-200 bg-slate-50/70 px-6 py-4"
-                          >
-                            <div id={paymentsPanelId} className="space-y-2">
-                              {payments.length ? (
-                                payments.map((payment) => (
-                                  <PaymentCard
-                                    key={payment.id}
-                                    payment={payment}
-                                    recordsExpandedOverride={recordsExpandedAll}
-                                    onRequestAddRecord={openCreateFinancialRecord}
-                                    onEditFinancialRecord={openEditFinancialRecord}
-                                    onDeleteFinancialRecord={onDeleteFinancialRecord}
-                                  />
-                                ))
-                              ) : (
+                        {isPaymentsExpanded && (
+                          <tr className={TABLE_ROW_CLASS_PLAIN}>
+                            <td
+                              colSpan={8}
+                              className="border border-slate-200 bg-slate-50/70 px-4 py-3"
+                            >
+                              <div id={paymentsPanelId} className="space-y-2">
+                                {payments.length ? (
+                                  payments.map((payment) => (
+                                    <PaymentCard
+                                      key={payment.id}
+                                      payment={payment}
+                                      recordsExpandedOverride={recordsExpandedAll}
+                                      onRequestAddRecord={openCreateFinancialRecord}
+                                      onEditFinancialRecord={openEditFinancialRecord}
+                                      onDeleteFinancialRecord={onDeleteFinancialRecord}
+                                      variant="table"
+                                    />
+                                  ))
+                                ) : (
                                 <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
                               )}
                             </div>

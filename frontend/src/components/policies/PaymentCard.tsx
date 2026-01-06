@@ -9,6 +9,7 @@ interface PaymentCardProps {
   onEditFinancialRecord: (recordId: string) => void;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   recordsExpandedOverride?: boolean;
+  variant?: 'default' | 'table';
 }
 
 const RECORD_TITLES: Record<'income' | 'expense', string> = {
@@ -20,7 +21,8 @@ const renderRecordList = (
   records: FinancialRecord[],
   recordType: 'income' | 'expense',
   onEditRecord: (recordId: string) => void,
-  onDeleteRecord: (recordId: string) => Promise<void>
+  onDeleteRecord: (recordId: string) => Promise<void>,
+  compact: boolean
 ) => {
   if (!records.length) {
     return (
@@ -29,6 +31,10 @@ const renderRecordList = (
       </p>
     );
   }
+
+  const recordClassName = compact
+    ? 'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs'
+    : 'flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm';
 
   return (
     <div className="space-y-2">
@@ -40,7 +46,7 @@ const renderRecordList = (
         return (
           <div
             key={record.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm"
+            className={recordClassName}
           >
             <div className="min-w-0 space-y-0.5">
               <p className="font-semibold text-slate-800">{record.description || 'Без описания'}</p>
@@ -84,6 +90,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   onRequestAddRecord,
   onEditFinancialRecord,
   onDeleteFinancialRecord,
+  variant = 'default',
 }) => {
   const incomes =
     payment.financialRecords?.filter((record) => record.recordType === 'Доход') || [];
@@ -92,14 +99,19 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
 
   const paidText = payment.actualDate ? formatDate(payment.actualDate) : 'нет';
   const paidTone = payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
-  const renderAccordionSection = (
+  const compact = variant === 'table';
+  const containerClassName = compact
+    ? 'rounded-xl border border-slate-200 bg-white p-3'
+    : 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm';
+
+  const renderSection = (
     title: string,
     records: FinancialRecord[],
     recordType: 'income' | 'expense',
     onAdd: () => void
   ) => (
-    <section className="rounded-2xl border border-slate-200 bg-slate-50 shadow-inner">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <section className={compact ? 'rounded-xl border border-slate-200 bg-slate-50' : 'rounded-2xl border border-slate-200 bg-slate-50 shadow-inner'}>
+      <div className={compact ? 'flex flex-wrap items-center justify-between gap-3 px-3 py-2' : 'flex flex-wrap items-center justify-between gap-3 px-4 py-3'}>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">{title}</p>
           <p className="text-[11px] text-slate-500">{describeRecordsCount(records)}</p>
@@ -114,19 +126,21 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           </button>
         </div>
       </div>
-      <div className="px-4 pb-4">
+      <div className={compact ? 'px-3 pb-3' : 'px-4 pb-4'}>
         <div className="space-y-2">
-          {renderRecordList(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord)}
+          {renderRecordList(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord, compact)}
         </div>
       </div>
     </section>
   );
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+    <div className={`${containerClassName} space-y-3`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <p className="text-lg font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
+          <p className={compact ? 'text-base font-semibold text-slate-900' : 'text-lg font-semibold text-slate-900'}>
+            {formatCurrency(payment.amount)}
+          </p>
           <p className="text-sm text-slate-500 truncate">{payment.note || payment.description || 'Без описания'}</p>
         </div>
         <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-[0.3em] text-slate-500">
@@ -149,11 +163,11 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           </button>
         )}
       </div>
-      <div className="space-y-3">
-        {renderAccordionSection(RECORD_TITLES.income, incomes, 'income', () =>
+      <div className={compact ? 'space-y-2' : 'space-y-3'}>
+        {renderSection(RECORD_TITLES.income, incomes, 'income', () =>
           onRequestAddRecord(payment.id, 'income')
         )}
-        {renderAccordionSection(RECORD_TITLES.expense, expenses, 'expense', () =>
+        {renderSection(RECORD_TITLES.expense, expenses, 'expense', () =>
           onRequestAddRecord(payment.id, 'expense')
         )}
       </div>
