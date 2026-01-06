@@ -176,3 +176,65 @@ export async function request<T = unknown>(
 
   return (await response.json()) as T;
 }
+
+export async function requestBlob(
+  path: string,
+  options: RequestInit = {},
+  refreshAttempted = false
+): Promise<Blob> {
+  const { headers: customHeaders, ...requestOptions } = options;
+  const headers = new Headers(customHeaders as HeadersInit);
+
+  const token = getAccessToken();
+  const refreshToken = getRefreshToken();
+  const hadToken = Boolean(token);
+  const hadRefreshToken = Boolean(refreshToken);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+    console.log(`API request ${path}: token present`);
+  } else {
+    console.log(`API request ${path}: NO TOKEN FOUND`);
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers,
+    ...requestOptions,
+  });
+
+  if (response.status === 401) {
+    if (!refreshAttempted && (await refreshAccessToken())) {
+      return requestBlob(path, options, true);
+    }
+    const hadAnyTokens = hadToken || hadRefreshToken;
+    console.warn(
+      `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`
+    );
+    clearTokens();
+    if (hadAnyTokens) {
+      redirectToLogin();
+    }
+    throw new APIError('Unauthorized', 401, path);
+  }
+
+  if (response.status === 403) {
+    const text = await response.text();
+    let detail = 'Access denied';
+    try {
+      const json = JSON.parse(text);
+      if (json.detail) {
+        detail = json.detail;
+      }
+    } catch {
+      // Keep default message if response is not JSON
+    }
+    console.warn(`Forbidden (403) on ${path}: ${detail}`);
+    throw new APIError(detail, 403, path);
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Request ${path} failed with status ${response.status}`);
+  }
+
+  return response.blob();
+}

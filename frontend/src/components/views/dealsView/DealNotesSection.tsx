@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react';
+
 import type { DriveFile, Note } from '../../../types';
+import { API_BASE, requestBlob } from '../../../api/request';
 import { formatDate } from './helpers';
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { FileUploadManager } from '../../FileUploadManager';
@@ -52,10 +55,86 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     return <div className={className}>{message}</div>;
   };
 
+  const buildAttachmentPath = (noteId: string, fileId: string) =>
+    `/notes/${noteId}/attachments/${fileId}/download/`;
+
   const buildAttachmentUrl = (noteId: string, fileId: string) =>
-    `/api/v1/notes/${noteId}/attachments/${fileId}/download/`;
+    `${API_BASE}${buildAttachmentPath(noteId, fileId)}`;
 
   const isImageAttachment = (file: DriveFile) => file.mimeType?.startsWith('image/');
+
+  const NoteAttachmentImage = ({ noteId, file }: { noteId: string; file: DriveFile }) => {
+    const [src, setSrc] = useState<string | null>(null);
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+      let isActive = true;
+      let objectUrl: string | null = null;
+
+      const loadImage = async () => {
+        try {
+          const blob = await requestBlob(buildAttachmentPath(noteId, file.id));
+          if (!isActive) {
+            return;
+          }
+          objectUrl = URL.createObjectURL(blob);
+          setSrc(objectUrl);
+        } catch (error) {
+          if (!isActive) {
+            return;
+          }
+          console.error('Ошибка загрузки изображения заметки:', error);
+          setHasError(true);
+        }
+      };
+
+      loadImage();
+
+      return () => {
+        isActive = false;
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+      };
+    }, [file.id, noteId]);
+
+    if (hasError) {
+      return (
+        <div className="flex h-24 items-center justify-center rounded-xl border border-amber-200 bg-white text-[10px] text-slate-500">
+          Не удалось загрузить
+        </div>
+      );
+    }
+
+    return (
+      <a
+        href={src ?? undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group block overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm"
+        onClick={(event) => {
+          if (!src) {
+            event.preventDefault();
+          }
+        }}
+      >
+        {src ? (
+          <img
+            src={src}
+            alt={file.name}
+            className="h-24 w-full object-cover transition duration-200 group-hover:scale-[1.02]"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-24 items-center justify-center text-[10px] text-slate-500">
+            Загрузка...
+          </div>
+        )}
+        <div className="px-2 py-1 text-[10px] text-slate-600 truncate">{file.name}</div>
+      </a>
+    );
+  };
+
 
   return (
     <section className="app-panel p-6 shadow-none space-y-6">
@@ -173,25 +252,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                       const previewUrl = buildAttachmentUrl(note.id, file.id);
                       const href = file.webViewLink || previewUrl;
                       if (isImageAttachment(file)) {
-                        return (
-                          <a
-                            key={file.id}
-                            href={href ?? previewUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group block overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm"
-                          >
-                            <img
-                              src={previewUrl}
-                              alt={file.name}
-                              className="h-24 w-full object-cover transition duration-200 group-hover:scale-[1.02]"
-                              loading="lazy"
-                            />
-                            <div className="px-2 py-1 text-[10px] text-slate-600 truncate">
-                              {file.name}
-                            </div>
-                          </a>
-                        );
+                        return <NoteAttachmentImage key={file.id} noteId={note.id} file={file} />;
                       }
                       return (
                         <a
