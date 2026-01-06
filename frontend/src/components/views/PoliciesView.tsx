@@ -247,9 +247,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                         <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
                           <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                         </td>
-                        <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
-                          <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                        </td>
                       </tr>
                       <tr className={TABLE_ROW_CLASS_PLAIN}>
                         <td
