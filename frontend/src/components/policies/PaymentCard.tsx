@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import type { FinancialRecord, Payment } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 
@@ -84,7 +84,6 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   onRequestAddRecord,
   onEditFinancialRecord,
   onDeleteFinancialRecord,
-  recordsExpandedOverride,
 }) => {
   const incomes =
     payment.financialRecords?.filter((record) => record.recordType === 'Доход') || [];
@@ -93,68 +92,35 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
 
   const paidText = payment.actualDate ? formatDate(payment.actualDate) : 'нет';
   const paidTone = payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
-  const [expandedSections, setExpandedSections] = useState<Record<'income' | 'expense', boolean>>({
-    income: false,
-    expense: false,
-  });
-
-  useEffect(() => {
-    if (recordsExpandedOverride === undefined) {
-      return;
-    }
-    setExpandedSections({
-      income: recordsExpandedOverride,
-      expense: recordsExpandedOverride,
-    });
-  }, [recordsExpandedOverride]);
-
-  const toggleSection = (section: 'income' | 'expense') =>
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-
   const renderAccordionSection = (
     title: string,
     records: FinancialRecord[],
     recordType: 'income' | 'expense',
     onAdd: () => void
-  ) => {
-    const isOpen = expandedSections[recordType];
-    const contentId = `payment-${payment.id}-${recordType}-records`;
-    return (
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 shadow-inner">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">{title}</p>
-            <p className="text-[11px] text-slate-500">{describeRecordsCount(records)}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onAdd}
-              className="link-action text-[11px] font-semibold"
-            >
-              Добавить
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleSection(recordType)}
-              aria-controls={contentId}
-              aria-expanded={isOpen}
-              className="rounded-md text-[11px] font-semibold text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            >
-              {isOpen ? 'Скрыть' : 'Показать'}
-            </button>
-          </div>
+  ) => (
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 shadow-inner">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">{title}</p>
+          <p className="text-[11px] text-slate-500">{describeRecordsCount(records)}</p>
         </div>
-        {isOpen && (
-          <div id={contentId} className="px-4 pb-4">
-            <div className="space-y-2">
-              {renderRecordList(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord)}
-            </div>
-          </div>
-        )}
-      </section>
-    );
-  };
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onAdd}
+            className="link-action text-[11px] font-semibold"
+          >
+            Добавить
+          </button>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <div className="space-y-2">
+          {renderRecordList(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord)}
+        </div>
+      </div>
+    </section>
+  );
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">

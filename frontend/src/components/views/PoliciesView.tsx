@@ -364,6 +364,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                     [policy.id]: !prev[policy.id],
                                   }))
                                 }
+                                aria-label={`${POLICY_TEXT.fields.payments} (${model.paymentsCount})`}
                                 aria-expanded={isPaymentsExpanded}
                                 aria-controls={paymentsPanelId}
                                 className="btn btn-quiet btn-sm rounded-xl"
