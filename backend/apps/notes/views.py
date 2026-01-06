@@ -144,6 +144,11 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        if not self._can_modify(request.user, instance):
+            return Response(
+                {"detail": "Только администратор или владелец может удалять данные"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             self._move_attachments_to_trash(instance)
         except DriveError as exc:
@@ -151,8 +156,7 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 {"detail": str(exc)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        self.perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
