@@ -125,8 +125,15 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
     records: FinancialRecord[],
     recordType: 'income' | 'expense',
     onAdd: () => void
-  ) => (
-    <section className={compact ? 'rounded-lg border border-slate-200 bg-slate-50' : 'rounded-2xl border border-slate-200 bg-slate-50 shadow-inner'}>
+  ) => {
+    const toneClassName =
+      recordType === 'income' ? 'border-emerald-200 bg-emerald-50/70' : 'border-rose-200 bg-rose-50/70';
+    const sectionClassName = compact
+      ? `rounded-lg border ${toneClassName}`
+      : `rounded-2xl border ${toneClassName} shadow-inner`;
+
+    return (
+      <section className={sectionClassName}>
       <div className={sectionHeaderClassName}>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">{title}</p>
@@ -148,7 +155,8 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
         </div>
       </div>
     </section>
-  );
+    );
+  };
 
   return (
     <div className={`${containerClassName} ${spacingClassName}`}>

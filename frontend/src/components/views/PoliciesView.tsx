@@ -115,7 +115,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     }
 
     return result;
-  }, [allFinancialRecords, filters, onRefreshPoliciesList, paymentsByPolicyMap, policies]);
+  }, [filters, onRefreshPoliciesList, policies, unpaidPolicies]);
 
   useEffect(() => {
     if (!onRefreshPoliciesList) {
@@ -195,7 +195,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
                   return (
                     <React.Fragment key={policy.id}>
-                      <tr className={TABLE_ROW_CLASS}>
+                      <tr className={`${TABLE_ROW_CLASS} border-t-2 border-slate-300`}>
                         <td className={TABLE_CELL_CLASS_MD}>
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -255,10 +255,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                         </td>
                       </tr>
-                      <tr className={TABLE_ROW_CLASS_PLAIN}>
+                      <tr className={`${TABLE_ROW_CLASS_PLAIN} border-t border-slate-200`}>
                         <td
                           colSpan={6}
-                          className="border border-slate-200 bg-slate-50/70 px-4 py-3"
+                          className="border border-slate-200 border-b-2 border-slate-300 bg-slate-50/70 px-4 py-3"
                         >
                           <div id={paymentsPanelId} className="space-y-2">
                             {payments.length ? (
