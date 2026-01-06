@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 
 import {
   fetchInsuranceCompanies,
@@ -338,7 +338,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       ? 'Дата первого платежа не совпадает с началом полиса. Проверьте расписание.'
       : null;
 
-  const appendExpenseToAllPayments = (note: string) => {
+  const appendExpenseToAllPayments = useCallback((note: string) => {
     const normalizedNote = note.trim();
     if (!normalizedNote) {
       return;
@@ -352,13 +352,38 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         if (alreadyHasNote) {
           return payment;
         }
-        return {
-          ...payment,
-          expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: normalizedNote }],
-        };
-      })
-    );
-  };
+          return {
+            ...payment,
+            expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: normalizedNote }],
+          };
+        })
+      );
+  }, []);
+
+  const hasAutoExpenseRef = useRef(false);
+
+  useEffect(() => {
+    if (initialValues || hasAutoExpenseRef.current) {
+      return;
+    }
+    const counterpartyName = counterparty.trim();
+    const executor = executorName?.trim();
+    const note = counterpartyName
+      ? `Расход контрагенту ${counterpartyName}`
+      : executor
+        ? `Расход исполнителю ${executor}`
+        : '';
+    if (!note) {
+      return;
+    }
+    const hasAnyExpense = payments.some((payment) => payment.expenses.length > 0);
+    if (hasAnyExpense) {
+      hasAutoExpenseRef.current = true;
+      return;
+    }
+    appendExpenseToAllPayments(note);
+    hasAutoExpenseRef.current = true;
+  }, [appendExpenseToAllPayments, counterparty, executorName, initialValues, payments]);
 
   const handleAddCounterpartyExpenses = () => {
     const name = counterparty.trim();
