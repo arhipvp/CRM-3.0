@@ -8,6 +8,11 @@ import { FileUploadManager } from '../../FileUploadManager';
 import { Modal } from '../../Modal';
 import { dedupeFiles } from '../../../utils/fileUpload';
 
+const attachmentImageCache = new Map<string, string>();
+const attachmentImagePromises = new Map<string, Promise<string>>();
+
+const getAttachmentCacheKey = (noteId: string, fileId: string) => `${noteId}:${fileId}`;
+
 interface DealNotesSectionProps {
   notes: Note[];
   notesLoading: boolean;
@@ -108,26 +113,37 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
 
     useEffect(() => {
       let isActive = true;
-      let objectUrl: string | null = null;
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+      const cacheKey = getAttachmentCacheKey(noteId, file.id);
+      const cachedUrl = attachmentImageCache.get(cacheKey);
+
+      if (cachedUrl) {
+        setSrc(cachedUrl);
+        return () => {
+          isActive = false;
+        };
+      }
 
       const loadImage = async () => {
         try {
-          const blob = await requestBlob(buildAttachmentPath(noteId, file.id), {
-            cache: 'no-store',
-            signal: controller.signal,
-          });
-          if (!isActive) {
-            return;
+          let pending = attachmentImagePromises.get(cacheKey);
+          if (!pending) {
+            pending = requestBlob(buildAttachmentPath(noteId, file.id)).then((blob) => {
+              const objectUrl = URL.createObjectURL(blob);
+              attachmentImageCache.set(cacheKey, objectUrl);
+              attachmentImagePromises.delete(cacheKey);
+              return objectUrl;
+            });
+            attachmentImagePromises.set(cacheKey, pending);
           }
-          objectUrl = URL.createObjectURL(blob);
-          setSrc(objectUrl);
+          const objectUrl = await pending;
+          if (isActive) {
+            setSrc(objectUrl);
+          }
         } catch (error) {
           if (!isActive) {
             return;
           }
-          console.error('Ошибка загрузки изображения заметки:', error);
+          console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РёР·РѕР±СЂР°Р¶РµРЅРёСЏ Р·Р°РјРµС‚РєРё:', error);
           setHasError(true);
         }
       };
@@ -136,13 +152,9 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
 
       return () => {
         isActive = false;
-        window.clearTimeout(timeoutId);
-        controller.abort();
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-        }
       };
     }, [file.id, noteId]);
+
 
     if (hasError) {
       return (
@@ -168,6 +180,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
             alt={file.name}
             className="h-auto w-auto max-w-full transition duration-200 group-hover:scale-[1.01]"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="flex min-h-[80px] min-w-[120px] items-center justify-center text-[10px] text-slate-500">
