@@ -12,10 +12,12 @@ const samplePayment = {
 
 describe('normalizePaymentDraft', () => {
   it('fills an income record when none exist', () => {
-    const result = normalizePaymentDraft(samplePayment, false, { autoIncomeNote: 'ожидаемое КВ' });
+    const result = normalizePaymentDraft(samplePayment, false, {
+      autoIncomeNote: 'Комиссионное вознаграждение',
+    });
     expect(result.incomes).toHaveLength(1);
     expect(result.incomes[0].amount).toBe('0');
-    expect(result.incomes[0].note).toBe('ожидаемое КВ');
+    expect(result.incomes[0].note).toBe('Комиссионное вознаграждение');
   });
 
   it('keeps existing incomes', () => {

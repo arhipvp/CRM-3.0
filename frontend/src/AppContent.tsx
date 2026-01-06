@@ -1098,7 +1098,7 @@ const AppContent: React.FC = () => {
         const expenseNote = `Расход контрагенту ${expenseTargetName}`;
         const paymentsToProcess = paymentDrafts.map((payment) =>
           normalizePaymentDraft(payment, ensureExpenses, {
-            autoIncomeNote: 'ожидаемое КВ',
+            autoIncomeNote: 'Комиссионное вознаграждение',
             autoExpenseNote: ensureExpenses ? expenseNote : undefined,
           })
         );

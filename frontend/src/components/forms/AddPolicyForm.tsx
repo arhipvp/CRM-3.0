@@ -326,7 +326,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         }
         return {
           ...payment,
-          expenses: [...payment.expenses, { ...createEmptyRecord(), note: normalizedNote }],
+          expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: normalizedNote }],
         };
       })
     );
@@ -419,7 +419,10 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         idx === paymentIndex
           ? {
               ...payment,
-              [type]: [...payment[type], createEmptyRecord()],
+              [type]: [
+                ...payment[type],
+                type === 'expenses' ? createEmptyRecord('1') : createEmptyRecord(),
+              ],
             }
           : payment
       )

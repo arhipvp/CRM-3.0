@@ -32,8 +32,8 @@ export interface PolicyFormValues {
   insuredClientName?: string;
 }
 
-export const createEmptyRecord = (): FinancialRecordDraft => ({
-  amount: '0',
+export const createEmptyRecord = (amount = '0'): FinancialRecordDraft => ({
+  amount,
   date: '',
   description: '',
   source: '',
