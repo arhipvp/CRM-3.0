@@ -28,6 +28,7 @@ interface AddPolicyFormProps {
   onCancel: () => void;
   salesChannels: SalesChannel[];
   initialValues?: PolicyFormValues;
+  isEditing?: boolean;
   initialInsuranceCompanyName?: string;
   initialInsuranceTypeName?: string;
   defaultCounterparty?: string;
@@ -49,6 +50,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onCancel,
   salesChannels,
   initialValues,
+  isEditing = false,
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
   defaultCounterparty,
@@ -363,7 +365,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const hasAutoExpenseRef = useRef(false);
 
   useEffect(() => {
-    if (initialValues || hasAutoExpenseRef.current) {
+    if (isEditing || hasAutoExpenseRef.current) {
       return;
     }
     const counterpartyName = counterparty.trim();

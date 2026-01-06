@@ -230,6 +230,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
           <AddPolicyForm
             salesChannels={salesChannels}
             initialValues={policyPrefill?.values}
+            isEditing={false}
             initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
             initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
             defaultCounterparty={policyDefaultCounterparty}
@@ -252,6 +253,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
           <AddPolicyForm
             salesChannels={salesChannels}
             initialValues={buildPolicyFormValues(editingPolicy, editingPolicyPayments, financialRecords)}
+            isEditing
             initialInsuranceCompanyName={editingPolicy.insuranceCompany}
             initialInsuranceTypeName={editingPolicy.insuranceType}
             executorName={editingPolicyExecutorName}

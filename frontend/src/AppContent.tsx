@@ -1266,6 +1266,7 @@ const AppContent: React.FC = () => {
       policySourceFileIds,
       refreshDealsWithSelection,
       refreshPolicies,
+      salesChannels,
       setError,
       setIsSyncing,
       setSelectedDealId,

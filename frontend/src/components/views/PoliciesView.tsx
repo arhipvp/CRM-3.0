@@ -115,7 +115,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     }
 
     return result;
-  }, [filters, onRefreshPoliciesList, policies, unpaidPolicies]);
+  }, [filters, policies, unpaidPolicies]);
 
   useEffect(() => {
     if (!onRefreshPoliciesList) {
