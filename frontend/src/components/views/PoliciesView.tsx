@@ -3,7 +3,7 @@ import { Client, Payment, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { FilterParams } from '../../api';
-import { getPolicyTransportSummary, policyHasUnpaidActivity } from './dealsView/helpers';
+import { getPolicyTransportSummary } from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
@@ -92,15 +92,26 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     () => payments.flatMap((payment) => payment.financialRecords ?? []),
     [payments]
   );
+  const unpaidPolicies = useMemo(() => {
+    const set = new Set<string>();
+    payments.forEach((payment) => {
+      if (!payment.policyId || payment.deletedAt) {
+        return;
+      }
+      if ((payment.actualDate ?? '').trim()) {
+        return;
+      }
+      set.add(payment.policyId);
+    });
+    return set;
+  }, [payments]);
 
   const filteredPolicies = useMemo(() => {
     let result = [...policies];
 
-    const showUnpaidOnly = !onRefreshPoliciesList && filters.unpaid === 'true';
+    const showUnpaidOnly = filters.unpaid === 'true';
     if (showUnpaidOnly) {
-      result = result.filter((policy) =>
-        policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords)
-      );
+      result = result.filter((policy) => unpaidPolicies.has(policy.id));
     }
 
     return result;
@@ -178,11 +189,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 {paymentsByPolicy.map(({ policy, payments }) => {
                   const paymentsPanelId = `policy-${policy.id}-payments`;
                   const model = buildPolicyCardModel(policy, payments);
-                  const hasUnpaidPayment = policyHasUnpaidActivity(
-                    policy.id,
-                    paymentsByPolicyMap,
-                    allFinancialRecords
-                  );
+                  const hasUnpaidPayment = unpaidPolicies.has(policy.id);
                   const expiryBadge = getPolicyExpiryBadge(policy.endDate);
                   const transportSummary = policy.isVehicle ? getPolicyTransportSummary(policy) : '';
 
