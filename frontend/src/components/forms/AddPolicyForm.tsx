@@ -129,6 +129,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
+  const hasAutoExpenseRef = useRef(false);
   const submitLabel = initialValues ? 'Сохранить полис' : 'Создать полис';
   const steps = [
     { title: 'Полис', description: 'Номер, страховая и тип' },
@@ -162,6 +163,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   }, []);
 
   useEffect(() => {
+    hasAutoExpenseRef.current = false;
     if (!initialValues) {
       setNumber('');
       setInsuranceCompanyId('');
@@ -362,8 +364,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       );
   }, []);
 
-  const hasAutoExpenseRef = useRef(false);
-
   useEffect(() => {
     if (isEditing || hasAutoExpenseRef.current) {
       return;
@@ -385,7 +385,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     }
     appendExpenseToAllPayments(note);
     hasAutoExpenseRef.current = true;
-  }, [appendExpenseToAllPayments, counterparty, executorName, initialValues, payments]);
+  }, [appendExpenseToAllPayments, counterparty, executorName, initialValues, isEditing, payments]);
 
   const handleAddCounterpartyExpenses = () => {
     const name = counterparty.trim();
