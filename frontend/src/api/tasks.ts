@@ -3,10 +3,28 @@ import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from '.
 import { mapTask } from './mappers';
 import type { Task } from '../types';
 
-export async function fetchTasks(filters?: FilterParams): Promise<Task[]> {
-  const qs = buildQueryString(filters);
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/tasks/${qs}`);
-  return unwrapList<Record<string, unknown>>(payload).map(mapTask);
+export async function fetchTasks(
+  filters?: FilterParams,
+  options?: { pageSize?: number }
+): Promise<Task[]> {
+  const pageSize = options?.pageSize ?? 200;
+  const results: Task[] = [];
+  let page = 1;
+
+  while (true) {
+    const payload = await fetchTasksWithPagination({
+      ...(filters ?? {}),
+      page,
+      page_size: pageSize,
+    });
+    results.push(...payload.results);
+    if (!payload.next) {
+      break;
+    }
+    page += 1;
+  }
+
+  return results;
 }
 
 export async function fetchTasksWithPagination(
