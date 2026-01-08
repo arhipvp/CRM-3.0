@@ -87,6 +87,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
           task.description,
           task.dealTitle,
           task.clientName,
+          task.assigneeName,
+          task.assignee,
+          task.createdByName,
+          STATUS_LABELS[task.status] ?? task.status,
+          PRIORITY_LABELS[task.priority] ?? task.priority,
+          task.dueAt,
+          task.remindAt,
+          task.createdAt,
+          task.completedAt,
         ]
           .filter(Boolean)
           .join(' ')
