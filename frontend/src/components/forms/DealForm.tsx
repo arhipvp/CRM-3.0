@@ -109,11 +109,8 @@ export const DealForm: React.FC<DealFormProps> = ({
   const initialExecutorId = initialValues?.executorId ?? defaultExecutorId ?? '';
   const initialSellerId = initialValues?.sellerId ?? '';
   const initialNextContactDate = initialValues?.nextContactDate ?? '';
-  const initialClientId =
-    initialValues?.clientId ?? preselectedClientId ?? clients[0]?.id ?? '';
-  const initialClientQuery = initialClientId
-    ? clientsById.get(initialClientId)?.name ?? clients[0]?.name ?? ''
-    : clients[0]?.name ?? '';
+  const initialClientId = initialValues?.clientId ?? preselectedClientId ?? '';
+  const initialClientQuery = initialClientId ? clientsById.get(initialClientId)?.name ?? '' : '';
 
   const [title, setTitle] = useState(initialTitle);
   const [clientId, setClientId] = useState(initialClientId);
@@ -197,9 +194,18 @@ export const DealForm: React.FC<DealFormProps> = ({
     if (selectedClient) {
       return;
     }
+    if (mode === 'create' && !initialValues?.clientId && !preselectedClientId) {
+      if (clientId) {
+        setClientId('');
+      }
+      if (!clientQuery) {
+        setClientQuery('');
+      }
+      return;
+    }
     setClientId(clients[0].id);
     setClientQuery(clients[0].name);
-  }, [clients, clientsById, clientId]);
+  }, [clients, clientsById, clientId, clientQuery, initialValues?.clientId, mode, preselectedClientId]);
 
   const filteredClients = useMemo(() => {
     const normalized = clientQuery.trim().toLowerCase();
