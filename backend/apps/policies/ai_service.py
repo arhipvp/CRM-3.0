@@ -656,7 +656,7 @@ def recognize_policy_interactive(
                 "role": "system",
                 "content": _build_prompt(extra_companies, extra_types),
             },
-            {"role": "user", "content": text[:16000]},
+            {"role": "user", "content": text},
         ]
     _check_cancel()
     if progress_cb:
