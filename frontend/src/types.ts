@@ -331,10 +331,24 @@ export interface SellerDashboardPolicy {
   paidAmount: string;
 }
 
+export interface SellerDashboardPaymentsByDay {
+  date: string;
+  total: string;
+}
+
+export interface SellerDashboardTasksByDay {
+  date: string;
+  count: number;
+}
+
 export interface SellerDashboardResponse {
   rangeStart: string;
   rangeEnd: string;
   totalPaid: string;
+  tasksCurrent: number;
+  tasksCompleted: number;
+  paymentsByDay: SellerDashboardPaymentsByDay[];
+  tasksCompletedByDay: SellerDashboardTasksByDay[];
   policies: SellerDashboardPolicy[];
 }
 

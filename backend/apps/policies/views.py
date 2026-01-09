@@ -15,9 +15,10 @@ from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.finances.models import Payment
+from apps.tasks.models import Task
 from apps.users.models import UserRole
-from django.db.models import DecimalField, Q, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Count, DecimalField, Q, Sum, Value
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import serializers, status, viewsets
@@ -476,11 +477,69 @@ class SellerDashboardView(APIView):
                 }
             )
 
+        tasks_queryset = Task.objects.filter(assignee=user, deleted_at__isnull=True)
+        tasks_current = tasks_queryset.exclude(
+            status__in=[Task.TaskStatus.DONE, Task.TaskStatus.CANCELED]
+        ).count()
+        tasks_completed = tasks_queryset.filter(
+            status=Task.TaskStatus.DONE,
+            completed_at__date__gte=start_date,
+            completed_at__date__lte=end_date,
+        ).count()
+
+        payments_by_day = (
+            Payment.objects.filter(
+                policy__deal__seller=user,
+                policy__start_date__isnull=False,
+                policy__start_date__gte=start_date,
+                policy__start_date__lte=end_date,
+                actual_date__isnull=False,
+                actual_date__gte=start_date,
+                actual_date__lte=end_date,
+            )
+            .values("actual_date")
+            .annotate(
+                total=Coalesce(
+                    Sum("amount"),
+                    Value(0),
+                    output_field=decimal_field,
+                )
+            )
+            .order_by("actual_date")
+        )
+        payments_series = [
+            {
+                "date": item["actual_date"],
+                "total": self._format_amount(item["total"]),
+            }
+            for item in payments_by_day
+        ]
+
+        tasks_completed_by_day = (
+            tasks_queryset.filter(
+                status=Task.TaskStatus.DONE,
+                completed_at__date__gte=start_date,
+                completed_at__date__lte=end_date,
+            )
+            .annotate(day=TruncDate("completed_at"))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+        tasks_series = [
+            {"date": item["day"], "count": item["count"]}
+            for item in tasks_completed_by_day
+        ]
+
         return Response(
             {
                 "start_date": start_date,
                 "end_date": end_date,
                 "total_paid": total_paid,
+                "tasks_current": tasks_current,
+                "tasks_completed": tasks_completed,
+                "payments_by_day": payments_series,
+                "tasks_completed_by_day": tasks_series,
                 "policies": policies,
             }
         )

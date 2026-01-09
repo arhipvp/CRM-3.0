@@ -7,6 +7,7 @@ from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.finances.models import Payment
 from apps.policies.models import Policy
+from apps.tasks.models import Task
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework import status
@@ -79,11 +80,32 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
             actual_date=today,
         )
 
+        Task.objects.create(
+            title="Active task",
+            assignee=self.seller,
+            status=Task.TaskStatus.IN_PROGRESS,
+        )
+        Task.objects.create(
+            title="Done task",
+            assignee=self.seller,
+            status=Task.TaskStatus.DONE,
+            completed_at=timezone.now(),
+        )
+        Task.objects.create(
+            title="Other user's task",
+            assignee=self.other_user,
+            status=Task.TaskStatus.IN_PROGRESS,
+        )
+
         response = self.api_client.get("/api/v1/dashboard/seller/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         payload = response.json()
         self.assertEqual(payload.get("total_paid"), "100.00")
+        self.assertEqual(payload.get("tasks_current"), 1)
+        self.assertEqual(payload.get("tasks_completed"), 1)
+        self.assertTrue(payload.get("payments_by_day"))
+        self.assertTrue(payload.get("tasks_completed_by_day"))
         policy_numbers = {item["number"] for item in payload.get("policies", [])}
         self.assertIn("POLICY-1", policy_numbers)
         self.assertNotIn("POLICY-OLD", policy_numbers)

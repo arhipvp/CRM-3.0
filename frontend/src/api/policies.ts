@@ -145,10 +145,32 @@ export async function fetchSellerDashboard(params?: {
     `/dashboard/seller/${query ? `?${query}` : ''}`
   );
   const rawPolicies = Array.isArray(payload.policies) ? payload.policies : [];
+  const rawPaymentsByDay = Array.isArray(payload.payments_by_day)
+    ? payload.payments_by_day
+    : [];
+  const rawTasksByDay = Array.isArray(payload.tasks_completed_by_day)
+    ? payload.tasks_completed_by_day
+    : [];
   return {
     rangeStart: toStringValue(payload.start_date ?? payload.startDate ?? ''),
     rangeEnd: toStringValue(payload.end_date ?? payload.endDate ?? ''),
     totalPaid: toStringValue(payload.total_paid ?? payload.totalPaid ?? '0'),
+    tasksCurrent: Number(payload.tasks_current ?? payload.tasksCurrent ?? 0),
+    tasksCompleted: Number(payload.tasks_completed ?? payload.tasksCompleted ?? 0),
+    paymentsByDay: rawPaymentsByDay.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        date: toStringValue(record.date),
+        total: toStringValue(record.total ?? '0'),
+      };
+    }),
+    tasksCompletedByDay: rawTasksByDay.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        date: toStringValue(record.date),
+        count: Number(record.count ?? 0),
+      };
+    }),
     policies: rawPolicies.map((item) => {
       const record = item as Record<string, unknown>;
       return {
