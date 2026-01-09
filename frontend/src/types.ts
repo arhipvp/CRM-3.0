@@ -320,6 +320,24 @@ export interface FinancialRecordModalState {
   recordId?: string;
 }
 
+export interface SellerDashboardPolicy {
+  id: string;
+  number: string;
+  insuranceCompany: string;
+  insuranceType: string;
+  clientName?: string | null;
+  insuredClientName?: string | null;
+  startDate?: string | null;
+  paidAmount: string;
+}
+
+export interface SellerDashboardResponse {
+  rangeStart: string;
+  rangeEnd: string;
+  totalPaid: string;
+  policies: SellerDashboardPolicy[];
+}
+
 export interface Note {
   id: string;
   dealId: string;

@@ -1,4 +1,8 @@
-﻿import type { Policy, PolicyRecognitionResult } from '../types';
+﻿import type {
+  Policy,
+  PolicyRecognitionResult,
+  SellerDashboardResponse,
+} from '../types';
 import { request } from './request';
 import {
   buildQueryString,
@@ -123,6 +127,48 @@ export async function fetchVehicleModels(brand?: string): Promise<string[]> {
   const query = brand ? `?brand=${encodeURIComponent(brand)}` : '';
   const payload = await request(`/policies/vehicle-models/${query}`);
   return unwrapList<string>(payload);
+}
+
+export async function fetchSellerDashboard(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<SellerDashboardResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.startDate) {
+    searchParams.set('start_date', params.startDate);
+  }
+  if (params?.endDate) {
+    searchParams.set('end_date', params.endDate);
+  }
+  const query = searchParams.toString();
+  const payload = await request<Record<string, unknown>>(
+    `/dashboard/seller/${query ? `?${query}` : ''}`
+  );
+  const rawPolicies = Array.isArray(payload.policies) ? payload.policies : [];
+  return {
+    rangeStart: toStringValue(payload.start_date ?? payload.startDate ?? ''),
+    rangeEnd: toStringValue(payload.end_date ?? payload.endDate ?? ''),
+    totalPaid: toStringValue(payload.total_paid ?? payload.totalPaid ?? '0'),
+    policies: rawPolicies.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        id: toStringValue(record.id),
+        number: toStringValue(record.number),
+        insuranceCompany: toStringValue(
+          record.insurance_company ?? record.insuranceCompany ?? ''
+        ),
+        insuranceType: toStringValue(
+          record.insurance_type ?? record.insuranceType ?? ''
+        ),
+        clientName: toNullableString(record.client_name ?? record.clientName),
+        insuredClientName: toNullableString(
+          record.insured_client_name ?? record.insuredClientName
+        ),
+        startDate: toNullableString(record.start_date ?? record.startDate),
+        paidAmount: toStringValue(record.paid_amount ?? record.paidAmount ?? '0'),
+      };
+    }),
+  };
 }
 interface PolicyUpdatePayload {
   number: string;

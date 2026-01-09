@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import type { Deal, Payment, Policy, User } from '../../types';
-import { formatCurrencyRu, formatDateRu, RU_LOCALE } from '../../utils/formatting';
-import { parseNumericAmount } from '../../utils/parseNumericAmount';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { fetchSellerDashboard } from '../../api/policies';
+import type { SellerDashboardResponse } from '../../types';
+import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
   TABLE_CELL_CLASS_MD,
@@ -9,103 +10,50 @@ import {
   TABLE_THEAD_CLASS,
 } from '../common/tableStyles';
 
-interface SellerDashboardViewProps {
-  policies: Policy[];
-  payments: Payment[];
-  deals: Deal[];
-  currentUser: User | null;
-}
+export const SellerDashboardView: React.FC = () => {
+  const [dashboard, setDashboard] = useState<SellerDashboardResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
-const isPaymentPaid = (payment: Payment) => Boolean((payment.actualDate ?? '').trim());
-
-const getPaidAmount = (payment: Payment) => {
-  const amount = parseNumericAmount(payment.amount);
-  return Number.isFinite(amount) ? amount : 0;
-};
-
-const isDateInCurrentMonth = (value?: string | null) => {
-  if (!value) {
-    return false;
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return false;
-  }
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-};
-
-export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
-  policies,
-  payments,
-  deals,
-  currentUser,
-}) => {
-  const monthLabel = useMemo(
-    () =>
-      new Date().toLocaleDateString(RU_LOCALE, {
-        month: 'long',
-        year: 'numeric',
-      }),
-    []
-  );
-
-  const dealsById = useMemo(() => {
-    const map = new Map<string, Deal>();
-    deals.forEach((deal) => {
-      map.set(deal.id, deal);
-    });
-    return map;
-  }, [deals]);
-
-  const policiesForMonth = useMemo(() => {
-    const currentUserId = currentUser?.id;
-    if (!currentUserId) {
-      return [];
+  const loadDashboard = useCallback(async (override?: { startDate?: string; endDate?: string }) => {
+    setIsLoading(true);
+    try {
+      const payload = await fetchSellerDashboard(override);
+      setDashboard(payload);
+      setError(null);
+      setStartDate((prev) => prev || payload.rangeStart || '');
+      setEndDate((prev) => prev || payload.rangeEnd || '');
+    } catch (err) {
+      setDashboard(null);
+      setError(formatErrorMessage(err, 'Ошибка загрузки дашборда.'));
+    } finally {
+      setIsLoading(false);
     }
-    return policies.filter((policy) => {
-      const deal = dealsById.get(policy.dealId);
-      if (!deal || deal.seller !== currentUserId) {
-        return false;
-      }
-      return isDateInCurrentMonth(policy.startDate);
-    });
-  }, [currentUser?.id, dealsById, policies]);
+  }, []);
 
-  const paidPaymentsByPolicy = useMemo(() => {
-    const map = new Map<string, number>();
-    policiesForMonth.forEach((policy) => {
-      map.set(policy.id, 0);
-    });
-    payments.forEach((payment) => {
-      const policyId = payment.policyId;
-      if (!policyId || !map.has(policyId) || !isPaymentPaid(payment)) {
-        return;
-      }
-      map.set(policyId, (map.get(policyId) ?? 0) + getPaidAmount(payment));
-    });
-    return map;
-  }, [payments, policiesForMonth]);
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
 
-  const totalPaidAmount = useMemo(() => {
-    let total = 0;
-    paidPaymentsByPolicy.forEach((amount) => {
-      total += amount;
-    });
-    return total;
-  }, [paidPaymentsByPolicy]);
+  const periodLabel = useMemo(() => {
+    if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {
+      return 'Период';
+    }
+    return `Период: ${formatDateRu(dashboard.rangeStart)} — ${formatDateRu(dashboard.rangeEnd)}`;
+  }, [dashboard?.rangeEnd, dashboard?.rangeStart]);
 
-  const sortedPolicies = useMemo(() => {
-    const list = [...policiesForMonth];
-    list.sort((a, b) => {
-      const aTime = a.startDate ? new Date(a.startDate).getTime() : 0;
-      const bTime = b.startDate ? new Date(b.startDate).getTime() : 0;
-      return bTime - aTime;
-    });
-    return list;
-  }, [policiesForMonth]);
+  const policies = dashboard?.policies ?? [];
+  const totalPaid = dashboard?.totalPaid ?? '0';
+  const isEmpty = !isLoading && policies.length === 0;
 
-  const isEmpty = currentUser ? sortedPolicies.length === 0 : true;
+  const handleApply = useCallback(() => {
+    void loadDashboard({
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    });
+  }, [endDate, loadDashboard, startDate]);
 
   return (
     <section aria-labelledby="sellerDashboardHeading" className="space-y-6">
@@ -116,30 +64,72 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
               Дашборд продавца
             </p>
             <h1 id="sellerDashboardHeading" className="text-2xl font-semibold text-slate-900">
-              Продажи за {monthLabel}
+              Продажи по дате начала полиса
             </h1>
+            <p className="text-sm text-slate-600">{periodLabel}</p>
           </div>
           <div className="rounded-2xl bg-sky-50 px-4 py-3 text-right">
             <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
               Сумма оплаченных платежей
             </p>
             <p className="text-2xl font-semibold text-slate-900">
-              {formatCurrencyRu(totalPaidAmount, '—')}
+              {formatCurrencyRu(totalPaid, '—')}
             </p>
           </div>
         </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="app-label" htmlFor="sellerDashboardStart">
+                Дата начала
+              </label>
+              <input
+                id="sellerDashboardStart"
+                type="date"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                className="field field-input"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="app-label" htmlFor="sellerDashboardEnd">
+                Дата окончания
+              </label>
+              <input
+                id="sellerDashboardEnd"
+                type="date"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="field field-input"
+              />
+            </div>
+          <button
+            type="button"
+            onClick={handleApply}
+            className="btn btn-primary btn-sm rounded-xl"
+            disabled={isLoading}
+          >
+            Показать
+          </button>
+        </div>
         <p className="text-sm text-slate-600">
-          Учитываются только полисы с датой начала в текущем месяце и только оплаченные платежи.
+          Учитываются только полисы с датой начала в выбранном диапазоне и только оплаченные платежи.
         </p>
+        {error && (
+          <div className="app-panel-muted px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
       </div>
 
       <section className="app-panel p-6 shadow-none space-y-4">
-        <h2 className="text-sm font-semibold text-slate-700">Полисы текущего месяца</h2>
-        {isEmpty ? (
+        <h2 className="text-sm font-semibold text-slate-700">Полисы выбранного периода</h2>
+        {isLoading ? (
           <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
-            {currentUser
-              ? 'В этом месяце у вас нет полисов с началом в текущем месяце.'
-              : 'Нужен активный пользователь, чтобы показать продажи.'}
+            Загрузка данных...
+          </div>
+        ) : isEmpty ? (
+          <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
+            В этом периоде у вас нет полисов с началом в выбранном диапазоне.
           </div>
         ) : (
           <div className="app-panel shadow-none overflow-hidden">
@@ -156,8 +146,7 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="bg-white">
-                  {sortedPolicies.map((policy) => {
-                    const paidAmount = paidPaymentsByPolicy.get(policy.id) ?? 0;
+                  {policies.map((policy) => {
                     const clientLabel =
                       policy.insuredClientName ?? policy.clientName ?? '—';
 
@@ -182,7 +171,7 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
                         </td>
                         <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
                           <p className="text-sm font-semibold text-slate-900">
-                            {formatCurrencyRu(paidAmount, '—')}
+                            {formatCurrencyRu(policy.paidAmount, '—')}
                           </p>
                         </td>
                       </tr>

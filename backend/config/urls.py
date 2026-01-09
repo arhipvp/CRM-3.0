@@ -34,6 +34,7 @@ from apps.notifications.views import (
     TelegramLinkView,
     TelegramUnlinkView,
 )
+from apps.policies.views import SellerDashboardView
 from apps.users.views import (
     change_password_view,
     current_user_view,
@@ -71,6 +72,11 @@ urlpatterns = [
     ),
     path(
         "api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"
+    ),
+    path(
+        "api/v1/dashboard/seller/",
+        SellerDashboardView.as_view(),
+        name="seller-dashboard",
     ),
     path(
         "api/v1/documents/recognize/",

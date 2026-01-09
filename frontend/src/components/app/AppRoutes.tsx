@@ -194,12 +194,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
     <Route
       path="/seller-dashboard"
       element={
-        <SellerDashboardView
-          policies={policies}
-          payments={payments}
-          deals={deals}
-          currentUser={currentUser}
-        />
+        <SellerDashboardView />
       }
     />
     <Route

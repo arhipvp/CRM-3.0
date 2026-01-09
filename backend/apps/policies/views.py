@@ -1,4 +1,6 @@
 import logging
+from datetime import date, timedelta
+from decimal import Decimal
 from typing import List, Optional
 
 from apps.common.drive import (
@@ -16,11 +18,15 @@ from apps.finances.models import Payment
 from apps.users.models import UserRole
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .ai_service import (
     PolicyRecognitionError,
@@ -351,3 +357,130 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if file_id and file_id not in moved_file_ids:
                 self._move_recognized_file_to_folder(policy, file_id)
                 moved_file_ids.add(file_id)
+
+
+class SellerDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def _get_month_bounds(target_date: date) -> tuple[date, date]:
+        month_start = target_date.replace(day=1)
+        if month_start.month == 12:
+            next_month = date(month_start.year + 1, 1, 1)
+        else:
+            next_month = date(month_start.year, month_start.month + 1, 1)
+        month_end = next_month - timedelta(days=1)
+        return month_start, month_end
+
+    @staticmethod
+    def _format_amount(value: Decimal | int | None) -> str:
+        if value is None:
+            return "0.00"
+        return format(Decimal(value).quantize(Decimal("0.01")), "f")
+
+    @staticmethod
+    def _parse_date(value: str | None) -> date | None:
+        if not value:
+            return None
+        return parse_date(value)
+
+    def get(self, request):
+        user = request.user
+        start_param = request.query_params.get("start_date")
+        end_param = request.query_params.get("end_date")
+        start_date = self._parse_date(start_param)
+        end_date = self._parse_date(end_param)
+
+        if (start_param and not start_date) or (end_param and not end_date):
+            return Response(
+                {"detail": "Неверный формат даты. Используйте YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if (start_date and not end_date) or (end_date and not start_date):
+            return Response(
+                {"detail": "Нужно указать обе даты: start_date и end_date."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if start_date and end_date and end_date < start_date:
+            return Response(
+                {"detail": "Дата окончания не может быть раньше даты начала."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not start_date and not end_date:
+            today = timezone.localdate()
+            start_date, end_date = self._get_month_bounds(today)
+
+        decimal_field = DecimalField(max_digits=12, decimal_places=2)
+        queryset = (
+            Policy.objects.filter(
+                deal__seller=user,
+                start_date__isnull=False,
+                start_date__gte=start_date,
+                start_date__lte=end_date,
+            )
+            .select_related(
+                "insurance_company",
+                "insurance_type",
+                "client",
+                "insured_client",
+            )
+            .annotate(
+                paid_amount=Coalesce(
+                    Sum(
+                        "payments__amount",
+                        filter=Q(payments__actual_date__isnull=False),
+                    ),
+                    Value(0),
+                    output_field=decimal_field,
+                )
+            )
+            .order_by("-start_date", "-created_at")
+        )
+
+        total_paid = self._format_amount(
+            queryset.aggregate(
+                total=Coalesce(
+                    Sum(
+                        "payments__amount",
+                        filter=Q(payments__actual_date__isnull=False),
+                    ),
+                    Value(0),
+                    output_field=decimal_field,
+                )
+            )["total"]
+        )
+
+        policies = []
+        for policy in queryset:
+            policies.append(
+                {
+                    "id": policy.id,
+                    "number": policy.number,
+                    "insurance_company": (
+                        policy.insurance_company.name
+                        if policy.insurance_company
+                        else ""
+                    ),
+                    "insurance_type": (
+                        policy.insurance_type.name if policy.insurance_type else ""
+                    ),
+                    "client_name": policy.client.name if policy.client else None,
+                    "insured_client_name": (
+                        policy.insured_client.name if policy.insured_client else None
+                    ),
+                    "start_date": policy.start_date,
+                    "paid_amount": self._format_amount(policy.paid_amount),
+                }
+            )
+
+        return Response(
+            {
+                "start_date": start_date,
+                "end_date": end_date,
+                "total_paid": total_paid,
+                "policies": policies,
+            }
+        )
