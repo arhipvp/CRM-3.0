@@ -1,6 +1,8 @@
 from apps.common.admin import SoftDeleteImportExportAdmin
 from django.contrib import admin
+from django.contrib.admin.sites import NotRegistered
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import User
 from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
@@ -389,13 +391,9 @@ class CustomUserAdmin(DjangoUserAdmin):
 # ============ UNREGISTER DEFAULT USER ADMIN AND REGISTER CUSTOM ONE ============
 
 try:
-    from django.contrib.auth.models import User
-
     admin.site.unregister(User)
-except:
+except NotRegistered:
     pass
-
-from django.contrib.auth.models import User
 
 admin.site.register(User, CustomUserAdmin)
 

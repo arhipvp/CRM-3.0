@@ -1,7 +1,6 @@
 from apps.common.models import SoftDeleteModel
 from django.contrib.auth.models import User
 from django.db import models
-from django.utils import timezone
 
 
 class Role(SoftDeleteModel):

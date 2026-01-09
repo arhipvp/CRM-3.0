@@ -1,3 +1,4 @@
+﻿# -*- coding: utf-8 -*-
 """
 Скрипт инициализации ролей и прав в системе.
 Выполните через: python manage.py shell < init_roles.py
@@ -80,39 +81,45 @@ def initialize_roles_and_permissions():
     # Роль: Администратор
     admin_role, created = Role.objects.get_or_create(
         name="Администратор",
-        defaults={"description": "Полный доступ ко всем функциям системы"},
+        defaults={
+            "description": "Полный доступ ко всем функциям системы",
+        },
     )
     roles["admin"] = admin_role
     if created:
-        print(f"\n✓ Создана роль: Администратор")
+        print("\n✓ Создана роль: Администратор")
     else:
-        print(f"\n✓ Роль уже существует: Администратор")
+        print("\n✓ Роль уже существует: Администратор")
 
     # Роль: Менеджер
     manager_role, created = Role.objects.get_or_create(
         name="Менеджер",
-        defaults={"description": "Может создавать и редактировать свои сделки"},
+        defaults={
+            "description": "Может создавать и редактировать свои сделки",
+        },
     )
     roles["manager"] = manager_role
     if created:
-        print(f"✓ Создана роль: Менеджер")
+        print("✓ Создана роль: Менеджер")
     else:
-        print(f"✓ Роль уже существует: Менеджер")
+        print("✓ Роль уже существует: Менеджер")
 
     # Роль: Наблюдатель
     observer_role, created = Role.objects.get_or_create(
         name="Наблюдатель",
-        defaults={"description": "Может только просматривать данные"},
+        defaults={
+            "description": "Может только просматривать данные",
+        },
     )
     roles["observer"] = observer_role
     if created:
-        print(f"✓ Создана роль: Наблюдатель")
+        print("✓ Создана роль: Наблюдатель")
     else:
-        print(f"✓ Роль уже существует: Наблюдатель")
+        print("✓ Роль уже существует: Наблюдатель")
 
     # 3. Назначить права ролям
 
-    # Администратор - ВСЕ права
+    # Администратор - все права
     admin_perms = [
         p for r, a, p in [(r, a, permissions.get((r, a))) for r, a in permissions_data]
     ]
@@ -124,7 +131,8 @@ def initialize_roles_and_permissions():
         )
         if created:
             print(
-                f"  ✓ Админ: добавлено право {perm.get_resource_display()} - {perm.get_action_display()}"
+                "  ✓ Админ: добавлено право "
+                f"{perm.get_resource_display()} - {perm.get_action_display()}"
             )
 
     # Менеджер - основные права (view, create, edit для своих данных)
@@ -160,7 +168,8 @@ def initialize_roles_and_permissions():
             )
             if created:
                 print(
-                    f"  ✓ Менеджер: добавлено право {perm.get_resource_display()} - {perm.get_action_display()}"
+                    "  ✓ Менеджер: добавлено право "
+                    f"{perm.get_resource_display()} - {perm.get_action_display()}"
                 )
 
     # Наблюдатель - только просмотр
@@ -183,10 +192,11 @@ def initialize_roles_and_permissions():
             )
             if created:
                 print(
-                    f"  ✓ Наблюдатель: добавлено право {perm.get_resource_display()} - {perm.get_action_display()}"
+                    "  ✓ Наблюдатель: добавлено право "
+                    f"{perm.get_resource_display()} - {perm.get_action_display()}"
                 )
 
-    print("\n✅ Инициализация ролей и прав завершена!")
+    print("\n✓ Инициализация ролей и прав завершена!")
 
 
 if __name__ == "__main__":

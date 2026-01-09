@@ -12,7 +12,6 @@ from apps.clients.models import Client
 from apps.deals.models import Deal
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
-from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken

@@ -1,10 +1,6 @@
 """Django signals для логирования изменений Document."""
 
-from apps.common.audit_helpers import (
-    get_changed_fields,
-    serialize_model_fields,
-    store_old_values,
-)
+from apps.common.audit_helpers import serialize_model_fields, store_old_values
 from apps.users.models import AuditLog
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver

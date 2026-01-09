@@ -4,7 +4,6 @@ Tests for Django admin interface.
 
 import pytest
 from apps.users.models import Permission, Role, UserRole
-from django.urls import reverse
 from tests.conftest import PermissionFactory, RoleFactory, UserFactory
 
 pytestmark = [pytest.mark.admin, pytest.mark.django_db]
@@ -41,8 +40,8 @@ class TestRoleAdmin:
 
     def test_role_list_view(self, admin_client):
         """Test that roles are displayed in admin list view."""
-        role1 = RoleFactory.create(name="Administrator")
-        role2 = RoleFactory.create(name="Manager")
+        RoleFactory.create(name="Administrator")
+        RoleFactory.create(name="Manager")
 
         response = admin_client.get("/admin/users/role/")
         assert response.status_code == 200
@@ -142,8 +141,8 @@ class TestPermissionAdmin:
 
     def test_permission_list_view(self, admin_client):
         """Test that permissions are displayed in admin list view."""
-        perm1 = PermissionFactory.create(resource="deal", action="view")
-        perm2 = PermissionFactory.create(resource="client", action="create")
+        PermissionFactory.create(resource="deal", action="view")
+        PermissionFactory.create(resource="client", action="create")
 
         response = admin_client.get("/admin/users/permission/")
         assert response.status_code == 200

@@ -14,12 +14,9 @@ from .serializers import (
     PermissionSerializer,
     RefreshTokenSerializer,
     RoleDetailSerializer,
-    RolePermissionSerializer,
     RoleSerializer,
-    TokenSerializer,
     UserCreateUpdateSerializer,
     UserDetailSerializer,
-    UserRoleSerializer,
     UserSerializer,
 )
 
@@ -376,7 +373,7 @@ def refresh_token_view(request):
         refresh = RefreshToken(request.data["refresh"])
         access = str(refresh.access_token)
         return Response({"access": access})
-    except Exception as e:
+    except Exception:
         return Response(
             {"error": "Invalid refresh token"}, status=status.HTTP_400_BAD_REQUEST
         )

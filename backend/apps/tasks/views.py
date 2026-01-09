@@ -2,8 +2,7 @@ from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import Q
 from django.utils import timezone
-from rest_framework import permissions, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework import viewsets
 
 from .filters import TaskFilterSet
 from .models import Task
