@@ -17,17 +17,17 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         super().setUp()
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")
-        self.client = Client.objects.create(name="Client")
+        self.client_obj = Client.objects.create(name="Client")
         self.deal = Deal.objects.create(
             title="Deal",
-            client=self.client,
+            client=self.client_obj,
             seller=self.seller,
             status="open",
             stage_name="initial",
         )
         self.other_deal = Deal.objects.create(
             title="Other Deal",
-            client=self.client,
+            client=self.client_obj,
             seller=self.other_user,
             status="open",
             stage_name="initial",
