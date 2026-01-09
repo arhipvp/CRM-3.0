@@ -75,7 +75,7 @@ export function AddFinancialRecordForm({
   const indicatorLabel = record ? 'Изменяете' : 'Добавляете';
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -107,9 +107,7 @@ export function AddFinancialRecordForm({
       <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900">
         {indicatorLabel} <span className="font-bold">{recordTypeLabel}</span>
       </div>
-      {error && (
-        <p className="app-alert app-alert-danger">{error}</p>
-      )}
+      {error && <p className="app-alert app-alert-danger">{error}</p>}
 
       {record && (
         <div className="app-panel-muted p-4">
@@ -156,8 +154,6 @@ export function AddFinancialRecordForm({
         </select>
       </div>
 
-
-
       <div className="space-y-2">
         <label htmlFor="amount" className="app-label">
           Сумма (руб.) *
@@ -189,7 +185,6 @@ export function AddFinancialRecordForm({
           className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
       </div>
-
 
       <div className="space-y-2">
         <label htmlFor="note" className="app-label">

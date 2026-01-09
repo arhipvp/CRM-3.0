@@ -37,7 +37,9 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
           required
           className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
-        {fixedPolicy?.insuranceType && <p className="text-sm text-slate-600">{fixedPolicy.insuranceType}</p>}
+        {fixedPolicy?.insuranceType && (
+          <p className="text-sm text-slate-600">{fixedPolicy.insuranceType}</p>
+        )}
       </div>
     );
   }

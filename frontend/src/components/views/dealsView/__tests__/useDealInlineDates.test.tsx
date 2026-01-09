@@ -67,7 +67,10 @@ describe('useDealInlineDates', () => {
     });
 
     await waitFor(() => {
-      expect(onUpdateDeal).toHaveBeenCalledWith(deal.id, expect.objectContaining({ nextContactDate: '2025-01-10' }));
+      expect(onUpdateDeal).toHaveBeenCalledWith(
+        deal.id,
+        expect.objectContaining({ nextContactDate: '2025-01-10' }),
+      );
     });
     expect(resultRef.current?.nextContactInputValue).toBe('2025-01-10');
   });
@@ -95,7 +98,7 @@ describe('useDealInlineDates', () => {
       expect(expectedNextContactDate).toBeTruthy();
       expect(onUpdateDeal).toHaveBeenCalledWith(
         deal.id,
-        expect.objectContaining({ nextContactDate: expectedNextContactDate })
+        expect.objectContaining({ nextContactDate: expectedNextContactDate }),
       );
       expect(onSelectDeal).toHaveBeenCalledWith(topDeal.id);
     });

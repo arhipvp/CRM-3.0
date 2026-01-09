@@ -20,4 +20,3 @@ export const buildTelegramLink = (phone?: string | null): string | null => {
 export const buildDriveFolderLink = (folderId?: string | null): string | null => {
   return folderId ? `https://drive.google.com/drive/folders/${folderId}` : null;
 };
-

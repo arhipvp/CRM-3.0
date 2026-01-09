@@ -56,13 +56,14 @@ const FINANCIAL_RECORD_TYPES: FinancialRecordType[] = ['Доход', 'Расхо
 const resolveStringUnion = <T extends string>(
   value: unknown,
   allowed: readonly T[],
-  fallback: T
+  fallback: T,
 ): T => (typeof value === 'string' && allowed.includes(value as T) ? (value as T) : fallback);
 
 const resolveOptionalStringUnion = <T extends string>(
   value: unknown,
-  allowed: readonly T[]
-): T | undefined => (typeof value === 'string' && allowed.includes(value as T) ? (value as T) : undefined);
+  allowed: readonly T[],
+): T | undefined =>
+  typeof value === 'string' && allowed.includes(value as T) ? (value as T) : undefined;
 
 const resolveRoleName = (value: unknown): string | undefined => {
   if (typeof value !== 'object' || value === null) {
@@ -72,9 +73,12 @@ const resolveRoleName = (value: unknown): string | undefined => {
   return toOptionalString(record.name);
 };
 
-const resolveDealStatus = (value: unknown): DealStatus => resolveStringUnion(value, DEAL_STATUSES, 'open');
-const resolveTaskStatus = (value: unknown): TaskStatus => resolveStringUnion(value, TASK_STATUSES, 'todo');
-const resolveTaskPriority = (value: unknown): TaskPriority => resolveStringUnion(value, TASK_PRIORITIES, 'normal');
+const resolveDealStatus = (value: unknown): DealStatus =>
+  resolveStringUnion(value, DEAL_STATUSES, 'open');
+const resolveTaskStatus = (value: unknown): TaskStatus =>
+  resolveStringUnion(value, TASK_STATUSES, 'todo');
+const resolveTaskPriority = (value: unknown): TaskPriority =>
+  resolveStringUnion(value, TASK_PRIORITIES, 'normal');
 const resolveActivityActionType = (value: unknown): ActivityActionType =>
   resolveStringUnion(value, ACTIVITY_ACTION_TYPES, 'custom');
 const resolveFinancialRecordType = (value: unknown): FinancialRecordType | undefined =>
@@ -138,7 +142,8 @@ export const mapDeal = (raw: Record<string, unknown>): Deal => {
     clientName: toOptionalString(raw.client_name),
     status: resolveDealStatus(raw.status),
     stageName: toOptionalString(raw.stage_name),
-    expectedClose: raw.expected_close === undefined ? undefined : toNullableString(raw.expected_close),
+    expectedClose:
+      raw.expected_close === undefined ? undefined : toNullableString(raw.expected_close),
     nextContactDate:
       raw.next_contact_date === undefined ? undefined : toNullableString(raw.next_contact_date),
     source: toOptionalString(raw.source),
@@ -208,9 +213,7 @@ export const mapKnowledgeSource = (raw: Record<string, unknown>): KnowledgeSourc
   updatedAt: toNullableString(raw.updated ?? raw.updated_at ?? raw.updatedAt),
 });
 
-export const mapKnowledgeSourceDetail = (
-  raw: Record<string, unknown>
-): KnowledgeSourceDetail => ({
+export const mapKnowledgeSourceDetail = (raw: Record<string, unknown>): KnowledgeSourceDetail => ({
   id: toStringValue(raw.id),
   title: toNullableString(raw.title),
   content: toNullableString(raw.content ?? raw.full_text ?? raw.fullText),
@@ -220,38 +223,31 @@ export const mapKnowledgeSourceDetail = (
   fileUrl: toNullableString(raw.file_url ?? raw.fileUrl),
 });
 
-export const mapKnowledgeChatSession = (
-  raw: Record<string, unknown>
-): KnowledgeChatSession => ({
+export const mapKnowledgeChatSession = (raw: Record<string, unknown>): KnowledgeChatSession => ({
   id: toStringValue(raw.id),
   title: toNullableString(raw.title),
   notebookId: toNullableString(raw.notebook_id ?? raw.notebookId),
   createdAt: toNullableString(raw.created ?? raw.created_at ?? raw.createdAt),
   updatedAt: toNullableString(raw.updated ?? raw.updated_at ?? raw.updatedAt),
-  messageCount:
-    raw.message_count === undefined ? null : toNullableNumber(raw.message_count),
+  messageCount: raw.message_count === undefined ? null : toNullableNumber(raw.message_count),
 });
 
 const mapKnowledgeCitation = (raw: Record<string, unknown>): KnowledgeCitation => ({
   sourceId: toStringValue(raw.source_id ?? raw.sourceId ?? raw.id),
   documentId: toStringValue(
-    raw.document_id ?? raw.documentId ?? raw.source_id ?? raw.sourceId ?? raw.id
+    raw.document_id ?? raw.documentId ?? raw.source_id ?? raw.sourceId ?? raw.id,
   ),
   title: toStringValue(raw.title ?? ''),
   fileUrl: toNullableString(raw.file_url ?? raw.fileUrl),
 });
 
-export const mapKnowledgeSavedAnswer = (
-  raw: Record<string, unknown>
-): KnowledgeSavedAnswer => {
+export const mapKnowledgeSavedAnswer = (raw: Record<string, unknown>): KnowledgeSavedAnswer => {
   const citations = Array.isArray(raw.citations) ? raw.citations : [];
   return {
     id: toStringValue(raw.id),
     question: toStringValue(raw.question ?? raw.title ?? ''),
     answer: toStringValue(raw.answer ?? raw.content ?? ''),
-    citations: citations.map((item) =>
-      mapKnowledgeCitation(item as Record<string, unknown>)
-    ),
+    citations: citations.map((item) => mapKnowledgeCitation(item as Record<string, unknown>)),
     createdAt: toStringValue(raw.created_at ?? raw.created ?? raw.createdAt ?? ''),
     updatedAt: toStringValue(raw.updated_at ?? raw.updated ?? raw.updatedAt ?? ''),
   };
@@ -259,9 +255,7 @@ export const mapKnowledgeSavedAnswer = (
 
 export const mapUser = (raw: Record<string, unknown>): User => {
   const legacyRoles = Array.isArray(raw.roles)
-    ? (raw.roles as unknown[])
-        .map(toOptionalString)
-        .filter((role): role is string => Boolean(role))
+    ? (raw.roles as unknown[]).map(toOptionalString).filter((role): role is string => Boolean(role))
     : [];
   const userRoleEntries = Array.isArray(raw.user_roles)
     ? (raw.user_roles as unknown[])
@@ -343,7 +337,9 @@ export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecor
 export const mapStatement = (raw: Record<string, unknown>): Statement => ({
   id: toStringValue(raw.id),
   name: toStringValue(raw.name ?? ''),
-  statementType: toStringValue(raw.statement_type ?? raw.statementType) as Statement['statementType'],
+  statementType: toStringValue(
+    raw.statement_type ?? raw.statementType,
+  ) as Statement['statementType'],
   status: toStringValue(raw.status ?? '') as Statement['status'],
   counterparty: toNullableString(raw.counterparty),
   paidAt: raw.paid_at === undefined ? undefined : toNullableString(raw.paid_at),
@@ -368,10 +364,13 @@ export const mapPayment = (raw: Record<string, unknown>): Payment => ({
   amount: toStringValue(raw.amount),
   description: toOptionalString(raw.description),
   note: toOptionalString(raw.note),
-  scheduledDate: raw.scheduled_date === undefined ? undefined : toNullableString(raw.scheduled_date),
+  scheduledDate:
+    raw.scheduled_date === undefined ? undefined : toNullableString(raw.scheduled_date),
   actualDate: raw.actual_date === undefined ? undefined : toNullableString(raw.actual_date),
   financialRecords: Array.isArray(raw.financial_records)
-    ? (raw.financial_records as unknown[]).map((record) => mapFinancialRecord(record as Record<string, unknown>))
+    ? (raw.financial_records as unknown[]).map((record) =>
+        mapFinancialRecord(record as Record<string, unknown>),
+      )
     : [],
   canDelete: Boolean(raw.can_delete ?? raw.canDelete),
   createdAt: toStringValue(raw.created_at),
@@ -401,9 +400,7 @@ export const mapTask = (raw: Record<string, unknown>): Task => {
     dealTitle: toOptionalString(raw.deal_title ?? raw.dealTitle),
     clientName: toOptionalString(raw.client_name ?? raw.clientName),
     createdByName:
-      raw.created_by_name === undefined
-        ? undefined
-        : toNullableString(raw.created_by_name),
+      raw.created_by_name === undefined ? undefined : toNullableString(raw.created_by_name),
     assignee: toNullableString(raw.assignee),
     assigneeName: toNullableString(raw.assignee_name ?? raw.assignee_username),
     status: resolveTaskStatus(raw.status ?? raw.state),
@@ -412,12 +409,9 @@ export const mapTask = (raw: Record<string, unknown>): Task => {
     remindAt: raw.remind_at === undefined ? undefined : toNullableString(raw.remind_at),
     checklist: checklistItems,
     createdAt: toStringValue(raw.created_at),
-    completedAt:
-      raw.completed_at === undefined ? undefined : toNullableString(raw.completed_at),
+    completedAt: raw.completed_at === undefined ? undefined : toNullableString(raw.completed_at),
     completedByName:
-      raw.completed_by_name === undefined
-        ? undefined
-        : toNullableString(raw.completed_by_name),
+      raw.completed_by_name === undefined ? undefined : toNullableString(raw.completed_by_name),
     deletedAt: raw.deleted_at === undefined ? undefined : toNullableString(raw.deleted_at),
   };
 };
@@ -457,11 +451,7 @@ export const mapChatMessage = (raw: Record<string, unknown>): ChatMessage => {
     toOptionalString(raw.author_name ?? raw.authorName) ??
     toOptionalString(raw.author_username ?? raw.authorUsername);
   const resolvedDisplayName =
-    toOptionalString(
-      raw.author_display_name ??
-        raw.authorDisplayName ??
-        raw.author_displayName
-    ) ??
+    toOptionalString(raw.author_display_name ?? raw.authorDisplayName ?? raw.author_displayName) ??
     fallbackAuthorDisplayName ??
     'Пользователь';
 

@@ -22,7 +22,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }, duration);
       }
     },
-    [removeNotification]
+    [removeNotification],
   );
 
   return (

@@ -44,7 +44,10 @@ export interface AppRoutesProps {
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
-  onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
+  onCloseDeal: (
+    dealId: string,
+    payload: { reason: string; status?: 'won' | 'lost' },
+  ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -58,7 +61,10 @@ export interface AppRoutesProps {
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
-  onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord: (
+    recordId: string,
+    values: AddFinancialRecordFormValues,
+  ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onCreateFinanceStatement: (values: {
     name: string;
@@ -80,7 +86,7 @@ export interface AppRoutesProps {
       comment: string;
       paidAt: string | null;
       recordIds: string[];
-    }>
+    }>,
   ) => Promise<Statement>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
@@ -94,7 +100,11 @@ export interface AppRoutesProps {
   onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
-  onMergeDeals: (targetDealId: string, sourceDealIds: string[], resultingClientId?: string | undefined) => Promise<void>;
+  onMergeDeals: (
+    targetDealId: string,
+    sourceDealIds: string[],
+    resultingClientId?: string | undefined,
+  ) => Promise<void>;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   dealExecutorFilter: string;
@@ -109,7 +119,7 @@ export interface AppRoutesProps {
     dealId: string,
     parsed: Record<string, unknown>,
     fileName?: string | null,
-    fileId?: string | null
+    fileId?: string | null,
   ) => void;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
@@ -191,19 +201,14 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   isPoliciesListLoading,
 }) => (
   <Routes>
-    <Route
-      path="/seller-dashboard"
-      element={
-        <SellerDashboardView />
-      }
-    />
+    <Route path="/seller-dashboard" element={<SellerDashboardView />} />
     <Route
       path="/deals"
       element={
-          <DealsView
-            deals={deals}
-            clients={clients}
-            onClientEdit={onClientEdit}
+        <DealsView
+          deals={deals}
+          clients={clients}
+          onClientEdit={onClientEdit}
           policies={policies}
           payments={payments}
           financialRecords={financialRecords}
@@ -237,24 +242,24 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDeleteTask={onDeleteTask}
           onDeleteDeal={onDeleteDeal}
           onRestoreDeal={onRestoreDeal}
-            onMergeDeals={onMergeDeals}
-            dealSearch={dealSearch}
-            onDealSearchChange={onDealSearchChange}
-            dealExecutorFilter={dealExecutorFilter}
-            onDealExecutorFilterChange={onDealExecutorFilterChange}
-            dealShowDeleted={dealShowDeleted}
-            onDealShowDeletedChange={onDealShowDeletedChange}
-            dealShowClosed={dealShowClosed}
-            onDealShowClosedChange={onDealShowClosedChange}
-            dealOrdering={dealOrdering}
-            onDealOrderingChange={onDealOrderingChange}
+          onMergeDeals={onMergeDeals}
+          dealSearch={dealSearch}
+          onDealSearchChange={onDealSearchChange}
+          dealExecutorFilter={dealExecutorFilter}
+          onDealExecutorFilterChange={onDealExecutorFilterChange}
+          dealShowDeleted={dealShowDeleted}
+          onDealShowDeletedChange={onDealShowDeletedChange}
+          dealShowClosed={dealShowClosed}
+          onDealShowClosedChange={onDealShowClosedChange}
+          dealOrdering={dealOrdering}
+          onDealOrderingChange={onDealOrderingChange}
           onRequestAddClient={onRequestAddClient}
           onPolicyDraftReady={onPolicyDraftReady}
           onRefreshPolicies={onRefreshPolicies}
           onLoadMoreDeals={onLoadMoreDeals}
           dealsHasMore={dealsHasMore}
-            isLoadingMoreDeals={isLoadingMoreDeals}
-          />
+          isLoadingMoreDeals={isLoadingMoreDeals}
+        />
       }
     />
     <Route
@@ -322,10 +327,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         />
       }
     />
-    <Route
-      path="/knowledge"
-      element={<KnowledgeDocumentsView />}
-    />
+    <Route path="/knowledge" element={<KnowledgeDocumentsView />} />
     <Route path="/settings" element={<SettingsView />} />
     <Route path="*" element={<Navigate to="/deals" replace />} />
   </Routes>

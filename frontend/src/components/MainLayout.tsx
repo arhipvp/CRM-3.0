@@ -43,9 +43,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     <div className="min-h-screen flex bg-slate-100 text-slate-900">
       <aside className="w-64 bg-white/90 backdrop-blur border-r border-slate-200 flex flex-col fixed h-full z-10">
         <div className="px-6 py-5 border-b border-slate-200 bg-white/80">
-          <p className="text-xs uppercase tracking-wide text-slate-400">
-            CRM 3.0
-          </p>
+          <p className="text-xs uppercase tracking-wide text-slate-400">CRM 3.0</p>
           <h1 className="text-2xl font-bold text-sky-600">Insure Desk</h1>
         </div>
 
@@ -72,11 +70,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </nav>
 
         <div className="p-4 border-t border-slate-200 space-y-3 bg-white/80">
-          <button
-            type="button"
-            onClick={onAddDeal}
-            className="btn btn-primary w-full rounded-xl"
-          >
+          <button type="button" onClick={onAddDeal} className="btn btn-primary w-full rounded-xl">
             + Добавить сделку
           </button>
           <button
@@ -122,4 +116,3 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     </div>
   );
 };
-

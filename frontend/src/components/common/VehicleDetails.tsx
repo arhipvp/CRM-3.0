@@ -7,8 +7,7 @@ interface VehicleDetailsProps {
   placeholder?: string;
 }
 
-const nonEmpty = (value?: string | null): value is string =>
-  Boolean(value && value.trim());
+const nonEmpty = (value?: string | null): value is string => Boolean(value && value.trim());
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   brand,

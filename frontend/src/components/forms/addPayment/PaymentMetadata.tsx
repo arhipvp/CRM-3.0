@@ -17,18 +17,18 @@ export const PaymentMetadata: React.FC<PaymentMetadataProps> = ({ payment }) => 
         <span className="font-semibold text-slate-500">Создан</span>
         <span className="font-mono text-slate-700">{payment.createdAt}</span>
       </div>
-    {payment.updatedAt && (
+      {payment.updatedAt && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="font-semibold text-slate-500">Обновлён</span>
           <span className="font-mono text-slate-700">{payment.updatedAt}</span>
         </div>
-    )}
-    {payment.deletedAt && (
+      )}
+      {payment.deletedAt && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="font-semibold text-slate-500">Удалён</span>
           <span className="font-mono text-slate-700">{payment.deletedAt}</span>
         </div>
-    )}
+      )}
     </div>
   </div>
 );

@@ -1,8 +1,4 @@
-﻿import type {
-  Policy,
-  PolicyRecognitionResult,
-  SellerDashboardResponse,
-} from '../types';
+﻿import type { Policy, PolicyRecognitionResult, SellerDashboardResponse } from '../types';
 import { request } from './request';
 import {
   buildQueryString,
@@ -22,7 +18,7 @@ export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
 }
 
 export async function fetchPoliciesWithPagination(
-  filters?: FilterParams
+  filters?: FilterParams,
 ): Promise<PaginatedResponse<Policy>> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/policies/${qs}`);
@@ -87,13 +83,15 @@ export async function deletePolicy(id: string): Promise<void> {
 
 export async function recognizeDealPolicies(
   dealId: string,
-  fileIds: string[]
+  fileIds: string[],
 ): Promise<{ results: PolicyRecognitionResult[] }> {
   const payload = await request<{ results?: unknown[] }>('/policies/recognize/', {
     method: 'POST',
     body: JSON.stringify({ deal_id: dealId, file_ids: fileIds }),
   });
-  const rawResults = Array.isArray(payload?.results) ? (payload.results as Record<string, unknown>[]) : [];
+  const rawResults = Array.isArray(payload?.results)
+    ? (payload.results as Record<string, unknown>[])
+    : [];
   return {
     results: rawResults.map((raw) => {
       const item = raw as Record<string, unknown>;
@@ -101,12 +99,7 @@ export async function recognizeDealPolicies(
       return {
         fileId: toStringValue(item.fileId ?? item.file_id),
         fileName: toNullableString(item.fileName ?? item.file_name),
-        status:
-          statusValue === 'parsed'
-            ? 'parsed'
-            : statusValue === 'exists'
-            ? 'exists'
-            : 'error',
+        status: statusValue === 'parsed' ? 'parsed' : statusValue === 'exists' ? 'exists' : 'error',
         message: toOptionalString(item.message),
         transcript: toNullableString(item.transcript ?? item.transcript_text),
         data:
@@ -142,12 +135,10 @@ export async function fetchSellerDashboard(params?: {
   }
   const query = searchParams.toString();
   const payload = await request<Record<string, unknown>>(
-    `/dashboard/seller/${query ? `?${query}` : ''}`
+    `/dashboard/seller/${query ? `?${query}` : ''}`,
   );
   const rawPolicies = Array.isArray(payload.policies) ? payload.policies : [];
-  const rawPaymentsByDay = Array.isArray(payload.payments_by_day)
-    ? payload.payments_by_day
-    : [];
+  const rawPaymentsByDay = Array.isArray(payload.payments_by_day) ? payload.payments_by_day : [];
   const rawTasksByDay = Array.isArray(payload.tasks_completed_by_day)
     ? payload.tasks_completed_by_day
     : [];
@@ -188,16 +179,10 @@ export async function fetchSellerDashboard(params?: {
       return {
         id: toStringValue(record.id),
         number: toStringValue(record.number),
-        insuranceCompany: toStringValue(
-          record.insurance_company ?? record.insuranceCompany ?? ''
-        ),
-        insuranceType: toStringValue(
-          record.insurance_type ?? record.insuranceType ?? ''
-        ),
+        insuranceCompany: toStringValue(record.insurance_company ?? record.insuranceCompany ?? ''),
+        insuranceType: toStringValue(record.insurance_type ?? record.insuranceType ?? ''),
         clientName: toNullableString(record.client_name ?? record.clientName),
-        insuredClientName: toNullableString(
-          record.insured_client_name ?? record.insuredClientName
-        ),
+        insuredClientName: toNullableString(record.insured_client_name ?? record.insuredClientName),
         startDate: toNullableString(record.start_date ?? record.startDate),
         paidAmount: toStringValue(record.paid_amount ?? record.paidAmount ?? '0'),
       };

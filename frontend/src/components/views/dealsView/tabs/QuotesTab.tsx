@@ -35,18 +35,15 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   onRequestEditQuote,
   onDeleteQuote,
 }) => {
-  const [sortConfig, setSortConfig] = React.useState<
-    | {
-        key: QuoteSortKey;
-        direction: 'asc' | 'desc';
-      }
-    | null
-  >(null);
+  const [sortConfig, setSortConfig] = React.useState<{
+    key: QuoteSortKey;
+    direction: 'asc' | 'desc';
+  } | null>(null);
   const [showDeletedQuotes, setShowDeletedQuotes] = React.useState(false);
 
   const deletedQuotesCount = React.useMemo(
     () => quotes.filter((quote) => Boolean(quote.deletedAt)).length,
-    [quotes]
+    [quotes],
   );
 
   const visibleQuotes = React.useMemo(() => {
@@ -121,7 +118,11 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
     className,
   }) => {
     const isActive = sortConfig?.key === sortKey;
-    const ariaSort = isActive ? (sortConfig?.direction === 'asc' ? 'ascending' : 'descending') : 'none';
+    const ariaSort = isActive
+      ? sortConfig?.direction === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : 'none';
 
     return (
       <TableHeadCell padding="sm" className={className} aria-sort={ariaSort}>
@@ -132,7 +133,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           className="flex w-full items-center gap-2 text-left hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-md"
         >
           <span>{label}</span>
-          {isActive && <span className="text-[11px]">{sortConfig?.direction === 'asc' ? '↑' : '↓'}</span>}
+          {isActive && (
+            <span className="text-[11px]">{sortConfig?.direction === 'asc' ? '↑' : '↓'}</span>
+          )}
         </button>
       </TableHeadCell>
     );
@@ -231,7 +234,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                     >
                       {quote.deductible || '-'}
                     </td>
-                    <td className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 ${deletedTextClass}`}>
+                    <td
+                      className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 ${deletedTextClass}`}
+                    >
                       {quote.comments || '-'}
                     </td>
                     <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
@@ -260,7 +265,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                           className="link-danger text-xs"
                           onClick={() =>
                             onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(
-                              () => undefined
+                              () => undefined,
                             )
                           }
                           type="button"

@@ -135,7 +135,6 @@ export interface KnowledgeSavedAnswer {
   updatedAt: string;
 }
 
-
 export interface SalesChannel {
   id: string;
   name: string;

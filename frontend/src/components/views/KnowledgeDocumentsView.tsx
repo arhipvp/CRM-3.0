@@ -83,9 +83,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [savedError, setSavedError] = useState<string | null>(null);
 
-  const [sourceDetail, setSourceDetail] = useState<KnowledgeSourceDetail | null>(
-    null
-  );
+  const [sourceDetail, setSourceDetail] = useState<KnowledgeSourceDetail | null>(null);
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -115,10 +113,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
         if (!isMounted) {
           return;
         }
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Не удалось загрузить блокноты.';
+        const message = err instanceof Error ? err.message : 'Не удалось загрузить блокноты.';
         setNotebookError(message);
       });
 
@@ -149,18 +144,14 @@ export const KnowledgeDocumentsView: React.FC = () => {
       .then(([sourcesData, sessionsData, savedData]) => {
         setSources(sourcesData);
         setChatSessions(sessionsData);
-        setSelectedSessionId(
-          (prev) => prev || sessionsData[0]?.id || ''
-        );
+        setSelectedSessionId((prev) => prev || sessionsData[0]?.id || '');
         setSavedAnswers(savedData);
         setAskError(null);
         setSavedError(null);
       })
       .catch((err) => {
         const message =
-          err instanceof Error
-            ? err.message
-            : 'Не удалось загрузить данные блокнота.';
+          err instanceof Error ? err.message : 'Не удалось загрузить данные блокнота.';
         setSourcesError(message);
         setSessionsError(message);
       })
@@ -192,8 +183,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSelectedNotebookName(notebook.name);
       setNewNotebookName('');
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось создать блокнот.';
+      const message = err instanceof Error ? err.message : 'Не удалось создать блокнот.';
       setNotebookError(message);
     } finally {
       setIsNotebookBusy(false);
@@ -216,13 +206,10 @@ export const KnowledgeDocumentsView: React.FC = () => {
         notebookId: selectedNotebookId,
         name,
       });
-      setNotebooks((prev) =>
-        prev.map((item) => (item.id === updated.id ? updated : item))
-      );
+      setNotebooks((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setSelectedNotebookName(updated.name);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось переименовать блокнот.';
+      const message = err instanceof Error ? err.message : 'Не удалось переименовать блокнот.';
       setNotebookError(message);
     } finally {
       setIsNotebookBusy(false);
@@ -235,7 +222,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
     }
     const current = notebooks.find((item) => item.id === selectedNotebookId);
     const confirmed = window.confirm(
-      `Удалить блокнот "${current?.name ?? ''}"? Все файлы и заметки будут удалены.`
+      `Удалить блокнот "${current?.name ?? ''}"? Все файлы и заметки будут удалены.`,
     );
     if (!confirmed) {
       return;
@@ -252,8 +239,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSources([]);
       setSavedAnswers([]);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось удалить блокнот.';
+      const message = err instanceof Error ? err.message : 'Не удалось удалить блокнот.';
       setNotebookError(message);
     } finally {
       setIsNotebookBusy(false);
@@ -275,8 +261,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       const refreshed = await fetchSources(selectedNotebookId);
       setSources(refreshed);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось загрузить файл.';
+      const message = err instanceof Error ? err.message : 'Не удалось загрузить файл.';
       setSourcesError(message);
     }
   };
@@ -293,8 +278,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       await deleteSource(sourceId);
       setSources((prev) => prev.filter((item) => item.id !== sourceId));
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось удалить файл.';
+      const message = err instanceof Error ? err.message : 'Не удалось удалить файл.';
       setSourcesError(message);
     }
   };
@@ -307,8 +291,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       const detail = await fetchSourceDetail(sourceId);
       setSourceDetail(detail);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось загрузить источник.';
+      const message = err instanceof Error ? err.message : 'Не удалось загрузить источник.';
       setSourceError(message);
       setSourceDetail(null);
     } finally {
@@ -331,8 +314,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       setSelectedSessionId(session.id);
       setNewSessionTitle('');
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось создать сессию.';
+      const message = err instanceof Error ? err.message : 'Не удалось создать сессию.';
       setSessionsError(message);
     }
   };
@@ -362,16 +344,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
         sessionId: editingSessionId,
         title,
       });
-      setChatSessions((prev) =>
-        prev.map((item) => (item.id === updated.id ? updated : item))
-      );
+      setChatSessions((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       if (selectedSessionId === updated.id) {
         setSelectedSessionId(updated.id);
       }
       handleCancelEditSession();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось обновить сессию.';
+      const message = err instanceof Error ? err.message : 'Не удалось обновить сессию.';
       setSessionsError(message);
     }
   };
@@ -389,8 +368,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
         setSelectedSessionId('');
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось удалить сессию.';
+      const message = err instanceof Error ? err.message : 'Не удалось удалить сессию.';
       setSessionsError(message);
     }
   };
@@ -411,16 +389,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
       const response = await askKnowledgeBase(
         selectedNotebookId,
         trimmedQuestion,
-        selectedSessionId || undefined
+        selectedSessionId || undefined,
       );
       setAnswer(response.answer);
       setCitations(response.citations ?? []);
       setLastQuestion(trimmedQuestion);
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Ошибка запроса к базе знаний';
+      const message = err instanceof Error ? err.message : 'Ошибка запроса к базе знаний';
       setAskError(message);
     } finally {
       setIsAsking(false);
@@ -450,8 +425,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       });
       setSavedAnswers((prev) => [saved, ...prev]);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Не удалось сохранить ответ.';
+      const message = err instanceof Error ? err.message : 'Не удалось сохранить ответ.';
       setSavedError(message);
     } finally {
       setSavingAnswer(false);
@@ -463,18 +437,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
       await deleteKnowledgeAnswer(answerId);
       setSavedAnswers((prev) => prev.filter((item) => item.id !== answerId));
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Не удалось удалить сохранённый ответ.';
+      const message = err instanceof Error ? err.message : 'Не удалось удалить сохранённый ответ.';
       setSavedError(message);
     }
   };
 
-  const collectReferenceItems = (
-    text: string,
-    sourceCitations: KnowledgeCitation[]
-  ) => {
+  const collectReferenceItems = (text: string, sourceCitations: KnowledgeCitation[]) => {
     const regex = /\[source:([^\]]+)\]/g;
     const orderedIds: string[] = [];
     let match = regex.exec(text);
@@ -496,17 +464,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
     });
   };
 
-  const renderAnswerWithCitations = (
-    text: string,
-    sourceCitations: KnowledgeCitation[]
-  ) => {
+  const renderAnswerWithCitations = (text: string, sourceCitations: KnowledgeCitation[]) => {
     const references = collectReferenceItems(text, sourceCitations);
     if (!references.length) {
       return text;
     }
-    const indexBySource = new Map(
-      references.map((item, index) => [item.sourceId, index + 1])
-    );
+    const indexBySource = new Map(references.map((item, index) => [item.sourceId, index + 1]));
     const parts: Array<string | React.ReactNode> = [];
     const regex = /\[source:([^\]]+)\]/g;
     let lastIndex = 0;
@@ -528,7 +491,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             >
               [{number}]
             </button>
-          </sup>
+          </sup>,
         );
         key += 1;
       }
@@ -545,7 +508,8 @@ export const KnowledgeDocumentsView: React.FC = () => {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Библиотека полезной документации</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Управляйте блокнотами Open Notebook прямо из CRM: создавайте, загружайте файлы и задавайте вопросы.
+            Управляйте блокнотами Open Notebook прямо из CRM: создавайте, загружайте файлы и
+            задавайте вопросы.
           </p>
         </div>
 
@@ -632,9 +596,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               className="field field-input"
               disabled={!selectedNotebookId || sessionsLoading}
             >
-              <option value="">
-                {sessionsLoading ? 'Загрузка сессий...' : 'Выберите сессию'}
-              </option>
+              <option value="">{sessionsLoading ? 'Загрузка сессий...' : 'Выберите сессию'}</option>
               {chatSessions.map((session) => (
                 <option key={session.id} value={session.id}>
                   {session.title || 'Без названия'}
@@ -673,9 +635,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
         </div>
         {answer && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
-            <div className="text-blue-700">
-              {renderAnswerWithCitations(answer, citations)}
-            </div>
+            <div className="text-blue-700">{renderAnswerWithCitations(answer, citations)}</div>
             {collectReferenceItems(answer, citations).length > 0 && (
               <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
                 <div className="font-semibold text-slate-700">Источники</div>
@@ -712,9 +672,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               >
                 {savingAnswer ? 'Сохраняем...' : 'Сохранить ответ'}
               </button>
-              {savedError && (
-                <span className="text-xs text-rose-600">{savedError}</span>
-              )}
+              {savedError && <span className="text-xs text-rose-600">{savedError}</span>}
             </div>
           </div>
         )}
@@ -732,9 +690,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
           </div>
         </div>
         <div className="p-6 space-y-4">
-          {savedError && (
-            <div className="app-alert app-alert-danger">{savedError}</div>
-          )}
+          {savedError && <div className="app-alert app-alert-danger">{savedError}</div>}
           {savedAnswers.length === 0 && (
             <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
               Пока нет сохранённых ответов.
@@ -755,12 +711,8 @@ export const KnowledgeDocumentsView: React.FC = () => {
               {collectReferenceItems(item.answer, item.citations).length > 0 && (
                 <div className="text-xs text-slate-600 space-y-1">
                   <div className="font-semibold text-slate-700">Источники</div>
-                  {collectReferenceItems(item.answer, item.citations).map(
-                    (cite, index) => (
-                      <div
-                        key={`${item.id}-${cite.sourceId}`}
-                        className="flex flex-wrap gap-2"
-                      >
+                  {collectReferenceItems(item.answer, item.citations).map((cite, index) => (
+                    <div key={`${item.id}-${cite.sourceId}`} className="flex flex-wrap gap-2">
                       <span className="text-slate-500">[{index + 1}]</span>
                       <button
                         type="button"
@@ -779,9 +731,8 @@ export const KnowledgeDocumentsView: React.FC = () => {
                           Файл
                         </a>
                       )}
-                      </div>
-                    )
-                  )}
+                    </div>
+                  ))}
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-3">
@@ -833,7 +784,9 @@ export const KnowledgeDocumentsView: React.FC = () => {
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-base font-semibold text-slate-900">{source.title || 'Без названия'}</p>
+                  <p className="text-base font-semibold text-slate-900">
+                    {source.title || 'Без названия'}
+                  </p>
                   <p className="text-xs text-slate-500">{formatDateTime(source.createdAt)}</p>
                 </div>
                 {source.embedded !== null && (
@@ -894,9 +847,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                 Создать
               </button>
             </div>
-            {sessionsError && (
-              <div className="text-xs text-rose-600">{sessionsError}</div>
-            )}
+            {sessionsError && <div className="text-xs text-rose-600">{sessionsError}</div>}
             <div className="space-y-2">
               {chatSessions.length === 0 && (
                 <div className="text-sm text-slate-500">Сессий пока нет.</div>
@@ -916,9 +867,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                         <input
                           type="text"
                           value={editingSessionTitle}
-                          onChange={(event) =>
-                            setEditingSessionTitle(event.target.value)
-                          }
+                          onChange={(event) => setEditingSessionTitle(event.target.value)}
                           className="field field-input"
                         />
                         <div className="flex flex-wrap gap-2">
@@ -993,12 +942,8 @@ export const KnowledgeDocumentsView: React.FC = () => {
           size="xl"
         >
           <div className="space-y-3">
-            {sourceLoading && (
-              <div className="text-sm text-slate-500">Загрузка источника...</div>
-            )}
-            {sourceError && (
-              <div className="text-sm text-rose-600">{sourceError}</div>
-            )}
+            {sourceLoading && <div className="text-sm text-slate-500">Загрузка источника...</div>}
+            {sourceError && <div className="text-sm text-rose-600">{sourceError}</div>}
             {!sourceLoading && !sourceError && (
               <>
                 <div className="text-xs text-slate-500">

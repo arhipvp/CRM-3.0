@@ -37,7 +37,7 @@ const normalizeAmount = (value: Payment['amount']) => {
 };
 
 const buildPaymentDescription = (
-  payment: Payment
+  payment: Payment,
 ): { description: string; amount: number | null } => {
   const parts: string[] = [];
   if (payment.description) {
@@ -102,9 +102,7 @@ export const buildDealEvents = ({
     });
   });
 
-  return events.sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 };
 
 export interface DealEventWindow {
@@ -116,7 +114,7 @@ export interface DealEventWindow {
 
 export const buildEventWindow = (
   events: DealEvent[],
-  options?: { today?: Date }
+  options?: { today?: Date },
 ): DealEventWindow => {
   const today = options?.today ? new Date(options.today) : new Date();
   today.setHours(0, 0, 0, 0);

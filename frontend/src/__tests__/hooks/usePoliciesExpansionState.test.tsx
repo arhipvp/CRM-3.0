@@ -17,10 +17,7 @@ const Harness: React.FC = () => {
     <div>
       <pre data-testid="payments">{JSON.stringify(paymentsExpanded)}</pre>
       <pre data-testid="records">{JSON.stringify(recordsExpandedAll)}</pre>
-      <button
-        type="button"
-        onClick={() => setPaymentsExpanded({ a: true, b: false })}
-      >
+      <button type="button" onClick={() => setPaymentsExpanded({ a: true, b: false })}>
         setPayments
       </button>
       <button type="button" onClick={() => setRecordsExpandedAll(true)}>
@@ -38,13 +35,15 @@ describe('usePoliciesExpansionState', () => {
   it('initializes from localStorage', () => {
     window.localStorage.setItem(
       POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY,
-      JSON.stringify({ a: true, b: 'nope', c: false })
+      JSON.stringify({ a: true, b: 'nope', c: false }),
     );
     window.localStorage.setItem(POLICIES_RECORDS_EXPANDED_STORAGE_KEY, 'true');
 
     render(<Harness />);
 
-    expect(screen.getByTestId('payments').textContent).toBe(JSON.stringify({ a: true, b: false, c: false }));
+    expect(screen.getByTestId('payments').textContent).toBe(
+      JSON.stringify({ a: true, b: false, c: false }),
+    );
     expect(screen.getByTestId('records').textContent).toBe('true');
   });
 
@@ -57,7 +56,7 @@ describe('usePoliciesExpansionState', () => {
 
     await waitFor(() => {
       expect(window.localStorage.getItem(POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY)).toBe(
-        JSON.stringify({ a: true, b: false })
+        JSON.stringify({ a: true, b: false }),
       );
       expect(window.localStorage.getItem(POLICIES_RECORDS_EXPANDED_STORAGE_KEY)).toBe('true');
     });

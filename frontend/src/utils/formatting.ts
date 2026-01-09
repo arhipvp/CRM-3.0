@@ -27,7 +27,7 @@ export function formatDateTimeRu(value?: string | null, fallback = DEFAULT_PLACE
 
 export function formatCurrencyRu(
   amount: number | string | null | undefined,
-  fallback = DEFAULT_PLACEHOLDER
+  fallback = DEFAULT_PLACEHOLDER,
 ): string {
   if (amount === null || amount === undefined) {
     return fallback;
@@ -38,4 +38,3 @@ export function formatCurrencyRu(
   }
   return value.toLocaleString(RU_LOCALE, { style: 'currency', currency: RUB_CURRENCY });
 }
-

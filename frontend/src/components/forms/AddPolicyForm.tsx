@@ -70,11 +70,11 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [salesChannelId, setSalesChannelId] = useState('');
   const salesChannelName = useMemo(
     () => resolveSalesChannelName(salesChannels, salesChannelId),
-    [salesChannels, salesChannelId]
+    [salesChannels, salesChannelId],
   );
   const commissionNote = useMemo(
     () => buildCommissionIncomeNote(salesChannelName),
-    [salesChannelName]
+    [salesChannelName],
   );
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -87,9 +87,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const filteredInsuredClients = useMemo(() => {
     const normalizedQuery = insuredQuery.trim().toLowerCase();
     const candidates = normalizedQuery
-      ? clients.filter((client) =>
-          client.name.toLowerCase().includes(normalizedQuery)
-        )
+      ? clients.filter((client) => client.name.toLowerCase().includes(normalizedQuery))
       : clients;
     return candidates.slice(0, MAX_INSURED_SUGGESTIONS);
   }, [clients, insuredQuery]);
@@ -99,11 +97,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       prev.map((payment) => ({
         ...payment,
         incomes: payment.incomes.map((income) =>
-          shouldAutofillCommissionNote(income.note)
-            ? { ...income, note: commissionNote }
-            : income
+          shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
         ),
-      }))
+      })),
     );
   }, [commissionNote]);
 
@@ -150,7 +146,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       })
       .catch(() => {
         if (!isMounted) return;
-        setOptionsError('Не удалось загрузить справочники страховых компаний и типов. Обновите страницу и попробуйте снова.');
+        setOptionsError(
+          'Не удалось загрузить справочники страховых компаний и типов. Обновите страницу и попробуйте снова.',
+        );
       })
       .finally(() => {
         if (!isMounted) return;
@@ -202,7 +200,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         ...payment,
         incomes: payment.incomes ?? [],
         expenses: payment.expenses ?? [],
-      }))
+      })),
     );
     setCounterpartyTouched(Boolean(initialValues.counterparty));
     setInsuredClientId(initialValues.insuredClientId || '');
@@ -225,7 +223,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       return;
     }
     const match = companies.find(
-      (company) => company.name.toLowerCase() === initialInsuranceCompanyName.toLowerCase()
+      (company) => company.name.toLowerCase() === initialInsuranceCompanyName.toLowerCase(),
     );
     if (match) {
       setInsuranceCompanyId(match.id);
@@ -240,7 +238,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     if (!normalizedRecognized) {
       return;
     }
-    const match = types.find((type) => normalizeTypeForComparison(type.name) === normalizedRecognized);
+    const match = types.find(
+      (type) => normalizeTypeForComparison(type.name) === normalizedRecognized,
+    );
     if (match) {
       setInsuranceTypeId(match.id);
     }
@@ -255,7 +255,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       })
       .catch(() => {
         if (!isMounted) return;
-        setOptionsError('Не удалось загрузить справочники марок и моделей. Попробуйте обновить страницу.');
+        setOptionsError(
+          'Не удалось загрузить справочники марок и моделей. Попробуйте обновить страницу.',
+        );
       });
     return () => {
       isMounted = false;
@@ -271,7 +273,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       })
       .catch(() => {
         if (!isMounted) return;
-        setOptionsError('Не удалось загрузить справочники марок и моделей. Попробуйте обновить страницу.');
+        setOptionsError(
+          'Не удалось загрузить справочники марок и моделей. Попробуйте обновить страницу.',
+        );
       });
     return () => {
       isMounted = false;
@@ -335,10 +339,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       ? 'Срок полиса отличается от стандартного годового периода. Уточните даты, если это ожидаемо.'
       : null;
   const firstPaymentDateWarning =
-    startDate &&
-    payments[0] &&
-    payments[0].scheduledDate &&
-    payments[0].scheduledDate !== startDate
+    startDate && payments[0] && payments[0].scheduledDate && payments[0].scheduledDate !== startDate
       ? 'Дата первого платежа не совпадает с началом полиса. Проверьте расписание.'
       : null;
 
@@ -351,17 +352,17 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setPayments((prev) =>
       prev.map((payment) => {
         const alreadyHasNote = payment.expenses.some(
-          (expense) => (expense.note ?? '').trim() === normalizedNote
+          (expense) => (expense.note ?? '').trim() === normalizedNote,
         );
         if (alreadyHasNote) {
           return payment;
         }
-          return {
-            ...payment,
-            expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: normalizedNote }],
-          };
-        })
-      );
+        return {
+          ...payment,
+          expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: normalizedNote }],
+        };
+      }),
+    );
   }, []);
 
   useEffect(() => {
@@ -454,7 +455,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const updatePaymentField = (
     index: number,
     field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>,
-    value: string
+    value: string,
   ) => {
     setPayments((prev) =>
       prev.map((payment, idx) =>
@@ -463,8 +464,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               ...payment,
               [field]: value,
             }
-          : payment
-      )
+          : payment,
+      ),
     );
   };
 
@@ -476,13 +477,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               ...payment,
               [type]: [
                 ...payment[type],
-                  type === 'expenses'
-                    ? createEmptyRecord('1')
-                    : createEmptyRecord('0', commissionNote),
+                type === 'expenses'
+                  ? createEmptyRecord('1')
+                  : createEmptyRecord('0', commissionNote),
               ],
             }
-          : payment
-      )
+          : payment,
+      ),
     );
   };
 
@@ -491,7 +492,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     type: 'incomes' | 'expenses',
     recordIndex: number,
     field: keyof FinancialRecordDraft,
-    value: string
+    value: string,
   ) => {
     setPayments((prev) =>
       prev.map((payment, idx) => {
@@ -502,17 +503,21 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 ...record,
                 [field]: value,
               }
-            : record
+            : record,
         );
         return {
           ...payment,
           [type]: updatedRecords,
         };
-      })
+      }),
     );
   };
 
-  const removeRecord = (paymentIndex: number, type: 'incomes' | 'expenses', recordIndex: number) => {
+  const removeRecord = (
+    paymentIndex: number,
+    type: 'incomes' | 'expenses',
+    recordIndex: number,
+  ) => {
     setPayments((prev) =>
       prev.map((payment, idx) =>
         idx === paymentIndex
@@ -520,8 +525,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               ...payment,
               [type]: payment[type].filter((_, recIdx) => recIdx !== recordIndex),
             }
-          : payment
-      )
+          : payment,
+      ),
     );
   };
 
@@ -564,7 +569,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         (selectedInsuredId
           ? clients.find((client) => client.id === selectedInsuredId)?.name
           : undefined) ||
-        (insuredQuery.trim() || undefined);
+        insuredQuery.trim() ||
+        undefined;
 
       await onSubmit({
         number: number.trim(),
@@ -838,11 +844,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="app-label">Платежи</p>
-              <button
-                type="button"
-                onClick={handleAddPayment}
-                className="btn btn-sm btn-secondary"
-              >
+              <button type="button" onClick={handleAddPayment} className="btn btn-sm btn-secondary">
                 + Добавить платёж
               </button>
             </div>
@@ -923,12 +925,18 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
           <div className="space-y-4">
             {payments.map((payment, paymentIndex) => (
-              <section key={`records-${paymentIndex}`} className="app-panel p-5 shadow-none space-y-3">
+              <section
+                key={`records-${paymentIndex}`}
+                className="app-panel p-5 shadow-none space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">Платёж #{paymentIndex + 1}</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      Платёж #{paymentIndex + 1}
+                    </p>
                     <p className="text-xs text-slate-500">
-                      Сумма {payment.amount || 'не указана'} · план {payment.scheduledDate || 'не указан'}
+                      Сумма {payment.amount || 'не указана'} · план{' '}
+                      {payment.scheduledDate || 'не указан'}
                     </p>
                   </div>
                   <div className="flex gap-3">
@@ -951,7 +959,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 <div className="space-y-3">
                   <div className="app-panel-muted p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Доходы
+                      </h4>
                       <button
                         type="button"
                         className="btn btn-sm btn-quiet"
@@ -975,7 +985,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                   </div>
                   <div className="app-panel-muted p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Расходы</h4>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Расходы
+                      </h4>
                       <button
                         type="button"
                         className="btn btn-sm btn-quiet"

@@ -10,7 +10,7 @@ export async function fetchPayments(filters?: FilterParams): Promise<Payment[]> 
 }
 
 export async function fetchPaymentsWithPagination(
-  filters?: FilterParams
+  filters?: FilterParams,
 ): Promise<PaginatedResponse<Payment>> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/payments/${qs}`);
@@ -53,7 +53,7 @@ export async function updatePayment(
     scheduledDate: string | null;
     description: string;
     amount: number;
-  }>
+  }>,
 ): Promise<Payment> {
   const payload = await request<Record<string, unknown>>(`/payments/${id}/`, {
     method: 'PATCH',
@@ -75,11 +75,11 @@ export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
 }
 
 export async function fetchFinancialRecordsWithPagination(
-  filters?: FilterParams
+  filters?: FilterParams,
 ): Promise<PaginatedResponse<FinancialRecord>> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(
-    `/financial_records/${qs}`
+    `/financial_records/${qs}`,
   );
   return {
     count: payload.count || 0,
@@ -119,7 +119,7 @@ export async function updateFinancialRecord(
     description: string;
     source: string;
     note: string;
-  }>
+  }>,
 ): Promise<FinancialRecord> {
   const payload = await request<Record<string, unknown>>(`/financial_records/${id}/`, {
     method: 'PATCH',
@@ -140,7 +140,9 @@ export async function deleteFinancialRecord(id: string): Promise<void> {
 
 export async function fetchFinanceStatements(filters?: FilterParams): Promise<Statement[]> {
   const qs = buildQueryString(filters);
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/finance_statements/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(
+    `/finance_statements/${qs}`,
+  );
   return unwrapList<Record<string, unknown>>(payload).map(mapStatement);
 }
 
@@ -174,7 +176,7 @@ export async function updateFinanceStatement(
     comment: string;
     paidAt: string | null;
     recordIds: string[];
-  }>
+  }>,
 ): Promise<Statement> {
   const payload = await request<Record<string, unknown>>(`/finance_statements/${id}/`, {
     method: 'PATCH',
@@ -197,7 +199,7 @@ export async function deleteFinanceStatement(id: string): Promise<void> {
 
 export async function removeFinanceStatementRecords(
   id: string,
-  recordIds: string[]
+  recordIds: string[],
 ): Promise<{ removed: number }> {
   return request<{ removed: number }>(`/finance_statements/${id}/remove-records/`, {
     method: 'POST',
@@ -207,14 +209,11 @@ export async function removeFinanceStatementRecords(
 
 export async function markFinanceStatementPaid(
   id: string,
-  paidAt?: string | null
+  paidAt?: string | null,
 ): Promise<Statement> {
-  const payload = await request<Record<string, unknown>>(
-    `/finance_statements/${id}/mark-paid/`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ paid_at: paidAt }),
-    }
-  );
+  const payload = await request<Record<string, unknown>>(`/finance_statements/${id}/mark-paid/`, {
+    method: 'POST',
+    body: JSON.stringify({ paid_at: paidAt }),
+  });
   return mapStatement(payload);
 }

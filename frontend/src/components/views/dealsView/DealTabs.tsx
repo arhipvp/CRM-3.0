@@ -7,11 +7,7 @@ interface DealTabsProps {
   tabCounts?: Partial<Record<DealTabId, number>>;
 }
 
-export const DealTabs: React.FC<DealTabsProps> = ({
-  activeTab,
-  onChange,
-  tabCounts,
-}) => (
+export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange, tabCounts }) => (
   <div
     role="tablist"
     aria-label="Разделы выбранной сделки"
@@ -39,9 +35,7 @@ export const DealTabs: React.FC<DealTabsProps> = ({
           }`}
         >
           <span className="flex items-center justify-center gap-2">
-            <span className={isActive ? 'font-semibold' : 'font-medium'}>
-              {tab.label}
-            </span>
+            <span className={isActive ? 'font-semibold' : 'font-medium'}>{tab.label}</span>
             {hasCount && (
               <span className="app-counter" aria-hidden="true">
                 {count}

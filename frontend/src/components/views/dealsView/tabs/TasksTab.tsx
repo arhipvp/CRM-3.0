@@ -31,7 +31,7 @@ export const TasksTab: React.FC<TasksTabProps> = ({
 
   const deletedTasksCount = useMemo(
     () => displayedTasks.filter((task) => Boolean(task.deletedAt)).length,
-    [displayedTasks]
+    [displayedTasks],
   );
 
   const visibleTasks = useMemo(() => {
@@ -75,9 +75,7 @@ export const TasksTab: React.FC<TasksTabProps> = ({
             />
             <span>Показывать удалённые</span>
             {deletedTasksCount > 0 && (
-              <span className="text-[11px] text-slate-400">
-                ({deletedTasksCount})
-              </span>
+              <span className="text-[11px] text-slate-400">({deletedTasksCount})</span>
             )}
           </label>
         </div>

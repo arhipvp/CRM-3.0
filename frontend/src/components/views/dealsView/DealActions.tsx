@@ -73,10 +73,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
         type="button"
         onClick={onClose}
         disabled={
-          isSelectedDealDeleted ||
-          isDealClosedStatus ||
-          isClosingDeal ||
-          !isCurrentUserSeller
+          isSelectedDealDeleted || isDealClosedStatus || isClosingDeal || !isCurrentUserSeller
         }
         className="btn btn-success"
       >

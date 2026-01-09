@@ -67,7 +67,7 @@ export function logout(): void {
 
 export async function changePassword(
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<ChangePasswordResponse> {
   return request<ChangePasswordResponse>('/auth/password/', {
     method: 'POST',

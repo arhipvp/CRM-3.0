@@ -25,4 +25,3 @@ export const dedupeFiles = (files: File[]): File[] => {
   const collected: CollectedFile[] = files.map((file) => ({ file, key: buildFallbackKey(file) }));
   return dedupeCollectedFiles(collected);
 };
-

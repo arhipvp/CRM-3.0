@@ -67,11 +67,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             />
           </div>
 
-          {error && (
-            <p className="app-alert app-alert-danger">{error}</p>
-          )}
+          {error && <p className="app-alert app-alert-danger">{error}</p>}
 
-          <button type="submit" disabled={isLoading} className="btn btn-primary w-full justify-center">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="btn btn-primary w-full justify-center"
+          >
             {isLoading ? 'Входим...' : 'Войти'}
           </button>
         </form>

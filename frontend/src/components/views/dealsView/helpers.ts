@@ -1,4 +1,10 @@
-import type { DealStatus, FinancialRecord, Payment, Policy, PolicyRecognitionResult } from '../../../types';
+import type {
+  DealStatus,
+  FinancialRecord,
+  Payment,
+  Policy,
+  PolicyRecognitionResult,
+} from '../../../types';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -112,10 +118,7 @@ export const formatDriveFileSize = (bytes?: number | null) => {
   }
   const k = 1024;
   const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(k)),
-    sizes.length - 1
-  );
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
 };
 
@@ -130,7 +133,11 @@ export const formatDeletedAt = (value?: string | null) => {
   return parsed.toLocaleString('ru-RU');
 };
 
-export const getUserDisplayName = (user: { firstName?: string | null; lastName?: string | null; username: string }) => {
+export const getUserDisplayName = (user: {
+  firstName?: string | null;
+  lastName?: string | null;
+  username: string;
+}) => {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
   return fullName || user.username;
 };
@@ -161,12 +168,7 @@ export const getPolicySortValue = (policy: Policy, key: PolicySortKey) => {
     case 'insuranceType':
       return policy.insuranceType ?? '';
     case 'client':
-      return (
-        policy.insuredClientName ??
-        policy.clientName ??
-        policy.clientId ??
-        ''
-      );
+      return policy.insuredClientName ?? policy.clientName ?? policy.clientId ?? '';
     case 'salesChannel':
       return policy.salesChannelName ?? policy.salesChannel ?? '';
     case 'startDate':
@@ -192,7 +194,10 @@ const isRecordDeleted = (record: FinancialRecord) => Boolean(record.deletedAt);
 const hasPaymentBeenPaid = (payment: Payment) => Boolean((payment.actualDate ?? '').trim());
 const hasRecordBeenPaid = (record: FinancialRecord) => Boolean((record.date ?? '').trim());
 
-export const getPaymentFinancialRecords = (payment: Payment, allFinancialRecords: FinancialRecord[]) => {
+export const getPaymentFinancialRecords = (
+  payment: Payment,
+  allFinancialRecords: FinancialRecord[],
+) => {
   if (payment.financialRecords && payment.financialRecords.length > 0) {
     return payment.financialRecords;
   }
@@ -201,7 +206,7 @@ export const getPaymentFinancialRecords = (payment: Payment, allFinancialRecords
 
 export const hasUnpaidFinancialActivity = (
   payment: Payment,
-  allFinancialRecords: FinancialRecord[]
+  allFinancialRecords: FinancialRecord[],
 ) => {
   if (isPaymentDeleted(payment)) {
     return false;
@@ -216,7 +221,7 @@ export const hasUnpaidFinancialActivity = (
 export const policyHasUnpaidActivity = (
   policyId: string,
   paymentsByPolicyMap: Map<string, Payment[]>,
-  allFinancialRecords: FinancialRecord[]
+  allFinancialRecords: FinancialRecord[],
 ) => {
   const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
   return policyPayments.some((payment) => hasUnpaidFinancialActivity(payment, allFinancialRecords));

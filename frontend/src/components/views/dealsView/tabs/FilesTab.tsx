@@ -85,8 +85,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const disableUpload = !selectedDeal.driveFolderId;
   const driveFolderLink = buildDriveFolderLink(selectedDeal.driveFolderId);
   const getSortIndicator = () => (driveSortDirection === 'asc' ? '↑' : '↓');
-  const getSortLabel = () =>
-    driveSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию';
+  const getSortLabel = () => (driveSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию');
   const getColumnTitleClass = () => {
     const baseClass = 'text-[11px] font-semibold uppercase tracking-wide';
     return `${baseClass} text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2`;
@@ -195,15 +194,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           {isTrashing ? 'Удаляю...' : 'Удалить'}
         </button>
         <p className="text-xs text-slate-500">
-          {selectedDriveFileIds.length ? (
-            canRecognizeSelectedFiles ? (
-              `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
-            ) : (
-              'Можно распознавать только PDF-файлы.'
-            )
-          ) : (
-            'Выберите файлы для распознавания.'
-          )}
+          {selectedDriveFileIds.length
+            ? canRecognizeSelectedFiles
+              ? `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
+              : 'Можно распознавать только PDF-файлы.'
+            : 'Выберите файлы для распознавания.'}
         </p>
       </div>
 
@@ -211,7 +206,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{recognitionMessage}</p>
       )}
 
-      {trashMessage && <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{trashMessage}</p>}
+      {trashMessage && (
+        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{trashMessage}</p>
+      )}
 
       {renameMessage && (
         <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{renameMessage}</p>
@@ -227,8 +224,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                   result.status === 'error'
                     ? 'text-rose-600'
                     : result.status === 'exists'
-                    ? 'text-amber-600'
-                    : 'text-slate-500'
+                      ? 'text-amber-600'
+                      : 'text-slate-500'
                 }`}
               >
                 {formatRecognitionSummary(result)}
@@ -236,7 +233,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               {result.transcript && (
                 <details className="text-[10px] text-slate-400">
                   <summary>Показать транскрипт</summary>
-                  <pre className="whitespace-pre-wrap text-[11px] leading-snug">{result.transcript}</pre>
+                  <pre className="whitespace-pre-wrap text-[11px] leading-snug">
+                    {result.transcript}
+                  </pre>
                 </details>
               )}
             </div>
@@ -246,18 +245,23 @@ export const FilesTab: React.FC<FilesTabProps> = ({
 
       {driveError && renderStatusMessage(driveError, 'danger')}
 
-      {!driveError && !selectedDeal.driveFolderId && (
-        renderStatusMessage('Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.')
-      )}
+      {!driveError &&
+        !selectedDeal.driveFolderId &&
+        renderStatusMessage(
+          'Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.',
+        )}
 
       <div className="space-y-3 border-t border-slate-100 pt-4">
-        {!driveError && selectedDeal.driveFolderId && isDriveLoading && (
-          renderStatusMessage('Загружаю файлы...')
-        )}
+        {!driveError &&
+          selectedDeal.driveFolderId &&
+          isDriveLoading &&
+          renderStatusMessage('Загружаю файлы...')}
 
-        {!driveError && selectedDeal.driveFolderId && !isDriveLoading && sortedDriveFiles.length === 0 && (
-          renderStatusMessage('Папка пуста.')
-        )}
+        {!driveError &&
+          selectedDeal.driveFolderId &&
+          !isDriveLoading &&
+          sortedDriveFiles.length === 0 &&
+          renderStatusMessage('Папка пуста.')}
 
         {!driveError && sortedDriveFiles.length > 0 && (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -313,9 +317,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                               <p className="text-sm font-semibold text-slate-900 break-all">
                                 {file.name}
                               </p>
-                              <p className="text-xs text-slate-500">
-                                {file.mimeType || '—'}
-                              </p>
+                              <p className="text-xs text-slate-500">{file.mimeType || '—'}</p>
                             </div>
                           </div>
                         </td>
@@ -369,13 +371,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           closeOnOverlayClick={false}
         >
           <div className="space-y-4">
-            {renameError && (
-              <p className="app-alert app-alert-danger">{renameError}</p>
-            )}
+            {renameError && <p className="app-alert app-alert-danger">{renameError}</p>}
             <div>
-              <label className="block text-sm font-semibold text-slate-700">
-                Новое имя
-              </label>
+              <label className="block text-sm font-semibold text-slate-700">Новое имя</label>
               <input
                 type="text"
                 value={renameDraft}
@@ -392,11 +390,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               >
                 {isRenaming ? 'Сохраняем...' : 'Сохранить'}
               </button>
-              <button
-                type="button"
-                onClick={closeRenameModal}
-                className="btn btn-secondary w-full"
-              >
+              <button type="button" onClick={closeRenameModal} className="btn btn-secondary w-full">
                 Отмена
               </button>
             </div>

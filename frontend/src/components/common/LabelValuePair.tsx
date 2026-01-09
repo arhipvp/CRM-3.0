@@ -19,8 +19,6 @@ export const LabelValuePair: React.FC<LabelValuePairProps> = ({
     <span className={`text-[10px] uppercase tracking-[0.4em] text-slate-400 ${labelClassName}`}>
       {label}:
     </span>
-    <span className={`font-semibold text-slate-900 ${valueClassName}`}>
-      {value ?? '—'}
-    </span>
+    <span className={`font-semibold text-slate-900 ${valueClassName}`}>{value ?? '—'}</span>
   </p>
 );

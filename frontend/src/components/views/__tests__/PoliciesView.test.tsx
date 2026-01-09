@@ -5,7 +5,9 @@ import type { Payment, Policy } from '../../../types';
 import { PoliciesView } from '../PoliciesView';
 import { vi } from 'vitest';
 
-type PaymentCardProps = ComponentProps<typeof import('../../policies/PaymentCard')['PaymentCard']>;
+type PaymentCardProps = ComponentProps<
+  (typeof import('../../policies/PaymentCard'))['PaymentCard']
+>;
 
 const paymentCardMockProps: PaymentCardProps[] = [];
 vi.mock('../../policies/PaymentCard', () => ({
@@ -84,19 +86,22 @@ describe('PoliciesView', () => {
         policyId: 'policy-two',
         actualDate: '2025-01-01',
         financialRecords: [
-          { id: 'r-1', paymentId: 'payment-2', amount: '100', date: '2025-01-02', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          {
+            id: 'r-1',
+            paymentId: 'payment-2',
+            amount: '100',
+            date: '2025-01-02',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
         ],
       }),
     ];
 
     render(
       <MemoryRouter>
-        <PoliciesView
-          policies={policies}
-          payments={payments}
-          {...defaultProps}
-        />
-      </MemoryRouter>
+        <PoliciesView policies={policies} payments={payments} {...defaultProps} />
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('POL-ONE')).toBeInTheDocument();
@@ -117,12 +122,8 @@ describe('PoliciesView', () => {
 
     render(
       <MemoryRouter>
-        <PoliciesView
-          policies={policies}
-          payments={payments}
-          {...defaultProps}
-        />
-      </MemoryRouter>
+        <PoliciesView policies={policies} payments={payments} {...defaultProps} />
+      </MemoryRouter>,
     );
 
     const paymentCard = screen.getByTestId('payment-card-payment-1');

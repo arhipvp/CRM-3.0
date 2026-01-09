@@ -32,23 +32,18 @@ export const computeSelectedDeal = ({
   const sortedDeals = deals;
 
   const selectedDeal = selectedDealId
-    ? sortedDeals.find((deal) => deal.id === selectedDealId) ?? null
-    : sortedDeals[0] ?? null;
+    ? (sortedDeals.find((deal) => deal.id === selectedDealId) ?? null)
+    : (sortedDeals[0] ?? null);
 
-  const selectedClient = selectedDeal ? clientsById.get(selectedDeal.clientId) ?? null : null;
+  const selectedClient = selectedDeal ? (clientsById.get(selectedDeal.clientId) ?? null) : null;
   const sellerUser = selectedDeal ? usersById.get(selectedDeal.seller ?? '') : undefined;
   const executorUser = selectedDeal ? usersById.get(selectedDeal.executor ?? '') : undefined;
 
   return { sortedDeals, selectedDeal, selectedClient, sellerUser, executorUser };
 };
 
-export const useSelectedDeal = ({
-  deals,
-  clients,
-  users,
-  selectedDealId,
-}: UseSelectedDealArgs) =>
+export const useSelectedDeal = ({ deals, clients, users, selectedDealId }: UseSelectedDealArgs) =>
   useMemo(
     () => computeSelectedDeal({ deals, clients, users, selectedDealId }),
-    [deals, clients, users, selectedDealId]
+    [deals, clients, users, selectedDealId],
   );

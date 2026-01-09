@@ -46,7 +46,10 @@ interface PoliciesViewProps {
   isPoliciesLoading?: boolean;
   onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
-  onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord: (
+    recordId: string,
+    values: AddFinancialRecordFormValues,
+  ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
 }
 
@@ -72,7 +75,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       search: debouncedSearch || undefined,
       unpaid: filters.unpaid,
     }),
-    [debouncedSearch, filters.ordering, filters.unpaid]
+    [debouncedSearch, filters.ordering, filters.unpaid],
   );
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();
@@ -90,7 +93,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
   const allFinancialRecords = useMemo(
     () => payments.flatMap((payment) => payment.financialRecords ?? []),
-    [payments]
+    [payments],
   );
   const unpaidPolicies = useMemo(() => {
     const set = new Set<string>();
@@ -138,7 +141,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         policy,
         payments: paymentsByPolicyMap.get(policy.id) ?? [],
       })),
-    [filteredPolicies, paymentsByPolicyMap]
+    [filteredPolicies, paymentsByPolicyMap],
   );
 
   const {
@@ -174,15 +177,30 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       {filteredPolicies.length ? (
         <div className="app-panel shadow-none overflow-hidden">
           <div className="overflow-x-auto bg-white">
-            <table className="deals-table w-full table-fixed border-collapse text-left text-sm" aria-label="Список полисов">
+            <table
+              className="deals-table w-full table-fixed border-collapse text-left text-sm"
+              aria-label="Список полисов"
+            >
               <thead className={TABLE_THEAD_CLASS}>
                 <tr>
-                  <TableHeadCell padding="md" className="w-[18%]">Полис</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[16%]">Клиент</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[18%]">Компания</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[18%]">Тип / ТС</TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[12%]">Канал</TableHeadCell>
-                  <TableHeadCell padding="md" align="right" className="w-[18%]">Сумма</TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[18%]">
+                    Полис
+                  </TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[16%]">
+                    Клиент
+                  </TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[18%]">
+                    Компания
+                  </TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[18%]">
+                    Тип / ТС
+                  </TableHeadCell>
+                  <TableHeadCell padding="md" className="w-[12%]">
+                    Канал
+                  </TableHeadCell>
+                  <TableHeadCell padding="md" align="right" className="w-[18%]">
+                    Сумма
+                  </TableHeadCell>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -191,7 +209,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                   const model = buildPolicyCardModel(policy, payments);
                   const hasUnpaidPayment = unpaidPolicies.has(policy.id);
                   const expiryBadge = getPolicyExpiryBadge(policy.endDate);
-                  const transportSummary = policy.isVehicle ? getPolicyTransportSummary(policy) : '';
+                  const transportSummary = policy.isVehicle
+                    ? getPolicyTransportSummary(policy)
+                    : '';
 
                   return (
                     <React.Fragment key={policy.id}>
@@ -199,7 +219,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                         <td className={TABLE_CELL_CLASS_MD}>
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-semibold text-slate-900 break-all">{model.number}</span>
+                              <span className="text-sm font-semibold text-slate-900 break-all">
+                                {model.number}
+                              </span>
                               {hasUnpaidPayment && (
                                 <span
                                   className={[
@@ -231,7 +253,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           </div>
                         </td>
                         <td className={TABLE_CELL_CLASS_MD}>
-                          <p className="text-sm font-semibold text-slate-900 break-words">{model.client}</p>
+                          <p className="text-sm font-semibold text-slate-900 break-words">
+                            {model.client}
+                          </p>
                         </td>
                         <td className={TABLE_CELL_CLASS_MD}>
                           <div className="min-w-0">
@@ -243,7 +267,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           </div>
                         </td>
                         <td className={TABLE_CELL_CLASS_MD}>
-                          <p className="text-sm font-semibold text-slate-900 break-words">{model.insuranceType}</p>
+                          <p className="text-sm font-semibold text-slate-900 break-words">
+                            {model.insuranceType}
+                          </p>
                           {transportSummary && (
                             <p className="mt-1 text-xs text-slate-500">{transportSummary}</p>
                           )}

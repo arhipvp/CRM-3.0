@@ -38,9 +38,9 @@ const renderDriveHook = (
       dealId: string,
       parsed: Record<string, unknown>,
       fileName?: string | null,
-      fileId?: string | null
+      fileId?: string | null,
     ) => void;
-  }
+  },
 ) => {
   const resultRef: { current: ReturnType<typeof useDealDriveFiles> | null } = {
     current: null,
@@ -105,7 +105,7 @@ describe('useDealDriveFiles', () => {
 
     await waitFor(() => {
       expect(resultRef.current?.recognitionMessage).toBe(
-        'Выберите хотя бы один файл для распознавания.'
+        'Выберите хотя бы один файл для распознавания.',
       );
     });
   });
@@ -153,7 +153,7 @@ describe('useDealDriveFiles', () => {
         parsedResult.data,
         parsedResult.fileName,
         parsedResult.fileId,
-        [parsedResult.fileId]
+        [parsedResult.fileId],
       );
     });
 

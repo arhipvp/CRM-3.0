@@ -64,9 +64,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
     await sendMessage();
   };
 
-  const handleTextareaKeyDown = async (
-    event: React.KeyboardEvent<HTMLTextAreaElement>
-  ) => {
+  const handleTextareaKeyDown = async (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       await sendMessage();
@@ -121,8 +119,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
               message.author_username ??
               'Пользователь';
             const authorColor = getUserColor(resolvedAuthorDisplayName);
-            const showDeleteButton =
-              canDeleteMessage() && message.showDeleteButton !== false;
+            const showDeleteButton = canDeleteMessage() && message.showDeleteButton !== false;
 
             return (
               <div
@@ -137,9 +134,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
                     >
                       {resolvedAuthorDisplayName}
                     </p>
-                    <p className="text-[11px] text-slate-400">
-                      {formatTime(message.created_at)}
-                    </p>
+                    <p className="text-[11px] text-slate-400">{formatTime(message.created_at)}</p>
                   </div>
                   <p className="break-words text-sm leading-relaxed text-slate-700">
                     {message.body}
@@ -169,9 +164,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
         <form onSubmit={handleSendMessage} className="space-y-2">
           <div className="text-xs text-slate-600">
             Отправляете как{' '}
-            <span className="font-semibold text-slate-900">
-              {getUserDisplayName(currentUser)}
-            </span>
+            <span className="font-semibold text-slate-900">{getUserDisplayName(currentUser)}</span>
           </div>
 
           <div className="flex gap-2">

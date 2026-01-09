@@ -20,9 +20,7 @@ import { ActivityTimeline } from '../../ActivityTimeline';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
 import { AddTaskForm, AddTaskFormValues } from '../../forms/AddTaskForm';
 import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
-import {
-  AddFinancialRecordFormValues,
-} from '../../forms/AddFinancialRecordForm';
+import { AddFinancialRecordFormValues } from '../../forms/AddFinancialRecordForm';
 import {
   DealTabId,
   getDeadlineTone,
@@ -53,7 +51,6 @@ import { useFinancialRecordModal } from '../../../hooks/useFinancialRecordModal'
 import { PaymentModal } from '../../payments/PaymentModal';
 import { usePaymentModal } from '../../../hooks/usePaymentModal';
 
-
 interface DealDetailsPanelProps {
   deals: Deal[];
   clients: Client[];
@@ -70,11 +67,18 @@ interface DealDetailsPanelProps {
   sellerUser?: User;
   executorUser?: User;
   onSelectDeal: (dealId: string) => void;
-  onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
+  onCloseDeal: (
+    dealId: string,
+    payload: { reason: string; status?: 'won' | 'lost' },
+  ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
-  onMergeDeals: (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => Promise<void>;
+  onMergeDeals: (
+    targetDealId: string,
+    sourceDealIds: string[],
+    resultingClientId?: string,
+  ) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
   onRequestAddPolicy: (dealId: string) => void;
@@ -88,12 +92,15 @@ interface DealDetailsPanelProps {
     parsed: Record<string, unknown>,
     fileName?: string | null,
     fileId?: string | null,
-    parsedFileIds?: string[]
+    parsedFileIds?: string[],
   ) => void;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
-  onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord: (
+    recordId: string,
+    values: AddFinancialRecordFormValues,
+  ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
@@ -106,7 +113,6 @@ interface DealDetailsPanelProps {
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
 }
-
 
 export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   deals,
@@ -165,15 +171,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const isSelectedDealDeleted = Boolean(selectedDeal?.deletedAt);
   const isDealClosedStatus = Boolean(
-    selectedDeal && closedDealStatuses.includes(selectedDeal.status)
+    selectedDeal && closedDealStatuses.includes(selectedDeal.status),
   );
   const isCurrentUserSeller = Boolean(
-    selectedDeal && currentUser && selectedDeal.seller === currentUser.id
+    selectedDeal && currentUser && selectedDeal.seller === currentUser.id,
   );
   const currentUserIsAdmin = Boolean(currentUser?.roles?.includes('Admin'));
-  const canReopenClosedDeal = Boolean(
-    selectedDeal && (isCurrentUserSeller || currentUserIsAdmin)
-  );
+  const canReopenClosedDeal = Boolean(selectedDeal && (isCurrentUserSeller || currentUserIsAdmin));
 
   const {
     isMergeModalOpen,
@@ -252,7 +256,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       onClientEdit?.(client);
       navigate('/clients');
     },
-    [navigate, onClientEdit]
+    [navigate, onClientEdit],
   );
 
   const [policySortKey] = useState<PolicySortKey>('startDate');
@@ -336,62 +340,40 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     onPostponeDeal,
   });
 
-
-
   useEffect(() => {
-
     setActiveTab('overview');
-
   }, [selectedDeal?.id]);
 
   useEffect(() => {
     setChatMessages([]);
   }, [selectedDeal?.id]);
 
-
-
   const loadChatMessages = useCallback(async () => {
-
     const dealId = selectedDeal?.id;
 
     if (!dealId) {
-
       return;
-
     }
 
     setIsChatLoading(true);
 
     try {
-
       const messages = await onFetchChatMessages(dealId);
 
       setChatMessages(messages);
-
     } catch (err) {
-
       console.error('Ошибка загрузки сообщений:', err);
-
     } finally {
-
       setIsChatLoading(false);
-
     }
-
   }, [onFetchChatMessages, selectedDeal?.id]);
 
-
-
   const handleChatSendMessage = useCallback(
-
     async (body: string): Promise<ChatMessage> => {
-
       const dealId = selectedDeal?.id;
 
       if (!dealId) {
-
         throw new Error('Сделка не выбрана');
-
       }
 
       const newMessage = await onSendChatMessage(dealId, body);
@@ -399,38 +381,26 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       setChatMessages((prev) => [...prev, newMessage]);
 
       return newMessage;
-
     },
 
-    [onSendChatMessage, selectedDeal?.id]
-
+    [onSendChatMessage, selectedDeal?.id],
   );
 
-
-
   const handleChatDelete = useCallback(
-
     async (messageId: string) => {
-
       const dealId = selectedDeal?.id;
 
       if (!dealId) {
-
         return;
-
       }
 
       await onDeleteChatMessage(messageId);
 
       setChatMessages((prev) => prev.filter((message) => message.id !== messageId));
-
     },
 
-    [onDeleteChatMessage, selectedDeal?.id]
-
+    [onDeleteChatMessage, selectedDeal?.id],
   );
-
-
 
   const handleEditDealClick = useCallback(() => {
     if (!selectedDeal || isSelectedDealDeleted) {
@@ -492,7 +462,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     } catch (err) {
       console.error('Ошибка закрытия сделки:', err);
     } finally {
-    setIsClosingDeal(false);
+      setIsClosingDeal(false);
     }
   }, [isCurrentUserSeller, isDealClosedStatus, isSelectedDealDeleted, onCloseDeal, selectedDeal]);
 
@@ -519,96 +489,58 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     openMergeModal();
   }, [isSelectedDealDeleted, openMergeModal, selectedDeal]);
 
-
-
   const loadActivityLogs = useCallback(async () => {
-
     const dealId = selectedDeal?.id;
 
     if (!dealId) {
-
       return;
-
     }
 
     setActivityError(null);
     setIsActivityLoading(true);
 
     try {
-
       const logs = await onFetchDealHistory(dealId, Boolean(selectedDeal?.deletedAt));
 
       setActivityLogs(logs);
-
     } catch (err) {
-
       console.error('Ошибка загрузки истории:', err);
       setActivityError('Не удалось загрузить историю.');
-
     } finally {
-
       setIsActivityLoading(false);
-
     }
-
   }, [onFetchDealHistory, selectedDeal?.id, selectedDeal?.deletedAt]);
-
-
 
   // Reload activity log when the "history" tab becomes active
 
   useEffect(() => {
-
     if (activeTab === 'history') {
-
       void loadActivityLogs();
-
     }
-
   }, [activeTab, loadActivityLogs]);
-
-
 
   // Reload chat messages when the "chat" tab becomes active
 
   useEffect(() => {
-
     if (activeTab === 'chat') {
-
       void loadChatMessages();
-
     }
-
   }, [activeTab, loadChatMessages]);
 
-
-
-
-
   const handleMarkTaskDone = async (taskId: string) => {
-
     if (completingTaskIds.includes(taskId)) {
-
       return;
-
     }
 
     setCompletingTaskIds((prev) => [...prev, taskId]);
 
     try {
-
       await onUpdateTask(taskId, { status: 'done' });
-
     } catch (err) {
-
       console.error('Ошибка отметки задачи как выполненной:', err);
-
     } finally {
-
       setCompletingTaskIds((prev) => prev.filter((id) => id !== taskId));
-
     }
-
   };
 
   const handleDelayModalConfirm = async () => {
@@ -639,71 +571,47 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     resetDriveState();
   }, [resetDriveState, selectedDeal?.id]);
 
-
-
   const relatedPolicies = useMemo(
-
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
 
-    [policies, selectedDeal]
-
+    [policies, selectedDeal],
   );
 
   const sortedPolicies = useMemo(() => {
-
     const normalized = [...relatedPolicies];
 
     const multiplier = policySortOrder === 'asc' ? 1 : -1;
 
     normalized.sort((a, b) => {
-
       const valueA = getPolicySortValue(a, policySortKey);
 
       const valueB = getPolicySortValue(b, policySortKey);
 
-
-
       if (typeof valueA === 'number' && typeof valueB === 'number') {
-
         return (valueA - valueB) * multiplier;
-
       }
-
-
 
       const textA = String(valueA ?? '');
 
       const textB = String(valueB ?? '');
 
-
-
       return textA.localeCompare(textB, 'ru-RU', { sensitivity: 'base' }) * multiplier;
-
     });
 
-
-
     return normalized;
-
   }, [policySortKey, policySortOrder, relatedPolicies]);
 
   const relatedPayments = useMemo(
-
     () => (selectedDeal ? payments.filter((p) => p.dealId === selectedDeal.id) : []),
 
-    [payments, selectedDeal]
-
+    [payments, selectedDeal],
   );
 
   const relatedTasks = useMemo(
-
     () => (selectedDeal ? tasks.filter((t) => t.dealId === selectedDeal.id) : []),
 
-    [selectedDeal, tasks]
-
+    [selectedDeal, tasks],
   );
-
-
 
   const dealEvents = useMemo<DealEvent[]>(() => {
     if (!selectedDeal) {
@@ -740,7 +648,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const selectedDelayEventNextContact = useMemo(
     () => calculateNextContactForEvent(selectedDelayEvent),
-    [selectedDelayEvent]
+    [selectedDelayEvent],
   );
 
   useEffect(() => {
@@ -760,171 +668,90 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const quotes = useMemo(() => selectedDeal?.quotes ?? [], [selectedDeal?.quotes]);
   const tasksCount = useMemo(
     () => relatedTasks.filter((task) => !task.deletedAt).length,
-    [relatedTasks]
+    [relatedTasks],
   );
-  const quotesCount = useMemo(
-    () => quotes.filter((quote) => !quote.deletedAt).length,
-    [quotes]
-  );
+  const quotesCount = useMemo(() => quotes.filter((quote) => !quote.deletedAt).length, [quotes]);
   const policiesCount = relatedPolicies.length;
   const chatCount = chatMessages.length;
   const filesCount = sortedDriveFiles.length;
 
-
-
   const displayedTasks = useMemo(() => {
-
     const active = relatedTasks.filter((task) => task.status !== 'done');
 
     const done = relatedTasks.filter((task) => task.status === 'done');
 
     return [...active, ...done];
-
   }, [relatedTasks]);
 
-
-
   const renderTasksTab = () => (
-
     <TasksTab
-
       selectedDeal={selectedDeal}
-
       displayedTasks={displayedTasks}
-
       relatedTasks={relatedTasks}
-
       onCreateTaskClick={() => setIsCreatingTask(true)}
-
       onEditTaskClick={(taskId) => setEditingTaskId(taskId)}
-
       onMarkTaskDone={handleMarkTaskDone}
-
       onDeleteTask={onDeleteTask}
-
       completingTaskIds={completingTaskIds}
-
     />
-
   );
-
-
 
   const renderPoliciesTab = () => (
-
-      <PoliciesTab
-
-        selectedDeal={selectedDeal}
-
-        sortedPolicies={sortedPolicies}
-
-        policySortKey={policySortKey}
-
-        policySortOrder={policySortOrder}
-
-        onRequestAddPolicy={onRequestAddPolicy}
-
-        onDeletePolicy={onDeletePolicy}
-
-        onRequestEditPolicy={onRequestEditPolicy}
-
-        relatedPayments={relatedPayments}
-
-        clients={clients}
-
-        onOpenClient={handleOpenClient}
-
-        setEditingPaymentId={setEditingPaymentId}
-
-        setCreatingPaymentPolicyId={setCreatingPaymentPolicyId}
-
-        setCreatingFinancialRecordContext={setCreatingFinancialRecordContext}
-
-        setEditingFinancialRecordId={setEditingFinancialRecordId}
-
-        onDeleteFinancialRecord={onDeleteFinancialRecord}
-
-      />
-
+    <PoliciesTab
+      selectedDeal={selectedDeal}
+      sortedPolicies={sortedPolicies}
+      policySortKey={policySortKey}
+      policySortOrder={policySortOrder}
+      onRequestAddPolicy={onRequestAddPolicy}
+      onDeletePolicy={onDeletePolicy}
+      onRequestEditPolicy={onRequestEditPolicy}
+      relatedPayments={relatedPayments}
+      clients={clients}
+      onOpenClient={handleOpenClient}
+      setEditingPaymentId={setEditingPaymentId}
+      setCreatingPaymentPolicyId={setCreatingPaymentPolicyId}
+      setCreatingFinancialRecordContext={setCreatingFinancialRecordContext}
+      setEditingFinancialRecordId={setEditingFinancialRecordId}
+      onDeleteFinancialRecord={onDeleteFinancialRecord}
+    />
   );
-
-
 
   const renderQuotesTab = () => (
-
     <QuotesTab
-
       selectedDeal={selectedDeal}
-
       quotes={quotes}
-
       onRequestAddQuote={onRequestAddQuote}
-
       onRequestEditQuote={onRequestEditQuote}
-
       onDeleteQuote={onDeleteQuote}
-
     />
-
   );
-
-
 
   const renderFilesTab = () => (
-
     <FilesTab
-
       selectedDeal={selectedDeal}
-
       isDriveLoading={isDriveLoading}
-
       loadDriveFiles={loadDriveFiles}
-
       onUploadDriveFile={handleDriveFileUpload}
-
       isSelectedDealDeleted={isSelectedDealDeleted}
-
       selectedDriveFileIds={selectedDriveFileIds}
-
       toggleDriveFileSelection={toggleDriveFileSelection}
-
       handleRecognizePolicies={handleRecognizePolicies}
-
       canRecognizeSelectedFiles={canRecognizeSelectedFiles}
-
       isRecognizing={isRecognizing}
-
       recognitionResults={recognitionResults}
-
       recognitionMessage={recognitionMessage}
-
       isTrashing={isTrashing}
-
       trashMessage={trashMessage}
-
       isRenaming={isRenaming}
-
       renameMessage={renameMessage}
-
       handleTrashSelectedFiles={handleTrashSelectedFiles}
-
       handleRenameDriveFile={handleRenameDriveFile}
-
       driveError={driveError}
-
       sortedDriveFiles={sortedDriveFiles}
-
       driveSortDirection={driveSortDirection}
-
       toggleDriveSortDirection={toggleDriveSortDirection}
-
     />
-
   );
-
-
-
-
 
   const renderChatTab = () => (
     <ChatTab
@@ -942,9 +769,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       <div className="flex items-center justify-between">
         <p className="app-label">История</p>
       </div>
-      {activityError && (
-        <div className="app-alert app-alert-danger">{activityError}</div>
-      )}
+      {activityError && <div className="app-alert app-alert-danger">{activityError}</div>}
       <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
     </section>
   );
@@ -991,83 +816,82 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
   };
 
-  const selectedClientDisplayName =
-    selectedClient?.name || selectedDeal?.clientName || '—';
+  const selectedClientDisplayName = selectedClient?.name || selectedDeal?.clientName || '—';
 
   return (
     <>
       <div className="px-4 py-5 space-y-4">
-            {selectedDeal ? (
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-6">
-                <div className="flex flex-col gap-4">
-                  <DealHeader
-                    deal={selectedDeal}
-                    clientDisplayName={selectedClientDisplayName}
-                    client={selectedClient}
-                    clientPhone={selectedClient?.phone}
-                    sellerDisplayName={sellerDisplayName}
-                    executorDisplayName={executorDisplayName}
-                    onClientEdit={onClientEdit}
-                  />
-                  <DealActions
-                    isSelectedDealDeleted={isSelectedDealDeleted}
-                    isDeletingDeal={isDeletingDeal}
-                    isRestoringDeal={isRestoringDeal}
-                    isDealClosedStatus={isDealClosedStatus}
-                    isClosingDeal={isClosingDeal}
-                    isReopeningDeal={isReopeningDeal}
-                    isCurrentUserSeller={isCurrentUserSeller}
-                    canReopenClosedDeal={canReopenClosedDeal}
-                    dealEventsLength={dealEvents.length}
-                    onEdit={handleEditDealClick}
-                    onRestore={handleRestoreDealClick}
-                    onDelete={handleDeleteDealClick}
-                    onClose={handleCloseDealClick}
-                    onReopen={handleReopenDealClick}
-                    onMerge={handleMergeClick}
-                    onDelay={() => setIsDelayModalOpen(true)}
-                  />
-                </div>
-                <DealDateControls
-                  nextContactValue={nextContactInputValue}
-                  expectedCloseValue={expectedCloseInputValue}
-                  headerExpectedCloseTone={headerExpectedCloseTone}
-                  quickOptions={quickInlineDateOptions}
-                  onNextContactChange={handleNextContactChange}
-                  onNextContactBlur={handleNextContactBlur}
-                  onExpectedCloseChange={handleExpectedCloseChange}
-                  onExpectedCloseBlur={handleExpectedCloseBlur}
-                  onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
-                />
-                <div>
-                  <DealTabs
-                    activeTab={activeTab}
-                    onChange={setActiveTab}
-                    tabCounts={{
-                      tasks: tasksCount,
-                      quotes: quotesCount,
-                      policies: policiesCount,
-                      chat: chatCount,
-                      files: filesCount,
-                    }}
-                  />
-                  <div
-                    className="pt-6"
-                    role="tabpanel"
-                    id={`deal-tabpanel-${activeTab}`}
-                    aria-labelledby={`deal-tab-${activeTab}`}
-                    tabIndex={0}
-                  >
-                    {renderTabContent()}
-                  </div>
-                </div>
+        {selectedDeal ? (
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-6">
+            <div className="flex flex-col gap-4">
+              <DealHeader
+                deal={selectedDeal}
+                clientDisplayName={selectedClientDisplayName}
+                client={selectedClient}
+                clientPhone={selectedClient?.phone}
+                sellerDisplayName={sellerDisplayName}
+                executorDisplayName={executorDisplayName}
+                onClientEdit={onClientEdit}
+              />
+              <DealActions
+                isSelectedDealDeleted={isSelectedDealDeleted}
+                isDeletingDeal={isDeletingDeal}
+                isRestoringDeal={isRestoringDeal}
+                isDealClosedStatus={isDealClosedStatus}
+                isClosingDeal={isClosingDeal}
+                isReopeningDeal={isReopeningDeal}
+                isCurrentUserSeller={isCurrentUserSeller}
+                canReopenClosedDeal={canReopenClosedDeal}
+                dealEventsLength={dealEvents.length}
+                onEdit={handleEditDealClick}
+                onRestore={handleRestoreDealClick}
+                onDelete={handleDeleteDealClick}
+                onClose={handleCloseDealClick}
+                onReopen={handleReopenDealClick}
+                onMerge={handleMergeClick}
+                onDelay={() => setIsDelayModalOpen(true)}
+              />
+            </div>
+            <DealDateControls
+              nextContactValue={nextContactInputValue}
+              expectedCloseValue={expectedCloseInputValue}
+              headerExpectedCloseTone={headerExpectedCloseTone}
+              quickOptions={quickInlineDateOptions}
+              onNextContactChange={handleNextContactChange}
+              onNextContactBlur={handleNextContactBlur}
+              onExpectedCloseChange={handleExpectedCloseChange}
+              onExpectedCloseBlur={handleExpectedCloseBlur}
+              onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
+            />
+            <div>
+              <DealTabs
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                tabCounts={{
+                  tasks: tasksCount,
+                  quotes: quotesCount,
+                  policies: policiesCount,
+                  chat: chatCount,
+                  files: filesCount,
+                }}
+              />
+              <div
+                className="pt-6"
+                role="tabpanel"
+                id={`deal-tabpanel-${activeTab}`}
+                aria-labelledby={`deal-tab-${activeTab}`}
+                tabIndex={0}
+              >
+                {renderTabContent()}
               </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                Выберите сделку, чтобы увидеть подробности.
-              </div>
-            )}
+            </div>
           </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+            Выберите сделку, чтобы увидеть подробности.
+          </div>
+        )}
+      </div>
       {isEditingDeal && selectedDeal && (
         <Modal
           title="Редактировать сделку"

@@ -4,7 +4,7 @@ const COMMISSION_NOTE_BASE = 'Комиссионное вознагражден�
 
 export const resolveSalesChannelName = (
   channels: SalesChannel[],
-  channelId?: string
+  channelId?: string,
 ): string | undefined => {
   if (!channelId) {
     return undefined;

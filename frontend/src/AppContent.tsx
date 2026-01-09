@@ -59,16 +59,7 @@ import {
   markFinanceStatementPaid,
 } from './api';
 import type { FilterParams } from './api';
-import {
-  Client,
-  Deal,
-  FinancialRecord,
-  Payment,
-  Policy,
-  Quote,
-  Statement,
-  User,
-} from './types';
+import { Client, Deal, FinancialRecord, Payment, Policy, Quote, Statement, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
@@ -80,14 +71,18 @@ import type { FinancialRecordModalState, PaymentModalState } from './types';
 import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
 import { markQuoteAsDeleted } from './utils/quotes';
 import { parseNumericAmount } from './utils/parseNumericAmount';
-import { formatAmountValue, mapApiUser, matchSalesChannel, parseAmountValue } from './utils/appContent';
+import {
+  formatAmountValue,
+  mapApiUser,
+  matchSalesChannel,
+  parseAmountValue,
+} from './utils/appContent';
 import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
 import {
   buildCommissionIncomeNote,
   resolveSalesChannelName,
   shouldAutofillCommissionNote,
 } from './utils/financialRecordNotes';
- 
 
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
@@ -124,7 +119,9 @@ const AppContent: React.FC = () => {
     insuranceCompanyName?: string;
     insuranceTypeName?: string;
   } | null>(null);
-  const [policyDefaultCounterparty, setPolicyDefaultCounterparty] = useState<string | undefined>(undefined);
+  const [policyDefaultCounterparty, setPolicyDefaultCounterparty] = useState<string | undefined>(
+    undefined,
+  );
   const [policySourceFileIds, setPolicySourceFileIds] = useState<string[]>([]);
 
   const closePolicyModal = useCallback(() => {
@@ -237,9 +234,8 @@ const AppContent: React.FC = () => {
     return map;
   }, [users]);
   const getDealExecutorName = useCallback(
-    (dealId: string | null) =>
-      dealId ? dealsById.get(dealId)?.executorName ?? null : null,
-    [dealsById]
+    (dealId: string | null) => (dealId ? (dealsById.get(dealId)?.executorName ?? null) : null),
+    [dealsById],
   );
   const policyDealExecutorName = getDealExecutorName(policyDealId);
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
@@ -256,20 +252,16 @@ const AppContent: React.FC = () => {
       });
       return dealsData;
     },
-    [refreshDeals]
+    [refreshDeals],
   );
 
   const syncDealsByIds = useCallback(
     async (dealIds: (string | null | undefined)[]) => {
-      const normalizedIds = Array.from(
-        new Set(dealIds.filter((id): id is string => Boolean(id)))
-      );
+      const normalizedIds = Array.from(new Set(dealIds.filter((id): id is string => Boolean(id))));
       if (!normalizedIds.length) {
         return;
       }
-      const fetchedDeals = await Promise.all(
-        normalizedIds.map((dealId) => fetchDeal(dealId))
-      );
+      const fetchedDeals = await Promise.all(normalizedIds.map((dealId) => fetchDeal(dealId)));
       updateAppData((prev) => {
         const dealMap = new Map<string, Deal>(fetchedDeals.map((deal) => [deal.id, deal]));
         const existingIds = new Set(prev.deals.map((deal) => deal.id));
@@ -279,7 +271,7 @@ const AppContent: React.FC = () => {
       });
       invalidateDealsCache();
     },
-    [invalidateDealsCache, updateAppData]
+    [invalidateDealsCache, updateAppData],
   );
 
   const handleSelectDeal = useCallback(
@@ -292,35 +284,29 @@ const AppContent: React.FC = () => {
         setError(formatErrorMessage(err, 'Не удалось загрузить сделку'));
       });
     },
-    [dealsById, setError, setSelectedDealId, syncDealsByIds]
+    [dealsById, setError, setSelectedDealId, syncDealsByIds],
   );
   const handleOpenDealPreview = useCallback(
     (dealId: string) => {
       setPreviewDealId(dealId);
       handleSelectDeal(dealId);
     },
-    [handleSelectDeal]
+    [handleSelectDeal],
   );
   const handleCloseDealPreview = useCallback(() => {
     setPreviewDealId(null);
   }, []);
-  const previewDeal = previewDealId ? dealsById.get(previewDealId) ?? null : null;
-  const previewClient = previewDeal
-    ? clientsById.get(previewDeal.clientId) ?? null
-    : null;
-  const previewSellerUser = previewDeal
-    ? usersById.get(previewDeal.seller ?? '')
-    : undefined;
-  const previewExecutorUser = previewDeal
-    ? usersById.get(previewDeal.executor ?? '')
-    : undefined;
+  const previewDeal = previewDealId ? (dealsById.get(previewDealId) ?? null) : null;
+  const previewClient = previewDeal ? (clientsById.get(previewDeal.clientId) ?? null) : null;
+  const previewSellerUser = previewDeal ? usersById.get(previewDeal.seller ?? '') : undefined;
+  const previewExecutorUser = previewDeal ? usersById.get(previewDeal.executor ?? '') : undefined;
 
   const adjustPaymentsTotals = useCallback(
     <T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }>(
       items: T[],
       targetId: string | undefined | null,
       totalDelta: number,
-      paidDelta: number
+      paidDelta: number,
     ) => {
       if (!targetId) {
         return items;
@@ -343,7 +329,7 @@ const AppContent: React.FC = () => {
         };
       });
     },
-    []
+    [],
   );
 
   const handlePolicyDraftReady = useCallback(
@@ -352,7 +338,7 @@ const AppContent: React.FC = () => {
       parsed: Record<string, unknown>,
       _fileName?: string | null,
       fileId?: string | null,
-      parsedFileIds?: string[]
+      parsedFileIds?: string[],
     ) => {
       if (!parsed) {
         return;
@@ -363,18 +349,16 @@ const AppContent: React.FC = () => {
         policyObj.sales_channel ??
           policyObj.sales_channel_name ??
           policyObj.salesChannel ??
-          policyObj.salesChannelName
+          policyObj.salesChannelName,
       );
-        const matchedChannel = matchSalesChannel(salesChannels, recognizedSalesChannel);
-        const commissionNote = buildCommissionIncomeNote(matchedChannel?.name);
-        const paymentsWithNotes = draft.payments.map((payment) => ({
-          ...payment,
-          incomes: payment.incomes.map((income) =>
-            shouldAutofillCommissionNote(income.note)
-              ? { ...income, note: commissionNote }
-              : income
-          ),
-        }));
+      const matchedChannel = matchSalesChannel(salesChannels, recognizedSalesChannel);
+      const commissionNote = buildCommissionIncomeNote(matchedChannel?.name);
+      const paymentsWithNotes = draft.payments.map((payment) => ({
+        ...payment,
+        incomes: payment.incomes.map((income) =>
+          shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
+        ),
+      }));
 
       const recognizedInsuredName = normalizeStringValue(
         parsed.insured_client_name ??
@@ -383,39 +367,34 @@ const AppContent: React.FC = () => {
           policyObj.client_name ??
           policyObj.client ??
           policyObj.insured_client ??
-          policyObj.contractor
+          policyObj.contractor,
       );
-      const matchedInsuredClient =
-        recognizedInsuredName?.length
-          ? clients.find(
-              (client) => client.name.toLowerCase() === recognizedInsuredName.toLowerCase()
-            )
-          : undefined;
+      const matchedInsuredClient = recognizedInsuredName?.length
+        ? clients.find(
+            (client) => client.name.toLowerCase() === recognizedInsuredName.toLowerCase(),
+          )
+        : undefined;
 
-        const values = {
-          ...draft,
-          salesChannelId: matchedChannel?.id,
-          payments: paymentsWithNotes,
-          insuredClientId: matchedInsuredClient?.id ?? undefined,
-          insuredClientName:
-            matchedInsuredClient?.name ??
-            (recognizedInsuredName || undefined),
-        };
+      const values = {
+        ...draft,
+        salesChannelId: matchedChannel?.id,
+        payments: paymentsWithNotes,
+        insuredClientId: matchedInsuredClient?.id ?? undefined,
+        insuredClientName: matchedInsuredClient?.name ?? (recognizedInsuredName || undefined),
+      };
       const recognizedInsuranceType = normalizeStringValue(
         policyObj.insurance_type ??
           policyObj.insuranceType ??
           parsed.insurance_type ??
-          parsed.insuranceType
+          parsed.insuranceType,
       );
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
       const resolvedFileIds = parsedFileIds?.length
-        ? Array.from(
-            new Set(parsedFileIds.filter((id): id is string => Boolean(id)))
-          )
+        ? Array.from(new Set(parsedFileIds.filter((id): id is string => Boolean(id))))
         : fileId
-        ? [fileId]
-        : [];
+          ? [fileId]
+          : [];
       setPolicySourceFileIds(resolvedFileIds);
       setPolicyPrefill({
         values,
@@ -423,7 +402,7 @@ const AppContent: React.FC = () => {
         insuranceTypeName: recognizedInsuranceType,
       });
     },
-    [salesChannels, clients]
+    [salesChannels, clients],
   );
 
   const handleRequestAddPolicy = useCallback((dealId: string) => {
@@ -451,12 +430,7 @@ const AppContent: React.FC = () => {
       console.error('Search deals error:', err);
       setError(formatErrorMessage(err, 'Ошибка при поиске сделок'));
     });
-  }, [
-    debouncedDealFilters,
-    refreshDealsWithSelection,
-    isAuthenticated,
-    setError,
-  ]);
+  }, [debouncedDealFilters, refreshDealsWithSelection, isAuthenticated, setError]);
 
   // Check authentication on app load
   useEffect(() => {
@@ -509,7 +483,7 @@ const AppContent: React.FC = () => {
       }
       closeClientModal();
     },
-    [closeClientModal, updateAppData, clientModalReturnTo]
+    [closeClientModal, updateAppData, clientModalReturnTo],
   );
 
   const handlePendingDealClientConsumed = useCallback(() => {
@@ -534,9 +508,7 @@ const AppContent: React.FC = () => {
       try {
         const updated = await updateClient(editingClient.id, data);
         updateAppData((prev) => ({
-          clients: prev.clients.map((client) =>
-            client.id === updated.id ? updated : client
-          ),
+          clients: prev.clients.map((client) => (client.id === updated.id ? updated : client)),
         }));
         addNotification('Клиент обновлён', 'success', 4000);
         setEditingClient(null);
@@ -546,7 +518,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [addNotification, editingClient, setError, updateAppData]
+    [addNotification, editingClient, setError, updateAppData],
   );
 
   const handleClientDeleteRequest = useCallback((client: Client) => {
@@ -566,13 +538,13 @@ const AppContent: React.FC = () => {
       addNotification('Клиент удалён', 'success', 4000);
       setClientDeleteTarget(null);
       setError(null);
-      } catch (err) {
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('Ошибка доступа при удалении клиента', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Ошибка при удалении клиента'));
-        }
-        throw err;
+    } catch (err) {
+      if (err instanceof APIError && err.status === 403) {
+        addNotification('Ошибка доступа при удалении клиента', 'error', 4000);
+      } else {
+        setError(formatErrorMessage(err, 'Ошибка при удалении клиента'));
+      }
+      throw err;
     } finally {
       setIsSyncing(false);
     }
@@ -587,7 +559,7 @@ const AppContent: React.FC = () => {
 
   const toggleMergeSource = useCallback((clientId: string) => {
     setMergeSources((prev) =>
-      prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId]
+      prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId],
     );
     setMergeError(null);
   }, []);
@@ -618,25 +590,21 @@ const AppContent: React.FC = () => {
       updateAppData((prev) => ({
         clients: prev.clients
           .filter((client) => !mergedIds.has(client.id))
-          .map((client) =>
-            client.id === result.targetClient.id ? result.targetClient : client
-          ),
+          .map((client) => (client.id === result.targetClient.id ? result.targetClient : client)),
         deals: prev.deals.map((deal) =>
           mergedIds.has(deal.clientId)
             ? {
-              ...deal,
-              clientId: result.targetClient.id,
-              clientName: result.targetClient.name,
-            }
-            : deal
+                ...deal,
+                clientId: result.targetClient.id,
+                clientName: result.targetClient.name,
+              }
+            : deal,
         ),
         policies: prev.policies.map((policy) => {
           const policyClientId = policy.clientId ?? '';
           const insuredClientId = policy.insuredClientId ?? '';
           const shouldUpdatePrimary = Boolean(policyClientId && mergedIds.has(policyClientId));
-          const shouldUpdateInsured = Boolean(
-            insuredClientId && mergedIds.has(insuredClientId)
-          );
+          const shouldUpdateInsured = Boolean(insuredClientId && mergedIds.has(insuredClientId));
           if (!shouldUpdatePrimary && !shouldUpdateInsured) {
             return policy;
           }
@@ -644,9 +612,7 @@ const AppContent: React.FC = () => {
             ...policy,
             clientId: shouldUpdatePrimary ? result.targetClient.id : policy.clientId,
             clientName: shouldUpdatePrimary ? result.targetClient.name : policy.clientName,
-            insuredClientId: shouldUpdateInsured
-              ? result.targetClient.id
-              : policy.insuredClientId,
+            insuredClientId: shouldUpdateInsured ? result.targetClient.id : policy.insuredClientId,
             insuredClientName: shouldUpdateInsured
               ? result.targetClient.name
               : policy.insuredClientName,
@@ -697,7 +663,7 @@ const AppContent: React.FC = () => {
   }, [clients, mergeClientTargetId, mergeSearch]);
 
   const mergeTargetClient = mergeClientTargetId
-    ? clients.find((client) => client.id === mergeClientTargetId) ?? null
+    ? (clients.find((client) => client.id === mergeClientTargetId) ?? null)
     : null;
 
   const handleAddDeal = useCallback(
@@ -715,14 +681,11 @@ const AppContent: React.FC = () => {
       setSelectedDealId(created.id);
       setModal(null);
     },
-    [invalidateDealsCache, setModal, setSelectedDealId, updateAppData]
+    [invalidateDealsCache, setModal, setSelectedDealId, updateAppData],
   );
 
   const handleCloseDeal = useCallback(
-    async (
-      dealId: string,
-      payload: { reason: string; status?: 'won' | 'lost' }
-    ) => {
+    async (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => {
       invalidateDealsCache();
       setIsSyncing(true);
       try {
@@ -742,7 +705,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [invalidateDealsCache, setError, setIsSyncing, updateAppData]
+    [invalidateDealsCache, setError, setIsSyncing, updateAppData],
   );
 
   const handleReopenDeal = useCallback(
@@ -772,7 +735,7 @@ const AppContent: React.FC = () => {
       setIsSyncing,
       setSelectedDealId,
       updateAppData,
-    ]
+    ],
   );
 
   const handleUpdateDeal = useCallback(
@@ -796,7 +759,14 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, invalidateDealsCache, setError, setIsSyncing, setSelectedDealId, updateAppData]
+    [
+      addNotification,
+      invalidateDealsCache,
+      setError,
+      setIsSyncing,
+      setSelectedDealId,
+      updateAppData,
+    ],
   );
 
   const handlePostponeDeal = useCallback(
@@ -829,7 +799,7 @@ const AppContent: React.FC = () => {
       setError,
       setIsSyncing,
       setSelectedDealId,
-    ]
+    ],
   );
   const handleDeleteDeal = useCallback(
     async (dealId: string) => {
@@ -853,7 +823,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, dealFilters, refreshDealsWithSelection, setError, setIsSyncing]
+    [addNotification, dealFilters, refreshDealsWithSelection, setError, setIsSyncing],
   );
 
   const handleRestoreDeal = useCallback(
@@ -875,7 +845,14 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, dealFilters, refreshDealsWithSelection, setError, setSelectedDealId, setIsSyncing]
+    [
+      addNotification,
+      dealFilters,
+      refreshDealsWithSelection,
+      setError,
+      setSelectedDealId,
+      setIsSyncing,
+    ],
   );
 
   const handleMergeDeals = useCallback(
@@ -899,7 +876,14 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, invalidateDealsCache, setError, setSelectedDealId, setIsSyncing, updateAppData]
+    [
+      addNotification,
+      invalidateDealsCache,
+      setError,
+      setSelectedDealId,
+      setIsSyncing,
+      updateAppData,
+    ],
   );
 
   const handleAddQuote = useCallback(
@@ -909,7 +893,7 @@ const AppContent: React.FC = () => {
         const created = await createQuote({ dealId, ...values });
         updateAppData((prev) => ({
           deals: prev.deals.map((deal) =>
-            deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal
+            deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal,
           ),
         }));
         setQuoteDealId(null);
@@ -918,7 +902,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [invalidateDealsCache, setError, setQuoteDealId, updateAppData]
+    [invalidateDealsCache, setError, setQuoteDealId, updateAppData],
   );
 
   const handleUpdateQuote = useCallback(
@@ -939,7 +923,7 @@ const AppContent: React.FC = () => {
                     ? deal.quotes.map((quote) => (quote.id === id ? updated : quote))
                     : [updated],
                 }
-              : deal
+              : deal,
           ),
         }));
         setEditingQuote(null);
@@ -948,7 +932,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [editingQuote, invalidateDealsCache, setEditingQuote, setError, updateAppData]
+    [editingQuote, invalidateDealsCache, setEditingQuote, setError, updateAppData],
   );
 
   const handleRequestEditQuote = useCallback((quote: Quote) => {
@@ -964,7 +948,7 @@ const AppContent: React.FC = () => {
           deals: prev.deals.map((deal) =>
             deal.id === dealId
               ? { ...deal, quotes: markQuoteAsDeleted(deal.quotes ?? [], quoteId) }
-              : deal
+              : deal,
           ),
         }));
       } catch (err) {
@@ -972,7 +956,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [invalidateDealsCache, setError, updateAppData]
+    [invalidateDealsCache, setError, updateAppData],
   );
 
   const handleAddPolicy = useCallback(
@@ -1051,7 +1035,7 @@ const AppContent: React.FC = () => {
                     paymentsTotal: formattedTotal,
                     paymentsPaid: formattedPaid,
                   }
-                : policy
+                : policy,
             ),
           }));
         };
@@ -1060,17 +1044,16 @@ const AppContent: React.FC = () => {
         const executorName = deal?.executorName?.trim();
         const hasExecutor = Boolean(executorName);
         const ensureExpenses = hasCounterparty || hasExecutor;
-        const expenseTargetName =
-          counterparty?.trim() || executorName || 'контрагент';
-          const expenseNote = `Расход контрагенту ${expenseTargetName}`;
-          const salesChannelName = resolveSalesChannelName(salesChannels, salesChannelId);
-          const autoIncomeNote = buildCommissionIncomeNote(salesChannelName);
-          const paymentsToProcess = paymentDrafts.map((payment) =>
-            normalizePaymentDraft(payment, ensureExpenses, {
-              autoIncomeNote,
-              autoExpenseNote: ensureExpenses ? expenseNote : undefined,
-            })
-          );
+        const expenseTargetName = counterparty?.trim() || executorName || 'контрагент';
+        const expenseNote = `Расход контрагенту ${expenseTargetName}`;
+        const salesChannelName = resolveSalesChannelName(salesChannels, salesChannelId);
+        const autoIncomeNote = buildCommissionIncomeNote(salesChannelName);
+        const paymentsToProcess = paymentDrafts.map((payment) =>
+          normalizePaymentDraft(payment, ensureExpenses, {
+            autoIncomeNote,
+            autoExpenseNote: ensureExpenses ? expenseNote : undefined,
+          }),
+        );
 
         let dealPaymentsTotalDelta = 0;
         let dealPaymentsPaidDelta = 0;
@@ -1153,7 +1136,7 @@ const AppContent: React.FC = () => {
               prev.deals,
               dealId,
               dealPaymentsTotalDelta,
-              dealPaymentsPaidDelta
+              dealPaymentsPaidDelta,
             ),
           }));
         }
@@ -1163,17 +1146,13 @@ const AppContent: React.FC = () => {
           const refreshedDeal = await fetchDeal(dealId);
           updateAppData((prev) => ({
             deals: prev.deals.some((deal) => deal.id === refreshedDeal.id)
-              ? prev.deals.map((deal) =>
-                  deal.id === refreshedDeal.id ? refreshedDeal : deal
-                )
+              ? prev.deals.map((deal) => (deal.id === refreshedDeal.id ? refreshedDeal : deal))
               : [refreshedDeal, ...prev.deals],
           }));
           setSelectedDealId(refreshedDeal.id);
         } catch (refreshErr) {
           setError(
-            refreshErr instanceof Error
-              ? refreshErr.message
-              : 'Не удалось обновить данные сделки'
+            refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить данные сделки',
           );
           refreshFailed = true;
         }
@@ -1182,9 +1161,7 @@ const AppContent: React.FC = () => {
           await refreshPolicies();
         } catch (refreshErr) {
           setError(
-            refreshErr instanceof Error
-              ? refreshErr.message
-              : 'Не удалось обновить список полисов'
+            refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить список полисов',
           );
           refreshFailed = true;
         }
@@ -1192,9 +1169,7 @@ const AppContent: React.FC = () => {
           await refreshDealsWithSelection(dealFilters, { force: true });
         } catch (refreshErr) {
           setError(
-            refreshErr instanceof Error
-              ? refreshErr.message
-              : 'Не удалось обновить список сделок'
+            refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить список сделок',
           );
           refreshFailed = true;
         }
@@ -1223,7 +1198,7 @@ const AppContent: React.FC = () => {
       setIsSyncing,
       setSelectedDealId,
       updateAppData,
-    ]
+    ],
   );
   const handleRequestEditPolicy = useCallback(
     (policy: Policy) => {
@@ -1231,7 +1206,7 @@ const AppContent: React.FC = () => {
       closePolicyModal();
       setEditingPolicy(policy);
     },
-    [closePolicyModal, setModal]
+    [closePolicyModal, setModal],
   );
   const handleUpdatePolicy = useCallback(
     async (policyId: string, values: PolicyFormValues) => {
@@ -1282,7 +1257,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [setEditingPolicy, setError, setIsSyncing, updateAppData]
+    [setEditingPolicy, setError, setIsSyncing, updateAppData],
   );
   const handleDeletePolicy = useCallback(
     async (policyId: string) => {
@@ -1301,7 +1276,7 @@ const AppContent: React.FC = () => {
             policies: prev.policies.filter((policy) => policy.id !== policyId),
             payments: remainingPayments,
             financialRecords: prev.financialRecords.filter(
-              (record) => !removedPaymentIds.has(record.paymentId)
+              (record) => !removedPaymentIds.has(record.paymentId),
             ),
           };
         });
@@ -1310,7 +1285,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, updateAppData]
+    [setError, updateAppData],
   );
 
   const handleDriveFolderCreated = useCallback(
@@ -1318,11 +1293,11 @@ const AppContent: React.FC = () => {
       invalidateDealsCache();
       updateAppData((prev) => ({
         deals: prev.deals.map((deal) =>
-          deal.id === dealId ? { ...deal, driveFolderId: folderId } : deal
+          deal.id === dealId ? { ...deal, driveFolderId: folderId } : deal,
         ),
       }));
     },
-    [invalidateDealsCache, updateAppData]
+    [invalidateDealsCache, updateAppData],
   );
   const handleFetchChatMessages = useCallback(
     async (dealId: string) => {
@@ -1333,7 +1308,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError]
+    [setError],
   );
 
   const handleSendChatMessage = useCallback(
@@ -1345,7 +1320,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError]
+    [setError],
   );
 
   const handleDeleteChatMessage = useCallback(
@@ -1357,7 +1332,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError]
+    [setError],
   );
 
   const handleCreateTask = useCallback(
@@ -1373,7 +1348,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [setError, setIsSyncing, updateAppData]
+    [setError, setIsSyncing, updateAppData],
   );
 
   const handleUpdateTask = useCallback(
@@ -1395,7 +1370,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, setError, setIsSyncing, updateAppData]
+    [addNotification, setError, setIsSyncing, updateAppData],
   );
 
   const handleDeleteTask = useCallback(
@@ -1408,7 +1383,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, updateAppData]
+    [setError, updateAppData],
   );
 
   const loadDealTasks = useCallback(
@@ -1416,16 +1391,13 @@ const AppContent: React.FC = () => {
       try {
         const dealTasks = await fetchTasksByDeal(dealId, { showDeleted: true });
         updateAppData((prev) => ({
-          tasks: [
-            ...prev.tasks.filter((task) => task.dealId !== dealId),
-            ...dealTasks,
-          ],
+          tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...dealTasks],
         }));
       } catch (err) {
         setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
       }
     },
-    [setError, updateAppData]
+    [setError, updateAppData],
   );
 
   const loadDealQuotes = useCallback(
@@ -1434,14 +1406,14 @@ const AppContent: React.FC = () => {
         const dealQuotes = await fetchQuotesByDeal(dealId, { showDeleted: true });
         updateAppData((prev) => ({
           deals: prev.deals.map((deal) =>
-            deal.id === dealId ? { ...deal, quotes: dealQuotes } : deal
+            deal.id === dealId ? { ...deal, quotes: dealQuotes } : deal,
           ),
         }));
       } catch (err) {
         setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
       }
     },
-    [setError, updateAppData]
+    [setError, updateAppData],
   );
 
   useEffect(() => {
@@ -1482,7 +1454,7 @@ const AppContent: React.FC = () => {
             prev.policies,
             created.policyId,
             paymentAmount,
-            paymentPaidAmount
+            paymentPaidAmount,
           ),
           deals: adjustPaymentsTotals(prev.deals, created.dealId, paymentAmount, paymentPaidAmount),
         }));
@@ -1500,7 +1472,14 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [adjustPaymentsTotals, invalidateDealsCache, setError, setPaymentModal, syncDealsByIds, updateAppData]
+    [
+      adjustPaymentsTotals,
+      invalidateDealsCache,
+      setError,
+      setPaymentModal,
+      syncDealsByIds,
+      updateAppData,
+    ],
   );
 
   const handleUpdatePayment = useCallback(
@@ -1530,7 +1509,7 @@ const AppContent: React.FC = () => {
               policies,
               previousPolicyId,
               updatedAmount - previousAmount,
-              updatedPaid - previousPaid
+              updatedPaid - previousPaid,
             );
           } else {
             if (previousPolicyId) {
@@ -1538,11 +1517,16 @@ const AppContent: React.FC = () => {
                 policies,
                 previousPolicyId,
                 -previousAmount,
-                -previousPaid
+                -previousPaid,
               );
             }
             if (updated.policyId) {
-              policies = adjustPaymentsTotals(policies, updated.policyId, updatedAmount, updatedPaid);
+              policies = adjustPaymentsTotals(
+                policies,
+                updated.policyId,
+                updatedAmount,
+                updatedPaid,
+              );
             }
           }
 
@@ -1552,7 +1536,7 @@ const AppContent: React.FC = () => {
               deals,
               previousDealId,
               updatedAmount - previousAmount,
-              updatedPaid - previousPaid
+              updatedPaid - previousPaid,
             );
           } else {
             if (previousDealId) {
@@ -1565,7 +1549,7 @@ const AppContent: React.FC = () => {
 
           return {
             payments: prev.payments.map((payment) =>
-              payment.id === updated.id ? updated : payment
+              payment.id === updated.id ? updated : payment,
             ),
             policies,
             deals,
@@ -1585,7 +1569,15 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [adjustPaymentsTotals, invalidateDealsCache, payments, setError, setPaymentModal, syncDealsByIds, updateAppData]
+    [
+      adjustPaymentsTotals,
+      invalidateDealsCache,
+      payments,
+      setError,
+      setPaymentModal,
+      syncDealsByIds,
+      updateAppData,
+    ],
   );
 
   const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
@@ -1619,7 +1611,7 @@ const AppContent: React.FC = () => {
                   ...payment,
                   financialRecords: [...(payment.financialRecords ?? []), created],
                 }
-              : payment
+              : payment,
           ),
         }));
         setFinancialRecordModal(null);
@@ -1628,7 +1620,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [financialRecordModal, setError, setFinancialRecordModal, updateAppData]
+    [financialRecordModal, setError, setFinancialRecordModal, updateAppData],
   );
 
   const handleUpdateFinancialRecord = useCallback(
@@ -1643,17 +1635,17 @@ const AppContent: React.FC = () => {
         });
         updateAppData((prev) => ({
           financialRecords: prev.financialRecords.map((record) =>
-            record.id === updated.id ? updated : record
+            record.id === updated.id ? updated : record,
           ),
           payments: prev.payments.map((payment) =>
             payment.id === updated.paymentId
               ? {
                   ...payment,
                   financialRecords: (payment.financialRecords ?? []).map((record) =>
-                    record.id === updated.id ? updated : record
+                    record.id === updated.id ? updated : record,
                   ),
                 }
-              : payment
+              : payment,
           ),
         }));
         setFinancialRecordModal(null);
@@ -1662,7 +1654,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, setFinancialRecordModal, updateAppData]
+    [setError, setFinancialRecordModal, updateAppData],
   );
 
   const handleDeleteFinancialRecord = useCallback(
@@ -1679,10 +1671,10 @@ const AppContent: React.FC = () => {
                     ? {
                         ...payment,
                         financialRecords: (payment.financialRecords ?? []).filter(
-                          (record) => record.id !== recordId
+                          (record) => record.id !== recordId,
                         ),
                       }
-                    : payment
+                    : payment,
                 )
               : prev.payments,
           };
@@ -1693,7 +1685,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, setFinancialRecordModal, updateAppData]
+    [setError, setFinancialRecordModal, updateAppData],
   );
 
   const handleCreateFinanceStatement = useCallback(
@@ -1716,7 +1708,7 @@ const AppContent: React.FC = () => {
       }));
       return created;
     },
-    [updateAppData]
+    [updateAppData],
   );
 
   const handleUpdateFinanceStatement = useCallback(
@@ -1730,29 +1722,25 @@ const AppContent: React.FC = () => {
         comment: string;
         paidAt: string | null;
         recordIds: string[];
-      }>
+      }>,
     ) => {
       const updated = await updateFinanceStatement(statementId, values);
       updateAppData((prev) => {
         const statements = (prev.statements ?? []).map((statement) =>
-          statement.id === updated.id ? updated : statement
+          statement.id === updated.id ? updated : statement,
         );
         const updatedRecordIds = values.recordIds ?? [];
         const recordIdSet = new Set(updatedRecordIds);
         const financialRecords = updatedRecordIds.length
           ? prev.financialRecords.map((record) =>
-              recordIdSet.has(record.id)
-                ? { ...record, statementId: updated.id }
-                : record
+              recordIdSet.has(record.id) ? { ...record, statementId: updated.id } : record,
             )
           : prev.financialRecords;
         const payments = updatedRecordIds.length
           ? prev.payments.map((payment) => ({
               ...payment,
               financialRecords: (payment.financialRecords ?? []).map((record) =>
-                recordIdSet.has(record.id)
-                  ? { ...record, statementId: updated.id }
-                  : record
+                recordIdSet.has(record.id) ? { ...record, statementId: updated.id } : record,
               ),
             }))
           : prev.payments;
@@ -1760,7 +1748,7 @@ const AppContent: React.FC = () => {
       });
       return updated;
     },
-    [updateAppData]
+    [updateAppData],
   );
 
   const handleDeleteFinanceStatement = useCallback(
@@ -1768,20 +1756,14 @@ const AppContent: React.FC = () => {
       try {
         await deleteFinanceStatement(statementId);
         updateAppData((prev) => ({
-          statements: (prev.statements ?? []).filter(
-            (statement) => statement.id !== statementId
-          ),
+          statements: (prev.statements ?? []).filter((statement) => statement.id !== statementId),
           financialRecords: prev.financialRecords.map((record) =>
-            record.statementId === statementId
-              ? { ...record, statementId: null }
-              : record
+            record.statementId === statementId ? { ...record, statementId: null } : record,
           ),
           payments: prev.payments.map((payment) => ({
             ...payment,
             financialRecords: (payment.financialRecords ?? []).map((record) =>
-              record.statementId === statementId
-                ? { ...record, statementId: null }
-                : record
+              record.statementId === statementId ? { ...record, statementId: null } : record,
             ),
           })),
         }));
@@ -1790,7 +1772,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, updateAppData]
+    [setError, updateAppData],
   );
 
   const handleRemoveFinanceStatementRecords = useCallback(
@@ -1799,16 +1781,12 @@ const AppContent: React.FC = () => {
         await removeFinanceStatementRecords(statementId, recordIds);
         updateAppData((prev) => ({
           financialRecords: prev.financialRecords.map((record) =>
-            recordIds.includes(record.id)
-              ? { ...record, statementId: null }
-              : record
+            recordIds.includes(record.id) ? { ...record, statementId: null } : record,
           ),
           payments: prev.payments.map((payment) => ({
             ...payment,
             financialRecords: (payment.financialRecords ?? []).map((record) =>
-              recordIds.includes(record.id)
-                ? { ...record, statementId: null }
-                : record
+              recordIds.includes(record.id) ? { ...record, statementId: null } : record,
             ),
           })),
         }));
@@ -1817,7 +1795,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, updateAppData]
+    [setError, updateAppData],
   );
 
   const handleMarkFinanceStatementPaid = useCallback(
@@ -1828,19 +1806,19 @@ const AppContent: React.FC = () => {
         const updated = await markFinanceStatementPaid(statementId, paidAt);
         updateAppData((prev) => ({
           statements: (prev.statements ?? []).map((item) =>
-            item.id === updated.id ? updated : item
+            item.id === updated.id ? updated : item,
           ),
           financialRecords: prev.financialRecords.map((record) =>
             record.statementId === updated.id
               ? { ...record, date: updated.paidAt ?? record.date }
-              : record
+              : record,
           ),
           payments: prev.payments.map((payment) => ({
             ...payment,
             financialRecords: (payment.financialRecords ?? []).map((record) =>
               record.statementId === updated.id
                 ? { ...record, date: updated.paidAt ?? record.date }
-                : record
+                : record,
             ),
           })),
         }));
@@ -1850,7 +1828,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, statements, updateAppData]
+    [setError, statements, updateAppData],
   );
 
   const handleLogout = useCallback(() => {
@@ -1863,21 +1841,19 @@ const AppContent: React.FC = () => {
       clients: [],
       deals: [],
       policies: [],
-        salesChannels: [],
-        payments: [],
-        financialRecords: [],
-        statements: [],
-        tasks: [],
-        users: [],
-      });
+      salesChannels: [],
+      payments: [],
+      financialRecords: [],
+      statements: [],
+      tasks: [],
+      users: [],
+    });
   }, [resetPoliciesListState, resetPoliciesState, setAppData]);
 
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <div className="text-slate-500">
-          {authLoading ? 'Загрузка...' : 'Загрузка данных...'}
-        </div>
+        <div className="text-slate-500">{authLoading ? 'Загрузка...' : 'Загрузка данных...'}</div>
       </div>
     );
   }
@@ -2054,13 +2030,13 @@ const AppContent: React.FC = () => {
         editingQuote={editingQuote}
         setEditingQuote={setEditingQuote}
         handleUpdateQuote={handleUpdateQuote}
-      policyDealId={policyDealId}
-      policyDefaultCounterparty={policyDefaultCounterparty}
-      closePolicyModal={closePolicyModal}
-      policyPrefill={policyPrefill}
-      policyDealExecutorName={policyDealExecutorName}
-      editingPolicyExecutorName={editingPolicyExecutorName}
-      editingPolicy={editingPolicy}
+        policyDealId={policyDealId}
+        policyDefaultCounterparty={policyDefaultCounterparty}
+        closePolicyModal={closePolicyModal}
+        policyPrefill={policyPrefill}
+        policyDealExecutorName={policyDealExecutorName}
+        editingPolicyExecutorName={editingPolicyExecutorName}
+        editingPolicy={editingPolicy}
         setEditingPolicy={setEditingPolicy}
         salesChannels={salesChannels}
         handleAddPolicy={handleAddPolicy}
@@ -2071,9 +2047,9 @@ const AppContent: React.FC = () => {
         payments={payments}
         financialRecordModal={financialRecordModal}
         setFinancialRecordModal={setFinancialRecordModal}
-          handleUpdateFinancialRecord={handleUpdateFinancialRecord}
-          financialRecords={financialRecords}
-        />
+        handleUpdateFinancialRecord={handleUpdateFinancialRecord}
+        financialRecords={financialRecords}
+      />
       {editingClient && (
         <Modal title="Редактировать клиента" onClose={() => setEditingClient(null)}>
           <ClientForm
@@ -2095,7 +2071,8 @@ const AppContent: React.FC = () => {
           closeOnOverlayClick={false}
         >
           <p className="text-sm text-slate-700">
-            Клиент <span className="font-bold">{clientDeleteTarget.name}</span> и все его данные станут недоступны.
+            Клиент <span className="font-bold">{clientDeleteTarget.name}</span> и все его данные
+            станут недоступны.
           </p>
           <div className="mt-6 flex justify-end gap-3">
             <button
@@ -2118,7 +2095,11 @@ const AppContent: React.FC = () => {
         </Modal>
       )}
       {mergeTargetClient && (
-        <Modal title={`Объединить клиента ${mergeTargetClient.name}`} onClose={closeMergeModal} size="lg">
+        <Modal
+          title={`Объединить клиента ${mergeTargetClient.name}`}
+          onClose={closeMergeModal}
+          size="lg"
+        >
           <div className="space-y-5">
             <p className="text-sm text-slate-600">
               Выберите клиентов, которые будут объединены в «{mergeTargetClient.name}».

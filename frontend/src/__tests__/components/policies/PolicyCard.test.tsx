@@ -57,7 +57,7 @@ describe('PolicyCard', () => {
         onDeleteFinancialRecord={async () => undefined}
         primaryAction={{ label: 'Open', onClick: onPrimary }}
         actions={[{ key: 'edit', label: 'Edit', onClick: onAction }]}
-      />
+      />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Open' }));

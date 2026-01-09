@@ -22,7 +22,7 @@ const renderRecordList = (
   recordType: 'income' | 'expense',
   onEditRecord: (recordId: string) => void,
   onDeleteRecord: (recordId: string) => Promise<void>,
-  compact: boolean
+  compact: boolean,
 ) => {
   if (!records.length) {
     return (
@@ -48,31 +48,48 @@ const renderRecordList = (
         const recordTitle = record.note || 'Без примечания';
 
         return (
-          <div
-            key={record.id}
-            className={recordClassName}
-          >
+          <div key={record.id} className={recordClassName}>
             <div className="min-w-0 space-y-0.5">
               <p className="font-semibold text-slate-800 truncate">{recordTitle}</p>
               <p className="text-[10px] text-slate-500">{formatDate(record.date)}</p>
             </div>
-            <div className={compact ? 'text-xs font-semibold text-slate-900' : 'text-sm font-semibold text-slate-900'}>
+            <div
+              className={
+                compact
+                  ? 'text-xs font-semibold text-slate-900'
+                  : 'text-sm font-semibold text-slate-900'
+              }
+            >
               <span className={tone}>
                 {sign}
                 {formatCurrency(amountValue.toString())}
               </span>
             </div>
-            <div className={compact ? 'flex gap-2 text-[10px] text-slate-500' : 'flex gap-3 text-[11px] text-slate-500'}>
+            <div
+              className={
+                compact
+                  ? 'flex gap-2 text-[10px] text-slate-500'
+                  : 'flex gap-3 text-[11px] text-slate-500'
+              }
+            >
               <button
                 onClick={() => onEditRecord(record.id)}
-                className={compact ? 'link-action text-[10px] font-semibold' : 'link-action text-[11px] font-semibold'}
+                className={
+                  compact
+                    ? 'link-action text-[10px] font-semibold'
+                    : 'link-action text-[11px] font-semibold'
+                }
                 type="button"
               >
                 Изменить
               </button>
               <button
                 onClick={() => onDeleteRecord(record.id).catch(() => undefined)}
-                className={compact ? 'link-danger text-[10px] font-semibold' : 'link-danger text-[11px] font-semibold'}
+                className={
+                  compact
+                    ? 'link-danger text-[10px] font-semibold'
+                    : 'link-danger text-[11px] font-semibold'
+                }
                 type="button"
               >
                 Удалить
@@ -86,7 +103,9 @@ const renderRecordList = (
 };
 
 const describeRecordsCount = (records: FinancialRecord[]) =>
-  records.length ? `${records.length} ${records.length === 1 ? 'запись' : 'записей'}` : 'Нет записей';
+  records.length
+    ? `${records.length} ${records.length === 1 ? 'запись' : 'записей'}`
+    : 'Нет записей';
 
 export const PaymentCard: React.FC<PaymentCardProps> = ({
   payment,
@@ -96,8 +115,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   onDeleteFinancialRecord,
   variant = 'default',
 }) => {
-  const incomes =
-    payment.financialRecords?.filter((record) => record.recordType === 'Доход') || [];
+  const incomes = payment.financialRecords?.filter((record) => record.recordType === 'Доход') || [];
   const expenses =
     payment.financialRecords?.filter((record) => record.recordType === 'Расход') || [];
 
@@ -124,37 +142,43 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
     title: string,
     records: FinancialRecord[],
     recordType: 'income' | 'expense',
-    onAdd: () => void
+    onAdd: () => void,
   ) => {
     const toneClassName =
-      recordType === 'income' ? 'border-emerald-200 bg-emerald-50/70' : 'border-rose-200 bg-rose-50/70';
+      recordType === 'income'
+        ? 'border-emerald-200 bg-emerald-50/70'
+        : 'border-rose-200 bg-rose-50/70';
     const sectionClassName = compact
       ? `rounded-lg border ${toneClassName}`
       : `rounded-2xl border ${toneClassName} shadow-inner`;
 
     return (
       <section className={sectionClassName}>
-      <div className={sectionHeaderClassName}>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">{title}</p>
-          <p className="text-[11px] text-slate-500">{describeRecordsCount(records)}</p>
+        <div className={sectionHeaderClassName}>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">
+              {title}
+            </p>
+            <p className="text-[11px] text-slate-500">{describeRecordsCount(records)}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={onAdd} className="link-action text-[11px] font-semibold">
+              Добавить
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onAdd}
-            className="link-action text-[11px] font-semibold"
-          >
-            Добавить
-          </button>
+        <div className={sectionBodyClassName}>
+          <div className="space-y-2">
+            {renderRecordList(
+              records,
+              recordType,
+              onEditFinancialRecord,
+              onDeleteFinancialRecord,
+              compact,
+            )}
+          </div>
         </div>
-      </div>
-      <div className={sectionBodyClassName}>
-        <div className="space-y-2">
-          {renderRecordList(records, recordType, onEditFinancialRecord, onDeleteFinancialRecord, compact)}
-        </div>
-      </div>
-    </section>
+      </section>
     );
   };
 
@@ -162,17 +186,29 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
     <div className={`${containerClassName} ${spacingClassName}`}>
       <div className={headerClassName}>
         <div className={compact ? 'min-w-0 space-y-0.5' : 'min-w-0 space-y-1'}>
-          <p className={compact ? 'text-base font-semibold text-slate-900' : 'text-lg font-semibold text-slate-900'}>
+          <p
+            className={
+              compact
+                ? 'text-base font-semibold text-slate-900'
+                : 'text-lg font-semibold text-slate-900'
+            }
+          >
             {formatCurrency(payment.amount)}
           </p>
-          <p className={compact ? 'text-xs text-slate-500 truncate' : 'text-sm text-slate-500 truncate'}>
+          <p
+            className={
+              compact ? 'text-xs text-slate-500 truncate' : 'text-sm text-slate-500 truncate'
+            }
+          >
             {payment.note || payment.description || 'Без описания'}
           </p>
         </div>
         <div className={metaClassName}>
           <div>
             <p className="leading-none text-[9px]">Оплатить до...</p>
-            <p className="text-sm font-semibold text-slate-800">{formatDate(payment.scheduledDate)}</p>
+            <p className="text-sm font-semibold text-slate-800">
+              {formatDate(payment.scheduledDate)}
+            </p>
           </div>
           <div>
             <p className="leading-none text-[9px]">Оплачен:</p>
@@ -191,10 +227,10 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
       </div>
       <div className={recordsLayoutClassName}>
         {renderSection(RECORD_TITLES.income, incomes, 'income', () =>
-          onRequestAddRecord(payment.id, 'income')
+          onRequestAddRecord(payment.id, 'income'),
         )}
         {renderSection(RECORD_TITLES.expense, expenses, 'expense', () =>
-          onRequestAddRecord(payment.id, 'expense')
+          onRequestAddRecord(payment.id, 'expense'),
         )}
       </div>
     </div>

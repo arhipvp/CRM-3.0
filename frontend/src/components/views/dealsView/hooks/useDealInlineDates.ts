@@ -37,7 +37,10 @@ export const useDealInlineDates = ({
   const [expectedCloseInputValue, setExpectedCloseInputValue] = useState('');
 
   const buildPayload = useCallback(
-    (fields: { nextContactDate?: string | null; expectedClose?: string | null }): DealFormValues | null => {
+    (fields: {
+      nextContactDate?: string | null;
+      expectedClose?: string | null;
+    }): DealFormValues | null => {
       if (!selectedDeal) {
         return null;
       }
@@ -51,7 +54,7 @@ export const useDealInlineDates = ({
         expectedClose: fields.expectedClose ?? selectedDeal.expectedClose ?? null,
       };
     },
-    [selectedDeal]
+    [selectedDeal],
   );
 
   const updateDealDates = useCallback(
@@ -62,7 +65,7 @@ export const useDealInlineDates = ({
       }
       await onUpdateDeal(selectedDeal.id, payload);
     },
-    [buildPayload, onUpdateDeal, selectedDeal]
+    [buildPayload, onUpdateDeal, selectedDeal],
   );
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export const useDealInlineDates = ({
     async (
       field: DateField,
       rawValue: string,
-      options?: { selectTopDeal?: boolean }
+      options?: { selectTopDeal?: boolean },
     ): Promise<void> => {
       if (!selectedDeal) {
         return;
@@ -87,9 +90,7 @@ export const useDealInlineDates = ({
 
       try {
         await updateDealDates(
-          field === 'nextContactDate'
-            ? { nextContactDate: value }
-            : { expectedClose: value }
+          field === 'nextContactDate' ? { nextContactDate: value } : { expectedClose: value },
         );
 
         if (field === 'nextContactDate') {
@@ -109,7 +110,7 @@ export const useDealInlineDates = ({
         console.error('Ошибка обновления даты сделки:', err);
       }
     },
-    [onSelectDeal, selectedDeal, sortedDeals, updateDealDates]
+    [onSelectDeal, selectedDeal, sortedDeals, updateDealDates],
   );
 
   const handleNextContactChange = useCallback((value: string) => {
@@ -122,12 +123,12 @@ export const useDealInlineDates = ({
 
   const handleNextContactBlur = useCallback(
     (value: string) => handleInlineDateSave('nextContactDate', value),
-    [handleInlineDateSave]
+    [handleInlineDateSave],
   );
 
   const handleExpectedCloseBlur = useCallback(
     (value: string) => handleInlineDateSave('expectedClose', value),
-    [handleInlineDateSave]
+    [handleInlineDateSave],
   );
 
   const handleQuickNextContactShift = useCallback(
@@ -135,7 +136,7 @@ export const useDealInlineDates = ({
       setNextContactInputValue(newValue);
       return handleInlineDateSave('nextContactDate', newValue, { selectTopDeal: true });
     },
-    [handleInlineDateSave]
+    [handleInlineDateSave],
   );
 
   const handleQuickNextContactPostpone = useCallback(
@@ -156,7 +157,7 @@ export const useDealInlineDates = ({
         console.error('Ошибка при быстром переносе следующего контакта:', err);
       }
     },
-    [buildPayload, onPostponeDeal, selectedDeal]
+    [buildPayload, onPostponeDeal, selectedDeal],
   );
 
   const quickInlineShift = useCallback(
@@ -167,7 +168,7 @@ export const useDealInlineDates = ({
       targetDate.setDate(targetDate.getDate() + days);
       handleQuickNextContactShift(formatDateForInput(targetDate));
     },
-    [handleQuickNextContactShift]
+    [handleQuickNextContactShift],
   );
 
   const quickInlinePostponeShift = useCallback(
@@ -178,12 +179,12 @@ export const useDealInlineDates = ({
       targetDate.setDate(targetDate.getDate() + days);
       handleQuickNextContactPostpone(formatDateForInput(targetDate));
     },
-    [handleQuickNextContactPostpone]
+    [handleQuickNextContactPostpone],
   );
 
   const quickInlineDateOptions = useMemo(
     () => QUICK_INLINE_DATE_OPTIONS.map((option) => ({ ...option })),
-    []
+    [],
   );
 
   return {

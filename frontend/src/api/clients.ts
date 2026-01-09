@@ -4,7 +4,7 @@ import { mapClient, mapUser } from './mappers';
 import type { Client, ClientMergeResponse, User } from '../types';
 
 export async function fetchClientsWithPagination(
-  filters?: FilterParams
+  filters?: FilterParams,
 ): Promise<PaginatedResponse<Client>> {
   const qs = buildQueryString(filters);
   return fetchClientsPage(`/clients/${qs}`);
@@ -112,7 +112,13 @@ export async function createClient(data: {
 
 export async function updateClient(
   id: string,
-  data: { name: string; phone?: string; birthDate?: string | null; notes?: string | null; email?: string | null }
+  data: {
+    name: string;
+    phone?: string;
+    birthDate?: string | null;
+    notes?: string | null;
+    email?: string | null;
+  },
 ): Promise<Client> {
   const payload = await request<Record<string, unknown>>(`/clients/${id}/`, {
     method: 'PATCH',

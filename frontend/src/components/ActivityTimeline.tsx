@@ -92,7 +92,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
   if (activities.length === 0) {
     return (
-      <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">Пока нет событий по сделке.</div>
+      <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
+        Пока нет событий по сделке.
+      </div>
     );
   }
 
@@ -108,13 +110,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                 className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm ${markerClass}`}
                 aria-hidden="true"
               >
-                <span className="text-base leading-none">
-                  {getActionIcon(activity.actionType)}
-                </span>
+                <span className="text-base leading-none">{getActionIcon(activity.actionType)}</span>
               </div>
-              {!isLast && (
-                <div className="mt-2 h-full w-px flex-1 bg-slate-200" />
-              )}
+              {!isLast && <div className="mt-2 h-full w-px flex-1 bg-slate-200" />}
             </div>
 
             <div className="min-w-0 flex-1 pt-1">
@@ -138,9 +136,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                 </span>
               </div>
 
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                {activity.description}
-              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">{activity.description}</p>
 
               {activity.oldValue && activity.newValue && (
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">

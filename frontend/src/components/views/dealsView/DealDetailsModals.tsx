@@ -183,9 +183,7 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-slate-800">
-          Выберите сделки для переноса
-        </p>
+        <p className="text-sm font-semibold text-slate-800">Выберите сделки для переноса</p>
         <input
           type="search"
           value={mergeSearch}

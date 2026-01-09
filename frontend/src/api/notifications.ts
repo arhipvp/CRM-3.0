@@ -32,7 +32,7 @@ export async function fetchNotificationSettings(): Promise<NotificationSettingsR
 }
 
 export async function updateNotificationSettings(
-  payload: Partial<NotificationSettings>
+  payload: Partial<NotificationSettings>,
 ): Promise<NotificationSettingsResponse> {
   return request<NotificationSettingsResponse>('/notifications/settings/', {
     method: 'PATCH',

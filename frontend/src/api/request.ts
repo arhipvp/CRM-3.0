@@ -107,7 +107,7 @@ export class APIError extends Error {
 export async function request<T = unknown>(
   path: string,
   options: RequestInit = {},
-  refreshAttempted = false
+  refreshAttempted = false,
 ): Promise<T> {
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
@@ -141,7 +141,7 @@ export async function request<T = unknown>(
     }
     const hadAnyTokens = hadToken || hadRefreshToken;
     console.warn(
-      `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`
+      `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`,
     );
     clearTokens();
     if (hadAnyTokens) {
@@ -180,7 +180,7 @@ export async function request<T = unknown>(
 export async function requestBlob(
   path: string,
   options: RequestInit = {},
-  refreshAttempted = false
+  refreshAttempted = false,
 ): Promise<Blob> {
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
@@ -207,7 +207,7 @@ export async function requestBlob(
     }
     const hadAnyTokens = hadToken || hadRefreshToken;
     console.warn(
-      `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`
+      `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`,
     );
     clearTokens();
     if (hadAnyTokens) {

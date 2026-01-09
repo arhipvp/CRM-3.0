@@ -1,6 +1,17 @@
 import React from 'react';
 
-import { ActivityLog, ChatMessage, Deal, Client, FinancialRecord, Payment, Policy, Quote, Task, User } from '../../types';
+import {
+  ActivityLog,
+  ChatMessage,
+  Deal,
+  Client,
+  FinancialRecord,
+  Payment,
+  Policy,
+  Quote,
+  Task,
+  User,
+} from '../../types';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
@@ -8,7 +19,6 @@ import type { DealFormValues } from '../forms/DealForm';
 import { DealDetailsPanel } from './dealsView/DealDetailsPanel';
 import { DealsList } from './dealsView/DealsList';
 import { useSelectedDeal } from '../../hooks/useSelectedDeal';
-
 
 interface DealsViewProps {
   deals: Deal[];
@@ -22,7 +32,10 @@ interface DealsViewProps {
   currentUser: User | null;
   selectedDealId: string | null;
   onSelectDeal: (dealId: string) => void;
-  onCloseDeal: (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => Promise<void>;
+  onCloseDeal: (
+    dealId: string,
+    payload: { reason: string; status?: 'won' | 'lost' },
+  ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -38,12 +51,15 @@ interface DealsViewProps {
     dealId: string,
     parsed: Record<string, unknown>,
     fileName?: string | null,
-    fileId?: string | null
+    fileId?: string | null,
   ) => void;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
-  onUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord: (
+    recordId: string,
+    values: AddFinancialRecordFormValues,
+  ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
@@ -55,7 +71,11 @@ interface DealsViewProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
-  onMergeDeals: (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => Promise<void>;
+  onMergeDeals: (
+    targetDealId: string,
+    sourceDealIds: string[],
+    resultingClientId?: string,
+  ) => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   isLoadingMoreDeals: boolean;
@@ -70,7 +90,6 @@ interface DealsViewProps {
   dealOrdering?: string;
   onDealOrderingChange: (value: string | undefined) => void;
 }
-
 
 export const DealsView: React.FC<DealsViewProps> = ({
   deals,

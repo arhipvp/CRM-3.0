@@ -58,10 +58,7 @@ export function TaskTable({
 
   const columnCount = baseColumnCount + (hasActions ? 1 : 0);
 
-  const taskCellClassName = [
-    'border border-slate-200 px-4 py-2 align-top',
-    taskColumnClassName,
-  ]
+  const taskCellClassName = ['border border-slate-200 px-4 py-2 align-top', taskColumnClassName]
     .filter(Boolean)
     .join(' ');
 
@@ -69,7 +66,10 @@ export function TaskTable({
     if (!onDeleteTask) {
       return;
     }
-    if (typeof window !== 'undefined' && !window.confirm('Вы уверены, что хотите удалить задачу?')) {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('Вы уверены, что хотите удалить задачу?')
+    ) {
       return;
     }
     onDeleteTask(taskId).catch(() => undefined);
@@ -95,52 +95,52 @@ export function TaskTable({
   return (
     <div className="app-panel shadow-none overflow-hidden">
       <div className="overflow-x-auto bg-white">
-          <table className="deals-table min-w-full table-fixed border-collapse text-left text-sm">
+        <table className="deals-table min-w-full table-fixed border-collapse text-left text-sm">
           <thead className={TABLE_THEAD_CLASS}>
             <tr>
               <TableHeadCell padding="sm" className={taskColumnClassName}>
                 Задача
               </TableHeadCell>
-                {showClientColumn && (
-                  <TableHeadCell padding="sm" className="w-[160px]">
-                    Клиент
-                  </TableHeadCell>
-                )}
-                {showDealColumn && (
-                  <TableHeadCell padding="sm" className="w-[200px]">
-                    Сделка
-                  </TableHeadCell>
-                )}
-                <TableHeadCell padding="sm" className="w-[120px]">
-                  Статус
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[120px]">
-                  Приоритет
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[130px]">
-                  Ответственный
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[120px]">
-                  Срок
-                </TableHeadCell>
-                {showReminderColumn && (
-                  <TableHeadCell padding="sm" className="w-[140px]">
-                    Напоминание
-                  </TableHeadCell>
-                )}
-                <TableHeadCell padding="sm" className="w-[140px]">
-                  Создано
-                </TableHeadCell>
+              {showClientColumn && (
                 <TableHeadCell padding="sm" className="w-[160px]">
-                  Выполнено
+                  Клиент
                 </TableHeadCell>
-                {hasActions && (
-                  <TableHeadCell padding="sm" align="right" className="w-[120px]">
-                    Действия
-                  </TableHeadCell>
-                )}
-              </tr>
-            </thead>
+              )}
+              {showDealColumn && (
+                <TableHeadCell padding="sm" className="w-[200px]">
+                  Сделка
+                </TableHeadCell>
+              )}
+              <TableHeadCell padding="sm" className="w-[120px]">
+                Статус
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="w-[120px]">
+                Приоритет
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="w-[130px]">
+                Ответственный
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="w-[120px]">
+                Срок
+              </TableHeadCell>
+              {showReminderColumn && (
+                <TableHeadCell padding="sm" className="w-[140px]">
+                  Напоминание
+                </TableHeadCell>
+              )}
+              <TableHeadCell padding="sm" className="w-[140px]">
+                Создано
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="w-[160px]">
+                Выполнено
+              </TableHeadCell>
+              {hasActions && (
+                <TableHeadCell padding="sm" align="right" className="w-[120px]">
+                  Действия
+                </TableHeadCell>
+              )}
+            </tr>
+          </thead>
 
           <tbody className="bg-white">
             {tasks.map((task) => {
@@ -158,7 +158,9 @@ export function TaskTable({
                     .join(' ')}
                 >
                   <td className={taskCellClassName}>
-                    <p className={`font-semibold leading-snug ${isDone ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                    <p
+                      className={`font-semibold leading-snug ${isDone ? 'text-slate-500 line-through' : 'text-slate-900'}`}
+                    >
                       {task.title}
                     </p>
                     {task.description && (
@@ -184,24 +186,28 @@ export function TaskTable({
 
                   {showDealColumn && (
                     <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs`}>
-                          {task.dealId ? (
-                             <button
-                               type="button"
-                               className="link-action text-left"
-                              onClick={() => handleDealClick(task)}
-                            >
-                              {task.dealTitle || task.dealId}
-                            </button>
-                          ) : (
+                      {task.dealId ? (
+                        <button
+                          type="button"
+                          className="link-action text-left"
+                          onClick={() => handleDealClick(task)}
+                        >
+                          {task.dealTitle || task.dealId}
+                        </button>
+                      ) : (
                         '-'
                       )}
                     </td>
                   )}
 
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
+                  <td
+                    className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}
+                  >
                     {STATUS_LABELS[task.status] || task.status}
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
+                  <td
+                    className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}
+                  >
                     {PRIORITY_LABELS[task.priority] || task.priority}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700`}>
@@ -211,17 +217,23 @@ export function TaskTable({
                       className="truncate text-xs font-semibold text-slate-600"
                     />
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
+                  <td
+                    className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}
+                  >
                     {formatDate(task.dueAt)}
                   </td>
 
                   {showReminderColumn && (
-                    <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
+                    <td
+                      className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}
+                    >
                       {formatDate(task.remindAt)}
                     </td>
                   )}
 
-                  <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}>
+                  <td
+                    className={`${TABLE_CELL_CLASS_SM} align-top text-xs text-slate-700 whitespace-nowrap`}
+                  >
                     {formatDateTime(task.createdAt)}
                   </td>
 

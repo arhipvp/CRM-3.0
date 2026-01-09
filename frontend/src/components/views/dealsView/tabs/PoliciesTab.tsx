@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
-import type { Client, Deal, FinancialRecordCreationContext, Payment, Policy } from '../../../../types';
-import {
-  PolicySortKey,
-  policyHasUnpaidActivity,
-} from '../helpers';
+import type {
+  Client,
+  Deal,
+  FinancialRecordCreationContext,
+  Payment,
+  Policy,
+} from '../../../../types';
+import { PolicySortKey, policyHasUnpaidActivity } from '../helpers';
 import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
 import { PolicyCard } from '../../../policies/PolicyCard';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
@@ -58,12 +61,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onDeletePolicy,
   onRequestEditPolicy,
 }) => {
-  const {
-    paymentsExpanded,
-    setPaymentsExpanded,
-    recordsExpandedAll,
-    setRecordsExpandedAll,
-  } = usePoliciesExpansionState();
+  const { paymentsExpanded, setPaymentsExpanded, recordsExpandedAll, setRecordsExpandedAll } =
+    usePoliciesExpansionState();
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
 
   const paymentsByPolicyMap = useMemo(() => {
@@ -82,7 +81,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
   const allFinancialRecords = useMemo(
     () => relatedPayments.flatMap((payment) => payment.financialRecords ?? []),
-    [relatedPayments]
+    [relatedPayments],
   );
 
   const visiblePolicies = useMemo(() => {
@@ -90,7 +89,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       return sortedPolicies;
     }
     return sortedPolicies.filter((policy) =>
-      policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords)
+      policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords),
     );
   }, [showUnpaidOnly, sortedPolicies, paymentsByPolicyMap, allFinancialRecords]);
 
@@ -187,8 +186,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           const payments = paymentsByPolicyMap.get(policy.id) ?? [];
           const expanded = paymentsExpanded[policy.id] ?? false;
           const model = buildPolicyCardModel(policy, payments);
-          const primaryClient =
-            model.clientId ? clients.find((client) => client.id === model.clientId) ?? null : null;
+          const primaryClient = model.clientId
+            ? (clients.find((client) => client.id === model.clientId) ?? null)
+            : null;
 
           return (
             <PolicyCard

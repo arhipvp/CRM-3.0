@@ -40,7 +40,7 @@ export function AddTaskForm({
   const [error, setError] = useState('');
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     const preserveEmptyStrings = ['title', 'description'];
@@ -72,9 +72,7 @@ export function AddTaskForm({
 
   return (
     <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
-      {error && (
-        <p className="app-alert app-alert-danger">{error}</p>
-      )}
+      {error && <p className="app-alert app-alert-danger">{error}</p>}
 
       <div className="space-y-2">
         <label htmlFor="title" className="app-label">
@@ -129,9 +127,7 @@ export function AddTaskForm({
           ))}
         </select>
         {!task && (
-          <p className="text-sm text-slate-600">
-            По умолчанию будет назначен исполнитель сделки.
-          </p>
+          <p className="text-sm text-slate-600">По умолчанию будет назначен исполнитель сделки.</p>
         )}
       </div>
 
@@ -201,7 +197,6 @@ export function AddTaskForm({
           Отмена
         </button>
       </div>
-
     </form>
   );
 }

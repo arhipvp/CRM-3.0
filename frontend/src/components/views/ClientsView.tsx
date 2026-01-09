@@ -148,124 +148,126 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
       <div className="app-panel shadow-none overflow-hidden">
         <div className="overflow-x-auto bg-white">
-         <table className="deals-table min-w-full border-collapse text-left text-sm" aria-label="Список клиентов">
-          <thead className={TABLE_THEAD_CLASS}>
-            <tr>
-              <TableHeadCell className="min-w-[220px]">Имя</TableHeadCell>
-              <TableHeadCell className="min-w-[180px]">Телефон</TableHeadCell>
-              <TableHeadCell className="min-w-[170px]">Дата рождения</TableHeadCell>
-              <TableHeadCell className="min-w-[170px]">Создан</TableHeadCell>
-              <TableHeadCell align="right" className="min-w-[110px]">
-                Сделок
-              </TableHeadCell>
-              <TableHeadCell align="right" className="min-w-[120px]">
-                Файлы
-              </TableHeadCell>
-              <TableHeadCell align="right" className="min-w-[200px]">
-                Действия
-              </TableHeadCell>
-             </tr>
-           </thead>
-          <tbody className="bg-white">
-            {paginatedClients.map((client) => {
-              const clientDeals = deals.filter((deal) => deal.clientId === client.id);
-              const whatsAppLink = buildWhatsAppLink(client.phone);
-              return (
-                <tr
-                  key={client.id}
-                  className={TABLE_ROW_CLASS}
-                >
-                  <td className={TABLE_CELL_CLASS_LG}>
-                    <p className="text-base font-semibold text-slate-900">{client.name}</p>
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    {client.phone && whatsAppLink ? (
-                      <a
-                        href={whatsAppLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="link-action"
-                      >
-                        {client.phone}
-                      </a>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    {formatDateRu(client.birthDate)}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    {formatDateRu(client.createdAt)}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-right font-semibold text-slate-900`}>
-                    {clientDeals.length}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
-                    <button
-                      type="button"
-                      onClick={() => setFilesModalClient(client)}
-                      className="btn btn-secondary btn-sm rounded-xl"
-                      aria-label={`Файлы клиента ${client.name}`}
+          <table
+            className="deals-table min-w-full border-collapse text-left text-sm"
+            aria-label="Список клиентов"
+          >
+            <thead className={TABLE_THEAD_CLASS}>
+              <tr>
+                <TableHeadCell className="min-w-[220px]">Имя</TableHeadCell>
+                <TableHeadCell className="min-w-[180px]">Телефон</TableHeadCell>
+                <TableHeadCell className="min-w-[170px]">Дата рождения</TableHeadCell>
+                <TableHeadCell className="min-w-[170px]">Создан</TableHeadCell>
+                <TableHeadCell align="right" className="min-w-[110px]">
+                  Сделок
+                </TableHeadCell>
+                <TableHeadCell align="right" className="min-w-[120px]">
+                  Файлы
+                </TableHeadCell>
+                <TableHeadCell align="right" className="min-w-[200px]">
+                  Действия
+                </TableHeadCell>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {paginatedClients.map((client) => {
+                const clientDeals = deals.filter((deal) => deal.clientId === client.id);
+                const whatsAppLink = buildWhatsAppLink(client.phone);
+                return (
+                  <tr key={client.id} className={TABLE_ROW_CLASS}>
+                    <td className={TABLE_CELL_CLASS_LG}>
+                      <p className="text-base font-semibold text-slate-900">{client.name}</p>
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                      {client.phone && whatsAppLink ? (
+                        <a
+                          href={whatsAppLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="link-action"
+                        >
+                          {client.phone}
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                      {formatDateRu(client.birthDate)}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                      {formatDateRu(client.createdAt)}
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_LG} text-right font-semibold text-slate-900`}
                     >
-                      Файлы
-                    </button>
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
-                    {onClientEdit || onClientDelete || onClientMerge ? (
-                      <div className={TABLE_ACTIONS_CLASS_COL}>
-                        {onClientEdit && (
-                          <button
-                            type="button"
-                            onClick={() => onClientEdit(client)}
-                            className="btn btn-quiet btn-sm rounded-xl"
-                            aria-label={`Редактировать клиента ${client.name}`}
-                          >
-                            Редактировать
-                          </button>
-                        )}
-                        {onClientDelete && (
-                          <button
-                            type="button"
-                            onClick={() => onClientDelete(client)}
-                            className="btn btn-danger btn-sm rounded-xl"
-                            aria-label={`Удалить клиента ${client.name}`}
-                          >
-                            Удалить
-                          </button>
-                        )}
-                        {onClientMerge && (
-                          <button
-                            type="button"
-                            onClick={() => onClientMerge(client)}
-                            className="btn btn-quiet btn-sm rounded-xl"
-                            aria-label={`Объединить клиента ${client.name}`}
-                          >
-                            Объединить
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs uppercase tracking-wide text-slate-400">-</span>
-                    )}
+                      {clientDeals.length}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                      <button
+                        type="button"
+                        onClick={() => setFilesModalClient(client)}
+                        className="btn btn-secondary btn-sm rounded-xl"
+                        aria-label={`Файлы клиента ${client.name}`}
+                      >
+                        Файлы
+                      </button>
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                      {onClientEdit || onClientDelete || onClientMerge ? (
+                        <div className={TABLE_ACTIONS_CLASS_COL}>
+                          {onClientEdit && (
+                            <button
+                              type="button"
+                              onClick={() => onClientEdit(client)}
+                              className="btn btn-quiet btn-sm rounded-xl"
+                              aria-label={`Редактировать клиента ${client.name}`}
+                            >
+                              Редактировать
+                            </button>
+                          )}
+                          {onClientDelete && (
+                            <button
+                              type="button"
+                              onClick={() => onClientDelete(client)}
+                              className="btn btn-danger btn-sm rounded-xl"
+                              aria-label={`Удалить клиента ${client.name}`}
+                            >
+                              Удалить
+                            </button>
+                          )}
+                          {onClientMerge && (
+                            <button
+                              type="button"
+                              onClick={() => onClientMerge(client)}
+                              className="btn btn-quiet btn-sm rounded-xl"
+                              aria-label={`Объединить клиента ${client.name}`}
+                            >
+                              Объединить
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs uppercase tracking-wide text-slate-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!paginatedClients.length && (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="border border-slate-200 px-6 py-10 text-center text-slate-600"
+                  >
+                    <div className="app-panel-muted inline-flex px-4 py-3 text-sm text-slate-600">
+                      {emptyClientsMessage}
+                    </div>
                   </td>
                 </tr>
-              );
-            })}
-            {!paginatedClients.length && (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="border border-slate-200 px-6 py-10 text-center text-slate-600"
-                >
-                  <div className="app-panel-muted inline-flex px-4 py-3 text-sm text-slate-600">
-                    {emptyClientsMessage}
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
         </div>
 
         {filteredClients.length > PAGE_SIZE && (

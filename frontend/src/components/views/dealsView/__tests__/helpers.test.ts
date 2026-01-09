@@ -74,9 +74,7 @@ describe('policyHasUnpaidActivity', () => {
       actualDate: '2025-01-01',
       financialRecords: undefined,
     });
-    const allRecords = [
-      buildRecord({ paymentId: 'p-global', date: '' }),
-    ];
+    const allRecords = [buildRecord({ paymentId: 'p-global', date: '' })];
     const map = new Map<string, Payment[]>();
     map.set('policy-1', [payment]);
 

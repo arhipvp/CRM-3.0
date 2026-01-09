@@ -21,9 +21,7 @@ const createDeal = (id: string, nextContactDate: string | null, deletedAt?: stri
   deletedAt: deletedAt ?? null,
 });
 
-const clients = [
-  { id: 'client-1', name: 'Client 1', createdAt: '', updatedAt: '' },
-];
+const clients = [{ id: 'client-1', name: 'Client 1', createdAt: '', updatedAt: '' }];
 
 const users = [
   { id: 'user-seller', username: 'seller', roles: [], firstName: 'John', lastName: 'Doe' },

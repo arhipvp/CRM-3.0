@@ -12,8 +12,12 @@ export interface DriveTrashResponse {
   trashFolderId?: string | null;
 }
 
-function normalizeDriveResponse(payload: { files?: unknown[]; folder_id?: string | null } | undefined): DriveFilesResponse {
-  const rawFiles = Array.isArray(payload?.files) ? (payload.files as Record<string, unknown>[]) : [];
+function normalizeDriveResponse(
+  payload: { files?: unknown[]; folder_id?: string | null } | undefined,
+): DriveFilesResponse {
+  const rawFiles = Array.isArray(payload?.files)
+    ? (payload.files as Record<string, unknown>[])
+    : [];
   return {
     files: rawFiles.map(mapDriveFile),
     folderId: payload?.folder_id ?? null,
@@ -21,12 +25,12 @@ function normalizeDriveResponse(payload: { files?: unknown[]; folder_id?: string
 }
 
 function normalizeTrashResponse(
-  payload:
-    | { moved_file_ids?: unknown; trash_folder_id?: string | null }
-    | undefined
+  payload: { moved_file_ids?: unknown; trash_folder_id?: string | null } | undefined,
 ): DriveTrashResponse {
   const movedFileIds = Array.isArray(payload?.moved_file_ids)
-    ? (payload?.moved_file_ids as unknown[]).filter((value): value is string => typeof value === 'string')
+    ? (payload?.moved_file_ids as unknown[]).filter(
+        (value): value is string => typeof value === 'string',
+      )
     : [];
 
   return {
@@ -37,11 +41,11 @@ function normalizeTrashResponse(
 
 export async function fetchDealDriveFiles(
   dealId: string,
-  includeDeleted = false
+  includeDeleted = false,
 ): Promise<DriveFilesResponse> {
   const suffix = includeDeleted ? '?show_deleted=1' : '';
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
-    `/deals/${dealId}/drive-files/${suffix}`
+    `/deals/${dealId}/drive-files/${suffix}`,
   );
   return normalizeDriveResponse(payload);
 }
@@ -49,7 +53,7 @@ export async function fetchDealDriveFiles(
 export async function trashDealDriveFiles(
   dealId: string,
   fileIds: string[],
-  includeDeleted = false
+  includeDeleted = false,
 ): Promise<DriveTrashResponse> {
   const suffix = includeDeleted ? '?show_deleted=1' : '';
   const payload = await request<{ moved_file_ids?: unknown; trash_folder_id?: string | null }>(
@@ -57,7 +61,7 @@ export async function trashDealDriveFiles(
     {
       method: 'DELETE',
       body: JSON.stringify({ file_ids: fileIds }),
-    }
+    },
   );
 
   return normalizeTrashResponse(payload);
@@ -67,16 +71,13 @@ export async function renameDealDriveFile(
   dealId: string,
   fileId: string,
   name: string,
-  includeDeleted = false
+  includeDeleted = false,
 ): Promise<DriveFile> {
   const suffix = includeDeleted ? '?show_deleted=1' : '';
-  const payload = await request<{ file?: unknown }>(
-    `/deals/${dealId}/drive-files/${suffix}`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify({ file_id: fileId, name }),
-    }
-  );
+  const payload = await request<{ file?: unknown }>(`/deals/${dealId}/drive-files/${suffix}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ file_id: fileId, name }),
+  });
 
   if (!payload?.file) {
     throw new Error('Failed to rename Drive file');
@@ -87,23 +88,21 @@ export async function renameDealDriveFile(
 
 export async function fetchClientDriveFiles(clientId: string): Promise<DriveFilesResponse> {
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
-    `/clients/${clientId}/drive-files/`
+    `/clients/${clientId}/drive-files/`,
   );
   return normalizeDriveResponse(payload);
 }
 
 export async function fetchPolicyDriveFiles(policyId: string): Promise<DriveFilesResponse> {
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
-    `/policies/${policyId}/drive-files/`
+    `/policies/${policyId}/drive-files/`,
   );
   return normalizeDriveResponse(payload);
 }
 
-export async function fetchStatementDriveFiles(
-  statementId: string
-): Promise<DriveFilesResponse> {
+export async function fetchStatementDriveFiles(statementId: string): Promise<DriveFilesResponse> {
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
-    `/finance_statements/${statementId}/drive-files/`
+    `/finance_statements/${statementId}/drive-files/`,
   );
   return normalizeDriveResponse(payload);
 }
@@ -111,7 +110,7 @@ export async function fetchStatementDriveFiles(
 export async function uploadDealDriveFile(
   dealId: string,
   file: File,
-  includeDeleted = false
+  includeDeleted = false,
 ): Promise<DriveFile> {
   const formData = new FormData();
   formData.append('file', file);
@@ -121,7 +120,7 @@ export async function uploadDealDriveFile(
     {
       method: 'POST',
       body: formData,
-    }
+    },
   );
 
   if (!payload?.file) {
@@ -140,7 +139,7 @@ export async function uploadClientDriveFile(clientId: string, file: File): Promi
     {
       method: 'POST',
       body: formData,
-    }
+    },
   );
 
   if (!payload?.file) {
@@ -159,7 +158,7 @@ export async function uploadPolicyDriveFile(policyId: string, file: File): Promi
     {
       method: 'POST',
       body: formData,
-    }
+    },
   );
 
   if (!payload?.file) {
@@ -171,7 +170,7 @@ export async function uploadPolicyDriveFile(policyId: string, file: File): Promi
 
 export async function uploadStatementDriveFile(
   statementId: string,
-  file: File
+  file: File,
 ): Promise<DriveFile> {
   const formData = new FormData();
   formData.append('file', file);
@@ -181,7 +180,7 @@ export async function uploadStatementDriveFile(
     {
       method: 'POST',
       body: formData,
-    }
+    },
   );
 
   if (!payload?.file) {
@@ -193,14 +192,14 @@ export async function uploadStatementDriveFile(
 
 export async function trashStatementDriveFiles(
   statementId: string,
-  fileIds: string[]
+  fileIds: string[],
 ): Promise<DriveTrashResponse> {
   const payload = await request<{ moved_file_ids?: unknown; trash_folder_id?: string | null }>(
     `/finance_statements/${statementId}/drive-files/`,
     {
       method: 'DELETE',
       body: JSON.stringify({ file_ids: fileIds }),
-    }
+    },
   );
 
   return normalizeTrashResponse(payload);

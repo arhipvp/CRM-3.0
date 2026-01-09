@@ -41,4 +41,3 @@ export const buildPolicyNavigationActions = ({
 
   return actions;
 };
-

@@ -30,7 +30,7 @@ export const formatAmountValue = (value: number) => value.toFixed(2);
 
 export const matchSalesChannel = (
   channels: SalesChannel[],
-  recognizedValue: string
+  recognizedValue: string,
 ): SalesChannel | undefined => {
   const normalizedValue = recognizedValue.trim().toLowerCase();
   if (!normalizedValue) {
@@ -46,7 +46,11 @@ export const matchSalesChannel = (
     }
     const normalizedTokens = normalizedValue.split(/\s+/).filter(Boolean);
     const channelTokens = channelName.split(/\s+/).filter(Boolean);
-    if (normalizedTokens.some((token) => channelTokens.some((channelToken) => channelToken.includes(token)))) {
+    if (
+      normalizedTokens.some((token) =>
+        channelTokens.some((channelToken) => channelToken.includes(token)),
+      )
+    ) {
       return true;
     }
     if (channelTokens.some((token) => normalizedValue.includes(token))) {

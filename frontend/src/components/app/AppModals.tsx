@@ -19,7 +19,11 @@ import type {
   PaymentModalState,
 } from '../../types';
 import type { ModalType } from './types';
-import type { FinancialRecordDraft, PaymentDraft, PolicyFormValues } from '../forms/addPolicy/types';
+import type {
+  FinancialRecordDraft,
+  PaymentDraft,
+  PolicyFormValues,
+} from '../forms/addPolicy/types';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { PaymentModal } from '../payments/PaymentModal';
 
@@ -60,7 +64,9 @@ const splitFinancialRecords = (records: FinancialRecord[]) => {
 };
 
 const buildPaymentDraft = (payment: Payment, financialRecords: FinancialRecord[]): PaymentDraft => {
-  const records = payment.financialRecords ?? financialRecords.filter((record) => record.paymentId === payment.id);
+  const records =
+    payment.financialRecords ??
+    financialRecords.filter((record) => record.paymentId === payment.id);
   const { incomes, expenses } = splitFinancialRecords(records);
   return {
     amount: payment.amount,
@@ -75,7 +81,7 @@ const buildPaymentDraft = (payment: Payment, financialRecords: FinancialRecord[]
 const buildPolicyFormValues = (
   policy: Policy,
   payments: Payment[],
-  financialRecords: FinancialRecord[]
+  financialRecords: FinancialRecord[],
 ): PolicyFormValues => ({
   number: policy.number,
   insuranceCompanyId: policy.insuranceCompanyId,
@@ -133,7 +139,10 @@ interface AppModalsProps {
   payments: Payment[];
   financialRecordModal: FinancialRecordModalState | null;
   setFinancialRecordModal: React.Dispatch<React.SetStateAction<FinancialRecordModalState | null>>;
-  handleUpdateFinancialRecord: (recordId: string, values: AddFinancialRecordFormValues) => Promise<void>;
+  handleUpdateFinancialRecord: (
+    recordId: string,
+    values: AddFinancialRecordFormValues,
+  ) => Promise<void>;
   financialRecords: FinancialRecord[];
   setEditingQuote: React.Dispatch<React.SetStateAction<Quote | null>>;
 }
@@ -252,7 +261,11 @@ export const AppModals: React.FC<AppModalsProps> = ({
         >
           <AddPolicyForm
             salesChannels={salesChannels}
-            initialValues={buildPolicyFormValues(editingPolicy, editingPolicyPayments, financialRecords)}
+            initialValues={buildPolicyFormValues(
+              editingPolicy,
+              editingPolicyPayments,
+              financialRecords,
+            )}
             isEditing
             initialInsuranceCompanyName={editingPolicy.insuranceCompany}
             initialInsuranceTypeName={editingPolicy.insuranceType}

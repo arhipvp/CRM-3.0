@@ -90,7 +90,7 @@ describe('useDealMerge', () => {
           search: 'foo',
           page_size: 50,
           seller: 'user-123',
-        })
+        }),
       );
     });
   });
@@ -118,7 +118,9 @@ describe('useDealMerge', () => {
       await resultRef.current?.handleMergeSubmit();
     });
 
-    await waitFor(() => expect(onMergeDeals).toHaveBeenCalledWith(selectedDeal.id, [otherDeal.id], 'client-1'));
+    await waitFor(() =>
+      expect(onMergeDeals).toHaveBeenCalledWith(selectedDeal.id, [otherDeal.id], 'client-1'),
+    );
     expect(resultRef.current?.isMergeModalOpen).toBe(false);
   });
 });

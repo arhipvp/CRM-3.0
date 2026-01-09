@@ -78,7 +78,9 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
     const direction = ordering.startsWith('-') ? -1 : 1;
     const field = (ordering.replace(/^-/, '') as PaymentSortKey) || 'scheduledDate';
 
-    result.sort((a, b) => (getPaymentSortValue(a, field) - getPaymentSortValue(b, field)) * direction);
+    result.sort(
+      (a, b) => (getPaymentSortValue(a, field) - getPaymentSortValue(b, field)) * direction,
+    );
     return result;
   }, [filters, payments]);
 
@@ -117,10 +119,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
                 const clientName = payment.dealClientName || '-';
 
                 return (
-                  <tr
-                    key={payment.id}
-                    className={TABLE_ROW_CLASS}
-                  >
+                  <tr key={payment.id} className={TABLE_ROW_CLASS}>
                     <td className={TABLE_CELL_CLASS_LG}>
                       <p className="text-base font-semibold text-slate-900">{dealTitle}</p>
                       <p className="text-xs text-slate-500 mt-1">{clientName}</p>

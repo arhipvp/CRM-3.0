@@ -86,9 +86,7 @@ export const useAppData = () => {
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
-  const dealsCacheRef = useRef(
-    new Map<string, { results: Deal[]; nextPage: number | null }>()
-  );
+  const dealsCacheRef = useRef(new Map<string, { results: Deal[]; nextPage: number | null }>());
   const invalidateDealsCache = useCallback((filters?: FilterParams) => {
     if (filters) {
       dealsCacheRef.current.delete(buildDealsCacheKey(filters));
@@ -145,7 +143,7 @@ export const useAppData = () => {
       setDealsNextPage(nextPage);
       return results;
     },
-    [setAppData]
+    [setAppData],
   );
 
   const loadMoreDeals = useCallback(async () => {
@@ -174,44 +172,40 @@ export const useAppData = () => {
     } finally {
       setIsLoadingMoreDeals(false);
     }
-  }, [
-    dealsFilters,
-    dealsNextPage,
-    isLoadingMoreDeals,
-    setError,
-    updateAppData,
-  ]);
+  }, [dealsFilters, dealsNextPage, isLoadingMoreDeals, setError, updateAppData]);
 
-
-  const refreshPolicies = useCallback(async (options?: { force?: boolean }) => {
-    const force = options?.force ?? false;
-    if (policiesLoaded && !force) {
-      return;
-    }
-    if (isPoliciesLoading) {
-      return;
-    }
-    setIsPoliciesLoading(true);
-    try {
-      const PAGE_SIZE = 200;
-      let page = 1;
-      const retrieved: Policy[] = [];
-
-      while (true) {
-        const payload = await fetchPoliciesWithPagination({ page, page_size: PAGE_SIZE });
-        retrieved.push(...payload.results);
-        if (!payload.next) {
-          break;
-        }
-        page += 1;
+  const refreshPolicies = useCallback(
+    async (options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+      if (policiesLoaded && !force) {
+        return;
       }
+      if (isPoliciesLoading) {
+        return;
+      }
+      setIsPoliciesLoading(true);
+      try {
+        const PAGE_SIZE = 200;
+        let page = 1;
+        const retrieved: Policy[] = [];
 
-      setAppData({ policies: retrieved });
-      setPoliciesLoaded(true);
-    } finally {
-      setIsPoliciesLoading(false);
-    }
-  }, [isPoliciesLoading, policiesLoaded, setAppData]);
+        while (true) {
+          const payload = await fetchPoliciesWithPagination({ page, page_size: PAGE_SIZE });
+          retrieved.push(...payload.results);
+          if (!payload.next) {
+            break;
+          }
+          page += 1;
+        }
+
+        setAppData({ policies: retrieved });
+        setPoliciesLoaded(true);
+      } finally {
+        setIsPoliciesLoading(false);
+      }
+    },
+    [isPoliciesLoading, policiesLoaded, setAppData],
+  );
 
   const normalizePolicyOrdering = (value?: string) => {
     if (!value) {
@@ -228,44 +222,47 @@ export const useAppData = () => {
     return mapping[value] ?? value;
   };
 
-  const refreshPoliciesList = useCallback(async (filters?: FilterParams) => {
-    setIsPoliciesListLoading(true);
-    setError(null);
-    policiesListRequestRef.current += 1;
-    const requestId = policiesListRequestRef.current;
-    const resolvedFilters: FilterParams = {
-      ordering: '-start_date',
-      ...(filters ?? {}),
-    };
-    const normalizedOrdering = normalizePolicyOrdering(
-      resolvedFilters.ordering as string | undefined
-    );
-    if (normalizedOrdering) {
-      resolvedFilters.ordering = normalizedOrdering;
-    } else {
-      delete resolvedFilters.ordering;
-    }
-    try {
-      const payload = await fetchPoliciesWithPagination({
-        ...resolvedFilters,
-        page: 1,
-        page_size: POLICIES_PAGE_SIZE,
-      });
-      if (policiesListRequestRef.current !== requestId) {
-        return;
+  const refreshPoliciesList = useCallback(
+    async (filters?: FilterParams) => {
+      setIsPoliciesListLoading(true);
+      setError(null);
+      policiesListRequestRef.current += 1;
+      const requestId = policiesListRequestRef.current;
+      const resolvedFilters: FilterParams = {
+        ordering: '-start_date',
+        ...(filters ?? {}),
+      };
+      const normalizedOrdering = normalizePolicyOrdering(
+        resolvedFilters.ordering as string | undefined,
+      );
+      if (normalizedOrdering) {
+        resolvedFilters.ordering = normalizedOrdering;
+      } else {
+        delete resolvedFilters.ordering;
       }
-      setPoliciesList(payload.results);
-      setPoliciesListNextPage(payload.next ? 2 : null);
-      setPoliciesFilters(resolvedFilters);
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
-      throw err;
-    } finally {
-      if (policiesListRequestRef.current === requestId) {
-        setIsPoliciesListLoading(false);
+      try {
+        const payload = await fetchPoliciesWithPagination({
+          ...resolvedFilters,
+          page: 1,
+          page_size: POLICIES_PAGE_SIZE,
+        });
+        if (policiesListRequestRef.current !== requestId) {
+          return;
+        }
+        setPoliciesList(payload.results);
+        setPoliciesListNextPage(payload.next ? 2 : null);
+        setPoliciesFilters(resolvedFilters);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+        throw err;
+      } finally {
+        if (policiesListRequestRef.current === requestId) {
+          setIsPoliciesListLoading(false);
+        }
       }
-    }
-  }, [setError]);
+    },
+    [setError],
+  );
 
   const loadMorePolicies = useCallback(async () => {
     if (!policiesListNextPage || isLoadingMorePolicies) {
@@ -323,16 +320,15 @@ export const useAppData = () => {
         usersData,
         salesChannelsData,
         statementsData,
-      ] =
-        await Promise.all([
-          fetchClients(),
-          fetchAllPayments(),
-          fetchTasks({ show_deleted: true }),
-          fetchFinancialRecords(),
-          fetchUsers(),
-          fetchSalesChannels(),
-          fetchFinanceStatements(),
-        ]);
+      ] = await Promise.all([
+        fetchClients(),
+        fetchAllPayments(),
+        fetchTasks({ show_deleted: true }),
+        fetchFinancialRecords(),
+        fetchUsers(),
+        fetchSalesChannels(),
+        fetchFinanceStatements(),
+      ]);
       await dealsPromise;
       setAppData({
         clients: clientsData,

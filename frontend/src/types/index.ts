@@ -68,7 +68,6 @@ export interface Document {
   created_at: string;
 }
 
-
 export interface SalesChannel {
   id: string;
   name: string;

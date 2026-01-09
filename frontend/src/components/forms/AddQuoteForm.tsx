@@ -27,17 +27,13 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   submitLabel = 'Сохранить',
 }) => {
   const [insuranceCompanyId, setInsuranceCompanyId] = useState(
-    initialValues?.insuranceCompanyId ?? ''
+    initialValues?.insuranceCompanyId ?? '',
   );
-  const [insuranceTypeId, setInsuranceTypeId] = useState(
-    initialValues?.insuranceTypeId ?? ''
-  );
+  const [insuranceTypeId, setInsuranceTypeId] = useState(initialValues?.insuranceTypeId ?? '');
   const [sumInsured, setSumInsured] = useState(
-    initialValues ? String(initialValues.sumInsured) : ''
+    initialValues ? String(initialValues.sumInsured) : '',
   );
-  const [premium, setPremium] = useState(
-    initialValues ? String(initialValues.premium) : ''
-  );
+  const [premium, setPremium] = useState(initialValues ? String(initialValues.premium) : '');
   const [deductible, setDeductible] = useState(initialValues?.deductible ?? '');
   const [comments, setComments] = useState(initialValues?.comments ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -105,18 +101,12 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <p className="app-alert app-alert-danger">{error}</p>
-      )}
-      {optionsError && (
-        <p className="app-alert app-alert-danger">{optionsError}</p>
-      )}
+      {error && <p className="app-alert app-alert-danger">{error}</p>}
+      {optionsError && <p className="app-alert app-alert-danger">{optionsError}</p>}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="block text-sm font-semibold text-slate-700">
-            Страховая компания *
-          </label>
+          <label className="block text-sm font-semibold text-slate-700">Страховая компания *</label>
           <select
             value={insuranceCompanyId}
             onChange={(event) => setInsuranceCompanyId(event.target.value)}
@@ -133,9 +123,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-700">
-            Тип страхования *
-          </label>
+          <label className="block text-sm font-semibold text-slate-700">Тип страхования *</label>
           <select
             value={insuranceTypeId}
             onChange={(event) => setInsuranceTypeId(event.target.value)}
@@ -152,9 +140,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-700">
-            Страховая сумма, ₽ *
-          </label>
+          <label className="block text-sm font-semibold text-slate-700">Страховая сумма, ₽ *</label>
           <input
             type="number"
             min="0"
@@ -166,9 +152,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-700">
-            Премия, ₽ *
-          </label>
+          <label className="block text-sm font-semibold text-slate-700">Премия, ₽ *</label>
           <input
             type="number"
             min="0"
@@ -181,9 +165,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700">
-          Франшиза
-        </label>
+        <label className="block text-sm font-semibold text-slate-700">Франшиза</label>
         <input
           type="text"
           value={deductible}
@@ -193,9 +175,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700">
-          Комментарий
-        </label>
+        <label className="block text-sm font-semibold text-slate-700">Комментарий</label>
         <textarea
           value={comments}
           onChange={(event) => setComments(event.target.value)}
@@ -222,9 +202,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         </button>
       </div>
 
-      {loadingOptions && (
-        <p className="mt-2 text-xs text-slate-500">Загружаю справочники...</p>
-      )}
+      {loadingOptions && <p className="mt-2 text-xs text-slate-500">Загружаю справочники...</p>}
     </form>
   );
 };

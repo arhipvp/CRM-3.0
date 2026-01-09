@@ -20,4 +20,3 @@ export const PanelMessage: React.FC<PanelMessageProps> = ({ children, className 
 
   return <div className={classes}>{children}</div>;
 };
-

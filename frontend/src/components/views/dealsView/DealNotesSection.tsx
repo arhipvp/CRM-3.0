@@ -70,13 +70,9 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
 
   const isImageAttachment = (file: DriveFile) => file.mimeType?.startsWith('image/');
 
-  const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(
-    null
-  );
+  const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(null);
 
-  const handleDraftPaste = async (
-    event: React.ClipboardEvent<HTMLTextAreaElement>
-  ) => {
+  const handleDraftPaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     if (noteAttachmentsUploading || notesAction === 'create') {
       return;
     }
@@ -143,7 +139,10 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
           if (!isActive) {
             return;
           }
-          console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РёР·РѕР±СЂР°Р¶РµРЅРёСЏ Р·Р°РјРµС‚РєРё:', error);
+          console.error(
+            'РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РёР·РѕР±СЂР°Р¶РµРЅРёСЏ Р·Р°РјРµС‚РєРё:',
+            error,
+          );
           setHasError(true);
         }
       };
@@ -154,7 +153,6 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
         isActive = false;
       };
     }, [file.id, noteId]);
-
 
     if (hasError) {
       return (
@@ -368,11 +366,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
       </section>
 
       {imagePreview && (
-        <Modal
-          title={imagePreview.name}
-          onClose={() => setImagePreview(null)}
-          size="lg"
-        >
+        <Modal title={imagePreview.name} onClose={() => setImagePreview(null)} size="lg">
           <div className="flex justify-center">
             <img
               src={imagePreview.src}

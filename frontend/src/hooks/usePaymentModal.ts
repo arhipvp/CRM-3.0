@@ -16,7 +16,7 @@ export const usePaymentModal = (payments: Payment[]) => {
     return payments.find((payment) => payment.id === editingPaymentId);
   }, [editingPaymentId, payments]);
 
-  const fixedPolicyId = isCreating ? creatingPaymentPolicyId ?? undefined : undefined;
+  const fixedPolicyId = isCreating ? (creatingPaymentPolicyId ?? undefined) : undefined;
 
   const closePaymentModal = useCallback(() => {
     setEditingPaymentId(null);

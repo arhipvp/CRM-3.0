@@ -13,7 +13,10 @@ const parsePaymentsExpanded = (raw: string | null): Record<string, boolean> => {
       return {};
     }
     return Object.fromEntries(
-      Object.entries(parsed as Record<string, unknown>).map(([key, value]) => [key, value === true])
+      Object.entries(parsed as Record<string, unknown>).map(([key, value]) => [
+        key,
+        value === true,
+      ]),
     );
   } catch {
     return {};
@@ -29,9 +32,11 @@ export const usePoliciesExpansionState = () => {
       return;
     }
     setPaymentsExpanded(
-      parsePaymentsExpanded(window.localStorage.getItem(POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY))
+      parsePaymentsExpanded(window.localStorage.getItem(POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY)),
     );
-    setRecordsExpandedAll(window.localStorage.getItem(POLICIES_RECORDS_EXPANDED_STORAGE_KEY) === 'true');
+    setRecordsExpandedAll(
+      window.localStorage.getItem(POLICIES_RECORDS_EXPANDED_STORAGE_KEY) === 'true',
+    );
   }, []);
 
   useEffect(() => {
@@ -40,7 +45,7 @@ export const usePoliciesExpansionState = () => {
     }
     window.localStorage.setItem(
       POLICIES_PAYMENTS_EXPANDED_STORAGE_KEY,
-      JSON.stringify(paymentsExpanded)
+      JSON.stringify(paymentsExpanded),
     );
   }, [paymentsExpanded]);
 
@@ -50,7 +55,7 @@ export const usePoliciesExpansionState = () => {
     }
     window.localStorage.setItem(
       POLICIES_RECORDS_EXPANDED_STORAGE_KEY,
-      recordsExpandedAll ? 'true' : 'false'
+      recordsExpandedAll ? 'true' : 'false',
     );
   }, [recordsExpandedAll]);
 

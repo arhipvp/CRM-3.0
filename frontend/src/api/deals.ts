@@ -10,7 +10,7 @@ export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
 }
 
 export async function fetchDealsWithPagination(
-  filters?: FilterParams
+  filters?: FilterParams,
 ): Promise<PaginatedResponse<Deal>> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`);
@@ -79,7 +79,7 @@ export async function updateDeal(
     executorId?: string | null;
     sellerId?: string | null;
     source?: string | null;
-  }
+  },
 ): Promise<Deal> {
   const body: Record<string, unknown> = {
     title: data.title,
@@ -117,7 +117,10 @@ export async function restoreDeal(id: string): Promise<Deal> {
   return mapDeal(payload);
 }
 
-export async function fetchDealHistory(dealId: string, includeDeleted = false): Promise<ActivityLog[]> {
+export async function fetchDealHistory(
+  dealId: string,
+  includeDeleted = false,
+): Promise<ActivityLog[]> {
   const suffix = includeDeleted ? '?show_deleted=1' : '';
   const payload = await request(`/deals/${dealId}/history/${suffix}`);
   if (!Array.isArray(payload)) {
@@ -164,7 +167,7 @@ export async function updateQuote(
     premium: number;
     deductible?: string;
     comments?: string;
-  }
+  },
 ): Promise<Quote> {
   const payload = await request<Record<string, unknown>>(`/quotes/${id}/`, {
     method: 'PATCH',
@@ -181,7 +184,7 @@ export async function updateQuote(
 }
 
 export async function fetchQuotesWithPagination(
-  filters?: FilterParams
+  filters?: FilterParams,
 ): Promise<PaginatedResponse<Quote>> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/quotes/${qs}`);
@@ -195,7 +198,7 @@ export async function fetchQuotesWithPagination(
 
 export async function fetchQuotesByDeal(
   dealId: string,
-  options?: { showDeleted?: boolean; pageSize?: number }
+  options?: { showDeleted?: boolean; pageSize?: number },
 ): Promise<Quote[]> {
   const pageSize = options?.pageSize ?? 200;
   const showDeleted = options?.showDeleted ?? false;

@@ -56,7 +56,7 @@ describe('DealNotesSection', () => {
 
   it('shows restore action when archived', () => {
     render(
-      <DealNotesSection {...baseProps} notes={[]} notesFilter="archived" notesAction={null} />
+      <DealNotesSection {...baseProps} notes={[]} notesFilter="archived" notesAction={null} />,
     );
 
     expect(screen.getByText('Заметок не найдено.')).toBeInTheDocument();

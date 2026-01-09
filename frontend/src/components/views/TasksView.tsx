@@ -72,7 +72,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       onDealSelect?.(dealId);
       navigate('/deals');
     },
-    [navigate, onDealPreview, onDealSelect]
+    [navigate, onDealPreview, onDealSelect],
   );
 
   const filteredTasks = useMemo(() => {

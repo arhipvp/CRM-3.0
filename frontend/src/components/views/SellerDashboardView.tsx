@@ -69,7 +69,7 @@ const buildDateRange = (start: string, end: string) => {
 const buildPaymentsSeries = (
   rangeStart: string,
   rangeEnd: string,
-  items: SellerDashboardPaymentsByDay[]
+  items: SellerDashboardPaymentsByDay[],
 ): ChartPoint[] => {
   const range = buildDateRange(rangeStart, rangeEnd);
   const map = new Map(items.map((item) => [item.date, parseNumber(item.total)]));
@@ -79,7 +79,7 @@ const buildPaymentsSeries = (
 const buildExecutorSeries = (
   rangeStart: string,
   rangeEnd: string,
-  items: SellerDashboardTasksByExecutor[]
+  items: SellerDashboardTasksByExecutor[],
 ) => {
   const range = buildDateRange(rangeStart, rangeEnd);
   const executors: ExecutorSeries[] = [];
@@ -156,8 +156,7 @@ const LineChart: React.FC<{ points: ChartPoint[]; formatter: (value: number) => 
   const plotWidth = width - CHART_PADDING * 2;
   const plotHeight = height - CHART_PADDING * 2;
 
-  const toX = (index: number) =>
-    CHART_PADDING + (index / (points.length - 1 || 1)) * plotWidth;
+  const toX = (index: number) => CHART_PADDING + (index / (points.length - 1 || 1)) * plotWidth;
   const toY = (value: number) =>
     CHART_PADDING + plotHeight - ((value - minValue) / range) * plotHeight;
 
@@ -217,9 +216,7 @@ const LineChart: React.FC<{ points: ChartPoint[]; formatter: (value: number) => 
       </div>
       {hoverPoint && (
         <ChartTooltip left={toX(hoverIndex ?? 0) + TOOLTIP_OFFSET} top={CHART_PADDING}>
-          <div className="font-semibold text-slate-900">
-            {formatShortDate(hoverPoint.date)}
-          </div>
+          <div className="font-semibold text-slate-900">{formatShortDate(hoverPoint.date)}</div>
           <div>{formatter(hoverPoint.value)}</div>
         </ChartTooltip>
       )}
@@ -243,7 +240,7 @@ const StackedBarChart: React.FC<{
   }
 
   const totals = points.map((point) =>
-    executors.reduce((sum, executor) => sum + (point.totals[executor.id] ?? 0), 0)
+    executors.reduce((sum, executor) => sum + (point.totals[executor.id] ?? 0), 0),
   );
   const maxValue = Math.max(...totals, 1);
   const width = CHART_WIDTH;
@@ -307,9 +304,7 @@ const StackedBarChart: React.FC<{
       </div>
       {hoverPoint && (
         <ChartTooltip left={CHART_PADDING + TOOLTIP_OFFSET} top={CHART_PADDING}>
-          <div className="font-semibold text-slate-900">
-            {formatShortDate(hoverPoint.date)}
-          </div>
+          <div className="font-semibold text-slate-900">{formatShortDate(hoverPoint.date)}</div>
           {executors.map((executor) => (
             <div key={executor.id} className="flex items-center gap-2">
               <span
@@ -372,11 +367,7 @@ export const SellerDashboardView: React.FC = () => {
     if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {
       return [] as ChartPoint[];
     }
-    return buildPaymentsSeries(
-      dashboard.rangeStart,
-      dashboard.rangeEnd,
-      dashboard.paymentsByDay
-    );
+    return buildPaymentsSeries(dashboard.rangeStart, dashboard.rangeEnd, dashboard.paymentsByDay);
   }, [dashboard?.paymentsByDay, dashboard?.rangeEnd, dashboard?.rangeStart]);
 
   const executorSeries = useMemo(() => {
@@ -386,7 +377,7 @@ export const SellerDashboardView: React.FC = () => {
     return buildExecutorSeries(
       dashboard.rangeStart,
       dashboard.rangeEnd,
-      dashboard.tasksCompletedByExecutor
+      dashboard.tasksCompletedByExecutor,
     );
   }, [dashboard?.rangeEnd, dashboard?.rangeStart, dashboard?.tasksCompletedByExecutor]);
 
@@ -402,9 +393,7 @@ export const SellerDashboardView: React.FC = () => {
       <div className="app-panel p-6 shadow-none space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">
-              Дашборд продавца
-            </p>
+            <p className="text-xs uppercase tracking-wide text-slate-400">Дашборд продавца</p>
             <h1 id="sellerDashboardHeading" className="text-2xl font-semibold text-slate-900">
               Продажи по дате начала полиса
             </h1>
@@ -423,17 +412,13 @@ export const SellerDashboardView: React.FC = () => {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Текущие задачи
               </p>
-              <p className="text-2xl font-semibold text-slate-900">
-                {tasksCurrent}
-              </p>
+              <p className="text-2xl font-semibold text-slate-900">{tasksCurrent}</p>
             </div>
             <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Завершено задач
               </p>
-              <p className="text-2xl font-semibold text-slate-900">
-                {tasksCompleted}
-              </p>
+              <p className="text-2xl font-semibold text-slate-900">{tasksCompleted}</p>
             </div>
           </div>
         </div>
@@ -472,22 +457,17 @@ export const SellerDashboardView: React.FC = () => {
           </button>
         </div>
         <p className="text-sm text-slate-600">
-          Учитываются только полисы с датой начала в выбранном диапазоне и только оплаченные платежи.
+          Учитываются только полисы с датой начала в выбранном диапазоне и только оплаченные
+          платежи.
         </p>
-        {error && (
-          <div className="app-panel-muted px-4 py-3 text-sm text-rose-700">
-            {error}
-          </div>
-        )}
+        {error && <div className="app-panel-muted px-4 py-3 text-sm text-rose-700">{error}</div>}
       </div>
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="app-panel p-6 shadow-none space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Оплаченные платежи по дням</h2>
-            <p className="text-xs text-slate-500">
-              Сумма оплат по фактической дате платежа
-            </p>
+            <p className="text-xs text-slate-500">Сумма оплат по фактической дате платежа</p>
           </div>
           {isLoading ? (
             <div className="app-panel-muted flex h-[190px] items-center justify-center text-sm text-slate-500">
@@ -503,9 +483,7 @@ export const SellerDashboardView: React.FC = () => {
         <div className="app-panel p-6 shadow-none space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Завершенные задачи по дням</h2>
-            <p className="text-xs text-slate-500">
-              Только задачи по сделкам, где вы продавец
-            </p>
+            <p className="text-xs text-slate-500">Только задачи по сделкам, где вы продавец</p>
           </div>
           {isLoading ? (
             <div className="app-panel-muted flex h-[190px] items-center justify-center text-sm text-slate-500">
@@ -517,7 +495,10 @@ export const SellerDashboardView: React.FC = () => {
           {!!executorSeries.executors.length && (
             <div className="flex flex-wrap gap-2 text-xs text-slate-600">
               {executorSeries.executors.map((executor) => (
-                <span key={executor.id} className="inline-flex items-center gap-2 rounded-full bg-white px-2 py-1 shadow-sm">
+                <span
+                  key={executor.id}
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-2 py-1 shadow-sm"
+                >
                   <span
                     className="inline-block h-2 w-2 rounded-full"
                     style={{ backgroundColor: executor.color }}
@@ -542,7 +523,8 @@ export const SellerDashboardView: React.FC = () => {
           </div>
         ) : (
           <div className="text-sm text-slate-600">
-            Всего полисов в диапазоне: <span className="font-semibold text-slate-900">{policies.length}</span>
+            Всего полисов в диапазоне:{' '}
+            <span className="font-semibold text-slate-900">{policies.length}</span>
           </div>
         )}
       </section>

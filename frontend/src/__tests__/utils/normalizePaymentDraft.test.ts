@@ -22,8 +22,11 @@ describe('normalizePaymentDraft', () => {
 
   it('keeps existing incomes', () => {
     const result = normalizePaymentDraft(
-      { ...samplePayment, incomes: [{ amount: '10', date: '', description: '', source: '', note: '' }] },
-      false
+      {
+        ...samplePayment,
+        incomes: [{ amount: '10', date: '', description: '', source: '', note: '' }],
+      },
+      false,
     );
     expect(result.incomes).toHaveLength(1);
     expect(result.incomes[0].amount).toBe('10');
@@ -42,5 +45,4 @@ describe('normalizePaymentDraft', () => {
     const result = normalizePaymentDraft(samplePayment, false);
     expect(result.expenses).toHaveLength(0);
   });
-
 });

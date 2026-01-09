@@ -31,9 +31,7 @@ describe('markTaskAsDeleted', () => {
     const result = markTaskAsDeleted(tasks, 't-2', '2025-02-01T00:00:00.000Z');
     expect(result).toHaveLength(2);
     expect(result.find((task) => task.id === 't-1')?.deletedAt).toBeNull();
-    expect(result.find((task) => task.id === 't-2')?.deletedAt).toBe(
-      '2025-02-01T00:00:00.000Z'
-    );
+    expect(result.find((task) => task.id === 't-2')?.deletedAt).toBe('2025-02-01T00:00:00.000Z');
   });
 
   it('does not override existing deletedAt', () => {

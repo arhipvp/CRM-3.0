@@ -9,7 +9,11 @@ interface UseDealMergeParams {
   clients: Client[];
   selectedDeal: Deal | null;
   currentUser: User | null;
-  onMergeDeals: (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => Promise<void>;
+  onMergeDeals: (
+    targetDealId: string,
+    sourceDealIds: string[],
+    resultingClientId?: string,
+  ) => Promise<void>;
   debounceDelay?: number;
 }
 
@@ -28,7 +32,9 @@ export const useDealMerge = ({
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
   const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
-  const [mergeResultingClientId, setMergeResultingClientId] = useState<string | undefined>(undefined);
+  const [mergeResultingClientId, setMergeResultingClientId] = useState<string | undefined>(
+    undefined,
+  );
 
   const mergeCandidates = useMemo(() => {
     if (!selectedDeal) {
@@ -118,7 +124,9 @@ export const useDealMerge = ({
           if (isCancelled) {
             return;
           }
-          const filtered = results.filter((deal) => deal.id !== selectedDeal?.id && !deal.deletedAt);
+          const filtered = results.filter(
+            (deal) => deal.id !== selectedDeal?.id && !deal.deletedAt,
+          );
           setMergeSearchResults(filtered);
         } catch (err) {
           if (!isCancelled) {
@@ -141,7 +149,7 @@ export const useDealMerge = ({
 
   const toggleMergeSource = useCallback((dealId: string) => {
     setMergeSources((prev) =>
-      prev.includes(dealId) ? prev.filter((id) => id !== dealId) : [...prev, dealId]
+      prev.includes(dealId) ? prev.filter((id) => id !== dealId) : [...prev, dealId],
     );
     setMergeError(null);
   }, []);
@@ -168,13 +176,7 @@ export const useDealMerge = ({
     } finally {
       setIsMerging(false);
     }
-  }, [
-    mergeClientOptions.length,
-    mergeResultingClientId,
-    mergeSources,
-    onMergeDeals,
-    selectedDeal,
-  ]);
+  }, [mergeClientOptions.length, mergeResultingClientId, mergeSources, onMergeDeals, selectedDeal]);
 
   const openMergeModal = useCallback(() => {
     setIsMergeModalOpen(true);

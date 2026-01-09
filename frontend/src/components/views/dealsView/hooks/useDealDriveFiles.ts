@@ -19,7 +19,7 @@ interface UseDealDriveFilesParams {
     parsed: Record<string, unknown>,
     fileName?: string | null,
     fileId?: string | null,
-    parsedFileIds?: string[]
+    parsedFileIds?: string[],
   ) => void;
 }
 
@@ -96,9 +96,7 @@ export const useDealDriveFiles = ({
       }
       console.error('Ошибка Google Drive:', error);
       setDriveFiles([]);
-      setDriveError(
-        formatErrorMessage(error, 'Не удалось загрузить файлы из Google Drive.')
-      );
+      setDriveError(formatErrorMessage(error, 'Не удалось загрузить файлы из Google Drive.'));
     } finally {
       if (latestDealIdRef.current === currentDealId) {
         setIsDriveLoading(false);
@@ -113,7 +111,7 @@ export const useDealDriveFiles = ({
       }
       await uploadDealDriveFile(selectedDeal.id, file, Boolean(selectedDeal.deletedAt));
     },
-    [selectedDeal]
+    [selectedDeal],
   );
 
   const resetDriveState = useCallback(() => {
@@ -123,7 +121,7 @@ export const useDealDriveFiles = ({
 
   const toggleDriveFileSelection = useCallback((fileId: string) => {
     setSelectedDriveFileIds((prev) =>
-      prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]
+      prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId],
     );
   }, []);
 
@@ -132,17 +130,15 @@ export const useDealDriveFiles = ({
       selectedDriveFileIds
         .map((id) => driveFiles.find((file) => file.id === id))
         .filter((file): file is DriveFile => Boolean(file)),
-    [driveFiles, selectedDriveFileIds]
+    [driveFiles, selectedDriveFileIds],
   );
 
   const canRecognizeSelectedFiles = useMemo(
     () =>
       selectedDriveFileIds.length > 0 &&
       selectedDriveFiles.length === selectedDriveFileIds.length &&
-      selectedDriveFiles.every(
-        (file) => file.mimeType?.toLowerCase() === 'application/pdf'
-      ),
-    [selectedDriveFileIds, selectedDriveFiles]
+      selectedDriveFiles.every((file) => file.mimeType?.toLowerCase() === 'application/pdf'),
+    [selectedDriveFileIds, selectedDriveFiles],
   );
 
   const handleRecognizePolicies = useCallback(async () => {
@@ -176,16 +172,14 @@ export const useDealDriveFiles = ({
       const parsedFileIds = results
         .filter((result) => result.status === 'parsed' && result.fileId)
         .map((result) => result.fileId!);
-      const parsed = results.find(
-        (result) => result.status === 'parsed' && result.data
-      );
+      const parsed = results.find((result) => result.status === 'parsed' && result.data);
       if (parsed && onPolicyDraftReady) {
         onPolicyDraftReady(
           currentDealId,
           parsed.data!,
           parsed.fileName ?? null,
           parsed.fileId ?? null,
-          parsedFileIds
+          parsedFileIds,
         );
       }
       if (onRefreshPolicies) {
@@ -199,7 +193,7 @@ export const useDealDriveFiles = ({
       setRecognitionMessage(
         error instanceof Error
           ? error.message
-          : 'Не удалось распознать документы. Попробуйте ещё раз.'
+          : 'Не удалось распознать документы. Попробуйте ещё раз.',
       );
     } finally {
       if (latestDealIdRef.current === currentDealId) {
@@ -278,29 +272,27 @@ export const useDealDriveFiles = ({
           currentDealId,
           fileId,
           trimmedName,
-          Boolean(deal.deletedAt)
+          Boolean(deal.deletedAt),
         );
         if (latestDealIdRef.current !== currentDealId) {
           return;
         }
         setDriveFiles((prev) =>
-          prev.map((file) => (file.id === updated.id ? { ...file, ...updated } : file))
+          prev.map((file) => (file.id === updated.id ? { ...file, ...updated } : file)),
         );
       } catch (error) {
         if (latestDealIdRef.current !== currentDealId) {
           return;
         }
         console.error('Ошибка переименования файла:', error);
-        setRenameMessage(
-          formatErrorMessage(error, 'Не удалось переименовать файл.')
-        );
+        setRenameMessage(formatErrorMessage(error, 'Не удалось переименовать файл.'));
       } finally {
         if (latestDealIdRef.current === currentDealId) {
           setIsRenaming(false);
         }
       }
     },
-    [selectedDeal]
+    [selectedDeal],
   );
 
   const sortedDriveFiles = useMemo(() => {

@@ -18,9 +18,7 @@ export const SettingsView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [telegramSettings, setTelegramSettings] = useState<NotificationSettings | null>(
-    null
-  );
+  const [telegramSettings, setTelegramSettings] = useState<NotificationSettings | null>(null);
   const [telegramLinked, setTelegramLinked] = useState(false);
   const [telegramLinkedAt, setTelegramLinkedAt] = useState<string | null>(null);
   const [telegramLink, setTelegramLink] = useState<TelegramLinkResponse | null>(null);
@@ -77,9 +75,7 @@ export const SettingsView: React.FC = () => {
         setTelegramLinkedAt(response.telegram?.linked_at ?? null);
       } catch (err) {
         if (mounted) {
-          setTelegramError(
-            formatErrorMessage(err, 'Не удалось загрузить Telegram-настройки.')
-          );
+          setTelegramError(formatErrorMessage(err, 'Не удалось загрузить Telegram-настройки.'));
         }
       } finally {
         if (mounted) {
@@ -105,10 +101,7 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const handleTelegramToggle = async (
-    field: keyof NotificationSettings,
-    value: boolean
-  ) => {
+  const handleTelegramToggle = async (field: keyof NotificationSettings, value: boolean) => {
     if (!telegramSettings) {
       return;
     }
@@ -160,8 +153,8 @@ export const SettingsView: React.FC = () => {
       <header>
         <h2 className="text-xl font-semibold text-slate-900">Настройки</h2>
         <p className="text-sm text-slate-600 mt-2">
-          Обновите пароль для доступа в систему. Используйте надежную комбинацию и не
-          повторяйте старые пароли.
+          Обновите пароль для доступа в систему. Используйте надежную комбинацию и не повторяйте
+          старые пароли.
         </p>
       </header>
 
@@ -228,8 +221,7 @@ export const SettingsView: React.FC = () => {
             {telegramLink && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm space-y-2">
                 <p className="text-slate-700">
-                  Код для /start:{' '}
-                  <span className="font-semibold">{telegramLink.link_code}</span>
+                  Код для /start: <span className="font-semibold">{telegramLink.link_code}</span>
                 </p>
                 {telegramLink.deep_link ? (
                   <a
@@ -265,9 +257,7 @@ export const SettingsView: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={telegramSettings?.notify_tasks ?? false}
-                  onChange={(event) =>
-                    handleTelegramToggle('notify_tasks', event.target.checked)
-                  }
+                  onChange={(event) => handleTelegramToggle('notify_tasks', event.target.checked)}
                   className="check"
                   disabled={telegramSaving}
                 />

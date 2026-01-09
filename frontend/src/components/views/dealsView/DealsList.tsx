@@ -6,12 +6,7 @@ import { TableHeadCell } from '../../common/TableHeadCell';
 import { TABLE_CELL_CLASS_LG, TABLE_THEAD_CLASS } from '../../common/tableStyles';
 import { PanelMessage } from '../../PanelMessage';
 
-import {
-  formatDate,
-  formatDeletedAt,
-  getDeadlineTone,
-  getUserDisplayName,
-} from './helpers';
+import { formatDate, formatDeletedAt, getDeadlineTone, getUserDisplayName } from './helpers';
 
 type DealsSortKey = 'deadline' | 'nextContact';
 type DealsSortDirection = 'asc' | 'desc' | null;
@@ -60,11 +55,7 @@ export const DealsList: React.FC<DealsListProps> = ({
   const selectedDealId = selectedDeal?.id ?? null;
 
   useEffect(() => {
-    if (
-      !selectedDealId ||
-      !selectedRowRef.current ||
-      !selectedRowRef.current.isConnected
-    ) {
+    if (!selectedDealId || !selectedRowRef.current || !selectedRowRef.current.isConnected) {
       return;
     }
     selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -135,9 +126,7 @@ export const DealsList: React.FC<DealsListProps> = ({
       <div className="px-4 py-4 bg-white">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
-              Сделки
-            </span>
+            <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
             <span className="text-sm text-slate-500 whitespace-nowrap">
               Всего {sortedDeals.length}
             </span>
@@ -212,21 +201,21 @@ export const DealsList: React.FC<DealsListProps> = ({
       </div>
 
       <div className="max-h-[360px] overflow-y-auto bg-white">
-          <table className="deals-table min-w-full border-collapse text-left text-sm">
+        <table className="deals-table min-w-full border-collapse text-left text-sm">
           <thead className={`sticky top-0 ${TABLE_THEAD_CLASS}`}>
             <tr>
               <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
               <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
               <TableHeadCell
                 align="center"
-                  className="min-w-[180px]"
-                  aria-sort={getAriaSort('deadline')}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleColumnSort('deadline')}
-                    aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
-                    'deadline'
+                className="min-w-[180px]"
+                aria-sort={getAriaSort('deadline')}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleColumnSort('deadline')}
+                  aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
+                    'deadline',
                   )}`}
                   className="flex w-full items-center justify-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
@@ -234,18 +223,18 @@ export const DealsList: React.FC<DealsListProps> = ({
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                     {getSortIndicator('deadline')}
                   </span>
-                  </button>
-                </TableHeadCell>
-                <TableHeadCell
-                  align="right"
-                  className="min-w-[200px]"
-                  aria-sort={getAriaSort('nextContact')}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleColumnSort('nextContact')}
-                    aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
-                    'nextContact'
+                </button>
+              </TableHeadCell>
+              <TableHeadCell
+                align="right"
+                className="min-w-[200px]"
+                aria-sort={getAriaSort('nextContact')}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleColumnSort('nextContact')}
+                  aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
+                    'nextContact',
                   )}`}
                   className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 >
@@ -253,12 +242,12 @@ export const DealsList: React.FC<DealsListProps> = ({
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                     {getSortIndicator('nextContact')}
                   </span>
-                  </button>
-                </TableHeadCell>
-                <TableHeadCell className="min-w-[190px]">Исполнитель</TableHeadCell>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
+                </button>
+              </TableHeadCell>
+              <TableHeadCell className="min-w-[190px]">Исполнитель</TableHeadCell>
+            </tr>
+          </thead>
+          <tbody className="bg-white">
             {sortedDeals.length ? (
               sortedDeals.map((deal) => {
                 const deadlineTone = getDeadlineTone(deal.expectedClose);
@@ -324,11 +313,11 @@ export const DealsList: React.FC<DealsListProps> = ({
                         </span>
                       )}
                     </td>
-                    <td
-                      className={`${TABLE_CELL_CLASS_LG} text-sm text-right ${deletedTextClass}`}
-                    >
+                    <td className={`${TABLE_CELL_CLASS_LG} text-sm text-right ${deletedTextClass}`}>
                       {deal.nextContactDate ? (
-                        <span className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}>
+                        <span
+                          className={`text-sm font-semibold text-slate-900 ${deletedTextClass}`}
+                        >
                           {formatDate(deal.nextContactDate)}
                         </span>
                       ) : (
@@ -352,7 +341,10 @@ export const DealsList: React.FC<DealsListProps> = ({
               })
             ) : (
               <tr>
-                <td colSpan={5} className="border border-slate-200 px-6 py-4 text-center text-sm text-slate-500">
+                <td
+                  colSpan={5}
+                  className="border border-slate-200 px-6 py-4 text-center text-sm text-slate-500"
+                >
                   <PanelMessage>Сделки не найдены.</PanelMessage>
                 </td>
               </tr>

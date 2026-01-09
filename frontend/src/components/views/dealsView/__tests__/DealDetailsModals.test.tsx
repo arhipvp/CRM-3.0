@@ -48,7 +48,7 @@ describe('DealDetailsModals', () => {
         onClose={onClose}
         onEventSelect={onEventSelect}
         onConfirm={onConfirm}
-      />
+      />,
     );
 
     expect(screen.getByText('Отложить до следующего контакта')).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe('DealDetailsModals', () => {
         isMerging={false}
         onClose={() => undefined}
         onSubmit={onSubmit}
-      />
+      />,
     );
 
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'test' } });

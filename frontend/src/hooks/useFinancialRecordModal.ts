@@ -13,7 +13,7 @@ export const useFinancialRecordModal = (financialRecords: FinancialRecord[]) => 
       editingFinancialRecordId
         ? financialRecords.find((record) => record.id === editingFinancialRecordId)
         : undefined,
-    [editingFinancialRecordId, financialRecords]
+    [editingFinancialRecordId, financialRecords],
   );
 
   const openCreateFinancialRecord = useCallback(
@@ -21,7 +21,7 @@ export const useFinancialRecordModal = (financialRecords: FinancialRecord[]) => 
       setCreatingFinancialRecordContext({ paymentId, recordType });
       setEditingFinancialRecordId(null);
     },
-    []
+    [],
   );
 
   const openEditFinancialRecord = useCallback((recordId: string) => {
@@ -35,7 +35,8 @@ export const useFinancialRecordModal = (financialRecords: FinancialRecord[]) => 
   }, []);
 
   const isOpen = Boolean(editingFinancialRecordId || creatingFinancialRecordContext);
-  const paymentId = creatingFinancialRecordContext?.paymentId || editingFinancialRecord?.paymentId || '';
+  const paymentId =
+    creatingFinancialRecordContext?.paymentId || editingFinancialRecord?.paymentId || '';
   const defaultRecordType = creatingFinancialRecordContext?.recordType;
 
   return {

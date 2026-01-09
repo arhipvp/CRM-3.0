@@ -87,7 +87,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
 
   const paymentsPanelId = `policy-${policy.id}-payments`;
   const hasAutoDetails = Boolean(
-    policy.insuranceType || policy.brand || policy.model || policy.vin
+    policy.insuranceType || policy.brand || policy.model || policy.vin,
   );
   const shouldShowAutoFields = policy.isVehicle || isDetailsExpanded;
   const paymentsToggleLabel = isPaymentsExpanded
@@ -95,7 +95,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
     : `${POLICY_TEXT.fields.payments} (${model.paymentsCount})`;
   const allFinancialRecords = React.useMemo(
     () => payments.flatMap((payment) => payment.financialRecords ?? []),
-    [payments]
+    [payments],
   );
   const hasUnpaidPayment = React.useMemo(
     () =>
@@ -112,7 +112,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
           : allFinancialRecords.filter((record) => record.paymentId === payment.id);
         return records.some((record) => !record.deletedAt && !(record.date ?? '').trim());
       }),
-    [payments, allFinancialRecords]
+    [payments, allFinancialRecords],
   );
   const expiryBadge = React.useMemo(() => getPolicyExpiryBadge(policy.endDate), [policy.endDate]);
   const renderTruncatedText = (label: string, value: string) => (
@@ -203,9 +203,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
               Начало: {model.startDate} · Окончание: {model.endDate}
             </p>
             {primaryAction && (
-              <p className="mt-2 text-xs font-semibold text-sky-700">
-                {primaryAction.label}
-              </p>
+              <p className="mt-2 text-xs font-semibold text-sky-700">{primaryAction.label}</p>
             )}
           </button>
 

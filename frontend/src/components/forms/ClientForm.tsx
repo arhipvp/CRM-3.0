@@ -57,9 +57,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <p className="app-alert app-alert-danger">{error}</p>
-      )}
+      {error && <p className="app-alert app-alert-danger">{error}</p>}
 
       <div>
         <label className="block text-sm font-semibold text-slate-700">Имя *</label>

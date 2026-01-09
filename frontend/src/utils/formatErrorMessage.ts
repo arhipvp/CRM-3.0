@@ -8,8 +8,7 @@ const STATUS_FRIENDLY_MESSAGES: Record<number, string> = {
 export function formatErrorMessage(error: unknown, fallback?: string): string {
   if (error instanceof APIError) {
     const override = STATUS_FRIENDLY_MESSAGES[error.status];
-    const detail =
-      error.message && error.message !== override ? ` — ${error.message}` : '';
+    const detail = error.message && error.message !== override ? ` — ${error.message}` : '';
     if (override) {
       return `${override}${detail}`.trim();
     }

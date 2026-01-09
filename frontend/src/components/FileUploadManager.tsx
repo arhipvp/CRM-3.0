@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
-import { buildFallbackKey, dedupeCollectedFiles, dedupeFiles, type CollectedFile } from '../utils/fileUpload';
+import {
+  buildFallbackKey,
+  dedupeCollectedFiles,
+  dedupeFiles,
+  type CollectedFile,
+} from '../utils/fileUpload';
 
 interface FileUploadManagerProps {
   onUpload: (file: File) => Promise<void>;
@@ -49,7 +54,10 @@ const inferClipboardExtension = (mimeType: string | undefined) => {
     return 'bin';
   }
   const raw = normalized.slice(slashIndex + 1).split(';')[0];
-  const cleaned = raw.replace(/^x-/, '').replace(/^vnd\./, '').split('+')[0];
+  const cleaned = raw
+    .replace(/^x-/, '')
+    .replace(/^vnd\./, '')
+    .split('+')[0];
   return cleaned || 'bin';
 };
 
@@ -62,18 +70,15 @@ const buildClipboardFileName = (mimeType: string | undefined, index: number) => 
 const pickClipboardItemType = (types: readonly string[]) =>
   types.find((type) => !CLIPBOARD_TEXT_TYPES.has(type)) ?? null;
 
-const isFileEntry = (
-  entry: FileSystemEntry | null | undefined
-): entry is FileSystemFileEntry => Boolean(entry && entry.isFile);
+const isFileEntry = (entry: FileSystemEntry | null | undefined): entry is FileSystemFileEntry =>
+  Boolean(entry && entry.isFile);
 
 const isDirectoryEntry = (
-  entry: FileSystemEntry | null | undefined
+  entry: FileSystemEntry | null | undefined,
 ): entry is FileSystemDirectoryEntry =>
   Boolean(entry && typeof (entry as FileSystemDirectoryEntry).createReader === 'function');
 
-const readDirectoryEntries = (
-  reader: FileSystemDirectoryReader
-): Promise<FileSystemEntry[]> =>
+const readDirectoryEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
   new Promise((resolve) => {
     const entries: FileSystemEntry[] = [];
 
@@ -90,7 +95,7 @@ const readDirectoryEntries = (
         (error) => {
           console.error('Failed to read directory entries', error);
           resolve(entries);
-        }
+        },
       );
     };
 
@@ -105,7 +110,7 @@ const traverseEntry = async (entry: FileSystemEntry): Promise<CollectedFile[]> =
         (error) => {
           console.error('Failed to read file from directory entry', error);
           resolve([]);
-        }
+        },
       );
     });
   }
@@ -126,7 +131,7 @@ const traverseEntry = async (entry: FileSystemEntry): Promise<CollectedFile[]> =
 };
 
 const collectFilesFromDataTransfer = async (
-  event: React.DragEvent<HTMLLabelElement>
+  event: React.DragEvent<HTMLLabelElement>,
 ): Promise<File[]> => {
   const items = Array.from(event.dataTransfer?.items ?? []);
   if (!items.length) {
@@ -144,7 +149,7 @@ const collectFilesFromDataTransfer = async (
       }
       const file = item.getAsFile();
       return file ? [{ file, key: buildFallbackKey(file) }] : [];
-    })
+    }),
   );
 
   const collected = nested.flat();
@@ -155,9 +160,7 @@ const collectFilesFromDataTransfer = async (
   return dedupeFiles(Array.from(event.dataTransfer?.files ?? []));
 };
 
-const collectFilesFromClipboardItems = async (
-  items: ClipboardItem[]
-): Promise<File[]> => {
+const collectFilesFromClipboardItems = async (items: ClipboardItem[]): Promise<File[]> => {
   const files: File[] = [];
 
   for (let index = 0; index < items.length; index += 1) {
@@ -418,9 +421,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
         </div>
       )}
 
-      {error && (
-        <div className="app-alert app-alert-danger">{error}</div>
-      )}
+      {error && <div className="app-alert app-alert-danger">{error}</div>}
     </div>
   );
 };

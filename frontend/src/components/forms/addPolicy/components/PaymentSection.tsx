@@ -5,7 +5,11 @@ import type { FinancialRecordDraft, PaymentDraft } from '../types';
 interface PaymentSectionProps {
   paymentIndex: number;
   payment: PaymentDraft;
-  onFieldChange: (index: number, field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>, value: string) => void;
+  onFieldChange: (
+    index: number,
+    field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>,
+    value: string,
+  ) => void;
   onRemovePayment: (index: number) => void;
   onAddRecord: (index: number, type: 'incomes' | 'expenses') => void;
   onUpdateRecord: (
@@ -13,7 +17,7 @@ interface PaymentSectionProps {
     type: 'incomes' | 'expenses',
     recordIndex: number,
     field: keyof FinancialRecordDraft,
-    value: string
+    value: string,
   ) => void;
   onRemoveRecord: (paymentIndex: number, type: 'incomes' | 'expenses', recordIndex: number) => void;
   showRecords?: boolean;
@@ -96,7 +100,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             </button>
           </div>
           {payment.incomes.length === 0 && (
-            <p className="text-xs text-slate-500">Добавьте доход, чтобы привязать поступление к этому платежу.</p>
+            <p className="text-xs text-slate-500">
+              Добавьте доход, чтобы привязать поступление к этому платежу.
+            </p>
           )}
           <FinancialRecordInputs
             paymentIndex={paymentIndex}
@@ -108,7 +114,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Расходы</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Расходы
+            </h4>
             <button
               type="button"
               className="link-action text-xs"
@@ -118,7 +126,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             </button>
           </div>
           {payment.expenses.length === 0 && (
-            <p className="text-xs text-slate-500">Добавьте расход, чтобы контролировать связанные списания.</p>
+            <p className="text-xs text-slate-500">
+              Добавьте расход, чтобы контролировать связанные списания.
+            </p>
           )}
           <FinancialRecordInputs
             paymentIndex={paymentIndex}

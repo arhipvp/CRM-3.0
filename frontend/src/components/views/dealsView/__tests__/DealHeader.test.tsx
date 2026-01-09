@@ -24,7 +24,7 @@ describe('DealHeader', () => {
         clientPhone="+7 (999) 000-00-01"
         sellerDisplayName="Seller"
         executorDisplayName="Executor"
-      />
+      />,
     );
 
     expect(screen.getByText('Deal title')).toBeInTheDocument();
@@ -34,9 +34,8 @@ describe('DealHeader', () => {
     expect(screen.getByText('Executor')).toBeInTheDocument();
     expect(
       screen.getByText(
-        (content) =>
-          content.includes('Причина закрытия') && content.includes('Причина')
-      )
+        (content) => content.includes('Причина закрытия') && content.includes('Причина'),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -48,16 +47,18 @@ describe('DealHeader', () => {
         clientPhone="+7 999 000 00 02"
         sellerDisplayName="Seller"
         executorDisplayName="Executor"
-      />
+      />,
     );
 
-    expect(
-      screen.getByRole('link', { name: 'Написать клиенту в WhatsApp' })
-    ).toHaveAttribute('href', 'https://wa.me/79990000002');
+    expect(screen.getByRole('link', { name: 'Написать клиенту в WhatsApp' })).toHaveAttribute(
+      'href',
+      'https://wa.me/79990000002',
+    );
 
-    expect(
-      screen.getByRole('link', { name: 'Написать клиенту в Telegram' })
-    ).toHaveAttribute('href', 'https://t.me/+79990000002');
+    expect(screen.getByRole('link', { name: 'Написать клиенту в Telegram' })).toHaveAttribute(
+      'href',
+      'https://t.me/+79990000002',
+    );
   });
 
   it('does not render WhatsApp icon when the client phone is missing', () => {
@@ -67,14 +68,10 @@ describe('DealHeader', () => {
         clientDisplayName="Client A"
         sellerDisplayName="Seller"
         executorDisplayName="Executor"
-      />
+      />,
     );
 
-    expect(
-      screen.queryByRole('link', { name: 'Написать клиенту в WhatsApp' })
-    ).toBeNull();
-    expect(
-      screen.queryByRole('link', { name: 'Написать клиенту в Telegram' })
-    ).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Написать клиенту в WhatsApp' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Написать клиенту в Telegram' })).toBeNull();
   });
 });

@@ -2,7 +2,10 @@ import React from 'react';
 
 import type { FinancialRecord } from '../../types';
 import { Modal } from '../Modal';
-import { AddFinancialRecordForm, AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
+import {
+  AddFinancialRecordForm,
+  AddFinancialRecordFormValues,
+} from '../forms/AddFinancialRecordForm';
 
 interface FinancialRecordModalProps {
   isOpen: boolean;
@@ -41,4 +44,3 @@ export const FinancialRecordModal: React.FC<FinancialRecordModalProps> = ({
     </Modal>
   );
 };
-

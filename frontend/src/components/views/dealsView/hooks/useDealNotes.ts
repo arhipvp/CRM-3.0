@@ -61,7 +61,7 @@ export const useDealNotes = (dealId?: string | null) => {
         }
       }
     },
-    [dealId]
+    [dealId],
   );
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export const useDealNotes = (dealId?: string | null) => {
         }
       }
     },
-    [dealId]
+    [dealId],
   );
 
   const removeNoteAttachment = useCallback(
@@ -149,7 +149,7 @@ export const useDealNotes = (dealId?: string | null) => {
         console.error('Ошибка удаления файла заметки:', err);
       }
     },
-    [dealId]
+    [dealId],
   );
 
   const archiveNote = useCallback(
@@ -179,7 +179,7 @@ export const useDealNotes = (dealId?: string | null) => {
         }
       }
     },
-    [dealId, loadNotes, notesFilter]
+    [dealId, loadNotes, notesFilter],
   );
 
   const restoreNote = useCallback(
@@ -209,7 +209,7 @@ export const useDealNotes = (dealId?: string | null) => {
         }
       }
     },
-    [dealId]
+    [dealId],
   );
 
   return {

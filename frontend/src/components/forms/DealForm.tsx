@@ -110,7 +110,7 @@ export const DealForm: React.FC<DealFormProps> = ({
   const initialSellerId = initialValues?.sellerId ?? '';
   const initialNextContactDate = initialValues?.nextContactDate ?? '';
   const initialClientId = initialValues?.clientId ?? preselectedClientId ?? '';
-  const initialClientQuery = initialClientId ? clientsById.get(initialClientId)?.name ?? '' : '';
+  const initialClientQuery = initialClientId ? (clientsById.get(initialClientId)?.name ?? '') : '';
 
   const [title, setTitle] = useState(initialTitle);
   const [clientId, setClientId] = useState(initialClientId);
@@ -177,12 +177,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     setClientId(preselected.id);
     setClientQuery(preselected.name);
     onPreselectedClientConsumed?.();
-  }, [
-    clientsById,
-    initialValues?.clientId,
-    onPreselectedClientConsumed,
-    preselectedClientId,
-  ]);
+  }, [clientsById, initialValues?.clientId, onPreselectedClientConsumed, preselectedClientId]);
 
   useEffect(() => {
     if (!clients.length) {
@@ -205,7 +200,15 @@ export const DealForm: React.FC<DealFormProps> = ({
     }
     setClientId(clients[0].id);
     setClientQuery(clients[0].name);
-  }, [clients, clientsById, clientId, clientQuery, initialValues?.clientId, mode, preselectedClientId]);
+  }, [
+    clients,
+    clientsById,
+    clientId,
+    clientQuery,
+    initialValues?.clientId,
+    mode,
+    preselectedClientId,
+  ]);
 
   const filteredClients = useMemo(() => {
     const normalized = clientQuery.trim().toLowerCase();
@@ -221,7 +224,7 @@ export const DealForm: React.FC<DealFormProps> = ({
       return null;
     }
     const exactMatch = clients.find(
-      (client) => client.name.toLowerCase() === trimmed.toLowerCase()
+      (client) => client.name.toLowerCase() === trimmed.toLowerCase(),
     );
     if (exactMatch) {
       return exactMatch;
@@ -305,8 +308,8 @@ export const DealForm: React.FC<DealFormProps> = ({
         formatErrorMessage(
           err,
           submitErrorMessage ??
-            (mode === 'edit' ? 'Не удалось обновить сделку.' : 'Не удалось создать сделку.')
-        )
+            (mode === 'edit' ? 'Не удалось обновить сделку.' : 'Не удалось создать сделку.'),
+        ),
       );
     } finally {
       setSubmitting(false);
@@ -315,14 +318,10 @@ export const DealForm: React.FC<DealFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <p className="app-alert app-alert-danger">{error}</p>
-      )}
+      {error && <p className="app-alert app-alert-danger">{error}</p>}
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700">
-          Название *
-        </label>
+        <label className="block text-sm font-semibold text-slate-700">Название *</label>
         <input
           type="text"
           value={title}
@@ -368,9 +367,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-slate-600">
-                      Клиент не найден
-                    </div>
+                    <div className="px-3 py-2 text-sm text-slate-600">Клиент не найден</div>
                   )}
                 </div>
               )}

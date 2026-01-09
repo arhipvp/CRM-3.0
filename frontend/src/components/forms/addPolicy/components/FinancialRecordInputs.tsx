@@ -10,7 +10,7 @@ interface FinancialRecordInputsProps {
     type: 'incomes' | 'expenses',
     recordIndex: number,
     field: keyof FinancialRecordDraft,
-    value: string
+    value: string,
   ) => void;
   onRemoveRecord: (paymentIndex: number, type: 'incomes' | 'expenses', recordIndex: number) => void;
 }
@@ -24,7 +24,10 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
 }) => (
   <>
     {records.map((record, recordIndex) => (
-      <div key={`${type}-${recordIndex}`} className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white">
+      <div
+        key={`${type}-${recordIndex}`}
+        className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white"
+      >
         <div className="flex justify-between items-center">
           <span className="text-sm font-semibold text-slate-900">
             {type === 'incomes' ? 'Доход' : 'Расход'} #{recordIndex + 1}
@@ -54,7 +57,9 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             <input
               type="date"
               value={record.date || ''}
-              onChange={(e) => onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)}
+              onChange={(e) =>
+                onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)
+              }
               className="field field-input mt-1"
             />
           </div>

@@ -31,15 +31,11 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
             Сделка
           </p>
-          <h2 className="text-xl font-semibold leading-tight text-slate-900">
-            {deal.title}
-          </h2>
+          <h2 className="text-xl font-semibold leading-tight text-slate-900">{deal.title}</h2>
         </div>
 
         {deal.description && (
-          <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-            {deal.description}
-          </p>
+          <p className="max-w-3xl text-sm leading-relaxed text-slate-600">{deal.description}</p>
         )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
@@ -128,9 +124,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
         </div>
 
         {deal.closingReason && (
-          <p className="text-xs text-slate-600">
-            Причина закрытия: {deal.closingReason}
-          </p>
+          <p className="text-xs text-slate-600">Причина закрытия: {deal.closingReason}</p>
         )}
       </div>
     </div>

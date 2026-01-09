@@ -24,7 +24,7 @@ export interface KnowledgeAskResponse {
 export async function askKnowledgeBase(
   notebookId: string,
   question: string,
-  sessionId?: string
+  sessionId?: string,
 ): Promise<KnowledgeAskResponse> {
   return request<KnowledgeAskResponse>('/knowledge/ask/', {
     method: 'POST',
@@ -45,13 +45,10 @@ export async function createNotebook(payload: {
   name: string;
   description?: string;
 }): Promise<KnowledgeNotebook> {
-  const response = await request<Record<string, unknown>>(
-    '/knowledge/notebooks/',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }
-  );
+  const response = await request<Record<string, unknown>>('/knowledge/notebooks/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
   return mapKnowledgeNotebook(response);
 }
 
@@ -68,7 +65,7 @@ export async function updateNotebook(payload: {
         name: payload.name,
         description: payload.description,
       }),
-    }
+    },
   );
   return mapKnowledgeNotebook(response);
 }
@@ -79,29 +76,21 @@ export async function deleteNotebook(notebookId: string): Promise<void> {
   });
 }
 
-export async function fetchSources(
-  notebookId: string
-): Promise<KnowledgeSource[]> {
+export async function fetchSources(notebookId: string): Promise<KnowledgeSource[]> {
   const data = await request<Record<string, unknown>[]>(
-    `/knowledge/sources/?notebook_id=${encodeURIComponent(notebookId)}`
+    `/knowledge/sources/?notebook_id=${encodeURIComponent(notebookId)}`,
   );
   return data.map(mapKnowledgeSource);
 }
 
-export async function fetchSourceDetail(
-  sourceId: string
-): Promise<KnowledgeSourceDetail> {
-  const data = await request<Record<string, unknown>>(
-    `/knowledge/sources/${sourceId}/`
-  );
+export async function fetchSourceDetail(sourceId: string): Promise<KnowledgeSourceDetail> {
+  const data = await request<Record<string, unknown>>(`/knowledge/sources/${sourceId}/`);
   return mapKnowledgeSourceDetail(data);
 }
 
-export async function fetchChatSessions(
-  notebookId: string
-): Promise<KnowledgeChatSession[]> {
+export async function fetchChatSessions(notebookId: string): Promise<KnowledgeChatSession[]> {
   const data = await request<Record<string, unknown>[]>(
-    `/knowledge/chat/sessions/?notebook_id=${encodeURIComponent(notebookId)}`
+    `/knowledge/chat/sessions/?notebook_id=${encodeURIComponent(notebookId)}`,
   );
   return data.map(mapKnowledgeChatSession);
 }
@@ -110,16 +99,13 @@ export async function createChatSession(payload: {
   notebookId: string;
   title?: string;
 }): Promise<KnowledgeChatSession> {
-  const response = await request<Record<string, unknown>>(
-    '/knowledge/chat/sessions/',
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        notebook_id: payload.notebookId,
-        title: payload.title,
-      }),
-    }
-  );
+  const response = await request<Record<string, unknown>>('/knowledge/chat/sessions/', {
+    method: 'POST',
+    body: JSON.stringify({
+      notebook_id: payload.notebookId,
+      title: payload.title,
+    }),
+  });
   return mapKnowledgeChatSession(response);
 }
 
@@ -132,7 +118,7 @@ export async function updateChatSession(payload: {
     {
       method: 'PUT',
       body: JSON.stringify({ title: payload.title }),
-    }
+    },
   );
   return mapKnowledgeChatSession(response);
 }
@@ -166,11 +152,9 @@ export async function deleteSource(sourceId: string): Promise<void> {
   });
 }
 
-export async function fetchSavedAnswers(
-  notebookId: string
-): Promise<KnowledgeSavedAnswer[]> {
+export async function fetchSavedAnswers(notebookId: string): Promise<KnowledgeSavedAnswer[]> {
   const data = await request<Record<string, unknown>[]>(
-    `/knowledge/notes/?notebook_id=${encodeURIComponent(notebookId)}`
+    `/knowledge/notes/?notebook_id=${encodeURIComponent(notebookId)}`,
   );
   return data.map(mapKnowledgeSavedAnswer);
 }

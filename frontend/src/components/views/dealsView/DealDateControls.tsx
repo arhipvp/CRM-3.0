@@ -54,7 +54,9 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
       </div>
     </div>
     <div>
-      <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>Застраховать до</p>
+      <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
+        Застраховать до
+      </p>
       <input
         type="date"
         value={expectedCloseValue}

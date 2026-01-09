@@ -49,4 +49,3 @@ export const TableHeadCell: React.FC<TableHeadCellProps> = ({
     </th>
   );
 };
-

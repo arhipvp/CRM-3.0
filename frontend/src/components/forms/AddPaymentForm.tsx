@@ -50,8 +50,7 @@ export function AddPaymentForm({
   const fixedPolicy = fixedPolicyId
     ? policyOptions.find((policy) => policy.id === fixedPolicyId)
     : undefined;
-  const fixedPolicyDisplay =
-    fixedPolicy?.number || fixedPolicy?.id || fixedPolicyId || '';
+  const fixedPolicyDisplay = fixedPolicy?.number || fixedPolicy?.id || fixedPolicyId || '';
 
   useEffect(() => {
     if (!dealId) {
@@ -65,7 +64,7 @@ export function AddPaymentForm({
       return;
     }
     setFormData((prev) =>
-      prev.policyId === fixedPolicyId ? prev : { ...prev, policyId: fixedPolicyId }
+      prev.policyId === fixedPolicyId ? prev : { ...prev, policyId: fixedPolicyId },
     );
   }, [fixedPolicyId]);
 
@@ -73,7 +72,7 @@ export function AddPaymentForm({
   const [error, setError] = useState('');
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -110,9 +109,7 @@ export function AddPaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
-      {error && (
-        <p className="app-alert app-alert-danger">{error}</p>
-      )}
+      {error && <p className="app-alert app-alert-danger">{error}</p>}
 
       {payment && <PaymentMetadata payment={payment} />}
 

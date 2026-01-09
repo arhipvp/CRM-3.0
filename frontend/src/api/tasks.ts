@@ -5,7 +5,7 @@ import type { Task } from '../types';
 
 export async function fetchTasks(
   filters?: FilterParams,
-  options?: { pageSize?: number }
+  options?: { pageSize?: number },
 ): Promise<Task[]> {
   const pageSize = options?.pageSize ?? 200;
   const results: Task[] = [];
@@ -28,7 +28,7 @@ export async function fetchTasks(
 }
 
 export async function fetchTasksWithPagination(
-  filters?: FilterParams
+  filters?: FilterParams,
 ): Promise<PaginatedResponse<Task>> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/tasks/${qs}`);
@@ -42,7 +42,7 @@ export async function fetchTasksWithPagination(
 
 export async function fetchTasksByDeal(
   dealId: string,
-  options?: { showDeleted?: boolean; pageSize?: number }
+  options?: { showDeleted?: boolean; pageSize?: number },
 ): Promise<Task[]> {
   const pageSize = options?.pageSize ?? 200;
   const showDeleted = options?.showDeleted ?? false;
@@ -103,7 +103,7 @@ export async function updateTask(
     dueAt: string | null;
     status: string;
     assigneeId?: string | null;
-  }>
+  }>,
 ): Promise<Task> {
   const body: Record<string, unknown> = {
     title: data.title,

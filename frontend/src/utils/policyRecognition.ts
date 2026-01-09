@@ -4,7 +4,7 @@ import type { PaymentDraft, PolicyFormValues } from '../components/forms/addPoli
 const pickRecognitionValue = (
   parsed: Record<string, unknown>,
   policy: Record<string, unknown>,
-  keys: string[]
+  keys: string[],
 ): unknown => {
   for (const key of keys) {
     const policyValue = policy[key];
@@ -103,7 +103,7 @@ const buildPaymentDraft = (entry: Record<string, unknown>): PaymentDraft => {
       entry.sum ??
       entry.value ??
       entry.total ??
-      entry.premium
+      entry.premium,
   );
   const scheduledDate =
     normalizeDateValue(entry.payment_date ?? entry.scheduledDate ?? entry.scheduled_date) ||
@@ -127,7 +127,7 @@ const buildPaymentDraft = (entry: Record<string, unknown>): PaymentDraft => {
 
 const buildPaymentDrafts = (
   parsed: Record<string, unknown>,
-  policyData: Record<string, unknown>
+  policyData: Record<string, unknown>,
 ): PaymentDraft[] => {
   const rawPayments = parsed.payments ?? policyData.payments;
   if (!Array.isArray(rawPayments) || rawPayments.length === 0) {
@@ -138,40 +138,42 @@ const buildPaymentDrafts = (
     .map((entry) => buildPaymentDraft(entry as Record<string, unknown>));
 };
 
-export const buildPolicyDraftFromRecognition = (parsed: Record<string, unknown>): PolicyFormValues => {
+export const buildPolicyDraftFromRecognition = (
+  parsed: Record<string, unknown>,
+): PolicyFormValues => {
   const policyData = (parsed.policy ?? {}) as Record<string, unknown>;
   const vehicleBrand = normalizeStringValue(
-    pickRecognitionValue(parsed, policyData, ['brand', 'vehicle_brand', 'make'])
+    pickRecognitionValue(parsed, policyData, ['brand', 'vehicle_brand', 'make']),
   );
   const vehicleModel = normalizeStringValue(
-    pickRecognitionValue(parsed, policyData, ['model', 'vehicle_model', 'type'])
+    pickRecognitionValue(parsed, policyData, ['model', 'vehicle_model', 'type']),
   );
   const vehicleVin = normalizeStringValue(
-    pickRecognitionValue(parsed, policyData, ['vin', 'vehicle_vin', 'vehicleIdentificationNumber'])
+    pickRecognitionValue(parsed, policyData, ['vin', 'vehicle_vin', 'vehicleIdentificationNumber']),
   );
   const hasVehicleInfo = Boolean(vehicleBrand || vehicleModel || vehicleVin);
   return {
     number: normalizeStringValue(
-      pickRecognitionValue(parsed, policyData, ['number', 'policy_number', 'policyNumber'])
+      pickRecognitionValue(parsed, policyData, ['number', 'policy_number', 'policyNumber']),
     ),
     insuranceCompanyId: '',
     insuranceTypeId: '',
     isVehicle:
       parseBooleanValue(
-        pickRecognitionValue(parsed, policyData, ['is_vehicle', 'vehicle', 'transport'])
+        pickRecognitionValue(parsed, policyData, ['is_vehicle', 'vehicle', 'transport']),
       ) || hasVehicleInfo,
     brand: vehicleBrand,
     model: vehicleModel,
     vin: vehicleVin,
     counterparty: normalizeStringValue(
-      pickRecognitionValue(parsed, policyData, ['counterparty', 'contractor', 'seller'])
+      pickRecognitionValue(parsed, policyData, ['counterparty', 'contractor', 'seller']),
     ),
     salesChannelId: '',
     startDate: toOptionalString(
-      pickRecognitionValue(parsed, policyData, ['start_date', 'startDate', 'begin_date'])
+      pickRecognitionValue(parsed, policyData, ['start_date', 'startDate', 'begin_date']),
     ),
     endDate: toOptionalString(
-      pickRecognitionValue(parsed, policyData, ['end_date', 'endDate', 'finish_date'])
+      pickRecognitionValue(parsed, policyData, ['end_date', 'endDate', 'finish_date']),
     ),
     payments: buildPaymentDrafts(parsed, policyData),
     insuredClientId: '',
@@ -181,7 +183,7 @@ export const buildPolicyDraftFromRecognition = (parsed: Record<string, unknown>)
         'insuredClientName',
         'client_name',
         'clientName',
-      ])
+      ]),
     ),
   };
 };

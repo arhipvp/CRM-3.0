@@ -16,7 +16,7 @@ export async function fetchDealNotes(dealId: string, archived?: boolean): Promis
 export async function createNote(
   dealId: string,
   body: string,
-  attachments?: Note['attachments']
+  attachments?: Note['attachments'],
 ): Promise<Note> {
   const payloadBody: Record<string, unknown> = {
     deal: dealId,

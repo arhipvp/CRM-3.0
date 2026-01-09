@@ -4,7 +4,12 @@ import { FilterParams } from '../api';
 type CustomFilterDefinition =
   | { key: string; label: string; type: 'text' }
   | { key: string; label: string; type: 'checkbox' }
-  | { key: string; label: string; type: 'select'; options: Array<{ value: string; label: string }> };
+  | {
+      key: string;
+      label: string;
+      type: 'select';
+      options: Array<{ value: string; label: string }>;
+    };
 
 export interface FilterBarProps {
   onFilterChange: (filters: FilterParams) => void;
@@ -133,16 +138,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   {(() => {
                     const checkboxId = `${idPrefix}-${filter.key}`;
                     return (
-                <label className="app-panel-muted flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-700">
-                  <input
-                    id={checkboxId}
-                    type="checkbox"
-                    checked={customFilterValues[filter.key] === 'true'}
-                    onChange={(event) => handleCheckboxFilterChange(filter.key, event.target.checked)}
-                    className="check"
-                  />
-                  <span>{filter.label}</span>
-                </label>
+                      <label className="app-panel-muted flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-700">
+                        <input
+                          id={checkboxId}
+                          type="checkbox"
+                          checked={customFilterValues[filter.key] === 'true'}
+                          onChange={(event) =>
+                            handleCheckboxFilterChange(filter.key, event.target.checked)
+                          }
+                          className="check"
+                        />
+                        <span>{filter.label}</span>
+                      </label>
                     );
                   })()}
                 </>
