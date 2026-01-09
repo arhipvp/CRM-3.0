@@ -151,6 +151,9 @@ export async function fetchSellerDashboard(params?: {
   const rawTasksByDay = Array.isArray(payload.tasks_completed_by_day)
     ? payload.tasks_completed_by_day
     : [];
+  const rawTasksByExecutor = Array.isArray(payload.tasks_completed_by_executor)
+    ? payload.tasks_completed_by_executor
+    : [];
   return {
     rangeStart: toStringValue(payload.start_date ?? payload.startDate ?? ''),
     rangeEnd: toStringValue(payload.end_date ?? payload.endDate ?? ''),
@@ -168,6 +171,15 @@ export async function fetchSellerDashboard(params?: {
       const record = item as Record<string, unknown>;
       return {
         date: toStringValue(record.date),
+        count: Number(record.count ?? 0),
+      };
+    }),
+    tasksCompletedByExecutor: rawTasksByExecutor.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        date: toStringValue(record.date),
+        executorId: toNullableString(record.executor_id ?? record.executorId),
+        executorName: toStringValue(record.executor_name ?? record.executorName ?? 'Неизвестный'),
         count: Number(record.count ?? 0),
       };
     }),

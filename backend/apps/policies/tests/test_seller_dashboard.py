@@ -109,6 +109,7 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         self.assertEqual(payload.get("tasks_completed"), 1)
         self.assertTrue(payload.get("payments_by_day"))
         self.assertTrue(payload.get("tasks_completed_by_day"))
+        self.assertTrue(payload.get("tasks_completed_by_executor"))
         policy_numbers = {item["number"] for item in payload.get("policies", [])}
         self.assertIn("POLICY-1", policy_numbers)
         self.assertNotIn("POLICY-OLD", policy_numbers)

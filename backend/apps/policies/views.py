@@ -531,6 +531,38 @@ class SellerDashboardView(APIView):
             for item in tasks_completed_by_day
         ]
 
+        tasks_completed_by_executor = (
+            tasks_queryset.filter(
+                status=Task.TaskStatus.DONE,
+                completed_at__date__gte=start_date,
+                completed_at__date__lte=end_date,
+            )
+            .annotate(day=TruncDate("completed_at"))
+            .values(
+                "day",
+                "assignee_id",
+                "assignee__first_name",
+                "assignee__last_name",
+                "assignee__username",
+            )
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+        tasks_executor_series = []
+        for item in tasks_completed_by_executor:
+            first_name = (item.get("assignee__first_name") or "").strip()
+            last_name = (item.get("assignee__last_name") or "").strip()
+            full_name = f"{first_name} {last_name}".strip()
+            executor_name = full_name or item.get("assignee__username") or "Неизвестный"
+            tasks_executor_series.append(
+                {
+                    "date": item["day"],
+                    "executor_id": item.get("assignee_id"),
+                    "executor_name": executor_name,
+                    "count": item["count"],
+                }
+            )
+
         return Response(
             {
                 "start_date": start_date,
@@ -540,6 +572,7 @@ class SellerDashboardView(APIView):
                 "tasks_completed": tasks_completed,
                 "payments_by_day": payments_series,
                 "tasks_completed_by_day": tasks_series,
+                "tasks_completed_by_executor": tasks_executor_series,
                 "policies": policies,
             }
         )
