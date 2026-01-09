@@ -7,6 +7,7 @@ import { CommissionsView } from '../views/CommissionsView';
 import { TasksView } from '../views/TasksView';
 import { SettingsView } from '../views/SettingsView';
 import { KnowledgeDocumentsView } from '../views/KnowledgeDocumentsView';
+import { SellerDashboardView } from '../views/SellerDashboardView';
 import type {
   ActivityLog,
   ChatMessage,
@@ -190,6 +191,17 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   isPoliciesListLoading,
 }) => (
   <Routes>
+    <Route
+      path="/seller-dashboard"
+      element={
+        <SellerDashboardView
+          policies={policies}
+          payments={payments}
+          deals={deals}
+          currentUser={currentUser}
+        />
+      }
+    />
     <Route
       path="/deals"
       element={

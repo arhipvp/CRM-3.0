@@ -4,6 +4,7 @@ import { User } from '../types';
 import { UserBadge } from './common/UserBadge';
 
 export type View =
+  | 'seller-dashboard'
   | 'deals'
   | 'clients'
   | 'policies'
@@ -21,6 +22,7 @@ interface MainLayoutProps {
 }
 
 const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
+  { path: '/seller-dashboard', label: 'Дашборд продавца', icon: '📈' },
   { path: '/deals', label: 'Сделки', icon: '📝' },
   { path: '/clients', label: 'Клиенты', icon: '👥' },
   { path: '/policies', label: 'Полисы', icon: '📄' },
