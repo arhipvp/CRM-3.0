@@ -3,7 +3,6 @@ import { fetchSellerDashboard } from '../../api/policies';
 import type {
   SellerDashboardPaymentsByDay,
   SellerDashboardResponse,
-  SellerDashboardTasksByDay,
   SellerDashboardTasksByExecutor,
 } from '../../types';
 import { formatCurrencyRu, formatDateRu, RU_LOCALE } from '../../utils/formatting';
@@ -74,16 +73,6 @@ const buildPaymentsSeries = (
 ): ChartPoint[] => {
   const range = buildDateRange(rangeStart, rangeEnd);
   const map = new Map(items.map((item) => [item.date, parseNumber(item.total)]));
-  return range.map((date) => ({ date, value: map.get(date) ?? 0 }));
-};
-
-const buildTasksSeries = (
-  rangeStart: string,
-  rangeEnd: string,
-  items: SellerDashboardTasksByDay[]
-): ChartPoint[] => {
-  const range = buildDateRange(rangeStart, rangeEnd);
-  const map = new Map(items.map((item) => [item.date, item.count]));
   return range.map((date) => ({ date, value: map.get(date) ?? 0 }));
 };
 
