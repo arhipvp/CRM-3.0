@@ -341,7 +341,7 @@ export const SellerDashboardView: React.FC = () => {
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Завершенные задачи по дням</h2>
             <p className="text-xs text-slate-500">
-              Количество задач с отметкой о завершении
+              Только задачи по сделкам, где вы продавец
             </p>
           </div>
           {isLoading ? (

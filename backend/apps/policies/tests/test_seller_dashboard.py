@@ -82,17 +82,20 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
 
         Task.objects.create(
             title="Active task",
-            assignee=self.seller,
+            deal=self.deal,
+            assignee=self.other_user,
             status=Task.TaskStatus.IN_PROGRESS,
         )
         Task.objects.create(
             title="Done task",
+            deal=self.deal,
             assignee=self.seller,
             status=Task.TaskStatus.DONE,
             completed_at=timezone.now(),
         )
         Task.objects.create(
             title="Other user's task",
+            deal=self.other_deal,
             assignee=self.other_user,
             status=Task.TaskStatus.IN_PROGRESS,
         )

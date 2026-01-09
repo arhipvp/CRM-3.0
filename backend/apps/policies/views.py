@@ -477,7 +477,7 @@ class SellerDashboardView(APIView):
                 }
             )
 
-        tasks_queryset = Task.objects.filter(assignee=user, deleted_at__isnull=True)
+        tasks_queryset = Task.objects.filter(deal__seller=user, deleted_at__isnull=True)
         tasks_current = tasks_queryset.exclude(
             status__in=[Task.TaskStatus.DONE, Task.TaskStatus.CANCELED]
         ).count()
