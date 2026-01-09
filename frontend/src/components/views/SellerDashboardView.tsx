@@ -286,7 +286,6 @@ const StackedBarChart: React.FC<{
       <div className="app-panel-muted p-4">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
           {points.map((point, index) => {
-            const barHeight = (totals[index] / maxValue) * plotHeight;
             const x = CHART_PADDING + index * barWidth + barWidth * 0.2;
             let y = CHART_PADDING + plotHeight;
             const widthValue = barWidth * 0.6;
@@ -390,17 +389,6 @@ export const SellerDashboardView: React.FC = () => {
       dashboard.paymentsByDay
     );
   }, [dashboard?.paymentsByDay, dashboard?.rangeEnd, dashboard?.rangeStart]);
-
-  const tasksSeries = useMemo(() => {
-    if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {
-      return [] as ChartPoint[];
-    }
-    return buildTasksSeries(
-      dashboard.rangeStart,
-      dashboard.rangeEnd,
-      dashboard.tasksCompletedByDay
-    );
-  }, [dashboard?.rangeEnd, dashboard?.rangeStart, dashboard?.tasksCompletedByDay]);
 
   const executorSeries = useMemo(() => {
     if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {
