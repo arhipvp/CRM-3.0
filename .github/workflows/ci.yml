@@ -1,4 +1,4 @@
-name: CI - Code Quality & Tests
+﻿name: CI - Code Quality & Tests
 
 on:
   push:
@@ -143,6 +143,11 @@ jobs:
           cd frontend
           npm run lint
 
+      - name: Run Prettier (format check)
+        run: |
+          cd frontend
+          npm run format:check
+
       - name: Check TypeScript
         run: |
           cd frontend
@@ -227,16 +232,24 @@ jobs:
     steps:
       - name: Check workflow status
         run: |
+          if [ "${{ needs.backend-lint.result }}" == "failure" ]; then
+            echo "Backend lint failed"
+            exit 1
+          fi
           if [ "${{ needs.backend-tests.result }}" == "failure" ]; then
-            echo "❌ Backend tests failed"
+            echo "Backend tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.frontend-lint.result }}" == "failure" ]; then
+            echo "Frontend lint failed"
             exit 1
           fi
           if [ "${{ needs.frontend-build.result }}" == "failure" ]; then
-            echo "❌ Frontend build failed"
+            echo "Frontend build failed"
             exit 1
           fi
           if [ "${{ needs.docker-build.result }}" == "failure" ]; then
-            echo "❌ Docker build failed"
+            echo "Docker build failed"
             exit 1
           fi
-          echo "✅ All quality checks passed!"
+          echo "All quality checks passed!"
