@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List
 
 from apps.common.drive import (
     DriveError,
@@ -14,7 +14,6 @@ from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.finances.models import Payment
 from apps.tasks.models import Task
-from apps.users.models import UserRole
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
@@ -34,6 +33,7 @@ from .ai_service import (
 from .dashboard import format_amount, get_month_bounds, parse_date_value
 from .filters import PolicyFilterSet
 from .models import Policy
+from .permissions import user_can_modify_deal, user_is_admin
 from .serializers import PolicySerializer
 
 logger = logging.getLogger(__name__)
@@ -100,8 +100,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if self.request.method == "DELETE":
             return queryset
 
-        is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
-        if not is_admin:
+        if not user_is_admin(user):
             queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
 
         return queryset
@@ -149,7 +148,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not self._user_can_modify(deal, request.user):
+        if not user_can_modify_deal(request.user, deal):
             return Response(
                 {"detail": "Нет доступа к сделке."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -303,16 +302,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def _can_modify(self, user, instance):
         deal = getattr(instance, "deal", None)
-        return self._user_can_modify(deal, user)
-
-    def _user_can_modify(self, deal: Optional[Deal], user) -> bool:
-        if not user or not user.is_authenticated:
-            return False
-        if UserRole.objects.filter(user=user, role__name="Admin").exists():
-            return True
-        if not deal:
-            return False
-        return deal.seller_id == user.id or deal.executor_id == user.id
+        return user_can_modify_deal(user, deal)
 
     def _move_recognized_file_to_folder(self, policy: Policy, file_id: str) -> None:
         if not file_id:

@@ -1,5 +1,3 @@
-import re
-
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
@@ -12,6 +10,7 @@ from rest_framework.response import Response
 
 from .filters import DealFilterSet
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
+from .search import build_search_query
 from .serializers import (
     DealSerializer,
     InsuranceCompanySerializer,
@@ -82,32 +81,6 @@ class DealViewSet(
     pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
-    def _build_phone_search_query(self, term: str) -> Q | None:
-        digits_only = re.sub(r"\D", "", term)
-        if len(digits_only) < 2:
-            return None
-        pattern = r"\D*".join(re.escape(ch) for ch in digits_only)
-        return Q(client__phone__iregex=pattern)
-
-    def _build_search_query(self, search_term: str) -> Q | None:
-        terms = [term for term in search_term.strip().split() if term]
-        if not terms or not self.search_fields:
-            return None
-
-        combined_query: Q | None = None
-        for term in terms:
-            term_query = Q()
-            for field in self.search_fields:
-                term_query |= Q(**{f"{field}__icontains": term})
-            phone_query = self._build_phone_search_query(term)
-            if phone_query is not None:
-                term_query |= phone_query
-            combined_query = (
-                term_query if combined_query is None else combined_query & term_query
-            )
-
-        return combined_query
-
     def _base_queryset(self, include_deleted=False):
         manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
         queryset = (
@@ -164,7 +137,7 @@ class DealViewSet(
 
         search_term = self.request.query_params.get("search")
         if search_term and search_term.strip():
-            search_q = self._build_search_query(search_term)
+            search_q = build_search_query(search_term, self.search_fields)
             if search_q is not None:
                 queryset = queryset.filter(search_q)
             queryset = queryset.distinct()

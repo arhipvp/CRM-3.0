@@ -7,7 +7,6 @@ from apps.common.drive import (
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
-from apps.users.models import UserRole
 from django.db import transaction
 from django.db.models import DecimalField, Prefetch, Q, Sum
 from django.db.models.functions import Coalesce
@@ -21,47 +20,17 @@ from rest_framework.views import APIView
 
 from .filters import PaymentFilterSet
 from .models import FinancialRecord, Payment, Statement
+from .permissions import (
+    get_deal_from_payment,
+    is_admin_user,
+    parse_bool,
+    user_has_deal_access,
+)
 from .serializers import (
     FinancialRecordSerializer,
     PaymentSerializer,
     StatementSerializer,
 )
-
-
-def _is_admin_user(user):
-    if not user or not user.is_authenticated:
-        return False
-    return UserRole.objects.filter(user=user, role__name="Admin").exists()
-
-
-def _get_deal_from_payment(payment):
-    if not payment:
-        return None
-    deal = getattr(payment, "deal", None)
-    if deal:
-        return deal
-    policy = getattr(payment, "policy", None)
-    if policy:
-        return getattr(policy, "deal", None)
-    return None
-
-
-def _user_has_deal_access(user, deal, *, allow_executor=True):
-    if not user or not user.is_authenticated:
-        return False
-    if _is_admin_user(user):
-        return True
-    if not deal:
-        return False
-    if allow_executor:
-        return deal.seller_id == user.id or deal.executor_id == user.id
-    return deal.seller_id == user.id
-
-
-def _parse_bool(value):
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 class StatementDriveTrashSerializer(serializers.Serializer):
@@ -129,7 +98,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return queryset
 
         # Администраторы видят все финансовые записи
-        is_admin = _is_admin_user(user)
+        is_admin = is_admin_user(user)
 
         if not is_admin:
             # Остальные видят только записи для своих сделок (где user = seller или executor)
@@ -143,13 +112,13 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         elif record_type == Statement.TYPE_EXPENSE:
             queryset = queryset.filter(amount__lt=0)
 
-        if _parse_bool(self.request.query_params.get("unpaid_only")):
+        if parse_bool(self.request.query_params.get("unpaid_only")):
             queryset = queryset.filter(date__isnull=True)
 
-        if _parse_bool(self.request.query_params.get("without_statement")):
+        if parse_bool(self.request.query_params.get("without_statement")):
             queryset = queryset.filter(statement__isnull=True)
 
-        if _parse_bool(self.request.query_params.get("paid_balance_not_zero")):
+        if parse_bool(self.request.query_params.get("paid_balance_not_zero")):
             queryset = queryset.exclude(payment_paid_balance=0)
 
         search_term = (self.request.query_params.get("search") or "").strip()
@@ -170,13 +139,13 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def _can_modify(self, user, instance):
         payment = getattr(instance, "payment", None)
-        deal = _get_deal_from_payment(payment)
-        return _user_has_deal_access(user, deal, allow_executor=False)
+        deal = get_deal_from_payment(payment)
+        return user_has_deal_access(user, deal, allow_executor=False)
 
     def perform_create(self, serializer):
         payment = serializer.validated_data.get("payment")
-        deal = _get_deal_from_payment(payment)
-        if not _user_has_deal_access(self.request.user, deal, allow_executor=False):
+        deal = get_deal_from_payment(payment)
+        if not user_has_deal_access(self.request.user, deal, allow_executor=False):
             raise PermissionDenied("Нет доступа к платежу или сделке.")
         serializer.save()
 
@@ -225,7 +194,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         )
         if not user.is_authenticated:
             return queryset.none()
-        if _is_admin_user(user):
+        if is_admin_user(user):
             return queryset
         return queryset.filter(
             Q(created_by=user)
@@ -240,8 +209,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def _validate_record_access(self, records):
         for record in records:
-            deal = _get_deal_from_payment(getattr(record, "payment", None))
-            if not _user_has_deal_access(self.request.user, deal, allow_executor=False):
+            deal = get_deal_from_payment(getattr(record, "payment", None))
+            if not user_has_deal_access(self.request.user, deal, allow_executor=False):
                 raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
 
     def perform_update(self, serializer):
@@ -414,7 +383,7 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return queryset
 
         # Администраторы видят все платежи
-        is_admin = _is_admin_user(user)
+        is_admin = is_admin_user(user)
 
         if not is_admin:
             # Остальные видят только платежи для своих сделок (где user = seller или executor)
@@ -424,13 +393,13 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         deal = serializer.validated_data.get("deal")
-        if not _user_has_deal_access(self.request.user, deal):
+        if not user_has_deal_access(self.request.user, deal):
             raise PermissionDenied("Нет доступа к сделке.")
         serializer.save()
 
     def _can_modify(self, user, instance):
-        deal = _get_deal_from_payment(instance)
-        return _user_has_deal_access(user, deal)
+        deal = get_deal_from_payment(instance)
+        return user_has_deal_access(user, deal)
 
     def destroy(self, request, *args, **kwargs):
         """Удаление платежа запрещено, если он уже оплачен."""
@@ -454,7 +423,7 @@ class FinanceSummaryView(APIView):
         user = request.user
 
         # Если пользователь не аутентифицирован, показываем общую сводку
-        is_admin = _is_admin_user(user)
+        is_admin = is_admin_user(user)
 
         # Базовый queryset для финансовых записей
         records_queryset = FinancialRecord.objects.filter(deleted_at__isnull=True)

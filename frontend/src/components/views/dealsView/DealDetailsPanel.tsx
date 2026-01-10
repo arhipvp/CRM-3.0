@@ -32,6 +32,7 @@ import {
 
 import type { DealEvent } from './eventUtils';
 import { buildDealEvents, buildEventWindow } from './eventUtils';
+import { calculateNextContactForEvent, resolveSelectedDelayEvent } from './eventDelay';
 import { TasksTab } from './tabs/TasksTab';
 import { PoliciesTab } from './tabs/PoliciesTab';
 import { QuotesTab } from './tabs/QuotesTab';
@@ -627,23 +628,12 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const { upcomingEvents, pastEvents } = eventWindow;
 
-  const calculateNextContactForEvent = (event: DealEvent | null) => {
-    if (!event) {
-      return null;
-    }
-    const offsetDays = event.type === 'payment' ? 30 : 45;
-    const target = new Date(event.date);
-    target.setDate(target.getDate() - offsetDays);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const nextContactMs = Math.max(target.getTime(), today.getTime());
-    return new Date(nextContactMs).toISOString().split('T')[0];
-  };
-
   const selectedDelayEvent = useMemo(() => {
-    const preferredId =
-      selectedDelayEventId ?? eventWindow.nextEvent?.id ?? dealEvents[0]?.id ?? null;
-    return dealEvents.find((event) => event.id === preferredId) ?? null;
+    return resolveSelectedDelayEvent(
+      dealEvents,
+      selectedDelayEventId,
+      eventWindow.nextEvent?.id ?? null,
+    );
   }, [dealEvents, eventWindow.nextEvent?.id, selectedDelayEventId]);
 
   const selectedDelayEventNextContact = useMemo(
