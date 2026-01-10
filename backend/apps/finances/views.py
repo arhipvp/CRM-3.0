@@ -26,6 +26,7 @@ from .permissions import (
     parse_bool,
     user_has_deal_access,
 )
+from .record_filters import apply_financial_record_filters
 from .serializers import (
     FinancialRecordSerializer,
     PaymentSerializer,
@@ -106,20 +107,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
             )
 
-        record_type = self.request.query_params.get("record_type")
-        if record_type == Statement.TYPE_INCOME:
-            queryset = queryset.filter(amount__gt=0)
-        elif record_type == Statement.TYPE_EXPENSE:
-            queryset = queryset.filter(amount__lt=0)
-
-        if parse_bool(self.request.query_params.get("unpaid_only")):
-            queryset = queryset.filter(date__isnull=True)
-
-        if parse_bool(self.request.query_params.get("without_statement")):
-            queryset = queryset.filter(statement__isnull=True)
-
-        if parse_bool(self.request.query_params.get("paid_balance_not_zero")):
-            queryset = queryset.exclude(payment_paid_balance=0)
+        queryset = apply_financial_record_filters(queryset, self.request.query_params)
 
         search_term = (self.request.query_params.get("search") or "").strip()
         if len(search_term) >= 5:

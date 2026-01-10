@@ -1,6 +1,5 @@
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
-from apps.users.models import UserRole
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -10,6 +9,8 @@ from rest_framework.response import Response
 
 from .filters import DealFilterSet
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
+from .permissions import can_merge_deals, can_modify_deal, is_admin_user, is_deal_seller
+from .query_flags import parse_bool_flag
 from .search import build_search_query
 from .serializers import (
     DealSerializer,
@@ -24,19 +25,6 @@ from .view_mixins import (
     DealMergeMixin,
     DealRestoreMixin,
 )
-
-
-def _is_admin_user(user) -> bool:
-    if not user or not user.is_authenticated:
-        return False
-    if user.is_superuser:
-        return True
-    if not hasattr(user, "_cached_is_admin"):
-        user._cached_is_admin = UserRole.objects.filter(
-            user=user, role__name="Admin"
-        ).exists()
-    return user._cached_is_admin
-
 
 CLOSED_STATUSES = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
 
@@ -108,15 +96,11 @@ class DealViewSet(
 
     def _include_deleted_flag(self):
         raw_value = self.request.query_params.get("show_deleted")
-        if raw_value is None:
-            return False
-        return str(raw_value).lower() in ("1", "true", "yes", "on")
+        return parse_bool_flag(raw_value)
 
     def _include_closed_flag(self):
         raw_value = self.request.query_params.get("show_closed")
-        if raw_value is None:
-            return False
-        return str(raw_value).lower() in ("1", "true", "yes", "on")
+        return parse_bool_flag(raw_value)
 
     def get_queryset(self):
         """
@@ -146,7 +130,7 @@ class DealViewSet(
         if not user.is_authenticated:
             return queryset
 
-        is_admin = _is_admin_user(user)
+        is_admin = is_admin_user(user)
 
         if is_admin:
             return queryset
@@ -154,30 +138,10 @@ class DealViewSet(
         access_filter = Q(seller=user) | Q(executor=user) | Q(tasks__assignee=user)
         return queryset.filter(access_filter).distinct()
 
-    def _can_modify(self, user, instance):
-        if not user or not user.is_authenticated:
-            return False
-        if _is_admin_user(user):
-            return True
-        if not instance:
-            return False
-        owner_id = getattr(instance, "seller_id", None)
-        return owner_id == user.id
-
-    def _is_deal_seller(self, user, deal):
-        if not user or not user.is_authenticated or not deal:
-            return False
-        return deal.seller_id == getattr(user, "id", None)
-
-    def _can_merge(self, user, deal):
-        if not user or not user.is_authenticated:
-            return False
-        return _is_admin_user(user) or deal.seller_id == user.id
-
     def _reject_when_no_seller(self, user, deal):
         if not deal:
             return None
-        if deal.seller_id is None and not _is_admin_user(user):
+        if deal.seller_id is None and not is_admin_user(user):
             return Response(
                 {"detail": "У сделки нет продавца! Обратитесь к администратору."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -218,7 +182,7 @@ class DealViewSet(
         response = self._reject_when_no_seller(request.user, deal)
         if response:
             return response
-        if not self._is_deal_seller(request.user, deal):
+        if not is_deal_seller(request.user, deal):
             return Response(
                 {"detail": "Only the assigned seller can close this deal."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -263,7 +227,7 @@ class DealViewSet(
                 {"detail": "Only closed deals can be reopened."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not self._can_modify(request.user, deal):
+        if not can_modify_deal(request.user, deal):
             return Response(
                 {"detail": "Only administrators or the deal owner can reopen a deal."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -305,7 +269,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
         if self.action == "destroy":
             return queryset
 
-        is_admin = _is_admin_user(user)
+        is_admin = is_admin_user(user)
         if is_admin:
             return queryset
 
@@ -326,7 +290,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
         serializer.save(**defaults)
 
     def _can_delete(self, user, quote: Quote) -> bool:
-        if _is_admin_user(user):
+        if is_admin_user(user):
             return True
         if not user or not user.is_authenticated:
             return False

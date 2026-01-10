@@ -7,6 +7,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import AuditLog, Permission, Role, RolePermission, UserRole
+from .response_helpers import error_response, message_response
 from .serializers import (
     AuditLogSerializer,
     ChangePasswordSerializer,
@@ -48,33 +49,28 @@ class RoleViewSet(ModelViewSet):
         permission_id = request.data.get("permission_id")
 
         if not permission_id:
-            return Response(
-                {"error": "permission_id is required"},
-                status=status.HTTP_400_BAD_REQUEST,
+            return error_response(
+                "permission_id is required", status.HTTP_400_BAD_REQUEST
             )
 
         try:
             permission = Permission.objects.get(id=permission_id)
         except Permission.DoesNotExist:
-            return Response(
-                {"error": "Permission not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return error_response("Permission not found", status.HTTP_404_NOT_FOUND)
 
         role_perm, created = RolePermission.objects.get_or_create(
             role=role, permission=permission
         )
 
         if created:
-            return Response(
-                {"message": f"Permission {permission} added to role {role.name}"},
-                status=status.HTTP_201_CREATED,
+            return message_response(
+                f"Permission {permission} added to role {role.name}",
+                status.HTTP_201_CREATED,
             )
         else:
-            return Response(
-                {
-                    "message": f"Permission {permission} already exists in role {role.name}"
-                },
-                status=status.HTTP_200_OK,
+            return message_response(
+                f"Permission {permission} already exists in role {role.name}",
+                status.HTTP_200_OK,
             )
 
     @action(detail=True, methods=["post"])
@@ -84,9 +80,8 @@ class RoleViewSet(ModelViewSet):
         permission_id = request.data.get("permission_id")
 
         if not permission_id:
-            return Response(
-                {"error": "permission_id is required"},
-                status=status.HTTP_400_BAD_REQUEST,
+            return error_response(
+                "permission_id is required", status.HTTP_400_BAD_REQUEST
             )
 
         try:
@@ -94,14 +89,12 @@ class RoleViewSet(ModelViewSet):
                 role=role, permission_id=permission_id
             )
             role_perm.delete()
-            return Response(
-                {"message": "Permission removed from role"},
-                status=status.HTTP_204_NO_CONTENT,
+            return message_response(
+                "Permission removed from role", status.HTTP_204_NO_CONTENT
             )
         except RolePermission.DoesNotExist:
-            return Response(
-                {"error": "Permission not found in this role"},
-                status=status.HTTP_404_NOT_FOUND,
+            return error_response(
+                "Permission not found in this role", status.HTTP_404_NOT_FOUND
             )
 
     @action(detail=False, methods=["post"])
@@ -111,30 +104,26 @@ class RoleViewSet(ModelViewSet):
         role_id = request.data.get("role_id")
 
         if not user_id or not role_id:
-            return Response(
-                {"error": "user_id and role_id are required"},
-                status=status.HTTP_400_BAD_REQUEST,
+            return error_response(
+                "user_id and role_id are required", status.HTTP_400_BAD_REQUEST
             )
 
         try:
             user = User.objects.get(id=user_id)
             role = Role.objects.get(id=role_id)
         except (User.DoesNotExist, Role.DoesNotExist):
-            return Response(
-                {"error": "User or Role not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return error_response("User or Role not found", status.HTTP_404_NOT_FOUND)
 
         user_role, created = UserRole.objects.get_or_create(user=user, role=role)
 
         if created:
-            return Response(
-                {"message": f"Role {role.name} assigned to user {user.username}"},
-                status=status.HTTP_201_CREATED,
+            return message_response(
+                f"Role {role.name} assigned to user {user.username}",
+                status.HTTP_201_CREATED,
             )
         else:
-            return Response(
-                {"message": f"User already has role {role.name}"},
-                status=status.HTTP_200_OK,
+            return message_response(
+                f"User already has role {role.name}", status.HTTP_200_OK
             )
 
 
@@ -164,28 +153,23 @@ class UserViewSet(ModelViewSet):
         role_id = request.data.get("role_id")
 
         if not role_id:
-            return Response(
-                {"error": "role_id is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return error_response("role_id is required", status.HTTP_400_BAD_REQUEST)
 
         try:
             role = Role.objects.get(id=role_id)
         except Role.DoesNotExist:
-            return Response(
-                {"error": "Role not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return error_response("Role not found", status.HTTP_404_NOT_FOUND)
 
         user_role, created = UserRole.objects.get_or_create(user=user, role=role)
 
         if created:
-            return Response(
-                {"message": f"Role {role.name} added to user {user.username}"},
-                status=status.HTTP_201_CREATED,
+            return message_response(
+                f"Role {role.name} added to user {user.username}",
+                status.HTTP_201_CREATED,
             )
         else:
-            return Response(
-                {"message": f"User already has role {role.name}"},
-                status=status.HTTP_200_OK,
+            return message_response(
+                f"User already has role {role.name}", status.HTTP_200_OK
             )
 
     @action(detail=True, methods=["post"])
@@ -195,20 +179,17 @@ class UserViewSet(ModelViewSet):
         role_id = request.data.get("role_id")
 
         if not role_id:
-            return Response(
-                {"error": "role_id is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return error_response("role_id is required", status.HTTP_400_BAD_REQUEST)
 
         try:
             user_role = UserRole.objects.get(user=user, role_id=role_id)
             user_role.delete()
-            return Response(
-                {"message": "Role removed from user"}, status=status.HTTP_204_NO_CONTENT
+            return message_response(
+                "Role removed from user", status.HTTP_204_NO_CONTENT
             )
         except UserRole.DoesNotExist:
-            return Response(
-                {"error": "User does not have this role"},
-                status=status.HTTP_404_NOT_FOUND,
+            return error_response(
+                "User does not have this role", status.HTTP_404_NOT_FOUND
             )
 
     @action(detail=True, methods=["get"])
@@ -281,9 +262,8 @@ class AuditLogViewSet(ModelViewSet):
         object_id = request.query_params.get("object_id")
 
         if not object_type or not object_id:
-            return Response(
-                {"error": "object_type и object_id обязательны"},
-                status=status.HTTP_400_BAD_REQUEST,
+            return error_response(
+                "object_type и object_id обязательны", status.HTTP_400_BAD_REQUEST
             )
 
         queryset = self.get_queryset().filter(
@@ -304,16 +284,13 @@ class AuditLogViewSet(ModelViewSet):
         actor_id = request.query_params.get("actor_id")
 
         if not actor_id:
-            return Response(
-                {"error": "actor_id обязателен"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return error_response("actor_id обязателен", status.HTTP_400_BAD_REQUEST)
 
         try:
             actor_id_value = int(actor_id)
         except (TypeError, ValueError):
-            return Response(
-                {"error": "actor_id должен быть числом"},
-                status=status.HTTP_400_BAD_REQUEST,
+            return error_response(
+                "actor_id должен быть числом", status.HTTP_400_BAD_REQUEST
             )
 
         # Админы видят логи любого пользователя, остальные только свои
@@ -374,9 +351,7 @@ def refresh_token_view(request):
         access = str(refresh.access_token)
         return Response({"access": access})
     except Exception:
-        return Response(
-            {"error": "Invalid refresh token"}, status=status.HTTP_400_BAD_REQUEST
-        )
+        return error_response("Invalid refresh token", status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])
