@@ -36,7 +36,7 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   brand: overrides.brand ?? 'Brand',
   model: overrides.model ?? 'Model',
   vin: overrides.vin ?? 'VIN1',
-  status: overrides.status ?? 'open',
+  status: overrides.status ?? 'active',
   startDate: overrides.startDate ?? '2025-01-01',
   endDate: overrides.endDate ?? '2025-12-31',
   createdAt: overrides.createdAt ?? new Date().toISOString(),
