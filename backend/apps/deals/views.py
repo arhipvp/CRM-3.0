@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from .filters import DealFilterSet
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
-from .permissions import can_modify_deal, is_admin_user, is_deal_seller
+from .permissions import can_merge_deals, can_modify_deal, is_admin_user, is_deal_seller
 from .query_flags import parse_bool_flag
 from .search import build_search_query
 from .serializers import (
@@ -68,6 +68,9 @@ class DealViewSet(
     owner_field = "seller"
     pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
+
+    def _can_merge(self, user, deal) -> bool:
+        return can_merge_deals(user, deal)
 
     def _base_queryset(self, include_deleted=False):
         manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
