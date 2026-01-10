@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from .filters import DealFilterSet
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
-from .permissions import can_merge_deals, can_modify_deal, is_admin_user, is_deal_seller
+from .permissions import can_modify_deal, is_admin_user, is_deal_seller
 from .query_flags import parse_bool_flag
 from .search import build_search_query
 from .serializers import (

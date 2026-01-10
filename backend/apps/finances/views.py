@@ -20,12 +20,7 @@ from rest_framework.views import APIView
 
 from .filters import PaymentFilterSet
 from .models import FinancialRecord, Payment, Statement
-from .permissions import (
-    get_deal_from_payment,
-    is_admin_user,
-    parse_bool,
-    user_has_deal_access,
-)
+from .permissions import get_deal_from_payment, is_admin_user, user_has_deal_access
 from .record_filters import apply_financial_record_filters
 from .serializers import (
     FinancialRecordSerializer,
