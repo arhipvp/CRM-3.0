@@ -166,3 +166,21 @@ class PaymentSerializer(serializers.ModelSerializer):
     def get_can_delete(self, obj):
         """Проверка возможности удаления платежа"""
         return obj.can_delete()
+
+    def validate(self, attrs):
+        amount = attrs.get("amount") or getattr(self.instance, "amount", None)
+        scheduled_date = attrs.get("scheduled_date") or getattr(
+            self.instance, "scheduled_date", None
+        )
+        actual_date = attrs.get("actual_date") or getattr(
+            self.instance, "actual_date", None
+        )
+
+        errors = {}
+        if amount is not None and amount <= 0:
+            errors["amount"] = "Amount must be greater than zero."
+        if scheduled_date and actual_date and actual_date < scheduled_date:
+            errors["actual_date"] = "Actual date cannot be earlier than scheduled date."
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs

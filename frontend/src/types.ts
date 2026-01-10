@@ -1,6 +1,7 @@
 export type DealStatus = 'open' | 'won' | 'lost' | 'on_hold';
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'overdue' | 'canceled';
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type PolicyStatus = 'active' | 'inactive' | 'expired' | 'canceled';
 
 export type ActivityActionType =
   | 'created'
@@ -237,7 +238,7 @@ export interface Policy {
   salesChannelName?: string;
   startDate?: string | null;
   endDate?: string | null;
-  status: string;
+  status: PolicyStatus;
   paymentsPaid?: string;
   paymentsTotal?: string;
   createdAt: string;

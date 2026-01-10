@@ -77,6 +77,10 @@
 - Удаление ведомости отвязывает финансовые записи (`statement = null`).
 
 ## Ограничения данных
+- `Policy.end_date` не может быть раньше `start_date`.
+- `Policy.status = expired` требует заполненного `end_date`.
+- `Payment.amount` должен быть больше нуля.
+- `Payment.actual_date` не может быть раньше `scheduled_date`.
 - `Policy.number` уникален среди не удаленных записей (`policies_unique_active_number`).
 - `Payment` нельзя удалить, если `actual_date` заполнена (платеж оплачен).
 - `Document.file_size` заполняется автоматически при сохранении файла.

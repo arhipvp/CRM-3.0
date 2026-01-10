@@ -19,6 +19,7 @@
   Note,
   Payment,
   Policy,
+  PolicyStatus,
   Quote,
   SalesChannel,
   Statement,
@@ -38,6 +39,7 @@ import {
 const DEAL_STATUSES: DealStatus[] = ['open', 'won', 'lost', 'on_hold'];
 const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done', 'overdue', 'canceled'];
 const TASK_PRIORITIES: TaskPriority[] = ['low', 'normal', 'high', 'urgent'];
+const POLICY_STATUSES: PolicyStatus[] = ['active', 'inactive', 'expired', 'canceled'];
 const ACTIVITY_ACTION_TYPES: ActivityActionType[] = [
   'created',
   'status_changed',
@@ -79,6 +81,8 @@ const resolveTaskStatus = (value: unknown): TaskStatus =>
   resolveStringUnion(value, TASK_STATUSES, 'todo');
 const resolveTaskPriority = (value: unknown): TaskPriority =>
   resolveStringUnion(value, TASK_PRIORITIES, 'normal');
+const resolvePolicyStatus = (value: unknown): PolicyStatus =>
+  resolveStringUnion(value, POLICY_STATUSES, 'active');
 const resolveActivityActionType = (value: unknown): ActivityActionType =>
   resolveStringUnion(value, ACTIVITY_ACTION_TYPES, 'custom');
 const resolveFinancialRecordType = (value: unknown): FinancialRecordType | undefined =>
@@ -301,7 +305,7 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   salesChannelName: toOptionalString(raw.sales_channel_name ?? raw.sales_channel),
   startDate: raw.start_date === undefined ? undefined : toNullableString(raw.start_date),
   endDate: raw.end_date === undefined ? undefined : toNullableString(raw.end_date),
-  status: toStringValue(raw.status),
+  status: resolvePolicyStatus(raw.status),
   paymentsPaid: toStringValue(raw.payments_paid ?? raw.paymentsPaid ?? '0'),
   paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
   createdAt: toStringValue(raw.created_at),

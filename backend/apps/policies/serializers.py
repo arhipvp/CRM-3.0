@@ -112,3 +112,19 @@ class PolicySerializer(serializers.ModelSerializer):
                 f"Unsupported status '{value}'. Allowed: {', '.join(Policy.PolicyStatus.values)}."
             )
         return normalized
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date") or getattr(
+            self.instance, "start_date", None
+        )
+        end_date = attrs.get("end_date") or getattr(self.instance, "end_date", None)
+        status = attrs.get("status") or getattr(self.instance, "status", None)
+
+        errors = {}
+        if start_date and end_date and end_date < start_date:
+            errors["end_date"] = "End date cannot be earlier than start date."
+        if status == Policy.PolicyStatus.EXPIRED and not end_date:
+            errors["end_date"] = "End date is required for expired policies."
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs

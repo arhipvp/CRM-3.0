@@ -57,6 +57,7 @@ export interface InsuranceType {
 
 // Deal Status type
 export type DealStatus = 'open' | 'won' | 'lost' | 'on_hold';
+export type PolicyStatus = 'active' | 'inactive' | 'expired' | 'canceled';
 
 // Document type
 export interface Document {
@@ -119,7 +120,7 @@ export interface Policy {
   salesChannelName?: string;
   startDate?: string | null;
   endDate?: string | null;
-  status?: string;
+  status?: PolicyStatus;
   createdAt: string;
 }
 
