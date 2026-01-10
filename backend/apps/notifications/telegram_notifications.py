@@ -66,6 +66,17 @@ def _format_date(value) -> str:
     return value.strftime("%d.%m.%Y")
 
 
+def _format_deal_title(deal) -> str:
+    if not deal:
+        return ""
+    title = getattr(deal, "title", "")
+    client = getattr(deal, "client", None)
+    client_name = getattr(client, "name", "")
+    if client_name:
+        return f"{title} (клиент: {client_name})"
+    return title
+
+
 def send_notification(
     *,
     user,
@@ -126,7 +137,8 @@ def notify_task_created(task) -> None:
     if not assignee:
         return
     deal = getattr(task, "deal", None)
-    deal_part = f" (сделка: {deal.title})" if deal else ""
+    deal_title = _format_deal_title(deal)
+    deal_part = f" (сделка: {deal_title})" if deal_title else ""
     text = _append_link(
         f"Новая задача: {task.title}{deal_part}", getattr(deal, "id", None)
     )
@@ -170,8 +182,9 @@ def send_expected_close_reminders() -> None:
             if delta_days not in (settings_obj.remind_days or []):
                 continue
             formatted_date = _format_date(deal.expected_close)
+            deal_title = _format_deal_title(deal)
             text = _append_link(
-                f"Внимаение! Застраховать до {formatted_date}, сделка {deal.title}",
+                f"Внимаение! Застраховать до {formatted_date}, сделка {deal_title}",
                 deal.id,
             )
             send_notification(
@@ -207,7 +220,7 @@ def send_payment_due_reminders() -> None:
             text = _append_link(
                 (
                     f"Напоминание: до оплаты платежа {payment.amount} руб. "
-                    f"по сделке '{payment.deal.title}' осталось {delta_days} дн."
+                    f"по сделке '{_format_deal_title(payment.deal)}' осталось {delta_days} дн."
                 ),
                 payment.deal.id,
             )

@@ -101,10 +101,13 @@ def log_deal_change(sender, instance, created, **kwargs):
         if messages:
             from apps.notifications.telegram_notifications import notify_deal_event
 
+            client_name = getattr(getattr(instance, "client", None), "name", "")
+            client_part = f" (клиент: {client_name})" if client_name else ""
             notify_deal_event(
                 instance,
-                "Сделка '{title}': {changes}.".format(
+                "РЎРґРµР»РєР° '{title}'{client_part}: {changes}.".format(
                     title=instance.title,
+                    client_part=client_part,
                     changes="; ".join(messages),
                 ),
             )

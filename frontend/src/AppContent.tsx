@@ -39,8 +39,6 @@ import {
   createTask,
   updateTask,
   deleteTask,
-  getCurrentUser,
-  hasStoredTokens,
   clearTokens,
   APIError,
   fetchDeal,
@@ -61,6 +59,7 @@ import {
 import type { FilterParams } from './api';
 import { Client, Deal, FinancialRecord, Payment, Policy, Quote, Statement, User } from './types';
 import { useAppData } from './hooks/useAppData';
+import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
@@ -71,12 +70,7 @@ import type { FinancialRecordModalState, PaymentModalState } from './types';
 import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
 import { markQuoteAsDeleted } from './utils/quotes';
 import { parseNumericAmount } from './utils/parseNumericAmount';
-import {
-  formatAmountValue,
-  mapApiUser,
-  matchSalesChannel,
-  parseAmountValue,
-} from './utils/appContent';
+import { formatAmountValue, matchSalesChannel, parseAmountValue } from './utils/appContent';
 import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
 import {
   buildCommissionIncomeNote,
@@ -86,9 +80,6 @@ import {
 
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [modal, setModal] = useState<ModalType>(null);
   const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
   const [clientModalReturnTo, setClientModalReturnTo] = useState<ModalType | null>(null);
@@ -166,6 +157,14 @@ const AppContent: React.FC = () => {
     error,
     setError,
   } = useAppData();
+  const {
+    authLoading,
+    currentUser,
+    handleLoginSuccess,
+    isAuthenticated,
+    setCurrentUser,
+    setIsAuthenticated,
+  } = useAuthBootstrap(loadData);
   const {
     clients,
     deals,
@@ -431,42 +430,6 @@ const AppContent: React.FC = () => {
       setError(formatErrorMessage(err, 'Ошибка при поиске сделок'));
     });
   }, [debouncedDealFilters, refreshDealsWithSelection, isAuthenticated, setError]);
-
-  // Check authentication on app load
-  useEffect(() => {
-    if (!hasStoredTokens()) {
-      setAuthLoading(false);
-      return;
-    }
-
-    const checkAuth = async () => {
-      try {
-        console.log('Checking authentication...');
-        const userData = await getCurrentUser();
-        console.log('User data:', userData);
-        if (!userData?.is_authenticated) {
-          clearTokens();
-          setCurrentUser(null);
-          setIsAuthenticated(false);
-          return;
-        }
-        // Parse roles from the API response structure
-        const user = mapApiUser(userData);
-        console.log('Setting current user:', user);
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-        await loadData();
-      } catch (err) {
-        console.error('Auth error:', err);
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-      } finally {
-        setAuthLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [loadData]);
 
   const handleAddClient = useCallback(
     async (data: {
@@ -1859,17 +1822,7 @@ const AppContent: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return (
-      <LoginPage
-        onLoginSuccess={async () => {
-          const userData = await getCurrentUser();
-          const user = mapApiUser(userData);
-          setCurrentUser(user);
-          setIsAuthenticated(true);
-          await loadData();
-        }}
-      />
-    );
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
