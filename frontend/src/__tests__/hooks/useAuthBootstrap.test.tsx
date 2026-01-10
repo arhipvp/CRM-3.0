@@ -71,7 +71,11 @@ describe('useAuthBootstrap', () => {
 
   it('clears tokens when backend reports unauthenticated user', async () => {
     mockedHasStoredTokens.mockReturnValue(true);
-    mockedGetCurrentUser.mockResolvedValue({ is_authenticated: false } as const);
+    mockedGetCurrentUser.mockResolvedValue({
+      id: 0,
+      username: '',
+      is_authenticated: false,
+    } as const);
     const loadData = vi.fn().mockResolvedValue(undefined);
 
     render(<TestHarness loadData={loadData} />);

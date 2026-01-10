@@ -1811,7 +1811,7 @@ const AppContent: React.FC = () => {
       tasks: [],
       users: [],
     });
-  }, [resetPoliciesListState, resetPoliciesState, setAppData]);
+  }, [resetPoliciesListState, resetPoliciesState, setAppData, setCurrentUser, setIsAuthenticated]);
 
   if (authLoading || isLoading) {
     return (

@@ -28,7 +28,7 @@ export const useAuthBootstrap = (loadData: () => Promise<void>) => {
         setCurrentUser(user);
         setIsAuthenticated(true);
         await loadData();
-      } catch (err) {
+      } catch {
         setIsAuthenticated(false);
         setCurrentUser(null);
       } finally {
