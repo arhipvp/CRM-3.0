@@ -1,93 +1,93 @@
 # Domain invariants
 
-## Статусы/типы (фиксированные)
+## РЎС‚Р°С‚СѓСЃС‹/С‚РёРїС‹ (С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рµ)
 - `Task.status`: `todo`, `in_progress`, `done`, `overdue`, `canceled`.
 - `Task.priority`: `low`, `normal`, `high`, `urgent`.
 - `Document.status`: `draft`, `pending`, `completed`, `error`.
 - `Statement.statement_type`: `income`, `expense`.
 - `Statement.status`: `draft`, `paid`.
 
-## Статусы/типы (нефиксированные)
-- `Deal.status`: свободный текст, не нормализован.
-- `Policy.status`: свободный текст, не нормализован.
+## РЎС‚Р°С‚СѓСЃС‹/С‚РёРїС‹ (РЅРµС„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рµ)
+- `Deal.status`: СЃРІРѕР±РѕРґРЅС‹Р№ С‚РµРєСЃС‚, РЅРµ РЅРѕСЂРјР°Р»РёР·РѕРІР°РЅ.
+- `Policy.status`: СЃРІРѕР±РѕРґРЅС‹Р№ С‚РµРєСЃС‚, РЅРµ РЅРѕСЂРјР°Р»РёР·РѕРІР°РЅ.
 
 
-## Инвентаризация статусов и источников правды (backend/frontend)
+## РРЅРІРµРЅС‚Р°СЂРёР·Р°С†РёСЏ СЃС‚Р°С‚СѓСЃРѕРІ Рё РёСЃС‚РѕС‡РЅРёРєРѕРІ РїСЂР°РІРґС‹ (backend/frontend)
 - `Deal.status`
-  - Backend: `backend/apps/deals/models.py` (строка), default `open`.
-  - Backend поведение: `backend/apps/deals/views.py` закрытие/открытие допускает только `won`/`lost`, `reopen` возвращает `open`, `CLOSED_STATUSES = {"won", "lost"}`.
-  - Backend админ: `backend/apps/deals/admin.py` действия ставят `won`, `lost`, `on_hold`.
-  - Backend фильтры: `backend/apps/deals/filters.py` описывает `open`, `won`, `lost`, `on_hold`.
-  - Frontend типы: `frontend/src/types.ts` и `frontend/src/types/index.ts` — `DealStatus = 'open' | 'won' | 'lost' | 'on_hold'`.
-  - Frontend маппинг: `frontend/src/api/mappers.ts` валидирует значения и при неизвестном ставит `open`.
+  - Backend: `backend/apps/deals/models.py` (СЃС‚СЂРѕРєР°), default `open`.
+  - Backend РїРѕРІРµРґРµРЅРёРµ: `backend/apps/deals/views.py` Р·Р°РєСЂС‹С‚РёРµ/РѕС‚РєСЂС‹С‚РёРµ РґРѕРїСѓСЃРєР°РµС‚ С‚РѕР»СЊРєРѕ `won`/`lost`, `reopen` РІРѕР·РІСЂР°С‰Р°РµС‚ `open`, `CLOSED_STATUSES = {"won", "lost"}`.
+  - Backend Р°РґРјРёРЅ: `backend/apps/deals/admin.py` РґРµР№СЃС‚РІРёСЏ СЃС‚Р°РІСЏС‚ `won`, `lost`, `on_hold`.
+  - Backend С„РёР»СЊС‚СЂС‹: `backend/apps/deals/filters.py` РѕРїРёСЃС‹РІР°РµС‚ `open`, `won`, `lost`, `on_hold`.
+  - Frontend С‚РёРїС‹: `frontend/src/types.ts` Рё `frontend/src/types/index.ts` вЂ” `DealStatus = 'open' | 'won' | 'lost' | 'on_hold'`.
+  - Frontend РјР°РїРїРёРЅРі: `frontend/src/api/mappers.ts` РІР°Р»РёРґРёСЂСѓРµС‚ Р·РЅР°С‡РµРЅРёСЏ Рё РїСЂРё РЅРµРёР·РІРµСЃС‚РЅРѕРј СЃС‚Р°РІРёС‚ `open`.
 - `Deal.stage_name`
-  - Backend: строка без enum в `backend/apps/deals/models.py`.
-  - Frontend: строка в `frontend/src/types.ts`/`frontend/src/types/index.ts`.
-  - Нет центрального списка стадий, используется как произвольный текст.
+  - Backend: СЃС‚СЂРѕРєР° Р±РµР· enum РІ `backend/apps/deals/models.py`.
+  - Frontend: СЃС‚СЂРѕРєР° РІ `frontend/src/types.ts`/`frontend/src/types/index.ts`.
+  - РќРµС‚ С†РµРЅС‚СЂР°Р»СЊРЅРѕРіРѕ СЃРїРёСЃРєР° СЃС‚Р°РґРёР№, РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РєР°Рє РїСЂРѕРёР·РІРѕР»СЊРЅС‹Р№ С‚РµРєСЃС‚.
 - `Policy.status`
-  - Backend: `backend/apps/policies/models.py` (строка), default `active`.
-  - Backend админ: `backend/apps/policies/admin.py` использует `active`/`inactive` действия; бейдж вычисляет активность по датам, не по `status`.
-  - Backend фильтры: `backend/apps/policies/filters.py` упоминает `active`, `expired`, `cancelled` (описание), но без enum.
-  - Frontend типы: `frontend/src/types.ts` — `status: string`; `frontend/src/types/index.ts` — `status?: string`.
-  - Frontend маппинг: `frontend/src/api/mappers.ts` пропускает строку как есть (без нормализации).
+  - Backend: `backend/apps/policies/models.py` (СЃС‚СЂРѕРєР°), default `active`.
+  - Backend Р°РґРјРёРЅ: `backend/apps/policies/admin.py` РёСЃРїРѕР»СЊР·СѓРµС‚ `active`/`inactive` РґРµР№СЃС‚РІРёСЏ; Р±РµР№РґР¶ РІС‹С‡РёСЃР»СЏРµС‚ Р°РєС‚РёРІРЅРѕСЃС‚СЊ РїРѕ РґР°С‚Р°Рј, РЅРµ РїРѕ `status`.
+  - Backend С„РёР»СЊС‚СЂС‹: `backend/apps/policies/filters.py` СѓРїРѕРјРёРЅР°РµС‚ `active`, `expired`, `cancelled` (РѕРїРёСЃР°РЅРёРµ), РЅРѕ Р±РµР· enum.
+  - Frontend С‚РёРїС‹: `frontend/src/types.ts` вЂ” `status: string`; `frontend/src/types/index.ts` вЂ” `status?: string`.
+  - Frontend РјР°РїРїРёРЅРі: `frontend/src/api/mappers.ts` РїСЂРѕРїСѓСЃРєР°РµС‚ СЃС‚СЂРѕРєСѓ РєР°Рє РµСЃС‚СЊ (Р±РµР· РЅРѕСЂРјР°Р»РёР·Р°С†РёРё).
 - `Task.status`
-  - Backend: enum `TaskStatus` в `backend/apps/tasks/models.py` (`todo`, `in_progress`, `done`, `overdue`, `canceled`).
-  - Frontend типы: `frontend/src/types.ts` — `TaskStatus` с тем же набором.
-  - Frontend маппинг: `frontend/src/api/mappers.ts` валидирует набор и по умолчанию ставит `todo`.
+  - Backend: enum `TaskStatus` РІ `backend/apps/tasks/models.py` (`todo`, `in_progress`, `done`, `overdue`, `canceled`).
+  - Frontend С‚РёРїС‹: `frontend/src/types.ts` вЂ” `TaskStatus` СЃ С‚РµРј Р¶Рµ РЅР°Р±РѕСЂРѕРј.
+  - Frontend РјР°РїРїРёРЅРі: `frontend/src/api/mappers.ts` РІР°Р»РёРґРёСЂСѓРµС‚ РЅР°Р±РѕСЂ Рё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ СЃС‚Р°РІРёС‚ `todo`.
 - `Document.status`
-  - Backend: enum `DocumentStatus` в `backend/apps/documents/models.py` (`draft`, `pending`, `completed`, `error`).
-  - Frontend: отдельного типа нет, статус в UI напрямую не используется.
+  - Backend: enum `DocumentStatus` РІ `backend/apps/documents/models.py` (`draft`, `pending`, `completed`, `error`).
+  - Frontend: РѕС‚РґРµР»СЊРЅРѕРіРѕ С‚РёРїР° РЅРµС‚, СЃС‚Р°С‚СѓСЃ РІ UI РЅР°РїСЂСЏРјСѓСЋ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ.
 - `Statement.status` / `Statement.statement_type`
-  - Backend: enum-like choices в `backend/apps/finances/models.py` (`draft`/`paid`, `income`/`expense`).
-  - Frontend типы: `frontend/src/types.ts` (`StatementStatus`, `StatementType`).
-  - Frontend маппинг: `frontend/src/api/mappers.ts` приводит к строке и кастит к типам (без валидации).
-- `PolicyRecognitionResult.status` (распознавание полисов)
-  - Backend: `backend/apps/policies/views.py` возвращает `parsed` или `error`.
-  - Frontend типы: `frontend/src/types.ts` допускает `parsed`, `error`, `exists`.
-  - Gap: `exists` в backend не встречается.
+  - Backend: enum-like choices РІ `backend/apps/finances/models.py` (`draft`/`paid`, `income`/`expense`).
+  - Frontend С‚РёРїС‹: `frontend/src/types.ts` (`StatementStatus`, `StatementType`).
+  - Frontend РјР°РїРїРёРЅРі: `frontend/src/api/mappers.ts` РїСЂРёРІРѕРґРёС‚ Рє СЃС‚СЂРѕРєРµ Рё РєР°СЃС‚РёС‚ Рє С‚РёРїР°Рј (Р±РµР· РІР°Р»РёРґР°С†РёРё).
+- `PolicyRecognitionResult.status` (СЂР°СЃРїРѕР·РЅР°РІР°РЅРёРµ РїРѕР»РёСЃРѕРІ)
+  - Backend: `backend/apps/policies/views.py` РІРѕР·РІСЂР°С‰Р°РµС‚ `parsed` РёР»Рё `error`.
+  - Frontend С‚РёРїС‹: `frontend/src/types.ts` РґРѕРїСѓСЃРєР°РµС‚ `parsed`, `error`, `exists`.
+  - Gap: `exists` РІ backend РЅРµ РІСЃС‚СЂРµС‡Р°РµС‚СЃСЏ.
 
 
 
-## Контракт статусов (target)
+## РљРѕРЅС‚СЂР°РєС‚ СЃС‚Р°С‚СѓСЃРѕРІ (target)
 - `Deal.status`:
-  - `open` — активная сделка.
-  - `on_hold` — приостановлена, но не закрыта.
-  - `won` — закрыта успешно.
-  - `lost` — закрыта с проигрышем.
-  - Закрытые статусы: `won`, `lost`.
-  - Переходы: `open` <-> `on_hold`, `open|on_hold` -> `won|lost`, `won|lost` -> `open` (reopen).
+  - `open` вЂ” Р°РєС‚РёРІРЅР°СЏ СЃРґРµР»РєР°.
+  - `on_hold` вЂ” РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅР°, РЅРѕ РЅРµ Р·Р°РєСЂС‹С‚Р°.
+  - `won` вЂ” Р·Р°РєСЂС‹С‚Р° СѓСЃРїРµС€РЅРѕ.
+  - `lost` вЂ” Р·Р°РєСЂС‹С‚Р° СЃ РїСЂРѕРёРіСЂС‹С€РµРј.
+  - Р—Р°РєСЂС‹С‚С‹Рµ СЃС‚Р°С‚СѓСЃС‹: `won`, `lost`.
+  - РџРµСЂРµС…РѕРґС‹: `open` <-> `on_hold`, `open|on_hold` -> `won|lost`, `won|lost` -> `open` (reopen).
 - `Policy.status`:
-  - `active` — действует.
-  - `inactive` — временно не активен (ручной статус).
-  - `expired` — срок действия истек (может вычисляться по `end_date`).
-  - `canceled` — отменен (ручной статус).
-  - Если `end_date` < today, UI может отображать `expired` независимо от значения поля.
+  - `active` вЂ” РґРµР№СЃС‚РІСѓРµС‚.
+  - `inactive` вЂ” РІСЂРµРјРµРЅРЅРѕ РЅРµ Р°РєС‚РёРІРµРЅ (СЂСѓС‡РЅРѕР№ СЃС‚Р°С‚СѓСЃ).
+  - `expired` вЂ” СЃСЂРѕРє РґРµР№СЃС‚РІРёСЏ РёСЃС‚РµРє (РјРѕР¶РµС‚ РІС‹С‡РёСЃР»СЏС‚СЊСЃСЏ РїРѕ `end_date`).
+  - `canceled` вЂ” РѕС‚РјРµРЅРµРЅ (СЂСѓС‡РЅРѕР№ СЃС‚Р°С‚СѓСЃ).
+  - Р•СЃР»Рё `end_date` < today, UI РјРѕР¶РµС‚ РѕС‚РѕР±СЂР°Р¶Р°С‚СЊ `expired` РЅРµР·Р°РІРёСЃРёРјРѕ РѕС‚ Р·РЅР°С‡РµРЅРёСЏ РїРѕР»СЏ.
 
-## План миграции статусов (Deal/Policy)
-1. Зафиксировать финальные названия enum (например, `canceled` vs `cancelled`) и описания.
-2. Backend: добавить TextChoices/валидацию в моделях и сериализаторах; на запись принимать legacy значения и маппить в новый enum.
-3. Backend: написать миграцию данных — нормализовать значения (`open`, `on_hold`, `won`, `lost`, `active`, `inactive`, `expired`, `canceled`) с учетом регистра и синонимов.
-4. Frontend: обновить типы/мапперы, добавить fallback для неизвестных значений на время миграции.
-5. После 1-2 релизов: удалить поддержку legacy-значений и упростить маппинг.
+## РџР»Р°РЅ РјРёРіСЂР°С†РёРё СЃС‚Р°С‚СѓСЃРѕРІ (Deal/Policy)
+1. Р—Р°С„РёРєСЃРёСЂРѕРІР°С‚СЊ С„РёРЅР°Р»СЊРЅС‹Рµ РЅР°Р·РІР°РЅРёСЏ enum (РЅР°РїСЂРёРјРµСЂ, `canceled` vs `cancelled`) Рё РѕРїРёСЃР°РЅРёСЏ.
+2. Backend: РґРѕР±Р°РІРёС‚СЊ TextChoices/РІР°Р»РёРґР°С†РёСЋ РІ РјРѕРґРµР»СЏС… Рё СЃРµСЂРёР°Р»РёР·Р°С‚РѕСЂР°С…; РЅР° Р·Р°РїРёСЃСЊ РїСЂРёРЅРёРјР°С‚СЊ legacy Р·РЅР°С‡РµРЅРёСЏ Рё РјР°РїРїРёС‚СЊ РІ РЅРѕРІС‹Р№ enum.
+3. Backend: РЅР°РїРёСЃР°С‚СЊ РјРёРіСЂР°С†РёСЋ РґР°РЅРЅС‹С… вЂ” РЅРѕСЂРјР°Р»РёР·РѕРІР°С‚СЊ Р·РЅР°С‡РµРЅРёСЏ (`open`, `on_hold`, `won`, `lost`, `active`, `inactive`, `expired`, `canceled`) СЃ СѓС‡РµС‚РѕРј СЂРµРіРёСЃС‚СЂР° Рё СЃРёРЅРѕРЅРёРјРѕРІ.
+4. Frontend: РѕР±РЅРѕРІРёС‚СЊ С‚РёРїС‹/РјР°РїРїРµСЂС‹, РґРѕР±Р°РІРёС‚СЊ fallback РґР»СЏ РЅРµРёР·РІРµСЃС‚РЅС‹С… Р·РЅР°С‡РµРЅРёР№ РЅР° РІСЂРµРјСЏ РјРёРіСЂР°С†РёРё.
+5. РџРѕСЃР»Рµ 1-2 СЂРµР»РёР·РѕРІ: СѓРґР°Р»РёС‚СЊ РїРѕРґРґРµСЂР¶РєСѓ legacy-Р·РЅР°С‡РµРЅРёР№ Рё СѓРїСЂРѕСЃС‚РёС‚СЊ РјР°РїРїРёРЅРі.
 
-## Связи и каскады
-- Удаление сделки удаляет связанные полисы, платежи, задачи (мягкое удаление через `SoftDeleteModel`).
-- Удаление полиса удаляет связанные платежи (мягкое удаление).
-- Удаление платежа удаляет связанные финансовые записи.
-- Удаление ведомости отвязывает финансовые записи (`statement = null`).
+## РЎРІСЏР·Рё Рё РєР°СЃРєР°РґС‹
+- РЈРґР°Р»РµРЅРёРµ СЃРґРµР»РєРё СѓРґР°Р»СЏРµС‚ СЃРІСЏР·Р°РЅРЅС‹Рµ РїРѕР»РёСЃС‹, РїР»Р°С‚РµР¶Рё, Р·Р°РґР°С‡Рё (РјСЏРіРєРѕРµ СѓРґР°Р»РµРЅРёРµ С‡РµСЂРµР· `SoftDeleteModel`).
+- РЈРґР°Р»РµРЅРёРµ РїРѕР»РёСЃР° СѓРґР°Р»СЏРµС‚ СЃРІСЏР·Р°РЅРЅС‹Рµ РїР»Р°С‚РµР¶Рё (РјСЏРіРєРѕРµ СѓРґР°Р»РµРЅРёРµ).
+- РЈРґР°Р»РµРЅРёРµ РїР»Р°С‚РµР¶Р° СѓРґР°Р»СЏРµС‚ СЃРІСЏР·Р°РЅРЅС‹Рµ С„РёРЅР°РЅСЃРѕРІС‹Рµ Р·Р°РїРёСЃРё.
+- РЈРґР°Р»РµРЅРёРµ РІРµРґРѕРјРѕСЃС‚Рё РѕС‚РІСЏР·С‹РІР°РµС‚ С„РёРЅР°РЅСЃРѕРІС‹Рµ Р·Р°РїРёСЃРё (`statement = null`).
 
-## Ограничения данных
-- `Policy.end_date` не может быть раньше `start_date`.
-- `Policy.status = expired` требует заполненного `end_date`.
-- `Payment.amount` должен быть больше нуля.
-- `Payment.actual_date` не может быть раньше `scheduled_date`.
-- `Policy.number` уникален среди не удаленных записей (`policies_unique_active_number`).
-- `Payment` нельзя удалить, если `actual_date` заполнена (платеж оплачен).
-- `Document.file_size` заполняется автоматически при сохранении файла.
-- `NotificationDelivery` уникален по (`user`, `event_type`, `object_type`, `object_id`, `trigger_date`).
+## РћРіСЂР°РЅРёС‡РµРЅРёСЏ РґР°РЅРЅС‹С…
+- `Policy.end_date` РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ СЂР°РЅСЊС€Рµ `start_date`.
+- `Policy.status = expired` С‚СЂРµР±СѓРµС‚ Р·Р°РїРѕР»РЅРµРЅРЅРѕРіРѕ `end_date`.
+- `Payment.amount` РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ РЅСѓР»СЏ.
+- `Payment.actual_date` РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ СЂР°РЅСЊС€Рµ `scheduled_date`.
+- `Policy.number` СѓРЅРёРєР°Р»РµРЅ СЃСЂРµРґРё РЅРµ СѓРґР°Р»РµРЅРЅС‹С… Р·Р°РїРёСЃРµР№ (`policies_unique_active_number`).
+- `Payment` РЅРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ, РµСЃР»Рё `actual_date` Р·Р°РїРѕР»РЅРµРЅР° (РїР»Р°С‚РµР¶ РѕРїР»Р°С‡РµРЅ).
+- `Document.file_size` Р·Р°РїРѕР»РЅСЏРµС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РїСЂРё СЃРѕС…СЂР°РЅРµРЅРёРё С„Р°Р№Р»Р°.
+- `NotificationDelivery` СѓРЅРёРєР°Р»РµРЅ РїРѕ (`user`, `event_type`, `object_type`, `object_id`, `trigger_date`).
 
-## Автозаполнение и согласование
-- `Policy.save()` подтягивает `client` и `insured_client` из `Deal`, если не заданы.
+## РђРІС‚РѕР·Р°РїРѕР»РЅРµРЅРёРµ Рё СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ
+- `Policy.save()` РїРѕРґС‚СЏРіРёРІР°РµС‚ `client` Рё `insured_client` РёР· `Deal`, РµСЃР»Рё РЅРµ Р·Р°РґР°РЅС‹.
 
-## Замечания
-- Нет централизованного источника правды для статусов сделок/полисов между backend и frontend.
+## Р—Р°РјРµС‡Р°РЅРёСЏ
+- РќРµС‚ С†РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅРѕРіРѕ РёСЃС‚РѕС‡РЅРёРєР° РїСЂР°РІРґС‹ РґР»СЏ СЃС‚Р°С‚СѓСЃРѕРІ СЃРґРµР»РѕРє/РїРѕР»РёСЃРѕРІ РјРµР¶РґСѓ backend Рё frontend.

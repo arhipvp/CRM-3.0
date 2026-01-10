@@ -1,6 +1,4 @@
 import logging
-from datetime import date, timedelta
-from decimal import Decimal
 from typing import List, Optional
 
 from apps.common.drive import (
@@ -20,7 +18,6 @@ from apps.users.models import UserRole
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -34,6 +31,7 @@ from .ai_service import (
     extract_text_from_bytes,
     recognize_policy_from_text,
 )
+from .dashboard import format_amount, get_month_bounds, parse_date_value
 from .filters import PolicyFilterSet
 from .models import Policy
 from .serializers import PolicySerializer
@@ -363,34 +361,12 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 class SellerDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @staticmethod
-    def _get_month_bounds(target_date: date) -> tuple[date, date]:
-        month_start = target_date.replace(day=1)
-        if month_start.month == 12:
-            next_month = date(month_start.year + 1, 1, 1)
-        else:
-            next_month = date(month_start.year, month_start.month + 1, 1)
-        month_end = next_month - timedelta(days=1)
-        return month_start, month_end
-
-    @staticmethod
-    def _format_amount(value: Decimal | int | None) -> str:
-        if value is None:
-            return "0.00"
-        return format(Decimal(value).quantize(Decimal("0.01")), "f")
-
-    @staticmethod
-    def _parse_date(value: str | None) -> date | None:
-        if not value:
-            return None
-        return parse_date(value)
-
     def get(self, request):
         user = request.user
         start_param = request.query_params.get("start_date")
         end_param = request.query_params.get("end_date")
-        start_date = self._parse_date(start_param)
-        end_date = self._parse_date(end_param)
+        start_date = parse_date_value(start_param)
+        end_date = parse_date_value(end_param)
 
         if (start_param and not start_date) or (end_param and not end_date):
             return Response(
@@ -412,7 +388,7 @@ class SellerDashboardView(APIView):
 
         if not start_date and not end_date:
             today = timezone.localdate()
-            start_date, end_date = self._get_month_bounds(today)
+            start_date, end_date = get_month_bounds(today)
 
         decimal_field = DecimalField(max_digits=12, decimal_places=2)
         queryset = (
@@ -441,7 +417,7 @@ class SellerDashboardView(APIView):
             .order_by("-start_date", "-created_at")
         )
 
-        total_paid = self._format_amount(
+        total_paid = format_amount(
             queryset.aggregate(
                 total=Coalesce(
                     Sum(
@@ -473,7 +449,7 @@ class SellerDashboardView(APIView):
                         policy.insured_client.name if policy.insured_client else None
                     ),
                     "start_date": policy.start_date,
-                    "paid_amount": self._format_amount(policy.paid_amount),
+                    "paid_amount": format_amount(policy.paid_amount),
                 }
             )
 
@@ -510,7 +486,7 @@ class SellerDashboardView(APIView):
         payments_series = [
             {
                 "date": item["actual_date"],
-                "total": self._format_amount(item["total"]),
+                "total": format_amount(item["total"]),
             }
             for item in payments_by_day
         ]

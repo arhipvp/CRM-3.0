@@ -2,38 +2,38 @@
 
 ## Backend: module map
 - `backend/config/`: Django settings, URLs, ASGI/WSGI, admin customization, DRF router.
-- `backend/apps/common/`: base модели (SoftDelete), общие сервисы/permissions/pagination/drive helpers.
-- `backend/apps/users/`: роли, права, аудит, auth endpoints.
-- `backend/apps/clients/`: клиенты + фильтры/сервисы/импорт.
-- `backend/apps/deals/`: сделки, расчеты (quotes), справочники страховых/типов/каналов, view_mixins.
-- `backend/apps/tasks/`: задачи и статусы, фильтры/сигналы.
-- `backend/apps/documents/`: документы, распознавание, Open Notebook, knowledge endpoints.
-- `backend/apps/notifications/`: уведомления, настройки, Telegram интеграция.
-- `backend/apps/finances/`: платежи, финзаписи, ведомости.
-- `backend/apps/notes/`: заметки по сделке.
-- `backend/apps/chat/`: сообщения чата по сделке.
-- `backend/apps/policies/`: полисы.
+- `backend/apps/common/`: base РјРѕРґРµР»Рё (SoftDelete), РѕР±С‰РёРµ СЃРµСЂРІРёСЃС‹/permissions/pagination/drive helpers.
+- `backend/apps/users/`: СЂРѕР»Рё, РїСЂР°РІР°, Р°СѓРґРёС‚, auth endpoints.
+- `backend/apps/clients/`: РєР»РёРµРЅС‚С‹ + С„РёР»СЊС‚СЂС‹/СЃРµСЂРІРёСЃС‹/РёРјРїРѕСЂС‚.
+- `backend/apps/deals/`: СЃРґРµР»РєРё, СЂР°СЃС‡РµС‚С‹ (quotes), СЃРїСЂР°РІРѕС‡РЅРёРєРё СЃС‚СЂР°С…РѕРІС‹С…/С‚РёРїРѕРІ/РєР°РЅР°Р»РѕРІ, view_mixins.
+- `backend/apps/tasks/`: Р·Р°РґР°С‡Рё Рё СЃС‚Р°С‚СѓСЃС‹, С„РёР»СЊС‚СЂС‹/СЃРёРіРЅР°Р»С‹.
+- `backend/apps/documents/`: РґРѕРєСѓРјРµРЅС‚С‹, СЂР°СЃРїРѕР·РЅР°РІР°РЅРёРµ, Open Notebook, knowledge endpoints.
+- `backend/apps/notifications/`: СѓРІРµРґРѕРјР»РµРЅРёСЏ, РЅР°СЃС‚СЂРѕР№РєРё, Telegram РёРЅС‚РµРіСЂР°С†РёСЏ.
+- `backend/apps/finances/`: РїР»Р°С‚РµР¶Рё, С„РёРЅР·Р°РїРёСЃРё, РІРµРґРѕРјРѕСЃС‚Рё.
+- `backend/apps/notes/`: Р·Р°РјРµС‚РєРё РїРѕ СЃРґРµР»РєРµ.
+- `backend/apps/chat/`: СЃРѕРѕР±С‰РµРЅРёСЏ С‡Р°С‚Р° РїРѕ СЃРґРµР»РєРµ.
+- `backend/apps/policies/`: РїРѕР»РёСЃС‹.
 
-## Backend: входные точки
+## Backend: РІС…РѕРґРЅС‹Рµ С‚РѕС‡РєРё
 - `backend/config/urls.py`: health + auth + knowledge + notifications + finance summary + seller dashboard + router.
-- `backend/config/api_router.py`: DRF viewsets для основных сущностей.
+- `backend/config/api_router.py`: DRF viewsets РґР»СЏ РѕСЃРЅРѕРІРЅС‹С… СЃСѓС‰РЅРѕСЃС‚РµР№.
 
 ## Frontend: module map
-- `frontend/src/App.tsx`, `frontend/src/AppContent.tsx`: корневой UI, auth, состояние, модалки.
-- `frontend/src/components/app/`: маршруты и модалки.
-- `frontend/src/components/views/`: страницы (Deals, Clients, Policies, Commissions, Tasks, Knowledge, Settings, SellerDashboard).
-- `frontend/src/components/views/dealsView/`: крупный подпакет (панели, табы, хуки).
-- `frontend/src/components/forms/`: формы (клиент, сделка, расчет, полис, платеж, задача, финзапись).
-- `frontend/src/api/`: API-клиент и мапперы.
-- `frontend/src/hooks/`: хранилище/фильтры/состояния UI.
-- `frontend/src/utils/`: бизнес-утилиты (полисы, задачи, финансы и т.д.).
-- `frontend/src/contexts/`: уведомления.
+- `frontend/src/App.tsx`, `frontend/src/AppContent.tsx`: РєРѕСЂРЅРµРІРѕР№ UI, auth, СЃРѕСЃС‚РѕСЏРЅРёРµ, РјРѕРґР°Р»РєРё.
+- `frontend/src/components/app/`: РјР°СЂС€СЂСѓС‚С‹ Рё РјРѕРґР°Р»РєРё.
+- `frontend/src/components/views/`: СЃС‚СЂР°РЅРёС†С‹ (Deals, Clients, Policies, Commissions, Tasks, Knowledge, Settings, SellerDashboard).
+- `frontend/src/components/views/dealsView/`: РєСЂСѓРїРЅС‹Р№ РїРѕРґРїР°РєРµС‚ (РїР°РЅРµР»Рё, С‚Р°Р±С‹, С…СѓРєРё).
+- `frontend/src/components/forms/`: С„РѕСЂРјС‹ (РєР»РёРµРЅС‚, СЃРґРµР»РєР°, СЂР°СЃС‡РµС‚, РїРѕР»РёСЃ, РїР»Р°С‚РµР¶, Р·Р°РґР°С‡Р°, С„РёРЅР·Р°РїРёСЃСЊ).
+- `frontend/src/api/`: API-РєР»РёРµРЅС‚ Рё РјР°РїРїРµСЂС‹.
+- `frontend/src/hooks/`: С…СЂР°РЅРёР»РёС‰Рµ/С„РёР»СЊС‚СЂС‹/СЃРѕСЃС‚РѕСЏРЅРёСЏ UI.
+- `frontend/src/utils/`: Р±РёР·РЅРµСЃ-СѓС‚РёР»РёС‚С‹ (РїРѕР»РёСЃС‹, Р·Р°РґР°С‡Рё, С„РёРЅР°РЅСЃС‹ Рё С‚.Рґ.).
+- `frontend/src/contexts/`: СѓРІРµРґРѕРјР»РµРЅРёСЏ.
 
-## Frontend: входные точки
-- `frontend/src/main.tsx`: точка входа приложения.
-- `frontend/src/components/app/AppRoutes.tsx`: маршруты UI.
+## Frontend: РІС…РѕРґРЅС‹Рµ С‚РѕС‡РєРё
+- `frontend/src/main.tsx`: С‚РѕС‡РєР° РІС…РѕРґР° РїСЂРёР»РѕР¶РµРЅРёСЏ.
+- `frontend/src/components/app/AppRoutes.tsx`: РјР°СЂС€СЂСѓС‚С‹ UI.
 
-## Где живет бизнес-логика (as-is)
-- Backend: частично в моделях (save/delete), частично в views/serializers/services, а также в signals и утилитах common.
-- Frontend: в `AppContent` (оркестрация), `views/*` и утилитах `utils/*`.
-- Выраженных слоев домена/приложения нет; логика распределена по слоям транспорта.
+## Р“РґРµ Р¶РёРІРµС‚ Р±РёР·РЅРµСЃ-Р»РѕРіРёРєР° (as-is)
+- Backend: С‡Р°СЃС‚РёС‡РЅРѕ РІ РјРѕРґРµР»СЏС… (save/delete), С‡Р°СЃС‚РёС‡РЅРѕ РІ views/serializers/services, Р° С‚Р°РєР¶Рµ РІ signals Рё СѓС‚РёР»РёС‚Р°С… common.
+- Frontend: РІ `AppContent` (РѕСЂРєРµСЃС‚СЂР°С†РёСЏ), `views/*` Рё СѓС‚РёР»РёС‚Р°С… `utils/*`.
+- Р’С‹СЂР°Р¶РµРЅРЅС‹С… СЃР»РѕРµРІ РґРѕРјРµРЅР°/РїСЂРёР»РѕР¶РµРЅРёСЏ РЅРµС‚; Р»РѕРіРёРєР° СЂР°СЃРїСЂРµРґРµР»РµРЅР° РїРѕ СЃР»РѕСЏРј С‚СЂР°РЅСЃРїРѕСЂС‚Р°.
