@@ -19,10 +19,12 @@ from .serializers import (
     QuoteSerializer,
     SalesChannelSerializer,
 )
-from .view_mixins.drive import DealDriveMixin
-from .view_mixins.history import DealHistoryMixin
-from .view_mixins.merge import DealMergeMixin
-from .view_mixins.restore import DealRestoreMixin
+from .view_mixins import (
+    DealDriveMixin,
+    DealHistoryMixin,
+    DealMergeMixin,
+    DealRestoreMixin,
+)
 
 
 def _is_admin_user(user) -> bool:

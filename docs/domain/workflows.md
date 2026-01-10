@@ -55,3 +55,14 @@
 1. UI: login.
 2. API: `POST /api/v1/auth/login/` -> JWT.
 3. Обновление токена: `POST /api/v1/auth/refresh/`.
+
+## 11) Закрытие сделки
+1. UI: карточка сделки -> закрыть (выбор `won`/`lost`, указать причину).
+2. API: `POST /api/v1/deals/<id>/close/`.
+3. Backend: валидация статуса (`won`/`lost`) и сохранение `closing_reason`.
+
+## 12) Изменение статуса полиса
+1. UI: список полисов / карточка -> изменить статус (active/inactive/canceled).
+2. API: `PATCH /api/v1/policies/<id>/`.
+3. Backend: валидация статуса и сохранение значения.
+

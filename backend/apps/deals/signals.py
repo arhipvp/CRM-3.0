@@ -105,7 +105,7 @@ def log_deal_change(sender, instance, created, **kwargs):
             client_part = f" (клиент: {client_name})" if client_name else ""
             notify_deal_event(
                 instance,
-                "РЎРґРµР»РєР° '{title}'{client_part}: {changes}.".format(
+                "Сделка '{title}'{client_part}: {changes}.".format(
                     title=instance.title,
                     client_part=client_part,
                     changes="; ".join(messages),
