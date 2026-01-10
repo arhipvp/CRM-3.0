@@ -167,6 +167,22 @@ class DealSerializer(serializers.ModelSerializer):
         full_name = f"{user.first_name} {user.last_name}".strip()
         return full_name or user.username
 
+    def validate_status(self, value: str) -> str:
+        if value is None:
+            return value
+        normalized = str(value).strip().lower()
+        legacy_map = {
+            "on-hold": Deal.DealStatus.ON_HOLD,
+            "on hold": Deal.DealStatus.ON_HOLD,
+            "onhold": Deal.DealStatus.ON_HOLD,
+        }
+        normalized = legacy_map.get(normalized, normalized)
+        if normalized not in Deal.DealStatus.values:
+            raise serializers.ValidationError(
+                f"Unsupported status '{value}'. Allowed: {', '.join(Deal.DealStatus.values)}."
+            )
+        return normalized
+
 
 class DealMergeSerializer(serializers.Serializer):
     """Валидация данных для объединения сделок."""

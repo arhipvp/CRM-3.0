@@ -97,3 +97,18 @@ class PolicySerializer(serializers.ModelSerializer):
                 "VIN должен состоять из 17 латинских букв и цифр."
             )
         return normalized
+
+    def validate_status(self, value: str) -> str:
+        if value is None:
+            return value
+        normalized = str(value).strip().lower()
+        legacy_map = {
+            "cancelled": Policy.PolicyStatus.CANCELED,
+            "canceled": Policy.PolicyStatus.CANCELED,
+        }
+        normalized = legacy_map.get(normalized, normalized)
+        if normalized not in Policy.PolicyStatus.values:
+            raise serializers.ValidationError(
+                f"Unsupported status '{value}'. Allowed: {', '.join(Policy.PolicyStatus.values)}."
+            )
+        return normalized

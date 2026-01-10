@@ -69,6 +69,12 @@ class SalesChannel(SoftDeleteModel):
 class Deal(SoftDeleteModel):
     """Сделка и её основные атрибуты."""
 
+    class DealStatus(models.TextChoices):
+        OPEN = "open", "В работе"
+        ON_HOLD = "on_hold", "На паузе"
+        WON = "won", "Выиграна"
+        LOST = "lost", "Закрыта (проигрыш)"
+
     title = models.CharField(max_length=255, help_text="Название сделки")
     description = models.TextField(blank=True, help_text="Описание сделки")
 
@@ -97,7 +103,10 @@ class Deal(SoftDeleteModel):
     )
 
     status = models.CharField(
-        max_length=50, default="open", help_text="Статус сделки (произвольный текст)"
+        max_length=50,
+        choices=DealStatus.choices,
+        default=DealStatus.OPEN,
+        help_text="Статус сделки",
     )
     stage_name = models.CharField(max_length=120, blank=True, help_text="Стадия")
 

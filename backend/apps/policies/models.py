@@ -6,6 +6,12 @@ from django.db.models import Q
 class Policy(SoftDeleteModel):
     """Insurance policy bound to a deal."""
 
+    class PolicyStatus(models.TextChoices):
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+        EXPIRED = "expired", "Expired"
+        CANCELED = "canceled", "Canceled"
+
     number = models.CharField(max_length=50, help_text="Policy number")
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",
@@ -96,8 +102,9 @@ class Policy(SoftDeleteModel):
 
     status = models.CharField(
         max_length=50,
-        default="active",
-        help_text="Status (active, expired, canceled etc.)",
+        choices=PolicyStatus.choices,
+        default=PolicyStatus.ACTIVE,
+        help_text="Status (active, inactive, expired, canceled).",
     )
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"

@@ -39,7 +39,7 @@ def _is_admin_user(user) -> bool:
     return user._cached_is_admin
 
 
-CLOSED_STATUSES = {"won", "lost"}
+CLOSED_STATUSES = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
 
 
 class DealViewSet(
@@ -255,7 +255,7 @@ class DealViewSet(
                 {"detail": "Deal is already closed."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        status_value = str(request.data.get("status") or "won").lower()
+        status_value = str(request.data.get("status") or Deal.DealStatus.WON).lower()
         if status_value not in CLOSED_STATUSES:
             return Response(
                 {"status": "Status must be either 'won' or 'lost'."},
@@ -295,7 +295,7 @@ class DealViewSet(
                 {"detail": "Only administrators or the deal owner can reopen a deal."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        deal.status = "open"
+        deal.status = Deal.DealStatus.OPEN
         deal.closing_reason = ""
         deal.save(update_fields=["status", "closing_reason"])
         serializer = self.get_serializer(deal)
