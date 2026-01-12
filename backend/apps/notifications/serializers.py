@@ -19,6 +19,7 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
             "notify_deal_events",
             "notify_deal_expected_close",
             "notify_payment_due",
+            "notify_policy_expiry",
             "remind_days",
         )
 

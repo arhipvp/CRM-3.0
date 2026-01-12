@@ -6,6 +6,7 @@ export interface NotificationSettings {
   notify_deal_events: boolean;
   notify_deal_expected_close: boolean;
   notify_payment_due: boolean;
+  notify_policy_expiry: boolean;
   remind_days: number[];
 }
 

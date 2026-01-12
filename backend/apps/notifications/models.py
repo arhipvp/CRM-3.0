@@ -91,6 +91,9 @@ class NotificationSettings(models.Model):
     notify_payment_due = models.BooleanField(
         default=True, help_text="Payment due reminders"
     )
+    notify_policy_expiry = models.BooleanField(
+        default=True, help_text="Policy expiry reminders"
+    )
     remind_days = models.JSONField(
         default=_default_remind_days,
         help_text="Reminder days before deadline",

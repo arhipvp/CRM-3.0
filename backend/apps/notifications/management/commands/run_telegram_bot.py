@@ -7,6 +7,7 @@ from apps.notifications.telegram_notifications import (
     get_telegram_client,
     send_expected_close_reminders,
     send_payment_due_reminders,
+    send_policy_expiry_reminders,
 )
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -40,6 +41,7 @@ class Command(BaseCommand):
                 if now - last_reminder_run >= reminder_interval:
                     send_expected_close_reminders()
                     send_payment_due_reminders()
+                    send_policy_expiry_reminders()
                     last_reminder_run = now
             except KeyboardInterrupt:
                 self.stdout.write("Telegram bot stopped.")

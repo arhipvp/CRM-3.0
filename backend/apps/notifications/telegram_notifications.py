@@ -244,6 +244,57 @@ def send_payment_due_reminders() -> None:
             )
 
 
+def send_policy_expiry_reminders() -> None:
+    from apps.policies.models import Policy
+
+    today = timezone.localdate()
+    reminder_window = max(_default_remind_days())
+    # Policy.status intentionally ignored; reminders rely solely on end_date.
+    max_end_date = today + timedelta(days=reminder_window)
+    policies = Policy.objects.filter(
+        end_date__isnull=False,
+        end_date__gte=today,
+        end_date__lte=max_end_date,
+    ).select_related(
+        "deal__seller",
+        "deal__executor",
+        "client",
+        "insured_client",
+    )
+
+    for policy in policies:
+        delta_days = (policy.end_date - today).days
+        if delta_days < 0 or delta_days > reminder_window:
+            continue
+        client_name = (
+            getattr(policy.client, "name", "")
+            or getattr(policy.insured_client, "name", "")
+            or ""
+        )
+        formatted_date = _format_date(policy.end_date)
+        attention_prefix = "Напоминание:"
+        if delta_days < 3:
+            attention_prefix = f"❗ {attention_prefix}"
+        client_part = f" Клиент: {client_name}" if client_name else ""
+        text = _append_link(
+            (
+                f"{attention_prefix} срок действия полиса {policy.number} "
+                f"заканчивается {formatted_date}, осталось {delta_days} дн.{client_part}"
+            ),
+            policy.deal_id,
+        )
+        for user in _get_deal_recipients(policy.deal):
+            send_notification(
+                user=user,
+                text=text,
+                event_type="policy_expiry_reminder",
+                object_type="policy",
+                object_id=policy.id,
+                trigger_date=today,
+                setting_attr="notify_policy_expiry",
+            )
+
+
 def _get_deal_recipients(deal) -> list:
     users = []
     seller = getattr(deal, "seller", None)

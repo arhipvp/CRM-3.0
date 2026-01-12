@@ -299,8 +299,20 @@ export const SettingsView: React.FC = () => {
                 />
                 Напоминания об оплате
               </label>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={telegramSettings?.notify_policy_expiry ?? false}
+                  onChange={(event) =>
+                    handleTelegramToggle('notify_policy_expiry', event.target.checked)
+                  }
+                  className="check"
+                  disabled={telegramSaving}
+                />
+                Напоминания о заканчивающихся полисах
+              </label>
               <p className="text-xs text-slate-500">
-                Напоминания отправляются за 5, 3 и 1 день до даты.
+                Напоминания (сделки/платежи/полисы) отправляются за 5, 3 и 1 день до даты, а за &lt;3 дней добавляется «❗».
               </p>
             </div>
           </>
