@@ -909,7 +909,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               showSellerField
               showNextContactField
               quickNextContactOptions={quickInlineDateOptions}
-              expectedCloseRequired
               onQuickNextContactShift={handleQuickNextContactShift}
               onRequestAddClient={onRequestAddClient}
               onSubmit={async (data) => {

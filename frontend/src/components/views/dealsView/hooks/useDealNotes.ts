@@ -80,7 +80,8 @@ export const useDealNotes = (dealId?: string | null) => {
     }
 
     const trimmed = noteDraft.trim();
-    if (!trimmed) {
+    const canSubmitNote = trimmed.length > 0 || noteAttachments.length > 0;
+    if (!canSubmitNote) {
       return;
     }
 
