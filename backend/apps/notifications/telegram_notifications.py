@@ -171,20 +171,27 @@ def send_expected_close_reminders() -> None:
     from apps.deals.models import Deal
 
     today = timezone.localdate()
-    deals = Deal.objects.filter(expected_close__isnull=False)
+    closed_statuses = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
+    deals = Deal.objects.filter(expected_close__isnull=False).exclude(
+        status__in=closed_statuses
+    )
 
     for deal in deals:
         delta_days = (deal.expected_close - today).days
-        if delta_days < 0:
+        if delta_days < 0 or delta_days > 5:
             continue
         for user in _get_deal_recipients(deal):
-            settings_obj = get_or_create_settings(user)
-            if delta_days not in (settings_obj.remind_days or []):
-                continue
             formatted_date = _format_date(deal.expected_close)
             deal_title = _format_deal_title(deal)
+            deal_part = f", сделка {deal_title}" if deal_title else ""
+            attention_prefix = "Внимание!"
+            if delta_days < 3:
+                attention_prefix = f"❗ {attention_prefix}"
             text = _append_link(
-                f"Внимаение! Застраховать до {formatted_date}, сделка {deal_title}",
+                (
+                    f"{attention_prefix} Застраховать до {formatted_date}, "
+                    f"осталось {delta_days} дн.{deal_part}"
+                ),
                 deal.id,
             )
             send_notification(
@@ -199,27 +206,29 @@ def send_expected_close_reminders() -> None:
 
 
 def send_payment_due_reminders() -> None:
+    from apps.deals.models import Deal
     from apps.finances.models import Payment
 
     today = timezone.localdate()
+    closed_statuses = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
     payments = Payment.objects.filter(
         scheduled_date__isnull=False,
         actual_date__isnull=True,
-    )
+    ).exclude(deal__status__in=closed_statuses)
 
     for payment in payments:
         if not payment.deal_id:
             continue
         delta_days = (payment.scheduled_date - today).days
-        if delta_days < 0:
+        if delta_days < 0 or delta_days > 5:
             continue
         for user in _get_deal_recipients(payment.deal):
-            settings_obj = get_or_create_settings(user)
-            if delta_days not in (settings_obj.remind_days or []):
-                continue
+            attention_prefix = "Напоминание:"
+            if delta_days < 3:
+                attention_prefix = f"❗ {attention_prefix}"
             text = _append_link(
                 (
-                    f"Напоминание: до оплаты платежа {payment.amount} руб. "
+                    f"{attention_prefix} до оплаты платежа {payment.amount} руб. "
                     f"по сделке '{_format_deal_title(payment.deal)}' осталось {delta_days} дн."
                 ),
                 payment.deal.id,
