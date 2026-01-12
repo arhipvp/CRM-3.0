@@ -23,6 +23,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
 }) => {
   const whatsAppLink = buildWhatsAppLink(clientPhone);
   const telegramLink = buildTelegramLink(clientPhone);
+  const clientNote = client?.notes?.trim();
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -44,6 +45,9 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
           </span>
           <span className="inline-flex items-center gap-2 font-semibold text-slate-900">
             {clientDisplayName}
+            {clientNote && (
+              <span className="text-xs font-semibold text-rose-600">- {clientNote}</span>
+            )}
             {client && onClientEdit && (
               <button
                 type="button"
