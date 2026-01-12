@@ -293,7 +293,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
       .map((item) => item.getAsFile())
       .filter((file): file is File => Boolean(file));
     const filesFromList = Array.from(event.clipboardData?.files ?? []);
-    const files = dedupeFiles([...filesFromItems, ...filesFromList]);
+    const files = dedupeFiles(filesFromItems.length ? filesFromItems : filesFromList);
 
     if (!files.length) {
       return;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 
 import type { DriveFile, Note } from '../../../types';
 import { API_BASE, requestBlob } from '../../../api/request';
@@ -83,13 +83,16 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
       .map((item) => item.getAsFile())
       .filter((file): file is File => Boolean(file));
     const filesFromList = Array.from(event.clipboardData?.files ?? []);
-    const files = dedupeFiles([...filesFromItems, ...filesFromList]);
+    const files = dedupeFiles(filesFromItems.length ? filesFromItems : filesFromList);
 
     if (!files.length) {
       return;
     }
 
-    event.preventDefault();
+    const clipboardText = event.clipboardData?.getData('text/plain');
+    if (!clipboardText) {
+      event.preventDefault();
+    }
     for (const file of files) {
       await onAttachNoteFile(file);
     }
@@ -226,12 +229,6 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
               placeholder="Заметка к сделке"
               className="field-textarea"
             />
-            <div className="mt-4">
-              <FileUploadManager
-                onUpload={onAttachNoteFile}
-                disabled={notesAction === 'create' || noteAttachmentsUploading}
-              />
-            </div>
             {noteAttachments.length > 0 && (
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="flex items-center justify-between text-xs text-slate-500">
@@ -257,6 +254,12 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                 </div>
               </div>
             )}
+            <div className="mt-4">
+              <FileUploadManager
+                onUpload={onAttachNoteFile}
+                disabled={notesAction === 'create' || noteAttachmentsUploading}
+              />
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-slate-500">Все заметки видны всем участникам</p>
               <button
@@ -379,3 +382,4 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     </>
   );
 };
+
