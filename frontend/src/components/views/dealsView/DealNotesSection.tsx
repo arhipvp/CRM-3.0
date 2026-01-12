@@ -382,4 +382,3 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     </>
   );
 };
-
