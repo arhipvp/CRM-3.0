@@ -14,6 +14,7 @@ class NoteAttachmentSerializer(serializers.Serializer):
 
 
 class NoteSerializer(serializers.ModelSerializer):
+    body = serializers.CharField(allow_blank=True, required=False)
     deal_title = serializers.CharField(source="deal.title", read_only=True)
     attachments = NoteAttachmentSerializer(many=True, required=False)
 
@@ -37,3 +38,23 @@ class NoteSerializer(serializers.ModelSerializer):
             "deleted_at",
             "deal_title",
         )
+
+    def validate(self, attrs):
+        """
+        Запрещаем сохранять пустую заметку без текста и вложений.
+        """
+        if self.instance:
+            body = attrs.get("body", self.instance.body or "")
+            attachments = attrs.get("attachments", self.instance.attachments or [])
+        else:
+            body = attrs.get("body", "")
+            attachments = attrs.get("attachments", [])
+
+        body = (body or "").strip()
+        attachments = attachments or []
+
+        if not body and not attachments:
+            raise serializers.ValidationError(
+                {"body": "Заметка должна содержать текст или хотя бы одно вложение."}
+            )
+        return attrs

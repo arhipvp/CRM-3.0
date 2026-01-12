@@ -65,6 +65,23 @@ class NoteCreationPermissionsTests(AuthenticatedAPITestCase):
         self.assertEqual(Note.objects.filter(deal=self.deal).count(), 1)
         self.assertEqual(response.data["author_name"], "second")
 
+    def test_note_can_be_created_with_attachments_only(self):
+        self.authenticate(self.seller_user)
+        payload = {
+            "deal": self.deal.id,
+            "body": "",
+            "attachments": [
+                {"id": "attachment-1", "name": "image.png", "mime_type": "image/png"}
+            ],
+        }
+        response = self.api_client.post("/api/v1/notes/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        note = Note.objects.get(deal=self.deal)
+        self.assertEqual(note.body, "")
+        self.assertEqual(note.attachments, payload["attachments"])
+        self.assertEqual(response.data["attachments"], payload["attachments"])
+
     def test_unrelated_user_cannot_create_note(self):
         self.authenticate(self.unrelated_user)
         response = self.api_client.post(

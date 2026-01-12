@@ -15,7 +15,7 @@ class Note(SoftDeleteModel):
         blank=True,
     )
 
-    body = models.TextField(help_text="Текст заметки")
+    body = models.TextField(help_text="Текст заметки", blank=True)
     author_name = models.CharField(max_length=120, blank=True, help_text="Имя автора")
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
