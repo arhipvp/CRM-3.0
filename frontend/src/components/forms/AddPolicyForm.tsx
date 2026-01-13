@@ -958,7 +958,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                         <span>Сумма {formatCurrency(payment.amount || '0')}</span>
                         <span>План {formatDate(payment.scheduledDate)}</span>
                         <span className={payment.actualDate ? 'text-emerald-600' : 'text-rose-600'}>
-                          Оплачен {payment.actualDate ? formatDate(payment.actualDate) : 'не оплачен'}
+                          Оплачен{' '}
+                          {payment.actualDate ? formatDate(payment.actualDate) : 'не оплачен'}
                         </span>
                       </p>
                     </div>
