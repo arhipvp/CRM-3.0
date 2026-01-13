@@ -16,6 +16,7 @@ import {
 } from './addPolicy/types';
 import { FinancialRecordInputs } from './addPolicy/components/FinancialRecordInputs';
 import { PaymentSection } from './addPolicy/components/PaymentSection';
+import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import {
   buildCommissionIncomeNote,
@@ -82,6 +83,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [payments, setPayments] = useState<PaymentDraft[]>(() => [
     createPaymentWithDefaultIncome(buildCommissionIncomeNote()),
   ]);
+  const [expandedPaymentIndex, setExpandedPaymentIndex] = useState<number | null>(0);
   const [insuredQuery, setInsuredQuery] = useState('');
   const [showInsuredSuggestions, setShowInsuredSuggestions] = useState(false);
   const filteredInsuredClients = useMemo(() => {
@@ -217,6 +219,18 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     }
     setCounterparty(defaultCounterparty);
   }, [defaultCounterparty, counterpartyTouched, initialValues]);
+
+  useEffect(() => {
+    setExpandedPaymentIndex((prev) => {
+      if (!payments.length) {
+        return null;
+      }
+      if (prev == null || prev >= payments.length) {
+        return 0;
+      }
+      return prev;
+    });
+  }, [payments.length]);
 
   useEffect(() => {
     if (!initialInsuranceCompanyName || !companies.length) {
@@ -410,6 +424,10 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
   const handleRemovePayment = (index: number) => {
     setPayments((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const togglePaymentDetails = (index: number) => {
+    setExpandedPaymentIndex((prev) => (prev === index ? null : index));
   };
 
   const handleNextStep = () => {
@@ -924,94 +942,115 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           </div>
 
           <div className="space-y-4">
-            {payments.map((payment, paymentIndex) => (
-              <section
-                key={`records-${paymentIndex}`}
-                className="app-panel p-5 shadow-none space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      Платёж #{paymentIndex + 1}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Сумма {payment.amount || 'не указана'} · план{' '}
-                      {payment.scheduledDate || 'не указан'}
-                    </p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => addRecord(paymentIndex, 'incomes')}
-                      className="btn btn-sm btn-secondary"
-                    >
-                      + Доход
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => addRecord(paymentIndex, 'expenses')}
-                      className="btn btn-sm btn-secondary"
-                    >
-                      + Расход
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="app-panel-muted p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Доходы
-                      </h4>
+            {payments.map((payment, paymentIndex) => {
+              const isExpanded = expandedPaymentIndex === paymentIndex;
+              return (
+                <section
+                  key={`records-${paymentIndex}`}
+                  className="rounded-2xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="flex flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {payment.description || `Платёж #${paymentIndex + 1}`}
+                      </p>
+                      <p className="flex flex-wrap gap-3 text-xs text-slate-500">
+                        <span>Сумма {formatCurrency(payment.amount || '0')}</span>
+                        <span>План {formatDate(payment.scheduledDate)}</span>
+                        <span className={payment.actualDate ? 'text-emerald-600' : 'text-rose-600'}>
+                          Оплачен {payment.actualDate ? formatDate(payment.actualDate) : 'не оплачен'}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        className="btn btn-sm btn-quiet"
-                        onClick={() => addRecord(paymentIndex, 'incomes')}
+                        onClick={() => {
+                          addRecord(paymentIndex, 'incomes');
+                          setExpandedPaymentIndex(paymentIndex);
+                        }}
+                        className="btn btn-sm btn-secondary"
                       >
-                        + Добавить доход
+                        + Доход
                       </button>
-                    </div>
-                    {payment.incomes.length === 0 && (
-                      <p className="text-sm text-slate-600">
-                        Добавьте доход, чтобы привязать поступление к этому платежу.
-                      </p>
-                    )}
-                    <FinancialRecordInputs
-                      paymentIndex={paymentIndex}
-                      type="incomes"
-                      records={payment.incomes}
-                      onUpdateRecord={updateRecordField}
-                      onRemoveRecord={removeRecord}
-                    />
-                  </div>
-                  <div className="app-panel-muted p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Расходы
-                      </h4>
                       <button
                         type="button"
-                        className="btn btn-sm btn-quiet"
-                        onClick={() => addRecord(paymentIndex, 'expenses')}
+                        onClick={() => {
+                          addRecord(paymentIndex, 'expenses');
+                          setExpandedPaymentIndex(paymentIndex);
+                        }}
+                        className="btn btn-sm btn-secondary"
                       >
-                        + Добавить расход
+                        + Расход
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => togglePaymentDetails(paymentIndex)}
+                        className="btn btn-sm btn-secondary whitespace-nowrap"
+                      >
+                        {isExpanded ? 'Свернуть' : 'Развернуть'}
                       </button>
                     </div>
-                    {payment.expenses.length === 0 && (
-                      <p className="text-sm text-slate-600">
-                        Добавьте расход, чтобы контролировать связанные списания.
-                      </p>
-                    )}
-                    <FinancialRecordInputs
-                      paymentIndex={paymentIndex}
-                      type="expenses"
-                      records={payment.expenses}
-                      onUpdateRecord={updateRecordField}
-                      onRemoveRecord={removeRecord}
-                    />
                   </div>
-                </div>
-              </section>
-            ))}
+                  {isExpanded && (
+                    <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
+                      <div className="app-panel-muted p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Доходы
+                          </h4>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-quiet"
+                            onClick={() => addRecord(paymentIndex, 'incomes')}
+                          >
+                            + Добавить доход
+                          </button>
+                        </div>
+                        {payment.incomes.length === 0 && (
+                          <p className="text-sm text-slate-600">
+                            Добавьте доход, чтобы привязать поступление к этому платежу.
+                          </p>
+                        )}
+                        <FinancialRecordInputs
+                          paymentIndex={paymentIndex}
+                          type="incomes"
+                          records={payment.incomes}
+                          onUpdateRecord={updateRecordField}
+                          onRemoveRecord={removeRecord}
+                        />
+                      </div>
+                      <div className="app-panel-muted p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Расходы
+                          </h4>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-quiet"
+                            onClick={() => addRecord(paymentIndex, 'expenses')}
+                          >
+                            + Добавить расход
+                          </button>
+                        </div>
+                        {payment.expenses.length === 0 && (
+                          <p className="text-sm text-slate-600">
+                            Добавьте расход, чтобы контролировать связанные списания.
+                          </p>
+                        )}
+                        <FinancialRecordInputs
+                          paymentIndex={paymentIndex}
+                          type="expenses"
+                          records={payment.expenses}
+                          onUpdateRecord={updateRecordField}
+                          onRemoveRecord={removeRecord}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         </div>
       )}
