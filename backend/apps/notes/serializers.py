@@ -12,6 +12,10 @@ class NoteAttachmentSerializer(serializers.Serializer):
         required=False, allow_blank=True, allow_null=True
     )
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return {key: value for key, value in data.items() if value is not None}
+
 
 class NoteSerializer(serializers.ModelSerializer):
     body = serializers.CharField(allow_blank=True, required=False)

@@ -5,7 +5,12 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
-from .models import NotificationDelivery, NotificationSettings, TelegramProfile
+from .models import (
+    NotificationDelivery,
+    NotificationSettings,
+    TelegramProfile,
+    _default_remind_days,
+)
 from .telegram_client import TelegramClient
 
 logger = logging.getLogger(__name__)

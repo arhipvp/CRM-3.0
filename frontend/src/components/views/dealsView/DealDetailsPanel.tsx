@@ -369,6 +369,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
   }, [onFetchChatMessages, selectedDeal?.id]);
 
+  useEffect(() => {
+    if (!selectedDeal?.id) {
+      return;
+    }
+
+    void loadChatMessages();
+  }, [loadChatMessages, selectedDeal?.id]);
+
   const handleChatSendMessage = useCallback(
     async (body: string): Promise<ChatMessage> => {
       const dealId = selectedDeal?.id;
@@ -563,14 +571,22 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   };
 
   useEffect(() => {
+    resetDriveState();
+  }, [resetDriveState, selectedDeal?.id]);
+
+  useEffect(() => {
+    if (!selectedDeal?.id) {
+      return;
+    }
+
+    void loadDriveFiles();
+  }, [loadDriveFiles, selectedDeal?.id]);
+
+  useEffect(() => {
     if (activeTab === 'files') {
       void loadDriveFiles();
     }
   }, [activeTab, loadDriveFiles]);
-
-  useEffect(() => {
-    resetDriveState();
-  }, [resetDriveState, selectedDeal?.id]);
 
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((p) => p.dealId === selectedDeal.id) : []),
