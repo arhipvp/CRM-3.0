@@ -21,6 +21,7 @@ interface PaymentSectionProps {
   ) => void;
   onRemoveRecord: (paymentIndex: number, type: 'incomes' | 'expenses', recordIndex: number) => void;
   showRecords?: boolean;
+  dense?: boolean;
 }
 
 export const PaymentSection: React.FC<PaymentSectionProps> = ({
@@ -32,9 +33,14 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   onUpdateRecord,
   onRemoveRecord,
   showRecords = true,
+  dense = false,
 }) => (
-  <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <div className="flex items-center justify-between">
+  <section
+    className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${
+      dense ? 'space-y-3 p-4' : 'space-y-4 p-5'
+    }`}
+  >
+    <div className={`flex items-center justify-between ${dense ? 'gap-3' : ''}`}>
       <div>
         <p className="text-sm font-semibold text-slate-900">Платёж #{paymentIndex + 1}</p>
         <p className="text-xs text-slate-500">Отражён в расписании</p>
@@ -47,7 +53,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
         Удалить платёж
       </button>
     </div>
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div className={`grid grid-cols-1 ${dense ? 'gap-2' : 'gap-3'} md:grid-cols-2`}>
       <div>
         <label className="block text-xs font-medium text-slate-600">Сумма</label>
         <input
@@ -87,8 +93,8 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
     </div>
 
     {showRecords && (
-      <div className="space-y-3">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className={dense ? 'space-y-2' : 'space-y-3'}>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
             <button
@@ -112,7 +118,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             onRemoveRecord={onRemoveRecord}
           />
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Расходы

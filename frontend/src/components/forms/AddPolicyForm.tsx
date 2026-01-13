@@ -888,6 +888,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                   onUpdateRecord={updateRecordField}
                   onRemoveRecord={removeRecord}
                   showRecords={false}
+                  dense
                 />
               ))}
             </div>
