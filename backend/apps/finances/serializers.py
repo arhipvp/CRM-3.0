@@ -169,12 +169,6 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         amount = attrs.get("amount") or getattr(self.instance, "amount", None)
-        scheduled_date = attrs.get("scheduled_date") or getattr(
-            self.instance, "scheduled_date", None
-        )
-        actual_date = attrs.get("actual_date") or getattr(
-            self.instance, "actual_date", None
-        )
 
         errors = {}
         if amount is not None and amount <= 0:
