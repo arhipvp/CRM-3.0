@@ -1020,77 +1020,93 @@ const AppContent: React.FC = () => {
 
         let dealPaymentsTotalDelta = 0;
         let dealPaymentsPaidDelta = 0;
+        let paymentsCreated = 0;
 
-        for (const paymentDraft of paymentsToProcess) {
-          const amount = parseNumericAmount(paymentDraft.amount);
-          if (!Number.isFinite(amount) || amount < 0) {
-            continue;
-          }
-
-          const payment = await createPayment({
-            dealId,
-            policyId: created.id,
-            amount,
-            description: paymentDraft.description,
-            scheduledDate: paymentDraft.scheduledDate || null,
-            actualDate: paymentDraft.actualDate || null,
-          });
-          const createdRecords: FinancialRecord[] = [];
-
-          for (const income of paymentDraft.incomes) {
-            const incomeAmount = parseNumericAmount(income.amount);
-            if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
+        try {
+          for (const paymentDraft of paymentsToProcess) {
+            const amount = parseNumericAmount(paymentDraft.amount);
+            if (!Number.isFinite(amount) || amount < 0) {
               continue;
             }
 
-            const record = await createFinancialRecord({
-              paymentId: payment.id,
-              amount: incomeAmount,
-              date: income.date || null,
-              description: income.description,
-              source: income.source,
-              note: income.note,
+            const payment = await createPayment({
+              dealId,
+              policyId: created.id,
+              amount,
+              description: paymentDraft.description,
+              scheduledDate: paymentDraft.scheduledDate || null,
+              actualDate: paymentDraft.actualDate || null,
             });
-            createdRecords.push(record);
-          }
+            paymentsCreated += 1;
+            const createdRecords: FinancialRecord[] = [];
 
-          for (const expense of paymentDraft.expenses) {
-            const expenseAmount = parseNumericAmount(expense.amount);
-            if (!Number.isFinite(expenseAmount) || expenseAmount < 0) {
-              continue;
+            for (const income of paymentDraft.incomes) {
+              const incomeAmount = parseNumericAmount(income.amount);
+              if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
+                continue;
+              }
+
+              const record = await createFinancialRecord({
+                paymentId: payment.id,
+                amount: incomeAmount,
+                date: income.date || null,
+                description: income.description,
+                source: income.source,
+                note: income.note,
+              });
+              createdRecords.push(record);
             }
 
-            const record = await createFinancialRecord({
-              paymentId: payment.id,
-              amount: -Math.abs(expenseAmount),
-              date: expense.date || null,
-              description: expense.description,
-              source: expense.source,
-              note: expense.note,
-            });
-            createdRecords.push(record);
-          }
+            for (const expense of paymentDraft.expenses) {
+              const expenseAmount = parseNumericAmount(expense.amount);
+              if (!Number.isFinite(expenseAmount) || expenseAmount < 0) {
+                continue;
+              }
 
-          const paymentWithRecords: Payment = {
-            ...payment,
-            financialRecords: createdRecords.length
-              ? [...createdRecords, ...(payment.financialRecords ?? [])]
-              : payment.financialRecords,
-          };
-          policyPaymentsTotal += amount;
-          if (payment.actualDate) {
-            policyPaymentsPaid += amount;
-            dealPaymentsPaidDelta += amount;
+              const record = await createFinancialRecord({
+                paymentId: payment.id,
+                amount: -Math.abs(expenseAmount),
+                date: expense.date || null,
+                description: expense.description,
+                source: expense.source,
+                note: expense.note,
+              });
+              createdRecords.push(record);
+            }
+
+            const paymentWithRecords: Payment = {
+              ...payment,
+              financialRecords: createdRecords.length
+                ? [...createdRecords, ...(payment.financialRecords ?? [])]
+                : payment.financialRecords,
+            };
+            policyPaymentsTotal += amount;
+            if (payment.actualDate) {
+              policyPaymentsPaid += amount;
+              dealPaymentsPaidDelta += amount;
+            }
+            dealPaymentsTotalDelta += amount;
+            syncPolicyTotals();
+            updateAppData((prev) => ({
+              payments: [paymentWithRecords, ...prev.payments],
+              financialRecords:
+                createdRecords.length > 0
+                  ? [...createdRecords, ...prev.financialRecords]
+                  : prev.financialRecords,
+            }));
           }
-          dealPaymentsTotalDelta += amount;
-          syncPolicyTotals();
-          updateAppData((prev) => ({
-            payments: [paymentWithRecords, ...prev.payments],
-            financialRecords:
-              createdRecords.length > 0
-                ? [...createdRecords, ...prev.financialRecords]
-                : prev.financialRecords,
-          }));
+        } catch (err) {
+          if (paymentsCreated === 0) {
+            try {
+              await deletePolicy(created.id);
+              updateAppData((prev) => ({
+                policies: prev.policies.filter((policy) => policy.id !== created.id),
+              }));
+            } catch (cleanupErr) {
+              console.error('Failed to delete policy after payment failure', cleanupErr);
+            }
+          }
+          throw err;
         }
 
         if (dealPaymentsTotalDelta || dealPaymentsPaidDelta) {

@@ -179,8 +179,6 @@ class PaymentSerializer(serializers.ModelSerializer):
         errors = {}
         if amount is not None and amount <= 0:
             errors["amount"] = "Amount must be greater than zero."
-        if scheduled_date and actual_date and actual_date < scheduled_date:
-            errors["actual_date"] = "Actual date cannot be earlier than scheduled date."
         if errors:
             raise serializers.ValidationError(errors)
         return attrs
