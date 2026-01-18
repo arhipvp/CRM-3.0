@@ -145,6 +145,7 @@ const AppContent: React.FC = () => {
     resetPoliciesListState,
     loadMoreDeals,
     dealsHasMore,
+    dealsTotalCount,
     policiesList,
     loadMorePolicies,
     policiesHasMore,
@@ -1911,6 +1912,7 @@ const AppContent: React.FC = () => {
         onPolicyDraftReady={handlePolicyDraftReady}
         onLoadMoreDeals={loadMoreDeals}
         dealsHasMore={dealsHasMore}
+        dealsTotalCount={dealsTotalCount}
         isLoadingMoreDeals={isLoadingMoreDeals}
         onRefreshPoliciesList={refreshPoliciesList}
         onLoadMorePolicies={loadMorePolicies}

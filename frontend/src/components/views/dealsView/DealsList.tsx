@@ -26,6 +26,7 @@ interface DealsListProps {
   onDealOrderingChange: (value: string | undefined) => void;
   users: User[];
   dealsHasMore: boolean;
+  dealsTotalCount: number;
   isLoadingMoreDeals: boolean;
   onLoadMoreDeals: () => Promise<void>;
   onSelectDeal: (dealId: string) => void;
@@ -46,6 +47,7 @@ export const DealsList: React.FC<DealsListProps> = ({
   onDealOrderingChange,
   users,
   dealsHasMore,
+  dealsTotalCount,
   isLoadingMoreDeals,
   onLoadMoreDeals,
   onSelectDeal,
@@ -128,7 +130,7 @@ export const DealsList: React.FC<DealsListProps> = ({
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
             <span className="text-sm text-slate-500 whitespace-nowrap">
-              Всего {sortedDeals.length}
+              Сделок всего {dealsTotalCount}, показано {sortedDeals.length}
             </span>
           </div>
           <div className="w-full max-w-sm">

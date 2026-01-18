@@ -78,6 +78,7 @@ interface DealsViewProps {
   ) => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
+  dealsTotalCount: number;
   isLoadingMoreDeals: boolean;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
@@ -134,6 +135,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onMergeDeals,
   onLoadMoreDeals,
   dealsHasMore,
+  dealsTotalCount,
   isLoadingMoreDeals,
   dealSearch,
   onDealSearchChange,
@@ -172,6 +174,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onDealOrderingChange={onDealOrderingChange}
             users={users}
             dealsHasMore={dealsHasMore}
+            dealsTotalCount={dealsTotalCount}
             isLoadingMoreDeals={isLoadingMoreDeals}
             onLoadMoreDeals={onLoadMoreDeals}
             onSelectDeal={onSelectDeal}

@@ -86,7 +86,10 @@ export const useAppData = () => {
   const [dealsFilters, setDealsFilters] = useState<FilterParams>({ ordering: 'next_contact_date' });
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
-  const dealsCacheRef = useRef(new Map<string, { results: Deal[]; nextPage: number | null }>());
+  const [dealsTotalCount, setDealsTotalCount] = useState(0);
+  const dealsCacheRef = useRef(
+    new Map<string, { results: Deal[]; nextPage: number | null; totalCount: number }>(),
+  );
   const invalidateDealsCache = useCallback((filters?: FilterParams) => {
     if (filters) {
       dealsCacheRef.current.delete(buildDealsCacheKey(filters));
@@ -127,6 +130,7 @@ export const useAppData = () => {
           setAppData({ deals: cached.results });
           setDealsFilters(resolvedFilters);
           setDealsNextPage(cached.nextPage);
+          setDealsTotalCount(cached.totalCount);
           return cached.results;
         }
       }
@@ -137,10 +141,15 @@ export const useAppData = () => {
       });
       const results = payload.results;
       const nextPage = payload.next ? 2 : null;
-      dealsCacheRef.current.set(cacheKey, { results, nextPage });
+      dealsCacheRef.current.set(cacheKey, {
+        results,
+        nextPage,
+        totalCount: payload.count,
+      });
       setAppData({ deals: results });
       setDealsFilters(resolvedFilters);
       setDealsNextPage(nextPage);
+      setDealsTotalCount(payload.count);
       return results;
     },
     [setAppData],
@@ -163,10 +172,12 @@ export const useAppData = () => {
         dealsCacheRef.current.set(cacheKey, {
           results: extended,
           nextPage: payload.next ? dealsNextPage + 1 : null,
+          totalCount: payload.count,
         });
         return { deals: extended };
       });
       setDealsNextPage(payload.next ? dealsNextPage + 1 : null);
+      setDealsTotalCount(payload.count);
     } catch (err) {
       setError(formatErrorMessage(err, 'Error loading more deals'));
     } finally {
@@ -363,6 +374,7 @@ export const useAppData = () => {
     resetPoliciesListState,
     loadMoreDeals,
     dealsHasMore,
+    dealsTotalCount,
     policiesList,
     loadMorePolicies,
     policiesHasMore,

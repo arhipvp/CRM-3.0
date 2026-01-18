@@ -123,6 +123,7 @@ export interface AppRoutesProps {
   ) => void;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
+  dealsTotalCount: number;
   isLoadingMoreDeals: boolean;
   onLoadMorePolicies: () => Promise<void>;
   policiesHasMore: boolean;
@@ -194,6 +195,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onPolicyDraftReady,
   onLoadMoreDeals,
   dealsHasMore,
+  dealsTotalCount,
   isLoadingMoreDeals,
   onLoadMorePolicies,
   policiesHasMore,
@@ -258,6 +260,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onRefreshPolicies={onRefreshPolicies}
           onLoadMoreDeals={onLoadMoreDeals}
           dealsHasMore={dealsHasMore}
+          dealsTotalCount={dealsTotalCount}
           isLoadingMoreDeals={isLoadingMoreDeals}
         />
       }
