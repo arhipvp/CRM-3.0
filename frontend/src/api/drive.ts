@@ -1,4 +1,4 @@
-﻿import { request } from './request';
+import { request, requestBlobWithHeaders } from './request';
 import { mapDriveFile } from './mappers';
 import type { DriveFile } from '../types';
 
@@ -10,6 +10,22 @@ export interface DriveFilesResponse {
 export interface DriveTrashResponse {
   movedFileIds: string[];
   trashFolderId?: string | null;
+}
+
+function extractFilename(contentDisposition: string | null): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+  const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].trim());
+    } catch {
+      return utfMatch[1].trim();
+    }
+  }
+  const asciiMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
+  return asciiMatch?.[1]?.trim() ?? null;
 }
 
 function normalizeDriveResponse(
@@ -128,6 +144,29 @@ export async function uploadDealDriveFile(
   }
 
   return mapDriveFile(payload.file as Record<string, unknown>);
+}
+
+export async function downloadDealDriveFiles(
+  dealId: string,
+  fileIds: string[],
+  includeDeleted = false,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const { blob, headers } = await requestBlobWithHeaders(
+    `/deals/${dealId}/drive-files/download/${suffix}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ file_ids: fileIds }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  return {
+    blob,
+    filename: extractFilename(headers.get('Content-Disposition')),
+  };
 }
 
 export async function uploadClientDriveFile(clientId: string, file: File): Promise<DriveFile> {

@@ -31,6 +31,9 @@ interface FilesTabProps {
   isTrashing: boolean;
   trashMessage: string | null;
   handleTrashSelectedFiles: () => Promise<void>;
+  isDownloading: boolean;
+  downloadMessage: string | null;
+  handleDownloadDriveFiles: (fileIds?: string[]) => Promise<void>;
   driveError: string | null;
   sortedDriveFiles: DriveFile[];
   canRecognizeSelectedFiles: boolean;
@@ -56,6 +59,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   isTrashing,
   trashMessage,
   handleTrashSelectedFiles,
+  isDownloading,
+  downloadMessage,
+  handleDownloadDriveFiles,
   driveError,
   canRecognizeSelectedFiles,
   sortedDriveFiles,
@@ -96,6 +102,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     isRenaming ||
     isDriveLoading ||
     isTrashing ||
+    isDownloading ||
     isSelectedDealDeleted ||
     !selectedDeal.driveFolderId;
 
@@ -170,6 +177,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           disabled={
             isRecognizing ||
             isTrashing ||
+            isDownloading ||
             !selectedDeal.driveFolderId ||
             selectedDriveFileIds.length === 0 ||
             !canRecognizeSelectedFiles ||
@@ -181,10 +189,26 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         </button>
         <button
           type="button"
+          onClick={() => handleDownloadDriveFiles()}
+          disabled={
+            isRecognizing ||
+            isTrashing ||
+            isDownloading ||
+            !selectedDeal.driveFolderId ||
+            selectedDriveFileIds.length === 0 ||
+            !!driveError
+          }
+          className="btn btn-secondary btn-sm rounded-xl"
+        >
+          {isDownloading ? 'Скачиваю...' : 'Скачать'}
+        </button>
+        <button
+          type="button"
           onClick={handleTrashSelectedFiles}
           disabled={
             isRecognizing ||
             isTrashing ||
+            isDownloading ||
             !selectedDeal.driveFolderId ||
             selectedDriveFileIds.length === 0 ||
             !!driveError
@@ -208,6 +232,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
 
       {trashMessage && (
         <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{trashMessage}</p>
+      )}
+
+      {downloadMessage && (
+        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{downloadMessage}</p>
       )}
 
       {renameMessage && (
@@ -297,7 +325,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 <tbody>
                   {sortedDriveFiles.map((file) => {
                     const isSelected = selectedDriveFileIds.includes(file.id);
-                    const canSelect = !file.isFolder && !isDriveLoading && !isTrashing;
+                    const canSelect = !isDriveLoading && !isTrashing && !isDownloading;
                     return (
                       <tr key={file.id} className={TABLE_ROW_CLASS_PLAIN}>
                         <td className={TABLE_CELL_CLASS_SM}>
@@ -341,6 +369,14 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                             ) : (
                               <span className="text-xs text-slate-400">—</span>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadDriveFiles([file.id])}
+                              disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
+                              className="link-action text-xs disabled:text-slate-300"
+                            >
+                              Скачать
+                            </button>
                             {!file.isFolder && (
                               <button
                                 type="button"

@@ -285,6 +285,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     recognitionMessage,
     isTrashing,
     trashMessage,
+    isDownloading,
+    downloadMessage,
     isRenaming,
     renameMessage,
     sortedDriveFiles,
@@ -295,6 +297,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     toggleDriveSortDirection,
     handleRecognizePolicies,
     handleTrashSelectedFiles,
+    handleDownloadDriveFiles,
     handleRenameDriveFile,
     resetDriveState,
   } = useDealDriveFiles({
@@ -748,9 +751,12 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       recognitionMessage={recognitionMessage}
       isTrashing={isTrashing}
       trashMessage={trashMessage}
+      isDownloading={isDownloading}
+      downloadMessage={downloadMessage}
       isRenaming={isRenaming}
       renameMessage={renameMessage}
       handleTrashSelectedFiles={handleTrashSelectedFiles}
+      handleDownloadDriveFiles={handleDownloadDriveFiles}
       handleRenameDriveFile={handleRenameDriveFile}
       driveError={driveError}
       sortedDriveFiles={sortedDriveFiles}

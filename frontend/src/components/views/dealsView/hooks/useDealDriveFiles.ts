@@ -4,6 +4,7 @@ import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import {
   fetchDealDriveFiles,
+  downloadDealDriveFiles,
   trashDealDriveFiles,
   uploadDealDriveFile,
   renameDealDriveFile,
@@ -38,6 +39,8 @@ export const useDealDriveFiles = ({
   const [recognitionMessage, setRecognitionMessage] = useState<string | null>(null);
   const [isTrashing, setIsTrashing] = useState(false);
   const [trashMessage, setTrashMessage] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const [driveSortDirection, setDriveSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameMessage, setRenameMessage] = useState<string | null>(null);
@@ -52,6 +55,7 @@ export const useDealDriveFiles = ({
     setRecognitionResults([]);
     setRecognitionMessage(null);
     setTrashMessage(null);
+    setDownloadMessage(null);
     setRenameMessage(null);
   }, [selectedDeal?.id]);
 
@@ -249,6 +253,58 @@ export const useDealDriveFiles = ({
     }
   }, [loadDriveFiles, selectedDeal, selectedDriveFileIds]);
 
+  const handleDownloadDriveFiles = useCallback(
+    async (fileIds?: string[]) => {
+      const deal = selectedDeal;
+      if (!deal) {
+        return;
+      }
+      const targetIds = fileIds?.length ? fileIds : selectedDriveFileIds;
+      if (!targetIds.length) {
+        setDownloadMessage('Выберите хотя бы один файл для скачивания.');
+        return;
+      }
+
+      const currentDealId = deal.id;
+      latestDealIdRef.current = currentDealId;
+      setIsDownloading(true);
+      setDownloadMessage(null);
+
+      try {
+        const { blob, filename } = await downloadDealDriveFiles(
+          currentDealId,
+          targetIds,
+          Boolean(deal.deletedAt),
+        );
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        if (typeof window === 'undefined') {
+          return;
+        }
+        const url = window.URL.createObjectURL(blob);
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = filename || 'files.zip';
+        window.document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        console.error('Ошибка скачивания файлов:', error);
+        setDownloadMessage(formatErrorMessage(error, 'Не удалось скачать файлы.'));
+      } finally {
+        if (latestDealIdRef.current === currentDealId) {
+          setIsDownloading(false);
+        }
+      }
+    },
+    [selectedDeal, selectedDriveFileIds],
+  );
+
   const handleRenameDriveFile = useCallback(
     async (fileId: string, name: string) => {
       const deal = selectedDeal;
@@ -326,6 +382,8 @@ export const useDealDriveFiles = ({
     recognitionMessage,
     isTrashing,
     trashMessage,
+    isDownloading,
+    downloadMessage,
     isRenaming,
     renameMessage,
     sortedDriveFiles,
@@ -336,6 +394,7 @@ export const useDealDriveFiles = ({
     toggleDriveSortDirection,
     handleRecognizePolicies,
     handleTrashSelectedFiles,
+    handleDownloadDriveFiles,
     handleRenameDriveFile,
     resetDriveState,
   };
