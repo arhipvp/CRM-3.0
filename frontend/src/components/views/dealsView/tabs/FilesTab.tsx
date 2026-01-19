@@ -372,7 +372,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                             <button
                               type="button"
                               onClick={() => handleDownloadDriveFiles([file.id])}
-                              disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
+                              disabled={
+                                isDownloading || isTrashing || isDriveLoading || !!driveError
+                              }
                               className="link-action text-xs disabled:text-slate-300"
                             >
                               Скачать
