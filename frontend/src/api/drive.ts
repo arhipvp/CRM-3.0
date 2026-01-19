@@ -24,8 +24,11 @@ function extractFilename(contentDisposition: string | null): string | null {
       return utfMatch[1].trim();
     }
   }
-  const asciiMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
-  return asciiMatch?.[1]?.trim() ?? null;
+  const asciiMatch = contentDisposition.match(/filename=([^;]+)/i);
+  if (!asciiMatch?.[1]) {
+    return null;
+  }
+  return asciiMatch[1].trim().replace(/^"|"$/g, '');
 }
 
 function normalizeDriveResponse(
