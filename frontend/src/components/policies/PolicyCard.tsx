@@ -1,14 +1,14 @@
 import React from 'react';
 
 import type { Payment, Policy } from '../../types';
-import { useNotification } from '../../contexts/NotificationContext';
-import { copyToClipboard } from '../../utils/clipboard';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from './PaymentCard';
 import type { PolicyCardModel } from './policyCardModel';
+import { PolicyNumberButton } from './PolicyNumberButton';
 import { getPolicyExpiryBadge } from './policyIndicators';
 import { POLICY_PLACEHOLDER, POLICY_TEXT } from './text';
+import { hasUnpaidPayment, hasUnpaidRecord } from '../views/dealsView/helpers';
 
 export type PolicyCardActionVariant = 'secondary' | 'quiet' | 'danger';
 
@@ -61,7 +61,6 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   actions = [],
 }) => {
   const [isDetailsExpanded, setIsDetailsExpanded] = React.useState(false);
-  const { addNotification } = useNotification();
 
   if (import.meta.env.DEV && actions.length > 1) {
     const counts = new Map<string, number>();
@@ -91,21 +90,12 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
     () => payments.flatMap((payment) => payment.financialRecords ?? []),
     [payments],
   );
-  const hasUnpaidPayment = React.useMemo(
-    () =>
-      payments.some((payment) => {
-        if (payment.deletedAt) {
-          return false;
-        }
-        const actualDate = (payment.actualDate ?? '').trim();
-        if (!actualDate) {
-          return true;
-        }
-        const records = payment.financialRecords?.length
-          ? payment.financialRecords
-          : allFinancialRecords.filter((record) => record.paymentId === payment.id);
-        return records.some((record) => !record.deletedAt && !(record.date ?? '').trim());
-      }),
+  const hasUnpaidPayments = React.useMemo(
+    () => payments.some((payment) => hasUnpaidPayment(payment)),
+    [payments],
+  );
+  const hasUnpaidRecords = React.useMemo(
+    () => payments.some((payment) => hasUnpaidRecord(payment, allFinancialRecords)),
     [payments, allFinancialRecords],
   );
   const expiryBadge = React.useMemo(() => getPolicyExpiryBadge(policy.endDate), [policy.endDate]);
@@ -147,27 +137,13 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
           <div className="min-w-0 flex-1 text-left">
             <div className="flex flex-wrap items-center gap-2">
               <span className="app-label">{POLICY_TEXT.fields.number}:</span>
-              <button
-                type="button"
+              <PolicyNumberButton
+                value={model.number}
+                placeholder={POLICY_PLACEHOLDER}
                 className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
-                onClick={async (event) => {
-                  event.stopPropagation();
-                  const value = model.number || '';
-                  if (!value) {
-                    return;
-                  }
-                  const copied = await copyToClipboard(value);
-                  if (copied) {
-                    addNotification('Скопировано', 'success', 1600);
-                  }
-                }}
-                aria-label="Скопировать номер полиса"
-                title="Скопировать номер полиса"
-              >
-                {model.number || POLICY_PLACEHOLDER}
-              </button>
+              />
 
-              {hasUnpaidPayment && (
+              {hasUnpaidPayments && (
                 <span
                   className={[
                     'rounded-full px-2 py-0.5 text-[11px] font-semibold',
@@ -176,7 +152,14 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                       : 'bg-orange-100 text-orange-700',
                   ].join(' ')}
                 >
-                  Неоплачено
+                  {POLICY_TEXT.badges.unpaidPayments}
+                </span>
+              )}
+              {hasUnpaidRecords && (
+                <span
+                  className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
+                >
+                  {POLICY_TEXT.badges.unpaidRecords}
                 </span>
               )}
               {expiryBadge && (

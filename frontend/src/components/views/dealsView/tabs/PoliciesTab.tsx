@@ -6,7 +6,11 @@ import type {
   Payment,
   Policy,
 } from '../../../../types';
-import { PolicySortKey, policyHasUnpaidActivity } from '../helpers';
+import {
+  PolicySortKey,
+  policyHasUnpaidPayments,
+  policyHasUnpaidRecords,
+} from '../helpers';
 import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
 import { PolicyCard } from '../../../policies/PolicyCard';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
@@ -63,7 +67,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 }) => {
   const { paymentsExpanded, setPaymentsExpanded, recordsExpandedAll, setRecordsExpandedAll } =
     usePoliciesExpansionState();
-  const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
+  const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
+  const [showUnpaidRecordsOnly, setShowUnpaidRecordsOnly] = useState(false);
 
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();
@@ -85,13 +90,29 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   );
 
   const visiblePolicies = useMemo(() => {
-    if (!showUnpaidOnly) {
+    const shouldFilterUnpaid = showUnpaidPaymentsOnly || showUnpaidRecordsOnly;
+    if (!shouldFilterUnpaid) {
       return sortedPolicies;
     }
-    return sortedPolicies.filter((policy) =>
-      policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords),
-    );
-  }, [showUnpaidOnly, sortedPolicies, paymentsByPolicyMap, allFinancialRecords]);
+    return sortedPolicies.filter((policy) => {
+      const hasUnpaidPayments = policyHasUnpaidPayments(policy.id, paymentsByPolicyMap);
+      const hasUnpaidRecords = policyHasUnpaidRecords(
+        policy.id,
+        paymentsByPolicyMap,
+        allFinancialRecords,
+      );
+      return (
+        (showUnpaidPaymentsOnly && hasUnpaidPayments) ||
+        (showUnpaidRecordsOnly && hasUnpaidRecords)
+      );
+    });
+  }, [
+    allFinancialRecords,
+    paymentsByPolicyMap,
+    showUnpaidPaymentsOnly,
+    showUnpaidRecordsOnly,
+    sortedPolicies,
+  ]);
 
   if (!selectedDeal) {
     return null;
@@ -131,10 +152,19 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
             <input
               type="checkbox"
               className="check"
-              checked={showUnpaidOnly}
-              onChange={(event) => setShowUnpaidOnly(event.target.checked)}
+              checked={showUnpaidPaymentsOnly}
+              onChange={(event) => setShowUnpaidPaymentsOnly(event.target.checked)}
             />
-            {POLICY_TEXT.filters.unpaidOnly}
+            {POLICY_TEXT.filters.unpaidPaymentsOnly}
+          </label>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="check"
+              checked={showUnpaidRecordsOnly}
+              onChange={(event) => setShowUnpaidRecordsOnly(event.target.checked)}
+            />
+            {POLICY_TEXT.filters.unpaidRecordsOnly}
           </label>
         </div>
 

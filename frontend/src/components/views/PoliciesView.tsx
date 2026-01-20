@@ -3,7 +3,11 @@ import { Client, Payment, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { FilterParams } from '../../api';
-import { getPolicyTransportSummary, policyHasUnpaidActivity } from './dealsView/helpers';
+import {
+  getPolicyTransportSummary,
+  policyHasUnpaidPayments,
+  policyHasUnpaidRecords,
+} from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
@@ -20,8 +24,7 @@ import { getPolicyExpiryBadge } from '../policies/policyIndicators';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { useNotification } from '../../contexts/NotificationContext';
-import { copyToClipboard } from '../../utils/clipboard';
+import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-start_date', label: 'Начало (убывание)' },
@@ -68,17 +71,19 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onDeleteFinancialRecord,
 }) => {
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
-  const { addNotification } = useNotification();
   const rawSearch = (filters.search ?? '').trim();
   const debouncedSearch = useDebouncedValue(rawSearch, 450);
   const isDebouncePending = Boolean(onRefreshPoliciesList) && rawSearch !== debouncedSearch;
+  const showUnpaidPaymentsOnly = filters.unpaid_payments === 'true';
+  const showUnpaidRecordsOnly = filters.unpaid_records === 'true';
+  const shouldRequestUnpaid = showUnpaidPaymentsOnly || showUnpaidRecordsOnly;
   const serverFilters = useMemo(
     () => ({
       ordering: filters.ordering,
       search: debouncedSearch || undefined,
-      unpaid: filters.unpaid,
+      unpaid: shouldRequestUnpaid || undefined,
     }),
-    [debouncedSearch, filters.ordering, filters.unpaid],
+    [debouncedSearch, filters.ordering, shouldRequestUnpaid],
   );
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();
@@ -98,10 +103,19 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     () => payments.flatMap((payment) => payment.financialRecords ?? []),
     [payments],
   );
-  const unpaidPolicies = useMemo(() => {
+  const unpaidPaymentsPolicies = useMemo(() => {
     const set = new Set<string>();
     policies.forEach((policy) => {
-      if (policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords)) {
+      if (policyHasUnpaidPayments(policy.id, paymentsByPolicyMap)) {
+        set.add(policy.id);
+      }
+    });
+    return set;
+  }, [paymentsByPolicyMap, policies]);
+  const unpaidRecordsPolicies = useMemo(() => {
+    const set = new Set<string>();
+    policies.forEach((policy) => {
+      if (policyHasUnpaidRecords(policy.id, paymentsByPolicyMap, allFinancialRecords)) {
         set.add(policy.id);
       }
     });
@@ -111,13 +125,26 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const filteredPolicies = useMemo(() => {
     let result = [...policies];
 
-    const showUnpaidOnly = filters.unpaid === 'true';
-    if (showUnpaidOnly) {
-      result = result.filter((policy) => unpaidPolicies.has(policy.id));
+    const shouldFilterUnpaid = showUnpaidPaymentsOnly || showUnpaidRecordsOnly;
+    if (shouldFilterUnpaid) {
+      result = result.filter((policy) => {
+        const hasUnpaidPayments = unpaidPaymentsPolicies.has(policy.id);
+        const hasUnpaidRecords = unpaidRecordsPolicies.has(policy.id);
+        return (
+          (showUnpaidPaymentsOnly && hasUnpaidPayments) ||
+          (showUnpaidRecordsOnly && hasUnpaidRecords)
+        );
+      });
     }
 
     return result;
-  }, [filters, policies, unpaidPolicies]);
+  }, [
+    policies,
+    showUnpaidPaymentsOnly,
+    showUnpaidRecordsOnly,
+    unpaidPaymentsPolicies,
+    unpaidRecordsPolicies,
+  ]);
 
   useEffect(() => {
     if (!onRefreshPoliciesList) {
@@ -128,8 +155,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
   const customFilters = [
     {
-      key: 'unpaid',
-      label: POLICY_TEXT.filters.unpaidOnly,
+      key: 'unpaid_payments',
+      label: POLICY_TEXT.filters.unpaidPaymentsOnly,
+      type: 'checkbox' as const,
+    },
+    {
+      key: 'unpaid_records',
+      label: POLICY_TEXT.filters.unpaidRecordsOnly,
       type: 'checkbox' as const,
     },
   ];
@@ -204,7 +236,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 {paymentsByPolicy.map(({ policy, payments }) => {
                   const paymentsPanelId = `policy-${policy.id}-payments`;
                   const model = buildPolicyCardModel(policy, payments);
-                  const hasUnpaidPayment = unpaidPolicies.has(policy.id);
+                  const hasUnpaidPayments = unpaidPaymentsPolicies.has(policy.id);
+                  const hasUnpaidRecords = unpaidRecordsPolicies.has(policy.id);
                   const expiryBadge = getPolicyExpiryBadge(policy.endDate);
                   const transportSummary = policy.isVehicle
                     ? getPolicyTransportSummary(policy)
@@ -216,26 +249,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                         <td className={TABLE_CELL_CLASS_MD}>
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
+                              <PolicyNumberButton
+                                value={model.number}
                                 className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
-                                onClick={async (event) => {
-                                  event.stopPropagation();
-                                  const value = model.number || '';
-                                  if (!value) {
-                                    return;
-                                  }
-                                  const copied = await copyToClipboard(value);
-                                  if (copied) {
-                                    addNotification('Скопировано', 'success', 1600);
-                                  }
-                                }}
-                                aria-label="Скопировать номер полиса"
-                                title="Скопировать номер полиса"
-                              >
-                                {model.number}
-                              </button>
-                              {hasUnpaidPayment && (
+                              />
+                              {hasUnpaidPayments && (
                                 <span
                                   className={[
                                     'rounded-full px-2 py-0.5 text-[11px] font-semibold',
@@ -244,7 +262,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                       : 'bg-orange-100 text-orange-700',
                                   ].join(' ')}
                                 >
-                                  Неоплачено
+                                  {POLICY_TEXT.badges.unpaidPayments}
+                                </span>
+                              )}
+                              {hasUnpaidRecords && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                  {POLICY_TEXT.badges.unpaidRecords}
                                 </span>
                               )}
                               {expiryBadge && (

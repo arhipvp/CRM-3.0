@@ -26,8 +26,13 @@ export const POLICY_TEXT = {
   messages: {
     noPayments: 'Платежей пока нет.',
   },
+  badges: {
+    unpaidPayments: 'Неоплаченные платежи',
+    unpaidRecords: 'Неоплаченные записи',
+  },
   filters: {
-    unpaidOnly: 'Показывать только неоплаченные',
+    unpaidPaymentsOnly: 'Только с неоплаченными платежами',
+    unpaidRecordsOnly: 'Только с неоплаченными записями',
   },
 } as const;
 

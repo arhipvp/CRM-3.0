@@ -194,6 +194,9 @@ const isRecordDeleted = (record: FinancialRecord) => Boolean(record.deletedAt);
 const hasPaymentBeenPaid = (payment: Payment) => Boolean((payment.actualDate ?? '').trim());
 const hasRecordBeenPaid = (record: FinancialRecord) => Boolean((record.date ?? '').trim());
 
+export const hasUnpaidPayment = (payment: Payment) =>
+  !isPaymentDeleted(payment) && !hasPaymentBeenPaid(payment);
+
 export const getPaymentFinancialRecords = (
   payment: Payment,
   allFinancialRecords: FinancialRecord[],
@@ -204,18 +207,21 @@ export const getPaymentFinancialRecords = (
   return allFinancialRecords.filter((record) => record.paymentId === payment.id);
 };
 
+export const hasUnpaidRecord = (payment: Payment, allFinancialRecords: FinancialRecord[]) => {
+  if (isPaymentDeleted(payment)) {
+    return false;
+  }
+  const records = getPaymentFinancialRecords(payment, allFinancialRecords);
+  return records.some((record) => !isRecordDeleted(record) && !hasRecordBeenPaid(record));
+};
+
 export const hasUnpaidFinancialActivity = (
   payment: Payment,
   allFinancialRecords: FinancialRecord[],
 ) => {
-  if (isPaymentDeleted(payment)) {
-    return false;
-  }
-  if (!hasPaymentBeenPaid(payment)) {
-    return true;
-  }
-  const records = getPaymentFinancialRecords(payment, allFinancialRecords);
-  return records.some((record) => !isRecordDeleted(record) && !hasRecordBeenPaid(record));
+  return (
+    hasUnpaidPayment(payment) || hasUnpaidRecord(payment, allFinancialRecords)
+  );
 };
 
 export const policyHasUnpaidActivity = (
@@ -224,5 +230,26 @@ export const policyHasUnpaidActivity = (
   allFinancialRecords: FinancialRecord[],
 ) => {
   const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
-  return policyPayments.some((payment) => hasUnpaidFinancialActivity(payment, allFinancialRecords));
+  return policyPayments.some((payment) =>
+    hasUnpaidFinancialActivity(payment, allFinancialRecords),
+  );
+};
+
+export const policyHasUnpaidPayments = (
+  policyId: string,
+  paymentsByPolicyMap: Map<string, Payment[]>,
+) => {
+  const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
+  return policyPayments.some((payment) => hasUnpaidPayment(payment));
+};
+
+export const policyHasUnpaidRecords = (
+  policyId: string,
+  paymentsByPolicyMap: Map<string, Payment[]>,
+  allFinancialRecords: FinancialRecord[],
+) => {
+  const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
+  return policyPayments.some((payment) =>
+    hasUnpaidRecord(payment, allFinancialRecords),
+  );
 };

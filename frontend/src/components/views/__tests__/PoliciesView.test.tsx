@@ -110,7 +110,7 @@ describe('PoliciesView', () => {
     expect(screen.getByText('POL-ONE')).toBeInTheDocument();
     expect(screen.getByText('POL-TWO')).toBeInTheDocument();
 
-    const checkbox = screen.getByLabelText('Показывать только неоплаченные');
+    const checkbox = screen.getByLabelText('Только с неоплаченными платежами');
     fireEvent.click(checkbox);
 
     expect(screen.getByText('POL-ONE')).toBeInTheDocument();

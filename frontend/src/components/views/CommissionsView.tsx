@@ -19,8 +19,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { buildDriveFolderLink } from '../../utils/links';
 import { formatDriveDate, formatDriveFileSize, getDriveItemIcon } from './dealsView/helpers';
-import { useNotification } from '../../contexts/NotificationContext';
-import { copyToClipboard } from '../../utils/clipboard';
+import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -85,7 +84,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateStatement,
 }) => {
   const navigate = useNavigate();
-  const { addNotification } = useNotification();
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
@@ -1138,25 +1136,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                           </div>
                         </td>
                         <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                          <button
-                            type="button"
+                          <PolicyNumberButton
+                            value={policyNumber === '-' ? '' : policyNumber}
+                            placeholder="-"
                             className="link-action text-left"
-                            onClick={async (event) => {
-                              event.stopPropagation();
-                              const value = policyNumber === '-' ? '' : policyNumber;
-                              if (!value) {
-                                return;
-                              }
-                              const copied = await copyToClipboard(value);
-                              if (copied) {
-                                addNotification('Скопировано', 'success', 1600);
-                              }
-                            }}
-                            aria-label="Скопировать номер полиса"
-                            title="Скопировать номер полиса"
-                          >
-                            {policyNumber}
-                          </button>
+                          />
                         </td>
                         <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
                         <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
