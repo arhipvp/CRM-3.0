@@ -219,9 +219,7 @@ export const hasUnpaidFinancialActivity = (
   payment: Payment,
   allFinancialRecords: FinancialRecord[],
 ) => {
-  return (
-    hasUnpaidPayment(payment) || hasUnpaidRecord(payment, allFinancialRecords)
-  );
+  return hasUnpaidPayment(payment) || hasUnpaidRecord(payment, allFinancialRecords);
 };
 
 export const policyHasUnpaidActivity = (
@@ -230,9 +228,7 @@ export const policyHasUnpaidActivity = (
   allFinancialRecords: FinancialRecord[],
 ) => {
   const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
-  return policyPayments.some((payment) =>
-    hasUnpaidFinancialActivity(payment, allFinancialRecords),
-  );
+  return policyPayments.some((payment) => hasUnpaidFinancialActivity(payment, allFinancialRecords));
 };
 
 export const policyHasUnpaidPayments = (
@@ -249,7 +245,5 @@ export const policyHasUnpaidRecords = (
   allFinancialRecords: FinancialRecord[],
 ) => {
   const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
-  return policyPayments.some((payment) =>
-    hasUnpaidRecord(payment, allFinancialRecords),
-  );
+  return policyPayments.some((payment) => hasUnpaidRecord(payment, allFinancialRecords));
 };

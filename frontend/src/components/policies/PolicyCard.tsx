@@ -156,9 +156,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                 </span>
               )}
               {hasUnpaidRecords && (
-                <span
-                  className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
-                >
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                   {POLICY_TEXT.badges.unpaidRecords}
                 </span>
               )}

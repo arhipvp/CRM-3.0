@@ -6,11 +6,7 @@ import type {
   Payment,
   Policy,
 } from '../../../../types';
-import {
-  PolicySortKey,
-  policyHasUnpaidPayments,
-  policyHasUnpaidRecords,
-} from '../helpers';
+import { PolicySortKey, policyHasUnpaidPayments, policyHasUnpaidRecords } from '../helpers';
 import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
 import { PolicyCard } from '../../../policies/PolicyCard';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
@@ -102,8 +98,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
         allFinancialRecords,
       );
       return (
-        (showUnpaidPaymentsOnly && hasUnpaidPayments) ||
-        (showUnpaidRecordsOnly && hasUnpaidRecords)
+        (showUnpaidPaymentsOnly && hasUnpaidPayments) || (showUnpaidRecordsOnly && hasUnpaidRecords)
       );
     });
   }, [
