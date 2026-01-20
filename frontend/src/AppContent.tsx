@@ -1187,9 +1187,9 @@ const AppContent: React.FC = () => {
     [
       adjustPaymentsTotals,
       closePolicyModal,
-        clients,
-        dealFilters,
-        dealsById,
+      clients,
+      dealFilters,
+      dealsById,
       invalidateDealsCache,
       policySourceFileIds,
       refreshDealsWithSelection,

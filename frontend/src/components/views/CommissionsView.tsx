@@ -1507,10 +1507,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           closeOnOverlayClick={false}
         >
           <p className="text-sm text-slate-700">
-            Ведомость{' '}
-            <span className="font-bold">{normalizeText(deletingStatement.name)}</span> будет удалена.
-            Все
-            записи отвяжутся от ведомости.
+            Ведомость <span className="font-bold">{normalizeText(deletingStatement.name)}</span>{' '}
+            будет удалена. Все записи отвяжутся от ведомости.
           </p>
           <div className="mt-6 flex justify-end gap-3">
             <button
