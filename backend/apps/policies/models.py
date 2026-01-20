@@ -1,7 +1,6 @@
 from apps.common.models import SoftDeleteModel
 from django.db import models
 from django.db.models import Q
-from django.db.models.functions import Length, Trim
 
 
 class Policy(SoftDeleteModel):
@@ -133,7 +132,7 @@ class Policy(SoftDeleteModel):
                 name="policies_unique_active_number",
             ),
             models.CheckConstraint(
-                check=Length(Trim("number")).gt(0),
+                check=~Q(number__regex=r"^\s*$"),
                 name="policies_number_not_empty",
             ),
         ]

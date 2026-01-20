@@ -1,5 +1,5 @@
 from django.db import migrations, models
-from django.db.models.functions import Length, Trim
+from django.db.models import Q
 
 
 class Migration(migrations.Migration):
@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="policy",
             constraint=models.CheckConstraint(
-                check=Length(Trim("number")).gt(0),
+                check=~Q(number__regex=r"^\s*$"),
                 name="policies_number_not_empty",
             ),
         ),
