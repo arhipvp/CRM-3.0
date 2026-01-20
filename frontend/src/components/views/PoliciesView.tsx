@@ -76,14 +76,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const isDebouncePending = Boolean(onRefreshPoliciesList) && rawSearch !== debouncedSearch;
   const showUnpaidPaymentsOnly = filters.unpaid_payments === 'true';
   const showUnpaidRecordsOnly = filters.unpaid_records === 'true';
-  const shouldRequestUnpaid = showUnpaidPaymentsOnly || showUnpaidRecordsOnly;
   const serverFilters = useMemo(
     () => ({
       ordering: filters.ordering,
       search: debouncedSearch || undefined,
-      unpaid: shouldRequestUnpaid || undefined,
+      unpaid_payments: showUnpaidPaymentsOnly || undefined,
+      unpaid_records: showUnpaidRecordsOnly || undefined,
     }),
-    [debouncedSearch, filters.ordering, shouldRequestUnpaid],
+    [debouncedSearch, filters.ordering, showUnpaidPaymentsOnly, showUnpaidRecordsOnly],
   );
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();

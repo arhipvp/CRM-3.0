@@ -1187,10 +1187,9 @@ const AppContent: React.FC = () => {
     [
       adjustPaymentsTotals,
       closePolicyModal,
-      clients,
-      createClient,
-      dealFilters,
-      dealsById,
+        clients,
+        dealFilters,
+        dealsById,
       invalidateDealsCache,
       policySourceFileIds,
       refreshDealsWithSelection,
@@ -1283,7 +1282,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [clients, createClient, policies, setEditingPolicy, setError, setIsSyncing, updateAppData],
+    [clients, policies, setEditingPolicy, setError, setIsSyncing, updateAppData],
   );
   const handleDeletePolicy = useCallback(
     async (policyId: string) => {

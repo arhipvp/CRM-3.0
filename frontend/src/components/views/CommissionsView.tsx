@@ -70,6 +70,24 @@ type IncomeExpenseRow = {
   recordNote?: string;
 };
 
+const MOJIBAKE_RE = /Ð/;
+
+const normalizeText = (value?: string | null) => {
+  if (!value) {
+    return '';
+  }
+  if (!MOJIBAKE_RE.test(value) || typeof TextDecoder === 'undefined') {
+    return value;
+  }
+  try {
+    const bytes = Uint8Array.from(value, (char) => char.charCodeAt(0));
+    const decoded = new TextDecoder('utf-8').decode(bytes);
+    return MOJIBAKE_RE.test(decoded) ? value : decoded;
+  } catch {
+    return value;
+  }
+};
+
 export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
   policies,
@@ -467,8 +485,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     await onUpdateStatement(attachStatement.id, {
       recordIds: selectedRecordIds,
     });
+    if (viewMode === 'all') {
+      await loadAllRecords();
+    }
     setSelectedRecordIds([]);
-  }, [attachStatement, onUpdateStatement, selectedRecordIds]);
+  }, [attachStatement, loadAllRecords, onUpdateStatement, selectedRecordIds, viewMode]);
 
   const handleRemoveSelected = useCallback(async () => {
     if (!selectedStatement || !onRemoveStatementRecords || !selectedRecordIds.length) {
@@ -701,11 +722,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                                         : 'text-rose-700'
                                   }`}
                                 >
-                                  {statement.name}
+                                  {normalizeText(statement.name)}
                                 </p>
                                 <p className="text-xs text-slate-500">
                                   {typeLabel} · {statusLabel}
-                                  {statement.counterparty ? ` · ${statement.counterparty}` : ''}
+                                  {statement.counterparty
+                                    ? ` · ${normalizeText(statement.counterparty)}`
+                                    : ''}
                                   {paidAt ? ` · Выплата ${paidAt}` : ''}
                                 </p>
                               </div>
@@ -750,12 +773,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомость</p>
                   <p className="text-lg font-semibold text-slate-900">
-                    {selectedStatement ? selectedStatement.name : 'Ведомость не выбрана'}
+                    {selectedStatement
+                      ? normalizeText(selectedStatement.name)
+                      : 'Ведомость не выбрана'}
                   </p>
                   {selectedStatement ? (
                     <p className="text-xs text-slate-500">
                       {selectedStatementTypeLabel} · {selectedStatementStatusLabel}
-                      {selectedStatement.counterparty ? ` · ${selectedStatement.counterparty}` : ''}
+                      {selectedStatement.counterparty
+                        ? ` · ${normalizeText(selectedStatement.counterparty)}`
+                        : ''}
                       {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
                     </p>
                   ) : (
@@ -998,7 +1025,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   {statements.map((statement) => (
                     <option key={statement.id} value={statement.id}>
                       {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
-                      {statement.name}
+                      {normalizeText(statement.name)}
                     </option>
                   ))}
                 </select>
@@ -1047,19 +1074,19 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   {filteredRows.map((row) => {
                     const payment = row.payment;
                     const policyNumber =
-                      payment.policyNumber ??
-                      policiesById.get(payment.policyId ?? '')?.number ??
+                      normalizeText(payment.policyNumber) ||
+                      normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
                       '-';
                     const policyType =
-                      payment.policyInsuranceType ??
-                      policiesById.get(payment.policyId ?? '')?.insuranceType ??
+                      normalizeText(payment.policyInsuranceType) ||
+                      normalizeText(policiesById.get(payment.policyId ?? '')?.insuranceType) ||
                       '-';
                     const salesChannelLabel =
-                      policiesById.get(payment.policyId ?? '')?.salesChannelName ??
-                      policiesById.get(payment.policyId ?? '')?.salesChannel ??
+                      normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
+                      normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
                       '-';
-                    const clientName = payment.dealClientName ?? '-';
-                    const dealTitle = payment.dealTitle ?? '-';
+                    const clientName = normalizeText(payment.dealClientName) || '-';
+                    const dealTitle = normalizeText(payment.dealTitle) || '-';
                     const paymentActualDate = payment.actualDate
                       ? formatDateRu(payment.actualDate)
                       : null;
@@ -1082,7 +1109,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       return bTime - aTime;
                     });
                     const recordNotes = [row.recordDescription, row.recordSource, row.recordNote]
-                      .map((value) => value?.toString().trim())
+                      .map((value) => normalizeText(value?.toString().trim()))
                       .filter(Boolean)
                       .join(' · ');
                     const amountValue =
@@ -1093,8 +1120,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     const isRecordLocked = recordStatement?.status === 'paid';
                     const statementNote = recordStatement
                       ? recordStatement.paidAt
-                        ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${recordStatement.name}`
-                        : `Ведомость: ${recordStatement.name}`
+                        ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(
+                            recordStatement.name,
+                          )}`
+                        : `Ведомость: ${normalizeText(recordStatement.name)}`
                       : null;
                     const isSelectable = attachStatement ? canAttachRow(row) : false;
                     const isSelected = selectedRecordIds.includes(row.recordId);
@@ -1478,7 +1507,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           closeOnOverlayClick={false}
         >
           <p className="text-sm text-slate-700">
-            Ведомость <span className="font-bold">{deletingStatement.name}</span> будет удалена. Все
+            Ведомость{' '}
+            <span className="font-bold">{normalizeText(deletingStatement.name)}</span> будет удалена.
+            Все
             записи отвяжутся от ведомости.
           </p>
           <div className="mt-6 flex justify-end gap-3">
