@@ -939,6 +939,7 @@ const AppContent: React.FC = () => {
         endDate,
         salesChannelId,
         insuredClientId,
+        insuredClientName,
         counterparty,
         payments: paymentDrafts = [],
       } = values;
@@ -963,10 +964,29 @@ const AppContent: React.FC = () => {
       }
 
       try {
+        let resolvedInsuredClientId = insuredClientId;
+        const normalizedInsuredName = insuredClientName?.trim();
+        if (!resolvedInsuredClientId && normalizedInsuredName) {
+          const normalizedLower = normalizedInsuredName.toLowerCase();
+          if (clientId && deal?.clientName?.toLowerCase() === normalizedLower) {
+            resolvedInsuredClientId = clientId;
+          } else {
+            const matchedClient = clients.find(
+              (client) => client.name.toLowerCase() === normalizedLower,
+            );
+            if (matchedClient) {
+              resolvedInsuredClientId = matchedClient.id;
+            } else {
+              const createdClient = await createClient({ name: normalizedInsuredName });
+              updateAppData((prev) => ({ clients: [createdClient, ...prev.clients] }));
+              resolvedInsuredClientId = createdClient.id;
+            }
+          }
+        }
         const created = await createPolicy({
           dealId,
           clientId,
-          insuredClientId,
+          insuredClientId: resolvedInsuredClientId,
           number,
           insuranceCompanyId,
           insuranceTypeId,
@@ -1167,6 +1187,8 @@ const AppContent: React.FC = () => {
     [
       adjustPaymentsTotals,
       closePolicyModal,
+      clients,
+      createClient,
       dealFilters,
       dealsById,
       invalidateDealsCache,
@@ -1205,7 +1227,31 @@ const AppContent: React.FC = () => {
           startDate,
           endDate,
           insuredClientId,
+          insuredClientName,
         } = values;
+        let resolvedInsuredClientId = insuredClientId;
+        const normalizedInsuredName = insuredClientName?.trim();
+        if (!resolvedInsuredClientId && normalizedInsuredName) {
+          const normalizedLower = normalizedInsuredName.toLowerCase();
+          const currentPolicy = policies.find((policy) => policy.id === policyId);
+          if (
+            currentPolicy?.clientId &&
+            currentPolicy?.clientName?.toLowerCase() === normalizedLower
+          ) {
+            resolvedInsuredClientId = currentPolicy.clientId;
+          } else {
+            const matchedClient = clients.find(
+              (client) => client.name.toLowerCase() === normalizedLower,
+            );
+            if (matchedClient) {
+              resolvedInsuredClientId = matchedClient.id;
+            } else {
+              const createdClient = await createClient({ name: normalizedInsuredName });
+              updateAppData((prev) => ({ clients: [createdClient, ...prev.clients] }));
+              resolvedInsuredClientId = createdClient.id;
+            }
+          }
+        }
         const updated = await updatePolicy(policyId, {
           number,
           insuranceCompanyId,
@@ -1218,7 +1264,7 @@ const AppContent: React.FC = () => {
           salesChannelId,
           startDate,
           endDate,
-          insuredClientId,
+          insuredClientId: resolvedInsuredClientId,
         });
         updateAppData((prev) => ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
@@ -1237,7 +1283,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [setEditingPolicy, setError, setIsSyncing, updateAppData],
+    [clients, createClient, policies, setEditingPolicy, setError, setIsSyncing, updateAppData],
   );
   const handleDeletePolicy = useCallback(
     async (policyId: string) => {
