@@ -167,9 +167,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           sortOptions={POLICY_SORT_OPTIONS}
           customFilters={customFilters}
         />
-        {isDebouncePending && (
-          <div className="text-xs text-slate-500">Применяю фильтр...</div>
-        )}
+        {isDebouncePending && <div className="text-xs text-slate-500">Применяю фильтр...</div>}
         <div className="flex flex-wrap gap-3" />
       </div>
 
