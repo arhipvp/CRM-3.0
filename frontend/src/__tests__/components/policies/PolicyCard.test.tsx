@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { Policy } from '../../../types';
 import { PolicyCard } from '../../../components/policies/PolicyCard';
 import type { PolicyCardModel } from '../../../components/policies/policyCardModel';
+import { NotificationProvider } from '../../../contexts/NotificationProvider';
 
 const createPolicy = (): Policy => ({
   id: 'p1',
@@ -39,32 +40,28 @@ const createModel = (): PolicyCardModel => ({
 });
 
 describe('PolicyCard', () => {
-  it('invokes primaryAction when clicking the header', async () => {
-    const onPrimary = vi.fn();
+  it('invokes action button handler', async () => {
     const onAction = vi.fn();
     const user = userEvent.setup();
 
     render(
-      <PolicyCard
-        policy={createPolicy()}
-        payments={[]}
-        model={createModel()}
-        recordsExpandedAll={false}
-        isPaymentsExpanded={false}
-        onTogglePaymentsExpanded={() => undefined}
-        onRequestAddRecord={() => undefined}
-        onEditFinancialRecord={() => undefined}
-        onDeleteFinancialRecord={async () => undefined}
-        primaryAction={{ label: 'Open', onClick: onPrimary }}
-        actions={[{ key: 'edit', label: 'Edit', onClick: onAction }]}
-      />,
+      <NotificationProvider>
+        <PolicyCard
+          policy={createPolicy()}
+          payments={[]}
+          model={createModel()}
+          recordsExpandedAll={false}
+          isPaymentsExpanded={false}
+          onTogglePaymentsExpanded={() => undefined}
+          onRequestAddRecord={() => undefined}
+          onEditFinancialRecord={() => undefined}
+          onDeleteFinancialRecord={async () => undefined}
+          actions={[{ key: 'edit', label: 'Edit', onClick: onAction }]}
+        />
+      </NotificationProvider>,
     );
-
-    await user.click(screen.getByRole('button', { name: 'Open' }));
-    expect(onPrimary).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     expect(onAction).toHaveBeenCalledTimes(1);
-    expect(onPrimary).toHaveBeenCalledTimes(1);
   });
 });

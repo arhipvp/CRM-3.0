@@ -1,6 +1,8 @@
 import React from 'react';
 
 import type { Payment, Policy } from '../../types';
+import { useNotification } from '../../contexts/NotificationContext';
+import { copyToClipboard } from '../../utils/clipboard';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from './PaymentCard';
@@ -19,13 +21,6 @@ export interface PolicyCardAction {
   title?: string;
 }
 
-export interface PolicyCardPrimaryAction {
-  label: string;
-  onClick: () => void;
-  ariaLabel?: string;
-  title?: string;
-}
-
 interface PolicyCardProps {
   policy: Policy;
   payments: Payment[];
@@ -39,7 +34,6 @@ interface PolicyCardProps {
   onEditPayment?: (paymentId: string) => void;
   onRequestAddPayment?: () => void;
   actions?: PolicyCardAction[];
-  primaryAction?: PolicyCardPrimaryAction;
 }
 
 const actionClassName = (variant: PolicyCardActionVariant | undefined) => {
@@ -65,9 +59,9 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   onEditPayment,
   onRequestAddPayment,
   actions = [],
-  primaryAction,
 }) => {
   const [isDetailsExpanded, setIsDetailsExpanded] = React.useState(false);
+  const { addNotification } = useNotification();
 
   if (import.meta.env.DEV && actions.length > 1) {
     const counts = new Map<string, number>();
@@ -150,29 +144,28 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
     <section className="rounded-2xl border border-slate-200 bg-white">
       <div className="p-4 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <button
-            type="button"
-            onClick={primaryAction?.onClick}
-            disabled={!primaryAction}
-            aria-label={primaryAction?.ariaLabel ?? primaryAction?.label}
-            title={primaryAction?.title ?? primaryAction?.label}
-            className={[
-              'min-w-0',
-              'flex-1',
-              'text-left',
-              primaryAction ? 'cursor-pointer' : 'cursor-default',
-            ].join(' ')}
-          >
+          <div className="min-w-0 flex-1 text-left">
             <div className="flex flex-wrap items-center gap-2">
               <span className="app-label">{POLICY_TEXT.fields.number}:</span>
-              <span
-                className={[
-                  'text-sm font-semibold text-slate-900',
-                  primaryAction ? 'underline underline-offset-2 decoration-slate-300' : '',
-                ].join(' ')}
+              <button
+                type="button"
+                className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
+                onClick={async (event) => {
+                  event.stopPropagation();
+                  const value = model.number || '';
+                  if (!value) {
+                    return;
+                  }
+                  const copied = await copyToClipboard(value);
+                  if (copied) {
+                    addNotification('Скопировано', 'success', 1600);
+                  }
+                }}
+                aria-label="Скопировать номер полиса"
+                title="Скопировать номер полиса"
               >
                 {model.number || POLICY_PLACEHOLDER}
-              </span>
+              </button>
 
               {hasUnpaidPayment && (
                 <span
@@ -202,9 +195,6 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
             <p className="mt-1 text-xs text-slate-500">
               Начало: {model.startDate} · Окончание: {model.endDate}
             </p>
-            {primaryAction && (
-              <p className="mt-2 text-xs font-semibold text-sky-700">{primaryAction.label}</p>
-            )}
           </button>
 
           <div className="flex shrink-0 flex-col items-end gap-2">

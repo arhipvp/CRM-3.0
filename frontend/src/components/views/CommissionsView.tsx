@@ -19,6 +19,8 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { buildDriveFolderLink } from '../../utils/links';
 import { formatDriveDate, formatDriveFileSize, getDriveItemIcon } from './dealsView/helpers';
+import { useNotification } from '../../contexts/NotificationContext';
+import { copyToClipboard } from '../../utils/clipboard';
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -75,7 +77,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   statements,
   onDealSelect,
   onDealPreview,
-  onRequestEditPolicy,
   onUpdateFinancialRecord,
   onDeleteStatement,
   onRemoveStatementRecords,
@@ -84,6 +85,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateStatement,
 }) => {
   const navigate = useNavigate();
+  const { addNotification } = useNotification();
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
@@ -1050,9 +1052,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       payment.policyNumber ??
                       policiesById.get(payment.policyId ?? '')?.number ??
                       '-';
-                    const policyEntity = payment.policyId
-                      ? (policiesById.get(payment.policyId) ?? null)
-                      : null;
                     const policyType =
                       payment.policyInsuranceType ??
                       policiesById.get(payment.policyId ?? '')?.insuranceType ??
@@ -1139,17 +1138,25 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                           </div>
                         </td>
                         <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                          {policyEntity && onRequestEditPolicy ? (
-                            <button
-                              type="button"
-                              onClick={() => onRequestEditPolicy(policyEntity)}
-                              className="link-action text-left"
-                            >
-                              {policyNumber}
-                            </button>
-                          ) : (
-                            policyNumber
-                          )}
+                          <button
+                            type="button"
+                            className="link-action text-left"
+                            onClick={async (event) => {
+                              event.stopPropagation();
+                              const value = policyNumber === '-' ? '' : policyNumber;
+                              if (!value) {
+                                return;
+                              }
+                              const copied = await copyToClipboard(value);
+                              if (copied) {
+                                addNotification('Скопировано', 'success', 1600);
+                              }
+                            }}
+                            aria-label="Скопировать номер полиса"
+                            title="Скопировать номер полиса"
+                          >
+                            {policyNumber}
+                          </button>
                         </td>
                         <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
                         <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>

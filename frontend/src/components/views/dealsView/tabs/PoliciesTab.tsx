@@ -186,24 +186,12 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           const payments = paymentsByPolicyMap.get(policy.id) ?? [];
           const expanded = paymentsExpanded[policy.id] ?? false;
           const model = buildPolicyCardModel(policy, payments);
-          const primaryClient = model.clientId
-            ? (clients.find((client) => client.id === model.clientId) ?? null)
-            : null;
-
           return (
             <PolicyCard
               key={policy.id}
               policy={policy}
               payments={payments}
               model={model}
-              primaryAction={
-                primaryClient
-                  ? {
-                      label: POLICY_TEXT.actions.openClient,
-                      onClick: () => onOpenClient(primaryClient),
-                    }
-                  : undefined
-              }
               recordsExpandedAll={recordsExpandedAll}
               isPaymentsExpanded={expanded}
               onTogglePaymentsExpanded={() =>

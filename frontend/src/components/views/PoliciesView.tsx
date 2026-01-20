@@ -20,6 +20,8 @@ import { getPolicyExpiryBadge } from '../policies/policyIndicators';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useNotification } from '../../contexts/NotificationContext';
+import { copyToClipboard } from '../../utils/clipboard';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-start_date', label: 'Начало (убывание)' },
@@ -66,6 +68,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onDeleteFinancialRecord,
 }) => {
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
+  const { addNotification } = useNotification();
   const rawSearch = (filters.search ?? '').trim();
   const debouncedSearch = useDebouncedValue(rawSearch, 450);
   const isDebouncePending = Boolean(onRefreshPoliciesList) && rawSearch !== debouncedSearch;
@@ -169,7 +172,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           customFilters={customFilters}
         />
         {isDebouncePending && (
-          <div className="text-xs text-slate-500">РџСЂРёРјРµРЅСЏСЋ С„РёР»СЊС‚СЂ...</div>
+          <div className="text-xs text-slate-500">Применяю фильтр...</div>
         )}
         <div className="flex flex-wrap gap-3" />
       </div>
@@ -219,9 +222,25 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                         <td className={TABLE_CELL_CLASS_MD}>
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-semibold text-slate-900 break-all">
+                              <button
+                                type="button"
+                                className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  const value = model.number || '';
+                                  if (!value) {
+                                    return;
+                                  }
+                                  const copied = await copyToClipboard(value);
+                                  if (copied) {
+                                    addNotification('Скопировано', 'success', 1600);
+                                  }
+                                }}
+                                aria-label="Скопировать номер полиса"
+                                title="Скопировать номер полиса"
+                              >
                                 {model.number}
-                              </span>
+                              </button>
                               {hasUnpaidPayment && (
                                 <span
                                   className={[
