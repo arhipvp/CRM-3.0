@@ -3,7 +3,7 @@ import { Client, Payment, Policy } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
 import { FilterParams } from '../../api';
-import { getPolicyTransportSummary } from './dealsView/helpers';
+import { getPolicyTransportSummary, policyHasUnpaidActivity } from './dealsView/helpers';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
@@ -100,17 +100,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   );
   const unpaidPolicies = useMemo(() => {
     const set = new Set<string>();
-    payments.forEach((payment) => {
-      if (!payment.policyId || payment.deletedAt) {
-        return;
+    policies.forEach((policy) => {
+      if (policyHasUnpaidActivity(policy.id, paymentsByPolicyMap, allFinancialRecords)) {
+        set.add(policy.id);
       }
-      if ((payment.actualDate ?? '').trim()) {
-        return;
-      }
-      set.add(payment.policyId);
     });
     return set;
-  }, [payments]);
+  }, [allFinancialRecords, paymentsByPolicyMap, policies]);
 
   const filteredPolicies = useMemo(() => {
     let result = [...policies];

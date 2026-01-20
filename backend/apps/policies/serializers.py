@@ -98,6 +98,14 @@ class PolicySerializer(serializers.ModelSerializer):
             )
         return normalized
 
+    def validate_number(self, value: str) -> str:
+        if value is None:
+            return value
+        normalized = value.strip()
+        if not normalized:
+            raise serializers.ValidationError("Номер полиса не может быть пустым.")
+        return normalized
+
     def validate_status(self, value: str) -> str:
         if value is None:
             return value

@@ -34,7 +34,7 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     endDate: formatDate(policy.endDate),
     client: fallback(policy.insuredClientName ?? policy.clientName),
     insuranceCompany: fallback(policy.insuranceCompany),
-    salesChannel: fallback(policy.salesChannel),
+    salesChannel: fallback(policy.salesChannelName ?? policy.salesChannel),
     sum: `${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(policy.paymentsTotal)}`,
     insuranceType: fallback(policy.insuranceType),
     brand: fallback(policy.brand),

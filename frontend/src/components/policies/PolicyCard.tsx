@@ -195,7 +195,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
             <p className="mt-1 text-xs text-slate-500">
               Начало: {model.startDate} · Окончание: {model.endDate}
             </p>
-          </button>
+          </div>
 
           <div className="flex shrink-0 flex-col items-end gap-2">
             <div className="text-right">

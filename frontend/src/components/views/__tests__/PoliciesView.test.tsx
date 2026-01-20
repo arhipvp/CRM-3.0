@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import type { Payment, Policy } from '../../../types';
 import { PoliciesView } from '../PoliciesView';
 import { vi } from 'vitest';
+import { NotificationProvider } from '../../../contexts/NotificationProvider';
 
 type PaymentCardProps = ComponentProps<
   (typeof import('../../policies/PaymentCard'))['PaymentCard']
@@ -100,7 +101,9 @@ describe('PoliciesView', () => {
 
     render(
       <MemoryRouter>
-        <PoliciesView policies={policies} payments={payments} {...defaultProps} />
+        <NotificationProvider>
+          <PoliciesView policies={policies} payments={payments} {...defaultProps} />
+        </NotificationProvider>
       </MemoryRouter>,
     );
 
@@ -122,7 +125,9 @@ describe('PoliciesView', () => {
 
     render(
       <MemoryRouter>
-        <PoliciesView policies={policies} payments={payments} {...defaultProps} />
+        <NotificationProvider>
+          <PoliciesView policies={policies} payments={payments} {...defaultProps} />
+        </NotificationProvider>
       </MemoryRouter>,
     );
 
