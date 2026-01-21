@@ -313,9 +313,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                                 void onPinDeal(deal.id);
                               }
                             }}
-                            aria-label={
-                              isPinned ? 'Открепить сделку' : 'Закрепить сделку'
-                            }
+                            aria-label={isPinned ? 'Открепить сделку' : 'Закрепить сделку'}
                             title={isPinned ? 'Открепить' : 'Закрепить'}
                             className={`icon-btn h-7 w-7 ${
                               isPinned

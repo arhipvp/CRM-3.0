@@ -10,7 +10,7 @@
 Внимательно следи за кодировкой при использовании русского языка!
 
 Проверяй код через команды python.exe" -m isort backend && python.exe" -m black backend 
-
+Проверяй фронтэнд через prettier --check
 
 
 # Repository Guidelines
