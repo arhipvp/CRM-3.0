@@ -10,7 +10,7 @@
 Внимательно следи за кодировкой при использовании русского языка!
 
 Проверяй код через команды python.exe" -m isort backend && python.exe" -m black backend 
-Проверяй фронтэнд через prettier --check
+После любых правок во фронте запускать cd frontend && npm run format:check. Если падает — npm run format -- --write <файлы> и повторить проверку.
 
 
 # Repository Guidelines
