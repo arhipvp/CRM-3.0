@@ -35,6 +35,8 @@ class QuoteSerializer(serializers.ModelSerializer):
             "sum_insured",
             "premium",
             "deductible",
+            "official_dealer",
+            "gap",
             "comments",
             "seller_name",
             "created_at",

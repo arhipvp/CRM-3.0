@@ -183,6 +183,16 @@ class Quote(SoftDeleteModel):
     )
     premium = models.DecimalField(max_digits=12, decimal_places=2, help_text="Премия")
     deductible = models.CharField(max_length=255, blank=True, help_text="Франшиза")
+    official_dealer = models.BooleanField(
+        default=False,
+        verbose_name="Официальный дилер",
+        help_text="Официальный дилер (да/нет)",
+    )
+    gap = models.BooleanField(
+        default=False,
+        verbose_name="GAP",
+        help_text="GAP (да/нет)",
+    )
     comments = models.TextField(blank=True, help_text="Комментарий")
 
     class Meta:

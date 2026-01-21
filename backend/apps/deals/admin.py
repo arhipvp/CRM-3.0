@@ -73,6 +73,8 @@ class QuoteResource(resources.ModelResource):
             "sum_insured",
             "premium",
             "deductible",
+            "official_dealer",
+            "gap",
             "comments",
             "created_at",
             "updated_at",
@@ -86,6 +88,8 @@ class QuoteResource(resources.ModelResource):
             "sum_insured",
             "premium",
             "deductible",
+            "official_dealer",
+            "gap",
             "comments",
             "created_at",
             "updated_at",
@@ -138,6 +142,8 @@ class QuoteInline(admin.TabularInline):
         "sum_insured",
         "premium",
         "deductible",
+        "official_dealer",
+        "gap",
     )
     readonly_fields = ("created_at",)
 
@@ -295,6 +301,8 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
         "insurance_company",
         "sum_insured",
         "premium",
+        "official_dealer",
+        "gap",
         "created_at",
     )
     list_filter = ("insurance_type", "insurance_company", "created_at", "deleted_at")
@@ -306,7 +314,18 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
     fieldsets = (
         ("Основная информация", {"fields": ("id", "deal")}),
         ("Страховая информация", {"fields": ("insurance_type", "insurance_company")}),
-        ("Условия", {"fields": ("sum_insured", "premium", "deductible")}),
+        (
+            "Условия",
+            {
+                "fields": (
+                    "sum_insured",
+                    "premium",
+                    "deductible",
+                    "official_dealer",
+                    "gap",
+                )
+            },
+        ),
         ("Примечания", {"fields": ("comments",)}),
         ("Статус", {"fields": ("deleted_at",)}),
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),

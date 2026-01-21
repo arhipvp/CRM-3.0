@@ -136,6 +136,8 @@ export async function createQuote(data: {
   sumInsured: number;
   premium: number;
   deductible?: string;
+  officialDealer: boolean;
+  gap: boolean;
   comments?: string;
 }): Promise<Quote> {
   const payload = await request<Record<string, unknown>>('/quotes/', {
@@ -147,6 +149,8 @@ export async function createQuote(data: {
       sum_insured: data.sumInsured,
       premium: data.premium,
       deductible: data.deductible,
+      official_dealer: data.officialDealer,
+      gap: data.gap,
       comments: data.comments,
     }),
   });
@@ -166,6 +170,8 @@ export async function updateQuote(
     sumInsured: number;
     premium: number;
     deductible?: string;
+    officialDealer: boolean;
+    gap: boolean;
     comments?: string;
   },
 ): Promise<Quote> {
@@ -177,6 +183,8 @@ export async function updateQuote(
       sum_insured: data.sumInsured,
       premium: data.premium,
       deductible: data.deductible,
+      official_dealer: data.officialDealer,
+      gap: data.gap,
       comments: data.comments,
     }),
   });

@@ -112,6 +112,8 @@ export const mapQuote = (raw: Record<string, unknown>): Quote => ({
   sumInsured: toNumberValue(raw.sum_insured),
   premium: toNumberValue(raw.premium),
   deductible: toOptionalString(raw.deductible),
+  officialDealer: Boolean(raw.official_dealer ?? raw.officialDealer ?? false),
+  gap: Boolean(raw.gap ?? false),
   comments: toOptionalString(raw.comments),
   createdAt: toStringValue(raw.created_at),
   deletedAt: raw.deleted_at === undefined ? null : toNullableString(raw.deleted_at),

@@ -52,6 +52,8 @@ export interface Quote {
   sumInsured: number;
   premium: number;
   deductible?: string;
+  officialDealer: boolean;
+  gap: boolean;
   comments?: string;
   createdAt: string;
   deletedAt?: string | null;

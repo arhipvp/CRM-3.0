@@ -183,6 +183,8 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 <SortableHeader label="Сумма" sortKey="sumInsured" />
                 <SortableHeader label="Премия" sortKey="premium" />
                 <SortableHeader label="Франшиза" sortKey="deductible" />
+                <TableHeadCell padding="sm">Оф. дилер</TableHeadCell>
+                <TableHeadCell padding="sm">GAP</TableHeadCell>
                 <SortableHeader label="Комментарии" sortKey="comments" />
                 <SortableHeader label="Добавлен" sortKey="seller" />
                 <SortableHeader label="Дата" sortKey="createdAt" />
@@ -233,6 +235,22 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                       className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
                     >
                       {quote.deductible || '-'}
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
+                      <input
+                        type="checkbox"
+                        checked={quote.officialDealer}
+                        readOnly
+                        className="check"
+                      />
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
+                      <input
+                        type="checkbox"
+                        checked={quote.gap}
+                        readOnly
+                        className="check"
+                      />
                     </td>
                     <td
                       className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 ${deletedTextClass}`}

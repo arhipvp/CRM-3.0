@@ -10,6 +10,8 @@ export interface QuoteFormValues {
   sumInsured: number;
   premium: number;
   deductible?: string;
+  officialDealer: boolean;
+  gap: boolean;
   comments?: string;
 }
 
@@ -35,6 +37,10 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   );
   const [premium, setPremium] = useState(initialValues ? String(initialValues.premium) : '');
   const [deductible, setDeductible] = useState(initialValues?.deductible ?? '');
+  const [officialDealer, setOfficialDealer] = useState(
+    initialValues?.officialDealer ?? false,
+  );
+  const [gap, setGap] = useState(initialValues?.gap ?? false);
   const [comments, setComments] = useState(initialValues?.comments ?? '');
   const [error, setError] = useState<string | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -90,6 +96,8 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         sumInsured: Number(sumInsured),
         premium: Number(premium),
         deductible: deductible.trim() || undefined,
+        officialDealer,
+        gap,
         comments: comments.trim() || undefined,
       });
     } catch (err) {
@@ -122,6 +130,12 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
           </select>
         </div>
 
+
+
+
+
+
+
         <div>
           <label className="block text-sm font-semibold text-slate-700">Тип страхования *</label>
           <select
@@ -138,6 +152,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
             ))}
           </select>
         </div>
+
 
         <div>
           <label className="block text-sm font-semibold text-slate-700">Страховая сумма, ₽ *</label>
@@ -162,6 +177,27 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
             className="mt-1 field field-input"
           />
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-6">
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={officialDealer}
+            onChange={(event) => setOfficialDealer(event.target.checked)}
+            className="check"
+          />
+          <span>Официальный дилер</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={gap}
+            onChange={(event) => setGap(event.target.checked)}
+            className="check"
+          />
+          <span>GAP</span>
+        </label>
       </div>
 
       <div>
