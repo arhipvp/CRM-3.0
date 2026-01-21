@@ -32,6 +32,8 @@ import {
   closeDeal,
   reopenDeal,
   updateDeal,
+  pinDeal,
+  unpinDeal,
   mergeDeals,
   fetchDealHistory,
   fetchTasksByDeal,
@@ -730,6 +732,60 @@ const AppContent: React.FC = () => {
       setIsSyncing,
       setSelectedDealId,
       updateAppData,
+    ],
+  );
+
+  const handlePinDeal = useCallback(
+    async (dealId: string) => {
+      invalidateDealsCache();
+      setIsSyncing(true);
+      try {
+        await pinDeal(dealId);
+        await refreshDealsWithSelection(dealFilters, { force: true });
+        addNotification('Сделка закреплена', 'success', 3000);
+      } catch (err) {
+        if (err instanceof APIError && err.status === 400) {
+          addNotification(err.message || 'Нельзя закрепить больше 3 сделок', 'error', 4000);
+        } else {
+          setError(formatErrorMessage(err, 'Ошибка при закреплении сделки'));
+        }
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [
+      addNotification,
+      dealFilters,
+      invalidateDealsCache,
+      refreshDealsWithSelection,
+      setError,
+      setIsSyncing,
+    ],
+  );
+
+  const handleUnpinDeal = useCallback(
+    async (dealId: string) => {
+      invalidateDealsCache();
+      setIsSyncing(true);
+      try {
+        await unpinDeal(dealId);
+        await refreshDealsWithSelection(dealFilters, { force: true });
+        addNotification('Сделка откреплена', 'success', 3000);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при откреплении сделки'));
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [
+      addNotification,
+      dealFilters,
+      invalidateDealsCache,
+      refreshDealsWithSelection,
+      setError,
+      setIsSyncing,
     ],
   );
 
@@ -1914,6 +1970,8 @@ const AppContent: React.FC = () => {
         onCloseDeal={handleCloseDeal}
         onReopenDeal={handleReopenDeal}
         onUpdateDeal={handleUpdateDeal}
+        onPinDeal={handlePinDeal}
+        onUnpinDeal={handleUnpinDeal}
         onPostponeDeal={handlePostponeDeal}
         onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
         onRequestEditQuote={handleRequestEditQuote}

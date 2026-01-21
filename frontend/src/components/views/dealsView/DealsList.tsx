@@ -30,6 +30,9 @@ interface DealsListProps {
   isLoadingMoreDeals: boolean;
   onLoadMoreDeals: () => Promise<void>;
   onSelectDeal: (dealId: string) => void;
+  onPinDeal: (dealId: string) => Promise<void>;
+  onUnpinDeal: (dealId: string) => Promise<void>;
+  currentUser: User | null;
 }
 
 export const DealsList: React.FC<DealsListProps> = ({
@@ -51,6 +54,9 @@ export const DealsList: React.FC<DealsListProps> = ({
   isLoadingMoreDeals,
   onLoadMoreDeals,
   onSelectDeal,
+  onPinDeal,
+  onUnpinDeal,
+  currentUser,
 }) => {
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
 
@@ -256,6 +262,10 @@ export const DealsList: React.FC<DealsListProps> = ({
                 const isDeleted = Boolean(deal.deletedAt);
                 const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
                 const isSelected = selectedDeal?.id === deal.id;
+                const isPinned = Boolean(deal.isPinned);
+                const canPin =
+                  Boolean(currentUser) &&
+                  (currentUser?.roles?.includes('Admin') || deal.seller === currentUser?.id);
                 const rowClassName = [
                   'transition-colors',
                   'cursor-pointer',
@@ -266,6 +276,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   isSelected
                     ? 'bg-sky-100/80 border-sky-600 shadow-sm ring-2 ring-sky-400/60 ring-inset'
                     : '',
+                  isPinned ? 'border-rose-500 ring-2 ring-rose-500/40 ring-inset' : '',
                   isDeleted ? 'opacity-60' : '',
                 ]
                   .filter(Boolean)
@@ -290,14 +301,52 @@ export const DealsList: React.FC<DealsListProps> = ({
                     }}
                   >
                     <td className={`${TABLE_CELL_CLASS_LG} ${deletedTextClass}`}>
-                      <p className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}>
-                        {deal.title}
-                      </p>
-                      {deal.deletedAt && (
-                        <p className="mt-1 text-xs font-semibold text-rose-600">
-                          Удалена: {formatDeletedAt(deal.deletedAt)}
-                        </p>
-                      )}
+                      <div className="flex items-start gap-2">
+                        {canPin && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (isPinned) {
+                                void onUnpinDeal(deal.id);
+                              } else {
+                                void onPinDeal(deal.id);
+                              }
+                            }}
+                            aria-label={
+                              isPinned ? 'Открепить сделку' : 'Закрепить сделку'
+                            }
+                            title={isPinned ? 'Открепить' : 'Закрепить'}
+                            className={`icon-btn h-7 w-7 ${
+                              isPinned
+                                ? 'border-rose-200 text-rose-600 hover:bg-rose-50'
+                                : 'border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
+                            }`}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              fill="currentColor"
+                              aria-hidden="true"
+                            >
+                              <path d="M16 3a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1.6l.6 5.1a1 1 0 0 1-1.7.9L10 18l-3.3 3a1 1 0 0 1-1.7-.9l.6-5.1H4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h12z" />
+                            </svg>
+                          </button>
+                        )}
+                        <div className="space-y-1">
+                          <p
+                            className={`text-base font-semibold text-slate-900 ${deletedTextClass}`}
+                          >
+                            {deal.title}
+                          </p>
+                          {deal.deletedAt && (
+                            <p className="text-xs font-semibold text-rose-600">
+                              Удалена: {formatDeletedAt(deal.deletedAt)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td
                       className={`${TABLE_CELL_CLASS_LG} text-sm text-slate-900 ${deletedTextClass}`}

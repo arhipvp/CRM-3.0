@@ -148,6 +148,7 @@ export const mapDeal = (raw: Record<string, unknown>): Deal => {
     clientName: toOptionalString(raw.client_name),
     status: resolveDealStatus(raw.status),
     stageName: toOptionalString(raw.stage_name),
+    isPinned: Boolean(raw.is_pinned ?? raw.isPinned ?? false),
     expectedClose:
       raw.expected_close === undefined ? undefined : toNullableString(raw.expected_close),
     nextContactDate:

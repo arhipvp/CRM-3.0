@@ -38,6 +38,8 @@ interface DealsViewProps {
   ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
+  onPinDeal: (dealId: string) => Promise<void>;
+  onUnpinDeal: (dealId: string) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
@@ -107,6 +109,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onCloseDeal,
   onReopenDeal,
   onUpdateDeal,
+  onPinDeal,
+  onUnpinDeal,
   onPostponeDeal,
   onRequestAddQuote,
   onRequestEditQuote,
@@ -178,6 +182,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
             isLoadingMoreDeals={isLoadingMoreDeals}
             onLoadMoreDeals={onLoadMoreDeals}
             onSelectDeal={onSelectDeal}
+            onPinDeal={onPinDeal}
+            onUnpinDeal={onUnpinDeal}
+            currentUser={currentUser}
           />
           <DealDetailsPanel
             deals={deals}

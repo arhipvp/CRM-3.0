@@ -131,6 +131,7 @@ class DealSerializer(serializers.ModelSerializer):
     )
     seller_name = serializers.SerializerMethodField(read_only=True)
     executor_name = serializers.SerializerMethodField(read_only=True)
+    is_pinned = serializers.SerializerMethodField(read_only=True)
     quotes = QuoteSerializer(many=True, read_only=True)
     documents = DocumentBriefSerializer(many=True, read_only=True)
     next_contact_date = DateOrDateTimeField(required=False, allow_null=True)
@@ -161,6 +162,15 @@ class DealSerializer(serializers.ModelSerializer):
 
     def get_executor_name(self, obj: Deal) -> str | None:
         return self._get_user_display(obj.executor)
+
+    def get_is_pinned(self, obj: Deal) -> bool:
+        if hasattr(obj, "is_pinned"):
+            return bool(obj.is_pinned)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        return obj.pins.filter(user=user).exists()
 
     @staticmethod
     def _get_user_display(user) -> str | None:

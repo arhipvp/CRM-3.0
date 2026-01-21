@@ -50,6 +50,8 @@ export interface AppRoutesProps {
   ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
+  onPinDeal: (dealId: string) => Promise<void>;
+  onUnpinDeal: (dealId: string) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
@@ -151,6 +153,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onCloseDeal,
   onReopenDeal,
   onUpdateDeal,
+  onPinDeal,
+  onUnpinDeal,
   onPostponeDeal,
   onRequestAddQuote,
   onRequestEditQuote,
@@ -222,6 +226,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onCloseDeal={onCloseDeal}
           onReopenDeal={onReopenDeal}
           onUpdateDeal={onUpdateDeal}
+          onPinDeal={onPinDeal}
+          onUnpinDeal={onUnpinDeal}
           onPostponeDeal={onPostponeDeal}
           onRequestAddQuote={onRequestAddQuote}
           onRequestEditQuote={onRequestEditQuote}

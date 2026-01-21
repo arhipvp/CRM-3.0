@@ -187,6 +187,7 @@ export interface Deal {
   clientName?: string;
   status: DealStatus;
   stageName?: string;
+  isPinned?: boolean;
   expectedClose?: string | null;
   nextContactDate?: string | null;
   source?: string;

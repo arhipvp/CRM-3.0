@@ -1,6 +1,15 @@
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
-from django.db.models import DecimalField, F, Q, Sum, Value
+from django.db.models import (
+    BooleanField,
+    DecimalField,
+    Exists,
+    F,
+    OuterRef,
+    Q,
+    Sum,
+    Value,
+)
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
@@ -8,7 +17,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .filters import DealFilterSet
-from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
+from .models import Deal, DealPin, InsuranceCompany, InsuranceType, Quote, SalesChannel
 from .permissions import can_merge_deals, can_modify_deal, is_admin_user, is_deal_seller
 from .query_flags import parse_bool_flag
 from .search import build_search_query
@@ -69,22 +78,8 @@ class DealViewSet(
     pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
 
-    def _can_merge(self, user, deal) -> bool:
-        return can_merge_deals(user, deal)
-
-    def _base_queryset(self, include_deleted=False):
-        manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
-        queryset = (
-            manager.select_related("client", "seller", "executor")
-            .prefetch_related("quotes", "documents")
-            .all()
-            .order_by(
-                F("next_contact_date").asc(nulls_last=True),
-                F("next_review_date").desc(nulls_last=True),
-                "-created_at",
-            )
-        )
-        return queryset.annotate(
+    def _annotate_queryset(self, queryset, user=None):
+        queryset = queryset.annotate(
             payments_total=Coalesce(
                 Sum("payments__amount"),
                 Value(0),
@@ -96,6 +91,27 @@ class DealViewSet(
                 output_field=self.decimal_field,
             ),
         )
+        if user and user.is_authenticated:
+            pin_exists = DealPin.objects.filter(user=user, deal=OuterRef("pk"))
+            return queryset.annotate(is_pinned=Exists(pin_exists))
+        return queryset.annotate(is_pinned=Value(False, output_field=BooleanField()))
+
+    def _can_merge(self, user, deal) -> bool:
+        return can_merge_deals(user, deal)
+
+    def _base_queryset(self, include_deleted=False, user=None):
+        manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
+        queryset = (
+            manager.select_related("client", "seller", "executor")
+            .prefetch_related("quotes", "documents")
+            .all()
+            .order_by(
+                F("next_contact_date").asc(nulls_last=True),
+                F("next_review_date").desc(nulls_last=True),
+                "-created_at",
+            )
+        )
+        return self._annotate_queryset(queryset, user=user)
 
     def _include_deleted_flag(self):
         raw_value = self.request.query_params.get("show_deleted")
@@ -113,7 +129,10 @@ class DealViewSet(
         Сортировка: по дате следующего контакта (ближайшие сверху), затем по дате следующего обзора, затем по дате создания.
         """
         user = self.request.user
-        queryset = self._base_queryset(include_deleted=self._include_deleted_flag())
+        queryset = self._base_queryset(
+            include_deleted=self._include_deleted_flag(),
+            user=user,
+        )
 
         if self.action in {"close", "reopen"}:
             return queryset
@@ -140,6 +159,91 @@ class DealViewSet(
 
         access_filter = Q(seller=user) | Q(executor=user) | Q(tasks__assignee=user)
         return queryset.filter(access_filter).distinct()
+
+    def _pinned_ids(self, user):
+        if not user or not user.is_authenticated:
+            return []
+        return list(DealPin.objects.filter(user=user).values_list("deal_id", flat=True))
+
+    def _pinned_queryset(self, user, pinned_ids):
+        if not pinned_ids:
+            return Deal.objects.none()
+        queryset = self._base_queryset(
+            include_deleted=True,
+            user=user,
+        ).filter(id__in=pinned_ids)
+        ordering_param = self.request.query_params.get("ordering")
+        if ordering_param:
+            ordering = [
+                item.strip() for item in ordering_param.split(",") if item.strip()
+            ]
+            if ordering:
+                queryset = queryset.order_by(*ordering)
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        pinned_ids = self._pinned_ids(request.user)
+        if pinned_ids:
+            queryset = queryset.exclude(id__in=pinned_ids)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            pinned_queryset = (
+                self._pinned_queryset(request.user, pinned_ids)
+                if str(request.query_params.get("page") or "1") in {"1", ""}
+                else Deal.objects.none()
+            )
+            pinned_data = self.get_serializer(pinned_queryset, many=True).data
+            page_data = self.get_serializer(page, many=True).data
+            paginator = self.paginator
+            return Response(
+                {
+                    "count": paginator.count + len(pinned_ids),
+                    "next": paginator.get_next_link(),
+                    "previous": paginator.get_previous_link(),
+                    "results": pinned_data + page_data,
+                }
+            )
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="pin")
+    def pin(self, request, pk=None):
+        deal = get_object_or_404(Deal.objects.with_deleted(), pk=pk)
+        if not can_modify_deal(request.user, deal):
+            return Response(
+                {
+                    "detail": "Закреплять сделку может только продавец или администратор."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        pin, created = DealPin.objects.get_or_create(user=request.user, deal=deal)
+        if created:
+            pins_count = DealPin.objects.filter(user=request.user).count()
+            if pins_count > 3:
+                pin.delete()
+                return Response(
+                    {"detail": "Нельзя закрепить больше 3 сделок."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        serializer = self.get_serializer(deal)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="unpin")
+    def unpin(self, request, pk=None):
+        deal = get_object_or_404(Deal.objects.with_deleted(), pk=pk)
+        if not can_modify_deal(request.user, deal):
+            return Response(
+                {
+                    "detail": "Откреплять сделку может только продавец или администратор."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        DealPin.objects.filter(user=request.user, deal=deal).delete()
+        serializer = self.get_serializer(deal)
+        return Response(serializer.data)
 
     def _reject_when_no_seller(self, user, deal):
         if not deal:

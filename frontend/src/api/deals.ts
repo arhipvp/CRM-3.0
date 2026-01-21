@@ -106,6 +106,20 @@ export async function updateDeal(
   return mapDeal(payload);
 }
 
+export async function pinDeal(id: string): Promise<Deal> {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/pin/`, {
+    method: 'POST',
+  });
+  return mapDeal(payload);
+}
+
+export async function unpinDeal(id: string): Promise<Deal> {
+  const payload = await request<Record<string, unknown>>(`/deals/${id}/unpin/`, {
+    method: 'POST',
+  });
+  return mapDeal(payload);
+}
+
 export async function deleteDeal(id: string): Promise<void> {
   await request(`/deals/${id}/`, { method: 'DELETE' });
 }

@@ -148,6 +148,26 @@ class Deal(SoftDeleteModel):
         return super().delete(*args, **kwargs)
 
 
+class DealPin(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="deal_pins",
+        on_delete=models.CASCADE,
+    )
+    deal = models.ForeignKey(
+        "deals.Deal",
+        related_name="pins",
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "deal"], name="unique_deal_pin")
+        ]
+        ordering = ["-created_at"]
+
+
 class Quote(SoftDeleteModel):
     """Расчет страхового продукта, подготовленный по сделке."""
 

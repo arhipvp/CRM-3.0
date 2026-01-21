@@ -37,7 +37,7 @@ interface AppDataState {
   users: User[];
 }
 
-const DEALS_PAGE_SIZE = 10;
+const DEALS_PAGE_SIZE = 20;
 const POLICIES_PAGE_SIZE = 50;
 
 const INITIAL_APP_DATA_STATE: AppDataState = {
