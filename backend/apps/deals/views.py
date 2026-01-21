@@ -197,9 +197,13 @@ class DealViewSet(
             pinned_data = self.get_serializer(pinned_queryset, many=True).data
             page_data = self.get_serializer(page, many=True).data
             paginator = self.paginator
+            page_obj = getattr(paginator, "page", None)
+            base_count = (
+                page_obj.paginator.count if page_obj is not None else len(page_data)
+            )
             return Response(
                 {
-                    "count": paginator.count + len(pinned_ids),
+                    "count": base_count + len(pinned_ids),
                     "next": paginator.get_next_link(),
                     "previous": paginator.get_previous_link(),
                     "results": pinned_data + page_data,
