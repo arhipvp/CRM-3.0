@@ -245,12 +245,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                       />
                     </td>
                     <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
-                      <input
-                        type="checkbox"
-                        checked={quote.gap}
-                        readOnly
-                        className="check"
-                      />
+                      <input type="checkbox" checked={quote.gap} readOnly className="check" />
                     </td>
                     <td
                       className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 ${deletedTextClass}`}

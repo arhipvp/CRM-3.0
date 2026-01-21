@@ -37,9 +37,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   );
   const [premium, setPremium] = useState(initialValues ? String(initialValues.premium) : '');
   const [deductible, setDeductible] = useState(initialValues?.deductible ?? '');
-  const [officialDealer, setOfficialDealer] = useState(
-    initialValues?.officialDealer ?? false,
-  );
+  const [officialDealer, setOfficialDealer] = useState(initialValues?.officialDealer ?? false);
   const [gap, setGap] = useState(initialValues?.gap ?? false);
   const [comments, setComments] = useState(initialValues?.comments ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -130,12 +128,6 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
           </select>
         </div>
 
-
-
-
-
-
-
         <div>
           <label className="block text-sm font-semibold text-slate-700">Тип страхования *</label>
           <select
@@ -152,7 +144,6 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
             ))}
           </select>
         </div>
-
 
         <div>
           <label className="block text-sm font-semibold text-slate-700">Страховая сумма, ₽ *</label>
