@@ -260,6 +260,8 @@ if not CORS_ALLOWED_ORIGINS:
             "CORS_ALLOWED_ORIGINS must be set when DEBUG is False."
         )
 
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+
 # Control whether Django emits the Cross-Origin-Opener-Policy header so that
 # it can be disabled when serving over unsecured HTTP origins (e.g. local
 # dev machines). Set SECURE_CROSS_ORIGIN_OPENER_POLICY in production to enforce.
