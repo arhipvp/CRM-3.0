@@ -834,7 +834,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     <>
       <div className="px-4 py-5 space-y-4">
         {selectedDeal ? (
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-6">
+          <div
+            className={`rounded-2xl border bg-white shadow-md p-6 space-y-6 ${
+              selectedDeal.isPinned
+                ? 'border-rose-500 ring-2 ring-rose-500/30'
+                : 'border-slate-200'
+            }`}
+          >
             <div className="flex flex-col gap-4">
               <DealHeader
                 deal={selectedDeal}
