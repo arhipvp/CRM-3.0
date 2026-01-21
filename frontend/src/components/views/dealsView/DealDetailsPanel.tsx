@@ -836,7 +836,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         {selectedDeal ? (
           <div
             className={`rounded-2xl border bg-white shadow-md p-6 space-y-6 ${
-              selectedDeal.isPinned ? 'border-rose-500 ring-2 ring-rose-500/30' : 'border-slate-200'
+              selectedDeal.isPinned
+                ? 'border-rose-500 ring-2 ring-rose-500/30'
+                : 'border-sky-500 ring-2 ring-sky-400/30'
             }`}
           >
             <div className="flex flex-col gap-4">

@@ -271,6 +271,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   'cursor-pointer',
                   'even:bg-slate-50/40',
                   'border-l-4 border-transparent',
+                  'border-sky-500',
                   'hover:bg-slate-50/80 hover:border-sky-500',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                   isSelected
