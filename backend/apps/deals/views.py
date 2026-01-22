@@ -1,5 +1,6 @@
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
+from django.conf import settings
 from django.db.models import (
     BooleanField,
     DecimalField,
@@ -226,10 +227,16 @@ class DealViewSet(
         pin, created = DealPin.objects.get_or_create(user=request.user, deal=deal)
         if created:
             pins_count = DealPin.objects.filter(user=request.user).count()
-            if pins_count > 3:
+            if pins_count > settings.DEAL_PIN_LIMIT:
                 pin.delete()
                 return Response(
-                    {"detail": "Нельзя закрепить больше 3 сделок."},
+                    {
+                        "detail": (
+                            "Нельзя закрепить "
+                            f"больше {settings.DEAL_PIN_LIMIT} "
+                            "сделок."
+                        )
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         serializer = self.get_serializer(deal)
