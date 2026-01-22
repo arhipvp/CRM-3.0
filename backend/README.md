@@ -40,7 +40,7 @@ Backend — это одиночный Django-проект, распределё�
 
 ### Скрипты и утилиты
 - `manage.py` управляет миграциями (`makemigrations`, `migrate`), shell, `loaddata`, `test`, `check --deploy`.
-- `credentials.json` и env-переменные обеспечивают Google Drive/OpenAI-интеграции.
+- Google Drive/OpenAI-интеграции подключаются через env и локальный `credentials.json` (файл не хранится в git).
 - `entrypoint.sh` (в Docker) применяет миграции и запускает сервер (gunicorn/uvicorn).
 
 ## Запуск и окружение
@@ -54,6 +54,10 @@ python manage.py runserver
 ```
 - Для env: `DJANGO_SECRET_KEY`, `DEBUG`, `DJANGO_DB_*`, JWT-параметры, CORS, `GOOGLE_DRIVE_*`, `OPENAI_*`.
 - Перед релизом обязательно `python manage.py check --deploy`.
+
+## Авторизация (важно)
+- Endpoints Open Notebook (knowledge) и `POST /api/v1/documents/recognize/` требуют JWT.
+- `GET /api/v1/finances/summary/` требует JWT.
 
 ## Проверки и форматирование
 - `isort .` (конфиг в `.isort.cfg`) и `black .` (через `pyproject.toml`) применяются к Python-коду; миграции исключены в black.

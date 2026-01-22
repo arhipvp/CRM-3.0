@@ -17,7 +17,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - **`apps/common/`** держит повторно используемые сериализаторы, permissions, миксины, фильтры, подписчики сигналов и менеджеры. Именно сюда выносятся shared-бизнес-правила.
 - **Доменные приложения (`clients`, `deals`, `tasks`, `notes`, `finances`, `documents`, `chat`, `policies`, `notifications`, `users`)** — модели, сериализаторы, ViewSet, filters, permissions и routers для каждой бизнес-функции. Новые эндпоинты добавляются через `api_router`.
 - **`tests/`** проверяют поведение CRUD, permissions, сигналы и кодировку; они используют DRF APIClient и фикстуры в `conftest.py`.
-- **Скрипты, миграции, миграции и интеграции**: `manage.py` управляет миграциями, сборкой статики, shell, loaddata; `credentials.json` и env-переменные подключают Google Drive и OpenAI-интеграции.
+- **Скрипты, миграции, миграции и интеграции**: `manage.py` управляет миграциями, сборкой статики, shell, loaddata; Google Drive и OpenAI-интеграции подключаются через env и локальный `credentials.json` (файл не хранится в git).
 
 ### Frontend
 - **`src/main.tsx`, `App.tsx`, `AppContent.tsx`** — точка входа, маршруты и главный UI-контейнер. `AppContent` аккумулирует layout, контролирует загрузку начальных данных и обёртки контекстов.
@@ -43,6 +43,10 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - `documents`: хранит реальные файлы (`Document`); библиотечные блокноты и ответы обслуживаются через Open Notebook.
 - `notes`: заметки по сделкам; `chat` — чаты/сообщения, `notifications` — уведомления для пользователей.
 - `users`: роли (`Role`), права (`Permission`), связи с пользователями и журнал аудита (`AuditLog`).
+
+### Авторизация (важно)
+- Endpoints Open Notebook (knowledge) и `POST /api/v1/documents/recognize/` требуют JWT.
+- `GET /api/v1/finances/summary/` требует JWT.
 
 ### Модель данных (основные связи)
 - `Client` (из `clients`) связан с `Deal` и `Policy`; на основе клиента строятся документы, заметки и платежи.

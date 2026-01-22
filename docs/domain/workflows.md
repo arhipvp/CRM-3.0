@@ -34,12 +34,12 @@
 1. UI: загрузка документа в сделке.
 2. API: `POST /api/v1/documents/`.
 3. Запуск распознавания.
-4. API: `POST /api/v1/documents/recognize/`.
+4. API: `POST /api/v1/documents/recognize/` (JWT required).
 
 ## 7) Knowledge / Open Notebook
 1. UI: `/knowledge` -> работа с источниками/ноутбуками.
 2. API: `GET/POST /api/v1/knowledge/sources/` и `/api/v1/knowledge/notebooks/`.
-3. Диалог: `POST /api/v1/knowledge/ask/`.
+3. Диалог: `POST /api/v1/knowledge/ask/` (JWT required).
 
 ## 8) Чат по сделке
 1. UI: вкладка чата в сделке.

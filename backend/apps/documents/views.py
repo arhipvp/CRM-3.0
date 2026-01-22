@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -41,7 +41,7 @@ class DocumentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
 
 class KnowledgeAskView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         question = request.data.get("question")
@@ -81,7 +81,7 @@ class KnowledgeAskView(APIView):
 
 
 class KnowledgeNotebooksView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         service = OpenNotebookSyncService()
@@ -131,7 +131,7 @@ class KnowledgeNotebooksView(APIView):
 
 
 class KnowledgeNotebookDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def put(self, request, notebook_id: str):
         name = request.data.get("name")
@@ -183,7 +183,7 @@ class KnowledgeNotebookDetailView(APIView):
 
 
 class KnowledgeChatSessionsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         notebook_id = request.query_params.get("notebook_id")
@@ -241,7 +241,7 @@ class KnowledgeChatSessionsView(APIView):
 
 
 class KnowledgeChatSessionDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, session_id: str):
         service = OpenNotebookSyncService()
@@ -306,7 +306,7 @@ class KnowledgeChatSessionDetailView(APIView):
 
 
 class KnowledgeSourcesView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         notebook_id = request.query_params.get("notebook_id")
@@ -391,7 +391,7 @@ class KnowledgeSourcesView(APIView):
 
 
 class KnowledgeSourceDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, source_id: str):
         service = OpenNotebookSyncService()
@@ -446,7 +446,7 @@ class KnowledgeSourceDetailView(APIView):
 
 
 class KnowledgeSourceDownloadView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, source_id: str):
         service = OpenNotebookSyncService()
@@ -473,7 +473,7 @@ class KnowledgeSourceDownloadView(APIView):
 
 
 class KnowledgeNotesView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         notebook_id = request.query_params.get("notebook_id")
@@ -573,7 +573,7 @@ class KnowledgeNotesView(APIView):
 
 
 class KnowledgeNoteDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def delete(self, request, note_id: str):
         service = OpenNotebookSyncService()
@@ -595,7 +595,7 @@ class KnowledgeNoteDetailView(APIView):
 
 
 class DocumentRecognitionView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
