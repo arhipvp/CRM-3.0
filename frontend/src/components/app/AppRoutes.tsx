@@ -6,7 +6,6 @@ import { PoliciesView } from '../views/PoliciesView';
 import { CommissionsView } from '../views/CommissionsView';
 import { TasksView } from '../views/TasksView';
 import { SettingsView } from '../views/SettingsView';
-import { KnowledgeDocumentsView } from '../views/KnowledgeDocumentsView';
 import { SellerDashboardView } from '../views/SellerDashboardView';
 import type {
   ActivityLog,
@@ -336,7 +335,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         />
       }
     />
-    <Route path="/knowledge" element={<KnowledgeDocumentsView />} />
     <Route path="/settings" element={<SettingsView />} />
     <Route path="*" element={<Navigate to="/deals" replace />} />
   </Routes>

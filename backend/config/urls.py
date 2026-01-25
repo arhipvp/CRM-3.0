@@ -15,19 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from apps.documents.views import (
-    DocumentRecognitionView,
-    KnowledgeAskView,
-    KnowledgeChatSessionDetailView,
-    KnowledgeChatSessionsView,
-    KnowledgeNotebookDetailView,
-    KnowledgeNotebooksView,
-    KnowledgeNoteDetailView,
-    KnowledgeNotesView,
-    KnowledgeSourceDetailView,
-    KnowledgeSourceDownloadView,
-    KnowledgeSourcesView,
-)
+from apps.documents.views import DocumentRecognitionView
 from apps.finances.views import FinanceSummaryView
 from apps.notifications.views import (
     NotificationSettingsView,
@@ -82,50 +70,6 @@ urlpatterns = [
         "api/v1/documents/recognize/",
         DocumentRecognitionView.as_view(),
         name="document-recognize",
-    ),
-    path("api/v1/knowledge/ask/", KnowledgeAskView.as_view(), name="knowledge-ask"),
-    path(
-        "api/v1/knowledge/chat/sessions/",
-        KnowledgeChatSessionsView.as_view(),
-        name="knowledge-chat-sessions",
-    ),
-    path(
-        "api/v1/knowledge/chat/sessions/<str:session_id>/",
-        KnowledgeChatSessionDetailView.as_view(),
-        name="knowledge-chat-session-detail",
-    ),
-    path(
-        "api/v1/knowledge/notebooks/",
-        KnowledgeNotebooksView.as_view(),
-        name="knowledge-notebooks",
-    ),
-    path(
-        "api/v1/knowledge/notebooks/<str:notebook_id>/",
-        KnowledgeNotebookDetailView.as_view(),
-        name="knowledge-notebook-detail",
-    ),
-    path(
-        "api/v1/knowledge/sources/",
-        KnowledgeSourcesView.as_view(),
-        name="knowledge-sources",
-    ),
-    path(
-        "api/v1/knowledge/sources/<str:source_id>/",
-        KnowledgeSourceDetailView.as_view(),
-        name="knowledge-source-detail",
-    ),
-    path(
-        "api/v1/knowledge/sources/<str:source_id>/download/",
-        KnowledgeSourceDownloadView.as_view(),
-        name="knowledge-source-download",
-    ),
-    path(
-        "api/v1/knowledge/notes/", KnowledgeNotesView.as_view(), name="knowledge-notes"
-    ),
-    path(
-        "api/v1/knowledge/notes/<str:note_id>/",
-        KnowledgeNoteDetailView.as_view(),
-        name="knowledge-note-detail",
     ),
     path("api/v1/", include(api_urlpatterns)),
 ]

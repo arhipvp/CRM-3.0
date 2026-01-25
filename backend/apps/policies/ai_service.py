@@ -243,6 +243,13 @@ POLICY_FUNCTION = {
     "parameters": POLICY_SCHEMA,
 }
 
+VIN_CLARIFY_PROMPT = (
+    "Документ относится к автополису, но VIN не был точно извлечён. "
+    "Пожалуйста, уточни VIN по тексту. "
+    "Если VIN не указан или ты не уверен, оставь 'vehicle_vin' пустым. "
+    "Верни полный JSON по той же схеме."
+)
+
 
 def extract_text_from_bytes(content: bytes, filename: str) -> str:
     """Извлечь текст из PDF или текстового файла."""
@@ -560,6 +567,91 @@ def _normalize_policy_payload(data: dict) -> dict:
     return data
 
 
+def _is_vehicle_policy(data: dict) -> bool:
+    """Определить, что полис относится к транспорту."""
+
+    if not isinstance(data, dict):
+        return False
+    policy = data.get("policy")
+    if not isinstance(policy, dict):
+        return False
+    for key in ("vehicle_brand", "vehicle_model", "vehicle_vin"):
+        value = policy.get(key)
+        if isinstance(value, str) and value.strip():
+            return True
+    return False
+
+
+def _extract_valid_vin(data: dict) -> str:
+    """Вытащить VIN, если он валиден."""
+
+    policy = data.get("policy") if isinstance(data, dict) else None
+    if not isinstance(policy, dict):
+        return ""
+    value = policy.get("vehicle_vin")
+    if not isinstance(value, str):
+        return ""
+    normalized = value.strip()
+    if not normalized:
+        return ""
+    if re.fullmatch(VIN_PATTERN, normalized):
+        return normalized
+    return ""
+
+
+def _maybe_refine_vin(
+    data: dict,
+    messages: List[dict],
+    *,
+    progress_cb: Callable[[str, str], None] | None = None,
+    cancel_cb: Callable[[], bool] | None = None,
+) -> dict:
+    """Повторно уточнить VIN через ИИ, если полис автомобильный и VIN отсутствует."""
+
+    if not _is_vehicle_policy(data):
+        return data
+    if _extract_valid_vin(data):
+        return data
+
+    def _check_cancel() -> None:
+        if cancel_cb and cancel_cb():
+            logger.info("Cancelling VIN clarification")
+            raise InterruptedError("Распознавание VIN отменено")
+
+    _check_cancel()
+    if progress_cb:
+        progress_cb("user", VIN_CLARIFY_PROMPT)
+    messages.append({"role": "user", "content": VIN_CLARIFY_PROMPT})
+
+    try:
+        answer = _chat(messages, progress_cb=progress_cb, cancel_cb=cancel_cb)
+    except Exception:
+        logger.exception("Failed to clarify VIN via OpenRouter")
+        return data
+
+    messages.append({"role": "assistant", "content": answer})
+    try:
+        extracted = _extract_json_from_answer(answer)
+        repaired = _repair_json_payload(extracted)
+        refined = json.loads(repaired, strict=False)
+        refined = _normalize_policy_payload(refined)
+        if HAVE_JSONSCHEMA:
+            validate(instance=refined, schema=POLICY_SCHEMA)
+        else:
+            _basic_policy_validate(refined)
+    except Exception:
+        logger.warning("Не удалось разобрать ответ при уточнении VIN")
+        return data
+
+    refined_vin = _extract_valid_vin(refined)
+    if not refined_vin:
+        return data
+    policy = data.get("policy")
+    if isinstance(policy, dict):
+        policy["vehicle_vin"] = refined_vin
+    return data
+
+
 def _chat(
     messages: List[dict],
     *,
@@ -698,6 +790,12 @@ def recognize_policy_interactive(
             messages.append({"role": "user", "content": REMINDER})
             continue
         _check_cancel()
+        data = _maybe_refine_vin(
+            data,
+            messages,
+            progress_cb=progress_cb,
+            cancel_cb=cancel_cb,
+        )
         transcript = _log_conversation("text", messages)
         return data, transcript, messages
 

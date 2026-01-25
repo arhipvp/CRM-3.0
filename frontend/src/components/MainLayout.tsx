@@ -10,7 +10,6 @@ export type View =
   | 'policies'
   | 'commissions'
   | 'tasks'
-  | 'knowledge'
   | 'settings';
 
 interface MainLayoutProps {
@@ -28,9 +27,10 @@ const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
   { path: '/policies', label: 'Полисы', icon: '📄' },
   { path: '/commissions', label: 'Доходы и расходы', icon: '💸' },
   { path: '/tasks', label: 'Задачи', icon: '🗂️' },
-  { path: '/knowledge', label: 'Библиотека', icon: '📚' },
   { path: '/settings', label: 'Настройки', icon: '⚙️' },
 ];
+
+const HIDDEN_NAV_PATHS = new Set(['/knowledge', '/library']);
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
   onAddDeal,
@@ -49,7 +49,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
-            {NAV_ITEMS.map((item) => (
+            {NAV_ITEMS.filter((item) => !HIDDEN_NAV_PATHS.has(item.path)).map((item) => (
               <li key={item.path}>
                 <NavLink
                   to={item.path}
