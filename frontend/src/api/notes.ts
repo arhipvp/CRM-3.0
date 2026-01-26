@@ -17,10 +17,12 @@ export async function createNote(
   dealId: string,
   body: string,
   attachments?: Note['attachments'],
+  isImportant?: boolean,
 ): Promise<Note> {
   const payloadBody: Record<string, unknown> = {
     deal: dealId,
     body,
+    is_important: Boolean(isImportant),
   };
   if (attachments && attachments.length > 0) {
     payloadBody.attachments = attachments.map((file) => ({

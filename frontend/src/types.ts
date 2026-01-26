@@ -370,6 +370,7 @@ export interface Note {
   body: string;
   authorName?: string | null;
   attachments?: DriveFile[];
+  isImportant: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

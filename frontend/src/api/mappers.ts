@@ -448,6 +448,7 @@ export const mapNote = (raw: Record<string, unknown>): Note => ({
   attachments: Array.isArray(raw.attachments)
     ? (raw.attachments as Record<string, unknown>[]).map(mapDriveFile)
     : [],
+  isImportant: Boolean(raw.is_important ?? raw.isImportant ?? false),
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
   deletedAt: toNullableString(raw.deleted_at),

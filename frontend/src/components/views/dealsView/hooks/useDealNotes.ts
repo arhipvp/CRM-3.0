@@ -18,6 +18,7 @@ export const useDealNotes = (dealId?: string | null) => {
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesFilter, setNotesFilter] = useState<NotesFilter>('active');
   const [noteDraft, setNoteDraft] = useState('');
+  const [noteIsImportant, setNoteIsImportant] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
   const [notesAction, setNotesAction] = useState<string | null>(null);
   const [noteAttachments, setNoteAttachments] = useState<DriveFile[]>([]);
@@ -32,6 +33,7 @@ export const useDealNotes = (dealId?: string | null) => {
     }
     setNoteAttachments([]);
     setNoteAttachmentsUploading(false);
+    setNoteIsImportant(false);
   }, [dealId]);
 
   const loadNotes = useCallback(
@@ -88,11 +90,13 @@ export const useDealNotes = (dealId?: string | null) => {
     setNotesAction('create');
     setNotesError(null);
     try {
-      await createNote(currentDealId, trimmed, noteAttachments);
+      await createNote(currentDealId, trimmed, noteAttachments, noteIsImportant);
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
       setNoteDraft('');
+      setNoteIsImportant(false);
+      setNoteIsImportant(false);
       setNoteAttachments([]);
       await loadNotes(notesFilter);
     } catch (err) {
@@ -106,7 +110,7 @@ export const useDealNotes = (dealId?: string | null) => {
         setNotesAction(null);
       }
     }
-  }, [dealId, noteDraft, noteAttachments, loadNotes, notesFilter]);
+  }, [dealId, noteDraft, noteAttachments, noteIsImportant, loadNotes, notesFilter]);
 
   const attachNoteFile = useCallback(
     async (file: File) => {
@@ -218,11 +222,13 @@ export const useDealNotes = (dealId?: string | null) => {
     notesLoading,
     notesFilter,
     noteDraft,
+    noteIsImportant,
     notesError,
     notesAction,
     noteAttachments,
     noteAttachmentsUploading,
     setNoteDraft,
+    setNoteIsImportant,
     setNotesFilter,
     addNote,
     attachNoteFile,

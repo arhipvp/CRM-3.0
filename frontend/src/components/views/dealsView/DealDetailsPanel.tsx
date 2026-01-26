@@ -312,11 +312,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     notesLoading,
     notesFilter,
     noteDraft,
+    noteIsImportant,
     notesError,
     notesAction,
     noteAttachments,
     noteAttachmentsUploading,
     setNoteDraft,
+    setNoteIsImportant,
     setNotesFilter,
     addNote: handleAddNote,
     attachNoteFile,
@@ -796,12 +798,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               notesLoading={notesLoading}
               notesFilter={notesFilter}
               noteDraft={noteDraft}
+              noteIsImportant={noteIsImportant}
               notesError={notesError}
               notesAction={notesAction}
               noteAttachments={noteAttachments}
               noteAttachmentsUploading={noteAttachmentsUploading}
               onSetFilter={setNotesFilter}
               onSetDraft={setNoteDraft}
+              onToggleImportant={setNoteIsImportant}
               onAddNote={handleAddNote}
               onAttachNoteFile={attachNoteFile}
               onRemoveNoteAttachment={removeNoteAttachment}

@@ -18,12 +18,14 @@ interface DealNotesSectionProps {
   notesLoading: boolean;
   notesFilter: 'active' | 'archived';
   noteDraft: string;
+  noteIsImportant: boolean;
   notesError: string | null;
   notesAction: string | null;
   noteAttachments: DriveFile[];
   noteAttachmentsUploading: boolean;
   onSetFilter: (filter: 'active' | 'archived') => void;
   onSetDraft: (value: string) => void;
+  onToggleImportant: (value: boolean) => void;
   onAddNote: () => void;
   onAttachNoteFile: (file: File) => Promise<void>;
   onRemoveNoteAttachment: (file: DriveFile) => void;
@@ -41,12 +43,14 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
   notesLoading,
   notesFilter,
   noteDraft,
+  noteIsImportant,
   notesError,
   notesAction,
   noteAttachments,
   noteAttachmentsUploading,
   onSetFilter,
   onSetDraft,
+  onToggleImportant,
   onAddNote,
   onAttachNoteFile,
   onRemoveNoteAttachment,
@@ -102,10 +106,12 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     noteId,
     file,
     onOpen,
+    tone,
   }: {
     noteId: string;
     file: DriveFile;
     onOpen: (payload: { src: string; name: string }) => void;
+    tone: 'default' | 'important';
   }) => {
     const [src, setSrc] = useState<string | null>(null);
     const [hasError, setHasError] = useState(false);
@@ -142,10 +148,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
           if (!isActive) {
             return;
           }
-          console.error(
-            'РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РёР·РѕР±СЂР°Р¶РµРЅРёСЏ Р·Р°РјРµС‚РєРё:',
-            error,
-          );
+          console.error('Ошибка загрузки изображения заметки:', error);
           setHasError(true);
         }
       };
@@ -158,17 +161,22 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     }, [file.id, noteId]);
 
     if (hasError) {
-      return (
-        <div className="flex h-24 items-center justify-center rounded-xl border border-amber-200 bg-white text-[10px] text-slate-500">
-          Не удалось загрузить
-        </div>
-      );
+      const errorClassName =
+        tone === 'important'
+          ? 'flex h-24 items-center justify-center rounded-xl border border-rose-200 bg-white text-[10px] text-slate-500'
+          : 'flex h-24 items-center justify-center rounded-xl border border-amber-200 bg-white text-[10px] text-slate-500';
+      return <div className={errorClassName}>Не удалось загрузить</div>;
     }
+
+    const buttonClassName =
+      tone === 'important'
+        ? 'group inline-block overflow-hidden rounded-xl border border-rose-200 bg-white text-left shadow-sm'
+        : 'group inline-block overflow-hidden rounded-xl border border-amber-200 bg-white text-left shadow-sm';
 
     return (
       <button
         type="button"
-        className="group inline-block overflow-hidden rounded-xl border border-amber-200 bg-white text-left shadow-sm"
+        className={buttonClassName}
         onClick={() => {
           if (src) {
             onOpen({ src, name: file.name });
@@ -261,6 +269,16 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
               />
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  className="check"
+                  checked={noteIsImportant}
+                  onChange={(event) => onToggleImportant(event.target.checked)}
+                  disabled={notesAction === 'create' || noteAttachmentsUploading}
+                />
+                <span>Важно</span>
+              </label>
               <p className="text-xs text-slate-500">Все заметки видны всем участникам</p>
               <button
                 type="button"
@@ -284,84 +302,95 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
           </div>
         ) : notes.length ? (
           <div className="columns-1 gap-4 space-y-4 sm:columns-2 xl:columns-3 2xl:columns-4">
-            {notes.map((note) => (
-              <article
-                key={note.id}
-                className="relative mb-4 break-inside-avoid-column overflow-hidden rounded-[28px] border border-amber-200 bg-amber-50 p-4 pb-5 text-slate-900 shadow-[0_20px_40px_rgba(245,158,11,0.25)] transition hover:-translate-y-1"
-              >
-                <div className="absolute right-4 top-2 h-3 w-12 rounded-full bg-amber-300 opacity-80 shadow-[0_4px_15px_rgba(245,158,11,0.5)]" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  <ColoredLabel
-                    value={note.authorName}
-                    fallback="—"
-                    showDot={false}
-                    className="text-[11px] uppercase tracking-[0.3em]"
-                  />
-                </p>
-                <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
-                  {note.body || '—'}
-                </p>
-                {note.attachments && note.attachments.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                      Вложения
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {note.attachments.map((file) => {
-                        const previewUrl = buildAttachmentUrl(note.id, file.id);
-                        const href = file.webViewLink || previewUrl;
-                        if (isImageAttachment(file)) {
+            {notes.map((note) => {
+              const isImportant = Boolean(note.isImportant);
+              const cardClassName = isImportant
+                ? 'relative mb-4 break-inside-avoid-column overflow-hidden rounded-[28px] border border-rose-300 bg-rose-50 p-4 pb-5 text-slate-900 shadow-[0_20px_40px_rgba(244,63,94,0.2)] transition hover:-translate-y-1'
+                : 'relative mb-4 break-inside-avoid-column overflow-hidden rounded-[28px] border border-amber-200 bg-amber-50 p-4 pb-5 text-slate-900 shadow-[0_20px_40px_rgba(245,158,11,0.25)] transition hover:-translate-y-1';
+              const accentClassName = isImportant
+                ? 'absolute right-4 top-2 h-3 w-12 rounded-full bg-rose-300 opacity-80 shadow-[0_4px_15px_rgba(244,63,94,0.5)]'
+                : 'absolute right-4 top-2 h-3 w-12 rounded-full bg-amber-300 opacity-80 shadow-[0_4px_15px_rgba(245,158,11,0.5)]';
+              const attachmentClassName = isImportant
+                ? 'flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-2 py-2 text-xs text-slate-700 shadow-sm transition hover:bg-rose-100'
+                : 'flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-2 py-2 text-xs text-slate-700 shadow-sm transition hover:bg-amber-100';
+
+              return (
+                <article key={note.id} className={cardClassName}>
+                  <div className={accentClassName} />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                    <ColoredLabel
+                      value={note.authorName}
+                      fallback="—"
+                      showDot={false}
+                      className="text-[11px] uppercase tracking-[0.3em]"
+                    />
+                  </p>
+                  <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
+                    {note.body || '—'}
+                  </p>
+                  {note.attachments && note.attachments.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+                        Вложения
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {note.attachments.map((file) => {
+                          const previewUrl = buildAttachmentUrl(note.id, file.id);
+                          const href = file.webViewLink || previewUrl;
+                          if (isImageAttachment(file)) {
+                            return (
+                              <NoteAttachmentImage
+                                key={file.id}
+                                noteId={note.id}
+                                file={file}
+                                onOpen={setImagePreview}
+                                tone={isImportant ? 'important' : 'default'}
+                              />
+                            );
+                          }
                           return (
-                            <NoteAttachmentImage
+                            <a
                               key={file.id}
-                              noteId={note.id}
-                              file={file}
-                              onOpen={setImagePreview}
-                            />
+                              href={href ?? previewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={attachmentClassName}
+                            >
+                              <span className="text-base">📎</span>
+                              <span className="truncate">{file.name}</span>
+                            </a>
                           );
-                        }
-                        return (
-                          <a
-                            key={file.id}
-                            href={href ?? previewUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-2 py-2 text-xs text-slate-700 shadow-sm transition hover:bg-amber-100"
-                          >
-                            <span className="text-base">📎</span>
-                            <span className="truncate">{file.name}</span>
-                          </a>
-                        );
-                      })}
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-                <div className="mt-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  <span className="text-[11px] font-normal text-slate-500">
-                    {formatDate(note.createdAt)}
-                  </span>
-                  {notesFilter === 'active' ? (
-                    <button
-                      type="button"
-                      disabled={notesAction === note.id}
-                      onClick={() => onArchiveNote(note.id)}
-                      className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
-                    >
-                      {notesAction === note.id ? 'Удаляем...' : 'Удалить'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={notesAction === note.id}
-                      onClick={() => onRestoreNote(note.id)}
-                      className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
-                    >
-                      {notesAction === note.id ? 'Восстанавливаем...' : 'Восстановить'}
-                    </button>
                   )}
-                </div>
-              </article>
-            ))}
+                  <div className="mt-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <span className="text-[11px] font-normal text-slate-500">
+                      {formatDate(note.createdAt)}
+                    </span>
+                    {notesFilter === 'active' ? (
+                      <button
+                        type="button"
+                        disabled={notesAction === note.id}
+                        onClick={() => onArchiveNote(note.id)}
+                        className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
+                      >
+                        {notesAction === note.id ? 'Удаляем...' : 'Удалить'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={notesAction === note.id}
+                        onClick={() => onRestoreNote(note.id)}
+                        className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
+                      >
+                        {notesAction === note.id ? 'Восстанавливаем...' : 'Восстановить'}
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           renderStatusMessage('Заметок не найдено.')

@@ -47,6 +47,7 @@ describe('useDealNotes', () => {
         id: 'note-1',
         dealId: 'deal-1',
         body: 'Initial note',
+        isImportant: false,
         createdAt: '2025-01-01T00:00:00Z',
         updatedAt: '2025-01-01T00:00:00Z',
       },
@@ -78,6 +79,7 @@ describe('useDealNotes', () => {
         id: 'note-1',
         dealId: 'deal-1',
         body: 'First',
+        isImportant: false,
         createdAt: '2025-01-01T00:00:00Z',
         updatedAt: '2025-01-01T00:00:00Z',
       },
@@ -88,6 +90,7 @@ describe('useDealNotes', () => {
         id: 'note-2',
         dealId: 'deal-1',
         body: 'Second',
+        isImportant: false,
         createdAt: '2025-01-02T00:00:00Z',
         updatedAt: '2025-01-02T00:00:00Z',
       },
@@ -98,6 +101,7 @@ describe('useDealNotes', () => {
       id: 'note-3',
       dealId: 'deal-1',
       body: 'New note',
+      isImportant: false,
       createdAt: '2025-01-03T00:00:00Z',
       updatedAt: '2025-01-03T00:00:00Z',
     } as Note);
@@ -114,7 +118,7 @@ describe('useDealNotes', () => {
       await resultRef.current?.addNote();
     });
 
-    expect(createNoteMock).toHaveBeenCalledWith('deal-1', 'New note', []);
+    expect(createNoteMock).toHaveBeenCalledWith('deal-1', 'New note', [], false);
     await waitFor(() => expect(fetchDealNotes).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(resultRef.current?.noteDraft).toBe(''));
   });
@@ -153,6 +157,7 @@ describe('useDealNotes', () => {
       id: 'note-4',
       dealId: 'deal-1',
       body: '',
+      isImportant: false,
       createdAt: '2025-01-04T00:00:00Z',
       updatedAt: '2025-01-04T00:00:00Z',
     } as Note);
@@ -177,6 +182,6 @@ describe('useDealNotes', () => {
       await resultRef.current?.addNote();
     });
 
-    expect(createNoteMock).toHaveBeenCalledWith('deal-1', '', [uploadedFile]);
+    expect(createNoteMock).toHaveBeenCalledWith('deal-1', '', [uploadedFile], false);
   });
 });

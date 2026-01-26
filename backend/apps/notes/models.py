@@ -32,7 +32,7 @@ class Note(SoftDeleteModel):
     )
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-is_important", "-created_at"]
         verbose_name = "Заметка"
         verbose_name_plural = "Заметки"
 

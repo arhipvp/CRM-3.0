@@ -21,6 +21,7 @@ class NoteSerializer(serializers.ModelSerializer):
     body = serializers.CharField(allow_blank=True, required=False)
     deal_title = serializers.CharField(source="deal.title", read_only=True)
     attachments = NoteAttachmentSerializer(many=True, required=False)
+    is_important = serializers.BooleanField(required=False)
 
     class Meta:
         model = Note
@@ -31,6 +32,7 @@ class NoteSerializer(serializers.ModelSerializer):
             "body",
             "author_name",
             "attachments",
+            "is_important",
             "created_at",
             "updated_at",
             "deleted_at",
