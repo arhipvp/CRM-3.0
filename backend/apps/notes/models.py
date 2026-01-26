@@ -4,7 +4,7 @@ from django.db import models
 
 
 class Note(SoftDeleteModel):
-    """Заметка/комментарий к сделке"""
+    """Заметка/комментарий к сделке."""
 
     deal = models.ForeignKey(
         "deals.Deal",
@@ -30,6 +30,7 @@ class Note(SoftDeleteModel):
         blank=True,
         help_text="Drive attachments metadata",
     )
+    is_important = models.BooleanField(default=False, help_text="Важная заметка")
 
     class Meta:
         ordering = ["-is_important", "-created_at"]
