@@ -111,6 +111,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [showWithoutStatementOnly, setShowWithoutStatementOnly] = useState(false);
   const [showNonZeroBalanceOnly, setShowNonZeroBalanceOnly] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [targetStatementId, setTargetStatementId] = useState('');
   const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
   const [isAllRecordsLoading, setIsAllRecordsLoading] = useState(false);
@@ -341,8 +342,47 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
       return bTime - aTime;
     });
+    if (viewMode === 'statements' && recordAmountSort !== 'none') {
+      result.sort((a, b) =>
+        recordAmountSort === 'asc'
+          ? a.recordAmount - b.recordAmount
+          : b.recordAmount - a.recordAmount,
+      );
+    }
     return result;
-  }, [allRows, selectedStatementId, statementRows, viewMode]);
+  }, [allRows, recordAmountSort, selectedStatementId, statementRows, viewMode]);
+
+  const toggleAmountSort = useCallback(() => {
+    setRecordAmountSort((prev) => {
+      if (prev === 'none') {
+        return 'asc';
+      }
+      if (prev === 'asc') {
+        return 'desc';
+      }
+      return 'none';
+    });
+  }, []);
+
+  const getAmountSortIndicator = () => {
+    if (recordAmountSort === 'asc') {
+      return '↑';
+    }
+    if (recordAmountSort === 'desc') {
+      return '↓';
+    }
+    return '↕';
+  };
+
+  const getAmountSortLabel = () => {
+    if (recordAmountSort === 'asc') {
+      return 'по возрастанию';
+    }
+    if (recordAmountSort === 'desc') {
+      return 'по убыванию';
+    }
+    return 'не сортируется';
+  };
 
   const handleOpenDeal = useCallback(
     (dealId: string | undefined) => {
@@ -675,25 +715,33 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         <div className="divide-y divide-slate-200">
           {viewMode === 'statements' && (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 bg-white">
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомости</p>
-                  <p className="text-sm font-semibold text-slate-900">Всего: {statements.length}</p>
+              <div className="px-4 py-4 bg-white">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
+                      Ведомости
+                    </span>
+                    <span className="text-sm text-slate-500 whitespace-nowrap">
+                      Всего: {statements.length}
+                    </span>
+                  </div>
                   <p className="text-sm text-slate-600">
                     Выберите ведомость, чтобы посмотреть ее записи.
                   </p>
                 </div>
                 {onCreateStatement && (
-                  <button
-                    type="button"
-                    onClick={() => setStatementModalOpen(true)}
-                    className="btn btn-secondary btn-sm rounded-xl"
-                  >
-                    + Создать ведомость
-                  </button>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setStatementModalOpen(true)}
+                      className="btn btn-secondary btn-sm rounded-xl"
+                    >
+                      + Создать ведомость
+                    </button>
+                  </div>
                 )}
               </div>
-              <div className="max-h-[360px] overflow-y-auto bg-white">
+              <div className="max-h-[360px] overflow-y-auto bg-white border-b border-slate-200">
                 {statements.length ? (
                   <ul className="divide-y divide-slate-200">
                     {statements.map((statement) => {
@@ -856,7 +904,351 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 )}
               </div>
             </div>
-            {selectedStatement && (
+            <div
+              role="tabpanel"
+              id="financial-tabpanel-all"
+              aria-labelledby="financial-tab-all"
+              tabIndex={0}
+              className="outline-none"
+              hidden={viewMode !== 'all'}
+            >
+              <div className="px-4 py-4 bg-white">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
+                      Все финансовые записи
+                    </span>
+                    <span className="text-sm text-slate-500 whitespace-nowrap">
+                      Фильтры по записям
+                    </span>
+                  </div>
+                  <div className="w-full max-w-sm">
+                    <label htmlFor="allFinancialSearch" className="sr-only">
+                      Поиск по записям
+                    </label>
+                    <input
+                      id="allFinancialSearch"
+                      type="search"
+                      value={allRecordsSearch}
+                      onChange={(event) => setAllRecordsSearch(event.target.value)}
+                      placeholder="Поиск по записям"
+                      className="field field-input"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 py-4 border-b border-slate-200 bg-white">
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={showUnpaidOnly}
+                      onChange={(event) => setShowUnpaidOnly(event.target.checked)}
+                      className="check"
+                    />
+                    Только неоплаченные
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={showWithoutStatementOnly}
+                      onChange={(event) => setShowWithoutStatementOnly(event.target.checked)}
+                      className="check"
+                    />
+                    Только не в ведомостях
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={showNonZeroBalanceOnly}
+                      onChange={(event) => setShowNonZeroBalanceOnly(event.target.checked)}
+                      className="check"
+                    />
+                    Скрыть нулевой итог по платежу
+                  </label>
+                  <select
+                    value={recordTypeFilter}
+                    onChange={(event) =>
+                      setRecordTypeFilter(event.target.value as 'all' | 'income' | 'expense')
+                    }
+                    className="field field-input h-10 min-w-[200px] text-sm"
+                  >
+                    <option value="all">Все записи</option>
+                    <option value="income">Только доходы</option>
+                    <option value="expense">Только расходы</option>
+                  </select>
+                  <select
+                    value={targetStatementId}
+                    onChange={(event) => setTargetStatementId(event.target.value)}
+                    className="field field-input h-10 min-w-[220px] text-sm"
+                  >
+                    <option value="">Выберите ведомость</option>
+                    {statements.map((statement) => (
+                      <option key={statement.id} value={statement.id}>
+                        {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
+                        {normalizeText(statement.name)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void handleAttachSelected()}
+                    className="btn btn-primary btn-sm rounded-xl"
+                    disabled={
+                      !selectedRecordIds.length ||
+                      !onUpdateStatement ||
+                      !attachStatement ||
+                      isAttachStatementPaid
+                    }
+                  >
+                    Добавить выбранные
+                  </button>
+                </div>
+              </div>
+            </div>
+            {viewMode === 'statements' && !selectedStatement ? (
+              <div className="bg-white px-6 py-10 text-center">
+                <PanelMessage>Выберите ведомость в списке выше.</PanelMessage>
+              </div>
+            ) : (
+              <div className="overflow-x-auto bg-white">
+                <table
+                  className="deals-table min-w-full border-collapse text-left text-sm"
+                  aria-label="Доходы и расходы"
+                >
+                  <thead className={TABLE_THEAD_CLASS}>
+                    <tr>
+                      <TableHeadCell padding="sm" className="w-10" />
+                      <TableHeadCell className="min-w-[220px]">ФИО клиента</TableHeadCell>
+                      <TableHeadCell className="min-w-[140px]">Номер полиса</TableHeadCell>
+                      <TableHeadCell className="min-w-[160px]">Полис</TableHeadCell>
+                      <TableHeadCell className="min-w-[160px]">Канал продаж</TableHeadCell>
+                      <TableHeadCell className="min-w-[160px]">Платеж</TableHeadCell>
+                      {viewMode === 'all' && (
+                        <TableHeadCell className="min-w-[150px]">Итог по платежу</TableHeadCell>
+                      )}
+                      <TableHeadCell className="min-w-[180px]" align="right">
+                        <button
+                          type="button"
+                          onClick={toggleAmountSort}
+                          aria-label={`Сортировать по доходу или расходу, текущий порядок ${getAmountSortLabel()}`}
+                          className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                        >
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                            Расход/доход
+                          </span>
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                            {getAmountSortIndicator()}
+                          </span>
+                        </button>
+                      </TableHeadCell>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {filteredRows.map((row) => {
+                      const payment = row.payment;
+                      const policyNumber =
+                        normalizeText(payment.policyNumber) ||
+                        normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
+                        '-';
+                      const policyType =
+                        normalizeText(payment.policyInsuranceType) ||
+                        normalizeText(policiesById.get(payment.policyId ?? '')?.insuranceType) ||
+                        '-';
+                      const salesChannelLabel =
+                        normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
+                        normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
+                        '-';
+                      const clientName = normalizeText(payment.dealClientName) || '-';
+                      const dealTitle = normalizeText(payment.dealTitle) || '-';
+                      const paymentActualDate = payment.actualDate
+                        ? formatDateRu(payment.actualDate)
+                        : null;
+                      const paymentScheduledDate = payment.scheduledDate
+                        ? formatDateRu(payment.scheduledDate)
+                        : null;
+                      const recordAmount = row.recordAmount;
+                      const isIncome = recordAmount > 0;
+                      const recordLabel = isIncome
+                        ? `Доход ${formatCurrencyRu(recordAmount)}`
+                        : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
+                      const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
+                      const recordDateLabel = formatDateRu(row.recordDate);
+                      const paymentBalance = row.paymentPaidBalance;
+                      const paymentBalanceLabel =
+                        paymentBalance === undefined ? '—' : formatCurrencyRu(paymentBalance);
+                      const paymentEntries = (row.paymentPaidEntries ?? []).slice().sort((a, b) => {
+                        const aTime = new Date(a.date).getTime();
+                        const bTime = new Date(b.date).getTime();
+                        return bTime - aTime;
+                      });
+                      const recordNotes = [row.recordDescription, row.recordSource, row.recordNote]
+                        .map((value) => normalizeText(value?.toString().trim()))
+                        .filter(Boolean)
+                        .join(' · ');
+                      const amountValue =
+                        amountDrafts[row.recordId] ?? Math.abs(recordAmount).toString();
+                      const recordStatement = row.statementId
+                        ? statementsById.get(row.statementId)
+                        : undefined;
+                      const isRecordLocked = recordStatement?.status === 'paid';
+                      const statementNote = recordStatement
+                        ? recordStatement.paidAt
+                          ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(
+                              recordStatement.name,
+                            )}`
+                          : `Ведомость: ${normalizeText(recordStatement.name)}`
+                        : null;
+                      const isSelectable = attachStatement ? canAttachRow(row) : false;
+                      const isSelected = selectedRecordIds.includes(row.recordId);
+
+                      return (
+                        <tr key={row.key} className={TABLE_ROW_CLASS}>
+                          <td className="border border-slate-200 px-3 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleRecordSelection(row)}
+                              disabled={!isSelectable || isAttachStatementPaid}
+                              className="check"
+                              title={
+                                !attachStatement
+                                  ? 'Выберите ведомость для добавления записей'
+                                  : !isSelectable
+                                    ? 'Запись нельзя добавить в выбранную ведомость'
+                                    : undefined
+                              }
+                            />
+                          </td>
+                          <td className={TABLE_CELL_CLASS_LG}>
+                            <p className="text-base font-semibold text-slate-900">{clientName}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                              {payment.dealId && onDealSelect ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDeal(payment.dealId)}
+                                  className="link-action text-xs font-semibold"
+                                >
+                                  {dealTitle}
+                                </button>
+                              ) : (
+                                <span>{dealTitle}</span>
+                              )}
+                              <span>·</span>
+                              <span>{clientName}</span>
+                            </div>
+                          </td>
+                          <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                            <PolicyNumberButton
+                              value={policyNumber === '-' ? '' : policyNumber}
+                              placeholder="-"
+                              className="link-action text-left"
+                            />
+                          </td>
+                          <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
+                          <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                            {salesChannelLabel}
+                          </td>
+                          <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                            <p className="text-base font-semibold">
+                              {formatCurrencyRu(payment.amount)}
+                            </p>
+                            {paymentActualDate ? (
+                              <p className="text-xs text-slate-500 mt-1">
+                                Оплата: {paymentActualDate}
+                              </p>
+                            ) : paymentScheduledDate ? (
+                              <p className="text-xs text-slate-500 mt-1">
+                                План: {paymentScheduledDate}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-slate-500 mt-1">Оплата: —</p>
+                            )}
+                          </td>
+                          {viewMode === 'all' && (
+                            <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                              <p className="text-base font-semibold">{paymentBalanceLabel}</p>
+                              {paymentEntries.length ? (
+                                <div className="mt-1 space-y-1 text-xs text-slate-500">
+                                  {paymentEntries.map((entry, index) => {
+                                    const entryAmount = Number(entry.amount);
+                                    const entryLabel = Number.isFinite(entryAmount)
+                                      ? formatCurrencyRu(Math.abs(entryAmount))
+                                      : entry.amount;
+                                    const entryDate = formatDateRu(entry.date);
+                                    const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
+                                    return (
+                                      <p key={`${row.payment.id}-${index}`}>
+                                        {entryType} {entryLabel} · {entryDate}
+                                      </p>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-500 mt-1">Операций нет</p>
+                              )}
+                            </td>
+                          )}
+                          <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                            <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
+                            {recordNotes ? (
+                              <p className="text-xs text-slate-500 mt-1">{recordNotes}</p>
+                            ) : (
+                              <p className="text-xs text-slate-400 mt-1">Примечаний нет</p>
+                            )}
+                            {statementNote && (
+                              <p className="text-xs text-slate-500 mt-1">{statementNote}</p>
+                            )}
+                            <p className="mt-2 text-sm text-slate-900">{recordDateLabel}</p>
+                            {onUpdateFinancialRecord && (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={amountValue}
+                                onChange={(event) =>
+                                  handleRecordAmountChange(row.recordId, event.target.value)
+                                }
+                                onBlur={() => void handleRecordAmountBlur(row)}
+                                disabled={isRecordLocked}
+                                className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                              />
+                            )}
+                            {onUpdateFinancialRecord && (
+                              <input
+                                type="date"
+                                value={row.recordDate ?? ''}
+                                onChange={(event) =>
+                                  handleRecordDateChange(row, event.target.value)
+                                }
+                                disabled={isRecordLocked}
+                                className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {!filteredRows.length && (
+                      <tr>
+                        <td
+                          colSpan={viewMode === 'all' ? 9 : 8}
+                          className="border border-slate-200 px-6 py-10 text-center text-slate-600"
+                        >
+                          <PanelMessage>
+                            {viewMode === 'all' && isAllRecordsLoading
+                              ? 'Загрузка записей...'
+                              : viewMode === 'statements' && selectedStatement
+                                ? 'Записей в ведомости пока нет'
+                                : 'Записей пока нет'}
+                          </PanelMessage>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {viewMode === 'statements' && selectedStatement && (
               <div className="border-t border-slate-200 bg-white px-4 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -964,326 +1356,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               </div>
             )}
           </div>
-          <div
-            role="tabpanel"
-            id="financial-tabpanel-all"
-            aria-labelledby="financial-tab-all"
-            tabIndex={0}
-            className="outline-none"
-            hidden={viewMode !== 'all'}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-900">Все финансовые записи</p>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                <div className="w-full max-w-sm">
-                  <label htmlFor="allFinancialSearch" className="sr-only">
-                    Поиск по записям
-                  </label>
-                  <input
-                    id="allFinancialSearch"
-                    type="search"
-                    value={allRecordsSearch}
-                    onChange={(event) => setAllRecordsSearch(event.target.value)}
-                    placeholder="Поиск по записям"
-                    className="field field-input"
-                  />
-                </div>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showUnpaidOnly}
-                    onChange={(event) => setShowUnpaidOnly(event.target.checked)}
-                    className="check"
-                  />
-                  Только не оплаченные
-                </label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showWithoutStatementOnly}
-                    onChange={(event) => setShowWithoutStatementOnly(event.target.checked)}
-                    className="check"
-                  />
-                  Только не в ведомостях
-                </label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showNonZeroBalanceOnly}
-                    onChange={(event) => setShowNonZeroBalanceOnly(event.target.checked)}
-                    className="check"
-                  />
-                  Скрыть нулевой итог по платежу
-                </label>
-                <select
-                  value={recordTypeFilter}
-                  onChange={(event) =>
-                    setRecordTypeFilter(event.target.value as 'all' | 'income' | 'expense')
-                  }
-                  className="field field-input h-10 min-w-[200px] text-sm"
-                >
-                  <option value="all">Все записи</option>
-                  <option value="income">Только доходы</option>
-                  <option value="expense">Только расходы</option>
-                </select>
-                <select
-                  value={targetStatementId}
-                  onChange={(event) => setTargetStatementId(event.target.value)}
-                  className="field field-input h-10 min-w-[220px] text-sm"
-                >
-                  <option value="">Выберите ведомость</option>
-                  {statements.map((statement) => (
-                    <option key={statement.id} value={statement.id}>
-                      {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
-                      {normalizeText(statement.name)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => void handleAttachSelected()}
-                  className="btn btn-primary btn-sm rounded-xl"
-                  disabled={
-                    !selectedRecordIds.length ||
-                    !onUpdateStatement ||
-                    !attachStatement ||
-                    isAttachStatementPaid
-                  }
-                >
-                  Добавить выбранные
-                </button>
-              </div>
-            </div>
-          </div>
-          {viewMode === 'statements' && !selectedStatement ? (
-            <div className="bg-white px-6 py-10 text-center">
-              <PanelMessage>Выберите ведомость в списке выше.</PanelMessage>
-            </div>
-          ) : (
-            <div className="overflow-x-auto bg-white">
-              <table
-                className="deals-table min-w-full border-collapse text-left text-sm"
-                aria-label="Доходы и расходы"
-              >
-                <thead className={TABLE_THEAD_CLASS}>
-                  <tr>
-                    <TableHeadCell padding="sm" className="w-10" />
-                    <TableHeadCell className="min-w-[220px]">ФИО клиента</TableHeadCell>
-                    <TableHeadCell className="min-w-[140px]">Номер полиса</TableHeadCell>
-                    <TableHeadCell className="min-w-[160px]">Полис</TableHeadCell>
-                    <TableHeadCell className="min-w-[160px]">Канал продаж</TableHeadCell>
-                    <TableHeadCell className="min-w-[160px]">Платеж</TableHeadCell>
-                    {viewMode === 'all' && (
-                      <TableHeadCell className="min-w-[150px]">Итог по платежу</TableHeadCell>
-                    )}
-                    <TableHeadCell className="min-w-[160px]">Расход/доход</TableHeadCell>
-                    <TableHeadCell className="min-w-[160px]">Дата оплаты</TableHeadCell>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {filteredRows.map((row) => {
-                    const payment = row.payment;
-                    const policyNumber =
-                      normalizeText(payment.policyNumber) ||
-                      normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
-                      '-';
-                    const policyType =
-                      normalizeText(payment.policyInsuranceType) ||
-                      normalizeText(policiesById.get(payment.policyId ?? '')?.insuranceType) ||
-                      '-';
-                    const salesChannelLabel =
-                      normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
-                      normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
-                      '-';
-                    const clientName = normalizeText(payment.dealClientName) || '-';
-                    const dealTitle = normalizeText(payment.dealTitle) || '-';
-                    const paymentActualDate = payment.actualDate
-                      ? formatDateRu(payment.actualDate)
-                      : null;
-                    const paymentScheduledDate = payment.scheduledDate
-                      ? formatDateRu(payment.scheduledDate)
-                      : null;
-                    const recordAmount = row.recordAmount;
-                    const isIncome = recordAmount > 0;
-                    const recordLabel = isIncome
-                      ? `Доход ${formatCurrencyRu(recordAmount)}`
-                      : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
-                    const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
-                    const recordDateLabel = formatDateRu(row.recordDate);
-                    const paymentBalance = row.paymentPaidBalance;
-                    const paymentBalanceLabel =
-                      paymentBalance === undefined ? '—' : formatCurrencyRu(paymentBalance);
-                    const paymentEntries = (row.paymentPaidEntries ?? []).slice().sort((a, b) => {
-                      const aTime = new Date(a.date).getTime();
-                      const bTime = new Date(b.date).getTime();
-                      return bTime - aTime;
-                    });
-                    const recordNotes = [row.recordDescription, row.recordSource, row.recordNote]
-                      .map((value) => normalizeText(value?.toString().trim()))
-                      .filter(Boolean)
-                      .join(' · ');
-                    const amountValue =
-                      amountDrafts[row.recordId] ?? Math.abs(recordAmount).toString();
-                    const recordStatement = row.statementId
-                      ? statementsById.get(row.statementId)
-                      : undefined;
-                    const isRecordLocked = recordStatement?.status === 'paid';
-                    const statementNote = recordStatement
-                      ? recordStatement.paidAt
-                        ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(
-                            recordStatement.name,
-                          )}`
-                        : `Ведомость: ${normalizeText(recordStatement.name)}`
-                      : null;
-                    const isSelectable = attachStatement ? canAttachRow(row) : false;
-                    const isSelected = selectedRecordIds.includes(row.recordId);
-
-                    return (
-                      <tr key={row.key} className={TABLE_ROW_CLASS}>
-                        <td className="border border-slate-200 px-3 py-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleRecordSelection(row)}
-                            disabled={!isSelectable || isAttachStatementPaid}
-                            className="check"
-                            title={
-                              !attachStatement
-                                ? 'Выберите ведомость для добавления записей'
-                                : !isSelectable
-                                  ? 'Запись нельзя добавить в выбранную ведомость'
-                                  : undefined
-                            }
-                          />
-                        </td>
-                        <td className={TABLE_CELL_CLASS_LG}>
-                          <p className="text-base font-semibold text-slate-900">{clientName}</p>
-                          <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
-                            {payment.dealId && onDealSelect ? (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDeal(payment.dealId)}
-                                className="link-action text-xs font-semibold"
-                              >
-                                {dealTitle}
-                              </button>
-                            ) : (
-                              <span>{dealTitle}</span>
-                            )}
-                            <span>·</span>
-                            <span>{clientName}</span>
-                          </div>
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                          <PolicyNumberButton
-                            value={policyNumber === '-' ? '' : policyNumber}
-                            placeholder="-"
-                            className="link-action text-left"
-                          />
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                          {salesChannelLabel}
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                          <p className="text-base font-semibold">
-                            {formatCurrencyRu(payment.amount)}
-                          </p>
-                          {paymentActualDate ? (
-                            <p className="text-xs text-slate-500 mt-1">
-                              Оплата: {paymentActualDate}
-                            </p>
-                          ) : paymentScheduledDate ? (
-                            <p className="text-xs text-slate-500 mt-1">
-                              План: {paymentScheduledDate}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-slate-500 mt-1">Оплата: —</p>
-                          )}
-                        </td>
-                        {viewMode === 'all' && (
-                          <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                            <p className="text-base font-semibold">{paymentBalanceLabel}</p>
-                            {paymentEntries.length ? (
-                              <div className="mt-1 space-y-1 text-xs text-slate-500">
-                                {paymentEntries.map((entry, index) => {
-                                  const entryAmount = Number(entry.amount);
-                                  const entryLabel = Number.isFinite(entryAmount)
-                                    ? formatCurrencyRu(Math.abs(entryAmount))
-                                    : entry.amount;
-                                  const entryDate = formatDateRu(entry.date);
-                                  const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
-                                  return (
-                                    <p key={`${row.payment.id}-${index}`}>
-                                      {entryType} {entryLabel} · {entryDate}
-                                    </p>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-slate-500 mt-1">Операций нет</p>
-                            )}
-                          </td>
-                        )}
-                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                          <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
-                          {recordNotes ? (
-                            <p className="text-xs text-slate-500 mt-1">{recordNotes}</p>
-                          ) : (
-                            <p className="text-xs text-slate-400 mt-1">Примечаний нет</p>
-                          )}
-                          {onUpdateFinancialRecord && (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={amountValue}
-                              onChange={(event) =>
-                                handleRecordAmountChange(row.recordId, event.target.value)
-                              }
-                              onBlur={() => void handleRecordAmountBlur(row)}
-                              disabled={isRecordLocked}
-                              className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                            />
-                          )}
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                          <p className="text-sm text-slate-900">{recordDateLabel}</p>
-                          {statementNote && (
-                            <p className="text-xs text-slate-500 mt-1">{statementNote}</p>
-                          )}
-                          {onUpdateFinancialRecord && (
-                            <input
-                              type="date"
-                              value={row.recordDate ?? ''}
-                              onChange={(event) => handleRecordDateChange(row, event.target.value)}
-                              disabled={isRecordLocked}
-                              className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {!filteredRows.length && (
-                    <tr>
-                      <td
-                        colSpan={viewMode === 'all' ? 9 : 8}
-                        className="border border-slate-200 px-6 py-10 text-center text-slate-600"
-                      >
-                        <PanelMessage>
-                          {viewMode === 'all' && isAllRecordsLoading
-                            ? 'Загрузка записей...'
-                            : viewMode === 'statements' && selectedStatement
-                              ? 'Записей в ведомости пока нет'
-                              : 'Записей пока нет'}
-                        </PanelMessage>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       </div>
 
