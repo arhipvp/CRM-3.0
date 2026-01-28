@@ -3,11 +3,14 @@ from apps.common.permissions import EditProtectedMixin
 from django.conf import settings
 from django.db.models import (
     BooleanField,
+    Count,
     DecimalField,
     Exists,
     F,
+    IntegerField,
     OuterRef,
     Q,
+    Subquery,
     Sum,
     Value,
 )
@@ -81,6 +84,13 @@ class DealViewSet(
 
     def _annotate_queryset(self, queryset, user=None):
         queryset = queryset.annotate(
+            client_active_deals_count=Coalesce(
+                Subquery(self._active_deals_count_subquery(user)),
+                Value(0),
+                output_field=IntegerField(),
+            )
+        )
+        queryset = queryset.annotate(
             payments_total=Coalesce(
                 Sum("payments__amount"),
                 Value(0),
@@ -96,6 +106,22 @@ class DealViewSet(
             pin_exists = DealPin.objects.filter(user=user, deal=OuterRef("pk"))
             return queryset.annotate(is_pinned=Exists(pin_exists))
         return queryset.annotate(is_pinned=Value(False, output_field=BooleanField()))
+
+    def _active_deals_count_subquery(self, user):
+        queryset = Deal.objects.filter(
+            client_id=OuterRef("client_id"),
+            deleted_at__isnull=True,
+        ).exclude(status__in=CLOSED_STATUSES)
+
+        if user and user.is_authenticated and not is_admin_user(user):
+            access_filter = Q(seller=user) | Q(executor=user) | Q(tasks__assignee=user)
+            queryset = queryset.filter(access_filter)
+
+        return (
+            queryset.values("client_id")
+            .annotate(active_count=Count("id", distinct=True))
+            .values("active_count")
+        )
 
     def _can_merge(self, user, deal) -> bool:
         return can_merge_deals(user, deal)

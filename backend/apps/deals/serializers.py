@@ -126,6 +126,7 @@ class DateOrDateTimeField(serializers.DateField):
 
 class DealSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source="client.name", read_only=True)
+    client_active_deals_count = serializers.IntegerField(read_only=True)
     stage_name = serializers.CharField(
         required=False, allow_blank=True, allow_null=True, default=""
     )

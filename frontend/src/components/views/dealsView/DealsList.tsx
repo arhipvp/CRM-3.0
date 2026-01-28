@@ -263,6 +263,12 @@ export const DealsList: React.FC<DealsListProps> = ({
                 const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
                 const isSelected = selectedDeal?.id === deal.id;
                 const isPinned = Boolean(deal.isPinned);
+                const activeDealsCount = deal.clientActiveDealsCount;
+                const clientLabel = deal.clientName
+                  ? `${deal.clientName}${
+                      activeDealsCount !== undefined ? ` (${activeDealsCount})` : ''
+                    }`
+                  : '—';
                 const canPin =
                   Boolean(currentUser) &&
                   (currentUser?.roles?.includes('Admin') || deal.seller === currentUser?.id);
@@ -350,7 +356,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                     <td
                       className={`${TABLE_CELL_CLASS_LG} text-sm text-slate-900 ${deletedTextClass}`}
                     >
-                      <span className={deletedTextClass}>{deal.clientName || '—'}</span>
+                      <span className={deletedTextClass}>{clientLabel}</span>
                     </td>
                     <td
                       className={`${TABLE_CELL_CLASS_LG} text-sm font-semibold text-center ${deletedTextClass}`}

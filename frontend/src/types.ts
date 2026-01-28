@@ -185,6 +185,7 @@ export interface Deal {
   description?: string;
   clientId: string;
   clientName?: string;
+  clientActiveDealsCount?: number;
   status: DealStatus;
   stageName?: string;
   isPinned?: boolean;

@@ -140,12 +140,16 @@ export const mapInsuranceType = (raw: Record<string, unknown>): InsuranceType =>
 export const mapDeal = (raw: Record<string, unknown>): Deal => {
   const quoteList = Array.isArray(raw.quotes) ? raw.quotes : [];
   const documentList = Array.isArray(raw.documents) ? raw.documents : [];
+  const activeDealsCount = toNullableNumber(
+    raw.client_active_deals_count ?? raw.clientActiveDealsCount,
+  );
   return {
     id: toStringValue(raw.id),
     title: toStringValue(raw.title),
     description: toOptionalString(raw.description),
     clientId: toStringValue(raw.client),
     clientName: toOptionalString(raw.client_name),
+    clientActiveDealsCount: activeDealsCount ?? undefined,
     status: resolveDealStatus(raw.status),
     stageName: toOptionalString(raw.stage_name),
     isPinned: Boolean(raw.is_pinned ?? raw.isPinned ?? false),
