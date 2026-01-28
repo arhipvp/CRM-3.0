@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { DriveFile, FinancialRecord, Payment, Policy, Statement } from '../../types';
@@ -141,6 +141,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [isStatementDriveUploading, setStatementDriveUploading] = useState(false);
   const [isStatementDriveTrashing, setStatementDriveTrashing] = useState(false);
   const [statementDriveError, setStatementDriveError] = useState<string | null>(null);
+  const allRecordsRequestRef = useRef(0);
 
   const policiesById = useMemo(
     () => new Map(policies.map((policy) => [policy.id, policy])),
@@ -185,6 +186,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   }, [targetStatementId]);
 
   const loadAllRecords = useCallback(async () => {
+    allRecordsRequestRef.current += 1;
+    const requestId = allRecordsRequestRef.current;
     const filters: FilterParams = {};
     if (effectiveSearch) {
       filters.search = effectiveSearch;
@@ -213,15 +216,22 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           page,
           page_size: pageSize,
         });
+        if (requestId !== allRecordsRequestRef.current) {
+          return;
+        }
         collected.push(...payload.results);
         if (!payload.next) {
           break;
         }
         page += 1;
       }
-      setAllRecords(collected);
+      if (requestId === allRecordsRequestRef.current) {
+        setAllRecords(collected);
+      }
     } finally {
-      setIsAllRecordsLoading(false);
+      if (requestId === allRecordsRequestRef.current) {
+        setIsAllRecordsLoading(false);
+      }
     }
   }, [
     effectiveSearch,
