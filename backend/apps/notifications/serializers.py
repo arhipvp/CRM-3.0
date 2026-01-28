@@ -28,9 +28,7 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
         if value is None:
             return value
         if not isinstance(value, list):
-            raise serializers.ValidationError(
-                "remind_days must be a list of numbers."
-            )
+            raise serializers.ValidationError("remind_days must be a list of numbers.")
         cleaned = []
         for item in value:
             try:
@@ -52,7 +50,11 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
         try:
             days = int(value)
         except (TypeError, ValueError):
-            raise serializers.ValidationError("next_contact_lead_days must be an integer.")
+            raise serializers.ValidationError(
+                "next_contact_lead_days must be an integer."
+            )
         if days < 1:
-            raise serializers.ValidationError("next_contact_lead_days must be at least 1.")
+            raise serializers.ValidationError(
+                "next_contact_lead_days must be at least 1."
+            )
         return days
