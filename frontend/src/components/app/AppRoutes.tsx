@@ -309,6 +309,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       element={
         <CommissionsView
           payments={payments}
+          financialRecords={financialRecords}
           policies={policies}
           statements={statements}
           onDealSelect={onSelectDeal}

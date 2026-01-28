@@ -23,6 +23,7 @@ import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 
 interface CommissionsViewProps {
   payments: Payment[];
+  financialRecords?: FinancialRecord[];
   policies: Policy[];
   statements: Statement[];
   onDealSelect?: (dealId: string) => void;
@@ -90,6 +91,7 @@ const normalizeText = (value?: string | null) => {
 
 export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
+  financialRecords,
   policies,
   statements,
   onDealSelect,
@@ -229,6 +231,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (requestId === allRecordsRequestRef.current) {
         setAllRecords(collected);
       }
+    } catch (error) {
+      console.error('Failed to load financial records', error);
+      if (requestId === allRecordsRequestRef.current && financialRecords?.length) {
+        setAllRecords(financialRecords);
+      }
     } finally {
       if (requestId === allRecordsRequestRef.current) {
         setIsAllRecordsLoading(false);
@@ -236,6 +243,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     }
   }, [
     effectiveSearch,
+    financialRecords,
     recordTypeFilter,
     showNonZeroBalanceOnly,
     showUnpaidOnly,
@@ -248,6 +256,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     }
     void loadAllRecords();
   }, [loadAllRecords, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== 'all') {
+      return;
+    }
+    if (allRecords.length || isAllRecordsLoading) {
+      return;
+    }
+    if (financialRecords?.length) {
+      setAllRecords(financialRecords);
+    }
+  }, [allRecords.length, financialRecords, isAllRecordsLoading, viewMode]);
 
   const loadStatementDriveFiles = useCallback(async (statementId: string) => {
     setStatementDriveLoading(true);
@@ -345,8 +365,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
     if (viewMode === 'statements' && recordAmountSort !== 'none') {
       result.sort((a, b) => {
-        const aAmount = Math.abs(Number(a.recordAmount) || 0);
-        const bAmount = Math.abs(Number(b.recordAmount) || 0);
+        const aAmount = Number(a.recordAmount) || 0;
+        const bAmount = Number(b.recordAmount) || 0;
         if (aAmount === bAmount) {
           return compareByDate(a, b);
         }
