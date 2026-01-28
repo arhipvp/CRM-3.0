@@ -36,17 +36,20 @@ describe('DealDetailsModals', () => {
     const onClose = vi.fn();
     const onEventSelect = vi.fn();
     const onConfirm = vi.fn();
+    const onNextContactChange = vi.fn();
 
     render(
       <DealDelayModal
         deal={deal}
         selectedEvent={upcomingEvent}
         selectedEventNextContact="2024-12-01"
+        nextContactValue="2024-12-01"
         upcomingEvents={[upcomingEvent]}
         pastEvents={[pastEvent]}
         isSchedulingDelay={false}
         onClose={onClose}
         onEventSelect={onEventSelect}
+        onNextContactChange={onNextContactChange}
         onConfirm={onConfirm}
       />,
     );

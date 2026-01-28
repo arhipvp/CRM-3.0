@@ -14,6 +14,7 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationSettings
         fields = (
+            "next_contact_lead_days",
             "telegram_enabled",
             "notify_tasks",
             "notify_deal_events",
@@ -42,3 +43,18 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
                 )
             cleaned.append(day)
         return sorted(set(cleaned), reverse=True)
+
+    def validate_next_contact_lead_days(self, value):
+        if value is None:
+            return value
+        try:
+            days = int(value)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError(
+                "next_contact_lead_days РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ С†РµР»С‹Рј С‡РёСЃР»РѕРј."
+            )
+        if days < 1:
+            raise serializers.ValidationError(
+                "next_contact_lead_days РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РЅРµ РјРµРЅСЊС€Рµ 1."
+            )
+        return days

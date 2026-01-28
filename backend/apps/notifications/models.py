@@ -82,6 +82,10 @@ class NotificationSettings(models.Model):
         on_delete=models.CASCADE,
         help_text="User",
     )
+    next_contact_lead_days = models.PositiveSmallIntegerField(
+        default=90,
+        help_text="Days before event for next contact",
+    )
     telegram_enabled = models.BooleanField(default=False, help_text="Telegram enabled")
     notify_tasks = models.BooleanField(default=True, help_text="New tasks")
     notify_deal_events = models.BooleanField(default=True, help_text="Deal events")

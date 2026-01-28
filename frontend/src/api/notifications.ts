@@ -1,6 +1,7 @@
 import { request } from './request';
 
 export interface NotificationSettings {
+  next_contact_lead_days: number;
   telegram_enabled: boolean;
   notify_tasks: boolean;
   notify_deal_events: boolean;

@@ -51,6 +51,7 @@ import { FinancialRecordModal } from '../../financialRecords/FinancialRecordModa
 import { useFinancialRecordModal } from '../../../hooks/useFinancialRecordModal';
 import { PaymentModal } from '../../payments/PaymentModal';
 import { usePaymentModal } from '../../../hooks/usePaymentModal';
+import { fetchNotificationSettings } from '../../../api/notifications';
 
 interface DealDetailsPanelProps {
   deals: Deal[];
@@ -210,6 +211,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
   const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
   const [selectedDelayEventId, setSelectedDelayEventId] = useState<string | null>(null);
+  const [delayLeadDays, setDelayLeadDays] = useState<number | null>(null);
+  const [delayLeadDaysLoading, setDelayLeadDaysLoading] = useState(false);
+  const [delayNextContactInput, setDelayNextContactInput] = useState<string | null>(null);
+  const [delayValidationError, setDelayValidationError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const hasRequestedPoliciesRef = useRef(false);
 
@@ -353,6 +358,37 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   useEffect(() => {
     setChatMessages([]);
   }, [selectedDeal?.id]);
+
+  useEffect(() => {
+    if (!isDelayModalOpen) {
+      return;
+    }
+    let mounted = true;
+    setDelayLeadDaysLoading(true);
+    setDelayValidationError(null);
+    fetchNotificationSettings()
+      .then((response) => {
+        if (!mounted) {
+          return;
+        }
+        const leadDays = response.settings?.next_contact_lead_days ?? 90;
+        setDelayLeadDays(leadDays);
+      })
+      .catch((err) => {
+        console.error('Delay settings load error:', err);
+        if (mounted) {
+          setDelayLeadDays(null);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setDelayLeadDaysLoading(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [isDelayModalOpen]);
 
   const loadChatMessages = useCallback(async () => {
     const dealId = selectedDeal?.id;
@@ -558,13 +594,23 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   };
 
   const handleDelayModalConfirm = async () => {
-    if (!selectedDeal || !selectedDelayEvent || !selectedDelayEventNextContact) {
+    if (!selectedDeal || !selectedDelayEvent || !delayNextContactInput) {
+      return;
+    }
+    const eventDate = new Date(selectedDelayEvent.date);
+    const nextContactDate = new Date(delayNextContactInput);
+    if (
+      Number.isNaN(eventDate.getTime()) ||
+      Number.isNaN(nextContactDate.getTime()) ||
+      nextContactDate.getTime() > eventDate.getTime()
+    ) {
+      setDelayValidationError('Дата следующего контакта должна быть не позже даты события.');
       return;
     }
     setIsSchedulingDelay(true);
     try {
       await updateDealDates({
-        nextContactDate: selectedDelayEventNextContact,
+        nextContactDate: delayNextContactInput,
         expectedClose: selectedDelayEvent.date,
       });
       setIsDelayModalOpen(false);
@@ -657,10 +703,20 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     );
   }, [dealEvents, eventWindow.nextEvent?.id, selectedDelayEventId]);
 
+  const normalizedDelayLeadDays = Math.max(1, delayLeadDays ?? 90);
+
   const selectedDelayEventNextContact = useMemo(
-    () => calculateNextContactForEvent(selectedDelayEvent),
-    [selectedDelayEvent],
+    () => calculateNextContactForEvent(selectedDelayEvent, normalizedDelayLeadDays),
+    [normalizedDelayLeadDays, selectedDelayEvent],
   );
+
+  useEffect(() => {
+    if (!isDelayModalOpen) {
+      return;
+    }
+    setDelayNextContactInput(selectedDelayEventNextContact);
+    setDelayValidationError(null);
+  }, [isDelayModalOpen, selectedDelayEvent?.id, selectedDelayEventNextContact]);
 
   useEffect(() => {
     if (!isDelayModalOpen) {
@@ -673,6 +729,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   useEffect(() => {
     if (!isDelayModalOpen) {
       setSelectedDelayEventId(null);
+      setDelayNextContactInput(null);
+      setDelayValidationError(null);
     }
   }, [isDelayModalOpen]);
 
@@ -1044,11 +1102,18 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           deal={selectedDeal}
           selectedEvent={selectedDelayEvent}
           selectedEventNextContact={selectedDelayEventNextContact}
+          nextContactValue={delayNextContactInput}
           upcomingEvents={upcomingEvents}
           pastEvents={pastEvents}
           isSchedulingDelay={isSchedulingDelay}
+          isLeadDaysLoading={delayLeadDaysLoading}
+          validationError={delayValidationError}
           onClose={() => setIsDelayModalOpen(false)}
           onEventSelect={setSelectedDelayEventId}
+          onNextContactChange={(value) => {
+            setDelayNextContactInput(value);
+            setDelayValidationError(null);
+          }}
           onConfirm={handleDelayModalConfirm}
         />
       )}

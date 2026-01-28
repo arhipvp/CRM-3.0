@@ -8,11 +8,15 @@ interface DealDelayModalProps {
   deal: Deal;
   selectedEvent: DealEvent | null;
   selectedEventNextContact: string | null;
+  nextContactValue: string | null;
   upcomingEvents: DealEvent[];
   pastEvents: DealEvent[];
   isSchedulingDelay: boolean;
+  isLeadDaysLoading?: boolean;
+  validationError?: string | null;
   onClose: () => void;
   onEventSelect: (eventId: string) => void;
+  onNextContactChange: (value: string) => void;
   onConfirm: () => void;
 }
 
@@ -20,11 +24,15 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
   deal,
   selectedEvent,
   selectedEventNextContact,
+  nextContactValue,
   upcomingEvents,
   pastEvents,
   isSchedulingDelay,
+  isLeadDaysLoading,
+  validationError,
   onClose,
   onEventSelect,
+  onNextContactChange,
   onConfirm,
 }) => (
   <Modal title="Отложить до следующего контакта" onClose={onClose} size="xl" zIndex={50}>
@@ -57,6 +65,22 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
           </div>
         ) : (
           <p className="text-sm text-slate-600">Событие не выбрано.</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="app-label">Следующий контакт</p>
+        <input
+          type="date"
+          value={nextContactValue ?? ''}
+          max={selectedEvent?.date ?? undefined}
+          onChange={(event) => onNextContactChange(event.target.value)}
+          disabled={!selectedEvent || isSchedulingDelay || isLeadDaysLoading}
+          className="field field-input"
+        />
+        <p className="text-xs text-slate-500">Дата должна быть не позже даты события.</p>
+        {validationError && (
+          <p className="text-xs font-semibold text-rose-600">{validationError}</p>
         )}
       </div>
 
@@ -131,7 +155,7 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
         <button
           type="button"
           onClick={onConfirm}
-          disabled={!selectedEvent || isSchedulingDelay}
+          disabled={!selectedEvent || !nextContactValue || isSchedulingDelay}
           className="btn btn-primary rounded-xl"
         >
           {isSchedulingDelay ? 'Переносим...' : 'Перенести следующий контакт'}

@@ -25,6 +25,9 @@ export const SettingsView: React.FC = () => {
   const [telegramLoading, setTelegramLoading] = useState(true);
   const [telegramSaving, setTelegramSaving] = useState(false);
   const [telegramError, setTelegramError] = useState('');
+  const [nextContactLeadDaysInput, setNextContactLeadDaysInput] = useState('');
+  const [nextContactLeadDaysError, setNextContactLeadDaysError] = useState('');
+  const [nextContactLeadDaysSaving, setNextContactLeadDaysSaving] = useState(false);
   const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? '').trim();
   const normalizedTelegramBotUsername = telegramBotUsername.replace(/^@/, '');
   const telegramBotLink = normalizedTelegramBotUsername
@@ -71,6 +74,7 @@ export const SettingsView: React.FC = () => {
           return;
         }
         setTelegramSettings(response.settings);
+        setNextContactLeadDaysInput(String(response.settings.next_contact_lead_days ?? 90));
         setTelegramLinked(response.telegram?.linked ?? false);
         setTelegramLinkedAt(response.telegram?.linked_at ?? null);
       } catch (err) {
@@ -95,6 +99,7 @@ export const SettingsView: React.FC = () => {
     telegram?: { linked?: boolean; linked_at?: string | null };
   }) => {
     setTelegramSettings(response.settings);
+    setNextContactLeadDaysInput(String(response.settings.next_contact_lead_days ?? 90));
     if (response.telegram) {
       setTelegramLinked(response.telegram.linked ?? false);
       setTelegramLinkedAt(response.telegram.linked_at ?? null);
@@ -117,6 +122,35 @@ export const SettingsView: React.FC = () => {
       setTelegramError(formatErrorMessage(err, 'Не удалось сохранить настройки.'));
     } finally {
       setTelegramSaving(false);
+    }
+  };
+
+  const handleNextContactLeadDaysSave = async () => {
+    if (!telegramSettings) {
+      return;
+    }
+    const trimmed = nextContactLeadDaysInput.trim();
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setNextContactLeadDaysError('Введите целое число от 1.');
+      return;
+    }
+    if (parsed === telegramSettings.next_contact_lead_days) {
+      setNextContactLeadDaysError('');
+      return;
+    }
+    setNextContactLeadDaysSaving(true);
+    setNextContactLeadDaysError('');
+    try {
+      const response = await updateNotificationSettings({
+        next_contact_lead_days: parsed,
+      });
+      applyTelegramSettings(response);
+    } catch (err) {
+      setNextContactLeadDaysInput(String(telegramSettings.next_contact_lead_days ?? 90));
+      setNextContactLeadDaysError(formatErrorMessage(err, 'Не удалось сохранить настройки.'));
+    } finally {
+      setNextContactLeadDaysSaving(false);
     }
   };
 
@@ -318,6 +352,47 @@ export const SettingsView: React.FC = () => {
             </div>
           </>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
+        <header className="space-y-1">
+          <h3 className="text-lg font-semibold text-slate-900">Настройки сделок</h3>
+          <p className="text-sm text-slate-600">
+            Укажите, за сколько дней до выбранного события ставить следующий контакт по умолчанию.
+          </p>
+        </header>
+
+        {nextContactLeadDaysError && (
+          <p className="app-alert app-alert-danger">{nextContactLeadDaysError}</p>
+        )}
+
+        <div className="max-w-xs space-y-2">
+          <label htmlFor="next-contact-lead-days" className="app-label">
+            Дней до события
+          </label>
+          <input
+            id="next-contact-lead-days"
+            type="number"
+            min={1}
+            step={1}
+            value={nextContactLeadDaysInput}
+            onChange={(event) => {
+              setNextContactLeadDaysInput(event.target.value);
+              setNextContactLeadDaysError('');
+            }}
+            onBlur={handleNextContactLeadDaysSave}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.currentTarget.blur();
+              }
+            }}
+            disabled={nextContactLeadDaysSaving || telegramLoading}
+            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          />
+          <p className="text-xs text-slate-500">
+            Минимум 1. Значение влияет на «Отложить до следующего контакта».
+          </p>
+        </div>
       </section>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
