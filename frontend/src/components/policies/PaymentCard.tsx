@@ -224,7 +224,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
               onClick={() => onEditPayment(payment.id)}
               className="link-action whitespace-nowrap text-xs font-semibold"
             >
-              РР·РјРµРЅРёС‚СЊ
+              Изменить
             </button>
           )}
           {onDeletePayment && (
@@ -239,7 +239,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
                   : 'Удалить платёж'
               }
             >
-              РЈРґР°Р»РёС‚СЊ
+              Удалить
             </button>
           )}
         </div>

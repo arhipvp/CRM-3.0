@@ -95,6 +95,20 @@ def read_text_strict(path: Path, failures: list[str]) -> str | None:
         return None
 
 
+def fix_mojibake(value: str) -> str | None:
+    try:
+        fixed = value.encode("cp1251").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return None
+    if fixed == value:
+        return None
+    if not any(char in RUSSIAN_LETTERS for char in fixed):
+        return None
+    if not any(char in RUSSIAN_LETTERS for char in value):
+        return None
+    return fixed
+
+
 class SourceEncodingTestCase(TestCase):
     REPLACEMENT_CHAR = chr(0xFFFD)
 
@@ -139,6 +153,30 @@ class SourceEncodingTestCase(TestCase):
                 + "\n".join(failures)
             )
 
+    def assert_no_mojibake(self, paths: Iterable[Path]) -> None:
+        failures: list[str] = []
+        for path in paths:
+            text = read_text_strict(path, failures)
+            if text is None:
+                continue
+            for line_no, line in enumerate(text.splitlines(), start=1):
+                fixed = fix_mojibake(line)
+                if not fixed:
+                    continue
+                snippet = line.strip()
+                if not snippet:
+                    continue
+                if len(snippet) > 120:
+                    snippet = snippet[:120] + "..."
+                failures.append(
+                    f"{path}:{line_no} looks like mojibake: {snippet!r} -> {fixed!r}"
+                )
+        if failures:
+            self.fail(
+                "Found likely mojibake (UTF-8 decoded as CP1251) in source files:\n"
+                + "\n".join(failures)
+            )
+
     def test_no_replacement_symbol_in_python_source(self):
         self.assert_no_replacement_char(iter_files(REPO_ROOT, PYTHON_EXTENSIONS))
 
@@ -157,6 +195,7 @@ class SourceEncodingTestCase(TestCase):
             self.skipTest("Frontend directory is missing in this checkout")
         paths = list(iter_files(frontend_dir, FRONTEND_EXTENSIONS))
         self.assert_only_supported_characters(paths)
+        self.assert_no_mojibake(paths)
 
     def test_forms_use_only_english_or_russian(self):
         paths = list(iter_form_files())
