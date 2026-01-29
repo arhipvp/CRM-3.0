@@ -2142,7 +2142,6 @@ const AppContent: React.FC = () => {
                 onAddPayment={handleAddPayment}
                 onUpdatePayment={handleUpdatePayment}
                 onDeletePayment={handleDeletePayment}
-                onDeletePayment={handleDeletePayment}
                 onAddFinancialRecord={handleAddFinancialRecord}
                 onUpdateFinancialRecord={handleUpdateFinancialRecord}
                 onDeleteFinancialRecord={handleDeleteFinancialRecord}

@@ -238,7 +238,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDeletePolicy={onDeletePolicy}
           onAddPayment={onAddPayment}
           onUpdatePayment={onUpdatePayment}
-          onDeletePayment={onDeletePayment}
           onAddFinancialRecord={onAddFinancialRecord}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
           onDeleteFinancialRecord={onDeleteFinancialRecord}

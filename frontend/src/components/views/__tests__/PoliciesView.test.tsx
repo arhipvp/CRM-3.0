@@ -68,6 +68,7 @@ const defaultProps = {
   onAddFinancialRecord: vi.fn(),
   onUpdateFinancialRecord: vi.fn(),
   onDeleteFinancialRecord: vi.fn(),
+  onDeletePayment: vi.fn(),
 };
 
 describe('PoliciesView', () => {

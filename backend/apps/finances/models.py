@@ -46,14 +46,14 @@ class Payment(SoftDeleteModel):
         return f"Платёж {self.amount} РУБ для {self.policy}"
 
     def can_delete(self) -> bool:
-        """РџР»Р°С‚С‘Р¶ РјРѕР¶РЅРѕ СѓРґР°Р»СЏС‚СЊ, РµСЃР»Рё РѕРЅ РЅРµ РѕРїР»Р°С‡РµРЅ Рё РЅРµС‚ РѕРїР»Р°С‡РµРЅРЅС‹С… Р·Р°РїРёСЃРµР№."""
+        """Payment can be deleted only if it is unpaid and has no paid records."""
         has_paid_records = self.financial_records.filter(
             date__isnull=False, deleted_at__isnull=True
         ).exists()
         return not self.is_paid and not has_paid_records
 
     def delete(self, using=None, keep_parents=False):
-        """РњСЏРіРєРѕРµ СѓРґР°Р»РµРЅРёРµ: Р·Р°РїСЂРµС‚ РґР»СЏ РѕРїР»Р°С‡РµРЅРЅС‹С… РїР»Р°С‚РµР¶РµР№ Рё РєР°СЃРєР°РґРЅС‹Рµ Р·Р°РїРёСЃРё."""
+        """Soft delete: disallow paid payments and cascade records."""
         if self.is_paid:
             raise ValidationError(
                 "РћРїР»Р°С‡РµРЅРЅС‹Р№ РїР»Р°С‚С‘Р¶ РЅРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ."
@@ -62,7 +62,7 @@ class Payment(SoftDeleteModel):
             date__isnull=False, deleted_at__isnull=True
         ).exists():
             raise ValidationError(
-                "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РїР»Р°С‚С‘Р¶ СЃ РѕРїР»Р°С‡РµРЅРЅС‹РјРё Р·Р°РїРёСЃСЏРјРё. СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ РґРѕС…РѕРґС‹/СЂР°СЃС…РѕРґС‹."
+                "Cannot delete payment while it has paid income/expense records."
             )
         for record in self.financial_records.all():
             record.delete()
