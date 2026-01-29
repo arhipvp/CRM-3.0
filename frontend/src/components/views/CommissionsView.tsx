@@ -117,6 +117,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [targetStatementId, setTargetStatementId] = useState('');
   const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
   const [isAllRecordsLoading, setIsAllRecordsLoading] = useState(false);
+  const [allRecordsError, setAllRecordsError] = useState<string | null>(null);
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
   const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
@@ -212,13 +213,25 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     const collected: FinancialRecord[] = [];
 
     setIsAllRecordsLoading(true);
+    setAllRecordsError(null);
     try {
       while (true) {
-        const payload = await fetchFinancialRecordsWithPagination({
-          ...filters,
-          page,
-          page_size: pageSize,
-        });
+        let payload: Awaited<ReturnType<typeof fetchFinancialRecordsWithPagination>>;
+        try {
+          payload = await fetchFinancialRecordsWithPagination({
+            ...filters,
+            page,
+            page_size: pageSize,
+          });
+        } catch (error) {
+          if (requestId === allRecordsRequestRef.current) {
+            setAllRecords(collected);
+            setAllRecordsError(
+              formatErrorMessage(error, 'Не удалось загрузить все финансовые записи.'),
+            );
+          }
+          return;
+        }
         if (requestId !== allRecordsRequestRef.current) {
           return;
         }
@@ -230,11 +243,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       }
       if (requestId === allRecordsRequestRef.current) {
         setAllRecords(collected);
-      }
-    } catch (error) {
-      console.error('Failed to load financial records', error);
-      if (requestId === allRecordsRequestRef.current && financialRecords?.length) {
-        setAllRecords(financialRecords);
       }
     } finally {
       if (requestId === allRecordsRequestRef.current) {
@@ -264,10 +272,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     if (allRecords.length || isAllRecordsLoading) {
       return;
     }
-    if (financialRecords?.length) {
+    if (!allRecordsError && financialRecords?.length) {
       setAllRecords(financialRecords);
     }
-  }, [allRecords.length, financialRecords, isAllRecordsLoading, viewMode]);
+  }, [allRecords.length, allRecordsError, financialRecords, isAllRecordsLoading, viewMode]);
 
   const loadStatementDriveFiles = useCallback(async (statementId: string) => {
     setStatementDriveLoading(true);
@@ -1188,6 +1196,21 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 </div>
               </div>
             </div>
+            {allRecordsError && (
+              <div className="px-4 py-3 bg-white border-b border-slate-200">
+                <div className="app-alert app-alert-danger flex flex-wrap items-center justify-between gap-3">
+                  <span>{allRecordsError}</span>
+                  <button
+                    type="button"
+                    onClick={() => void loadAllRecords()}
+                    className="btn btn-secondary btn-sm rounded-xl"
+                    disabled={isAllRecordsLoading}
+                  >
+                    Повторить
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="px-4 py-4 border-b border-slate-200 bg-white">
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
