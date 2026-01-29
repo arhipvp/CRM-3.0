@@ -61,6 +61,7 @@ export interface AppRoutesProps {
   onDeletePolicy: (policyId: string) => Promise<void>;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
+  onDeletePayment: (paymentId: string) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
   onUpdateFinancialRecord: (
     recordId: string,
@@ -164,6 +165,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onDeletePolicy,
   onAddPayment,
   onUpdatePayment,
+  onDeletePayment,
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
@@ -236,9 +238,11 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDeletePolicy={onDeletePolicy}
           onAddPayment={onAddPayment}
           onUpdatePayment={onUpdatePayment}
+          onDeletePayment={onDeletePayment}
           onAddFinancialRecord={onAddFinancialRecord}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
           onDeleteFinancialRecord={onDeleteFinancialRecord}
+          onDeletePayment={onDeletePayment}
           onDriveFolderCreated={onDriveFolderCreated}
           onFetchChatMessages={onFetchChatMessages}
           onSendChatMessage={onSendChatMessage}
@@ -296,6 +300,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onAddFinancialRecord={onAddFinancialRecord}
           onUpdateFinancialRecord={onUpdateFinancialRecord}
           onDeleteFinancialRecord={onDeleteFinancialRecord}
+          onDeletePayment={onDeletePayment}
           onRefreshPoliciesList={onRefreshPoliciesList}
           onLoadMorePolicies={onLoadMorePolicies}
           policiesHasMore={policiesHasMore}

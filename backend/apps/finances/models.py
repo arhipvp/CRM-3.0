@@ -46,13 +46,24 @@ class Payment(SoftDeleteModel):
         return f"Платёж {self.amount} РУБ для {self.policy}"
 
     def can_delete(self) -> bool:
-        """Платёж можно удалять только если он ещё не оплачен."""
-        return not self.is_paid
+        """РџР»Р°С‚С‘Р¶ РјРѕР¶РЅРѕ СѓРґР°Р»СЏС‚СЊ, РµСЃР»Рё РѕРЅ РЅРµ РѕРїР»Р°С‡РµРЅ Рё РЅРµС‚ РѕРїР»Р°С‡РµРЅРЅС‹С… Р·Р°РїРёСЃРµР№."""
+        has_paid_records = self.financial_records.filter(
+            date__isnull=False, deleted_at__isnull=True
+        ).exists()
+        return not self.is_paid and not has_paid_records
 
     def delete(self, using=None, keep_parents=False):
-        """Мягкое удаление: запрет для оплаченных платежей и каскадные записи."""
+        """РњСЏРіРєРѕРµ СѓРґР°Р»РµРЅРёРµ: Р·Р°РїСЂРµС‚ РґР»СЏ РѕРїР»Р°С‡РµРЅРЅС‹С… РїР»Р°С‚РµР¶РµР№ Рё РєР°СЃРєР°РґРЅС‹Рµ Р·Р°РїРёСЃРё."""
         if self.is_paid:
-            raise ValidationError("Оплаченный платёж нельзя удалить.")
+            raise ValidationError(
+                "РћРїР»Р°С‡РµРЅРЅС‹Р№ РїР»Р°С‚С‘Р¶ РЅРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ."
+            )
+        if self.financial_records.filter(
+            date__isnull=False, deleted_at__isnull=True
+        ).exists():
+            raise ValidationError(
+                "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РїР»Р°С‚С‘Р¶ СЃ РѕРїР»Р°С‡РµРЅРЅС‹РјРё Р·Р°РїРёСЃСЏРјРё. СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ РґРѕС…РѕРґС‹/СЂР°СЃС…РѕРґС‹."
+            )
         for record in self.financial_records.all():
             record.delete()
         super().delete(using=using, keep_parents=keep_parents)

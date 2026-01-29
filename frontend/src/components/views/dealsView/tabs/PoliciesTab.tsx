@@ -39,6 +39,7 @@ interface PoliciesTabProps {
   >;
   setEditingFinancialRecordId: React.Dispatch<React.SetStateAction<string | null>>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
+  onDeletePayment: (paymentId: string) => Promise<void>;
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
@@ -57,6 +58,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   setCreatingFinancialRecordContext,
   setEditingFinancialRecordId,
   onDeleteFinancialRecord,
+  onDeletePayment,
   onRequestAddPolicy,
   onDeletePolicy,
   onRequestEditPolicy,
@@ -258,6 +260,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               }}
               onEditFinancialRecord={(recordId) => setEditingFinancialRecordId(recordId)}
               onDeleteFinancialRecord={onDeleteFinancialRecord}
+              onDeletePayment={onDeletePayment}
             />
           );
         })}

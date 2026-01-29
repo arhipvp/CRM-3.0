@@ -32,6 +32,7 @@ interface PolicyCardProps {
   onEditFinancialRecord: (recordId: string) => void;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onEditPayment?: (paymentId: string) => void;
+  onDeletePayment?: (paymentId: string) => Promise<void>;
   onRequestAddPayment?: () => void;
   actions?: PolicyCardAction[];
 }
@@ -57,6 +58,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
   onEditFinancialRecord,
   onDeleteFinancialRecord,
   onEditPayment,
+  onDeletePayment,
   onRequestAddPayment,
   actions = [],
 }) => {
@@ -308,6 +310,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                   payment={payment}
                   recordsExpandedOverride={recordsExpandedAll}
                   onEditPayment={onEditPayment}
+                  onDeletePayment={onDeletePayment}
                   onRequestAddRecord={onRequestAddRecord}
                   onEditFinancialRecord={onEditFinancialRecord}
                   onDeleteFinancialRecord={onDeleteFinancialRecord}

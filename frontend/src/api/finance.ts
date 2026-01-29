@@ -67,6 +67,10 @@ export async function updatePayment(
     }),
   });
   return mapPayment(payload);
+
+  export async function deletePayment(id: string): Promise<void> {
+    await request(`/payments/${id}/`, { method: 'DELETE' });
+  }
 }
 
 export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {

@@ -49,6 +49,7 @@ import {
   deletePolicy,
   createPayment,
   updatePayment,
+  deletePayment,
   createFinancialRecord,
   updateFinancialRecord,
   deleteFinancialRecord,
@@ -1697,6 +1698,44 @@ const AppContent: React.FC = () => {
     ],
   );
 
+  const handleDeletePayment = useCallback(
+    async (paymentId: string) => {
+      const payment = payments.find((item) => item.id === paymentId);
+      if (!payment) {
+        return;
+      }
+      if (typeof window !== 'undefined') {
+        const confirmText = 'Удалить платёж и все связанные записи?';
+        if (!window.confirm(confirmText)) {
+          return;
+        }
+      }
+      try {
+        await deletePayment(paymentId);
+        const paymentAmount = parseAmountValue(payment.amount);
+        const paymentPaid = payment.actualDate ? paymentAmount : 0;
+        updateAppData((prev) => ({
+          payments: prev.payments.filter((item) => item.id !== paymentId),
+          financialRecords: prev.financialRecords.filter(
+            (record) => record.paymentId !== paymentId,
+          ),
+          policies: adjustPaymentsTotals(
+            prev.policies,
+            payment.policyId,
+            -paymentAmount,
+            -paymentPaid,
+          ),
+          deals: adjustPaymentsTotals(prev.deals, payment.dealId, -paymentAmount, -paymentPaid),
+        }));
+        await syncDealsByIds([payment.dealId]);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при удалении платежа'));
+        throw err;
+      }
+    },
+    [adjustPaymentsTotals, deletePayment, payments, setError, syncDealsByIds, updateAppData],
+  );
+
   const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
     const parsedAmount = parseFloat(values.amount);
     if (!Number.isFinite(parsedAmount)) {
@@ -2018,6 +2057,7 @@ const AppContent: React.FC = () => {
         onDeletePolicy={handleDeletePolicy}
         onAddPayment={handleAddPayment}
         onUpdatePayment={handleUpdatePayment}
+        onDeletePayment={handleDeletePayment}
         onAddFinancialRecord={handleAddFinancialRecord}
         onUpdateFinancialRecord={handleUpdateFinancialRecord}
         onDeleteFinancialRecord={handleDeleteFinancialRecord}
@@ -2101,6 +2141,8 @@ const AppContent: React.FC = () => {
                 onPolicyDraftReady={handlePolicyDraftReady}
                 onAddPayment={handleAddPayment}
                 onUpdatePayment={handleUpdatePayment}
+                onDeletePayment={handleDeletePayment}
+                onDeletePayment={handleDeletePayment}
                 onAddFinancialRecord={handleAddFinancialRecord}
                 onUpdateFinancialRecord={handleUpdateFinancialRecord}
                 onDeleteFinancialRecord={handleDeleteFinancialRecord}

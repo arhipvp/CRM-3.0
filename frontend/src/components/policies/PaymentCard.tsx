@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 interface PaymentCardProps {
   payment: Payment;
   onEditPayment?: (paymentId: string) => void;
+  onDeletePayment?: (paymentId: string) => Promise<void>;
   onRequestAddRecord: (paymentId: string, recordType: 'income' | 'expense') => void;
   onEditFinancialRecord: (recordId: string) => void;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
@@ -110,6 +111,7 @@ const describeRecordsCount = (records: FinancialRecord[]) =>
 export const PaymentCard: React.FC<PaymentCardProps> = ({
   payment,
   onEditPayment,
+  onDeletePayment,
   onRequestAddRecord,
   onEditFinancialRecord,
   onDeleteFinancialRecord,
@@ -215,15 +217,32 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             <p className={`text-sm font-semibold ${paidTone}`}>{paidText}</p>
           </div>
         </div>
-        {onEditPayment && (
-          <button
-            type="button"
-            onClick={() => onEditPayment(payment.id)}
-            className="link-action whitespace-nowrap text-xs font-semibold"
-          >
-            Изменить
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onEditPayment && (
+            <button
+              type="button"
+              onClick={() => onEditPayment(payment.id)}
+              className="link-action whitespace-nowrap text-xs font-semibold"
+            >
+              РР·РјРµРЅРёС‚СЊ
+            </button>
+          )}
+          {onDeletePayment && (
+            <button
+              type="button"
+              onClick={() => onDeletePayment(payment.id).catch(() => undefined)}
+              className="link-danger whitespace-nowrap text-xs font-semibold"
+              disabled={payment.canDelete === false}
+              title={
+                payment.canDelete === false
+                  ? 'Сначала удалите полученные доходы или выплаченные расходы'
+                  : 'Удалить платёж'
+              }
+            >
+              РЈРґР°Р»РёС‚СЊ
+            </button>
+          )}
+        </div>
       </div>
       <div className={recordsLayoutClassName}>
         {renderSection(RECORD_TITLES.income, incomes, 'income', () =>

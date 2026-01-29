@@ -140,10 +140,27 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         super().perform_update(serializer)
 
     def destroy(self, request, *args, **kwargs):
+        """РЈРґР°Р»РµРЅРёРµ РїР»Р°С‚РµР¶Р° Р·Р°РїСЂРµС‰РµРЅРѕ, РµСЃР»Рё РѕРЅ СѓР¶Рµ РѕРїР»Р°С‡РµРЅ."""
         instance = self.get_object()
-        statement = getattr(instance, "statement", None)
-        if statement and statement.status == Statement.STATUS_PAID:
-            raise ValidationError("Нельзя удалять записи из выплаченной ведомости.")
+
+        if instance.financial_records.filter(
+            date__isnull=False, deleted_at__isnull=True
+        ).exists():
+            return Response(
+                {
+                    "detail": "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РїР»Р°С‚С‘Р¶, РїРѕРєР° РµСЃС‚СЊ РїРѕР»СѓС‡РµРЅРЅС‹Рµ РґРѕС…РѕРґС‹ РёР»Рё РІС‹РїР»Р°С‡РµРЅРЅС‹Рµ СЂР°СЃС…РѕРґС‹. СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ Р·Р°РїРёСЃРё."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not instance.can_delete():
+            return Response(
+                {
+                    "detail": "РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РїР»Р°С‚С‘Р¶, РµСЃР»Рё РѕРЅ СѓР¶Рµ РѕРїР»Р°С‡РµРЅ."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         return super().destroy(request, *args, **kwargs)
 
     def get_object(self):

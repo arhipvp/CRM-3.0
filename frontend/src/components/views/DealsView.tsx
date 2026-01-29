@@ -57,6 +57,7 @@ interface DealsViewProps {
   ) => void;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
   onUpdatePayment: (paymentId: string, values: AddPaymentFormValues) => Promise<void>;
+  onDeletePayment: (paymentId: string) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
   onUpdateFinancialRecord: (
     recordId: string,
@@ -123,6 +124,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onPolicyDraftReady,
   onAddPayment,
   onUpdatePayment,
+  onDeletePayment,
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
@@ -218,6 +220,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onPolicyDraftReady={onPolicyDraftReady}
             onAddPayment={onAddPayment}
             onUpdatePayment={onUpdatePayment}
+            onDeletePayment={onDeletePayment}
             onAddFinancialRecord={onAddFinancialRecord}
             onUpdateFinancialRecord={onUpdateFinancialRecord}
             onDeleteFinancialRecord={onDeleteFinancialRecord}

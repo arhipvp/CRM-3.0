@@ -56,6 +56,7 @@ interface PoliciesViewProps {
     values: AddFinancialRecordFormValues,
   ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
+  onDeletePayment: (paymentId: string) => Promise<void>;
 }
 
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
@@ -69,6 +70,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
+  onDeletePayment,
 }) => {
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const rawSearch = (filters.search ?? '').trim();
@@ -331,6 +333,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                   onRequestAddRecord={openCreateFinancialRecord}
                                   onEditFinancialRecord={openEditFinancialRecord}
                                   onDeleteFinancialRecord={onDeleteFinancialRecord}
+                                  onDeletePayment={onDeletePayment}
                                   variant="table"
                                 />
                               ))
