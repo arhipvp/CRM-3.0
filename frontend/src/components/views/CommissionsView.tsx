@@ -1154,227 +1154,227 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 )}
               </div>
             </div>
-            <div
-              role="tabpanel"
-              id="financial-tabpanel-all"
-              aria-labelledby="financial-tab-all"
-              tabIndex={0}
-              className="outline-none"
-              hidden={viewMode !== 'all'}
-            >
-              <div className="px-4 py-4 bg-white">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
-                      Все финансовые записи
-                    </span>
-                    <span className="text-sm text-slate-500 whitespace-nowrap">
-                      Фильтры по записям
-                    </span>
-                  </div>
-                  <div className="w-full max-w-sm">
-                    <label htmlFor="allFinancialSearch" className="sr-only">
-                      Поиск по записям
-                    </label>
-                    <input
-                      id="allFinancialSearch"
-                      type="search"
-                      value={allRecordsSearch}
-                      onChange={(event) => setAllRecordsSearch(event.target.value)}
-                      placeholder="Поиск по записям"
-                      className="field field-input"
-                    />
-                  </div>
+          </div>
+          <div
+            role="tabpanel"
+            id="financial-tabpanel-all"
+            aria-labelledby="financial-tab-all"
+            tabIndex={0}
+            className="outline-none"
+            hidden={viewMode !== 'all'}
+          >
+            <div className="px-4 py-4 bg-white">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
+                    Все финансовые записи
+                  </span>
+                  <span className="text-sm text-slate-500 whitespace-nowrap">
+                    Фильтры по записям
+                  </span>
                 </div>
-              </div>
-              <div className="px-4 py-4 border-b border-slate-200 bg-white">
-                <div className="flex flex-wrap items-center gap-4">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                    <input
-                      type="checkbox"
-                      checked={showUnpaidOnly}
-                      onChange={(event) => setShowUnpaidOnly(event.target.checked)}
-                      className="check"
-                    />
-                    Только неоплаченные
+                <div className="w-full max-w-sm">
+                  <label htmlFor="allFinancialSearch" className="sr-only">
+                    Поиск по записям
                   </label>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                    <input
-                      type="checkbox"
-                      checked={showWithoutStatementOnly}
-                      onChange={(event) => setShowWithoutStatementOnly(event.target.checked)}
-                      className="check"
-                    />
-                    Только не в ведомостях
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                    <input
-                      type="checkbox"
-                      checked={showNonZeroBalanceOnly}
-                      onChange={(event) => setShowNonZeroBalanceOnly(event.target.checked)}
-                      className="check"
-                    />
-                    Скрыть нулевой итог по платежу
-                  </label>
-                  <select
-                    value={recordTypeFilter}
-                    onChange={(event) =>
-                      setRecordTypeFilter(event.target.value as 'all' | 'income' | 'expense')
-                    }
-                    className="field field-input h-10 min-w-[200px] text-sm"
-                  >
-                    <option value="all">Все записи</option>
-                    <option value="income">Только доходы</option>
-                    <option value="expense">Только расходы</option>
-                  </select>
-                  <select
-                    value={targetStatementId}
-                    onChange={(event) => setTargetStatementId(event.target.value)}
-                    className="field field-input h-10 min-w-[220px] text-sm"
-                  >
-                    <option value="">Выберите ведомость</option>
-                    {statements.map((statement) => (
-                      <option key={statement.id} value={statement.id}>
-                        {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
-                        {normalizeText(statement.name)}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => void handleAttachSelected()}
-                    className="btn btn-primary btn-sm rounded-xl"
-                    disabled={
-                      !selectedRecordIds.length ||
-                      !onUpdateStatement ||
-                      !attachStatement ||
-                      isAttachStatementPaid
-                    }
-                  >
-                    Добавить выбранные
-                  </button>
+                  <input
+                    id="allFinancialSearch"
+                    type="search"
+                    value={allRecordsSearch}
+                    onChange={(event) => setAllRecordsSearch(event.target.value)}
+                    placeholder="Поиск по записям"
+                    className="field field-input"
+                  />
                 </div>
               </div>
             </div>
-            {viewMode === 'statements' ? (
-              selectedStatement ? (
-                recordsTable
-              ) : (
-                <div className="bg-white px-6 py-10 text-center">
-                  <PanelMessage>Выберите ведомость в списке выше.</PanelMessage>
-                </div>
-              )
-            ) : (
+            <div className="px-4 py-4 border-b border-slate-200 bg-white">
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showUnpaidOnly}
+                    onChange={(event) => setShowUnpaidOnly(event.target.checked)}
+                    className="check"
+                  />
+                  Только неоплаченные
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showWithoutStatementOnly}
+                    onChange={(event) => setShowWithoutStatementOnly(event.target.checked)}
+                    className="check"
+                  />
+                  Только не в ведомостях
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showNonZeroBalanceOnly}
+                    onChange={(event) => setShowNonZeroBalanceOnly(event.target.checked)}
+                    className="check"
+                  />
+                  Скрыть нулевой итог по платежу
+                </label>
+                <select
+                  value={recordTypeFilter}
+                  onChange={(event) =>
+                    setRecordTypeFilter(event.target.value as 'all' | 'income' | 'expense')
+                  }
+                  className="field field-input h-10 min-w-[200px] text-sm"
+                >
+                  <option value="all">Все записи</option>
+                  <option value="income">Только доходы</option>
+                  <option value="expense">Только расходы</option>
+                </select>
+                <select
+                  value={targetStatementId}
+                  onChange={(event) => setTargetStatementId(event.target.value)}
+                  className="field field-input h-10 min-w-[220px] text-sm"
+                >
+                  <option value="">Выберите ведомость</option>
+                  {statements.map((statement) => (
+                    <option key={statement.id} value={statement.id}>
+                      {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
+                      {normalizeText(statement.name)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void handleAttachSelected()}
+                  className="btn btn-primary btn-sm rounded-xl"
+                  disabled={
+                    !selectedRecordIds.length ||
+                    !onUpdateStatement ||
+                    !attachStatement ||
+                    isAttachStatementPaid
+                  }
+                >
+                  Добавить выбранные
+                </button>
+              </div>
+            </div>
+          </div>
+          {viewMode === 'statements' ? (
+            selectedStatement ? (
               recordsTable
-            )}
-            {viewMode === 'statements' && selectedStatement && (
-              <div className="border-t border-slate-200 bg-white px-4 py-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                      Файлы ведомости
-                    </p>
-                    <p className="text-xs text-slate-500">Google Drive</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {statementDriveFolderLink ? (
-                      <a
-                        href={statementDriveFolderLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn btn-secondary btn-sm rounded-xl"
-                      >
-                        Открыть папку
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-400">Папка создаётся...</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void loadStatementDriveFiles(selectedStatement.id)}
-                      className="btn btn-secondary btn-sm rounded-xl"
-                      disabled={isStatementDriveLoading}
-                    >
-                      {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
-                    </button>
-                    <label
-                      className={`btn btn-secondary btn-sm rounded-xl ${
-                        isStatementDriveUploading ? 'opacity-70' : ''
-                      }`}
-                    >
-                      <input
-                        type="file"
-                        onChange={handleStatementDriveUpload}
-                        disabled={isStatementDriveUploading}
-                        className="hidden"
-                      />
-                      {isStatementDriveUploading ? 'Загрузка...' : 'Загрузить файл'}
-                    </label>
-                  </div>
+            ) : (
+              <div className="bg-white px-6 py-10 text-center">
+                <PanelMessage>Выберите ведомость в списке выше.</PanelMessage>
+              </div>
+            )
+          ) : (
+            recordsTable
+          )}
+          {viewMode === 'statements' && selectedStatement && (
+            <div className="border-t border-slate-200 bg-white px-4 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Файлы ведомости
+                  </p>
+                  <p className="text-xs text-slate-500">Google Drive</p>
                 </div>
-                {statementDriveError && (
-                  <div className="app-alert app-alert-danger mt-3">{statementDriveError}</div>
-                )}
-                <div className="mt-4">
-                  {isStatementDriveLoading ? (
-                    <PanelMessage>Загрузка файлов...</PanelMessage>
-                  ) : statementDriveFiles.length === 0 ? (
-                    <PanelMessage>Файлов пока нет</PanelMessage>
+                <div className="flex flex-wrap items-center gap-2">
+                  {statementDriveFolderLink ? (
+                    <a
+                      href={statementDriveFolderLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-secondary btn-sm rounded-xl"
+                    >
+                      Открыть папку
+                    </a>
                   ) : (
-                    <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
-                      {statementDriveFiles.map((file) => {
-                        const fileDate = formatDriveDate(file.modifiedAt ?? file.createdAt);
-                        const fileSize = formatDriveFileSize(file.size);
-                        const canDelete =
-                          !file.isFolder && !isStatementDriveTrashing && !isStatementDriveLoading;
-                        return (
-                          <li
-                            key={file.id}
-                            className="flex flex-wrap items-center justify-between gap-3 px-3 py-2"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <span className="text-lg" aria-hidden="true">
-                                {getDriveItemIcon(file.isFolder)}
-                              </span>
-                              <div className="min-w-0">
-                                {file.webViewLink ? (
-                                  <a
-                                    href={file.webViewLink}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="truncate text-sm font-semibold text-slate-700 hover:text-slate-900"
-                                  >
-                                    {file.name}
-                                  </a>
-                                ) : (
-                                  <p className="truncate text-sm font-semibold text-slate-700">
-                                    {file.name}
-                                  </p>
-                                )}
-                                <p className="text-xs text-slate-500">
-                                  {fileSize} · {fileDate}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => void handleStatementDriveDelete(file)}
-                              disabled={!canDelete}
-                              className={`text-xs font-semibold ${
-                                canDelete ? 'text-rose-600 hover:text-rose-700' : 'text-slate-300'
-                              }`}
-                            >
-                              Удалить
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <span className="text-xs text-slate-400">Папка создаётся...</span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => void loadStatementDriveFiles(selectedStatement.id)}
+                    className="btn btn-secondary btn-sm rounded-xl"
+                    disabled={isStatementDriveLoading}
+                  >
+                    {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
+                  </button>
+                  <label
+                    className={`btn btn-secondary btn-sm rounded-xl ${
+                      isStatementDriveUploading ? 'opacity-70' : ''
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      onChange={handleStatementDriveUpload}
+                      disabled={isStatementDriveUploading}
+                      className="hidden"
+                    />
+                    {isStatementDriveUploading ? 'Загрузка...' : 'Загрузить файл'}
+                  </label>
                 </div>
               </div>
-            )}
-          </div>
+              {statementDriveError && (
+                <div className="app-alert app-alert-danger mt-3">{statementDriveError}</div>
+              )}
+              <div className="mt-4">
+                {isStatementDriveLoading ? (
+                  <PanelMessage>Загрузка файлов...</PanelMessage>
+                ) : statementDriveFiles.length === 0 ? (
+                  <PanelMessage>Файлов пока нет</PanelMessage>
+                ) : (
+                  <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
+                    {statementDriveFiles.map((file) => {
+                      const fileDate = formatDriveDate(file.modifiedAt ?? file.createdAt);
+                      const fileSize = formatDriveFileSize(file.size);
+                      const canDelete =
+                        !file.isFolder && !isStatementDriveTrashing && !isStatementDriveLoading;
+                      return (
+                        <li
+                          key={file.id}
+                          className="flex flex-wrap items-center justify-between gap-3 px-3 py-2"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="text-lg" aria-hidden="true">
+                              {getDriveItemIcon(file.isFolder)}
+                            </span>
+                            <div className="min-w-0">
+                              {file.webViewLink ? (
+                                <a
+                                  href={file.webViewLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="truncate text-sm font-semibold text-slate-700 hover:text-slate-900"
+                                >
+                                  {file.name}
+                                </a>
+                              ) : (
+                                <p className="truncate text-sm font-semibold text-slate-700">
+                                  {file.name}
+                                </p>
+                              )}
+                              <p className="text-xs text-slate-500">
+                                {fileSize} · {fileDate}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleStatementDriveDelete(file)}
+                            disabled={!canDelete}
+                            className={`text-xs font-semibold ${
+                              canDelete ? 'text-rose-600 hover:text-rose-700' : 'text-slate-300'
+                            }`}
+                          >
+                            Удалить
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
