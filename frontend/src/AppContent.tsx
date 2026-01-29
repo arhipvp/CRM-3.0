@@ -881,11 +881,47 @@ const AppContent: React.FC = () => {
       setIsSyncing(true);
       try {
         const result = await mergeDeals({ targetDealId, sourceDealIds, resultingClientId });
-        updateAppData((prev) => ({
-          deals: prev.deals
-            .filter((deal) => !result.mergedDealIds.includes(deal.id))
-            .map((deal) => (deal.id === result.targetDeal.id ? result.targetDeal : deal)),
-        }));
+        updateAppData((prev) => {
+          const mergedIds = new Set(result.mergedDealIds);
+          const targetDealId = result.targetDeal.id;
+          const targetDealTitle = result.targetDeal.title;
+          const targetClientName = result.targetDeal.clientName;
+
+          return {
+            deals: prev.deals
+              .filter((deal) => !mergedIds.has(deal.id))
+              .map((deal) => (deal.id === targetDealId ? result.targetDeal : deal)),
+            policies: prev.policies.map((policy) =>
+              mergedIds.has(policy.dealId)
+                ? {
+                    ...policy,
+                    dealId: targetDealId,
+                    dealTitle: targetDealTitle,
+                  }
+                : policy,
+            ),
+            payments: prev.payments.map((payment) =>
+              payment.dealId && mergedIds.has(payment.dealId)
+                ? {
+                    ...payment,
+                    dealId: targetDealId,
+                    dealTitle: targetDealTitle,
+                    dealClientName: targetClientName ?? payment.dealClientName,
+                  }
+                : payment,
+            ),
+            tasks: prev.tasks.map((task) =>
+              task.dealId && mergedIds.has(task.dealId)
+                ? {
+                    ...task,
+                    dealId: targetDealId,
+                    dealTitle: targetDealTitle,
+                    clientName: targetClientName ?? task.clientName,
+                  }
+                : task,
+            ),
+          };
+        });
         setSelectedDealId(result.targetDeal.id);
         setError(null);
         addNotification('Сделки объединены', 'success', 4000);
