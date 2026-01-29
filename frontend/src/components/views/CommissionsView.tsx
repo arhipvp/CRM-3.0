@@ -251,7 +251,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     }
   }, [
     effectiveSearch,
-    financialRecords,
     recordTypeFilter,
     showNonZeroBalanceOnly,
     showUnpaidOnly,
