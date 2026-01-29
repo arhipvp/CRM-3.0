@@ -223,6 +223,9 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        payload = response.json()
+        errors = payload.get("record_ids", [])
+        self.assertTrue(any("не подходит" in str(error) for error in errors))
 
     def test_record_cannot_be_used_in_multiple_statements(self):
         self.authenticate(self.seller)
@@ -386,7 +389,7 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.assertIn(str(self.income_record.id), record_ids)
         self.assertNotIn(str(self.expense_record.id), record_ids)
 
-    def test_record_type_labels_are_utf8(self):
+    def test_record_type_labels_are_readable(self):
         self.authenticate(self.seller)
         response = self.api_client.get("/api/v1/financial_records/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
