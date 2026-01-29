@@ -55,9 +55,7 @@ class Payment(SoftDeleteModel):
     def delete(self, using=None, keep_parents=False):
         """Soft delete: disallow paid payments and cascade records."""
         if self.is_paid:
-            raise ValidationError(
-                "РћРїР»Р°С‡РµРЅРЅС‹Р№ РїР»Р°С‚С‘Р¶ РЅРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ."
-            )
+            raise ValidationError("Cannot delete a paid payment.")
         if self.financial_records.filter(
             date__isnull=False, deleted_at__isnull=True
         ).exists():

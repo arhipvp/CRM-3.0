@@ -1733,7 +1733,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [adjustPaymentsTotals, deletePayment, payments, setError, syncDealsByIds, updateAppData],
+    [adjustPaymentsTotals, payments, setError, syncDealsByIds, updateAppData],
   );
 
   const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
