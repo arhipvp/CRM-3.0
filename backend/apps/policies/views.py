@@ -14,12 +14,14 @@ from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.finances.models import Payment
 from apps.tasks.models import Task
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -346,6 +348,16 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if file_id and file_id not in moved_file_ids:
                 self._move_recognized_file_to_folder(policy, file_id)
                 moved_file_ids.add(file_id)
+
+    def perform_destroy(self, instance):
+        if instance.payments.filter(
+            actual_date__isnull=False, deleted_at__isnull=True
+        ).exists():
+            raise DRFValidationError("Нельзя удалить полис с оплаченными платежами.")
+        try:
+            instance.delete()
+        except DjangoValidationError as exc:
+            raise DRFValidationError(exc.messages) from exc
 
 
 class SellerDashboardView(APIView):
