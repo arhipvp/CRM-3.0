@@ -9,10 +9,15 @@
 При необходимости вности изменения в документацию (README.md)
 Переиспользуй стили и элементы во фронтенде, если видишь что есть несогласованность в стиле, то исправляй и объединяй в единые элементы. 
 
+После любых правок обязательно проверяй изменённые файлы на отсутствие битой кодировки (кракозябр) в русском тексте. Если обнаружено — исправь кодировку перед запуском форматтеров/тестов.
+
 
 Проверяй код через команды python.exe" -m isort backend && python.exe" -m black backend 
 После любых правок во фронте запускать cd frontend && npm run format:check. Если падает — npm run format -- --write <файлы> и повторить проверку.
 
+Отвечай на русском языке.
+
+запускай PowerShell без -windowstyle hidden
 
 # Repository Guidelines
 
@@ -47,6 +52,4 @@
 - Never commit secrets; copy `.env.example` for each service and set `DJANGO_SECRET_KEY`, `DATABASE_URL`, and `VITE_API_URL`. Use per-developer Postgres ports if multiple stacks run locally.
 - Run `python manage.py check --deploy` before tagging releases and keep Docker images parameterized through compose env vars rather than hardcoding credentials.
 
-Отвечай на русском языке.
 
-запускай PowerShell без -windowstyle hidden

@@ -386,6 +386,16 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.assertIn(str(self.income_record.id), record_ids)
         self.assertNotIn(str(self.expense_record.id), record_ids)
 
+    def test_record_type_labels_are_utf8(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/financial_records/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        by_id = {str(item["id"]): item for item in results}
+        self.assertEqual(by_id[str(self.income_record.id)]["record_type"], "Доход")
+        self.assertEqual(by_id[str(self.expense_record.id)]["record_type"], "Расход")
+
     def test_search_applies_only_after_five_chars(self):
         self.authenticate(self.seller)
         response_short = self.api_client.get("/api/v1/financial_records/?search=Alph")

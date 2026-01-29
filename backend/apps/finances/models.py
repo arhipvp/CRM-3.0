@@ -1,4 +1,4 @@
-from apps.common.models import SoftDeleteModel
+﻿from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -158,7 +158,9 @@ class FinancialRecord(SoftDeleteModel):
         max_length=255, blank=True, help_text="Описание операции"
     )
     source = models.CharField(
-        max_length=120, blank=True, help_text="Источник дохода / назначение расхода"
+        max_length=120,
+        blank=True,
+        help_text="Источник дохода / назначение расхода",
     )
     note = models.TextField(blank=True, help_text="Примечание")
 
