@@ -87,6 +87,7 @@ export const useAppData = () => {
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
   const [dealsTotalCount, setDealsTotalCount] = useState(0);
+  const dealsRequestRef = useRef(0);
   const dealsCacheRef = useRef(
     new Map<string, { results: Deal[]; nextPage: number | null; totalCount: number }>(),
   );
@@ -121,12 +122,17 @@ export const useAppData = () => {
 
   const refreshDeals = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
+      dealsRequestRef.current += 1;
+      const requestId = dealsRequestRef.current;
       const resolvedFilters = { ordering: 'next_contact_date', ...(filters ?? {}) };
       const cacheKey = buildDealsCacheKey(resolvedFilters);
       const force = options?.force ?? false;
       if (!force) {
         const cached = dealsCacheRef.current.get(cacheKey);
         if (cached) {
+          if (dealsRequestRef.current !== requestId) {
+            return cached.results;
+          }
           setAppData({ deals: cached.results });
           setDealsFilters(resolvedFilters);
           setDealsNextPage(cached.nextPage);
@@ -139,6 +145,9 @@ export const useAppData = () => {
         page: 1,
         page_size: DEALS_PAGE_SIZE,
       });
+      if (dealsRequestRef.current !== requestId) {
+        return payload.results;
+      }
       const results = payload.results;
       const nextPage = payload.next ? 2 : null;
       dealsCacheRef.current.set(cacheKey, {
@@ -160,6 +169,7 @@ export const useAppData = () => {
       return;
     }
     setIsLoadingMoreDeals(true);
+    const requestId = dealsRequestRef.current;
     const cacheKey = buildDealsCacheKey(dealsFilters);
     try {
       const payload = await fetchDealsWithPagination({
@@ -167,6 +177,9 @@ export const useAppData = () => {
         page: dealsNextPage,
         page_size: DEALS_PAGE_SIZE,
       });
+      if (dealsRequestRef.current !== requestId) {
+        return;
+      }
       updateAppData((prev) => {
         const extended = [...prev.deals, ...payload.results];
         dealsCacheRef.current.set(cacheKey, {
@@ -181,7 +194,9 @@ export const useAppData = () => {
     } catch (err) {
       setError(formatErrorMessage(err, 'Error loading more deals'));
     } finally {
-      setIsLoadingMoreDeals(false);
+      if (dealsRequestRef.current === requestId) {
+        setIsLoadingMoreDeals(false);
+      }
     }
   }, [dealsFilters, dealsNextPage, isLoadingMoreDeals, setError, updateAppData]);
 
