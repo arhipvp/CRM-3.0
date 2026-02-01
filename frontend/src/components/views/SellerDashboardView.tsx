@@ -38,10 +38,41 @@ type ExecutorPoint = {
   totals: Record<string, number>;
 };
 
+type CalendarDay = {
+  date: string;
+  day: number;
+  isInRange: boolean;
+  isWeekend: boolean;
+  policyExpirations: number;
+  nextContacts: number;
+};
+
 const parseNumber = (value: string | number) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+const parseIsoDate = (value: string) => {
+  const parts = value.split('-').map((part) => Number(part));
+  if (parts.length !== 3) {
+    return null;
+  }
+  const [year, month, day] = parts;
+  if (!year || !month || !day) {
+    return null;
+  }
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const formatIsoDate = (date: Date) => date.toISOString().slice(0, 10);
+
+const addUtcDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+};
+
+const weekdayIndex = (date: Date) => (date.getUTCDay() + 6) % 7;
 
 const formatShortDate = (value: string) => {
   const date = new Date(value);
@@ -62,6 +93,39 @@ const buildDateRange = (start: string, end: string) => {
   while (cursor <= endDate) {
     days.push(cursor.toISOString().slice(0, 10));
     cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+};
+
+const buildCalendarDays = (
+  rangeStart: string,
+  rangeEnd: string,
+  policyExpirations: Map<string, number>,
+  nextContacts: Map<string, number>,
+): CalendarDay[] => {
+  const start = parseIsoDate(rangeStart);
+  const end = parseIsoDate(rangeEnd);
+  if (!start || !end || start > end) {
+    return [];
+  }
+  const calendarStart = addUtcDays(start, -weekdayIndex(start));
+  const calendarEnd = addUtcDays(end, 6 - weekdayIndex(end));
+  const days: CalendarDay[] = [];
+  let cursor = calendarStart;
+  while (cursor <= calendarEnd) {
+    const iso = formatIsoDate(cursor);
+    const isInRange = cursor >= start && cursor <= end;
+    const day = cursor.getUTCDate();
+    const isWeekend = [5, 6].includes(weekdayIndex(cursor));
+    days.push({
+      date: iso,
+      day,
+      isInRange,
+      isWeekend,
+      policyExpirations: policyExpirations.get(iso) ?? 0,
+      nextContacts: nextContacts.get(iso) ?? 0,
+    });
+    cursor = addUtcDays(cursor, 1);
   }
   return days;
 };
@@ -381,6 +445,28 @@ export const SellerDashboardView: React.FC = () => {
     );
   }, [dashboard?.rangeEnd, dashboard?.rangeStart, dashboard?.tasksCompletedByExecutor]);
 
+  const policyExpirations = dashboard?.policyExpirationsByDay ?? [];
+  const nextContacts = dashboard?.nextContactsByDay ?? [];
+  const policyExpirationsMap = useMemo(
+    () => new Map(policyExpirations.map((item) => [item.date, item.count])),
+    [policyExpirations],
+  );
+  const nextContactsMap = useMemo(
+    () => new Map(nextContacts.map((item) => [item.date, item.count])),
+    [nextContacts],
+  );
+  const calendarDays = useMemo(() => {
+    if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {
+      return [] as CalendarDay[];
+    }
+    return buildCalendarDays(
+      dashboard.rangeStart,
+      dashboard.rangeEnd,
+      policyExpirationsMap,
+      nextContactsMap,
+    );
+  }, [dashboard?.rangeEnd, dashboard?.rangeStart, policyExpirationsMap, nextContactsMap]);
+
   const handleApply = useCallback(() => {
     void loadDashboard({
       startDate: startDate || undefined,
@@ -509,6 +595,88 @@ export const SellerDashboardView: React.FC = () => {
             </div>
           )}
         </div>
+      </section>
+
+      <section className="app-panel p-6 shadow-none space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700">Календарь нагрузки</h2>
+            <p className="text-xs text-slate-500">
+              Окончания полисов и следующие контакты по выбранному диапазону
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2 py-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+              Окончания полисов
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2 py-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              Следующие контакты
+            </span>
+          </div>
+        </div>
+        {isLoading ? (
+          <div className="app-panel-muted flex h-[260px] items-center justify-center text-sm text-slate-500">
+            Загрузка данных...
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-7 gap-2 text-xs text-slate-400">
+              {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((label) => (
+                <div key={label} className="text-center uppercase tracking-wide">
+                  {label}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {calendarDays.map((day) => {
+                const total = day.policyExpirations + day.nextContacts;
+                return (
+                  <div
+                    key={day.date}
+                    className={`rounded-xl border px-2 py-2 text-xs ${
+                      day.isInRange
+                        ? 'border-slate-200 bg-white'
+                        : 'border-transparent bg-slate-50 text-slate-400'
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center justify-between text-xs ${
+                        day.isWeekend ? 'text-rose-500' : 'text-slate-600'
+                      }`}
+                    >
+                      <span>{day.day}</span>
+                      {total > 0 && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                          {total}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-600">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />П
+                        </span>
+                        <span className="font-semibold text-slate-900">
+                          {day.policyExpirations || '—'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-600">
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />К
+                        </span>
+                        <span className="font-semibold text-slate-900">
+                          {day.nextContacts || '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="app-panel p-6 shadow-none space-y-4">

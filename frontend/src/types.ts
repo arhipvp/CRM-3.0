@@ -345,6 +345,11 @@ export interface SellerDashboardTasksByDay {
   count: number;
 }
 
+export interface SellerDashboardDayCount {
+  date: string;
+  count: number;
+}
+
 export interface SellerDashboardTasksByExecutor {
   date: string;
   executorId?: string | null;
@@ -361,6 +366,8 @@ export interface SellerDashboardResponse {
   paymentsByDay: SellerDashboardPaymentsByDay[];
   tasksCompletedByDay: SellerDashboardTasksByDay[];
   tasksCompletedByExecutor: SellerDashboardTasksByExecutor[];
+  policyExpirationsByDay: SellerDashboardDayCount[];
+  nextContactsByDay: SellerDashboardDayCount[];
   policies: SellerDashboardPolicy[];
 }
 

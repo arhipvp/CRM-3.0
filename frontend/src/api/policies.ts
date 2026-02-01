@@ -145,6 +145,12 @@ export async function fetchSellerDashboard(params?: {
   const rawTasksByExecutor = Array.isArray(payload.tasks_completed_by_executor)
     ? payload.tasks_completed_by_executor
     : [];
+  const rawPolicyExpirations = Array.isArray(payload.policy_expirations_by_day)
+    ? payload.policy_expirations_by_day
+    : [];
+  const rawNextContacts = Array.isArray(payload.next_contacts_by_day)
+    ? payload.next_contacts_by_day
+    : [];
   return {
     rangeStart: toStringValue(payload.start_date ?? payload.startDate ?? ''),
     rangeEnd: toStringValue(payload.end_date ?? payload.endDate ?? ''),
@@ -171,6 +177,20 @@ export async function fetchSellerDashboard(params?: {
         date: toStringValue(record.date),
         executorId: toNullableString(record.executor_id ?? record.executorId),
         executorName: toStringValue(record.executor_name ?? record.executorName ?? 'Неизвестный'),
+        count: Number(record.count ?? 0),
+      };
+    }),
+    policyExpirationsByDay: rawPolicyExpirations.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        date: toStringValue(record.date),
+        count: Number(record.count ?? 0),
+      };
+    }),
+    nextContactsByDay: rawNextContacts.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        date: toStringValue(record.date),
         count: Number(record.count ?? 0),
       };
     }),

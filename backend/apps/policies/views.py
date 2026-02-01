@@ -541,6 +541,42 @@ class SellerDashboardView(APIView):
                 }
             )
 
+        closed_statuses = [Deal.DealStatus.WON, Deal.DealStatus.LOST]
+        policy_expirations_by_day = (
+            Policy.objects.filter(
+                deal__seller=user,
+                deal__deleted_at__isnull=True,
+                end_date__isnull=False,
+                end_date__gte=start_date,
+                end_date__lte=end_date,
+            )
+            .exclude(deal__status__in=closed_statuses)
+            .values("end_date")
+            .annotate(count=Count("id"))
+            .order_by("end_date")
+        )
+        policy_expirations_series = [
+            {"date": item["end_date"], "count": item["count"]}
+            for item in policy_expirations_by_day
+        ]
+
+        next_contacts_by_day = (
+            Deal.objects.filter(
+                seller=user,
+                deleted_at__isnull=True,
+                next_contact_date__gte=start_date,
+                next_contact_date__lte=end_date,
+            )
+            .exclude(status__in=closed_statuses)
+            .values("next_contact_date")
+            .annotate(count=Count("id"))
+            .order_by("next_contact_date")
+        )
+        next_contacts_series = [
+            {"date": item["next_contact_date"], "count": item["count"]}
+            for item in next_contacts_by_day
+        ]
+
         return Response(
             {
                 "start_date": start_date,
@@ -551,6 +587,8 @@ class SellerDashboardView(APIView):
                 "payments_by_day": payments_series,
                 "tasks_completed_by_day": tasks_series,
                 "tasks_completed_by_executor": tasks_executor_series,
+                "policy_expirations_by_day": policy_expirations_series,
+                "next_contacts_by_day": next_contacts_series,
                 "policies": policies,
             }
         )
