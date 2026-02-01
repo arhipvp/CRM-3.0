@@ -147,13 +147,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
   const renderPaymentSummary = (payment: Payment) => {
     const paid = Boolean((payment.actualDate ?? '').trim());
-    const records = getPaymentFinancialRecords(payment, allFinancialRecords);
-    const hasIncome = records.some(
-      (record) =>
-        !record.deletedAt &&
-        record.recordType === INCOME_RECORD_TYPE &&
-        Boolean((record.date ?? '').trim()),
+    const records = getPaymentFinancialRecords(payment, allFinancialRecords).filter(
+      (record) => !record.deletedAt,
     );
+    const hasIncome = records.some(
+      (record) => record.recordType === INCOME_RECORD_TYPE && Boolean((record.date ?? '').trim()),
+    );
+    const shouldShowIncomeStatus = paid && records.length > 0;
 
     return (
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
@@ -169,13 +169,15 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
         <span className={`text-xs font-semibold ${paid ? 'text-emerald-600' : 'text-rose-500'}`}>
           {formatDate(payment.actualDate)}
         </span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            hasIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-          }`}
-        >
-          {hasIncome ? 'Доход получен' : 'Доход не получен'}
-        </span>
+        {shouldShowIncomeStatus && (
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              hasIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+            }`}
+          >
+            {hasIncome ? 'Доход получен' : 'Доход не получен'}
+          </span>
+        )}
       </div>
     );
   };
@@ -250,10 +252,11 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[1100px] space-y-3">
-          <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(160px,0.7fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+        <div className="min-w-[1220px] space-y-3">
+          <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             <div>Полис</div>
-            <div>Действие</div>
+            <div>Начало</div>
+            <div>Окончание</div>
             <div>Платежи</div>
             <div>Сумма</div>
             <div>Статус</div>
@@ -275,7 +278,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
             return (
               <div
                 key={policy.id}
-                className="grid grid-cols-[minmax(220px,1.2fr)_minmax(160px,0.7fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
               >
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -294,20 +297,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-1 text-xs text-slate-700">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
-                      Начало
-                    </span>
-                    <div className="font-semibold text-slate-800">{model.startDate}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
-                      Окончание
-                    </span>
-                    <div className="font-semibold text-slate-800">{model.endDate}</div>
-                  </div>
-                </div>
+                <div className="text-xs font-semibold text-slate-800">{model.startDate}</div>
+                <div className="text-xs font-semibold text-slate-800">{model.endDate}</div>
 
                 <div className="space-y-2">
                   {paymentItems.length === 0 ? (
