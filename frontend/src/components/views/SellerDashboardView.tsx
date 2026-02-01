@@ -669,135 +669,98 @@ export const SellerDashboardView: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-8 gap-2 text-xs text-slate-400">
+            <div className="grid grid-cols-7 gap-2 text-xs text-slate-400">
               {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((label) => (
                 <div key={label} className="text-center uppercase tracking-wide">
                   {label}
                 </div>
               ))}
-              <div className="text-center uppercase tracking-wide text-slate-300">Итог</div>
             </div>
-            <div className="grid grid-cols-8 gap-2">
-              {calendarWeeks.map((week) => {
-                const weekTotals = week.reduce(
-                  (acc, day) => {
-                    acc.policies += day.policyExpirations;
-                    acc.contacts += day.nextContacts;
-                    return acc;
-                  },
-                  { policies: 0, contacts: 0 },
-                );
-                const weekSum = weekTotals.policies + weekTotals.contacts;
-                return (
-                  <React.Fragment key={week[0]?.date ?? Math.random()}>
-                    {week.map((day) => {
-                      const total = day.policyExpirations + day.nextContacts;
-                      const intensity = calendarMax > 0 ? clamp(total / calendarMax, 0, 1) : 0;
-                      const heatmapColor =
-                        calendarMode === 'sum' && day.isInRange
-                          ? `rgba(14, 165, 233, ${0.08 + intensity * 0.35})`
-                          : undefined;
-                      const policyWidth =
-                        calendarMaxPolicy > 0
-                          ? clamp(day.policyExpirations / calendarMaxPolicy, 0, 1)
-                          : 0;
-                      const contactsWidth =
-                        calendarMaxContacts > 0
-                          ? clamp(day.nextContacts / calendarMaxContacts, 0, 1)
-                          : 0;
-                      return (
+            <div className="grid grid-cols-7 gap-2">
+              {calendarWeeks.map((week, weekIndex) => (
+                <React.Fragment key={`week-${weekIndex}`}>
+                  {week.map((day) => {
+                    const total = day.policyExpirations + day.nextContacts;
+                    const intensity = calendarMax > 0 ? clamp(total / calendarMax, 0, 1) : 0;
+                    const isEmpty = total === 0;
+                    const heatmapColor =
+                      calendarMode === 'sum' && day.isInRange && !isEmpty
+                        ? `rgba(14, 165, 233, ${0.08 + intensity * 0.35})`
+                        : undefined;
+                    const policyWidth =
+                      calendarMaxPolicy > 0
+                        ? clamp(day.policyExpirations / calendarMaxPolicy, 0, 1)
+                        : 0;
+                    const contactsWidth =
+                      calendarMaxContacts > 0
+                        ? clamp(day.nextContacts / calendarMaxContacts, 0, 1)
+                        : 0;
+                    return (
+                      <div
+                        key={day.date}
+                        title={`П: ${day.policyExpirations} / К: ${day.nextContacts}`}
+                        className={`rounded-xl border px-3 py-2 text-xs ${
+                          day.isInRange
+                            ? isEmpty
+                              ? 'border-slate-100 text-slate-400'
+                              : 'border-slate-200 text-slate-700'
+                            : 'border-transparent text-slate-300'
+                        }`}
+                        style={{
+                          backgroundColor: day.isInRange
+                            ? (heatmapColor ?? (isEmpty ? '#f8fafc' : '#ffffff'))
+                            : '#f8fafc',
+                        }}
+                      >
                         <div
-                          key={day.date}
-                          title={`П: ${day.policyExpirations} / К: ${day.nextContacts}`}
-                          className={`rounded-xl border px-2 py-2 text-xs ${
-                            day.isInRange ? 'border-slate-200' : 'border-transparent text-slate-400'
+                          className={`flex items-center justify-between text-xs ${
+                            day.isWeekend ? 'text-rose-500' : 'text-slate-500'
                           }`}
-                          style={{
-                            backgroundColor: heatmapColor ?? (day.isInRange ? '#fff' : '#f8fafc'),
-                          }}
                         >
-                          <div
-                            className={`flex items-center justify-between text-xs ${
-                              day.isWeekend ? 'text-rose-500' : 'text-slate-600'
-                            }`}
-                          >
-                            <span>{day.day}</span>
-                            {calendarMode === 'sum' && total > 0 && (
-                              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-slate-600">
-                                {total}
-                              </span>
-                            )}
-                          </div>
-                          {calendarMode === 'sum' ? (
-                            <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-700">
-                              {day.policyExpirations > 0 && (
-                                <span className="inline-flex items-center gap-1">
-                                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
-                                  {day.policyExpirations}
-                                </span>
-                              )}
-                              {day.nextContacts > 0 && (
-                                <span className="inline-flex items-center gap-1">
-                                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                  {day.nextContacts}
-                                </span>
-                              )}
-                              {day.policyExpirations === 0 && day.nextContacts === 0 && (
-                                <span className="text-slate-400">—</span>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="mt-3 space-y-2">
-                              <div className="flex items-center gap-2">
-                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
-                                <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                                  <div
-                                    className="h-1.5 rounded-full bg-sky-500"
-                                    style={{ width: `${policyWidth * 100}%` }}
-                                  />
-                                </div>
-                                <span className="text-[11px] font-semibold text-slate-700">
-                                  {day.policyExpirations || '—'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                                  <div
-                                    className="h-1.5 rounded-full bg-emerald-500"
-                                    style={{ width: `${contactsWidth * 100}%` }}
-                                  />
-                                </div>
-                                <span className="text-[11px] font-semibold text-slate-700">
-                                  {day.nextContacts || '—'}
-                                </span>
-                              </div>
-                            </div>
+                          <span>{day.day}</span>
+                          {calendarMode === 'sum' && total > 0 && (
+                            <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-slate-600">
+                              {total}
+                            </span>
                           )}
                         </div>
-                      );
-                    })}
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-2 py-2 text-[11px] text-slate-600">
-                      <div className="text-[10px] uppercase tracking-wide text-slate-400">
-                        Неделя
+                        {calendarMode === 'sum' ? (
+                          <div className="mt-3 text-center text-sm font-semibold text-slate-900">
+                            {total > 0 ? total : '—'}
+                          </div>
+                        ) : (
+                          <div className="mt-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-semibold text-slate-400">П</span>
+                              <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+                                <div
+                                  className="h-1.5 rounded-full bg-sky-500"
+                                  style={{ width: `${policyWidth * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-[11px] font-semibold text-slate-700">
+                                {day.policyExpirations || '—'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-semibold text-slate-400">К</span>
+                              <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+                                <div
+                                  className="h-1.5 rounded-full bg-emerald-500"
+                                  style={{ width: `${contactsWidth * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-[11px] font-semibold text-slate-700">
+                                {day.nextContacts || '—'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1">
-                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
-                          {weekTotals.policies || '—'}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          {weekTotals.contacts || '—'}
-                        </span>
-                      </div>
-                      <div className="mt-2 rounded-full bg-white px-2 py-0.5 text-center text-[10px] text-slate-500">
-                        {weekSum || '—'}
-                      </div>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
+                    );
+                  })}
+                </React.Fragment>
+              ))}
             </div>
           </div>
         )}
