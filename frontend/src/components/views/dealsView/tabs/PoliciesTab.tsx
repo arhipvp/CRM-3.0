@@ -182,6 +182,28 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     );
   };
 
+  const resolveActionIcon = (actionKey: string, label: string) => {
+    if (actionKey === 'edit') {
+      return '✏️';
+    }
+    if (actionKey === 'delete') {
+      return '🗑️';
+    }
+    if (actionKey.startsWith('open-client')) {
+      return '👤';
+    }
+    if (actionKey.startsWith('open-deal')) {
+      return '📄';
+    }
+    if (label.toLowerCase().includes('показать')) {
+      return '👁️';
+    }
+    if (label.toLowerCase().includes('скрыть')) {
+      return '🙈';
+    }
+    return '⋯';
+  };
+
   return (
     <section className="app-panel p-6 shadow-none space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -252,236 +274,253 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[1220px] space-y-3">
-          <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-            <div>Полис</div>
-            <div>Начало</div>
-            <div>Окончание</div>
-            <div>Платежи</div>
-            <div>Сумма</div>
-            <div>Статус</div>
-            <div>Действия</div>
+        <div className="min-w-[1220px] rounded-2xl border border-slate-200 bg-white">
+          <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <div className="px-4 py-3">Полис</div>
+            <div className="px-4 py-3">Начало</div>
+            <div className="px-4 py-3">Окончание</div>
+            <div className="px-4 py-3">Платежи</div>
+            <div className="px-4 py-3">Сумма</div>
+            <div className="px-4 py-3">Статус</div>
+            <div className="px-4 py-3">Действия</div>
           </div>
 
-          {visiblePolicies.map((policy) => {
-            const payments = paymentsByPolicyMap.get(policy.id) ?? [];
-            const expanded = paymentsExpanded[policy.id] ?? false;
-            const model = buildPolicyCardModel(policy, payments);
-            const expiryBadge = getPolicyExpiryBadge(policy.endDate);
-            const hasUnpaidPayments = payments.some((payment) => hasUnpaidPayment(payment));
-            const hasUnpaidRecords = payments.some((payment) =>
-              hasUnpaidRecord(payment, allFinancialRecords),
-            );
-            const paymentItems = payments.slice(0, 2);
-            const extraPayments = payments.length - paymentItems.length;
+          <div className="divide-y divide-slate-200">
+            {visiblePolicies.map((policy) => {
+              const payments = paymentsByPolicyMap.get(policy.id) ?? [];
+              const expanded = paymentsExpanded[policy.id] ?? false;
+              const model = buildPolicyCardModel(policy, payments);
+              const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+              const hasUnpaidPayments = payments.some((payment) => hasUnpaidPayment(payment));
+              const hasUnpaidRecords = payments.some((payment) =>
+                hasUnpaidRecord(payment, allFinancialRecords),
+              );
+              const paymentItems = payments;
 
-            return (
-              <div
-                key={policy.id}
-                className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
-              >
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-900 truncate">
-                      {model.number}
-                    </span>
-                    {policy.isVehicle && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                        Авто
+              const actions = [
+                {
+                  key: 'edit',
+                  label: POLICY_TEXT.actions.edit,
+                  onClick: () => onRequestEditPolicy(policy),
+                  variant: 'secondary',
+                },
+                {
+                  key: 'delete',
+                  label: POLICY_TEXT.actions.delete,
+                  onClick: () => onDeletePolicy(policy.id).catch(() => undefined),
+                  variant: 'danger',
+                },
+                ...buildPolicyNavigationActions({
+                  model,
+                  clients,
+                  onOpenClient,
+                }),
+              ];
+              const toggleLabel = expanded ? POLICY_TEXT.actions.hide : POLICY_TEXT.actions.show;
+
+              return (
+                <div
+                  key={policy.id}
+                  className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-200"
+                >
+                  <div className="min-w-0 space-y-1 px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-900 truncate">
+                        {model.number}
+                      </span>
+                      {policy.isVehicle && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                          Авто
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">{model.client}</div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      {model.insuranceCompany}
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-3 text-xs font-semibold text-slate-800">
+                    {model.startDate}
+                  </div>
+                  <div className="px-4 py-3 text-xs font-semibold text-slate-800">
+                    {model.endDate}
+                  </div>
+
+                  <div className="space-y-2 px-4 py-3">
+                    {paymentItems.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                        Платежей нет
+                      </div>
+                    ) : (
+                      <div className="space-y-2">{paymentItems.map(renderPaymentSummary)}</div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPaymentId('new');
+                        setCreatingPaymentPolicyId(policy.id);
+                      }}
+                      className="link-action text-[11px] font-semibold"
+                    >
+                      Добавить платеж
+                    </button>
+                  </div>
+
+                  <div className="px-4 py-3 text-xs font-semibold text-slate-900">{model.sum}</div>
+
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+                    {hasUnpaidPayments && (
+                      <span
+                        className={[
+                          'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          expiryBadge?.tone === 'red'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-orange-100 text-orange-700',
+                        ].join(' ')}
+                      >
+                        {POLICY_TEXT.badges.unpaidPayments}
+                      </span>
+                    )}
+                    {hasUnpaidRecords && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                        {POLICY_TEXT.badges.unpaidRecords}
+                      </span>
+                    )}
+                    {expiryBadge && (
+                      <span
+                        className={[
+                          'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          expiryBadge.tone === 'red'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-orange-100 text-orange-700',
+                        ].join(' ')}
+                      >
+                        {expiryBadge.label}
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-500 truncate">{model.client}</div>
-                  <div className="text-[11px] text-slate-500 truncate">
-                    {model.insuranceCompany}
-                  </div>
-                </div>
 
-                <div className="text-xs font-semibold text-slate-800">{model.startDate}</div>
-                <div className="text-xs font-semibold text-slate-800">{model.endDate}</div>
-
-                <div className="space-y-2">
-                  {paymentItems.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                      Платежей нет
-                    </div>
-                  ) : (
-                    <div className="space-y-2">{paymentItems.map(renderPaymentSummary)}</div>
-                  )}
-                  {extraPayments > 0 && (
-                    <div className="text-[11px] text-slate-500">+ ещё {extraPayments}</div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingPaymentId('new');
-                      setCreatingPaymentPolicyId(policy.id);
-                    }}
-                    className="link-action text-[11px] font-semibold"
-                  >
-                    Добавить платеж
-                  </button>
-                </div>
-
-                <div className="text-xs font-semibold text-slate-900">{model.sum}</div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {hasUnpaidPayments && (
-                    <span
-                      className={[
-                        'rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                        expiryBadge?.tone === 'red'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-orange-100 text-orange-700',
-                      ].join(' ')}
-                    >
-                      {POLICY_TEXT.badges.unpaidPayments}
-                    </span>
-                  )}
-                  {hasUnpaidRecords && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                      {POLICY_TEXT.badges.unpaidRecords}
-                    </span>
-                  )}
-                  {expiryBadge && (
-                    <span
-                      className={[
-                        'rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                        expiryBadge.tone === 'red'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-orange-100 text-orange-700',
-                      ].join(' ')}
-                    >
-                      {expiryBadge.label}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {[
-                    {
-                      key: 'edit',
-                      label: POLICY_TEXT.actions.edit,
-                      onClick: () => onRequestEditPolicy(policy),
-                      variant: 'secondary',
-                    },
-                    {
-                      key: 'delete',
-                      label: POLICY_TEXT.actions.delete,
-                      onClick: () => onDeletePolicy(policy.id).catch(() => undefined),
-                      variant: 'danger',
-                    },
-                    ...buildPolicyNavigationActions({
-                      model,
-                      clients,
-                      onOpenClient,
-                    }),
-                  ].map((action) => (
-                    <button
-                      key={action.key}
-                      type="button"
-                      className={
-                        action.variant === 'danger'
-                          ? 'btn btn-danger btn-sm rounded-xl whitespace-nowrap'
-                          : 'btn btn-secondary btn-sm rounded-xl whitespace-nowrap'
-                      }
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        action.onClick();
-                      }}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                  {payments.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPaymentsExpanded((prev) => ({
-                          ...prev,
-                          [policy.id]: !expanded,
-                        }))
-                      }
-                      className="btn btn-quiet btn-sm rounded-xl whitespace-nowrap"
-                    >
-                      {expanded ? POLICY_TEXT.actions.hide : POLICY_TEXT.actions.show}
-                    </button>
-                  )}
-                </div>
-
-                {expanded && payments.length > 0 && (
-                  <div className="col-span-full rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Платежи
-                      </p>
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+                    {actions.map((action) => {
+                      const isDanger = action.variant === 'danger';
+                      return (
+                        <button
+                          key={action.key}
+                          type="button"
+                          className={`icon-btn h-8 w-8 ${
+                            isDanger
+                              ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
+                              : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700'
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            action.onClick();
+                          }}
+                          aria-label={action.label}
+                          title={action.label}
+                        >
+                          <span className="text-sm leading-none">
+                            {resolveActionIcon(action.key, action.label)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {payments.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={() =>
                           setPaymentsExpanded((prev) => ({
                             ...prev,
-                            [policy.id]: false,
-                          }));
-                        }}
-                        className="link-action text-[11px] font-semibold"
+                            [policy.id]: !expanded,
+                          }))
+                        }
+                        className="icon-btn h-8 w-8 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
+                        aria-label={toggleLabel}
+                        title={toggleLabel}
                       >
-                        Скрыть
+                        <span className="text-sm leading-none">
+                          {resolveActionIcon(`toggle:${policy.id}`, toggleLabel)}
+                        </span>
                       </button>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {payments.map((payment) => (
-                        <div
-                          key={payment.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-semibold text-slate-900">
-                              {formatDate(payment.scheduledDate)} → {formatDate(payment.actualDate)}
-                            </p>
-                            <p className="text-[11px] text-slate-500 truncate">
-                              {payment.note || payment.description || 'Без описания'}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCreatingPaymentPolicyId(null);
-                                setEditingPaymentId(payment.id);
-                              }}
-                              className="link-action text-[11px] font-semibold"
-                            >
-                              Изменить
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onDeletePayment(payment.id)}
-                              className="link-danger text-[11px] font-semibold"
-                            >
-                              Удалить
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCreatingFinancialRecordContext({
-                                  paymentId: payment.id,
-                                  recordType: 'income',
-                                });
-                                setEditingFinancialRecordId(null);
-                              }}
-                              className="link-action text-[11px] font-semibold"
-                            >
-                              + Доход
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {expanded && payments.length > 0 && (
+                    <div className="col-span-full border-t border-slate-200 bg-slate-50/60 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          Платежи
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentsExpanded((prev) => ({
+                              ...prev,
+                              [policy.id]: false,
+                            }));
+                          }}
+                          className="link-action text-[11px] font-semibold"
+                        >
+                          Скрыть
+                        </button>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {payments.map((payment) => (
+                          <div
+                            key={payment.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-900">
+                                {formatDate(payment.scheduledDate)} →{' '}
+                                {formatDate(payment.actualDate)}
+                              </p>
+                              <p className="text-[11px] text-slate-500 truncate">
+                                {payment.note || payment.description || 'Без описания'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCreatingPaymentPolicyId(null);
+                                  setEditingPaymentId(payment.id);
+                                }}
+                                className="link-action text-[11px] font-semibold"
+                              >
+                                Изменить
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onDeletePayment(payment.id)}
+                                className="link-danger text-[11px] font-semibold"
+                              >
+                                Удалить
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCreatingFinancialRecordContext({
+                                    paymentId: payment.id,
+                                    recordType: 'income',
+                                  });
+                                  setEditingFinancialRecordId(null);
+                                }}
+                                className="link-action text-[11px] font-semibold"
+                              >
+                                + Доход
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>
