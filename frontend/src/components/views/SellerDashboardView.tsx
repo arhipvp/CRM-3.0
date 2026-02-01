@@ -73,6 +73,7 @@ const addUtcDays = (date: Date, days: number) => {
 };
 
 const weekdayIndex = (date: Date) => (date.getUTCDay() + 6) % 7;
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
 const formatShortDate = (value: string) => {
   const date = new Date(value);
@@ -393,6 +394,7 @@ export const SellerDashboardView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [calendarMode, setCalendarMode] = useState<'sum' | 'split'>('sum');
 
   const loadDashboard = useCallback(async (override?: { startDate?: string; endDate?: string }) => {
     setIsLoading(true);
@@ -445,8 +447,14 @@ export const SellerDashboardView: React.FC = () => {
     );
   }, [dashboard?.rangeEnd, dashboard?.rangeStart, dashboard?.tasksCompletedByExecutor]);
 
-  const policyExpirations = dashboard?.policyExpirationsByDay ?? [];
-  const nextContacts = dashboard?.nextContactsByDay ?? [];
+  const policyExpirations = useMemo(
+    () => dashboard?.policyExpirationsByDay ?? [],
+    [dashboard?.policyExpirationsByDay],
+  );
+  const nextContacts = useMemo(
+    () => dashboard?.nextContactsByDay ?? [],
+    [dashboard?.nextContactsByDay],
+  );
   const policyExpirationsMap = useMemo(
     () => new Map(policyExpirations.map((item) => [item.date, item.count])),
     [policyExpirations],
@@ -466,6 +474,25 @@ export const SellerDashboardView: React.FC = () => {
       nextContactsMap,
     );
   }, [dashboard?.rangeEnd, dashboard?.rangeStart, policyExpirationsMap, nextContactsMap]);
+  const calendarWeeks = useMemo(() => {
+    const weeks: CalendarDay[][] = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      weeks.push(calendarDays.slice(i, i + 7));
+    }
+    return weeks;
+  }, [calendarDays]);
+  const calendarMax = useMemo(() => {
+    const totals = calendarDays.map((day) => day.policyExpirations + day.nextContacts);
+    return Math.max(...totals, 0);
+  }, [calendarDays]);
+  const calendarMaxPolicy = useMemo(() => {
+    const totals = calendarDays.map((day) => day.policyExpirations);
+    return Math.max(...totals, 0);
+  }, [calendarDays]);
+  const calendarMaxContacts = useMemo(() => {
+    const totals = calendarDays.map((day) => day.nextContacts);
+    return Math.max(...totals, 0);
+  }, [calendarDays]);
 
   const handleApply = useCallback(() => {
     void loadDashboard({
@@ -605,7 +632,7 @@ export const SellerDashboardView: React.FC = () => {
               Окончания полисов и следующие контакты по выбранному диапазону
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
             <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2 py-1">
               <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
               Окончания полисов
@@ -614,6 +641,26 @@ export const SellerDashboardView: React.FC = () => {
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
               Следующие контакты
             </span>
+            <div className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setCalendarMode('sum')}
+                className={`rounded-full px-2 py-1 text-[11px] font-medium ${
+                  calendarMode === 'sum' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Сумма
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalendarMode('split')}
+                className={`rounded-full px-2 py-1 text-[11px] font-medium ${
+                  calendarMode === 'split' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Раздельно
+              </button>
+            </div>
           </div>
         </div>
         {isLoading ? (
@@ -622,56 +669,133 @@ export const SellerDashboardView: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-7 gap-2 text-xs text-slate-400">
+            <div className="grid grid-cols-8 gap-2 text-xs text-slate-400">
               {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((label) => (
                 <div key={label} className="text-center uppercase tracking-wide">
                   {label}
                 </div>
               ))}
+              <div className="text-center uppercase tracking-wide text-slate-300">Итог</div>
             </div>
-            <div className="grid grid-cols-7 gap-2">
-              {calendarDays.map((day) => {
-                const total = day.policyExpirations + day.nextContacts;
+            <div className="grid grid-cols-8 gap-2">
+              {calendarWeeks.map((week) => {
+                const weekTotals = week.reduce(
+                  (acc, day) => {
+                    acc.policies += day.policyExpirations;
+                    acc.contacts += day.nextContacts;
+                    return acc;
+                  },
+                  { policies: 0, contacts: 0 },
+                );
+                const weekSum = weekTotals.policies + weekTotals.contacts;
                 return (
-                  <div
-                    key={day.date}
-                    className={`rounded-xl border px-2 py-2 text-xs ${
-                      day.isInRange
-                        ? 'border-slate-200 bg-white'
-                        : 'border-transparent bg-slate-50 text-slate-400'
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center justify-between text-xs ${
-                        day.isWeekend ? 'text-rose-500' : 'text-slate-600'
-                      }`}
-                    >
-                      <span>{day.day}</span>
-                      {total > 0 && (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
-                          {total}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center justify-between text-[11px] text-slate-600">
+                  <React.Fragment key={week[0]?.date ?? Math.random()}>
+                    {week.map((day) => {
+                      const total = day.policyExpirations + day.nextContacts;
+                      const intensity = calendarMax > 0 ? clamp(total / calendarMax, 0, 1) : 0;
+                      const heatmapColor =
+                        calendarMode === 'sum' && day.isInRange
+                          ? `rgba(14, 165, 233, ${0.08 + intensity * 0.35})`
+                          : undefined;
+                      const policyWidth =
+                        calendarMaxPolicy > 0
+                          ? clamp(day.policyExpirations / calendarMaxPolicy, 0, 1)
+                          : 0;
+                      const contactsWidth =
+                        calendarMaxContacts > 0
+                          ? clamp(day.nextContacts / calendarMaxContacts, 0, 1)
+                          : 0;
+                      return (
+                        <div
+                          key={day.date}
+                          title={`П: ${day.policyExpirations} / К: ${day.nextContacts}`}
+                          className={`rounded-xl border px-2 py-2 text-xs ${
+                            day.isInRange ? 'border-slate-200' : 'border-transparent text-slate-400'
+                          }`}
+                          style={{
+                            backgroundColor: heatmapColor ?? (day.isInRange ? '#fff' : '#f8fafc'),
+                          }}
+                        >
+                          <div
+                            className={`flex items-center justify-between text-xs ${
+                              day.isWeekend ? 'text-rose-500' : 'text-slate-600'
+                            }`}
+                          >
+                            <span>{day.day}</span>
+                            {calendarMode === 'sum' && total > 0 && (
+                              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-slate-600">
+                                {total}
+                              </span>
+                            )}
+                          </div>
+                          {calendarMode === 'sum' ? (
+                            <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-700">
+                              {day.policyExpirations > 0 && (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+                                  {day.policyExpirations}
+                                </span>
+                              )}
+                              {day.nextContacts > 0 && (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                  {day.nextContacts}
+                                </span>
+                              )}
+                              {day.policyExpirations === 0 && day.nextContacts === 0 && (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-3 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+                                <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+                                  <div
+                                    className="h-1.5 rounded-full bg-sky-500"
+                                    style={{ width: `${policyWidth * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-[11px] font-semibold text-slate-700">
+                                  {day.policyExpirations || '—'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+                                  <div
+                                    className="h-1.5 rounded-full bg-emerald-500"
+                                    style={{ width: `${contactsWidth * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-[11px] font-semibold text-slate-700">
+                                  {day.nextContacts || '—'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-2 py-2 text-[11px] text-slate-600">
+                      <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                        Неделя
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
                         <span className="inline-flex items-center gap-1">
-                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />П
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+                          {weekTotals.policies || '—'}
                         </span>
-                        <span className="font-semibold text-slate-900">
-                          {day.policyExpirations || '—'}
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          {weekTotals.contacts || '—'}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-600">
-                        <span className="inline-flex items-center gap-1">
-                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />К
-                        </span>
-                        <span className="font-semibold text-slate-900">
-                          {day.nextContacts || '—'}
-                        </span>
+                      <div className="mt-2 rounded-full bg-white px-2 py-0.5 text-center text-[10px] text-slate-500">
+                        {weekSum || '—'}
                       </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })}
             </div>
