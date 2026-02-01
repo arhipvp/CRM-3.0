@@ -215,25 +215,6 @@ export const DealsList: React.FC<DealsListProps> = ({
               <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
               <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
               <TableHeadCell
-                align="center"
-                className="min-w-[180px]"
-                aria-sort={getAriaSort('deadline')}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleColumnSort('deadline')}
-                  aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
-                    'deadline',
-                  )}`}
-                  className="flex w-full items-center justify-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                >
-                  <span className={getColumnTitleClass('deadline')}>Крайний срок</span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    {getSortIndicator('deadline')}
-                  </span>
-                </button>
-              </TableHeadCell>
-              <TableHeadCell
                 align="right"
                 className="min-w-[200px]"
                 aria-sort={getAriaSort('nextContact')}
@@ -249,6 +230,25 @@ export const DealsList: React.FC<DealsListProps> = ({
                   <span className={getColumnTitleClass('nextContact')}>След. контакт</span>
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                     {getSortIndicator('nextContact')}
+                  </span>
+                </button>
+              </TableHeadCell>
+              <TableHeadCell
+                align="center"
+                className="min-w-[180px]"
+                aria-sort={getAriaSort('deadline')}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleColumnSort('deadline')}
+                  aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
+                    'deadline',
+                  )}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                >
+                  <span className={getColumnTitleClass('deadline')}>Крайний срок</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    {getSortIndicator('deadline')}
                   </span>
                 </button>
               </TableHeadCell>
@@ -358,17 +358,6 @@ export const DealsList: React.FC<DealsListProps> = ({
                     >
                       <span className={deletedTextClass}>{clientLabel}</span>
                     </td>
-                    <td
-                      className={`${TABLE_CELL_CLASS_LG} text-sm font-semibold text-center ${deletedTextClass}`}
-                    >
-                      {deal.expectedClose ? (
-                        <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
-                      ) : (
-                        <span className={`text-xs font-semibold text-rose-600 ${deletedTextClass}`}>
-                          Нет срока
-                        </span>
-                      )}
-                    </td>
                     <td className={`${TABLE_CELL_CLASS_LG} text-sm text-right ${deletedTextClass}`}>
                       {deal.nextContactDate ? (
                         <span
@@ -379,6 +368,17 @@ export const DealsList: React.FC<DealsListProps> = ({
                       ) : (
                         <span className={`text-xs font-semibold text-rose-600 ${deletedTextClass}`}>
                           Не назначено
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_LG} text-sm font-semibold text-center ${deletedTextClass}`}
+                    >
+                      {deal.expectedClose ? (
+                        <span className={`${deadlineTone}`}>{formatDate(deal.expectedClose)}</span>
+                      ) : (
+                        <span className={`text-xs font-semibold text-rose-600 ${deletedTextClass}`}>
+                          Нет срока
                         </span>
                       )}
                     </td>
