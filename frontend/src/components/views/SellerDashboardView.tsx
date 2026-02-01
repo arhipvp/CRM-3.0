@@ -633,12 +633,12 @@ export const SellerDashboardView: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2 py-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-2 py-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
               Окончания полисов
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-2 py-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-2 py-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-rose-700" />
               Следующие контакты
             </span>
             <div className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-100 p-1">
@@ -685,7 +685,7 @@ export const SellerDashboardView: React.FC = () => {
                     const isEmpty = total === 0;
                     const heatmapColor =
                       calendarMode === 'sum' && day.isInRange && !isEmpty
-                        ? `rgba(14, 165, 233, ${0.08 + intensity * 0.35})`
+                        ? `rgba(244, 63, 94, ${0.08 + intensity * 0.35})`
                         : undefined;
                     const policyWidth =
                       calendarMaxPolicy > 0
@@ -726,32 +726,36 @@ export const SellerDashboardView: React.FC = () => {
                         </div>
                         {calendarMode === 'sum' ? (
                           <div className="mt-3 text-center text-sm font-semibold text-slate-900">
-                            {total > 0 ? total : '—'}
+                            {total > 0 ? `Всего: ${total}` : ''}
                           </div>
                         ) : (
                           <div className="mt-3 space-y-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-semibold text-slate-400">П</span>
+                              <span className="text-[10px] font-semibold text-slate-400">
+                                Полисов:
+                              </span>
                               <div className="h-1.5 flex-1 rounded-full bg-slate-100">
                                 <div
-                                  className="h-1.5 rounded-full bg-sky-500"
+                                  className="h-1.5 rounded-full bg-rose-500"
                                   style={{ width: `${policyWidth * 100}%` }}
                                 />
                               </div>
                               <span className="text-[11px] font-semibold text-slate-700">
-                                {day.policyExpirations || '—'}
+                                {day.policyExpirations}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-semibold text-slate-400">К</span>
+                              <span className="text-[10px] font-semibold text-slate-400">
+                                Контактов:
+                              </span>
                               <div className="h-1.5 flex-1 rounded-full bg-slate-100">
                                 <div
-                                  className="h-1.5 rounded-full bg-emerald-500"
+                                  className="h-1.5 rounded-full bg-rose-700"
                                   style={{ width: `${contactsWidth * 100}%` }}
                                 />
                               </div>
                               <span className="text-[11px] font-semibold text-slate-700">
-                                {day.nextContacts || '—'}
+                                {day.nextContacts}
                               </span>
                             </div>
                           </div>
