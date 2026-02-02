@@ -16,6 +16,7 @@ import {
   policyHasUnpaidRecords,
 } from '../helpers';
 import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
+import { ColoredLabel } from '../../../common/ColoredLabel';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
 import { buildPolicyNavigationActions } from '../../../policies/policyCardActions';
 import { getPolicyExpiryBadge } from '../../../policies/policyIndicators';
@@ -341,7 +342,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   clients,
                   onOpenClient,
                 }),
-              ];
+              ].filter((action) => !action.key.startsWith('open-client'));
               const toggleLabel = expanded ? POLICY_TEXT.actions.hide : POLICY_TEXT.actions.show;
 
               return (
@@ -361,8 +362,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                       )}
                     </div>
                     <div className="text-[11px] text-slate-500 truncate">{model.client}</div>
-                    <div className="text-[11px] text-slate-500 truncate">
-                      {model.insuranceCompany}
+                    <div className="text-[11px]">
+                      <ColoredLabel
+                        value={model.insuranceCompany}
+                        fallback="-"
+                        showDot
+                        className="max-w-full truncate text-slate-600"
+                      />
                     </div>
                   </div>
 
@@ -434,7 +440,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         <button
                           key={action.key}
                           type="button"
-                          className={`icon-btn h-12 w-12 ${
+                          className={`icon-btn h-10 w-10 ${
                             isDanger
                               ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
                               : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700'
@@ -446,7 +452,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                           aria-label={action.label}
                           title={action.label}
                         >
-                          <span className="text-base leading-none">
+                          <span className="text-sm leading-none">
                             {resolveActionIcon(action.key, action.label)}
                           </span>
                         </button>
@@ -461,11 +467,11 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             [policy.id]: !expanded,
                           }))
                         }
-                        className="icon-btn h-12 w-12 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
+                        className="icon-btn h-10 w-10 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
                         aria-label={toggleLabel}
                         title={toggleLabel}
                       >
-                        <span className="text-base leading-none">
+                        <span className="text-sm leading-none">
                           {resolveActionIcon(`toggle:${policy.id}`, toggleLabel)}
                         </span>
                       </button>
