@@ -40,6 +40,8 @@ interface PoliciesTabProps {
   onOpenClient: (client: Client) => void;
   policySortKey: PolicySortKey;
   policySortOrder: 'asc' | 'desc';
+  setPolicySortKey: (value: PolicySortKey) => void;
+  setPolicySortOrder: (value: 'asc' | 'desc') => void;
   setEditingPaymentId: (value: string | null) => void;
   setCreatingPaymentPolicyId: (value: string | null) => void;
   setCreatingFinancialRecordContext: React.Dispatch<
@@ -63,6 +65,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onOpenClient,
   policySortKey,
   policySortOrder,
+  setPolicySortKey,
+  setPolicySortOrder,
   setEditingPaymentId,
   setCreatingPaymentPolicyId,
   setCreatingFinancialRecordContext,
@@ -129,6 +133,28 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
   const sortLabel = POLICY_SORT_LABELS[policySortKey] ?? policySortKey;
   const sortOrderSymbol = policySortOrder === 'asc' ? '↑' : '↓';
+  const handleSortChange = (nextKey: PolicySortKey) => {
+    if (policySortKey === nextKey) {
+      setPolicySortOrder(policySortOrder === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setPolicySortKey(nextKey);
+    setPolicySortOrder('asc');
+  };
+  const renderSortableHeader = (label: string, key: PolicySortKey) => {
+    const isActive = policySortKey === key;
+    return (
+      <button
+        type="button"
+        onClick={() => handleSortChange(key)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:text-slate-700"
+        aria-pressed={isActive}
+      >
+        <span>{label}</span>
+        <span className="text-xs">{isActive ? sortOrderSymbol : '↕'}</span>
+      </button>
+    );
+  };
 
   if (!sortedPolicies.length) {
     return (
@@ -277,8 +303,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
         <div className="min-w-[1220px] rounded-2xl border border-slate-200 bg-white">
           <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             <div className="px-4 py-3">Полис</div>
-            <div className="px-4 py-3">Начало</div>
-            <div className="px-4 py-3">Окончание</div>
+            {renderSortableHeader('Начало', 'startDate')}
+            {renderSortableHeader('Окончание', 'endDate')}
             <div className="px-4 py-3">Платежи</div>
             <div className="px-4 py-3">Сумма</div>
             <div className="px-4 py-3">Статус</div>

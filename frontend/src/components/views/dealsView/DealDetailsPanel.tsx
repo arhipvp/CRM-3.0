@@ -267,9 +267,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     [navigate, onClientEdit],
   );
 
-  const [policySortKey] = useState<PolicySortKey>('startDate');
+  const [policySortKey, setPolicySortKey] = useState<PolicySortKey>('startDate');
 
-  const [policySortOrder] = useState<'asc' | 'desc'>('asc');
+  const [policySortOrder, setPolicySortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     if (activeTab !== 'policies') {
@@ -773,6 +773,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       sortedPolicies={sortedPolicies}
       policySortKey={policySortKey}
       policySortOrder={policySortOrder}
+      setPolicySortKey={setPolicySortKey}
+      setPolicySortOrder={setPolicySortOrder}
       onRequestAddPolicy={onRequestAddPolicy}
       onDeletePolicy={onDeletePolicy}
       onRequestEditPolicy={onRequestEditPolicy}
