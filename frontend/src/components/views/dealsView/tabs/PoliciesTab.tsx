@@ -300,8 +300,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[1220px] rounded-2xl border border-slate-200 bg-white">
-          <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+        <div className="min-w-[1220px] rounded-2xl border border-slate-300 bg-white shadow-sm">
+          <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-300 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             <div className="px-4 py-3">Полис</div>
             {renderSortableHeader('Начало', 'startDate')}
             {renderSortableHeader('Окончание', 'endDate')}
@@ -311,7 +311,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
             <div className="px-4 py-3">Действия</div>
           </div>
 
-          <div className="divide-y divide-slate-200">
+          <div className="divide-y divide-slate-300">
             {visiblePolicies.map((policy) => {
               const payments = paymentsByPolicyMap.get(policy.id) ?? [];
               const expanded = paymentsExpanded[policy.id] ?? false;
@@ -347,7 +347,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               return (
                 <div
                   key={policy.id}
-                  className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-200"
+                  className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-300"
                 >
                   <div className="min-w-0 space-y-1 px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -434,7 +434,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         <button
                           key={action.key}
                           type="button"
-                          className={`icon-btn h-8 w-8 ${
+                          className={`icon-btn h-12 w-12 ${
                             isDanger
                               ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
                               : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700'
@@ -446,7 +446,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                           aria-label={action.label}
                           title={action.label}
                         >
-                          <span className="text-sm leading-none">
+                          <span className="text-base leading-none">
                             {resolveActionIcon(action.key, action.label)}
                           </span>
                         </button>
@@ -461,11 +461,11 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             [policy.id]: !expanded,
                           }))
                         }
-                        className="icon-btn h-8 w-8 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
+                        className="icon-btn h-12 w-12 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
                         aria-label={toggleLabel}
                         title={toggleLabel}
                       >
-                        <span className="text-sm leading-none">
+                        <span className="text-base leading-none">
                           {resolveActionIcon(`toggle:${policy.id}`, toggleLabel)}
                         </span>
                       </button>
