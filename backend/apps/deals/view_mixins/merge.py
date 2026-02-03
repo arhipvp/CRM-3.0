@@ -1,8 +1,10 @@
 from apps.clients.models import Client
+from apps.common.drive import DriveError
 from apps.deals.models import Deal
 from apps.deals.serializers import DealMergeSerializer
 from apps.deals.services import DealMergeService
 from apps.users.models import AuditLog
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -61,12 +63,23 @@ class DealMergeMixin:
                 raise PermissionDenied("Only deal owner or admin can merge deals.")
 
         actor = request.user if request.user and request.user.is_authenticated else None
-        merge_result = DealMergeService(
-            target_deal=target_deal,
-            source_deals=source_deals,
-            resulting_client=resulting_client,
-            actor=actor,
-        ).merge()
+        try:
+            merge_result = DealMergeService(
+                target_deal=target_deal,
+                source_deals=source_deals,
+                resulting_client=resulting_client,
+                actor=actor,
+            ).merge()
+        except DriveError as exc:
+            return Response(
+                {
+                    "detail": str(exc),
+                    "warning": (
+                        "Ошибка Google Drive: часть папок могла быть не перенесена."
+                    ),
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         source_titles = sorted({deal.title for deal in source_deals})
         AuditLog.objects.create(

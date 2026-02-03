@@ -1,8 +1,5 @@
 from apps.clients.services import ClientMergeService
-from apps.common.drive import (
-    DriveError,
-    ensure_client_folder,
-)
+from apps.common.drive import DriveError, ensure_client_folder
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.users.models import AuditLog, UserRole
@@ -132,11 +129,22 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
 
         actor = request.user if request.user and request.user.is_authenticated else None
-        merge_result = ClientMergeService(
-            target_client=target_client,
-            source_clients=source_clients,
-            actor=actor,
-        ).merge()
+        try:
+            merge_result = ClientMergeService(
+                target_client=target_client,
+                source_clients=source_clients,
+                actor=actor,
+            ).merge()
+        except DriveError as exc:
+            return Response(
+                {
+                    "detail": str(exc),
+                    "warning": (
+                        "Ошибка Google Drive: часть папок могла быть не перенесена."
+                    ),
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         source_names = sorted({client.name for client in source_clients if client.name})
         AuditLog.objects.create(

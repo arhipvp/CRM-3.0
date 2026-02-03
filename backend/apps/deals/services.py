@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Sequence
 
 from apps.chat.models import ChatMessage
@@ -8,10 +9,8 @@ from apps.clients.models import Client
 from apps.common.drive import (
     DriveError,
     delete_drive_folder,
-    ensure_client_folder,
     ensure_deal_folder,
     move_drive_folder_contents,
-    move_drive_folder_to_parent,
 )
 from apps.documents.models import Document
 from apps.finances.models import Payment
@@ -24,6 +23,34 @@ from django.db import transaction
 from .models import Deal, Quote
 
 logger = logging.getLogger(__name__)
+_DRIVE_RETRY_ATTEMPTS = 3
+_DRIVE_RETRY_DELAY_SECONDS = 0.5
+
+
+def _retry_drive_operation(action, *, description: str):
+    last_error: DriveError | None = None
+    for attempt in range(1, _DRIVE_RETRY_ATTEMPTS + 1):
+        try:
+            return action()
+        except DriveError as exc:
+            last_error = exc
+            if attempt < _DRIVE_RETRY_ATTEMPTS:
+                logger.warning(
+                    "Drive operation failed (%s). Attempt %s/%s.",
+                    description,
+                    attempt,
+                    _DRIVE_RETRY_ATTEMPTS,
+                )
+                time.sleep(_DRIVE_RETRY_DELAY_SECONDS * attempt)
+                continue
+            logger.exception(
+                "Drive operation failed after %s attempts (%s).",
+                _DRIVE_RETRY_ATTEMPTS,
+                description,
+            )
+            raise
+    if last_error:
+        raise last_error
 
 
 class DealMergeService:
@@ -54,11 +81,6 @@ class DealMergeService:
         self.actor = actor
         self.resulting_client = resulting_client
         self._source_ids = [deal.pk for deal in self.source_deals]
-        self._source_folder_ids = [
-            folder_id
-            for folder_id in (deal.drive_folder_id for deal in self.source_deals)
-            if folder_id
-        ]
 
     def merge(self) -> dict:
         """Merge related objects from source deals into the target deal."""
@@ -93,43 +115,32 @@ class DealMergeService:
         if not target_client:
             return
 
-        target_folder_id = self.target_deal.drive_folder_id
-        client_folder_id = None
-        try:
-            client_folder_id = ensure_client_folder(target_client)
-        except DriveError:
-            logger.exception(
-                "Failed to ensure Drive folder for client %s", target_client.pk
-            )
-
-        if target_folder_id and client_folder_id:
-            try:
-                move_drive_folder_to_parent(target_folder_id, client_folder_id)
-            except DriveError:
-                logger.exception(
-                    "Failed to move deal folder %s under client %s",
-                    target_folder_id,
-                    client_folder_id,
-                )
-
-        try:
-            ensure_deal_folder(self.target_deal)
-        except DriveError:
-            logger.exception(
-                "Failed to ensure Drive folder for target deal %s", self.target_deal.pk
-            )
+        _retry_drive_operation(
+            lambda: ensure_deal_folder(self.target_deal),
+            description=f"ensure target deal folder {self.target_deal.pk}",
+        )
 
         target_folder_id = self.target_deal.drive_folder_id
         if not target_folder_id:
             return
 
-        for source_folder_id in self._source_folder_ids:
-            try:
-                move_drive_folder_contents(source_folder_id, target_folder_id)
-                delete_drive_folder(source_folder_id)
-            except DriveError:
-                logger.exception(
-                    "Failed to merge Drive contents from %s into %s",
-                    source_folder_id,
-                    target_folder_id,
-                )
+        for deal in self.source_deals:
+            _retry_drive_operation(
+                lambda deal=deal: ensure_deal_folder(deal),
+                description=f"ensure source deal folder {deal.pk}",
+            )
+            source_folder_id = deal.drive_folder_id
+            if not source_folder_id or source_folder_id == target_folder_id:
+                continue
+            _retry_drive_operation(
+                lambda source_folder_id=source_folder_id: move_drive_folder_contents(
+                    source_folder_id, target_folder_id
+                ),
+                description=f"move deal folder contents from {source_folder_id}",
+            )
+            _retry_drive_operation(
+                lambda source_folder_id=source_folder_id: delete_drive_folder(
+                    source_folder_id
+                ),
+                description=f"delete deal folder {source_folder_id}",
+            )
