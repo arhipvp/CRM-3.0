@@ -285,7 +285,16 @@ export const useDealDriveFiles = ({
         const url = window.URL.createObjectURL(blob);
         const link = window.document.createElement('a');
         link.href = url;
-        link.download = filename || 'files.zip';
+        let resolvedFilename = filename;
+        if (!resolvedFilename && targetIds.length === 1) {
+          const targetFile = driveFiles.find((file) => file.id === targetIds[0]);
+          if (targetFile) {
+            resolvedFilename = targetFile.isFolder
+              ? `${targetFile.name || 'folder'}.zip`
+              : targetFile.name;
+          }
+        }
+        link.download = resolvedFilename || 'files.zip';
         window.document.body.appendChild(link);
         link.click();
         link.remove();
