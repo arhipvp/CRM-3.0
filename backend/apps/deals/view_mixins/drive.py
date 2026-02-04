@@ -61,9 +61,10 @@ class DealDriveMixin:
         content_type: str = "application/octet-stream",
     ) -> HttpResponse:
         response = HttpResponse(content, content_type=content_type)
-        safe_name = get_valid_filename(filename) or "download"
+        raw_name = (filename or "").strip() or "download"
+        safe_name = get_valid_filename(raw_name) or "download"
         response["Content-Disposition"] = (
-            f"attachment; filename=\"{safe_name}\"; filename*=UTF-8''{iri_to_uri(safe_name)}"
+            f"attachment; filename=\"{safe_name}\"; filename*=UTF-8''{iri_to_uri(raw_name)}"
         )
         return response
 

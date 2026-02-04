@@ -311,7 +311,7 @@ export const useDealDriveFiles = ({
         }
       }
     },
-    [selectedDeal, selectedDriveFileIds],
+    [driveFiles, selectedDeal, selectedDriveFileIds],
   );
 
   const handleRenameDriveFile = useCallback(
