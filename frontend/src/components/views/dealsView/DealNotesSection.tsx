@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 
 import type { DriveFile, Note } from '../../../types';
+import { downloadDealDriveFiles } from '../../../api';
 import { API_BASE, requestBlob } from '../../../api/request';
 import { formatDate } from './helpers';
 import { ColoredLabel } from '../../common/ColoredLabel';
@@ -10,10 +11,14 @@ import { dedupeFiles } from '../../../utils/fileUpload';
 
 const attachmentImageCache = new Map<string, string>();
 const attachmentImagePromises = new Map<string, Promise<string>>();
+const draftAttachmentImageCache = new Map<string, string>();
+const draftAttachmentImagePromises = new Map<string, Promise<string>>();
 
 const getAttachmentCacheKey = (noteId: string, fileId: string) => `${noteId}:${fileId}`;
+const getDraftAttachmentCacheKey = (fileId: string) => `draft:${fileId}`;
 
 interface DealNotesSectionProps {
+  dealId?: string | null;
   notes: Note[];
   notesLoading: boolean;
   notesFilter: 'active' | 'archived';
@@ -39,6 +44,7 @@ const filterOptions: { value: 'active' | 'archived'; label: string }[] = [
 ];
 
 export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
+  dealId,
   notes,
   notesLoading,
   notesFilter,
@@ -75,6 +81,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
   const isImageAttachment = (file: DriveFile) => file.mimeType?.startsWith('image/');
 
   const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleDraftPaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     if (noteAttachmentsUploading || notesAction === 'create') {
@@ -201,6 +208,98 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     );
   };
 
+  const DraftAttachmentImage = ({
+    file,
+    onOpen,
+  }: {
+    file: DriveFile;
+    onOpen: (payload: { src: string; name: string }) => void;
+  }) => {
+    const [src, setSrc] = useState<string | null>(null);
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+      if (!dealId) {
+        return;
+      }
+      let isActive = true;
+      const cacheKey = getDraftAttachmentCacheKey(file.id);
+      const cachedUrl = draftAttachmentImageCache.get(cacheKey);
+
+      if (cachedUrl) {
+        setSrc(cachedUrl);
+        return () => {
+          isActive = false;
+        };
+      }
+
+      const loadImage = async () => {
+        try {
+          let pending = draftAttachmentImagePromises.get(cacheKey);
+          if (!pending) {
+            pending = downloadDealDriveFiles(dealId, [file.id]).then(({ blob }) => {
+              const objectUrl = URL.createObjectURL(blob);
+              draftAttachmentImageCache.set(cacheKey, objectUrl);
+              draftAttachmentImagePromises.delete(cacheKey);
+              return objectUrl;
+            });
+            draftAttachmentImagePromises.set(cacheKey, pending);
+          }
+          const objectUrl = await pending;
+          if (isActive) {
+            setSrc(objectUrl);
+          }
+        } catch (error) {
+          if (!isActive) {
+            return;
+          }
+          console.error('Ошибка загрузки изображения заметки:', error);
+          setHasError(true);
+        }
+      };
+
+      loadImage();
+
+      return () => {
+        isActive = false;
+      };
+    }, [dealId, file.id]);
+
+    if (hasError) {
+      return (
+        <div className="flex h-28 items-center justify-center rounded-xl border border-slate-200 bg-white text-[10px] text-slate-500">
+          Не удалось загрузить
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm"
+        onClick={() => {
+          if (src) {
+            onOpen({ src, name: file.name });
+          }
+        }}
+      >
+        {src ? (
+          <img
+            src={src}
+            alt={file.name}
+            className="h-28 w-28 object-cover transition duration-200 group-hover:scale-[1.02]"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className="flex h-28 w-28 items-center justify-center text-[10px] text-slate-500">
+            Загрузка...
+          </div>
+        )}
+      </button>
+    );
+  };
+
   return (
     <>
       <section className="app-panel p-6 shadow-none space-y-6">
@@ -223,74 +322,16 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
               ))}
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="btn btn-primary btn-sm rounded-xl"
+          >
+            Добавить заметку
+          </button>
         </div>
 
         {notesError && renderStatusMessage(notesError, 'danger')}
-
-        {notesFilter === 'active' && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <textarea
-              rows={4}
-              value={noteDraft}
-              onChange={(event) => onSetDraft(event.target.value)}
-              onPaste={handleDraftPaste}
-              placeholder="Заметка к сделке"
-              className="field-textarea"
-            />
-            {noteAttachments.length > 0 && (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>Вложения: {noteAttachments.length}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {noteAttachments.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs"
-                    >
-                      <span className="max-w-[180px] truncate text-slate-700">{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveNoteAttachment(file)}
-                        className="text-slate-400 transition hover:text-slate-600"
-                        aria-label={`Удалить ${file.name}`}
-                      >
-                        x
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="mt-4">
-              <FileUploadManager
-                onUpload={onAttachNoteFile}
-                disabled={notesAction === 'create' || noteAttachmentsUploading}
-              />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <label className="flex items-center gap-2 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  className="check"
-                  checked={noteIsImportant}
-                  onChange={(event) => onToggleImportant(event.target.checked)}
-                  disabled={notesAction === 'create' || noteAttachmentsUploading}
-                />
-                <span>Важно</span>
-              </label>
-              <p className="text-xs text-slate-500">Все заметки видны всем участникам</p>
-              <button
-                type="button"
-                onClick={onAddNote}
-                disabled={notesAction === 'create' || noteAttachmentsUploading}
-                className="btn btn-primary btn-sm rounded-xl"
-              >
-                {notesAction === 'create' ? 'Добавляем...' : 'Добавить заметку'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {notesLoading ? (
           <div className="app-panel-muted p-4">
@@ -396,6 +437,94 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
           renderStatusMessage('Заметок не найдено.')
         )}
       </section>
+
+      {isCreateModalOpen && (
+        <Modal title="Новая заметка" onClose={() => setIsCreateModalOpen(false)} size="md">
+          <div className="space-y-4">
+            <textarea
+              rows={5}
+              value={noteDraft}
+              onChange={(event) => onSetDraft(event.target.value)}
+              onPaste={handleDraftPaste}
+              placeholder="Заметка к сделке"
+              className="field-textarea"
+            />
+            {noteAttachments.length > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Вложения: {noteAttachments.length}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {noteAttachments.map((file) =>
+                    isImageAttachment(file) ? (
+                      <div key={file.id} className="relative">
+                        <DraftAttachmentImage file={file} onOpen={setImagePreview} />
+                        <button
+                          type="button"
+                          onClick={() => onRemoveNoteAttachment(file)}
+                          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-xs text-slate-500 shadow-sm transition hover:text-slate-700"
+                          aria-label={`Удалить ${file.name}`}
+                        >
+                          x
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs"
+                      >
+                        <span className="max-w-[180px] truncate text-slate-700">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveNoteAttachment(file)}
+                          className="text-slate-400 transition hover:text-slate-600"
+                          aria-label={`Удалить ${file.name}`}
+                        >
+                          x
+                        </button>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+            <FileUploadManager
+              onUpload={onAttachNoteFile}
+              disabled={notesAction === 'create' || noteAttachmentsUploading}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  className="check"
+                  checked={noteIsImportant}
+                  onChange={(event) => onToggleImportant(event.target.checked)}
+                  disabled={notesAction === 'create' || noteAttachmentsUploading}
+                />
+                <span>Важно</span>
+              </label>
+              <p className="text-xs text-slate-500">Все заметки видны всем участникам</p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="btn btn-secondary btn-sm rounded-xl"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={onAddNote}
+                disabled={notesAction === 'create' || noteAttachmentsUploading}
+                className="btn btn-primary btn-sm rounded-xl"
+              >
+                {notesAction === 'create' ? 'Добавляем...' : 'Добавить заметку'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {imagePreview && (
         <Modal title={imagePreview.name} onClose={() => setImagePreview(null)} size="lg">

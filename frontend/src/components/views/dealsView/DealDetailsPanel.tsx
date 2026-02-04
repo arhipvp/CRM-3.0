@@ -857,6 +857,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         return (
           <div className="space-y-6">
             <DealNotesSection
+              dealId={selectedDeal?.id}
               notes={notes}
               notesLoading={notesLoading}
               notesFilter={notesFilter}

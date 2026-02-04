@@ -15,6 +15,7 @@ const note = {
 };
 
 const baseProps = {
+  dealId: 'deal-1',
   notes: [note],
   notesLoading: false,
   notesFilter: 'active' as const,
@@ -39,11 +40,13 @@ describe('DealNotesSection', () => {
     vi.clearAllMocks();
   });
 
-  it('renders filters, note form and invokes handlers', () => {
+  it('renders filters, note modal and invokes handlers', () => {
     render(<DealNotesSection {...baseProps} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Активные' }));
     expect(baseProps.onSetFilter).toHaveBeenCalledWith('active');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить заметку' }));
 
     fireEvent.change(screen.getByPlaceholderText('Заметка к сделке'), {
       target: { value: 'New note' },
