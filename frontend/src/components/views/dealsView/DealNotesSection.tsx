@@ -209,9 +209,11 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
   };
 
   const DraftAttachmentImage = ({
+    dealId,
     file,
     onOpen,
   }: {
+    dealId: string | null;
     file: DriveFile;
     onOpen: (payload: { src: string; name: string }) => void;
   }) => {
@@ -458,7 +460,11 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                   {noteAttachments.map((file) =>
                     isImageAttachment(file) ? (
                       <div key={file.id} className="relative">
-                        <DraftAttachmentImage file={file} onOpen={setImagePreview} />
+                        <DraftAttachmentImage
+                          dealId={dealId ?? null}
+                          file={file}
+                          onOpen={setImagePreview}
+                        />
                         <button
                           type="button"
                           onClick={() => onRemoveNoteAttachment(file)}
