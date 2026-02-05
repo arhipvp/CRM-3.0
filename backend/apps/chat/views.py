@@ -51,7 +51,7 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         allowed_deal_ids = (
             Deal.objects.with_deleted()
-            .filter(Q(seller=user) | Q(executor=user))
+            .filter(Q(seller=user) | Q(executor=user) | Q(visible_users=user))
             .values_list("id", flat=True)
         )
         return queryset.filter(deal_id__in=allowed_deal_ids)
@@ -84,7 +84,11 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return True
         if user_has_permission(user, "deal", "view"):
             return True
-        return deal.seller_id == user.id or deal.executor_id == user.id
+        return (
+            deal.seller_id == user.id
+            or deal.executor_id == user.id
+            or deal.visible_users.filter(id=user.id).exists()
+        )
 
     def _user_has_deal_access_by_id(self, user, deal_id: str | int) -> bool:
         if self._is_admin(user):
@@ -94,7 +98,7 @@ class ChatMessageViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         return (
             Deal.objects.with_deleted()
             .filter(id=deal_id)
-            .filter(Q(seller=user) | Q(executor=user))
+            .filter(Q(seller=user) | Q(executor=user) | Q(visible_users=user))
             .exists()
         )
 

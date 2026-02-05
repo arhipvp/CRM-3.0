@@ -1,5 +1,6 @@
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
+from apps.users.models import AuditLog
 from django.conf import settings
 from django.db.models import (
     BooleanField,
@@ -18,6 +19,7 @@ from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from .filters import DealFilterSet
@@ -114,7 +116,12 @@ class DealViewSet(
         ).exclude(status__in=CLOSED_STATUSES)
 
         if user and user.is_authenticated and not is_admin_user(user):
-            access_filter = Q(seller=user) | Q(executor=user) | Q(tasks__assignee=user)
+            access_filter = (
+                Q(seller=user)
+                | Q(executor=user)
+                | Q(tasks__assignee=user)
+                | Q(visible_users=user)
+            )
             queryset = queryset.filter(access_filter)
 
         return (
@@ -184,7 +191,12 @@ class DealViewSet(
         if is_admin:
             return queryset
 
-        access_filter = Q(seller=user) | Q(executor=user) | Q(tasks__assignee=user)
+        access_filter = (
+            Q(seller=user)
+            | Q(executor=user)
+            | Q(tasks__assignee=user)
+            | Q(visible_users=user)
+        )
         return queryset.filter(access_filter).distinct()
 
     def _pinned_ids(self, user):
@@ -293,24 +305,34 @@ class DealViewSet(
         return None
 
     def perform_create(self, serializer):
+        visible_before = set()
         if self.request.user and self.request.user.is_authenticated:
-            serializer.save(seller=self.request.user)
+            deal = serializer.save(seller=self.request.user)
         else:
-            serializer.save()
+            deal = serializer.save()
+        self._log_viewer_changes(deal, visible_before)
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
+        previous_ids = set(instance.visible_users.values_list("id", flat=True))
+        self._reject_viewer_update(request, instance)
         response = self._reject_when_no_seller(request.user, instance)
         if response:
             return response
-        return super().update(request, *args, **kwargs)
+        response = super().update(request, *args, **kwargs)
+        self._log_viewer_changes(instance, previous_ids)
+        return response
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
+        previous_ids = set(instance.visible_users.values_list("id", flat=True))
+        self._reject_viewer_update(request, instance)
         response = self._reject_when_no_seller(request.user, instance)
         if response:
             return response
-        return super().partial_update(request, *args, **kwargs)
+        response = super().partial_update(request, *args, **kwargs)
+        self._log_viewer_changes(instance, previous_ids)
+        return response
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -318,6 +340,55 @@ class DealViewSet(
         if response:
             return response
         return super().destroy(request, *args, **kwargs)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["include_policies"] = self.action == "retrieve"
+        return context
+
+    def _reject_viewer_update(self, request, instance):
+        if "visible_users" not in request.data:
+            return
+        if can_modify_deal(request.user, instance):
+            return
+        raise PermissionDenied(
+            "Изменять список наблюдателей может только продавец сделки или администратор."
+        )
+
+    def _log_viewer_changes(self, deal: Deal, previous_ids=None):
+        if not deal:
+            return
+        previous_ids = set(previous_ids or [])
+        current_ids = set(deal.visible_users.values_list("id", flat=True))
+        added_ids = sorted(current_ids - previous_ids)
+        removed_ids = sorted(previous_ids - current_ids)
+        if not added_ids and not removed_ids:
+            return
+
+        actor = self.request.user if self.request else None
+        actor = actor if actor and actor.is_authenticated else None
+        if added_ids:
+            AuditLog.objects.create(
+                actor=actor,
+                object_type="deal",
+                object_id=str(deal.id),
+                object_name=deal.title,
+                action="assign",
+                description="Добавлены наблюдатели сделки.",
+                old_value=[],
+                new_value=added_ids,
+            )
+        if removed_ids:
+            AuditLog.objects.create(
+                actor=actor,
+                object_type="deal",
+                object_id=str(deal.id),
+                object_name=deal.title,
+                action="revoke",
+                description="Удалены наблюдатели сделки.",
+                old_value=removed_ids,
+                new_value=[],
+            )
 
     @action(detail=True, methods=["post"], url_path="close")
     def close(self, request, pk=None):

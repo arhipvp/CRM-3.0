@@ -39,6 +39,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(
                 Q(deal__seller=user)
                 | Q(deal__executor=user)
+                | Q(deal__visible_users=user)
                 | Q(deal__tasks__assignee=user)
             ).distinct()
 

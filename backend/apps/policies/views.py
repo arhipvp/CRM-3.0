@@ -103,7 +103,11 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return queryset
 
         if not user_is_admin(user):
-            queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+            queryset = queryset.filter(
+                Q(deal__seller=user)
+                | Q(deal__executor=user)
+                | Q(deal__visible_users=user)
+            )
 
         return queryset
 

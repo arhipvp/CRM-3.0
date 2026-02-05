@@ -131,6 +131,13 @@ class Deal(SoftDeleteModel):
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
     )
+    visible_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through="deals.DealViewer",
+        related_name="visible_deals",
+        blank=True,
+        help_text="Пользователи с доступом только на просмотр",
+    )
 
     class Meta:
         ordering = ["next_contact_date", "-next_review_date", "-created_at"]
@@ -164,6 +171,34 @@ class DealPin(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["user", "deal"], name="unique_deal_pin")
+        ]
+        ordering = ["-created_at"]
+
+
+class DealViewer(models.Model):
+    deal = models.ForeignKey(
+        "deals.Deal",
+        related_name="viewer_links",
+        on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="deal_viewer_links",
+        on_delete=models.CASCADE,
+    )
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="deal_viewer_added",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Кто добавил пользователя в наблюдатели",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["deal", "user"], name="unique_deal_viewer")
         ]
         ordering = ["-created_at"]
 

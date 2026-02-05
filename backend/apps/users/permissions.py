@@ -59,8 +59,9 @@ class HasDealPermission(permissions.BasePermission):
         # Проверить, является ли пользователь продавцом или исполнителем
         is_seller = obj.seller_id == request.user.id
         is_executor = obj.executor_id == request.user.id
+        is_viewer = obj.visible_users.filter(id=request.user.id).exists()
 
-        if not (is_seller or is_executor):
+        if not (is_seller or is_executor or is_viewer):
             return False
 
         # Проверить права

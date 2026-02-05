@@ -1,9 +1,19 @@
 import datetime
 
+from apps.policies.serializers import PolicySerializer
 from django.contrib.auth import get_user_model
+from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from rest_framework import serializers
 
-from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
+from .models import (
+    Deal,
+    DealViewer,
+    InsuranceCompany,
+    InsuranceType,
+    Quote,
+    SalesChannel,
+)
 
 User = get_user_model()
 
@@ -144,6 +154,12 @@ class DealSerializer(serializers.ModelSerializer):
     payments_paid = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    policies = serializers.SerializerMethodField(read_only=True)
+    visible_users = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=User.objects.all(),
+        required=False,
+    )
 
     class Meta:
         model = Deal
@@ -172,6 +188,74 @@ class DealSerializer(serializers.ModelSerializer):
         if not user or not user.is_authenticated:
             return False
         return obj.pins.filter(user=user).exists()
+
+    def get_policies(self, obj: Deal):
+        if not self.context.get("include_policies"):
+            return []
+        decimal_field = DecimalField(max_digits=12, decimal_places=2)
+        policies = (
+            obj.policies.select_related(
+                "insurance_company",
+                "insurance_type",
+                "client",
+                "insured_client",
+                "sales_channel",
+                "deal",
+            )
+            .annotate(
+                payments_total=Coalesce(
+                    Sum("payments__amount"),
+                    Value(0),
+                    output_field=decimal_field,
+                ),
+                payments_paid=Coalesce(
+                    Sum(
+                        "payments__amount",
+                        filter=Q(payments__actual_date__isnull=False),
+                    ),
+                    Value(0),
+                    output_field=decimal_field,
+                ),
+            )
+            .order_by("-created_at")
+        )
+        return PolicySerializer(policies, many=True).data
+
+    def _set_visible_users(self, deal: Deal, users):
+        if users is None:
+            return
+        current_ids = set(deal.visible_users.values_list("id", flat=True))
+        new_ids = {user.id for user in users}
+        to_add = new_ids - current_ids
+        to_remove = current_ids - new_ids
+
+        if to_remove:
+            DealViewer.objects.filter(deal=deal, user_id__in=to_remove).delete()
+
+        if to_add:
+            request = self.context.get("request")
+            actor = getattr(request, "user", None)
+            added_by = actor if actor and actor.is_authenticated else None
+            DealViewer.objects.bulk_create(
+                [
+                    DealViewer(deal=deal, user_id=user_id, added_by=added_by)
+                    for user_id in to_add
+                ],
+                ignore_conflicts=True,
+            )
+
+    def create(self, validated_data):
+        visible_users = validated_data.pop("visible_users", None)
+        deal = super().create(validated_data)
+        self._set_visible_users(deal, visible_users)
+        return deal
+
+    def update(self, instance, validated_data):
+        visible_users = validated_data.pop("visible_users", None)
+        deal = super().update(instance, validated_data)
+        if visible_users is not None:
+            self._set_visible_users(deal, visible_users)
+        return deal
 
     @staticmethod
     def _get_user_display(user) -> str | None:

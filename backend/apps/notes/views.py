@@ -41,7 +41,9 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if is_admin:
             return queryset
 
-        return queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+        return queryset.filter(
+            Q(deal__seller=user) | Q(deal__executor=user) | Q(deal__visible_users=user)
+        )
 
     def get_queryset(self):
         queryset = self.get_base_queryset()
