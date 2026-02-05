@@ -134,6 +134,7 @@ class Deal(SoftDeleteModel):
     visible_users = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         through="deals.DealViewer",
+        through_fields=("deal", "user"),
         related_name="visible_deals",
         blank=True,
         help_text="Пользователи с доступом только на просмотр",
