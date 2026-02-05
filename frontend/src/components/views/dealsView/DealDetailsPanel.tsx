@@ -1000,6 +1000,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 source: selectedDeal.source ?? '',
                 nextContactDate: selectedDeal.nextContactDate ?? null,
                 expectedClose: selectedDeal.expectedClose ?? null,
+                visibleUserIds: selectedDeal.visibleUsers ?? [],
               }}
               mode="edit"
               showSellerField

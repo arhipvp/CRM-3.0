@@ -13,6 +13,7 @@ export interface DealFormValues {
   source?: string | null;
   sellerId?: string | null;
   nextContactDate?: string | null;
+  visibleUserIds?: string[];
 }
 
 interface QuickNextContactOption {
@@ -109,6 +110,7 @@ export const DealForm: React.FC<DealFormProps> = ({
   const initialExecutorId = initialValues?.executorId ?? defaultExecutorId ?? '';
   const initialSellerId = initialValues?.sellerId ?? '';
   const initialNextContactDate = initialValues?.nextContactDate ?? '';
+  const initialVisibleUsers = initialValues?.visibleUserIds ?? [];
   const initialClientId = initialValues?.clientId ?? preselectedClientId ?? '';
   const initialClientQuery = initialClientId ? (clientsById.get(initialClientId)?.name ?? '') : '';
 
@@ -121,6 +123,7 @@ export const DealForm: React.FC<DealFormProps> = ({
   const [executorId, setExecutorId] = useState(initialExecutorId);
   const [sellerId, setSellerId] = useState(initialSellerId);
   const [nextContactDate, setNextContactDate] = useState(initialNextContactDate);
+  const [visibleUserIds, setVisibleUserIds] = useState<string[]>(initialVisibleUsers);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
   const [isQuickSaving, setIsQuickSaving] = useState(false);
@@ -157,6 +160,10 @@ export const DealForm: React.FC<DealFormProps> = ({
   useEffect(() => {
     setNextContactDate(initialNextContactDate);
   }, [initialNextContactDate]);
+
+  useEffect(() => {
+    setVisibleUserIds(initialVisibleUsers);
+  }, [initialVisibleUsers]);
 
   useEffect(() => {
     if (!initialValues?.clientId) {
@@ -293,6 +300,7 @@ export const DealForm: React.FC<DealFormProps> = ({
       source: source.trim(),
       ...(showSellerField ? { sellerId: sellerId || null } : {}),
       ...(showNextContactField ? { nextContactDate: nextContactDate || null } : {}),
+      ...(mode === 'edit' ? { visibleUserIds } : {}),
     };
 
     setError(null);
@@ -419,6 +427,34 @@ export const DealForm: React.FC<DealFormProps> = ({
           ))}
         </select>
       </div>
+
+      {mode === 'edit' && (
+        <div>
+          <label className="block text-sm font-semibold text-slate-700">
+            Наблюдатели (только просмотр)
+          </label>
+          <select
+            multiple
+            value={visibleUserIds}
+            onChange={(event) => {
+              const selected = Array.from(event.target.selectedOptions).map(
+                (option) => option.value,
+              );
+              setVisibleUserIds(selected);
+            }}
+            className="mt-1 field field-input min-h-[140px]"
+          >
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {getUserFullName(user)}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            Эти пользователи видят сделку и связанные данные, но не могут редактировать.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-semibold text-slate-700">Описание</label>

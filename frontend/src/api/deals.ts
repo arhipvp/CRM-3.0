@@ -29,6 +29,7 @@ export async function createDeal(data: {
   expectedClose?: string | null;
   executorId?: string | null;
   source?: string;
+  visibleUserIds?: string[];
 }): Promise<Deal> {
   const payload = await request<Record<string, unknown>>('/deals/', {
     method: 'POST',
@@ -39,6 +40,7 @@ export async function createDeal(data: {
       expected_close: data.expectedClose || null,
       executor: data.executorId || null,
       source: data.source?.trim() ?? '',
+      visible_users: data.visibleUserIds ?? [],
     }),
   });
   return mapDeal(payload);
@@ -79,6 +81,7 @@ export async function updateDeal(
     executorId?: string | null;
     sellerId?: string | null;
     source?: string | null;
+    visibleUserIds?: string[];
   },
 ): Promise<Deal> {
   const body: Record<string, unknown> = {
@@ -97,6 +100,9 @@ export async function updateDeal(
   }
   if (data.source !== undefined) {
     body.source = typeof data.source === 'string' ? data.source.trim() : '';
+  }
+  if ('visibleUserIds' in data) {
+    body.visible_users = data.visibleUserIds ?? [];
   }
 
   const payload = await request<Record<string, unknown>>(`/deals/${id}/`, {

@@ -643,6 +643,7 @@ const AppContent: React.FC = () => {
         expectedClose: data.expectedClose,
         executorId: data.executorId,
         source: data.source?.trim() || undefined,
+        visibleUserIds: data.visibleUserIds,
       });
       updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
       setSelectedDealId(created.id);

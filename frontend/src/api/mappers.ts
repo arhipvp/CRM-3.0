@@ -180,6 +180,9 @@ export const mapDeal = (raw: Record<string, unknown>): Deal => {
     executor: toNullableString(raw.executor),
     sellerName: toNullableString(raw.seller_name),
     executorName: toNullableString(raw.executor_name),
+    visibleUsers: Array.isArray(raw.visible_users)
+      ? raw.visible_users.map((value) => String(value))
+      : undefined,
     deletedAt: raw.deleted_at === undefined ? null : toNullableString(raw.deleted_at),
   };
 };

@@ -205,6 +205,7 @@ export interface Deal {
   executorName?: string | null;
   paymentsPaid?: string;
   paymentsTotal?: string;
+  visibleUsers?: string[];
 }
 
 export interface DealMergeResponse {

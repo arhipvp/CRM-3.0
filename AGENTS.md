@@ -26,6 +26,8 @@
 
 запускай PowerShell без -windowstyle hidden
 
+ВАЖНО! При работе с миграциями используй средства Django.
+
 # Repository Guidelines
 
 ## Project Structure & Module Organization
