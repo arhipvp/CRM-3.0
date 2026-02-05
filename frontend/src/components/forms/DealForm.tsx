@@ -110,7 +110,10 @@ export const DealForm: React.FC<DealFormProps> = ({
   const initialExecutorId = initialValues?.executorId ?? defaultExecutorId ?? '';
   const initialSellerId = initialValues?.sellerId ?? '';
   const initialNextContactDate = initialValues?.nextContactDate ?? '';
-  const initialVisibleUsers = initialValues?.visibleUserIds ?? [];
+  const initialVisibleUsers = useMemo(
+    () => initialValues?.visibleUserIds ?? [],
+    [initialValues?.visibleUserIds],
+  );
   const initialClientId = initialValues?.clientId ?? preselectedClientId ?? '';
   const initialClientQuery = initialClientId ? (clientsById.get(initialClientId)?.name ?? '') : '';
 
@@ -224,6 +227,15 @@ export const DealForm: React.FC<DealFormProps> = ({
     }
     return clients.filter((client) => client.name.toLowerCase().includes(normalized));
   }, [clients, clientQuery]);
+
+  const selectedViewerUsers = useMemo(
+    () => users.filter((user) => visibleUserIds.includes(user.id)),
+    [users, visibleUserIds],
+  );
+  const availableViewerUsers = useMemo(
+    () => users.filter((user) => !visibleUserIds.includes(user.id)),
+    [users, visibleUserIds],
+  );
 
   const resolveClientFromQuery = () => {
     const trimmed = clientQuery.trim();
@@ -433,24 +445,44 @@ export const DealForm: React.FC<DealFormProps> = ({
           <label className="block text-sm font-semibold text-slate-700">
             Наблюдатели (только просмотр)
           </label>
-          <select
-            multiple
-            value={visibleUserIds}
-            onChange={(event) => {
-              const selected = Array.from(event.target.selectedOptions).map(
-                (option) => option.value,
-              );
-              setVisibleUserIds(selected);
-            }}
-            className="mt-1 field field-input min-h-[140px]"
-          >
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {getUserFullName(user)}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-slate-500">
+          <div className="mt-2 space-y-3">
+            <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              {selectedViewerUsers.length ? (
+                selectedViewerUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => setVisibleUserIds((prev) => prev.filter((id) => id !== user.id))}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm text-slate-700 shadow-sm hover:bg-slate-100"
+                  >
+                    {getUserFullName(user)}
+                    <span className="text-slate-400">×</span>
+                  </button>
+                ))
+              ) : (
+                <span className="text-sm text-slate-400">Никто не выбран</span>
+              )}
+            </div>
+            <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white">
+              {availableViewerUsers.length ? (
+                availableViewerUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => setVisibleUserIds((prev) => [...prev, user.id])}
+                    className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    {getUserFullName(user)}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-slate-500">
+                  Все пользователи уже добавлены
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
             Эти пользователи видят сделку и связанные данные, но не могут редактировать.
           </p>
         </div>
