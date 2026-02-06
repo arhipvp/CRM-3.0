@@ -34,9 +34,12 @@ jobs:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
       - name: Add VPS to known hosts
+        env:
+          VPS_PORT: ${{ secrets.VPS_PORT }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          VPS_PORT="${VPS_PORT:-22}"
+          ssh-keyscan -p "${VPS_PORT}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Set branch and commit
         id: ref
@@ -63,13 +66,30 @@ jobs:
           repo = os.environ["GITHUB_REPOSITORY"]
           sha = os.environ.get("COMMIT_SHA") or os.environ["GITHUB_SHA"]
           token = os.environ.get("GITHUB_TOKEN")
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+          workflow_name = os.environ.get("CI_WORKFLOW_NAME", "CI - Code Quality & Tests")
+          workflow_file = os.environ.get("CI_WORKFLOW_FILE", "ci.yml")
           max_attempts = 30
           sleep_seconds = 20
           
-          url = f"https://api.github.com/repos/{repo}/actions/workflows/ci.yml/runs?head_sha={sha}&per_page=1"
-          req = urllib.request.Request(url)
-          req.add_header("Authorization", f"Bearer {token}")
-          req.add_header("Accept", "application/vnd.github+json")
+          base_headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+          }
+          
+          workflows_url = f"https://api.github.com/repos/{repo}/actions/workflows"
+          workflows_req = urllib.request.Request(workflows_url, headers=base_headers)
+          workflow_id = None
+          with urllib.request.urlopen(workflows_req, timeout=20) as resp:
+              data = json.loads(resp.read().decode("utf-8"))
+          for wf in data.get("workflows", []):
+              if wf.get("name") == workflow_name:
+                  workflow_id = wf.get("id")
+                  break
+          workflow_ref = workflow_id or workflow_file
+          
+          url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_ref}/runs?head_sha={sha}&per_page=1"
+          req = urllib.request.Request(url, headers=base_headers)
           
           for attempt in range(1, max_attempts + 1):
               with urllib.request.urlopen(req, timeout=20) as resp:
@@ -77,6 +97,9 @@ jobs:
           
               runs = data.get("workflow_runs", [])
               if not runs:
+                  if event_name == "workflow_dispatch":
+                      print("No CI runs found for this commit yet (manual deploy). Skipping wait.")
+                      sys.exit(0)
                   print("No CI runs found for this commit yet.")
               else:
                   run = runs[0]
@@ -99,6 +122,8 @@ jobs:
 
       - name: Deploy via SSH
         env:
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_PATH: ${{ secrets.VPS_PATH }}
           MAILCOW_HOSTNAME: ${{ secrets.MAILCOW_HOSTNAME }}
           MAILCOW_TZ: ${{ secrets.MAILCOW_TZ }}
           MAILCOW_ADMIN_EMAIL: ${{ secrets.MAILCOW_ADMIN_EMAIL }}
@@ -113,10 +138,27 @@ jobs:
         run: |
           BRANCH="${BRANCH:-master}"
           COMMIT_SHA="${COMMIT_SHA:-$(git rev-parse HEAD)}"
-          ssh "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" <<EOF
+          VPS_PORT="${VPS_PORT:-22}"
+          ssh -p "${VPS_PORT}" \
+            "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" \
+            VPS_PATH="${VPS_PATH}" \
+            BRANCH="${BRANCH}" \
+            COMMIT_SHA="${COMMIT_SHA}" \
+            MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME}" \
+            MAILCOW_TZ="${MAILCOW_TZ}" \
+            MAILCOW_ADMIN_EMAIL="${MAILCOW_ADMIN_EMAIL}" \
+            MAILCOW_ADMIN_PASS="${MAILCOW_ADMIN_PASS}" \
+            MAILCOW_API_KEY="${MAILCOW_API_KEY}" \
+            MAILCOW_API_ALLOW_FROM="${MAILCOW_API_ALLOW_FROM}" \
+            MAILCOW_DOMAIN="${MAILCOW_DOMAIN}" \
+            MAILCOW_IMAP_MASTER_USER="${MAILCOW_IMAP_MASTER_USER}" \
+            MAILCOW_IMAP_MASTER_PASS="${MAILCOW_IMAP_MASTER_PASS}" \
+            MAILCOW_PROJECT_NAME="${MAILCOW_PROJECT_NAME}" \
+            MAILCOW_ADDITIONAL_SERVER_NAMES="${MAILCOW_ADDITIONAL_SERVER_NAMES}" \
+            bash -s <<'EOF'
           set -euo pipefail
 
-          cd "${{ secrets.VPS_PATH }}"
+          cd "${VPS_PATH}"
 
           echo "Fetching ${BRANCH}..."
           git fetch origin "${BRANCH}" --quiet
