@@ -54,48 +54,48 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 - <<'PY'
-import json
-import os
-import sys
-import time
-import urllib.request
+          import json
+          import os
+          import sys
+          import time
+          import urllib.request
 
-repo = os.environ["GITHUB_REPOSITORY"]
-sha = os.environ.get("COMMIT_SHA") or os.environ["GITHUB_SHA"]
-token = os.environ.get("GITHUB_TOKEN")
-max_attempts = 30
-sleep_seconds = 20
+          repo = os.environ["GITHUB_REPOSITORY"]
+          sha = os.environ.get("COMMIT_SHA") or os.environ["GITHUB_SHA"]
+          token = os.environ.get("GITHUB_TOKEN")
+          max_attempts = 30
+          sleep_seconds = 20
 
-url = f"https://api.github.com/repos/{repo}/actions/workflows/ci.yml/runs?head_sha={sha}&per_page=1"
-req = urllib.request.Request(url)
-req.add_header("Authorization", f"Bearer {token}")
-req.add_header("Accept", "application/vnd.github+json")
+          url = f"https://api.github.com/repos/{repo}/actions/workflows/ci.yml/runs?head_sha={sha}&per_page=1"
+          req = urllib.request.Request(url)
+          req.add_header("Authorization", f"Bearer {token}")
+          req.add_header("Accept", "application/vnd.github+json")
 
-for attempt in range(1, max_attempts + 1):
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+          for attempt in range(1, max_attempts + 1):
+              with urllib.request.urlopen(req, timeout=20) as resp:
+                  data = json.loads(resp.read().decode("utf-8"))
 
-    runs = data.get("workflow_runs", [])
-    if not runs:
-        print("No CI runs found for this commit yet.")
-    else:
-        run = runs[0]
-        status = run.get("status")
-        conclusion = run.get("conclusion")
-        print(f"CI status={status}, conclusion={conclusion}")
-        if status == "completed":
-            if conclusion != "success":
-                print(f"CI run conclusion is {conclusion}. Aborting deploy.")
-                sys.exit(1)
-            print("CI succeeded, proceeding with deploy.")
-            sys.exit(0)
+              runs = data.get("workflow_runs", [])
+              if not runs:
+                  print("No CI runs found for this commit yet.")
+              else:
+                  run = runs[0]
+                  status = run.get("status")
+                  conclusion = run.get("conclusion")
+                  print(f"CI status={status}, conclusion={conclusion}")
+                  if status == "completed":
+                      if conclusion != "success":
+                          print(f"CI run conclusion is {conclusion}. Aborting deploy.")
+                          sys.exit(1)
+                      print("CI succeeded, proceeding with deploy.")
+                      sys.exit(0)
 
-    if attempt < max_attempts:
-        time.sleep(sleep_seconds)
+              if attempt < max_attempts:
+                  time.sleep(sleep_seconds)
 
-print("CI did not complete in time. Aborting deploy.")
-sys.exit(1)
-PY
+          print("CI did not complete in time. Aborting deploy.")
+          sys.exit(1)
+          PY
 
       - name: Deploy via SSH
         env:
