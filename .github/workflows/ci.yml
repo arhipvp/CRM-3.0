@@ -210,8 +210,8 @@ jobs:
           file: ./backend/Dockerfile
           push: false
           tags: crm30-backend:${{ github.sha }}
-          cache-from: type=registry,ref=crm30-backend:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build frontend image
         uses: docker/build-push-action@v4
@@ -220,8 +220,8 @@ jobs:
           file: ./frontend/Dockerfile
           push: false
           tags: crm30-frontend:${{ github.sha }}
-          cache-from: type=registry,ref=crm30-frontend:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   quality-gate:
     name: Quality Gate
