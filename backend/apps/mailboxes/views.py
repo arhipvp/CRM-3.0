@@ -23,11 +23,15 @@ def _generate_mailbox_password() -> str:
 def _imap_login(
     imap: imaplib.IMAP4_SSL, mailbox_email: str, master_user: str, master_pass: str
 ) -> None:
+    if "@" in master_user:
+        master_login = master_user
+    else:
+        master_login = f"{master_user}@mailcow.local"
     try:
-        imap.login(f"{mailbox_email}*{master_user}", master_pass)
+        imap.login(f"{mailbox_email}*{master_login}", master_pass)
         return
     except imaplib.IMAP4.error:
-        imap.login(f"{master_user}*{mailbox_email}", master_pass)
+        imap.login(f"{master_login}*{mailbox_email}", master_pass)
 
 
 def _fetch_messages(mailbox_email: str, limit: int) -> list[dict[str, Any]]:
