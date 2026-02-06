@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     "apps.notes",
     "apps.chat",
     "apps.policies",
+    "apps.mailboxes",
 ]
 
 MIDDLEWARE = [
@@ -215,6 +216,14 @@ TELEGRAM_LINK_CODE_TTL_MINUTES = int(
 )
 CRM_PUBLIC_URL = config("CRM_PUBLIC_URL", default="")
 DEAL_PIN_LIMIT = int(config("DEAL_PIN_LIMIT", default="5"))
+
+MAILCOW_API_URL = config("MAILCOW_API_URL", default="")
+MAILCOW_API_KEY = config("MAILCOW_API_KEY", default="")
+MAILCOW_DOMAIN = config("MAILCOW_DOMAIN", default="")
+MAILCOW_IMAP_HOST = config("MAILCOW_IMAP_HOST", default="")
+MAILCOW_IMAP_PORT = int(config("MAILCOW_IMAP_PORT", default="993"))
+MAILCOW_IMAP_MASTER_USER = config("MAILCOW_IMAP_MASTER_USER", default="")
+MAILCOW_IMAP_MASTER_PASS = config("MAILCOW_IMAP_MASTER_PASS", default="")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

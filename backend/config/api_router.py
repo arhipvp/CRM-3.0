@@ -13,6 +13,7 @@ from apps.finances.views import (
     PaymentViewSet,
     StatementViewSet,
 )
+from apps.mailboxes.views import MailboxViewSet
 from apps.notes.views import NoteViewSet
 from apps.notifications.views import NotificationViewSet
 from apps.policies.views import PolicyViewSet
@@ -51,5 +52,6 @@ router.register("policies", PolicyViewSet, basename="policy")
 router.register("users", UserViewSet, basename="user")
 router.register("roles", RoleViewSet, basename="role")
 router.register("permissions", PermissionViewSet, basename="permission")
+router.register("mailboxes", MailboxViewSet, basename="mailbox")
 
 api_urlpatterns = router.urls

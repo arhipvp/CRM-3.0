@@ -13,3 +13,4 @@ export * from './api/tasks';
 export * from './api/chat';
 export * from './api/knowledge';
 export * from './api/notifications';
+export * from './api/mailboxes';

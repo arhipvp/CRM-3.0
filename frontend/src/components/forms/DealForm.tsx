@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Client, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { getUserColor } from '../../utils/userColor';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
 
@@ -72,6 +73,8 @@ const getUserFullName = (user: User) => {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
   return fullName || user.username;
 };
+
+const getUserColorValue = (user: User) => getUserColor(user.username ?? undefined);
 
 export const DealForm: React.FC<DealFormProps> = ({
   clients,
@@ -448,33 +451,55 @@ export const DealForm: React.FC<DealFormProps> = ({
           <div className="mt-2 space-y-3">
             <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               {selectedViewerUsers.length ? (
-                selectedViewerUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => setVisibleUserIds((prev) => prev.filter((id) => id !== user.id))}
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm text-slate-700 shadow-sm hover:bg-slate-100"
-                  >
-                    {getUserFullName(user)}
-                    <span className="text-slate-400">×</span>
-                  </button>
-                ))
+                selectedViewerUsers.map((user) => {
+                  const userColor = getUserColorValue(user);
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() =>
+                        setVisibleUserIds((prev) => prev.filter((id) => id !== user.id))
+                      }
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm text-slate-700 shadow-sm hover:bg-slate-100"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={userColor ? { backgroundColor: userColor } : undefined}
+                        />
+                        <span style={userColor ? { color: userColor } : undefined}>
+                          {getUserFullName(user)}
+                        </span>
+                      </span>
+                      <span className="text-slate-400">×</span>
+                    </button>
+                  );
+                })
               ) : (
                 <span className="text-sm text-slate-400">Никто не выбран</span>
               )}
             </div>
             <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white">
               {availableViewerUsers.length ? (
-                availableViewerUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => setVisibleUserIds((prev) => [...prev, user.id])}
-                    className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                  >
-                    {getUserFullName(user)}
-                  </button>
-                ))
+                availableViewerUsers.map((user) => {
+                  const userColor = getUserColorValue(user);
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => setVisibleUserIds((prev) => [...prev, user.id])}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={userColor ? { backgroundColor: userColor } : undefined}
+                      />
+                      <span style={userColor ? { color: userColor } : undefined}>
+                        {getUserFullName(user)}
+                      </span>
+                    </button>
+                  );
+                })
               ) : (
                 <div className="px-3 py-2 text-sm text-slate-500">
                   Все пользователи уже добавлены

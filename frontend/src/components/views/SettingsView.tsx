@@ -2,10 +2,16 @@ import React, { useEffect, useState } from 'react';
 
 import {
   changePassword,
+  createMailbox,
   createTelegramLink,
+  deleteMailbox,
+  fetchMailboxes,
+  fetchMailboxMessages,
   fetchNotificationSettings,
   unlinkTelegram,
   updateNotificationSettings,
+  type Mailbox,
+  type MailboxMessage,
   type NotificationSettings,
   type TelegramLinkResponse,
 } from '../../api';
@@ -28,6 +34,16 @@ export const SettingsView: React.FC = () => {
   const [nextContactLeadDaysInput, setNextContactLeadDaysInput] = useState('');
   const [nextContactLeadDaysError, setNextContactLeadDaysError] = useState('');
   const [nextContactLeadDaysSaving, setNextContactLeadDaysSaving] = useState(false);
+  const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
+  const [mailboxLoading, setMailboxLoading] = useState(true);
+  const [mailboxError, setMailboxError] = useState('');
+  const [mailboxLocalPart, setMailboxLocalPart] = useState('');
+  const [mailboxDisplayName, setMailboxDisplayName] = useState('');
+  const [mailboxCreating, setMailboxCreating] = useState(false);
+  const [mailboxCreatedPassword, setMailboxCreatedPassword] = useState<string | null>(null);
+  const [selectedMailboxId, setSelectedMailboxId] = useState<number | null>(null);
+  const [mailMessages, setMailMessages] = useState<MailboxMessage[]>([]);
+  const [mailMessagesLoading, setMailMessagesLoading] = useState(false);
   const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? '').trim();
   const normalizedTelegramBotUsername = telegramBotUsername.replace(/^@/, '');
   const telegramBotLink = normalizedTelegramBotUsername
@@ -89,6 +105,33 @@ export const SettingsView: React.FC = () => {
     };
 
     loadSettings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadMailboxes = async () => {
+      setMailboxLoading(true);
+      setMailboxError('');
+      try {
+        const items = await fetchMailboxes();
+        if (mounted) {
+          setMailboxes(items);
+        }
+      } catch (err) {
+        if (mounted) {
+          setMailboxError(formatErrorMessage(err, 'Не удалось загрузить почтовые ящики.'));
+        }
+      } finally {
+        if (mounted) {
+          setMailboxLoading(false);
+        }
+      }
+    };
+
+    loadMailboxes();
     return () => {
       mounted = false;
     };
@@ -179,6 +222,62 @@ export const SettingsView: React.FC = () => {
       setTelegramError(formatErrorMessage(err, 'Не удалось получить код привязки.'));
     } finally {
       setTelegramSaving(false);
+    }
+  };
+
+  const handleMailboxCreate = async () => {
+    const localPart = mailboxLocalPart.trim();
+    if (!localPart) {
+      setMailboxError('Введите имя ящика.');
+      return;
+    }
+    setMailboxCreating(true);
+    setMailboxError('');
+    setMailboxCreatedPassword(null);
+    try {
+      const mailbox = await createMailbox({
+        local_part: localPart,
+        display_name: mailboxDisplayName.trim() || undefined,
+      });
+      setMailboxes((prev) => [mailbox, ...prev]);
+      setMailboxLocalPart('');
+      setMailboxDisplayName('');
+      if (mailbox.initial_password) {
+        setMailboxCreatedPassword(mailbox.initial_password);
+      }
+    } catch (err) {
+      setMailboxError(formatErrorMessage(err, 'Не удалось создать ящик.'));
+    } finally {
+      setMailboxCreating(false);
+    }
+  };
+
+  const handleMailboxDelete = async (mailboxId: number) => {
+    setMailboxError('');
+    try {
+      await deleteMailbox(mailboxId);
+      setMailboxes((prev) => prev.filter((item) => item.id !== mailboxId));
+      if (selectedMailboxId === mailboxId) {
+        setSelectedMailboxId(null);
+        setMailMessages([]);
+      }
+    } catch (err) {
+      setMailboxError(formatErrorMessage(err, 'Не удалось удалить ящик.'));
+    }
+  };
+
+  const handleMailboxSelect = async (mailboxId: number) => {
+    setSelectedMailboxId(mailboxId);
+    setMailMessages([]);
+    setMailMessagesLoading(true);
+    setMailboxError('');
+    try {
+      const response = await fetchMailboxMessages(mailboxId, 20);
+      setMailMessages(response.items ?? []);
+    } catch (err) {
+      setMailboxError(formatErrorMessage(err, 'Не удалось загрузить письма.'));
+    } finally {
+      setMailMessagesLoading(false);
     }
   };
 
@@ -351,6 +450,125 @@ export const SettingsView: React.FC = () => {
               </p>
             </div>
           </>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
+        <header className="space-y-1">
+          <h3 className="text-lg font-semibold text-slate-900">Почта</h3>
+          <p className="text-sm text-slate-600">
+            Создавайте почтовые ящики и просматривайте входящие письма прямо здесь.
+          </p>
+        </header>
+
+        {mailboxError && <p className="app-alert app-alert-danger">{mailboxError}</p>}
+
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end">
+          <div className="space-y-2">
+            <label className="app-label">Имя ящика</label>
+            <input
+              type="text"
+              value={mailboxLocalPart}
+              onChange={(event) => setMailboxLocalPart(event.target.value)}
+              placeholder="sales"
+              className="field field-input"
+              disabled={mailboxCreating}
+            />
+            <p className="text-xs text-slate-500">Будет создан адрес вида sales@zoom78.com.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="app-label">Имя пользователя</label>
+            <input
+              type="text"
+              value={mailboxDisplayName}
+              onChange={(event) => setMailboxDisplayName(event.target.value)}
+              placeholder="Отдел продаж"
+              className="field field-input"
+              disabled={mailboxCreating}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleMailboxCreate}
+            disabled={mailboxCreating}
+          >
+            {mailboxCreating ? 'Создаём...' : 'Создать'}
+          </button>
+        </div>
+
+        {mailboxCreatedPassword && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            Пароль для нового ящика: <span className="font-semibold">{mailboxCreatedPassword}</span>
+          </div>
+        )}
+
+        {mailboxLoading ? (
+          <p className="text-sm text-slate-500">Загружаем ящики...</p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-700">Ваши ящики</p>
+              {mailboxes.length === 0 ? (
+                <p className="text-sm text-slate-500">Пока нет созданных ящиков.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {mailboxes.map((mailbox) => (
+                    <li
+                      key={mailbox.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{mailbox.email}</p>
+                        {mailbox.display_name && (
+                          <p className="text-xs text-slate-500">{mailbox.display_name}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleMailboxSelect(mailbox.id)}
+                        >
+                          Письма
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => handleMailboxDelete(mailbox.id)}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-700">Входящие</p>
+              {selectedMailboxId === null ? (
+                <p className="text-sm text-slate-500">Выберите ящик, чтобы увидеть письма.</p>
+              ) : mailMessagesLoading ? (
+                <p className="text-sm text-slate-500">Загружаем письма...</p>
+              ) : mailMessages.length === 0 ? (
+                <p className="text-sm text-slate-500">Писем пока нет.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {mailMessages.map((message) => (
+                    <li key={message.id} className="rounded-xl border border-slate-200 p-3">
+                      <div className="text-xs text-slate-500">{message.date}</div>
+                      <div className="text-sm font-semibold text-slate-900">{message.subject}</div>
+                      <div className="text-xs text-slate-500">От: {message.from}</div>
+                      {message.snippet && (
+                        <p className="text-xs text-slate-600 mt-1">{message.snippet}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         )}
       </section>
 

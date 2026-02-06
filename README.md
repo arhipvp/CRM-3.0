@@ -34,6 +34,41 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - **Переменные окружения**: общий `.env`, `backend/.env` и `frontend/.env` (можно подключить `.env.production`, `.env.vps.secure`). Не коммитить реальные секреты.
 - **Telegram-бот**: запускается отдельным процессом (`python manage.py run_telegram_bot`) и в `docker-compose.prod.yml` выделен сервис `telegram_bot`. Требует `TELEGRAM_BOT_TOKEN`, опционально `TELEGRAM_BOT_USERNAME` для deep-link и `CRM_PUBLIC_URL` для кликабельных ссылок на сделки; для фронтенда добавьте `VITE_TELEGRAM_BOT_USERNAME`, чтобы в настройках показывалась кликабельная ссылка на бота. Отправляет напоминания о полисах за 5, 3 и 1 день до окончания (кратко с «❗» за <3 дня), привязывает ссылки к сделкам и ФИО клиента.
 
+### Почта (mailcow)
+- Почтовый стек разворачивается в подпапке `mailcow/` (submodule) и управляется через CI/CD.
+- UI и API mailcow проксируются через наш `nginx` на поддомен `mail.zoom78.com`.
+- Входящие письма читаются из CRM через IMAP (master user), отправка писем не используется.
+- `docker-compose.prod.yml` использует внешнюю сеть `mailcow_mailcow-network` (её создаёт mailcow при первом запуске).
+
+**DNS записи (делаются у регистратора домена):**
+- `A` `mail.zoom78.com` → `173.249.7.183`
+- `MX` `zoom78.com` → `mail.zoom78.com`
+- `CNAME` `autodiscover.zoom78.com` → `mail.zoom78.com`
+- `CNAME` `autoconfig.zoom78.com` → `mail.zoom78.com`
+
+**PTR (reverse DNS):**
+- Настраивается у провайдера VPS (Contabo), значение: `mail.zoom78.com`.
+
+**Порты:**
+- Должны быть открыты: `25, 465, 587, 143, 993, 110, 995, 4190` (SMTP/IMAP/POP/Sieve).
+
+**GitHub Secrets для deploy.yml:**
+- `MAILCOW_HOSTNAME` (пример: `mail.zoom78.com`)
+- `MAILCOW_TZ` (пример: `Europe/Berlin`)
+- `MAILCOW_ADMIN_EMAIL`
+- `MAILCOW_ADMIN_PASS`
+- `MAILCOW_API_KEY`
+- `MAILCOW_API_ALLOW_FROM` (например: `127.0.0.1,173.249.7.183`)
+- `MAILCOW_DOMAIN` (например: `zoom78.com`)
+- `MAILCOW_IMAP_MASTER_USER`
+- `MAILCOW_IMAP_MASTER_PASS`
+- `MAILCOW_PROJECT_NAME` (по умолчанию `mailcow`)
+- `MAILCOW_ADDITIONAL_SERVER_NAMES` (например: `autodiscover.zoom78.com,autoconfig.zoom78.com`)
+
+**Сертификаты:**
+- После добавления DNS нужно расширить сертификат для `mail.zoom78.com`, `autodiscover.zoom78.com`, `autoconfig.zoom78.com`.
+- Сертификат хранится в `/etc/letsencrypt`, `nginx` подхватывает его через volume.
+
 ### Приложения Django
 - `clients`: догоняет данные о клиентах (контакты, email, документы), хранит `Client` и связи с менеджерами.
 - `deals`: сделки, расчёты (модели `Deal`, `Quote`, `InsuranceCompany`, `InsuranceType`, `SalesChannel`; в `Quote` есть флаги «Официальный дилер» и `GAP`), управление стадиями/статусами и Google Drive-метаданными (удаление файлов из таба «Файлы» — мягкое, через перемещение в подпапку `Корзина` внутри папки сделки).

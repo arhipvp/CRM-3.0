@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
 
       - name: Prepare SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -45,6 +47,18 @@ jobs:
           fi
 
       - name: Deploy via SSH
+        env:
+          MAILCOW_HOSTNAME: ${{ secrets.MAILCOW_HOSTNAME }}
+          MAILCOW_TZ: ${{ secrets.MAILCOW_TZ }}
+          MAILCOW_ADMIN_EMAIL: ${{ secrets.MAILCOW_ADMIN_EMAIL }}
+          MAILCOW_ADMIN_PASS: ${{ secrets.MAILCOW_ADMIN_PASS }}
+          MAILCOW_API_KEY: ${{ secrets.MAILCOW_API_KEY }}
+          MAILCOW_API_ALLOW_FROM: ${{ secrets.MAILCOW_API_ALLOW_FROM }}
+          MAILCOW_DOMAIN: ${{ secrets.MAILCOW_DOMAIN }}
+          MAILCOW_IMAP_MASTER_USER: ${{ secrets.MAILCOW_IMAP_MASTER_USER }}
+          MAILCOW_IMAP_MASTER_PASS: ${{ secrets.MAILCOW_IMAP_MASTER_PASS }}
+          MAILCOW_PROJECT_NAME: ${{ secrets.MAILCOW_PROJECT_NAME }}
+          MAILCOW_ADDITIONAL_SERVER_NAMES: ${{ secrets.MAILCOW_ADDITIONAL_SERVER_NAMES }}
         run: |
           BRANCH="${BRANCH:-master}"
           COMMIT_SHA="${COMMIT_SHA:-$(git rev-parse HEAD)}"
@@ -60,10 +74,114 @@ jobs:
           # (untracked files like .env.production must remain untouched).
           git reset --hard --quiet
           git checkout "${COMMIT_SHA}"
+          git submodule sync --recursive
+          git submodule update --init --recursive
 
           if [ ! -f .env.production ]; then
             echo "Missing .env.production on server. Configure secrets via SSH before deploy."
             exit 1
+          fi
+
+          if [ -d mailcow ]; then
+            echo "Preparing mailcow..."
+            cd mailcow
+            ln -sf mailcow.conf .env
+            if [ ! -f mailcow.conf ]; then
+              MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME}" \
+              MAILCOW_TZ="${MAILCOW_TZ}" \
+              SKIP_CLAMD=y \
+              ./generate_config.sh --dev
+            fi
+
+            python3 - <<'PY'
+from pathlib import Path
+import os
+import re
+
+path = Path("mailcow.conf")
+text = path.read_text(encoding="utf-8")
+
+replacements = {
+    "HTTP_BIND=": "HTTP_BIND=127.0.0.1",
+    "HTTP_PORT=80": "HTTP_PORT=8080",
+    "HTTPS_BIND=": "HTTPS_BIND=127.0.0.1",
+    "HTTPS_PORT=443": "HTTPS_PORT=8443",
+    "HTTP_REDIRECT=y": "HTTP_REDIRECT=n",
+    "SKIP_LETS_ENCRYPT=n": "SKIP_LETS_ENCRYPT=y",
+}
+
+for old, new in replacements.items():
+    if old in text:
+        text = text.replace(old, new)
+
+def upsert(key: str, value: str) -> None:
+    global text
+    if f"{key}=" in text:
+        text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
+    else:
+        text += f"\n{key}={value}\n"
+
+api_key = os.environ.get("MAILCOW_API_KEY", "")
+api_allow = os.environ.get("MAILCOW_API_ALLOW_FROM", "127.0.0.1,173.249.7.183")
+imap_master_user = os.environ.get("MAILCOW_IMAP_MASTER_USER", "crm_master")
+imap_master_pass = os.environ.get("MAILCOW_IMAP_MASTER_PASS", "crmMaster2026")
+project_name = os.environ.get("MAILCOW_PROJECT_NAME", "mailcow")
+additional_names = os.environ.get(
+    "MAILCOW_ADDITIONAL_SERVER_NAMES",
+    "autodiscover.zoom78.com,autoconfig.zoom78.com",
+)
+
+if api_key:
+    upsert("API_KEY", api_key)
+    upsert("API_ALLOW_FROM", api_allow)
+
+upsert("DOVECOT_MASTER_USER", imap_master_user)
+upsert("DOVECOT_MASTER_PASS", imap_master_pass)
+upsert("COMPOSE_PROJECT_NAME", project_name)
+upsert("ADDITIONAL_SERVER_NAMES", additional_names)
+
+path.write_text(text, encoding="utf-8")
+PY
+            cd ..
+
+            if command -v ufw >/dev/null 2>&1; then
+              ufw allow 25/tcp
+              ufw allow 465/tcp
+              ufw allow 587/tcp
+              ufw allow 143/tcp
+              ufw allow 993/tcp
+              ufw allow 110/tcp
+              ufw allow 995/tcp
+              ufw allow 4190/tcp
+            fi
+          fi
+
+          if [ -d mailcow ]; then
+            echo "Starting mailcow stack"
+            docker compose -f mailcow/docker-compose.yml up -d
+
+            if [ -n "${MAILCOW_ADMIN_PASS}" ]; then
+              echo "Ensuring mailcow admin password"
+              cd mailcow
+              # shellcheck disable=SC1091
+              source mailcow.conf
+              until docker ps -qf name=mysql-mailcow >/dev/null; do sleep 3; done
+              password_hash=$(docker exec -i $(docker ps -qf name=dovecot-mailcow) doveadm pw -s SSHA256 -p "${MAILCOW_ADMIN_PASS}" | tr -d '\r')
+              docker exec -i $(docker ps -qf name=mysql-mailcow) mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "DELETE FROM admin WHERE username='admin';"
+              docker exec -i $(docker ps -qf name=mysql-mailcow) mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "DELETE FROM domain_admins WHERE username='admin';"
+              docker exec -i $(docker ps -qf name=mysql-mailcow) mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "INSERT INTO admin (username, password, superadmin, active) VALUES ('admin', '${password_hash}', 1, 1);"
+              docker exec -i $(docker ps -qf name=mysql-mailcow) mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "DELETE FROM tfa WHERE username='admin';"
+              cd ..
+            fi
+
+            if [ -n "${MAILCOW_API_KEY}" ] && [ -n "${MAILCOW_DOMAIN}" ]; then
+              echo "Ensuring mailcow domain exists"
+              payload=$(printf '{"domain":"%s","description":"CRM domain","active":true,"aliases":200,"mailboxes":200,"maxquota":10240,"quota":10240,"defquota":3072,"restart_sogo":1}' "${MAILCOW_DOMAIN}")
+              curl -s -X POST "http://127.0.0.1:8080/api/v1/add/domain" \
+                -H "Content-Type: application/json" \
+                -H "X-API-Key: ${MAILCOW_API_KEY}" \
+                -d "${payload}" >/dev/null || true
+            fi
           fi
 
           echo "Building and restarting stack"

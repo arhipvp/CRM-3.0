@@ -141,6 +141,7 @@ services:
         condition: service_started
     networks:
       - crm_network
+      - mailcow_network
 
 volumes:
   postgres_data:
@@ -151,3 +152,6 @@ volumes:
 networks:
   crm_network:
     driver: bridge
+  mailcow_network:
+    external: true
+    name: mailcow_mailcow-network
