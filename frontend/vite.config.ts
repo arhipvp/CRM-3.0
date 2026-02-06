@@ -14,6 +14,7 @@ const config: UserConfigExport & { test?: VitestUserConfig } = {
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    allowedHosts: ['zoom78.com', 'www.zoom78.com'],
     // HMR disabled for development - use page reload instead
     hmr: false,
     // Важно: не использовать proxy в Docker, так как nginx уже проксирует запросы
