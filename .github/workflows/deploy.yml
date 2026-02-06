@@ -18,6 +18,9 @@ jobs:
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'master'
       )
+    permissions:
+      contents: read
+      actions: read
 
     steps:
       - name: Checkout repository
@@ -45,6 +48,42 @@ jobs:
             echo "BRANCH=${GITHUB_REF_NAME}" >>$GITHUB_ENV
             echo "COMMIT_SHA=${{ github.sha }}" >>$GITHUB_ENV
           fi
+
+      - name: Ensure CI success for manual deploy
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY'
+import json
+import os
+import sys
+import urllib.request
+
+repo = os.environ["GITHUB_REPOSITORY"]
+sha = os.environ["GITHUB_SHA"]
+token = os.environ.get("GITHUB_TOKEN")
+
+url = f"https://api.github.com/repos/{repo}/actions/workflows/ci.yml/runs?head_sha={sha}&per_page=1"
+req = urllib.request.Request(url)
+req.add_header("Authorization", f"Bearer {token}")
+req.add_header("Accept", "application/vnd.github+json")
+
+with urllib.request.urlopen(req, timeout=20) as resp:
+    data = json.loads(resp.read().decode("utf-8"))
+
+runs = data.get("workflow_runs", [])
+if not runs:
+    print("No CI runs found for this commit. Aborting manual deploy.")
+    sys.exit(1)
+
+run = runs[0]
+if run.get("conclusion") != "success":
+    print(f"CI run conclusion is {run.get('conclusion')}. Aborting deploy.")
+    sys.exit(1)
+
+print("CI succeeded, proceeding with deploy.")
+PY
 
       - name: Deploy via SSH
         env:
