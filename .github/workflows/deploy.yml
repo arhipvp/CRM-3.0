@@ -148,17 +148,17 @@ jobs:
           import os
           import re
           from pathlib import Path
-          
+
           path = Path("mailcow.conf")
           text = path.read_text(encoding="utf-8")
-          
-            def upsert(key: str, value: str) -> None:
-                global text
-                if f"{key}=" in text:
-                    text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
-                else:
-                    text += f"\n{key}={value}\n"
-          
+
+          def upsert(key: str, value: str) -> None:
+              global text
+              if f"{key}=" in text:
+                  text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
+              else:
+                  text += f"\n{key}={value}\n"
+
           api_key = os.environ.get("MAILCOW_API_KEY", "")
           api_allow = os.environ.get("MAILCOW_API_ALLOW_FROM", "127.0.0.1,173.249.7.183")
           imap_master_user = os.environ.get("MAILCOW_IMAP_MASTER_USER", "crm_master")
@@ -168,22 +168,22 @@ jobs:
               "MAILCOW_ADDITIONAL_SERVER_NAMES",
               "autodiscover.zoom78.com,autoconfig.zoom78.com",
           )
-          
-            if api_key:
-                upsert("API_KEY", api_key)
-                upsert("API_ALLOW_FROM", api_allow)
-            
-            upsert("HTTP_BIND", "127.0.0.1")
-            upsert("HTTP_PORT", "8080")
-            upsert("HTTPS_BIND", "127.0.0.1")
-            upsert("HTTPS_PORT", "8443")
-            upsert("HTTP_REDIRECT", "n")
-            upsert("SKIP_LETS_ENCRYPT", "y")
-            upsert("DOVECOT_MASTER_USER", imap_master_user)
-            upsert("DOVECOT_MASTER_PASS", imap_master_pass)
-            upsert("COMPOSE_PROJECT_NAME", project_name)
-            upsert("ADDITIONAL_SERVER_NAMES", additional_names)
-          
+
+          if api_key:
+              upsert("API_KEY", api_key)
+              upsert("API_ALLOW_FROM", api_allow)
+
+          upsert("HTTP_BIND", "127.0.0.1")
+          upsert("HTTP_PORT", "8080")
+          upsert("HTTPS_BIND", "127.0.0.1")
+          upsert("HTTPS_PORT", "8443")
+          upsert("HTTP_REDIRECT", "n")
+          upsert("SKIP_LETS_ENCRYPT", "y")
+          upsert("DOVECOT_MASTER_USER", imap_master_user)
+          upsert("DOVECOT_MASTER_PASS", imap_master_pass)
+          upsert("COMPOSE_PROJECT_NAME", project_name)
+          upsert("ADDITIONAL_SERVER_NAMES", additional_names)
+
           path.write_text(text, encoding="utf-8")
           PY
             cd ..
