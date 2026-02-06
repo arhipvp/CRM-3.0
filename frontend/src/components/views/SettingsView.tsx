@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import {
   changePassword,
@@ -41,6 +41,7 @@ export const SettingsView: React.FC = () => {
   const [mailboxDisplayName, setMailboxDisplayName] = useState('');
   const [mailboxCreating, setMailboxCreating] = useState(false);
   const [mailboxCreatedPassword, setMailboxCreatedPassword] = useState<string | null>(null);
+  const [mailboxPasswordCopied, setMailboxPasswordCopied] = useState(false);
   const [selectedMailboxId, setSelectedMailboxId] = useState<number | null>(null);
   const [mailMessages, setMailMessages] = useState<MailboxMessage[]>([]);
   const [mailMessagesLoading, setMailMessagesLoading] = useState(false);
@@ -49,6 +50,11 @@ export const SettingsView: React.FC = () => {
   const telegramBotLink = normalizedTelegramBotUsername
     ? `https://t.me/${normalizedTelegramBotUsername}`
     : '';
+
+  const selectedMailbox = useMemo(
+    () => mailboxes.find((mailbox) => mailbox.id === selectedMailboxId) ?? null,
+    [mailboxes, selectedMailboxId],
+  );
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -234,6 +240,7 @@ export const SettingsView: React.FC = () => {
     setMailboxCreating(true);
     setMailboxError('');
     setMailboxCreatedPassword(null);
+    setMailboxPasswordCopied(false);
     try {
       const mailbox = await createMailbox({
         local_part: localPart,
@@ -245,10 +252,16 @@ export const SettingsView: React.FC = () => {
       if (mailbox.initial_password) {
         setMailboxCreatedPassword(mailbox.initial_password);
       }
+      setSelectedMailboxId(mailbox.id);
+      setMailMessages([]);
+      setMailMessagesLoading(true);
+      const response = await fetchMailboxMessages(mailbox.id, 20);
+      setMailMessages(response.items ?? []);
     } catch (err) {
       setMailboxError(formatErrorMessage(err, 'Не удалось создать ящик.'));
     } finally {
       setMailboxCreating(false);
+      setMailMessagesLoading(false);
     }
   };
 
@@ -278,6 +291,35 @@ export const SettingsView: React.FC = () => {
       setMailboxError(formatErrorMessage(err, 'Не удалось загрузить письма.'));
     } finally {
       setMailMessagesLoading(false);
+    }
+  };
+
+  const handleMailboxRefresh = async () => {
+    if (!selectedMailboxId) {
+      return;
+    }
+    setMailMessagesLoading(true);
+    setMailboxError('');
+    try {
+      const response = await fetchMailboxMessages(selectedMailboxId, 20);
+      setMailMessages(response.items ?? []);
+    } catch (err) {
+      setMailboxError(formatErrorMessage(err, 'Не удалось загрузить письма.'));
+    } finally {
+      setMailMessagesLoading(false);
+    }
+  };
+
+  const handlePasswordCopy = async () => {
+    if (!mailboxCreatedPassword) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(mailboxCreatedPassword);
+      setMailboxPasswordCopied(true);
+      setTimeout(() => setMailboxPasswordCopied(false), 2000);
+    } catch (err) {
+      setMailboxPasswordCopied(false);
     }
   };
 
@@ -418,7 +460,7 @@ export const SettingsView: React.FC = () => {
                   className="check"
                   disabled={telegramSaving}
                 />
-                Напоминания «Застраховать до»
+                Напоминания «Застраховать долг»
               </label>
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <input
@@ -473,6 +515,14 @@ export const SettingsView: React.FC = () => {
               placeholder="sales"
               className="field field-input"
               disabled={mailboxCreating}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (!mailboxCreating) {
+                    handleMailboxCreate();
+                  }
+                }
+              }}
             />
             <p className="text-xs text-slate-500">Будет создан адрес вида sales@zoom78.com.</p>
           </div>
@@ -485,21 +535,35 @@ export const SettingsView: React.FC = () => {
               placeholder="Отдел продаж"
               className="field field-input"
               disabled={mailboxCreating}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (!mailboxCreating) {
+                    handleMailboxCreate();
+                  }
+                }
+              }}
             />
           </div>
           <button
             type="button"
             className="btn btn-primary"
             onClick={handleMailboxCreate}
-            disabled={mailboxCreating}
+            disabled={mailboxCreating || !mailboxLocalPart.trim()}
           >
             {mailboxCreating ? 'Создаём...' : 'Создать'}
           </button>
         </div>
 
         {mailboxCreatedPassword && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-            Пароль для нового ящика: <span className="font-semibold">{mailboxCreatedPassword}</span>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              Пароль для нового ящика:{' '}
+              <span className="font-semibold">{mailboxCreatedPassword}</span>
+            </div>
+            <button type="button" className="btn btn-secondary" onClick={handlePasswordCopy}>
+              {mailboxPasswordCopied ? 'Скопировано' : 'Скопировать'}
+            </button>
           </div>
         )}
 
@@ -516,7 +580,11 @@ export const SettingsView: React.FC = () => {
                   {mailboxes.map((mailbox) => (
                     <li
                       key={mailbox.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
+                      className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+                        selectedMailboxId === mailbox.id
+                          ? 'border-indigo-300 bg-indigo-50'
+                          : 'border-slate-200'
+                      }`}
                     >
                       <div>
                         <p className="text-sm font-semibold text-slate-800">{mailbox.email}</p>
@@ -546,7 +614,17 @@ export const SettingsView: React.FC = () => {
               )}
             </div>
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-700">Входящие</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-slate-700">Входящие</p>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={handleMailboxRefresh}
+                  disabled={!selectedMailboxId || mailMessagesLoading}
+                >
+                  Обновить
+                </button>
+              </div>
               {selectedMailboxId === null ? (
                 <p className="text-sm text-slate-500">Выберите ящик, чтобы увидеть письма.</p>
               ) : mailMessagesLoading ? (
@@ -566,6 +644,11 @@ export const SettingsView: React.FC = () => {
                     </li>
                   ))}
                 </ul>
+              )}
+              {selectedMailbox && (
+                <p className="text-xs text-slate-500">
+                  Ящик: <span className="font-medium">{selectedMailbox.email}</span>
+                </p>
               )}
             </div>
           </div>
