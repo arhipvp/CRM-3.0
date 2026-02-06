@@ -6,9 +6,6 @@ on:
       - CI - Code Quality & Tests
     types:
       - completed
-  push:
-    branches:
-      - master
   workflow_dispatch:
 
 jobs:
@@ -16,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
       (
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&

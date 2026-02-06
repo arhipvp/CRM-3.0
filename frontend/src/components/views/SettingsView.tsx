@@ -318,7 +318,7 @@ export const SettingsView: React.FC = () => {
       await navigator.clipboard.writeText(mailboxCreatedPassword);
       setMailboxPasswordCopied(true);
       setTimeout(() => setMailboxPasswordCopied(false), 2000);
-    } catch (err) {
+    } catch {
       setMailboxPasswordCopied(false);
     }
   };
