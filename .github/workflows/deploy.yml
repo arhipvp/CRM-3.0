@@ -169,7 +169,7 @@ jobs:
 
           echo "MARK: start"
           echo "MARK: VPS_PATH=${VPS_PATH} BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA}"
-          trap 'rc=$?; echo \"MARK: exit rc=${rc}\"' EXIT
+          trap 'rc=$?; echo "MARK: exit rc=${rc}"' EXIT
 
           cd "${VPS_PATH}"
           echo "MARK: cd ok, pwd=$(pwd)"
@@ -189,19 +189,52 @@ jobs:
             exit 1
           fi
 
+          echo "MARK: env-file info"
+          echo "MARK: env-file sha256=$(sha256sum .env.production | awk '{print $1}')"
+          echo "MARK: env-file keys (masked):"
+          grep -E '^(IMAGE_TAG|MAILCOW_)=' .env.production 2>/dev/null | sed -E 's/=(.*)$/=***/' || true
+
+          echo "MARK: before app compose up"
+          echo "Building and restarting stack"
+          # Tag images by commit so frontend changes always produce a new image.
+          export IMAGE_TAG="${COMMIT_SHA}"
+          echo "Deploy vars: BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA} IMAGE_TAG=${IMAGE_TAG}"
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d --force-recreate backend telegram_bot frontend nginx
+
+          echo "MARK: after app compose up"
+          echo "Running containers:"
+          docker compose -f docker-compose.prod.yml --env-file .env.production ps
+
+          echo "Resolved images:"
+          docker compose -f docker-compose.prod.yml --env-file .env.production config | awk '/^[[:space:]]*image:/{print $0}'
+
+          echo "Frontend assets fingerprint:"
+          # Show the asset filenames that prove the frontend bundle changed.
+          docker exec crm3-frontend sh -lc 'ls -1 /usr/share/nginx/html/assets 2>/dev/null | head -n 20 || true'
+          docker exec crm3-frontend sh -lc 'head -n 25 /usr/share/nginx/html/index.html 2>/dev/null || true'
+
           if [ -d mailcow ]; then
             echo "MARK: mailcow block begin"
-            echo "Preparing mailcow..."
-            cd mailcow
-            ln -sf mailcow.conf .env
-            if [ ! -f mailcow.conf ]; then
-              MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME}" \
-              MAILCOW_TZ="${MAILCOW_TZ}" \
-              SKIP_CLAMD=y \
-              ./generate_config.sh --dev
-            fi
+            # Mailcow is optional; never block CRM deploy.
+            (
+              set +e
+              echo "MARK: mailcow vars present (no values):"
+              for v in MAILCOW_HOSTNAME MAILCOW_TZ MAILCOW_DOMAIN MAILCOW_PROJECT_NAME MAILCOW_API_ALLOW_FROM MAILCOW_IMAP_MASTER_USER; do
+                if [ -n "${!v:-}" ]; then echo "MARK: ${v}=set"; else echo "MARK: ${v}=missing"; fi
+              done
+              if [ -n "${MAILCOW_API_KEY:-}" ]; then echo "MARK: MAILCOW_API_KEY=set(len=${#MAILCOW_API_KEY})"; else echo "MARK: MAILCOW_API_KEY=missing"; fi
 
-            python3 - <<'PY'
+              echo "Preparing mailcow..."
+              cd mailcow
+              ln -sf mailcow.conf .env
+              if [ ! -f mailcow.conf ]; then
+                MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME}" \
+                MAILCOW_TZ="${MAILCOW_TZ}" \
+                SKIP_CLAMD=y \
+                ./generate_config.sh --dev
+              fi
+
+              python3 - <<'PY'
           import os
           import re
           from pathlib import Path
@@ -243,7 +276,8 @@ jobs:
 
           path.write_text(text, encoding="utf-8")
           PY
-            cd ..
+            )
+            ) || true
 
             if command -v ufw >/dev/null 2>&1; then
               ufw allow 25/tcp
@@ -303,25 +337,9 @@ jobs:
           fi
 
           echo "MARK: after mailcow stack block"
-          echo "MARK: before app compose up"
-          echo "Building and restarting stack"
-          # Tag images by commit so frontend changes always produce a new image.
-          export IMAGE_TAG="${COMMIT_SHA}"
-          echo "Deploy vars: BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA} IMAGE_TAG=${IMAGE_TAG}"
-          docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d --force-recreate backend telegram_bot frontend nginx
-
-          echo "MARK: after app compose up"
-          echo "Running containers:"
-          docker compose -f docker-compose.prod.yml --env-file .env.production ps
-
-          echo "Resolved images:"
-          docker compose -f docker-compose.prod.yml --env-file .env.production config | awk '/^[[:space:]]*image:/{print $0}'
-
-          echo "Frontend assets fingerprint:"
-          # Show the asset filenames that prove the frontend bundle changed.
-          docker exec crm3-frontend sh -lc 'ls -1 /usr/share/nginx/html/assets 2>/dev/null | head -n 20 || true'
-          docker exec crm3-frontend sh -lc 'head -n 25 /usr/share/nginx/html/index.html 2>/dev/null || true'
 
           echo "Pruning unused images"
           docker image prune -f
+
+          echo "MARK: end"
           EOF

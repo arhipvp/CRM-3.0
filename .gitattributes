@@ -1,0 +1,5 @@
+# Keep CI/CD and container scripts POSIX-safe (avoid CRLF breaking bash/heredocs).
+.github/workflows/*.yml text eol=lf
+.github/workflows/*.yaml text eol=lf
+*.sh text eol=lf
+Dockerfile* text eol=lf
