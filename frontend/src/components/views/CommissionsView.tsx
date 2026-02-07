@@ -336,6 +336,35 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     }
   }, []);
 
+  const selectedStatement = selectedStatementId
+    ? statementsById.get(selectedStatementId)
+    : undefined;
+  const isSelectedStatementPaid = selectedStatement?.status === 'paid';
+  const selectedStatementTypeLabel = selectedStatement
+    ? selectedStatement.statementType === 'income'
+      ? 'Доходы'
+      : 'Расходы'
+    : '';
+  const selectedStatementStatusLabel = selectedStatement
+    ? selectedStatement.status === 'paid'
+      ? 'Выплачена'
+      : 'Черновик'
+    : '';
+  const selectedStatementPaidAt = selectedStatement?.paidAt
+    ? formatDateRu(selectedStatement.paidAt)
+    : null;
+  const selectedStatementDriveFolderId = selectedStatement
+    ? (statementDriveFolderIds[selectedStatement.id] ?? selectedStatement.driveFolderId ?? null)
+    : null;
+  const statementDriveFolderLink = buildDriveFolderLink(selectedStatementDriveFolderId);
+  const attachStatement =
+    viewMode === 'all'
+      ? targetStatementId
+        ? statementsById.get(targetStatementId)
+        : undefined
+      : selectedStatement;
+  const isAttachStatementPaid = attachStatement?.status === 'paid';
+
   const sortedStatementDriveFiles = useMemo(() => {
     return [...statementDriveFiles].sort((a, b) => {
       const rawDateA = new Date(a.modifiedAt ?? a.createdAt ?? 0).getTime();
@@ -619,35 +648,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     },
     [amountDrafts, onUpdateFinancialRecord],
   );
-
-  const selectedStatement = selectedStatementId
-    ? statementsById.get(selectedStatementId)
-    : undefined;
-  const isSelectedStatementPaid = selectedStatement?.status === 'paid';
-  const selectedStatementTypeLabel = selectedStatement
-    ? selectedStatement.statementType === 'income'
-      ? 'Доходы'
-      : 'Расходы'
-    : '';
-  const selectedStatementStatusLabel = selectedStatement
-    ? selectedStatement.status === 'paid'
-      ? 'Выплачена'
-      : 'Черновик'
-    : '';
-  const selectedStatementPaidAt = selectedStatement?.paidAt
-    ? formatDateRu(selectedStatement.paidAt)
-    : null;
-  const selectedStatementDriveFolderId = selectedStatement
-    ? (statementDriveFolderIds[selectedStatement.id] ?? selectedStatement.driveFolderId ?? null)
-    : null;
-  const statementDriveFolderLink = buildDriveFolderLink(selectedStatementDriveFolderId);
-  const attachStatement =
-    viewMode === 'all'
-      ? targetStatementId
-        ? statementsById.get(targetStatementId)
-        : undefined
-      : selectedStatement;
-  const isAttachStatementPaid = attachStatement?.status === 'paid';
 
   useEffect(() => {
     if (viewMode !== 'statements' || !selectedStatement) {
