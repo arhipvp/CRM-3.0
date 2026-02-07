@@ -146,6 +146,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [isStatementDriveTrashing, setStatementDriveTrashing] = useState(false);
   const [statementDriveError, setStatementDriveError] = useState<string | null>(null);
   const allRecordsRequestRef = useRef(0);
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const policiesById = useMemo(
     () => new Map(policies.map((policy) => [policy.id, policy])),
@@ -582,6 +583,40 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setSelectedRecordIds([]);
   }, [onRemoveStatementRecords, selectedRecordIds, selectedStatement]);
 
+  const selectableRecordIds = useMemo(() => {
+    if (!attachStatement || isAttachStatementPaid) {
+      return [];
+    }
+    return filteredRows.filter((row) => canAttachRow(row)).map((row) => row.recordId);
+  }, [attachStatement, canAttachRow, filteredRows, isAttachStatementPaid]);
+
+  const allSelectableSelected =
+    selectableRecordIds.length > 0 &&
+    selectableRecordIds.every((id) => selectedRecordIds.includes(id));
+  const someSelectableSelected = selectableRecordIds.some((id) => selectedRecordIds.includes(id));
+
+  useEffect(() => {
+    if (!selectAllRef.current) {
+      return;
+    }
+    selectAllRef.current.indeterminate = someSelectableSelected && !allSelectableSelected;
+  }, [allSelectableSelected, someSelectableSelected]);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!attachStatement || isAttachStatementPaid) {
+      return;
+    }
+    setSelectedRecordIds((prev) => {
+      const next = new Set(prev);
+      if (allSelectableSelected) {
+        selectableRecordIds.forEach((id) => next.delete(id));
+      } else {
+        selectableRecordIds.forEach((id) => next.add(id));
+      }
+      return Array.from(next);
+    });
+  }, [allSelectableSelected, attachStatement, isAttachStatementPaid, selectableRecordIds]);
+
   const handleStatementDriveUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -702,227 +737,312 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setPayingStatement(null);
   }, [onMarkStatementPaid, payingStatement]);
 
-  const recordsTable = (
-    <div className="overflow-x-auto bg-white">
-      <table
-        className="deals-table min-w-full border-collapse text-left text-sm"
-        aria-label="Доходы и расходы"
-      >
-        <thead className={TABLE_THEAD_CLASS}>
-          <tr>
-            <TableHeadCell padding="sm" className="w-10" />
-            <TableHeadCell className="min-w-[220px]">ФИО клиента</TableHeadCell>
-            <TableHeadCell className="min-w-[140px]">Номер полиса</TableHeadCell>
-            <TableHeadCell className="min-w-[160px]">Полис</TableHeadCell>
-            <TableHeadCell className="min-w-[160px]">Канал продаж</TableHeadCell>
-            <TableHeadCell className="min-w-[160px]">Платеж</TableHeadCell>
-            {viewMode === 'all' && (
-              <TableHeadCell className="min-w-[150px]">Итог по платежу</TableHeadCell>
-            )}
-            <TableHeadCell className="min-w-[180px]" align="right">
-              <button
-                type="button"
-                onClick={toggleAmountSort}
-                aria-label={`Сортировать по доходу или расходу, текущий порядок ${getAmountSortLabel()}`}
-                className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-              >
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                  Расход/доход
-                </span>
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                  {getAmountSortIndicator()}
-                </span>
-              </button>
-            </TableHeadCell>
-          </tr>
-        </thead>
-        <tbody className="bg-white">
-          {filteredRows.map((row) => {
-            const payment = row.payment;
-            const policyNumber =
-              normalizeText(payment.policyNumber) ||
-              normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
-              '-';
-            const policyType =
-              normalizeText(payment.policyInsuranceType) ||
-              normalizeText(policiesById.get(payment.policyId ?? '')?.insuranceType) ||
-              '-';
-            const salesChannelLabel =
-              normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
-              normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
-              '-';
-            const clientName = normalizeText(payment.dealClientName) || '-';
-            const dealTitle = normalizeText(payment.dealTitle) || '-';
-            const paymentActualDate = payment.actualDate ? formatDateRu(payment.actualDate) : null;
-            const paymentScheduledDate = payment.scheduledDate
-              ? formatDateRu(payment.scheduledDate)
-              : null;
-            const recordAmount = row.recordAmount;
-            const isIncome = recordAmount > 0;
-            const recordLabel = isIncome
-              ? `Доход ${formatCurrencyRu(recordAmount)}`
-              : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
-            const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
-            const recordDateLabel = formatDateRu(row.recordDate);
-            const paymentBalance = row.paymentPaidBalance;
-            const paymentBalanceLabel =
-              paymentBalance === undefined ? '—' : formatCurrencyRu(paymentBalance);
-            const paymentEntries = (row.paymentPaidEntries ?? []).slice().sort((a, b) => {
-              const aTime = new Date(a.date).getTime();
-              const bTime = new Date(b.date).getTime();
-              return bTime - aTime;
-            });
-            const recordNotes = [row.recordDescription, row.recordSource, row.recordNote]
-              .map((value) => normalizeText(value?.toString().trim()))
-              .filter(Boolean)
-              .join(' · ');
-            const amountValue = amountDrafts[row.recordId] ?? Math.abs(recordAmount).toString();
-            const recordStatement = row.statementId
-              ? statementsById.get(row.statementId)
-              : undefined;
-            const isRecordLocked = recordStatement?.status === 'paid';
-            const statementNote = recordStatement
-              ? recordStatement.paidAt
-                ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(
-                    recordStatement.name,
-                  )}`
-                : `Ведомость: ${normalizeText(recordStatement.name)}`
-              : null;
-            const isSelectable = attachStatement ? canAttachRow(row) : false;
-            const isSelected = selectedRecordIds.includes(row.recordId);
+  const recordsSelectionBar = (
+    <div className="border-b border-slate-200 bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-slate-700">
+          {attachStatement ? (
+            <>
+              Выбрано: <span className="font-semibold">{selectedRecordIds.length}</span>
+              {viewMode === 'all' && attachStatement
+                ? ` · Ведомость: ${normalizeText(attachStatement.name)}`
+                : ''}
+            </>
+          ) : (
+            <span className="text-slate-500">Выберите ведомость, чтобы добавлять записи.</span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {viewMode === 'statements' ? (
+            <button
+              type="button"
+              onClick={() => void handleRemoveSelected()}
+              className="btn btn-danger btn-sm rounded-xl"
+              disabled={
+                !selectedRecordIds.length ||
+                !onRemoveStatementRecords ||
+                isSelectedStatementPaid ||
+                !selectedStatement
+              }
+            >
+              Убрать из ведомости
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleAttachSelected()}
+              className="btn btn-primary btn-sm rounded-xl"
+              disabled={
+                !selectedRecordIds.length ||
+                !onUpdateStatement ||
+                !attachStatement ||
+                isAttachStatementPaid
+              }
+            >
+              Добавить выбранные
+            </button>
+          )}
+          {selectedRecordIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedRecordIds([])}
+              className="btn btn-secondary btn-sm rounded-xl"
+            >
+              Сбросить выделение
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
-            return (
-              <tr key={row.key} className={TABLE_ROW_CLASS}>
-                <td className="border border-slate-200 px-3 py-3 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleRecordSelection(row)}
-                    disabled={!isSelectable || isAttachStatementPaid}
-                    className="check"
-                    title={
-                      !attachStatement
-                        ? 'Выберите ведомость для добавления записей'
-                        : !isSelectable
-                          ? 'Запись нельзя добавить в выбранную ведомость'
-                          : undefined
-                    }
-                  />
-                </td>
-                <td className={TABLE_CELL_CLASS_LG}>
-                  <p className="text-base font-semibold text-slate-900">{clientName}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
-                    {payment.dealId && onDealSelect ? (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDeal(payment.dealId)}
-                        className="link-action text-xs font-semibold"
-                      >
-                        {dealTitle}
-                      </button>
-                    ) : (
-                      <span>{dealTitle}</span>
-                    )}
-                    <span>·</span>
-                    <span>{clientName}</span>
-                  </div>
-                </td>
-                <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                  <PolicyNumberButton
-                    value={policyNumber === '-' ? '' : policyNumber}
-                    placeholder="-"
-                    className="link-action text-left"
-                  />
-                </td>
-                <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
-                <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{salesChannelLabel}</td>
-                <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                  <p className="text-base font-semibold">{formatCurrencyRu(payment.amount)}</p>
-                  {paymentActualDate ? (
-                    <p className="text-xs text-slate-500 mt-1">Оплата: {paymentActualDate}</p>
-                  ) : paymentScheduledDate ? (
-                    <p className="text-xs text-slate-500 mt-1">План: {paymentScheduledDate}</p>
-                  ) : (
-                    <p className="text-xs text-slate-500 mt-1">Оплата: —</p>
-                  )}
-                </td>
-                {viewMode === 'all' && (
+  const recordsTable = (
+    <div className="bg-white">
+      {recordsSelectionBar}
+      <div className="overflow-x-auto bg-white">
+        <table
+          className="deals-table min-w-full border-collapse text-left text-sm"
+          aria-label="Доходы и расходы"
+        >
+          <thead className={TABLE_THEAD_CLASS}>
+            <tr>
+              <TableHeadCell padding="sm" align="center" className="w-10">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  checked={allSelectableSelected}
+                  onChange={toggleSelectAll}
+                  disabled={
+                    !attachStatement || isAttachStatementPaid || selectableRecordIds.length === 0
+                  }
+                  className="check"
+                  aria-label="Выбрать все видимые записи"
+                  title={
+                    !attachStatement
+                      ? 'Выберите ведомость для добавления записей'
+                      : isAttachStatementPaid
+                        ? 'Выплаченная ведомость недоступна для изменений'
+                        : undefined
+                  }
+                />
+              </TableHeadCell>
+              <TableHeadCell className="min-w-[220px]">ФИО клиента</TableHeadCell>
+              <TableHeadCell className="min-w-[140px]">Номер полиса</TableHeadCell>
+              <TableHeadCell className="min-w-[160px]">Полис</TableHeadCell>
+              <TableHeadCell className="min-w-[160px]">Канал продаж</TableHeadCell>
+              <TableHeadCell className="min-w-[160px]">Платеж</TableHeadCell>
+              {viewMode === 'all' && (
+                <TableHeadCell className="min-w-[150px]">Итог по платежу</TableHeadCell>
+              )}
+              <TableHeadCell className="min-w-[180px]" align="right">
+                <button
+                  type="button"
+                  onClick={toggleAmountSort}
+                  aria-label={`Сортировать по доходу или расходу, текущий порядок ${getAmountSortLabel()}`}
+                  className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                >
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    Расход/доход
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    {getAmountSortIndicator()}
+                  </span>
+                </button>
+              </TableHeadCell>
+            </tr>
+          </thead>
+          <tbody className="bg-white">
+            {filteredRows.map((row) => {
+              const payment = row.payment;
+              const policyNumber =
+                normalizeText(payment.policyNumber) ||
+                normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
+                '-';
+              const policyType =
+                normalizeText(payment.policyInsuranceType) ||
+                normalizeText(policiesById.get(payment.policyId ?? '')?.insuranceType) ||
+                '-';
+              const salesChannelLabel =
+                normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
+                normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
+                '-';
+              const clientName = normalizeText(payment.dealClientName) || '-';
+              const dealTitle = normalizeText(payment.dealTitle) || '-';
+              const paymentActualDate = payment.actualDate
+                ? formatDateRu(payment.actualDate)
+                : null;
+              const paymentScheduledDate = payment.scheduledDate
+                ? formatDateRu(payment.scheduledDate)
+                : null;
+              const recordAmount = row.recordAmount;
+              const isIncome = recordAmount > 0;
+              const recordLabel = isIncome
+                ? `Доход ${formatCurrencyRu(recordAmount)}`
+                : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
+              const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
+              const recordDateLabel = formatDateRu(row.recordDate);
+              const paymentBalance = row.paymentPaidBalance;
+              const paymentBalanceLabel =
+                paymentBalance === undefined ? '—' : formatCurrencyRu(paymentBalance);
+              const paymentEntries = (row.paymentPaidEntries ?? []).slice().sort((a, b) => {
+                const aTime = new Date(a.date).getTime();
+                const bTime = new Date(b.date).getTime();
+                return bTime - aTime;
+              });
+              const recordNotes = [row.recordDescription, row.recordSource, row.recordNote]
+                .map((value) => normalizeText(value?.toString().trim()))
+                .filter(Boolean)
+                .join(' · ');
+              const amountValue = amountDrafts[row.recordId] ?? Math.abs(recordAmount).toString();
+              const recordStatement = row.statementId
+                ? statementsById.get(row.statementId)
+                : undefined;
+              const isRecordLocked = recordStatement?.status === 'paid';
+              const statementNote = recordStatement
+                ? recordStatement.paidAt
+                  ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(
+                      recordStatement.name,
+                    )}`
+                  : `Ведомость: ${normalizeText(recordStatement.name)}`
+                : null;
+              const isSelectable = attachStatement ? canAttachRow(row) : false;
+              const isSelected = selectedRecordIds.includes(row.recordId);
+
+              return (
+                <tr key={row.key} className={TABLE_ROW_CLASS}>
+                  <td className="border border-slate-200 px-3 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleRecordSelection(row)}
+                      disabled={!isSelectable || isAttachStatementPaid}
+                      className="check"
+                      title={
+                        !attachStatement
+                          ? 'Выберите ведомость для добавления записей'
+                          : !isSelectable
+                            ? 'Запись нельзя добавить в выбранную ведомость'
+                            : undefined
+                      }
+                    />
+                  </td>
+                  <td className={TABLE_CELL_CLASS_LG}>
+                    <p className="text-base font-semibold text-slate-900">{clientName}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                      {payment.dealId && onDealSelect ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDeal(payment.dealId)}
+                          className="link-action text-xs font-semibold"
+                        >
+                          {dealTitle}
+                        </button>
+                      ) : (
+                        <span>{dealTitle}</span>
+                      )}
+                      <span>·</span>
+                      <span>{clientName}</span>
+                    </div>
+                  </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    <p className="text-base font-semibold">{paymentBalanceLabel}</p>
-                    {paymentEntries.length ? (
-                      <div className="mt-1 space-y-1 text-xs text-slate-500">
-                        {paymentEntries.map((entry, index) => {
-                          const entryAmount = Number(entry.amount);
-                          const entryLabel = Number.isFinite(entryAmount)
-                            ? formatCurrencyRu(Math.abs(entryAmount))
-                            : entry.amount;
-                          const entryDate = formatDateRu(entry.date);
-                          const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
-                          return (
-                            <p key={`${row.payment.id}-${index}`}>
-                              {entryType} {entryLabel} · {entryDate}
-                            </p>
-                          );
-                        })}
-                      </div>
+                    <PolicyNumberButton
+                      value={policyNumber === '-' ? '' : policyNumber}
+                      placeholder="-"
+                      className="link-action text-left"
+                    />
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{salesChannelLabel}</td>
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                    <p className="text-base font-semibold">{formatCurrencyRu(payment.amount)}</p>
+                    {paymentActualDate ? (
+                      <p className="text-xs text-slate-500 mt-1">Оплата: {paymentActualDate}</p>
+                    ) : paymentScheduledDate ? (
+                      <p className="text-xs text-slate-500 mt-1">План: {paymentScheduledDate}</p>
                     ) : (
-                      <p className="text-xs text-slate-500 mt-1">Операций нет</p>
+                      <p className="text-xs text-slate-500 mt-1">Оплата: —</p>
                     )}
                   </td>
-                )}
-                <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                  <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
-                  {recordNotes ? (
-                    <p className="text-xs text-slate-500 mt-1">{recordNotes}</p>
-                  ) : (
-                    <p className="text-xs text-slate-400 mt-1">Примечаний нет</p>
+                  {viewMode === 'all' && (
+                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                      <p className="text-base font-semibold">{paymentBalanceLabel}</p>
+                      {paymentEntries.length ? (
+                        <div className="mt-1 space-y-1 text-xs text-slate-500">
+                          {paymentEntries.map((entry, index) => {
+                            const entryAmount = Number(entry.amount);
+                            const entryLabel = Number.isFinite(entryAmount)
+                              ? formatCurrencyRu(Math.abs(entryAmount))
+                              : entry.amount;
+                            const entryDate = formatDateRu(entry.date);
+                            const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
+                            return (
+                              <p key={`${row.payment.id}-${index}`}>
+                                {entryType} {entryLabel} · {entryDate}
+                              </p>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 mt-1">Операций нет</p>
+                      )}
+                    </td>
                   )}
-                  {statementNote && <p className="text-xs text-slate-500 mt-1">{statementNote}</p>}
-                  <p className="mt-2 text-sm text-slate-900">{recordDateLabel}</p>
-                  {onUpdateFinancialRecord && (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={amountValue}
-                      onChange={(event) =>
-                        handleRecordAmountChange(row.recordId, event.target.value)
-                      }
-                      onBlur={() => void handleRecordAmountBlur(row)}
-                      disabled={isRecordLocked}
-                      className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                    />
-                  )}
-                  {onUpdateFinancialRecord && (
-                    <input
-                      type="date"
-                      value={row.recordDate ?? ''}
-                      onChange={(event) => handleRecordDateChange(row, event.target.value)}
-                      disabled={isRecordLocked}
-                      className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                    />
-                  )}
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                    <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
+                    {recordNotes ? (
+                      <p className="text-xs text-slate-500 mt-1">{recordNotes}</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 mt-1">Примечаний нет</p>
+                    )}
+                    {statementNote && (
+                      <p className="text-xs text-slate-500 mt-1">{statementNote}</p>
+                    )}
+                    <p className="mt-2 text-sm text-slate-900">{recordDateLabel}</p>
+                    {onUpdateFinancialRecord && (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={amountValue}
+                        onChange={(event) =>
+                          handleRecordAmountChange(row.recordId, event.target.value)
+                        }
+                        onBlur={() => void handleRecordAmountBlur(row)}
+                        disabled={isRecordLocked}
+                        className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                      />
+                    )}
+                    {onUpdateFinancialRecord && (
+                      <input
+                        type="date"
+                        value={row.recordDate ?? ''}
+                        onChange={(event) => handleRecordDateChange(row, event.target.value)}
+                        disabled={isRecordLocked}
+                        className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                      />
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {!filteredRows.length && (
+              <tr>
+                <td
+                  colSpan={viewMode === 'all' ? 9 : 8}
+                  className="border border-slate-200 px-6 py-10 text-center text-slate-600"
+                >
+                  <PanelMessage>
+                    {viewMode === 'all' && isAllRecordsLoading
+                      ? 'Загрузка записей...'
+                      : viewMode === 'statements' && selectedStatement
+                        ? 'Записей в ведомости пока нет'
+                        : 'Записей пока нет'}
+                  </PanelMessage>
                 </td>
               </tr>
-            );
-          })}
-          {!filteredRows.length && (
-            <tr>
-              <td
-                colSpan={viewMode === 'all' ? 9 : 8}
-                className="border border-slate-200 px-6 py-10 text-center text-slate-600"
-              >
-                <PanelMessage>
-                  {viewMode === 'all' && isAllRecordsLoading
-                    ? 'Загрузка записей...'
-                    : viewMode === 'statements' && selectedStatement
-                      ? 'Записей в ведомости пока нет'
-                      : 'Записей пока нет'}
-                </PanelMessage>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
@@ -971,197 +1091,181 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       <div className="app-panel overflow-hidden">
         <div className="divide-y divide-slate-200">
           {viewMode === 'statements' && (
-            <>
-              <div className="px-4 py-4 bg-white">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
-                      Ведомости
-                    </span>
-                    <span className="text-sm text-slate-500 whitespace-nowrap">
-                      Всего: {statements.length}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    Выберите ведомость, чтобы посмотреть ее записи.
-                  </p>
-                </div>
-                {onCreateStatement && (
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setStatementModalOpen(true)}
-                      className="btn btn-secondary btn-sm rounded-xl"
-                    >
-                      + Создать ведомость
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="max-h-[360px] overflow-y-auto bg-white border-b border-slate-200">
-                {statements.length ? (
-                  <ul className="divide-y divide-slate-200">
-                    {statements.map((statement) => {
-                      const isActive = statement.id === selectedStatementId;
-                      const totalAmount = Number(statement.totalAmount ?? 0);
-                      const totalLabel = Number.isFinite(totalAmount)
-                        ? formatCurrencyRu(totalAmount)
-                        : '—';
-                      const recordsCount = statement.recordsCount ?? 0;
-                      const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
-                      const statusLabel = statement.status === 'paid' ? 'Выплачена' : 'Черновик';
-                      const typeLabel = statement.statementType === 'income' ? 'Доходы' : 'Расходы';
-
-                      return (
-                        <li
-                          key={statement.id}
-                          className={`border-l-4 transition-colors ${
-                            isActive
-                              ? 'bg-sky-50 border-sky-500'
-                              : 'border-transparent hover:bg-slate-50/80 hover:border-sky-500 even:bg-slate-50/40'
-                          }`}
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedStatementId(statement.id)}
-                              className="flex flex-1 flex-wrap items-center justify-between gap-3 text-left"
-                            >
-                              <div className="space-y-1">
-                                <p
-                                  className={`text-sm font-semibold ${
-                                    statement.status !== 'paid'
-                                      ? 'text-slate-900'
-                                      : statement.statementType === 'income'
-                                        ? 'text-emerald-700'
-                                        : 'text-rose-700'
-                                  }`}
-                                >
-                                  {normalizeText(statement.name)}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {typeLabel} · {statusLabel}
-                                  {statement.counterparty
-                                    ? ` · ${normalizeText(statement.counterparty)}`
-                                    : ''}
-                                  {paidAt ? ` · Выплата ${paidAt}` : ''}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
-                                <p className="text-xs text-slate-500">Записей: {recordsCount}</p>
-                              </div>
-                            </button>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <div className="px-6 py-10 text-center">
-                    <PanelMessage>Ведомостей пока нет</PanelMessage>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-          {viewMode === 'statements' && (
-            <div className="app-panel-muted px-4 py-2">
-              <div className="flex items-center gap-4">
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  Выбранная ведомость
-                </span>
-                <div className="h-px flex-1 bg-slate-200" />
-              </div>
-            </div>
-          )}
-          <div
-            role="tabpanel"
-            id="financial-tabpanel-statements"
-            aria-labelledby="financial-tab-statements"
-            tabIndex={0}
-            className="outline-none"
-            hidden={viewMode !== 'statements'}
-          >
-            <div className="app-panel-muted p-3 shadow-none">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомость</p>
-                  <p className="text-lg font-semibold text-slate-900">
-                    {selectedStatement
-                      ? normalizeText(selectedStatement.name)
-                      : 'Ведомость не выбрана'}
-                  </p>
-                  {selectedStatement ? (
-                    <p className="text-xs text-slate-500">
-                      {selectedStatementTypeLabel} · {selectedStatementStatusLabel}
-                      {selectedStatement.counterparty
-                        ? ` · ${normalizeText(selectedStatement.counterparty)}`
-                        : ''}
-                      {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-slate-500">Выберите ведомость из списка выше.</p>
-                  )}
-                  {selectedStatement && selectedStatement.status === 'paid' && (
-                    <p className="text-xs text-rose-600">
-                      Выплаченная ведомость недоступна для редактирования и удаления.
-                    </p>
-                  )}
-                </div>
-                {selectedStatement && (
-                  <div className="flex flex-wrap items-center justify-end gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {onUpdateStatement && (
-                        <button
-                          type="button"
-                          onClick={() => handleEditStatementOpen(selectedStatement)}
-                          disabled={isSelectedStatementPaid}
-                          className="btn btn-primary"
-                        >
-                          Редактировать
-                        </button>
-                      )}
-                      {onDeleteStatement && (
-                        <button
-                          type="button"
-                          onClick={() => setDeletingStatement(selectedStatement)}
-                          disabled={isSelectedStatementPaid}
-                          className="btn btn-danger"
-                        >
-                          Удалить
-                        </button>
-                      )}
-                      {selectedRecordIds.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRemoveSelected()}
-                          className="btn btn-danger"
-                          disabled={
-                            !selectedRecordIds.length ||
-                            !onRemoveStatementRecords ||
-                            isSelectedStatementPaid
-                          }
-                        >
-                          Убрать из ведомости
-                        </button>
-                      )}
+            <div className="grid lg:grid-cols-[380px_1fr] lg:divide-x lg:divide-slate-200">
+              <div className="divide-y divide-slate-200 bg-white">
+                <div className="px-4 py-4 bg-white">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
+                        Ведомости
+                      </span>
+                      <span className="text-sm text-slate-500 whitespace-nowrap">
+                        Всего: {statements.length}
+                      </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm text-slate-600">
+                      Выберите ведомость, чтобы посмотреть ее записи.
+                    </p>
+                  </div>
+                  {onCreateStatement && (
+                    <div className="mt-3">
                       <button
                         type="button"
-                        onClick={handleMarkPaidClick}
-                        disabled={isSelectedStatementPaid || !onMarkStatementPaid}
-                        className="btn btn-success"
+                        onClick={() => setStatementModalOpen(true)}
+                        className="btn btn-secondary btn-sm rounded-xl"
                       >
-                        {selectedStatement?.statementType === 'income' ? 'Получено!' : 'Оплачено!'}
+                        + Создать ведомость
                       </button>
                     </div>
+                  )}
+                </div>
+                <div className="max-h-[360px] overflow-y-auto bg-white border-b border-slate-200 lg:max-h-none lg:border-b-0">
+                  {statements.length ? (
+                    <ul className="divide-y divide-slate-200">
+                      {statements.map((statement) => {
+                        const isActive = statement.id === selectedStatementId;
+                        const totalAmount = Number(statement.totalAmount ?? 0);
+                        const totalLabel = Number.isFinite(totalAmount)
+                          ? formatCurrencyRu(totalAmount)
+                          : '—';
+                        const recordsCount = statement.recordsCount ?? 0;
+                        const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
+                        const statusLabel = statement.status === 'paid' ? 'Выплачена' : 'Черновик';
+                        const typeLabel =
+                          statement.statementType === 'income' ? 'Доходы' : 'Расходы';
+
+                        return (
+                          <li
+                            key={statement.id}
+                            className={`border-l-4 transition-colors ${
+                              isActive
+                                ? 'bg-sky-50 border-sky-500'
+                                : 'border-transparent hover:bg-slate-50/80 hover:border-sky-500 even:bg-slate-50/40'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStatementId(statement.id)}
+                                className="flex flex-1 flex-wrap items-center justify-between gap-3 text-left"
+                              >
+                                <div className="space-y-1">
+                                  <p
+                                    className={`text-sm font-semibold ${
+                                      statement.status !== 'paid'
+                                        ? 'text-slate-900'
+                                        : statement.statementType === 'income'
+                                          ? 'text-emerald-700'
+                                          : 'text-rose-700'
+                                    }`}
+                                  >
+                                    {normalizeText(statement.name)}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {typeLabel} · {statusLabel}
+                                    {statement.counterparty
+                                      ? ` · ${normalizeText(statement.counterparty)}`
+                                      : ''}
+                                    {paidAt ? ` · Выплата ${paidAt}` : ''}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-semibold text-slate-900">
+                                    {totalLabel}
+                                  </p>
+                                  <p className="text-xs text-slate-500">Записей: {recordsCount}</p>
+                                </div>
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <div className="px-6 py-10 text-center">
+                      <PanelMessage>Ведомостей пока нет</PanelMessage>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div
+                role="tabpanel"
+                id="financial-tabpanel-statements"
+                aria-labelledby="financial-tab-statements"
+                tabIndex={0}
+                className="outline-none bg-white"
+              >
+                <div className="app-panel-muted p-3 shadow-none">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомость</p>
+                      <p className="text-lg font-semibold text-slate-900">
+                        {selectedStatement
+                          ? normalizeText(selectedStatement.name)
+                          : 'Ведомость не выбрана'}
+                      </p>
+                      {selectedStatement ? (
+                        <p className="text-xs text-slate-500">
+                          {selectedStatementTypeLabel} · {selectedStatementStatusLabel}
+                          {selectedStatement.counterparty
+                            ? ` · ${normalizeText(selectedStatement.counterparty)}`
+                            : ''}
+                          {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-slate-500">
+                          Выберите ведомость из списка слева.
+                        </p>
+                      )}
+                      {selectedStatement && selectedStatement.status === 'paid' && (
+                        <p className="text-xs text-rose-600">
+                          Выплаченная ведомость недоступна для редактирования и удаления.
+                        </p>
+                      )}
+                    </div>
+                    {selectedStatement && (
+                      <div className="flex flex-wrap items-center justify-end gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {onUpdateStatement && (
+                            <button
+                              type="button"
+                              onClick={() => handleEditStatementOpen(selectedStatement)}
+                              disabled={isSelectedStatementPaid}
+                              className="btn btn-primary"
+                            >
+                              Редактировать
+                            </button>
+                          )}
+                          {onDeleteStatement && (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingStatement(selectedStatement)}
+                              disabled={isSelectedStatementPaid}
+                              className="btn btn-danger"
+                            >
+                              Удалить
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleMarkPaidClick}
+                            disabled={isSelectedStatementPaid || !onMarkStatementPaid}
+                            className="btn btn-success"
+                          >
+                            {selectedStatement?.statementType === 'income'
+                              ? 'Получено!'
+                              : 'Оплачено!'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div
             role="tabpanel"
             id="financial-tabpanel-all"
@@ -1263,19 +1367,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => void handleAttachSelected()}
-                  className="btn btn-primary btn-sm rounded-xl"
-                  disabled={
-                    !selectedRecordIds.length ||
-                    !onUpdateStatement ||
-                    !attachStatement ||
-                    isAttachStatementPaid
-                  }
-                >
-                  Добавить выбранные
-                </button>
               </div>
             </div>
           </div>
