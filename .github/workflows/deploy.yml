@@ -167,7 +167,11 @@ jobs:
           }
           trap 'on_error ${LINENO}' ERR
 
+          echo "MARK: start"
+          echo "MARK: VPS_PATH=${VPS_PATH} BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA}"
+
           cd "${VPS_PATH}"
+          echo "MARK: cd ok, pwd=$(pwd)"
 
           echo "Fetching ${BRANCH}..."
           git fetch origin "${BRANCH}" --quiet
@@ -185,6 +189,7 @@ jobs:
           fi
 
           if [ -d mailcow ]; then
+            echo "MARK: mailcow block begin"
             echo "Preparing mailcow..."
             cd mailcow
             ln -sf mailcow.conf .env
@@ -252,6 +257,7 @@ jobs:
           fi
 
           if [ -d mailcow ]; then
+            echo "MARK: mailcow stack begin"
             echo "Starting mailcow stack"
             docker compose -f mailcow/docker-compose.yml up -d
 
@@ -290,12 +296,14 @@ jobs:
             fi
           fi
 
+          echo "MARK: before app compose up"
           echo "Building and restarting stack"
           # Tag images by commit so frontend changes always produce a new image.
           export IMAGE_TAG="${COMMIT_SHA}"
           echo "Deploy vars: BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA} IMAGE_TAG=${IMAGE_TAG}"
           docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d --force-recreate backend telegram_bot frontend nginx
 
+          echo "MARK: after app compose up"
           echo "Running containers:"
           docker compose -f docker-compose.prod.yml --env-file .env.production ps
 
