@@ -156,7 +156,16 @@ jobs:
             MAILCOW_PROJECT_NAME="${MAILCOW_PROJECT_NAME}" \
             MAILCOW_ADDITIONAL_SERVER_NAMES="${MAILCOW_ADDITIONAL_SERVER_NAMES}" \
             bash -s <<'EOF'
-          set -euo pipefail
+          set -Eeuo pipefail
+
+          on_error() {
+            rc=$?
+            # Avoid leaking secrets: print only the command name (first word), not args.
+            cmd="${BASH_COMMAND%% *}"
+            echo "ERROR: rc=${rc} line=${1} cmd=${cmd}"
+            exit "${rc}"
+          }
+          trap 'on_error ${LINENO}' ERR
 
           cd "${VPS_PATH}"
 
