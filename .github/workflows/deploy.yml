@@ -284,7 +284,7 @@ jobs:
           echo "Building and restarting stack"
           # Tag images by commit so frontend changes always produce a new image.
           export IMAGE_TAG="${COMMIT_SHA}"
-          docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d --force-recreate
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d --force-recreate backend telegram_bot frontend nginx
 
           echo "Pruning unused images"
           docker image prune -f
