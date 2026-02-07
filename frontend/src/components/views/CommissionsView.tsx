@@ -6,14 +6,22 @@ import type { FilterParams } from '../../api';
 import {
   fetchFinancialRecordsWithPagination,
   fetchStatementDriveFiles,
+  downloadStatementDriveFiles,
   trashStatementDriveFiles,
   uploadStatementDriveFile,
 } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
+import { FileUploadManager } from '../FileUploadManager';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
 import { Modal } from '../Modal';
-import { TABLE_CELL_CLASS_LG, TABLE_ROW_CLASS, TABLE_THEAD_CLASS } from '../common/tableStyles';
+import {
+  TABLE_CELL_CLASS_LG,
+  TABLE_CELL_CLASS_SM,
+  TABLE_ROW_CLASS,
+  TABLE_ROW_CLASS_PLAIN,
+  TABLE_THEAD_CLASS,
+} from '../common/tableStyles';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
@@ -108,6 +116,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
+  const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const [showWithoutStatementOnly, setShowWithoutStatementOnly] = useState(false);
@@ -141,10 +150,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [statementDriveFolderIds, setStatementDriveFolderIds] = useState<
     Record<string, string | null>
   >({});
+  const [selectedStatementDriveFileIds, setSelectedStatementDriveFileIds] = useState<string[]>([]);
   const [isStatementDriveLoading, setStatementDriveLoading] = useState(false);
   const [isStatementDriveUploading, setStatementDriveUploading] = useState(false);
   const [isStatementDriveTrashing, setStatementDriveTrashing] = useState(false);
+  const [isStatementDriveDownloading, setStatementDriveDownloading] = useState(false);
   const [statementDriveError, setStatementDriveError] = useState<string | null>(null);
+  const [statementDriveTrashMessage, setStatementDriveTrashMessage] = useState<string | null>(null);
+  const [statementDriveDownloadMessage, setStatementDriveDownloadMessage] = useState<string | null>(
+    null,
+  );
   const allRecordsRequestRef = useRef(0);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
@@ -189,6 +204,30 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   useEffect(() => {
     setSelectedRecordIds([]);
   }, [targetStatementId]);
+
+  useEffect(() => {
+    setStatementTab('records');
+    setSelectedStatementDriveFileIds([]);
+    setStatementDriveTrashMessage(null);
+    setStatementDriveDownloadMessage(null);
+  }, [selectedStatementId]);
+
+  useEffect(() => {
+    if (viewMode !== 'statements') {
+      setStatementTab('records');
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (!selectedStatementDriveFileIds.length) {
+      return;
+    }
+    const existingIds = new Set(statementDriveFiles.map((file) => file.id));
+    setSelectedStatementDriveFileIds((prev) => {
+      const filtered = prev.filter((id) => existingIds.has(id));
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [selectedStatementDriveFileIds.length, statementDriveFiles]);
 
   const loadAllRecords = useCallback(async () => {
     allRecordsRequestRef.current += 1;
@@ -296,6 +335,97 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       setStatementDriveLoading(false);
     }
   }, []);
+
+  const sortedStatementDriveFiles = useMemo(() => {
+    return [...statementDriveFiles].sort((a, b) => {
+      const rawDateA = new Date(a.modifiedAt ?? a.createdAt ?? 0).getTime();
+      const rawDateB = new Date(b.modifiedAt ?? b.createdAt ?? 0).getTime();
+      const dateA = Number.isNaN(rawDateA) ? 0 : rawDateA;
+      const dateB = Number.isNaN(rawDateB) ? 0 : rawDateB;
+      if (dateA !== dateB) {
+        return dateB - dateA;
+      }
+      if (a.isFolder !== b.isFolder) {
+        return a.isFolder ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name, 'ru-RU', { sensitivity: 'base' });
+    });
+  }, [statementDriveFiles]);
+
+  const toggleStatementDriveFileSelection = useCallback((fileId: string) => {
+    setSelectedStatementDriveFileIds((prev) =>
+      prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId],
+    );
+  }, []);
+
+  const handleTrashSelectedStatementDriveFiles = useCallback(async () => {
+    if (!selectedStatement) {
+      return;
+    }
+    if (!selectedStatementDriveFileIds.length) {
+      setStatementDriveTrashMessage('Выберите хотя бы один файл для удаления.');
+      return;
+    }
+    const confirmText = `Удалить выбранные файлы (${selectedStatementDriveFileIds.length})?`;
+    if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
+      return;
+    }
+    setStatementDriveTrashing(true);
+    setStatementDriveTrashMessage(null);
+    try {
+      await trashStatementDriveFiles(selectedStatement.id, selectedStatementDriveFileIds);
+      setSelectedStatementDriveFileIds([]);
+      await loadStatementDriveFiles(selectedStatement.id);
+    } catch (error) {
+      setStatementDriveTrashMessage(formatErrorMessage(error, 'Не удалось удалить файлы.'));
+    } finally {
+      setStatementDriveTrashing(false);
+    }
+  }, [loadStatementDriveFiles, selectedStatement, selectedStatementDriveFileIds]);
+
+  const handleDownloadStatementDriveFiles = useCallback(
+    async (fileIds?: string[]) => {
+      if (!selectedStatement) {
+        return;
+      }
+      const targetIds = fileIds?.length ? fileIds : selectedStatementDriveFileIds;
+      if (!targetIds.length) {
+        setStatementDriveDownloadMessage('Выберите хотя бы один файл для скачивания.');
+        return;
+      }
+      setStatementDriveDownloading(true);
+      setStatementDriveDownloadMessage(null);
+      try {
+        const { blob, filename } = await downloadStatementDriveFiles(
+          selectedStatement.id,
+          targetIds,
+        );
+        if (typeof window === 'undefined') {
+          return;
+        }
+        const url = window.URL.createObjectURL(blob);
+        const link = window.document.createElement('a');
+        link.href = url;
+        let resolvedFilename = filename;
+        if (!resolvedFilename && targetIds.length === 1) {
+          const targetFile = statementDriveFiles.find((file) => file.id === targetIds[0]);
+          if (targetFile) {
+            resolvedFilename = targetFile.name;
+          }
+        }
+        link.download = resolvedFilename || 'files.zip';
+        window.document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        setStatementDriveDownloadMessage(formatErrorMessage(error, 'Не удалось скачать файлы.'));
+      } finally {
+        setStatementDriveDownloading(false);
+      }
+    },
+    [selectedStatement, selectedStatementDriveFileIds, statementDriveFiles],
+  );
 
   const statementRows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
@@ -525,8 +655,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       setStatementDriveError(null);
       return;
     }
+    if (statementTab !== 'files') {
+      return;
+    }
     void loadStatementDriveFiles(selectedStatement.id);
-  }, [loadStatementDriveFiles, selectedStatement, viewMode]);
+  }, [loadStatementDriveFiles, selectedStatement, statementTab, viewMode]);
 
   const canAttachRow = useCallback(
     (row: IncomeExpenseRow) => {
@@ -616,26 +749,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       return Array.from(next);
     });
   }, [allSelectableSelected, attachStatement, isAttachStatementPaid, selectableRecordIds]);
-
-  const handleStatementDriveUpload = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file || !selectedStatement) {
-        return;
-      }
-      setStatementDriveUploading(true);
-      try {
-        await uploadStatementDriveFile(selectedStatement.id, file);
-        await loadStatementDriveFiles(selectedStatement.id);
-      } catch (error) {
-        setStatementDriveError(formatErrorMessage(error, 'Не удалось загрузить файл.'));
-      } finally {
-        setStatementDriveUploading(false);
-        event.target.value = '';
-      }
-    },
-    [loadStatementDriveFiles, selectedStatement],
-  );
 
   const handleStatementDriveDelete = useCallback(
     async (file: DriveFile) => {
@@ -797,7 +910,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   );
 
   const recordsTable = (
-    <div className="bg-white">
+    <div className="rounded-2xl border-2 border-slate-300 bg-white shadow-sm overflow-hidden">
       {recordsSelectionBar}
       <div className="overflow-x-auto bg-white">
         <table
@@ -1046,6 +1159,244 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     </div>
   );
 
+  const statementTabs = [
+    { id: 'records' as const, label: 'Записи', count: selectedStatement?.recordsCount ?? 0 },
+    { id: 'files' as const, label: 'Файлы', count: sortedStatementDriveFiles.length },
+  ];
+
+  const statementFilesTab = (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="app-label">Файлы</p>
+            {statementDriveFolderLink && (
+              <a
+                href={statementDriveFolderLink}
+                target="_blank"
+                rel="noreferrer"
+                className="link-action text-xs"
+              >
+                Открыть папку в Google Drive
+              </a>
+            )}
+          </div>
+          <p className="text-xs text-slate-500">
+            Файлы загружаются прямо из папки, привязанной к этой ведомости.
+          </p>
+        </div>
+        {selectedStatement && (
+          <button
+            type="button"
+            onClick={() => void loadStatementDriveFiles(selectedStatement.id)}
+            disabled={isStatementDriveLoading}
+            className="btn btn-secondary btn-sm rounded-xl"
+          >
+            {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
+          </button>
+        )}
+      </div>
+
+      <FileUploadManager
+        onUpload={async (file) => {
+          if (!selectedStatement) {
+            return;
+          }
+          setStatementDriveUploading(true);
+          try {
+            await uploadStatementDriveFile(selectedStatement.id, file);
+            await loadStatementDriveFiles(selectedStatement.id);
+            setStatementDriveError(null);
+          } catch (error) {
+            setStatementDriveError(formatErrorMessage(error, 'Не удалось загрузить файл.'));
+          } finally {
+            setStatementDriveUploading(false);
+          }
+        }}
+        disabled={
+          !selectedStatement ||
+          isStatementDriveUploading ||
+          isStatementDriveLoading ||
+          isStatementDriveTrashing ||
+          isStatementDriveDownloading
+        }
+      />
+
+      <div className="flex flex-wrap items-center gap-2 pt-2">
+        <button
+          type="button"
+          onClick={() => void handleDownloadStatementDriveFiles()}
+          disabled={
+            isStatementDriveDownloading ||
+            isStatementDriveTrashing ||
+            isStatementDriveLoading ||
+            !selectedStatement ||
+            selectedStatementDriveFileIds.length === 0 ||
+            !!statementDriveError
+          }
+          className="btn btn-secondary btn-sm rounded-xl"
+        >
+          {isStatementDriveDownloading ? 'Скачиваю...' : 'Скачать'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleTrashSelectedStatementDriveFiles()}
+          disabled={
+            isStatementDriveDownloading ||
+            isStatementDriveTrashing ||
+            isStatementDriveLoading ||
+            !selectedStatement ||
+            selectedStatementDriveFileIds.length === 0 ||
+            !!statementDriveError
+          }
+          className="btn btn-danger btn-sm rounded-xl"
+        >
+          {isStatementDriveTrashing ? 'Удаляю...' : 'Удалить'}
+        </button>
+        <p className="text-xs text-slate-500">
+          {selectedStatementDriveFileIds.length
+            ? `${selectedStatementDriveFileIds.length} файл${
+                selectedStatementDriveFileIds.length === 1 ? '' : 'ов'
+              } выбрано`
+            : 'Выберите файлы для действий.'}
+        </p>
+      </div>
+
+      {statementDriveError && <p className="app-alert app-alert-danger">{statementDriveError}</p>}
+
+      {statementDriveTrashMessage && (
+        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
+          {statementDriveTrashMessage}
+        </p>
+      )}
+
+      {statementDriveDownloadMessage && (
+        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
+          {statementDriveDownloadMessage}
+        </p>
+      )}
+
+      {!statementDriveError &&
+        selectedStatementDriveFolderId &&
+        !isStatementDriveLoading &&
+        sortedStatementDriveFiles.length === 0 && (
+          <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">Папка пуста.</div>
+        )}
+
+      {!statementDriveError && sortedStatementDriveFiles.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className={TABLE_THEAD_CLASS}>
+                <tr>
+                  <TableHeadCell padding="sm" className="w-10">
+                    <span className="sr-only">Выбор</span>
+                  </TableHeadCell>
+                  <TableHeadCell padding="sm">Файл</TableHeadCell>
+                  <TableHeadCell padding="sm" align="right">
+                    Размер
+                  </TableHeadCell>
+                  <TableHeadCell padding="sm" align="right">
+                    Дата
+                  </TableHeadCell>
+                  <TableHeadCell padding="sm" align="right">
+                    Действия
+                  </TableHeadCell>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedStatementDriveFiles.map((file) => {
+                  const isSelected = selectedStatementDriveFileIds.includes(file.id);
+                  const canSelect =
+                    !file.isFolder &&
+                    !isStatementDriveLoading &&
+                    !isStatementDriveTrashing &&
+                    !isStatementDriveDownloading;
+
+                  return (
+                    <tr key={file.id} className={TABLE_ROW_CLASS_PLAIN}>
+                      <td className={TABLE_CELL_CLASS_SM}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={!canSelect}
+                          onChange={() => toggleStatementDriveFileSelection(file.id)}
+                          className="check rounded-sm"
+                          aria-label={`Выбрать файл: ${file.name}`}
+                        />
+                      </td>
+                      <td className={TABLE_CELL_CLASS_SM}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-lg">{getDriveItemIcon(file.isFolder)}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 break-all">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-slate-500">{file.mimeType || '—'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
+                        {formatDriveFileSize(file.size)}
+                      </td>
+                      <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
+                        {formatDriveDate(file.modifiedAt ?? file.createdAt)}
+                      </td>
+                      <td className={`${TABLE_CELL_CLASS_SM} text-right`}>
+                        <div className="flex items-center justify-end gap-3">
+                          {file.webViewLink ? (
+                            <a
+                              href={file.webViewLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="link-action text-xs"
+                            >
+                              Открыть
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void handleDownloadStatementDriveFiles([file.id])}
+                            disabled={
+                              file.isFolder ||
+                              isStatementDriveDownloading ||
+                              isStatementDriveTrashing ||
+                              isStatementDriveLoading ||
+                              !!statementDriveError
+                            }
+                            className="link-action text-xs disabled:text-slate-300"
+                          >
+                            Скачать
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleStatementDriveDelete(file)}
+                            disabled={
+                              file.isFolder ||
+                              isStatementDriveDownloading ||
+                              isStatementDriveTrashing ||
+                              isStatementDriveLoading ||
+                              !!statementDriveError
+                            }
+                            className="link-action text-xs disabled:text-slate-300"
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+
   return (
     <section aria-labelledby="commissionsViewHeading" className="flex h-full flex-col gap-6">
       <h1 id="commissionsViewHeading" className="sr-only">
@@ -1089,122 +1440,120 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       </div>
 
       <div className="app-panel overflow-hidden">
-        <div className="divide-y divide-slate-200">
-          {viewMode === 'statements' && (
-            <div className="grid lg:grid-cols-[380px_1fr] lg:divide-x lg:divide-slate-200">
-              <div className="divide-y divide-slate-200 bg-white">
-                <div className="px-4 py-4 bg-white">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
-                        Ведомости
-                      </span>
-                      <span className="text-sm text-slate-500 whitespace-nowrap">
-                        Всего: {statements.length}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600">
-                      Выберите ведомость, чтобы посмотреть ее записи.
-                    </p>
-                  </div>
-                  {onCreateStatement && (
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        onClick={() => setStatementModalOpen(true)}
-                        className="btn btn-secondary btn-sm rounded-xl"
-                      >
-                        + Создать ведомость
-                      </button>
-                    </div>
-                  )}
+        <div
+          role="tabpanel"
+          id="financial-tabpanel-statements"
+          aria-labelledby="financial-tab-statements"
+          tabIndex={0}
+          className="outline-none"
+          hidden={viewMode !== 'statements'}
+        >
+          <div className="divide-y divide-slate-200 bg-white">
+            <div className="px-4 py-4 bg-white">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
+                    Ведомости
+                  </span>
+                  <span className="text-sm text-slate-500 whitespace-nowrap">
+                    Всего: {statements.length}
+                  </span>
                 </div>
-                <div className="max-h-[360px] overflow-y-auto bg-white border-b border-slate-200 lg:max-h-none lg:border-b-0">
-                  {statements.length ? (
-                    <ul className="divide-y divide-slate-200">
-                      {statements.map((statement) => {
-                        const isActive = statement.id === selectedStatementId;
-                        const totalAmount = Number(statement.totalAmount ?? 0);
-                        const totalLabel = Number.isFinite(totalAmount)
-                          ? formatCurrencyRu(totalAmount)
-                          : '—';
-                        const recordsCount = statement.recordsCount ?? 0;
-                        const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
-                        const statusLabel = statement.status === 'paid' ? 'Выплачена' : 'Черновик';
-                        const typeLabel =
-                          statement.statementType === 'income' ? 'Доходы' : 'Расходы';
-
-                        return (
-                          <li
-                            key={statement.id}
-                            className={`border-l-4 transition-colors ${
-                              isActive
-                                ? 'bg-sky-50 border-sky-500'
-                                : 'border-transparent hover:bg-slate-50/80 hover:border-sky-500 even:bg-slate-50/40'
-                            }`}
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedStatementId(statement.id)}
-                                className="flex flex-1 flex-wrap items-center justify-between gap-3 text-left"
-                              >
-                                <div className="space-y-1">
-                                  <p
-                                    className={`text-sm font-semibold ${
-                                      statement.status !== 'paid'
-                                        ? 'text-slate-900'
-                                        : statement.statementType === 'income'
-                                          ? 'text-emerald-700'
-                                          : 'text-rose-700'
-                                    }`}
-                                  >
-                                    {normalizeText(statement.name)}
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    {typeLabel} · {statusLabel}
-                                    {statement.counterparty
-                                      ? ` · ${normalizeText(statement.counterparty)}`
-                                      : ''}
-                                    {paidAt ? ` · Выплата ${paidAt}` : ''}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-semibold text-slate-900">
-                                    {totalLabel}
-                                  </p>
-                                  <p className="text-xs text-slate-500">Записей: {recordsCount}</p>
-                                </div>
-                              </button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <div className="px-6 py-10 text-center">
-                      <PanelMessage>Ведомостей пока нет</PanelMessage>
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm text-slate-600">
+                  Выберите ведомость, чтобы посмотреть ее записи.
+                </p>
               </div>
-              <div
-                role="tabpanel"
-                id="financial-tabpanel-statements"
-                aria-labelledby="financial-tab-statements"
-                tabIndex={0}
-                className="outline-none bg-white"
-              >
-                <div className="app-panel-muted p-3 shadow-none">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="space-y-2">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ведомость</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {selectedStatement
-                          ? normalizeText(selectedStatement.name)
-                          : 'Ведомость не выбрана'}
-                      </p>
-                      {selectedStatement ? (
+              {onCreateStatement && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setStatementModalOpen(true)}
+                    className="btn btn-secondary btn-sm rounded-xl"
+                  >
+                    + Создать ведомость
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="max-h-[360px] overflow-y-auto bg-white border-t border-slate-200">
+              {statements.length ? (
+                <ul className="divide-y divide-slate-200">
+                  {statements.map((statement) => {
+                    const isActive = statement.id === selectedStatementId;
+                    const totalAmount = Number(statement.totalAmount ?? 0);
+                    const totalLabel = Number.isFinite(totalAmount)
+                      ? formatCurrencyRu(totalAmount)
+                      : '—';
+                    const recordsCount = statement.recordsCount ?? 0;
+                    const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
+                    const statusLabel = statement.status === 'paid' ? 'Выплачена' : 'Черновик';
+                    const typeLabel = statement.statementType === 'income' ? 'Доходы' : 'Расходы';
+
+                    return (
+                      <li
+                        key={statement.id}
+                        className={`border-l-4 transition-colors ${
+                          isActive
+                            ? 'bg-sky-50 border-sky-500'
+                            : 'border-transparent hover:bg-slate-50/80 hover:border-sky-500 even:bg-slate-50/40'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStatementId(statement.id)}
+                            className="flex flex-1 flex-wrap items-center justify-between gap-3 text-left"
+                          >
+                            <div className="space-y-1">
+                              <p
+                                className={`text-sm font-semibold ${
+                                  statement.status !== 'paid'
+                                    ? 'text-slate-900'
+                                    : statement.statementType === 'income'
+                                      ? 'text-emerald-700'
+                                      : 'text-rose-700'
+                                }`}
+                              >
+                                {normalizeText(statement.name)}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {typeLabel} · {statusLabel}
+                                {statement.counterparty
+                                  ? ` · ${normalizeText(statement.counterparty)}`
+                                  : ''}
+                                {paidAt ? ` · Выплата ${paidAt}` : ''}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
+                              <p className="text-xs text-slate-500">Записей: {recordsCount}</p>
+                            </div>
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="px-6 py-10 text-center">
+                  <PanelMessage>Ведомостей пока нет</PanelMessage>
+                </div>
+              )}
+            </div>
+
+            <div className="px-4 py-5 bg-white">
+              {selectedStatement ? (
+                <div className="rounded-2xl border bg-white shadow-md p-6 space-y-6 border-sky-500 ring-2 ring-sky-400/30">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-2">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                          Ведомость
+                        </p>
+                        <p className="text-lg font-semibold text-slate-900">
+                          {normalizeText(selectedStatement.name)}
+                        </p>
                         <p className="text-xs text-slate-500">
                           {selectedStatementTypeLabel} · {selectedStatementStatusLabel}
                           {selectedStatement.counterparty
@@ -1212,18 +1561,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                             : ''}
                           {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
                         </p>
-                      ) : (
-                        <p className="text-sm text-slate-500">
-                          Выберите ведомость из списка слева.
-                        </p>
-                      )}
-                      {selectedStatement && selectedStatement.status === 'paid' && (
-                        <p className="text-xs text-rose-600">
-                          Выплаченная ведомость недоступна для редактирования и удаления.
-                        </p>
-                      )}
-                    </div>
-                    {selectedStatement && (
+                        {selectedStatement.status === 'paid' && (
+                          <p className="text-xs text-rose-600">
+                            Выплаченная ведомость недоступна для редактирования и удаления.
+                          </p>
+                        )}
+                      </div>
+
                       <div className="flex flex-wrap items-center justify-end gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           {onUpdateStatement && (
@@ -1246,34 +1590,96 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                               Удалить
                             </button>
                           )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={handleMarkPaidClick}
                             disabled={isSelectedStatementPaid || !onMarkStatementPaid}
                             className="btn btn-success"
                           >
-                            {selectedStatement?.statementType === 'income'
+                            {selectedStatement.statementType === 'income'
                               ? 'Получено!'
                               : 'Оплачено!'}
                           </button>
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    <div
+                      role="tablist"
+                      aria-label="Разделы ведомости"
+                      className="flex w-full flex-nowrap gap-2 overflow-x-auto app-panel-muted p-1 shadow-none scrollbar-none"
+                    >
+                      {statementTabs.map((tab) => {
+                        const isActive = statementTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            id={`statement-tab-${tab.id}`}
+                            role="tab"
+                            aria-label={tab.label}
+                            aria-selected={isActive}
+                            aria-controls={`statement-tabpanel-${tab.id}`}
+                            type="button"
+                            onClick={() => setStatementTab(tab.id)}
+                            className={`min-w-[120px] flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                              isActive
+                                ? 'bg-white font-semibold text-sky-700 border border-slate-200 shadow-sm'
+                                : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
+                            }`}
+                          >
+                            <span className="flex items-center justify-center gap-2">
+                              <span className={isActive ? 'font-semibold' : 'font-medium'}>
+                                {tab.label}
+                              </span>
+                              <span className="app-counter" aria-hidden="true">
+                                {tab.count}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div
+                      role="tabpanel"
+                      id="statement-tabpanel-records"
+                      aria-labelledby="statement-tab-records"
+                      tabIndex={0}
+                      className="outline-none"
+                      hidden={statementTab !== 'records'}
+                    >
+                      {recordsTable}
+                    </div>
+                    <div
+                      role="tabpanel"
+                      id="statement-tabpanel-files"
+                      aria-labelledby="statement-tab-files"
+                      tabIndex={0}
+                      className="outline-none"
+                      hidden={statementTab !== 'files'}
+                    >
+                      {statementFilesTab}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white px-6 py-10 text-center">
+                  <PanelMessage>Выберите ведомость в списке выше.</PanelMessage>
+                </div>
+              )}
             </div>
-          )}
-          <div
-            role="tabpanel"
-            id="financial-tabpanel-all"
-            aria-labelledby="financial-tab-all"
-            tabIndex={0}
-            className="outline-none"
-            hidden={viewMode !== 'all'}
-          >
+          </div>
+        </div>
+
+        <div
+          role="tabpanel"
+          id="financial-tabpanel-all"
+          aria-labelledby="financial-tab-all"
+          tabIndex={0}
+          className="outline-none"
+          hidden={viewMode !== 'all'}
+        >
+          <div className="divide-y divide-slate-200">
             <div className="px-4 py-4 bg-white">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
                 <div className="flex flex-wrap items-baseline gap-2">
@@ -1369,125 +1775,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 </select>
               </div>
             </div>
+            <div className="px-4 py-5 bg-white">{recordsTable}</div>
           </div>
-          {viewMode === 'statements' ? (
-            selectedStatement ? (
-              recordsTable
-            ) : (
-              <div className="bg-white px-6 py-10 text-center">
-                <PanelMessage>Выберите ведомость в списке выше.</PanelMessage>
-              </div>
-            )
-          ) : (
-            recordsTable
-          )}
-          {viewMode === 'statements' && selectedStatement && (
-            <div className="border-t border-slate-200 bg-white px-4 py-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Файлы ведомости
-                  </p>
-                  <p className="text-xs text-slate-500">Google Drive</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {statementDriveFolderLink ? (
-                    <a
-                      href={statementDriveFolderLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn-secondary btn-sm rounded-xl"
-                    >
-                      Открыть папку
-                    </a>
-                  ) : (
-                    <span className="text-xs text-slate-400">Папка создаётся...</span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => void loadStatementDriveFiles(selectedStatement.id)}
-                    className="btn btn-secondary btn-sm rounded-xl"
-                    disabled={isStatementDriveLoading}
-                  >
-                    {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
-                  </button>
-                  <label
-                    className={`btn btn-secondary btn-sm rounded-xl ${
-                      isStatementDriveUploading ? 'opacity-70' : ''
-                    }`}
-                  >
-                    <input
-                      type="file"
-                      onChange={handleStatementDriveUpload}
-                      disabled={isStatementDriveUploading}
-                      className="hidden"
-                    />
-                    {isStatementDriveUploading ? 'Загрузка...' : 'Загрузить файл'}
-                  </label>
-                </div>
-              </div>
-              {statementDriveError && (
-                <div className="app-alert app-alert-danger mt-3">{statementDriveError}</div>
-              )}
-              <div className="mt-4">
-                {isStatementDriveLoading ? (
-                  <PanelMessage>Загрузка файлов...</PanelMessage>
-                ) : statementDriveFiles.length === 0 ? (
-                  <PanelMessage>Файлов пока нет</PanelMessage>
-                ) : (
-                  <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
-                    {statementDriveFiles.map((file) => {
-                      const fileDate = formatDriveDate(file.modifiedAt ?? file.createdAt);
-                      const fileSize = formatDriveFileSize(file.size);
-                      const canDelete =
-                        !file.isFolder && !isStatementDriveTrashing && !isStatementDriveLoading;
-                      return (
-                        <li
-                          key={file.id}
-                          className="flex flex-wrap items-center justify-between gap-3 px-3 py-2"
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <span className="text-lg" aria-hidden="true">
-                              {getDriveItemIcon(file.isFolder)}
-                            </span>
-                            <div className="min-w-0">
-                              {file.webViewLink ? (
-                                <a
-                                  href={file.webViewLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="truncate text-sm font-semibold text-slate-700 hover:text-slate-900"
-                                >
-                                  {file.name}
-                                </a>
-                              ) : (
-                                <p className="truncate text-sm font-semibold text-slate-700">
-                                  {file.name}
-                                </p>
-                              )}
-                              <p className="text-xs text-slate-500">
-                                {fileSize} · {fileDate}
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => void handleStatementDriveDelete(file)}
-                            disabled={!canDelete}
-                            className={`text-xs font-semibold ${
-                              canDelete ? 'text-rose-600 hover:text-rose-700' : 'text-slate-300'
-                            }`}
-                          >
-                            Удалить
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

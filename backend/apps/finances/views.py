@@ -1,5 +1,10 @@
+import zipfile
+from io import BytesIO
+
 from apps.common.drive import (
     DriveError,
+    DriveFileInfo,
+    download_drive_file,
     ensure_statement_folder,
     ensure_trash_folder,
     list_drive_folder_contents,
@@ -10,6 +15,9 @@ from apps.common.services import manage_drive_files
 from django.db import transaction
 from django.db.models import DecimalField, Prefetch, Q, Sum
 from django.db.models.functions import Coalesce
+from django.http import HttpResponse
+from django.utils.encoding import iri_to_uri
+from django.utils.text import get_valid_filename
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -30,6 +38,15 @@ from .serializers import (
 
 
 class StatementDriveTrashSerializer(serializers.Serializer):
+    file_ids = serializers.ListField(
+        child=serializers.CharField(),
+        min_length=1,
+        allow_empty=False,
+        required=True,
+    )
+
+
+class StatementDriveDownloadSerializer(serializers.Serializer):
     file_ids = serializers.ListField(
         child=serializers.CharField(),
         min_length=1,
@@ -196,6 +213,34 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if not user_has_deal_access(self.request.user, deal, allow_executor=False):
                 raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
 
+    def _create_download_response(
+        self,
+        content: bytes,
+        filename: str,
+        content_type: str = "application/octet-stream",
+    ) -> HttpResponse:
+        response = HttpResponse(content, content_type=content_type)
+        raw_name = (filename or "").strip() or "download"
+        safe_name = get_valid_filename(raw_name) or "download"
+        response["Content-Disposition"] = (
+            f"attachment; filename=\"{safe_name}\"; filename*=UTF-8''{iri_to_uri(raw_name)}"
+        )
+        return response
+
+    def _ensure_unique_zip_path(self, path: str, seen: set[str]) -> str:
+        if path not in seen:
+            seen.add(path)
+            return path
+
+        suffix = 1
+        base, dot, ext = path.partition(".")
+        while True:
+            candidate = f"{base} ({suffix}){dot}{ext}" if ext else f"{base} ({suffix})"
+            if candidate not in seen:
+                seen.add(candidate)
+                return candidate
+            suffix += 1
+
     def perform_update(self, serializer):
         record_ids = serializer.validated_data.get("record_ids") or []
         if record_ids:
@@ -330,6 +375,92 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 uploaded_file=uploaded_file,
             )
             return Response(result)
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="drive-files/download",
+        parser_classes=[JSONParser],
+    )
+    def download_drive_files(self, request, *args, **kwargs):
+        statement = self.get_object()
+        serializer = StatementDriveDownloadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file_ids = [
+            file_id.strip()
+            for file_id in serializer.validated_data["file_ids"]
+            if isinstance(file_id, str) and file_id.strip()
+        ]
+        if not file_ids:
+            raise ValidationError({"file_ids": "Нужно передать ID файлов."})
+
+        try:
+            folder_id = statement.drive_folder_id or ensure_statement_folder(statement)
+            if not folder_id:
+                return Response(
+                    {"detail": "Папка Google Drive для ведомости не найдена."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            drive_files = list_drive_folder_contents(folder_id)
+            drive_file_map: dict[str, DriveFileInfo] = {
+                item["id"]: item for item in drive_files
+            }
+            missing_ids = [
+                file_id for file_id in file_ids if file_id not in drive_file_map
+            ]
+            if missing_ids:
+                return Response(
+                    {
+                        "detail": "Файлы не найдены в папке ведомости.",
+                        "missing_file_ids": missing_ids,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            selected_items = [drive_file_map[file_id] for file_id in file_ids]
+            folder_ids = [item["id"] for item in selected_items if item["is_folder"]]
+            if folder_ids:
+                return Response(
+                    {
+                        "detail": "Скачивание папок не поддерживается. Выберите только файлы."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if len(selected_items) == 1:
+                item = selected_items[0]
+                content = download_drive_file(item["id"])
+                return self._create_download_response(
+                    content=content,
+                    filename=item["name"],
+                    content_type=item.get("mime_type") or "application/octet-stream",
+                )
+
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(
+                zip_buffer, "w", compression=zipfile.ZIP_DEFLATED
+            ) as zip_file:
+                seen_paths: set[str] = set()
+                for item in selected_items:
+                    content = download_drive_file(item["id"])
+                    zip_path = self._ensure_unique_zip_path(
+                        item["name"] or "file", seen_paths
+                    )
+                    zip_file.writestr(zip_path, content)
+
+            zip_buffer.seek(0)
+            archive_name = f"{statement.name or f'statement-{statement.id}'}-files.zip"
+            return self._create_download_response(
+                content=zip_buffer.read(),
+                filename=archive_name,
+                content_type="application/zip",
+            )
         except DriveError as exc:
             return Response(
                 {"detail": str(exc)},

@@ -172,6 +172,27 @@ export async function downloadDealDriveFiles(
   };
 }
 
+export async function downloadStatementDriveFiles(
+  statementId: string,
+  fileIds: string[],
+): Promise<{ blob: Blob; filename: string | null }> {
+  const { blob, headers } = await requestBlobWithHeaders(
+    `/finance_statements/${statementId}/drive-files/download/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ file_ids: fileIds }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+
+  return {
+    blob,
+    filename: extractFilename(headers.get('Content-Disposition')),
+  };
+}
+
 export async function uploadClientDriveFile(clientId: string, file: File): Promise<DriveFile> {
   const formData = new FormData();
   formData.append('file', file);
