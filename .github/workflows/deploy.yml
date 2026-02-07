@@ -8,6 +8,10 @@ on:
       - completed
   workflow_dispatch:
 
+concurrency:
+  group: vps-master
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -124,17 +128,6 @@ jobs:
         env:
           VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_PATH: ${{ secrets.VPS_PATH }}
-          MAILCOW_HOSTNAME: ${{ secrets.MAILCOW_HOSTNAME }}
-          MAILCOW_TZ: ${{ secrets.MAILCOW_TZ }}
-          MAILCOW_ADMIN_EMAIL: ${{ secrets.MAILCOW_ADMIN_EMAIL }}
-          MAILCOW_ADMIN_PASS: ${{ secrets.MAILCOW_ADMIN_PASS }}
-          MAILCOW_API_KEY: ${{ secrets.MAILCOW_API_KEY }}
-          MAILCOW_API_ALLOW_FROM: ${{ secrets.MAILCOW_API_ALLOW_FROM }}
-          MAILCOW_DOMAIN: ${{ secrets.MAILCOW_DOMAIN }}
-          MAILCOW_IMAP_MASTER_USER: ${{ secrets.MAILCOW_IMAP_MASTER_USER }}
-          MAILCOW_IMAP_MASTER_PASS: ${{ secrets.MAILCOW_IMAP_MASTER_PASS }}
-          MAILCOW_PROJECT_NAME: ${{ secrets.MAILCOW_PROJECT_NAME }}
-          MAILCOW_ADDITIONAL_SERVER_NAMES: ${{ secrets.MAILCOW_ADDITIONAL_SERVER_NAMES }}
         run: |
           BRANCH="${BRANCH:-master}"
           COMMIT_SHA="${COMMIT_SHA:-$(git rev-parse HEAD)}"
@@ -144,17 +137,6 @@ jobs:
             VPS_PATH="${VPS_PATH}" \
             BRANCH="${BRANCH}" \
             COMMIT_SHA="${COMMIT_SHA}" \
-            MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME}" \
-            MAILCOW_TZ="${MAILCOW_TZ}" \
-            MAILCOW_ADMIN_EMAIL="${MAILCOW_ADMIN_EMAIL}" \
-            MAILCOW_ADMIN_PASS="${MAILCOW_ADMIN_PASS}" \
-            MAILCOW_API_KEY="${MAILCOW_API_KEY}" \
-            MAILCOW_API_ALLOW_FROM="${MAILCOW_API_ALLOW_FROM}" \
-            MAILCOW_DOMAIN="${MAILCOW_DOMAIN}" \
-            MAILCOW_IMAP_MASTER_USER="${MAILCOW_IMAP_MASTER_USER}" \
-            MAILCOW_IMAP_MASTER_PASS="${MAILCOW_IMAP_MASTER_PASS}" \
-            MAILCOW_PROJECT_NAME="${MAILCOW_PROJECT_NAME}" \
-            MAILCOW_ADDITIONAL_SERVER_NAMES="${MAILCOW_ADDITIONAL_SERVER_NAMES}" \
             bash -s <<'EOF'
           set -Eeuo pipefail
 
@@ -199,7 +181,7 @@ jobs:
           # Tag images by commit so frontend changes always produce a new image.
           export IMAGE_TAG="${COMMIT_SHA}"
           echo "Deploy vars: BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA} IMAGE_TAG=${IMAGE_TAG}"
-          docker compose -f docker-compose.prod.yml --env-file .env.production up --build -d --force-recreate backend telegram_bot frontend nginx
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate backend telegram_bot frontend nginx
 
           echo "MARK: after app compose up"
           echo "Running containers:"
@@ -212,131 +194,6 @@ jobs:
           # Show the asset filenames that prove the frontend bundle changed.
           docker exec crm3-frontend sh -lc 'ls -1 /usr/share/nginx/html/assets 2>/dev/null | head -n 20 || true'
           docker exec crm3-frontend sh -lc 'head -n 25 /usr/share/nginx/html/index.html 2>/dev/null || true'
-
-          if [ -d mailcow ]; then
-            echo "MARK: mailcow block begin"
-            # Mailcow is optional; never block CRM deploy.
-            (
-              set +e
-              echo "MARK: mailcow vars present (no values):"
-              for v in MAILCOW_HOSTNAME MAILCOW_TZ MAILCOW_DOMAIN MAILCOW_PROJECT_NAME MAILCOW_API_ALLOW_FROM MAILCOW_IMAP_MASTER_USER; do
-                if [ -n "${!v:-}" ]; then echo "MARK: ${v}=set"; else echo "MARK: ${v}=missing"; fi
-              done
-              if [ -n "${MAILCOW_API_KEY:-}" ]; then echo "MARK: MAILCOW_API_KEY=set(len=${#MAILCOW_API_KEY})"; else echo "MARK: MAILCOW_API_KEY=missing"; fi
-
-              echo "Preparing mailcow..."
-              cd mailcow
-              ln -sf mailcow.conf .env
-              if [ ! -f mailcow.conf ]; then
-                MAILCOW_HOSTNAME="${MAILCOW_HOSTNAME}" \
-                MAILCOW_TZ="${MAILCOW_TZ}" \
-                SKIP_CLAMD=y \
-                ./generate_config.sh --dev
-              fi
-
-              python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          path = Path("mailcow.conf")
-          text = path.read_text(encoding="utf-8")
-
-          def upsert(key: str, value: str) -> None:
-              global text
-              if f"{key}=" in text:
-                  text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
-              else:
-                  text += f"\n{key}={value}\n"
-
-          api_key = os.environ.get("MAILCOW_API_KEY", "")
-          api_allow = os.environ.get("MAILCOW_API_ALLOW_FROM", "127.0.0.1,173.249.7.183")
-          imap_master_user = os.environ.get("MAILCOW_IMAP_MASTER_USER", "crm_master")
-          imap_master_pass = os.environ.get("MAILCOW_IMAP_MASTER_PASS", "crmMaster2026")
-          project_name = os.environ.get("MAILCOW_PROJECT_NAME", "mailcow")
-          additional_names = os.environ.get(
-              "MAILCOW_ADDITIONAL_SERVER_NAMES",
-              "autodiscover.zoom78.com,autoconfig.zoom78.com",
-          )
-
-          if api_key:
-              upsert("API_KEY", api_key)
-              upsert("API_ALLOW_FROM", api_allow)
-
-          upsert("HTTP_BIND", "127.0.0.1")
-          upsert("HTTP_PORT", "8080")
-          upsert("HTTPS_BIND", "127.0.0.1")
-          upsert("HTTPS_PORT", "8443")
-          upsert("HTTP_REDIRECT", "n")
-          upsert("SKIP_LETS_ENCRYPT", "y")
-          upsert("DOVECOT_MASTER_USER", imap_master_user)
-          upsert("DOVECOT_MASTER_PASS", imap_master_pass)
-          upsert("COMPOSE_PROJECT_NAME", project_name)
-          upsert("ADDITIONAL_SERVER_NAMES", additional_names)
-
-              path.write_text(text, encoding="utf-8")
-          PY
-            )
-            ) || true
-
-            if command -v ufw >/dev/null 2>&1; then
-              ufw allow 25/tcp
-              ufw allow 465/tcp
-              ufw allow 587/tcp
-              ufw allow 143/tcp
-              ufw allow 993/tcp
-              ufw allow 110/tcp
-              ufw allow 995/tcp
-              ufw allow 4190/tcp
-            fi
-          fi
-
-          if [ -d mailcow ]; then
-            echo "MARK: mailcow stack begin"
-            echo "Starting mailcow stack"
-            docker compose -f mailcow/docker-compose.yml up -d
-
-            if [ -n "${MAILCOW_ADMIN_PASS}" ]; then
-              echo "Ensuring mailcow admin password"
-              # Mailcow might be temporarily unavailable; CRM deploy should still proceed.
-              (
-                set +e
-                cd mailcow
-                # shellcheck disable=SC1091
-                source mailcow.conf
-
-                until [ -n "$(docker compose -f docker-compose.yml ps -q mysql-mailcow)" ]; do sleep 3; done
-                until [ -n "$(docker compose -f docker-compose.yml ps -q dovecot-mailcow)" ]; do sleep 3; done
-
-                password_hash=$(docker compose -f docker-compose.yml exec -T dovecot-mailcow doveadm pw -s SSHA256 -p "${MAILCOW_ADMIN_PASS}" | tr -d '\r')
-                docker compose -f docker-compose.yml exec -T mysql-mailcow \
-                  mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "DELETE FROM admin WHERE username='admin';"
-                docker compose -f docker-compose.yml exec -T mysql-mailcow \
-                  mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "DELETE FROM domain_admins WHERE username='admin';"
-                docker compose -f docker-compose.yml exec -T mysql-mailcow \
-                  mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "INSERT INTO admin (username, password, superadmin, active) VALUES ('admin', '${password_hash}', 1, 1);"
-                docker compose -f docker-compose.yml exec -T mysql-mailcow \
-                  mysql -u${DBUSER} -p${DBPASS} ${DBNAME} -e "DELETE FROM tfa WHERE username='admin';"
-                cd ..
-              ) || true
-            fi
-
-            if [ -n "${MAILCOW_API_KEY}" ] && [ -n "${MAILCOW_DOMAIN}" ]; then
-              echo "Ensuring mailcow domain exists"
-              (
-                set +e
-                payload=$(printf '{"domain":"%s","description":"CRM domain","active":true,"aliases":200,"mailboxes":200,"maxquota":10240,"quota":10240,"defquota":3072,"restart_sogo":1}' "${MAILCOW_DOMAIN}")
-                http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:8080/api/v1/add/domain" \
-                  -H "Content-Type: application/json" \
-                  -H "X-API-Key: ${MAILCOW_API_KEY}" \
-                  -d "${payload}")
-                rc=$?
-                echo "MARK: mailcow ensure domain rc=${rc} http=${http_code}"
-              ) || true
-            fi
-          fi
-
-          echo "MARK: after mailcow stack block"
 
           echo "Pruning unused images"
           docker image prune -f
