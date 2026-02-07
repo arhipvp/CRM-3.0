@@ -169,6 +169,7 @@ jobs:
 
           echo "MARK: start"
           echo "MARK: VPS_PATH=${VPS_PATH} BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA}"
+          trap 'rc=$?; echo \"MARK: exit rc=${rc}\"' EXIT
 
           cd "${VPS_PATH}"
           echo "MARK: cd ok, pwd=$(pwd)"
@@ -288,14 +289,20 @@ jobs:
 
             if [ -n "${MAILCOW_API_KEY}" ] && [ -n "${MAILCOW_DOMAIN}" ]; then
               echo "Ensuring mailcow domain exists"
-              payload=$(printf '{"domain":"%s","description":"CRM domain","active":true,"aliases":200,"mailboxes":200,"maxquota":10240,"quota":10240,"defquota":3072,"restart_sogo":1}' "${MAILCOW_DOMAIN}")
-              curl -s -X POST "http://127.0.0.1:8080/api/v1/add/domain" \
-                -H "Content-Type: application/json" \
-                -H "X-API-Key: ${MAILCOW_API_KEY}" \
-                -d "${payload}" >/dev/null || true
+              (
+                set +e
+                payload=$(printf '{"domain":"%s","description":"CRM domain","active":true,"aliases":200,"mailboxes":200,"maxquota":10240,"quota":10240,"defquota":3072,"restart_sogo":1}' "${MAILCOW_DOMAIN}")
+                http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:8080/api/v1/add/domain" \
+                  -H "Content-Type: application/json" \
+                  -H "X-API-Key: ${MAILCOW_API_KEY}" \
+                  -d "${payload}")
+                rc=$?
+                echo "MARK: mailcow ensure domain rc=${rc} http=${http_code}"
+              ) || true
             fi
           fi
 
+          echo "MARK: after mailcow stack block"
           echo "MARK: before app compose up"
           echo "Building and restarting stack"
           # Tag images by commit so frontend changes always produce a new image.
