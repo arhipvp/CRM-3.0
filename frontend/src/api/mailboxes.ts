@@ -1,3 +1,4 @@
+import { unwrapList } from './helpers';
 import { request } from './request';
 
 export interface Mailbox {
@@ -18,7 +19,9 @@ export interface MailboxMessage {
 }
 
 export async function fetchMailboxes(): Promise<Mailbox[]> {
-  return request<Mailbox[]>('/mailboxes/');
+  // DRF pagination is enabled globally; this endpoint can return either an array or { results: [...] }.
+  const payload = await request<unknown>('/mailboxes/');
+  return unwrapList<Mailbox>(payload);
 }
 
 export async function createMailbox(payload: {

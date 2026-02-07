@@ -144,9 +144,9 @@ export async function request<T = unknown>(
       `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`,
     );
     clearTokens();
-    if (hadAnyTokens) {
-      redirectToLogin();
-    }
+    // Redirect even when tokens are missing to avoid leaving the app in a broken
+    // state on protected pages after a hard refresh or domain change.
+    redirectToLogin();
     throw new APIError('Unauthorized', 401, path);
   }
 
