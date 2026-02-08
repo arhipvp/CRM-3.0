@@ -528,20 +528,24 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   }, [allRecords, paymentsById]);
 
   const filteredRows = useMemo(() => {
-    if (viewMode === 'statements' && !selectedStatementId) {
+    // В режиме "Все записи" сортировка и пагинация должны соответствовать серверу.
+    // Любая клиентская сортировка ломает порядок (особенно при "Показать ещё").
+    if (viewMode === 'all') {
+      return [...allRows];
+    }
+
+    if (!selectedStatementId) {
       return [];
     }
-    const result =
-      viewMode === 'all'
-        ? [...allRows]
-        : statementRows.filter((row) => row.statementId === selectedStatementId);
+
+    const result = statementRows.filter((row) => row.statementId === selectedStatementId);
     const compareByDate = (a: IncomeExpenseRow, b: IncomeExpenseRow) => {
       const aTime = a.recordDate ? new Date(a.recordDate).getTime() : 0;
       const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
       return bTime - aTime;
     };
 
-    if (viewMode === 'statements' && recordAmountSort !== 'none') {
+    if (recordAmountSort !== 'none') {
       result.sort((a, b) => {
         const aAmount = Number(a.recordAmount) || 0;
         const bAmount = Number(b.recordAmount) || 0;
