@@ -399,7 +399,7 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.assertEqual(by_id[str(self.income_record.id)]["record_type"], "Доход")
         self.assertEqual(by_id[str(self.expense_record.id)]["record_type"], "Расход")
 
-    def test_search_applies_only_after_five_chars(self):
+    def test_search_applies_for_short_queries(self):
         self.authenticate(self.seller)
         response_short = self.api_client.get("/api/v1/financial_records/?search=Alph")
         self.assertEqual(response_short.status_code, status.HTTP_200_OK)
@@ -407,7 +407,7 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         results_short = payload_short.get("results", payload_short)
         record_ids_short = {str(item["id"]) for item in results_short}
         self.assertIn(str(self.income_record.id), record_ids_short)
-        self.assertIn(str(self.expense_record.id), record_ids_short)
+        self.assertNotIn(str(self.expense_record.id), record_ids_short)
 
         response = self.api_client.get("/api/v1/financial_records/?search=AlphaNote")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
