@@ -323,23 +323,24 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
 
     def test_mark_paid_updates_record_dates(self):
         self.authenticate(self.seller)
+        paid_at = timezone.now().date()
         statement = Statement.objects.create(
             name="To Pay",
             statement_type="income",
-            paid_at=timezone.now().date(),
             created_by=self.seller,
         )
         self.income_record.statement = statement
         self.income_record.save(update_fields=["statement"])
         response = self.api_client.post(
             f"/api/v1/finance_statements/{statement.id}/mark-paid/",
-            {},
+            {"paid_at": paid_at.isoformat()},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         statement.refresh_from_db()
         self.income_record.refresh_from_db()
-        self.assertEqual(self.income_record.date, statement.paid_at)
+        self.assertEqual(statement.paid_at, paid_at)
+        self.assertEqual(self.income_record.date, paid_at)
 
 
 class FinancialRecordFilterTests(AuthenticatedAPITestCase):
