@@ -459,6 +459,69 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
             returned_ids.index(str(high_paid.id)), returned_ids.index(str(low_paid.id))
         )
 
+    def test_ordering_by_amount_works(self):
+        self.authenticate(self.seller)
+        low = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("10.00")
+        )
+        high = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("20.00")
+        )
+
+        response = self.api_client.get("/api/v1/financial_records/?ordering=amount")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        returned_ids = [str(item["id"]) for item in results]
+        self.assertLess(
+            returned_ids.index(str(low.id)), returned_ids.index(str(high.id))
+        )
+
+    def test_ordering_by_record_comment_sort_works(self):
+        self.authenticate(self.seller)
+        a = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("10.00"), note="AAA"
+        )
+        b = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("20.00"), note="BBB"
+        )
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/?ordering=record_comment_sort"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        returned_ids = [str(item["id"]) for item in results]
+        self.assertLess(returned_ids.index(str(a.id)), returned_ids.index(str(b.id)))
+
+    def test_ordering_by_payment_is_paid_works(self):
+        self.authenticate(self.seller)
+        paid_payment = Payment.objects.create(
+            deal=self.deal,
+            amount=Decimal("1500.00"),
+            description="Paid payment",
+            actual_date=timezone.now().date(),
+        )
+        unpaid_record = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("10.00")
+        )
+        paid_record = FinancialRecord.objects.create(
+            payment=paid_payment, amount=Decimal("10.00")
+        )
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/?ordering=-payment_is_paid"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        returned_ids = [str(item["id"]) for item in results]
+        self.assertLess(
+            returned_ids.index(str(paid_record.id)),
+            returned_ids.index(str(unpaid_record.id)),
+        )
+
 
 class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):
     def setUp(self):

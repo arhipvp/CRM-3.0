@@ -98,7 +98,6 @@ const normalizeText = (value?: string | null) => {
 
 export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
-  financialRecords,
   policies,
   statements,
   onDealSelect,
@@ -111,6 +110,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateStatement,
 }) => {
   const navigate = useNavigate();
+
+  type AllRecordsSortKey = 'none' | 'payment' | 'saldo' | 'comment' | 'amount';
+
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
@@ -118,11 +120,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
+  const [paymentPaidFilter, setPaymentPaidFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [showWithoutStatementOnly, setShowWithoutStatementOnly] = useState(false);
   const [showNonZeroBalanceOnly, setShowNonZeroBalanceOnly] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
-  const [paymentBalanceSort, setPaymentBalanceSort] = useState<'none' | 'asc' | 'desc'>('none');
+  const [allRecordsSortKey, setAllRecordsSortKey] = useState<AllRecordsSortKey>('none');
+  const [allRecordsSortDirection, setAllRecordsSortDirection] = useState<'asc' | 'desc'>('asc');
   const [targetStatementId, setTargetStatementId] = useState('');
   const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
   const [isAllRecordsLoading, setIsAllRecordsLoading] = useState(false);
@@ -246,6 +250,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (showUnpaidOnly) {
         filters.unpaid_only = true;
       }
+      if (paymentPaidFilter !== 'all') {
+        filters.payment_paid = paymentPaidFilter === 'paid';
+      }
       if (showWithoutStatementOnly) {
         filters.without_statement = true;
       }
@@ -255,9 +262,17 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (recordTypeFilter !== 'all') {
         filters.record_type = recordTypeFilter;
       }
-      if (paymentBalanceSort !== 'none') {
-        const directionPrefix = paymentBalanceSort === 'desc' ? '-' : '';
-        filters.ordering = `${directionPrefix}payment_paid_balance,-date`;
+      if (allRecordsSortKey !== 'none') {
+        const directionPrefix = allRecordsSortDirection === 'desc' ? '-' : '';
+        if (allRecordsSortKey === 'payment') {
+          filters.ordering = `${directionPrefix}payment_is_paid,-payment_sort_date,-created_at`;
+        } else if (allRecordsSortKey === 'saldo') {
+          filters.ordering = `${directionPrefix}payment_paid_balance,-payment_sort_date,-created_at`;
+        } else if (allRecordsSortKey === 'comment') {
+          filters.ordering = `${directionPrefix}record_comment_sort,-payment_sort_date,-created_at`;
+        } else if (allRecordsSortKey === 'amount') {
+          filters.ordering = `${directionPrefix}amount,-payment_sort_date,-created_at`;
+        }
       }
       const nextPage = mode === 'more' ? allRecordsPage + 1 : 1;
       if (mode === 'reset') {
@@ -300,7 +315,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [
       effectiveSearch,
       allRecordsPage,
-      paymentBalanceSort,
+      allRecordsSortDirection,
+      allRecordsSortKey,
+      paymentPaidFilter,
       recordTypeFilter,
       showNonZeroBalanceOnly,
       showUnpaidOnly,
@@ -315,17 +332,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     void loadAllRecords('reset');
   }, [loadAllRecords, viewMode]);
 
-  useEffect(() => {
-    if (viewMode !== 'all') {
-      return;
-    }
-    if (allRecords.length || isAllRecordsLoading) {
-      return;
-    }
-    if (!allRecordsError && financialRecords?.length) {
-      setAllRecords(financialRecords);
-    }
-  }, [allRecords.length, allRecordsError, financialRecords, isAllRecordsLoading, viewMode]);
+  // Не подмешиваем финансовые записи из props: "Все записи" должны идти строго с сервера,
+  // иначе ломается сортировка и пагинация.
 
   const loadStatementDriveFiles = useCallback(async (statementId: string) => {
     setStatementDriveLoading(true);
@@ -471,6 +479,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     const result: IncomeExpenseRow[] = [];
     payments.forEach((payment) => {
       const records = payment.financialRecords ?? [];
+      const paidEntries = records
+        .filter((record) => Boolean(record.date))
+        .map((record) => ({
+          amount: record.amount,
+          date: record.date as string,
+        }));
+      const paidBalance = paidEntries.reduce((sum, entry) => {
+        const value = Number(entry.amount);
+        return Number.isFinite(value) ? sum + value : sum;
+      }, 0);
+      const paymentPaidBalance = Number.isFinite(paidBalance) ? paidBalance : undefined;
+
       records.forEach((record) => {
         const amount = Number(record.amount);
         if (!Number.isFinite(amount) || amount === 0) {
@@ -482,6 +502,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           recordId: record.id,
           statementId: record.statementId,
           recordAmount: amount,
+          paymentPaidBalance,
+          paymentPaidEntries: paidEntries,
           recordDate: record.date ?? null,
           recordDescription: record.description,
           recordSource: record.source,
@@ -592,36 +614,44 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     return 'не сортируется';
   };
 
-  const togglePaymentBalanceSort = useCallback(() => {
-    setPaymentBalanceSort((prev) => {
-      if (prev === 'none') {
-        return 'asc';
+  const toggleAllRecordsSort = useCallback(
+    (key: AllRecordsSortKey) => {
+      if (viewMode !== 'all') {
+        return;
       }
-      if (prev === 'asc') {
-        return 'desc';
+      if (allRecordsSortKey !== key) {
+        setAllRecordsSortKey(key);
+        setAllRecordsSortDirection('asc');
+        return;
       }
-      return 'none';
-    });
-  }, []);
+      if (allRecordsSortDirection === 'asc') {
+        setAllRecordsSortDirection('desc');
+        return;
+      }
+      setAllRecordsSortKey('none');
+      setAllRecordsSortDirection('asc');
+    },
+    [allRecordsSortDirection, allRecordsSortKey, viewMode],
+  );
 
-  const getPaymentBalanceSortIndicator = () => {
-    if (paymentBalanceSort === 'asc') {
-      return '↑';
+  const getAllRecordsSortIndicator = (key: AllRecordsSortKey) => {
+    if (viewMode !== 'all') {
+      return '';
     }
-    if (paymentBalanceSort === 'desc') {
-      return '↓';
+    if (allRecordsSortKey !== key) {
+      return '↕';
     }
-    return '↕';
+    return allRecordsSortDirection === 'asc' ? '↑' : '↓';
   };
 
-  const getPaymentBalanceSortLabel = () => {
-    if (paymentBalanceSort === 'asc') {
-      return 'по возрастанию';
+  const getAllRecordsSortLabel = (key: AllRecordsSortKey) => {
+    if (viewMode !== 'all') {
+      return '';
     }
-    if (paymentBalanceSort === 'desc') {
-      return 'по убыванию';
+    if (allRecordsSortKey !== key) {
+      return 'не сортируется';
     }
-    return 'не сортируется';
+    return allRecordsSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию';
   };
 
   const handleOpenDeal = useCallback(
@@ -966,64 +996,118 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   }
                 />
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[220px]">
-                ФИО клиента
+              <TableHeadCell padding="sm" className="min-w-[260px]">
+                Клиент / сделка
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[140px]">
+              <TableHeadCell padding="sm" className="min-w-[150px]">
                 Номер полиса
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[120px]">
+              <TableHeadCell padding="sm" className="min-w-[140px]">
                 Тип полиса
               </TableHeadCell>
               <TableHeadCell padding="sm" className="min-w-[160px]">
                 Канал продаж
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[160px]">
-                Платеж
-              </TableHeadCell>
-              {(viewMode === 'all' || viewMode === 'statements') && (
-                <TableHeadCell padding="sm" className="min-w-[170px]" align="right">
-                  {viewMode === 'all' ? (
-                    <button
-                      type="button"
-                      onClick={togglePaymentBalanceSort}
-                      aria-label={`Сортировать по итогу по платежу, текущий порядок ${getPaymentBalanceSortLabel()}`}
-                      className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                    >
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                        Итог по платежу
-                      </span>
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                        {getPaymentBalanceSortIndicator()}
-                      </span>
-                    </button>
-                  ) : (
+              <TableHeadCell padding="sm" className="min-w-[190px]" align="right">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleAllRecordsSort('payment')}
+                    aria-label={`Сортировать по платежу, текущий порядок ${getAllRecordsSortLabel('payment')}`}
+                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  >
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Итог по платежу
+                      Платеж
                     </span>
-                  )}
-                </TableHeadCell>
-              )}
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      {getAllRecordsSortIndicator('payment')}
+                    </span>
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    Платеж
+                  </span>
+                )}
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="min-w-[220px]" align="right">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleAllRecordsSort('saldo')}
+                    aria-label={`Сортировать по сальдо, текущий порядок ${getAllRecordsSortLabel('saldo')}`}
+                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      Сальдо
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      {getAllRecordsSortIndicator('saldo')}
+                    </span>
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    Сальдо
+                  </span>
+                )}
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="min-w-[220px]">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleAllRecordsSort('comment')}
+                    aria-label={`Сортировать по примечанию, текущий порядок ${getAllRecordsSortLabel('comment')}`}
+                    className="flex w-full items-center justify-start gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      Примечание
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      {getAllRecordsSortIndicator('comment')}
+                    </span>
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                    Примечание
+                  </span>
+                )}
+              </TableHeadCell>
               <TableHeadCell padding="sm" className="min-w-[180px]" align="right">
-                <button
-                  type="button"
-                  onClick={toggleAmountSort}
-                  aria-label={`Сортировать по доходу или расходу, текущий порядок ${getAmountSortLabel()}`}
-                  className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Расход/доход
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    {getAmountSortIndicator()}
-                  </span>
-                </button>
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleAllRecordsSort('amount')}
+                    aria-label={`Сортировать по сумме, текущий порядок ${getAllRecordsSortLabel('amount')}`}
+                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      Сумма
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      {getAllRecordsSortIndicator('amount')}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={toggleAmountSort}
+                    aria-label={`Сортировать по сумме, текущий порядок ${getAmountSortLabel()}`}
+                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      Сумма
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      {getAmountSortIndicator()}
+                    </span>
+                  </button>
+                )}
               </TableHeadCell>
             </tr>
           </thead>
           <tbody className="bg-white">
             {filteredRows.map((row) => {
               const payment = row.payment;
+              const policy = payment.policyId ? policiesById.get(payment.policyId) : undefined;
               const policyNumber =
                 normalizeText(payment.policyNumber) ||
                 normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
@@ -1036,7 +1120,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
                 normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
                 '-';
-              const clientName = normalizeText(payment.dealClientName) || '-';
+              const dealClientName = normalizeText(payment.dealClientName) || '-';
+              const policyClientName =
+                normalizeText(policy?.insuredClientName) ||
+                normalizeText(policy?.clientName) ||
+                dealClientName ||
+                '-';
               const dealTitle = normalizeText(payment.dealTitle) || '-';
               const paymentActualDate = payment.actualDate
                 ? formatDateRu(payment.actualDate)
@@ -1044,11 +1133,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               const paymentScheduledDate = payment.scheduledDate
                 ? formatDateRu(payment.scheduledDate)
                 : null;
+              const isPaymentPaid = Boolean(payment.actualDate);
               const recordAmount = row.recordAmount;
               const isIncome = recordAmount > 0;
-              const recordLabel = isIncome
-                ? `Доход ${formatCurrencyRu(recordAmount)}`
-                : `Расход ${formatCurrencyRu(Math.abs(recordAmount))}`;
               const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
               const recordDateLabel = formatDateRu(row.recordDate);
               const paymentBalance = row.paymentPaidBalance;
@@ -1059,10 +1146,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 const bTime = new Date(b.date).getTime();
                 return bTime - aTime;
               });
-              const recordNotes = [row.recordDescription, row.recordSource, row.recordNote]
+              const commentParts = [row.recordNote, row.recordDescription, row.recordSource]
                 .map((value) => normalizeText(value?.toString().trim()))
-                .filter(Boolean)
-                .join(' · ');
+                .filter(Boolean);
+              const primaryComment = commentParts[0] ?? '';
+              const secondaryComment =
+                commentParts.length > 1 ? commentParts.slice(1).join(' · ') : '';
               const amountValue = amountDrafts[row.recordId] ?? Math.abs(recordAmount).toString();
               const recordStatement = row.statementId
                 ? statementsById.get(row.statementId)
@@ -1080,7 +1169,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
               return (
                 <tr key={row.key} className={TABLE_ROW_CLASS}>
-                  <td className="border border-slate-200 px-3 py-3 text-center">
+                  <td className="border border-slate-200 px-3 py-2 text-center">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -1097,7 +1186,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     />
                   </td>
                   <td className={TABLE_CELL_CLASS_SM}>
-                    <p className="text-sm font-semibold text-slate-900">{clientName}</p>
+                    <p className="text-sm font-semibold text-slate-900">{policyClientName}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
                       {payment.dealId && onDealSelect ? (
                         <button
@@ -1111,6 +1200,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         <span>{dealTitle}</span>
                       )}
                     </div>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Контакт по сделке:{' '}
+                      <span className="font-semibold text-slate-700">{dealClientName}</span>
+                    </p>
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
                     <PolicyNumberButton
@@ -1126,53 +1219,61 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     {policyType}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>{salesChannelLabel}</td>
-                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
-                    <p className="text-sm font-semibold">{formatCurrencyRu(payment.amount)}</p>
-                    {paymentActualDate ? (
-                      <p className="text-[11px] text-slate-500 mt-1">Оплата: {paymentActualDate}</p>
-                    ) : paymentScheduledDate ? (
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        План: {paymentScheduledDate}
+                  <td className={`${TABLE_CELL_CLASS_SM} text-right text-slate-700`}>
+                    <p className="text-sm font-semibold">
+                      {formatCurrencyRu(Number(payment.amount))}
+                    </p>
+                    {isPaymentPaid ? (
+                      <p className="mt-1 text-[11px] font-semibold text-emerald-700">
+                        Оплачен{paymentActualDate ? `: ${paymentActualDate}` : ''}
                       </p>
                     ) : (
-                      <p className="text-[11px] text-slate-500 mt-1">Оплата: —</p>
+                      <p className="mt-1 text-[11px] font-semibold text-rose-700">
+                        Не оплачен{paymentScheduledDate ? ` (план: ${paymentScheduledDate})` : ''}
+                      </p>
                     )}
                   </td>
-                  {(viewMode === 'all' || viewMode === 'statements') && (
-                    <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
-                      <p className="text-sm font-semibold">{paymentBalanceLabel}</p>
-                      {paymentEntries.length ? (
-                        <div className="mt-1 space-y-1 text-[11px] text-slate-500">
-                          {paymentEntries.map((entry, index) => {
-                            const entryAmount = Number(entry.amount);
-                            const entryLabel = Number.isFinite(entryAmount)
-                              ? formatCurrencyRu(Math.abs(entryAmount))
-                              : entry.amount;
-                            const entryDate = formatDateRu(entry.date);
-                            const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
-                            return (
-                              <p key={`${row.payment.id}-${index}`}>
-                                {entryType} {entryLabel} · {entryDate}
-                              </p>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-slate-500 mt-1">Операций нет</p>
-                      )}
-                    </td>
-                  )}
-                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
-                    <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
-                    {recordNotes ? (
-                      <p className="text-[11px] text-slate-500 mt-1">{recordNotes}</p>
+                  <td className={`${TABLE_CELL_CLASS_SM} text-right text-slate-700`}>
+                    <p className="text-sm font-semibold">{paymentBalanceLabel}</p>
+                    {paymentEntries.length ? (
+                      <div className="mt-1 space-y-1 text-[11px] text-slate-500">
+                        {paymentEntries.map((entry, index) => {
+                          const entryAmount = Number(entry.amount);
+                          const entryLabel = Number.isFinite(entryAmount)
+                            ? formatCurrencyRu(Math.abs(entryAmount))
+                            : entry.amount;
+                          const entryDate = formatDateRu(entry.date);
+                          const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
+                          return (
+                            <p key={`${row.payment.id}-${index}`}>
+                              {entryType} {entryLabel} · {entryDate}
+                            </p>
+                          );
+                        })}
+                      </div>
                     ) : (
-                      <p className="text-[11px] text-slate-400 mt-1">Примечаний нет</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Операций нет</p>
+                    )}
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
+                    {primaryComment ? (
+                      <p className="text-sm font-semibold text-slate-900">{primaryComment}</p>
+                    ) : (
+                      <p className="text-sm font-semibold text-slate-400">—</p>
+                    )}
+                    {secondaryComment && (
+                      <p className="mt-1 text-[11px] text-slate-500">{secondaryComment}</p>
                     )}
                     {statementNote && (
-                      <p className="text-[11px] text-slate-500 mt-1">{statementNote}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">{statementNote}</p>
                     )}
-                    <p className="mt-1 text-xs text-slate-900">{recordDateLabel}</p>
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_SM} text-right text-slate-700`}>
+                    <p className={`text-sm font-semibold ${recordClass}`}>
+                      {isIncome ? '+' : '-'}
+                      {formatCurrencyRu(Math.abs(recordAmount))}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500">{recordDateLabel}</p>
                     {onUpdateFinancialRecord && (
                       <input
                         type="number"
@@ -1193,7 +1294,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             {!filteredRows.length && (
               <tr>
                 <td
-                  colSpan={viewMode === 'all' || viewMode === 'statements' ? 9 : 8}
+                  colSpan={9}
                   className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                 >
                   <PanelMessage>
@@ -1752,7 +1853,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     type="search"
                     value={allRecordsSearch}
                     onChange={(event) => setAllRecordsSearch(event.target.value)}
-                    placeholder="Поиск по записям"
+                    placeholder="Поиск по клиенту, полису, сделке, примечанию..."
                     className="field field-input"
                   />
                 </div>
@@ -1782,8 +1883,19 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     onChange={(event) => setShowUnpaidOnly(event.target.checked)}
                     className="check"
                   />
-                  Только неоплаченные
+                  Только непроведенные (без даты)
                 </label>
+                <select
+                  value={paymentPaidFilter}
+                  onChange={(event) =>
+                    setPaymentPaidFilter(event.target.value as 'all' | 'paid' | 'unpaid')
+                  }
+                  className="field field-input h-10 min-w-[200px] text-sm"
+                >
+                  <option value="all">Платеж: все</option>
+                  <option value="paid">Платеж: оплачен</option>
+                  <option value="unpaid">Платеж: не оплачен</option>
+                </select>
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                   <input
                     type="checkbox"
@@ -1800,7 +1912,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     onChange={(event) => setShowNonZeroBalanceOnly(event.target.checked)}
                     className="check"
                   />
-                  Скрыть нулевой итог по платежу
+                  Скрыть нулевое сальдо
                 </label>
                 <select
                   value={recordTypeFilter}

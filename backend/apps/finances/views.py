@@ -13,8 +13,19 @@ from apps.common.drive import (
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from django.db import transaction
-from django.db.models import DecimalField, Prefetch, Q, Sum
-from django.db.models.functions import Coalesce
+from django.db.models import (
+    Case,
+    DateField,
+    DecimalField,
+    F,
+    IntegerField,
+    Prefetch,
+    Q,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, NullIf
 from django.http import HttpResponse
 from django.utils.encoding import iri_to_uri
 from django.utils.text import get_valid_filename
@@ -63,7 +74,16 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
 
     serializer_class = FinancialRecordSerializer
-    ordering_fields = ["created_at", "updated_at", "date", "payment_paid_balance"]
+    ordering_fields = [
+        "created_at",
+        "updated_at",
+        "date",
+        "amount",
+        "payment_paid_balance",
+        "payment_is_paid",
+        "payment_sort_date",
+        "record_comment_sort",
+    ]
     ordering = ["-created_at"]
 
     def get_queryset(self):
@@ -93,6 +113,16 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .order_by("-date", "-created_at")
         )
         queryset = queryset.annotate(
+            payment_is_paid=Case(
+                When(payment__actual_date__isnull=False, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+            payment_sort_date=Coalesce(
+                F("payment__actual_date"),
+                F("payment__scheduled_date"),
+                output_field=DateField(),
+            ),
             payment_paid_balance=Coalesce(
                 Sum(
                     "payment__financial_records__amount",
@@ -103,7 +133,13 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 ),
                 0,
                 output_field=DecimalField(max_digits=12, decimal_places=2),
-            )
+            ),
+            record_comment_sort=Coalesce(
+                NullIf(F("note"), Value("")),
+                NullIf(F("description"), Value("")),
+                NullIf(F("source"), Value("")),
+                Value(""),
+            ),
         )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
@@ -125,6 +161,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if len(search_term) >= 1:
             queryset = queryset.filter(
                 Q(payment__policy__number__icontains=search_term)
+                | Q(payment__policy__client__name__icontains=search_term)
+                | Q(payment__policy__insured_client__name__icontains=search_term)
                 | Q(payment__policy__insurance_type__name__icontains=search_term)
                 | Q(payment__policy__sales_channel__name__icontains=search_term)
                 | Q(payment__deal__title__icontains=search_term)
