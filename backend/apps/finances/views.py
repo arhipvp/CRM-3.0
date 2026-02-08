@@ -200,14 +200,14 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         instance = serializer.instance
         statement = getattr(instance, "statement", None)
-        if statement and statement.status == Statement.STATUS_PAID:
+        if statement and statement.paid_at:
             raise ValidationError("Нельзя изменять записи в выплаченной ведомости.")
         super().perform_update(serializer)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         statement = getattr(instance, "statement", None)
-        if statement and statement.status == Statement.STATUS_PAID:
+        if statement and statement.paid_at:
             raise ValidationError("Cannot delete records from a paid statement.")
         return super().destroy(request, *args, **kwargs)
 
@@ -297,14 +297,14 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        if instance.status == Statement.STATUS_PAID:
+        if instance.paid_at:
             raise ValidationError("Нельзя удалять выплаченную ведомость.")
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], url_path="remove-records")
     def remove_records(self, request, *args, **kwargs):
         statement = self.get_object()
-        if statement.status == Statement.STATUS_PAID:
+        if statement.paid_at:
             raise ValidationError("Нельзя изменять выплаченную ведомость.")
 
         record_ids = request.data.get("record_ids") or []
@@ -321,8 +321,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="mark-paid")
     def mark_paid(self, request, *args, **kwargs):
         statement = self.get_object()
-        if statement.status == Statement.STATUS_PAID:
-            raise ValidationError("Ведомость уже отмечена как выплаченная.")
+        if statement.paid_at:
+            raise ValidationError("У ведомости уже указана дата выплаты.")
 
         serializer = StatementMarkPaidSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -331,11 +331,9 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             raise ValidationError({"paid_at": "Укажите дату оплаты ведомости."})
 
         with transaction.atomic():
-            if (
-                statement.paid_at != paid_at
-                or statement.status != Statement.STATUS_PAID
-            ):
+            if statement.paid_at != paid_at:
                 statement.paid_at = paid_at
+                # Keep status consistent for admin/UI legacy, but business logic relies on paid_at.
                 statement.status = Statement.STATUS_PAID
                 statement.save(update_fields=["paid_at", "status", "updated_at"])
 

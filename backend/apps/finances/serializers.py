@@ -24,6 +24,7 @@ class StatementSerializer(serializers.ModelSerializer):
             "deleted_at",
             "created_by",
             "drive_folder_id",
+            "status",
         )
 
     def get_total_amount(self, obj):
@@ -40,15 +41,17 @@ class StatementSerializer(serializers.ModelSerializer):
         statement_type = attrs.get("statement_type") or getattr(
             self.instance, "statement_type", None
         )
+        # Ведомость считается выплаченной, если указана дата выплаты.
+        if self.instance and self.instance.paid_at:
+            raise serializers.ValidationError(
+                {"paid_at": "Нельзя изменять выплаченную ведомость."}
+            )
+
         if record_ids is None:
             return attrs
         if not statement_type:
             raise serializers.ValidationError(
                 {"statement_type": "Укажите тип ведомости."}
-            )
-        if self.instance and self.instance.status == Statement.STATUS_PAID:
-            raise serializers.ValidationError(
-                {"status": "Нельзя изменять ведомость со статусом «Выплачена»."}
             )
 
         errors = []
@@ -75,20 +78,39 @@ class StatementSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         record_ids = validated_data.pop("record_ids", [])
+        # Держим legacy-статус согласованным, но бизнес-логика должна опираться на paid_at.
+        paid_at = validated_data.get("paid_at")
+        validated_data["status"] = (
+            Statement.STATUS_PAID if paid_at else Statement.STATUS_DRAFT
+        )
         statement = super().create(validated_data)
         if record_ids:
             FinancialRecord.objects.filter(id__in=[r.id for r in record_ids]).update(
                 statement=statement
             )
+        if statement.paid_at:
+            FinancialRecord.objects.filter(
+                statement=statement, deleted_at__isnull=True
+            ).update(date=statement.paid_at)
         return statement
 
     def update(self, instance, validated_data):
         record_ids = validated_data.pop("record_ids", None)
+        if "paid_at" in validated_data:
+            validated_data["status"] = (
+                Statement.STATUS_PAID
+                if validated_data.get("paid_at")
+                else Statement.STATUS_DRAFT
+            )
         statement = super().update(instance, validated_data)
         if record_ids:
             FinancialRecord.objects.filter(id__in=[r.id for r in record_ids]).update(
                 statement=statement
             )
+        if "paid_at" in validated_data and statement.paid_at:
+            FinancialRecord.objects.filter(
+                statement=statement, deleted_at__isnull=True
+            ).update(date=statement.paid_at)
         return statement
 
 

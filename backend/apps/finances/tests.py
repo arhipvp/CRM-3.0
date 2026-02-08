@@ -255,7 +255,7 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         statement = Statement.objects.create(
             name="Paid Sheet",
             statement_type="income",
-            status=Statement.STATUS_PAID,
+            paid_at=timezone.now().date(),
             created_by=self.seller,
         )
         self.income_record.statement = statement
@@ -272,7 +272,7 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         statement = Statement.objects.create(
             name="Paid Sheet",
             statement_type="income",
-            status=Statement.STATUS_PAID,
+            paid_at=timezone.now().date(),
             created_by=self.seller,
         )
         self.income_record.statement = statement
@@ -301,7 +301,7 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         statement = Statement.objects.create(
             name="Paid Sheet",
             statement_type="income",
-            status=Statement.STATUS_PAID,
+            paid_at=timezone.now().date(),
             created_by=self.seller,
         )
         response = self.api_client.delete(f"/api/v1/finance_statements/{statement.id}/")
@@ -326,7 +326,6 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         statement = Statement.objects.create(
             name="To Pay",
             statement_type="income",
-            status=Statement.STATUS_DRAFT,
             paid_at=timezone.now().date(),
             created_by=self.seller,
         )
@@ -339,7 +338,6 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         statement.refresh_from_db()
-        self.assertEqual(statement.status, Statement.STATUS_PAID)
         self.income_record.refresh_from_db()
         self.assertEqual(self.income_record.date, statement.paid_at)
 

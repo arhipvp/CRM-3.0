@@ -26,6 +26,9 @@ def apply_financial_record_filters(queryset, params):
     if parse_bool(params.get("unpaid_only")):
         queryset = queryset.filter(date__isnull=True)
 
+    if parse_bool(params.get("paid_only")):
+        queryset = queryset.filter(date__isnull=False)
+
     if parse_bool(params.get("without_statement")):
         queryset = queryset.filter(statement__isnull=True)
 

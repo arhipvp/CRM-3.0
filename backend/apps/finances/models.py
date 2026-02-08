@@ -89,10 +89,18 @@ class Statement(SoftDeleteModel):
         max_length=20, choices=TYPE_CHOICES, help_text="Тип ведомости"
     )
     counterparty = models.CharField(max_length=255, blank=True, help_text="Контрагент")
+    # NOTE:
+    # Поле status оставлено в схеме для совместимости (админка/legacy),
+    # но в бизнес-логике не используется.
+    # Ведомость считается "выплаченной" по факту наличия paid_at.
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT
     )
-    paid_at = models.DateField(null=True, blank=True, help_text="Дата оплаты")
+    paid_at = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Дата выплаты ведомости. Если заполнено — ведомость считается выплаченной.",
+    )
     comment = models.TextField(blank=True, help_text="Комментарий")
     drive_folder_id = models.CharField(
         max_length=255,

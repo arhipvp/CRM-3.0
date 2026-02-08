@@ -42,7 +42,6 @@ interface CommissionsViewProps {
   ) => Promise<void>;
   onDeleteStatement?: (statementId: string) => Promise<void>;
   onRemoveStatementRecords?: (statementId: string, recordIds: string[]) => Promise<void>;
-  onMarkStatementPaid?: (statementId: string) => Promise<Statement>;
   onCreateStatement?: (values: {
     name: string;
     statementType: Statement['statementType'];
@@ -55,7 +54,6 @@ interface CommissionsViewProps {
     values: Partial<{
       name: string;
       statementType: Statement['statementType'];
-      status: Statement['status'];
       counterparty: string;
       comment: string;
       paidAt: string | null;
@@ -105,7 +103,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateFinancialRecord,
   onDeleteStatement,
   onRemoveStatementRecords,
-  onMarkStatementPaid,
   onCreateStatement,
   onUpdateStatement,
 }) => {
@@ -121,6 +118,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
   const [showUnpaidPayments, setShowUnpaidPayments] = useState(true);
   const [showStatementRecords, setShowStatementRecords] = useState(true);
+  const [showPaidOnlyRecords, setShowPaidOnlyRecords] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [allRecordsSortKey, setAllRecordsSortKey] = useState<AllRecordsSortKey>('none');
@@ -132,16 +130,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [allRecordsError, setAllRecordsError] = useState<string | null>(null);
   const [allRecordsHasMore, setAllRecordsHasMore] = useState(false);
   const [allRecordsTotalCount, setAllRecordsTotalCount] = useState(0);
-  const [allRecordsPage, setAllRecordsPage] = useState(1);
+  const [, setAllRecordsPage] = useState(1);
+  const allRecordsPageRef = useRef(1);
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
   const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
-  const [payingStatement, setPayingStatement] = useState<Statement | null>(null);
-  const [missingPaidAtStatement, setMissingPaidAtStatement] = useState<Statement | null>(null);
+  // paidAt выставляется вручную в редактировании ведомости; выплата определяется по paidAt.
   const [editStatementForm, setEditStatementForm] = useState({
     name: '',
     statementType: 'income' as Statement['statementType'],
-    status: 'draft' as Statement['status'],
     counterparty: '',
     comment: '',
     paidAt: '',
@@ -251,6 +248,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (!showStatementRecords) {
         filters.without_statement = true;
       }
+      if (showPaidOnlyRecords) {
+        filters.paid_only = true;
+      }
       if (recordTypeFilter !== 'all') {
         filters.record_type = recordTypeFilter;
       }
@@ -266,7 +266,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           filters.ordering = `${directionPrefix}amount,-payment_sort_date,-created_at`;
         }
       }
-      const nextPage = mode === 'more' ? allRecordsPage + 1 : 1;
+      const nextPage = mode === 'more' ? allRecordsPageRef.current + 1 : 1;
       if (mode === 'reset') {
         setIsAllRecordsLoading(true);
         setAllRecordsError(null);
@@ -285,6 +285,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         setAllRecordsTotalCount(payload.count || 0);
         setAllRecordsHasMore(Boolean(payload.next));
         setAllRecordsPage(nextPage);
+        allRecordsPageRef.current = nextPage;
         setAllRecords((prev) =>
           mode === 'more' ? [...prev, ...payload.results] : payload.results,
         );
@@ -306,10 +307,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     },
     [
       effectiveSearch,
-      allRecordsPage,
       allRecordsSortDirection,
       allRecordsSortKey,
       recordTypeFilter,
+      showPaidOnlyRecords,
       showStatementRecords,
       showUnpaidPayments,
     ],
@@ -348,14 +349,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const selectedStatement = selectedStatementId
     ? statementsById.get(selectedStatementId)
     : undefined;
-  const isSelectedStatementPaid = selectedStatement?.status === 'paid';
+  const isSelectedStatementPaid = Boolean(selectedStatement?.paidAt);
   const selectedStatementTypeLabel = selectedStatement
     ? selectedStatement.statementType === 'income'
       ? 'Доходы'
       : 'Расходы'
     : '';
   const selectedStatementStatusLabel = selectedStatement
-    ? selectedStatement.status === 'paid'
+    ? selectedStatement.paidAt
       ? 'Выплачена'
       : 'Черновик'
     : '';
@@ -372,7 +373,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         ? statementsById.get(targetStatementId)
         : undefined
       : selectedStatement;
-  const isAttachStatementPaid = attachStatement?.status === 'paid';
+  const isAttachStatementPaid = Boolean(attachStatement?.paidAt);
 
   const sortedStatementDriveFiles = useMemo(() => {
     return [...statementDriveFiles].sort((a, b) => {
@@ -848,7 +849,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setEditStatementForm({
       name: statement.name ?? '',
       statementType: statement.statementType,
-      status: statement.status,
       counterparty: statement.counterparty ?? '',
       comment: statement.comment ?? '',
       paidAt: statement.paidAt ?? '',
@@ -862,7 +862,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     await onUpdateStatement(editingStatement.id, {
       name: editStatementForm.name.trim(),
       statementType: editStatementForm.statementType,
-      status: editStatementForm.status,
       counterparty: editStatementForm.counterparty.trim(),
       comment: editStatementForm.comment.trim(),
       paidAt: editStatementForm.paidAt || null,
@@ -878,24 +877,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setDeletingStatement(null);
   }, [deletingStatement, onDeleteStatement]);
 
-  const handleMarkPaidClick = useCallback(() => {
-    if (!selectedStatement || isSelectedStatementPaid) {
-      return;
-    }
-    if (!selectedStatement.paidAt) {
-      setMissingPaidAtStatement(selectedStatement);
-      return;
-    }
-    setPayingStatement(selectedStatement);
-  }, [isSelectedStatementPaid, selectedStatement]);
-
-  const handleMarkPaidConfirm = useCallback(async () => {
-    if (!payingStatement || !onMarkStatementPaid) {
-      return;
-    }
-    await onMarkStatementPaid(payingStatement.id);
-    setPayingStatement(null);
-  }, [onMarkStatementPaid, payingStatement]);
+  // Ведомость считается выплаченной по факту наличия paidAt.
 
   const recordsSelectionBar = (
     <div className="border-b border-slate-200 bg-white px-4 py-3">
@@ -1146,7 +1128,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               const recordStatement = row.statementId
                 ? statementsById.get(row.statementId)
                 : undefined;
-              const isRecordLocked = recordStatement?.status === 'paid';
+              const isRecordLocked = Boolean(recordStatement?.paidAt);
               const statementNote = recordStatement
                 ? recordStatement.paidAt
                   ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(
@@ -1631,7 +1613,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       : '—';
                     const recordsCount = statement.recordsCount ?? 0;
                     const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
-                    const statusLabel = statement.status === 'paid' ? 'Выплачена' : 'Черновик';
+                    const statusLabel = statement.paidAt ? 'Выплачена' : 'Черновик';
                     const typeLabel = statement.statementType === 'income' ? 'Доходы' : 'Расходы';
 
                     return (
@@ -1652,7 +1634,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                             <div className="space-y-1">
                               <p
                                 className={`text-sm font-semibold ${
-                                  statement.status !== 'paid'
+                                  !statement.paidAt
                                     ? 'text-slate-900'
                                     : statement.statementType === 'income'
                                       ? 'text-emerald-700'
@@ -1705,7 +1687,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                             : ''}
                           {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
                         </p>
-                        {selectedStatement.status === 'paid' && (
+                        {selectedStatement.paidAt && (
                           <p className="text-xs text-rose-600">
                             Выплаченная ведомость недоступна для редактирования и удаления.
                           </p>
@@ -1734,16 +1716,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                               Удалить
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={handleMarkPaidClick}
-                            disabled={isSelectedStatementPaid || !onMarkStatementPaid}
-                            className="btn btn-success"
-                          >
-                            {selectedStatement.statementType === 'income'
-                              ? 'Получено!'
-                              : 'Оплачено!'}
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -1884,14 +1856,23 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   />
                   Показывать записи в ведомостях
                 </label>
-                <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showPaidOnlyRecords}
+                    onChange={(event) => setShowPaidOnlyRecords(event.target.checked)}
+                    className="check"
+                  />
+                  Показать оплаченные расходы/доходы
+                </label>
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
                   <button
                     type="button"
                     onClick={() => setRecordTypeFilter('income')}
-                    className={`btn btn-sm rounded-xl ${
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                       recordTypeFilter === 'income'
                         ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        : 'btn-secondary'
+                        : 'text-slate-600 hover:bg-white'
                     }`}
                   >
                     Доходы
@@ -1899,10 +1880,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setRecordTypeFilter('expense')}
-                    className={`btn btn-sm rounded-xl ${
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                       recordTypeFilter === 'expense'
                         ? 'bg-rose-600 text-white hover:bg-rose-700'
-                        : 'btn-secondary'
+                        : 'text-slate-600 hover:bg-white'
                     }`}
                   >
                     Расходы
@@ -1910,8 +1891,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setRecordTypeFilter('all')}
-                    className={`btn btn-sm rounded-xl ${
-                      recordTypeFilter === 'all' ? 'btn-primary' : 'btn-secondary'
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                      recordTypeFilter === 'all'
+                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                        : 'text-slate-600 hover:bg-white'
                     }`}
                   >
                     Все
@@ -2101,28 +2084,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               </select>
             </div>
             <div className="space-y-2">
-              <label htmlFor="editStatementStatus" className="app-label">
-                Статус
-              </label>
-              <select
-                id="editStatementStatus"
-                value={editStatementForm.status}
-                onChange={(event) =>
-                  setEditStatementForm((prev) => ({
-                    ...prev,
-                    status: event.target.value as Statement['status'],
-                  }))
-                }
-                className="field field-input"
-              >
-                <option value="draft">Черновик</option>
-                <option value="paid">Выплачена</option>
-              </select>
-              <p className="text-xs text-slate-500">
-                После пометки ведомости как «Выплачена» редактирование и удаление будут недоступны.
-              </p>
-            </div>
-            <div className="space-y-2">
               <label htmlFor="editStatementPaidAt" className="app-label">
                 Дата выплаты
               </label>
@@ -2135,6 +2096,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 }
                 className="field field-input"
               />
+              <p className="text-xs text-slate-500">
+                Ведомость считается выплаченной, когда указана дата выплаты. После этого
+                редактирование и удаление будут недоступны, а всем записям будет проставлена дата.
+              </p>
             </div>
             <div className="space-y-2">
               <label htmlFor="editStatementCounterparty" className="app-label">
@@ -2208,55 +2173,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               className="btn btn-danger rounded-xl"
             >
               Удалить
-            </button>
-          </div>
-        </Modal>
-      )}
-      {missingPaidAtStatement && (
-        <Modal
-          title="Нужна дата оплаты"
-          onClose={() => setMissingPaidAtStatement(null)}
-          closeOnOverlayClick={false}
-        >
-          <p className="text-sm text-slate-700">
-            Укажите дату оплаты ведомости в карточке редактирования, затем снова нажмите
-            «Оплачено!».
-          </p>
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setMissingPaidAtStatement(null)}
-              className="btn btn-secondary rounded-xl"
-            >
-              Понял
-            </button>
-          </div>
-        </Modal>
-      )}
-      {payingStatement && (
-        <Modal
-          title="Отметить как оплачено"
-          onClose={() => setPayingStatement(null)}
-          closeOnOverlayClick={false}
-        >
-          <p className="text-sm text-slate-700">
-            После подтверждения ведомость станет недоступной для редактирования и удаления. Дата
-            оплаты будет проставлена всем записям ведомости.
-          </p>
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setPayingStatement(null)}
-              className="btn btn-secondary rounded-xl"
-            >
-              Отмена
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleMarkPaidConfirm()}
-              className="btn btn-primary rounded-xl"
-            >
-              Оплачено!
             </button>
           </div>
         </Modal>
