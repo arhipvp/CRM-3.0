@@ -1055,7 +1055,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       {recordsSelectionBar}
       <div className="overflow-x-auto bg-white">
         <table
-          className="deals-table w-full min-w-[1560px] border-collapse text-left text-sm"
+          className="deals-table w-full table-fixed border-collapse text-left text-sm"
           aria-label="Доходы и расходы"
         >
           <thead className={TABLE_THEAD_CLASS}>
@@ -1080,19 +1080,19 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   }
                 />
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[260px]">
+              <TableHeadCell padding="sm" className="w-[22%] min-w-0">
                 Клиент / сделка
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[150px]">
+              <TableHeadCell padding="sm" className="w-[12%] min-w-0">
                 Номер полиса
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[140px]">
+              <TableHeadCell padding="sm" className="w-[12%] min-w-0">
                 Тип полиса
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[160px]">
+              <TableHeadCell padding="sm" className="w-[9%] min-w-0">
                 Канал продаж
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[190px]" align="right">
+              <TableHeadCell padding="sm" className="w-[14%] min-w-0" align="right">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -1113,7 +1113,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </span>
                 )}
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[220px]" align="right">
+              <TableHeadCell padding="sm" className="w-[15%] min-w-0" align="right">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -1134,7 +1134,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </span>
                 )}
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[220px]">
+              <TableHeadCell padding="sm" className="w-[16%] min-w-0">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -1155,7 +1155,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </span>
                 )}
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[220px]" align="right">
+              <TableHeadCell padding="sm" className="w-[220px]" align="right">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -1282,7 +1282,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       }
                     />
                   </td>
-                  <td className={TABLE_CELL_CLASS_SM}>
+                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0`}>
                     <p className="text-sm font-semibold text-slate-900">{policyClientName}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
                       {payment.dealId && onDealSelect ? (
@@ -1302,7 +1302,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       <span className="font-semibold text-slate-700">{dealClientName}</span>
                     </p>
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
+                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700`}>
                     <PolicyNumberButton
                       value={policyNumber === '-' ? '' : policyNumber}
                       placeholder="-"
@@ -1311,12 +1311,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </td>
                   <td
                     lang="ru"
-                    className={`${TABLE_CELL_CLASS_SM} text-slate-700 hyphens-auto break-words`}
+                    className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700 hyphens-auto break-words`}
                   >
                     {policyType}
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>{salesChannelLabel}</td>
-                  <td className={`${TABLE_CELL_CLASS_SM} text-right text-slate-700`}>
+                  <td
+                    className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700 hyphens-auto break-words`}
+                  >
+                    {salesChannelLabel}
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-right text-slate-700`}>
                     <p className="text-sm font-semibold">
                       {formatCurrencyRu(Number(payment.amount))}
                     </p>
@@ -1330,7 +1334,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       </p>
                     )}
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} text-right text-slate-700`}>
+                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-right text-slate-700`}>
                     <p className="text-sm font-semibold">{paymentBalanceLabel}</p>
                     {paymentEntries.length ? (
                       <div className="mt-1 space-y-1 text-[11px] text-slate-500">
@@ -1352,7 +1356,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       <p className="mt-1 text-[11px] text-slate-500">Операций нет</p>
                     )}
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
+                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700`}>
                     {primaryComment ? (
                       <p className="text-sm font-semibold text-slate-900">{primaryComment}</p>
                     ) : (
