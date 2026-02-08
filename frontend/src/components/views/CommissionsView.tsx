@@ -977,21 +977,27 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               <TableHeadCell padding="sm" className="min-w-[160px]">
                 Платеж
               </TableHeadCell>
-              {viewMode === 'all' && (
+              {(viewMode === 'all' || viewMode === 'statements') && (
                 <TableHeadCell padding="sm" className="min-w-[170px]" align="right">
-                  <button
-                    type="button"
-                    onClick={togglePaymentBalanceSort}
-                    aria-label={`Сортировать по итогу по платежу, текущий порядок ${getPaymentBalanceSortLabel()}`}
-                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
+                  {viewMode === 'all' ? (
+                    <button
+                      type="button"
+                      onClick={togglePaymentBalanceSort}
+                      aria-label={`Сортировать по итогу по платежу, текущий порядок ${getPaymentBalanceSortLabel()}`}
+                      className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    >
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                        Итог по платежу
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                        {getPaymentBalanceSortIndicator()}
+                      </span>
+                    </button>
+                  ) : (
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                       Итог по платежу
                     </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      {getPaymentBalanceSortIndicator()}
-                    </span>
-                  </button>
+                  )}
                 </TableHeadCell>
               )}
               <TableHeadCell padding="sm" className="min-w-[180px]" align="right">
@@ -1128,7 +1134,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       <p className="text-[11px] text-slate-500 mt-1">Оплата: —</p>
                     )}
                   </td>
-                  {viewMode === 'all' && (
+                  {(viewMode === 'all' || viewMode === 'statements') && (
                     <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
                       <p className="text-sm font-semibold">{paymentBalanceLabel}</p>
                       {paymentEntries.length ? (
@@ -1183,7 +1189,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             {!filteredRows.length && (
               <tr>
                 <td
-                  colSpan={viewMode === 'all' ? 9 : 8}
+                  colSpan={viewMode === 'all' || viewMode === 'statements' ? 9 : 8}
                   className="border border-slate-200 px-6 py-10 text-center text-slate-600"
                 >
                   <PanelMessage>
