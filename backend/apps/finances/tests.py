@@ -348,14 +348,6 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
 
     def test_export_xlsx_creates_drive_file(self):
         self.authenticate(self.seller)
-        statement = Statement.objects.create(
-            name="Выплата Алиса",
-            statement_type="income",
-            created_by=self.seller,
-        )
-        self.income_record.statement = statement
-        self.income_record.save(update_fields=["statement"])
-
         fixed_now = timezone.make_aware(
             datetime(2026, 2, 8, 12, 34, 56), timezone=timezone.get_current_timezone()
         )
@@ -380,11 +372,23 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
 
         with (
             patch(
+                "apps.finances.signals.ensure_statement_folder",
+                side_effect=lambda instance: instance.drive_folder_id,
+            ),
+            patch(
                 "apps.finances.views.ensure_statement_folder", return_value="folder123"
             ),
             patch("apps.finances.views.upload_file_to_drive", side_effect=fake_upload),
             patch("apps.finances.views.timezone.now", return_value=fixed_now),
         ):
+            statement = Statement.objects.create(
+                name="Выплата Алиса",
+                statement_type="income",
+                created_by=self.seller,
+                drive_folder_id="folder123",
+            )
+            self.income_record.statement = statement
+            self.income_record.save(update_fields=["statement"])
             response = self.api_client.post(
                 f"/api/v1/finance_statements/{statement.id}/export-xlsx/",
                 {},
