@@ -22,10 +22,11 @@ from django.db.models import (
     Prefetch,
     Q,
     Sum,
+    TextField,
     Value,
     When,
 )
-from django.db.models.functions import Coalesce, NullIf
+from django.db.models.functions import Cast, Coalesce, NullIf
 from django.http import HttpResponse
 from django.utils.encoding import iri_to_uri
 from django.utils.text import get_valid_filename
@@ -135,10 +136,19 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             ),
             record_comment_sort=Coalesce(
-                NullIf(F("note"), Value("")),
-                NullIf(F("description"), Value("")),
-                NullIf(F("source"), Value("")),
-                Value(""),
+                # NOTE: note is TextField, description/source are CharField.
+                # Cast to a single type to avoid "mixed types" FieldError in Postgres.
+                NullIf(F("note"), Value("", output_field=TextField())),
+                NullIf(
+                    Cast(F("description"), output_field=TextField()),
+                    Value("", output_field=TextField()),
+                ),
+                NullIf(
+                    Cast(F("source"), output_field=TextField()),
+                    Value("", output_field=TextField()),
+                ),
+                Value("", output_field=TextField()),
+                output_field=TextField(),
             ),
         )
 

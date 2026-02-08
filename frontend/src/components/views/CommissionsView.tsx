@@ -119,10 +119,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
   const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
-  const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
-  const [paymentPaidFilter, setPaymentPaidFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
-  const [showWithoutStatementOnly, setShowWithoutStatementOnly] = useState(false);
-  const [showNonZeroBalanceOnly, setShowNonZeroBalanceOnly] = useState(false);
+  const [showUnpaidPayments, setShowUnpaidPayments] = useState(true);
+  const [showStatementRecords, setShowStatementRecords] = useState(true);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [allRecordsSortKey, setAllRecordsSortKey] = useState<AllRecordsSortKey>('none');
@@ -247,17 +245,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (effectiveSearch) {
         filters.search = effectiveSearch;
       }
-      if (showUnpaidOnly) {
-        filters.unpaid_only = true;
+      if (!showUnpaidPayments) {
+        filters.payment_paid = true;
       }
-      if (paymentPaidFilter !== 'all') {
-        filters.payment_paid = paymentPaidFilter === 'paid';
-      }
-      if (showWithoutStatementOnly) {
+      if (!showStatementRecords) {
         filters.without_statement = true;
-      }
-      if (showNonZeroBalanceOnly) {
-        filters.paid_balance_not_zero = true;
       }
       if (recordTypeFilter !== 'all') {
         filters.record_type = recordTypeFilter;
@@ -317,11 +309,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       allRecordsPage,
       allRecordsSortDirection,
       allRecordsSortKey,
-      paymentPaidFilter,
       recordTypeFilter,
-      showNonZeroBalanceOnly,
-      showUnpaidOnly,
-      showWithoutStatementOnly,
+      showStatementRecords,
+      showUnpaidPayments,
     ],
   );
 
@@ -1879,52 +1869,54 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                   <input
                     type="checkbox"
-                    checked={showUnpaidOnly}
-                    onChange={(event) => setShowUnpaidOnly(event.target.checked)}
+                    checked={showUnpaidPayments}
+                    onChange={(event) => setShowUnpaidPayments(event.target.checked)}
                     className="check"
                   />
-                  Только непроведенные (без даты)
-                </label>
-                <select
-                  value={paymentPaidFilter}
-                  onChange={(event) =>
-                    setPaymentPaidFilter(event.target.value as 'all' | 'paid' | 'unpaid')
-                  }
-                  className="field field-input h-10 min-w-[200px] text-sm"
-                >
-                  <option value="all">Платеж: все</option>
-                  <option value="paid">Платеж: оплачен</option>
-                  <option value="unpaid">Платеж: не оплачен</option>
-                </select>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showWithoutStatementOnly}
-                    onChange={(event) => setShowWithoutStatementOnly(event.target.checked)}
-                    className="check"
-                  />
-                  Только не в ведомостях
+                  Показывать неоплаченные платежи
                 </label>
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                   <input
                     type="checkbox"
-                    checked={showNonZeroBalanceOnly}
-                    onChange={(event) => setShowNonZeroBalanceOnly(event.target.checked)}
+                    checked={showStatementRecords}
+                    onChange={(event) => setShowStatementRecords(event.target.checked)}
                     className="check"
                   />
-                  Скрыть нулевое сальдо
+                  Показывать записи в ведомостях
                 </label>
-                <select
-                  value={recordTypeFilter}
-                  onChange={(event) =>
-                    setRecordTypeFilter(event.target.value as 'all' | 'income' | 'expense')
-                  }
-                  className="field field-input h-10 min-w-[200px] text-sm"
-                >
-                  <option value="all">Все записи</option>
-                  <option value="income">Только доходы</option>
-                  <option value="expense">Только расходы</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRecordTypeFilter('income')}
+                    className={`btn btn-sm rounded-xl ${
+                      recordTypeFilter === 'income'
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'btn-secondary'
+                    }`}
+                  >
+                    Доходы
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecordTypeFilter('expense')}
+                    className={`btn btn-sm rounded-xl ${
+                      recordTypeFilter === 'expense'
+                        ? 'bg-rose-600 text-white hover:bg-rose-700'
+                        : 'btn-secondary'
+                    }`}
+                  >
+                    Расходы
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecordTypeFilter('all')}
+                    className={`btn btn-sm rounded-xl ${
+                      recordTypeFilter === 'all' ? 'btn-primary' : 'btn-secondary'
+                    }`}
+                  >
+                    Все
+                  </button>
+                </div>
                 <select
                   value={targetStatementId}
                   onChange={(event) => setTargetStatementId(event.target.value)}
