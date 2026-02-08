@@ -122,7 +122,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         queryset = apply_financial_record_filters(queryset, self.request.query_params)
 
         search_term = (self.request.query_params.get("search") or "").strip()
-        if len(search_term) >= 5:
+        if len(search_term) >= 1:
             queryset = queryset.filter(
                 Q(payment__policy__number__icontains=search_term)
                 | Q(payment__policy__insurance_type__name__icontains=search_term)

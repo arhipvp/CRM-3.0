@@ -16,7 +16,6 @@ import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
 import { Modal } from '../Modal';
 import {
-  TABLE_CELL_CLASS_LG,
   TABLE_CELL_CLASS_SM,
   TABLE_ROW_CLASS,
   TABLE_ROW_CLASS_PLAIN,
@@ -126,7 +125,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [targetStatementId, setTargetStatementId] = useState('');
   const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
   const [isAllRecordsLoading, setIsAllRecordsLoading] = useState(false);
+  const [isAllRecordsLoadingMore, setIsAllRecordsLoadingMore] = useState(false);
   const [allRecordsError, setAllRecordsError] = useState<string | null>(null);
+  const [allRecordsHasMore, setAllRecordsHasMore] = useState(false);
+  const [allRecordsTotalCount, setAllRecordsTotalCount] = useState(0);
+  const [allRecordsPage, setAllRecordsPage] = useState(1);
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
   const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
   const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
@@ -177,7 +180,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   );
 
   const debouncedSearch = useDebouncedValue(allRecordsSearch.trim(), 450);
-  const effectiveSearch = debouncedSearch.length >= 5 ? debouncedSearch : '';
+  // Поиск должен фильтровать даже по коротким строкам; иначе при "не нашлось"
+  // пользователь видит полный список, что выглядит как баг.
+  const effectiveSearch = debouncedSearch;
 
   useEffect(() => {
     if (viewMode === 'all') {
@@ -229,79 +234,79 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     });
   }, [selectedStatementDriveFileIds.length, statementDriveFiles]);
 
-  const loadAllRecords = useCallback(async () => {
-    allRecordsRequestRef.current += 1;
-    const requestId = allRecordsRequestRef.current;
-    const filters: FilterParams = {};
-    if (effectiveSearch) {
-      filters.search = effectiveSearch;
-    }
-    if (showUnpaidOnly) {
-      filters.unpaid_only = true;
-    }
-    if (showWithoutStatementOnly) {
-      filters.without_statement = true;
-    }
-    if (showNonZeroBalanceOnly) {
-      filters.paid_balance_not_zero = true;
-    }
-    if (recordTypeFilter !== 'all') {
-      filters.record_type = recordTypeFilter;
-    }
-    let page = 1;
-    const pageSize = 200;
-    const collected: FinancialRecord[] = [];
+  const loadAllRecords = useCallback(
+    async (mode: 'reset' | 'more') => {
+      allRecordsRequestRef.current += 1;
+      const requestId = allRecordsRequestRef.current;
+      const filters: FilterParams = {};
+      if (effectiveSearch) {
+        filters.search = effectiveSearch;
+      }
+      if (showUnpaidOnly) {
+        filters.unpaid_only = true;
+      }
+      if (showWithoutStatementOnly) {
+        filters.without_statement = true;
+      }
+      if (showNonZeroBalanceOnly) {
+        filters.paid_balance_not_zero = true;
+      }
+      if (recordTypeFilter !== 'all') {
+        filters.record_type = recordTypeFilter;
+      }
+      const nextPage = mode === 'more' ? allRecordsPage + 1 : 1;
+      if (mode === 'reset') {
+        setIsAllRecordsLoading(true);
+        setAllRecordsError(null);
+      } else {
+        setIsAllRecordsLoadingMore(true);
+      }
 
-    setIsAllRecordsLoading(true);
-    setAllRecordsError(null);
-    try {
-      while (true) {
-        let payload: Awaited<ReturnType<typeof fetchFinancialRecordsWithPagination>>;
-        try {
-          payload = await fetchFinancialRecordsWithPagination({
-            ...filters,
-            page,
-            page_size: pageSize,
-          });
-        } catch (error) {
-          if (requestId === allRecordsRequestRef.current) {
-            setAllRecords(collected);
-            setAllRecordsError(
-              formatErrorMessage(error, 'Не удалось загрузить все финансовые записи.'),
-            );
-          }
-          return;
-        }
+      try {
+        const payload = await fetchFinancialRecordsWithPagination({
+          ...filters,
+          page: nextPage,
+        });
         if (requestId !== allRecordsRequestRef.current) {
           return;
         }
-        collected.push(...payload.results);
-        if (!payload.next) {
-          break;
+        setAllRecordsTotalCount(payload.count || 0);
+        setAllRecordsHasMore(Boolean(payload.next));
+        setAllRecordsPage(nextPage);
+        setAllRecords((prev) =>
+          mode === 'more' ? [...prev, ...payload.results] : payload.results,
+        );
+      } catch (error) {
+        if (requestId !== allRecordsRequestRef.current) {
+          return;
         }
-        page += 1;
+        if (mode === 'reset') {
+          setAllRecords([]);
+        }
+        setAllRecordsHasMore(false);
+        setAllRecordsError(formatErrorMessage(error, 'Не удалось загрузить финансовые записи.'));
+      } finally {
+        if (requestId === allRecordsRequestRef.current) {
+          setIsAllRecordsLoading(false);
+          setIsAllRecordsLoadingMore(false);
+        }
       }
-      if (requestId === allRecordsRequestRef.current) {
-        setAllRecords(collected);
-      }
-    } finally {
-      if (requestId === allRecordsRequestRef.current) {
-        setIsAllRecordsLoading(false);
-      }
-    }
-  }, [
-    effectiveSearch,
-    recordTypeFilter,
-    showNonZeroBalanceOnly,
-    showUnpaidOnly,
-    showWithoutStatementOnly,
-  ]);
+    },
+    [
+      effectiveSearch,
+      allRecordsPage,
+      recordTypeFilter,
+      showNonZeroBalanceOnly,
+      showUnpaidOnly,
+      showWithoutStatementOnly,
+    ],
+  );
 
   useEffect(() => {
     if (viewMode !== 'all') {
       return;
     }
-    void loadAllRecords();
+    void loadAllRecords('reset');
   }, [loadAllRecords, viewMode]);
 
   useEffect(() => {
@@ -592,26 +597,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [navigate, onDealPreview, onDealSelect],
   );
 
-  const handleRecordDateChange = useCallback(
-    async (row: IncomeExpenseRow, value: string) => {
-      if (!onUpdateFinancialRecord) {
-        return;
-      }
-      const recordType: AddFinancialRecordFormValues['recordType'] =
-        row.recordAmount >= 0 ? 'income' : 'expense';
-      await onUpdateFinancialRecord(row.recordId, {
-        paymentId: row.payment.id,
-        recordType,
-        amount: Math.abs(row.recordAmount).toString(),
-        date: value || null,
-        description: row.recordDescription ?? '',
-        source: row.recordSource ?? '',
-        note: row.recordNote ?? '',
-      });
-    },
-    [onUpdateFinancialRecord],
-  );
-
   const handleRecordAmountChange = useCallback((recordId: string, value: string) => {
     setAmountDrafts((prev) => ({ ...prev, [recordId]: value }));
   }, []);
@@ -703,7 +688,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       recordIds: selectedRecordIds,
     });
     if (viewMode === 'all') {
-      await loadAllRecords();
+      await loadAllRecords('reset');
     }
     setSelectedRecordIds([]);
   }, [attachStatement, loadAllRecords, onUpdateStatement, selectedRecordIds, viewMode]);
@@ -939,15 +924,27 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   }
                 />
               </TableHeadCell>
-              <TableHeadCell className="min-w-[220px]">ФИО клиента</TableHeadCell>
-              <TableHeadCell className="min-w-[140px]">Номер полиса</TableHeadCell>
-              <TableHeadCell className="min-w-[160px]">Полис</TableHeadCell>
-              <TableHeadCell className="min-w-[160px]">Канал продаж</TableHeadCell>
-              <TableHeadCell className="min-w-[160px]">Платеж</TableHeadCell>
+              <TableHeadCell padding="sm" className="min-w-[220px]">
+                ФИО клиента
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="min-w-[140px]">
+                Номер полиса
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="min-w-[120px]">
+                Тип полиса
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="min-w-[160px]">
+                Канал продаж
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="min-w-[160px]">
+                Платеж
+              </TableHeadCell>
               {viewMode === 'all' && (
-                <TableHeadCell className="min-w-[150px]">Итог по платежу</TableHeadCell>
+                <TableHeadCell padding="sm" className="min-w-[150px]">
+                  Итог по платежу
+                </TableHeadCell>
               )}
-              <TableHeadCell className="min-w-[180px]" align="right">
+              <TableHeadCell padding="sm" className="min-w-[180px]" align="right">
                 <button
                   type="button"
                   onClick={toggleAmountSort}
@@ -1039,48 +1036,53 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       }
                     />
                   </td>
-                  <td className={TABLE_CELL_CLASS_LG}>
-                    <p className="text-base font-semibold text-slate-900">{clientName}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                  <td className={TABLE_CELL_CLASS_SM}>
+                    <p className="text-sm font-semibold text-slate-900">{clientName}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
                       {payment.dealId && onDealSelect ? (
                         <button
                           type="button"
                           onClick={() => handleOpenDeal(payment.dealId)}
-                          className="link-action text-xs font-semibold"
+                          className="link-action text-[11px] font-semibold"
                         >
                           {dealTitle}
                         </button>
                       ) : (
                         <span>{dealTitle}</span>
                       )}
-                      <span>·</span>
-                      <span>{clientName}</span>
                     </div>
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
                     <PolicyNumberButton
                       value={policyNumber === '-' ? '' : policyNumber}
                       placeholder="-"
                       className="link-action text-left"
                     />
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{policyType}</td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>{salesChannelLabel}</td>
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                    <p className="text-base font-semibold">{formatCurrencyRu(payment.amount)}</p>
+                  <td
+                    lang="ru"
+                    className={`${TABLE_CELL_CLASS_SM} text-slate-700 hyphens-auto break-words`}
+                  >
+                    {policyType}
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>{salesChannelLabel}</td>
+                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
+                    <p className="text-sm font-semibold">{formatCurrencyRu(payment.amount)}</p>
                     {paymentActualDate ? (
-                      <p className="text-xs text-slate-500 mt-1">Оплата: {paymentActualDate}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">Оплата: {paymentActualDate}</p>
                     ) : paymentScheduledDate ? (
-                      <p className="text-xs text-slate-500 mt-1">План: {paymentScheduledDate}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        План: {paymentScheduledDate}
+                      </p>
                     ) : (
-                      <p className="text-xs text-slate-500 mt-1">Оплата: —</p>
+                      <p className="text-[11px] text-slate-500 mt-1">Оплата: —</p>
                     )}
                   </td>
                   {viewMode === 'all' && (
-                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      <p className="text-base font-semibold">{paymentBalanceLabel}</p>
+                    <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
+                      <p className="text-sm font-semibold">{paymentBalanceLabel}</p>
                       {paymentEntries.length ? (
-                        <div className="mt-1 space-y-1 text-xs text-slate-500">
+                        <div className="mt-1 space-y-1 text-[11px] text-slate-500">
                           {paymentEntries.map((entry, index) => {
                             const entryAmount = Number(entry.amount);
                             const entryLabel = Number.isFinite(entryAmount)
@@ -1096,21 +1098,21 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                           })}
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-500 mt-1">Операций нет</p>
+                        <p className="text-[11px] text-slate-500 mt-1">Операций нет</p>
                       )}
                     </td>
                   )}
-                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                  <td className={`${TABLE_CELL_CLASS_SM} text-slate-700`}>
                     <p className={`text-sm font-semibold ${recordClass}`}>{recordLabel}</p>
                     {recordNotes ? (
-                      <p className="text-xs text-slate-500 mt-1">{recordNotes}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">{recordNotes}</p>
                     ) : (
-                      <p className="text-xs text-slate-400 mt-1">Примечаний нет</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Примечаний нет</p>
                     )}
                     {statementNote && (
-                      <p className="text-xs text-slate-500 mt-1">{statementNote}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">{statementNote}</p>
                     )}
-                    <p className="mt-2 text-sm text-slate-900">{recordDateLabel}</p>
+                    <p className="mt-1 text-xs text-slate-900">{recordDateLabel}</p>
                     {onUpdateFinancialRecord && (
                       <input
                         type="number"
@@ -1121,16 +1123,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         }
                         onBlur={() => void handleRecordAmountBlur(row)}
                         disabled={isRecordLocked}
-                        className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                      />
-                    )}
-                    {onUpdateFinancialRecord && (
-                      <input
-                        type="date"
-                        value={row.recordDate ?? ''}
-                        onChange={(event) => handleRecordDateChange(row, event.target.value)}
-                        disabled={isRecordLocked}
-                        className="mt-2 w-full max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                        className="mt-1 w-full max-w-[140px] rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
                       />
                     )}
                   </td>
@@ -1711,7 +1704,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   <span>{allRecordsError}</span>
                   <button
                     type="button"
-                    onClick={() => void loadAllRecords()}
+                    onClick={() => void loadAllRecords('reset')}
                     className="btn btn-secondary btn-sm rounded-xl"
                     disabled={isAllRecordsLoading}
                   >
@@ -1775,7 +1768,31 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 </select>
               </div>
             </div>
-            <div className="px-4 py-5 bg-white">{recordsTable}</div>
+            <div className="px-4 py-5 bg-white space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                <span>
+                  Показано:{' '}
+                  <span className="font-semibold text-slate-700">{allRecords.length}</span>
+                  {allRecordsTotalCount ? ` из ${allRecordsTotalCount}` : ''}
+                </span>
+                {isAllRecordsLoading && <span>Загрузка...</span>}
+              </div>
+
+              {recordsTable}
+
+              {allRecordsHasMore && (
+                <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => void loadAllRecords('more')}
+                    disabled={isAllRecordsLoadingMore || isAllRecordsLoading}
+                    className="btn btn-quiet btn-sm rounded-xl"
+                  >
+                    {isAllRecordsLoadingMore ? 'Загрузка...' : 'Показать ещё'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
