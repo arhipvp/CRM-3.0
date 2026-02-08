@@ -120,7 +120,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
   const [showUnpaidPayments, setShowUnpaidPayments] = useState(true);
   const [showStatementRecords, setShowStatementRecords] = useState(true);
-  const [showPaidOnlyRecords, setShowPaidOnlyRecords] = useState(false);
+  // По умолчанию в "Все записи" показываем только неоплаченные (record.date is null).
+  // Галка "Показать оплаченные..." расширяет список до всех записей.
+  const [showPaidRecords, setShowPaidRecords] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [allRecordsSortKey, setAllRecordsSortKey] = useState<AllRecordsSortKey>('none');
@@ -254,8 +256,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (!showStatementRecords) {
         filters.without_statement = true;
       }
-      if (showPaidOnlyRecords) {
-        filters.paid_only = true;
+      if (!showPaidRecords) {
+        filters.unpaid_only = true;
       }
       if (recordTypeFilter !== 'all') {
         filters.record_type = recordTypeFilter;
@@ -316,7 +318,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       allRecordsSortDirection,
       allRecordsSortKey,
       recordTypeFilter,
-      showPaidOnlyRecords,
+      showPaidRecords,
       showStatementRecords,
       showUnpaidPayments,
     ],
@@ -2033,8 +2035,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                   <input
                     type="checkbox"
-                    checked={showPaidOnlyRecords}
-                    onChange={(event) => setShowPaidOnlyRecords(event.target.checked)}
+                    checked={showPaidRecords}
+                    onChange={(event) => setShowPaidRecords(event.target.checked)}
                     className="check"
                   />
                   Показать оплаченные расходы/доходы
