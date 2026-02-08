@@ -110,7 +110,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
   type AllRecordsSortKey = 'none' | 'payment' | 'saldo' | 'comment' | 'amount';
 
-  const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
+  type AmountDraft = { mode: 'rub' | 'percent'; value: string };
+  const [amountDrafts, setAmountDrafts] = useState<Record<string, AmountDraft>>({});
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
@@ -660,9 +661,79 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [navigate, onDealPreview, onDealSelect],
   );
 
-  const handleRecordAmountChange = useCallback((recordId: string, value: string) => {
-    setAmountDrafts((prev) => ({ ...prev, [recordId]: value }));
+  const getAbsoluteSaldoBase = useCallback((row: IncomeExpenseRow) => {
+    const value = Number(row.paymentPaidBalance ?? 0);
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.abs(value);
   }, []);
+
+  const getPercentFromSaldo = useCallback(
+    (row: IncomeExpenseRow, absoluteAmount: number) => {
+      const base = getAbsoluteSaldoBase(row);
+      if (!Number.isFinite(absoluteAmount) || base <= 0) {
+        return '';
+      }
+      const percent = (Math.abs(absoluteAmount) / base) * 100;
+      return percent.toFixed(2).replace(/\.?0+$/, '');
+    },
+    [getAbsoluteSaldoBase],
+  );
+
+  const handleRecordAmountChange = useCallback((recordId: string, value: string) => {
+    setAmountDrafts((prev) => ({
+      ...prev,
+      [recordId]: { mode: prev[recordId]?.mode ?? 'rub', value },
+    }));
+  }, []);
+
+  const toggleRecordAmountMode = useCallback(
+    (row: IncomeExpenseRow) => {
+      setAmountDrafts((prev) => {
+        const current = prev[row.recordId];
+        const currentMode: AmountDraft['mode'] = current?.mode ?? 'rub';
+        const nextMode: AmountDraft['mode'] = currentMode === 'rub' ? 'percent' : 'rub';
+
+        const base = getAbsoluteSaldoBase(row);
+        const currentValue = current?.value;
+        const currentNumber = currentValue !== undefined ? Number(currentValue) : NaN;
+
+        if (nextMode === 'percent') {
+          if (base <= 0) {
+            return prev;
+          }
+          const absoluteAmount = Number.isFinite(currentNumber)
+            ? currentNumber
+            : Math.abs(row.recordAmount);
+          return {
+            ...prev,
+            [row.recordId]: { mode: 'percent', value: getPercentFromSaldo(row, absoluteAmount) },
+          };
+        }
+
+        if (currentMode === 'percent' && base > 0) {
+          const percent = Number.isFinite(currentNumber) ? currentNumber : NaN;
+          const absoluteAmount = Number.isFinite(percent) ? (base * percent) / 100 : NaN;
+          if (Number.isFinite(absoluteAmount)) {
+            return {
+              ...prev,
+              [row.recordId]: {
+                mode: 'rub',
+                value: absoluteAmount.toFixed(2).replace(/\.?0+$/, ''),
+              },
+            };
+          }
+        }
+
+        return {
+          ...prev,
+          [row.recordId]: { mode: 'rub', value: Math.abs(row.recordAmount).toString() },
+        };
+      });
+    },
+    [getAbsoluteSaldoBase, getPercentFromSaldo],
+  );
 
   const handleRecordAmountBlur = useCallback(
     async (row: IncomeExpenseRow) => {
@@ -670,11 +741,26 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         return;
       }
       const draft = amountDrafts[row.recordId];
-      if (draft === undefined) {
+      if (!draft) {
         return;
       }
-      const parsed = Number(draft);
+      const parsed = Number(draft.value);
       if (!Number.isFinite(parsed)) {
+        return;
+      }
+
+      const absoluteAmount =
+        draft.mode === 'percent'
+          ? (() => {
+              const base = getAbsoluteSaldoBase(row);
+              if (base <= 0) {
+                return NaN;
+              }
+              return (base * parsed) / 100;
+            })()
+          : parsed;
+
+      if (!Number.isFinite(absoluteAmount)) {
         return;
       }
       const recordType: AddFinancialRecordFormValues['recordType'] =
@@ -682,7 +768,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       await onUpdateFinancialRecord(row.recordId, {
         paymentId: row.payment.id,
         recordType,
-        amount: Math.abs(parsed).toString(),
+        amount: Math.abs(absoluteAmount).toString(),
         date: row.recordDate ?? null,
         description: row.recordDescription ?? '',
         source: row.recordSource ?? '',
@@ -694,7 +780,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         return next;
       });
     },
-    [amountDrafts, onUpdateFinancialRecord],
+    [amountDrafts, getAbsoluteSaldoBase, onUpdateFinancialRecord],
   );
 
   useEffect(() => {
@@ -943,7 +1029,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       {recordsSelectionBar}
       <div className="overflow-x-auto bg-white">
         <table
-          className="deals-table min-w-full border-collapse text-left text-sm"
+          className="deals-table w-full min-w-[1560px] border-collapse text-left text-sm"
           aria-label="Доходы и расходы"
         >
           <thead className={TABLE_THEAD_CLASS}>
@@ -1043,7 +1129,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   </span>
                 )}
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="min-w-[180px]" align="right">
+              <TableHeadCell padding="sm" className="min-w-[220px]" align="right">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -1052,7 +1138,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                   >
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Сумма
+                      Сумма, ₽
                     </span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                       {getAllRecordsSortIndicator('amount')}
@@ -1066,7 +1152,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                   >
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Сумма
+                      Сумма, ₽
                     </span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                       {getAmountSortIndicator()}
@@ -1124,7 +1210,20 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               const primaryComment = commentParts[0] ?? '';
               const secondaryComment =
                 commentParts.length > 1 ? commentParts.slice(1).join(' · ') : '';
-              const amountValue = amountDrafts[row.recordId] ?? Math.abs(recordAmount).toString();
+              const amountDraft = amountDrafts[row.recordId];
+              const amountMode: AmountDraft['mode'] = amountDraft?.mode ?? 'rub';
+              const amountValue =
+                amountDraft?.value ??
+                (amountMode === 'rub'
+                  ? Math.abs(recordAmount).toString()
+                  : getPercentFromSaldo(row, Math.abs(recordAmount)));
+              const saldoBase = getAbsoluteSaldoBase(row);
+              const isPercentModeAvailable = saldoBase > 0;
+              const amountSuffix = amountMode === 'rub' ? '₽' : '%';
+              const percentPreviewAmount =
+                amountMode === 'percent' && Number.isFinite(Number(amountValue)) && saldoBase > 0
+                  ? (saldoBase * Number(amountValue)) / 100
+                  : null;
               const recordStatement = row.statementId
                 ? statementsById.get(row.statementId)
                 : undefined;
@@ -1240,24 +1339,62 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       <p className="mt-1 text-[11px] text-slate-500">{statementNote}</p>
                     )}
                   </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} text-right text-slate-700`}>
+                  <td
+                    className={`${TABLE_CELL_CLASS_SM} w-[220px] min-w-[220px] text-right text-slate-700`}
+                  >
                     <p className={`text-sm font-semibold ${recordClass}`}>
                       {isIncome ? '+' : '-'}
                       {formatCurrencyRu(Math.abs(recordAmount))}
                     </p>
                     <p className="mt-1 text-[11px] text-slate-500">{recordDateLabel}</p>
                     {onUpdateFinancialRecord && (
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={amountValue}
-                        onChange={(event) =>
-                          handleRecordAmountChange(row.recordId, event.target.value)
-                        }
-                        onBlur={() => void handleRecordAmountBlur(row)}
-                        disabled={isRecordLocked}
-                        className="mt-1 w-full max-w-[140px] rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                      />
+                      <div className="mt-1 flex w-full items-start justify-end gap-2">
+                        <div className="relative w-full max-w-[160px]">
+                          <input
+                            type="number"
+                            step={amountMode === 'rub' ? '0.01' : '0.1'}
+                            value={amountValue}
+                            onChange={(event) =>
+                              handleRecordAmountChange(row.recordId, event.target.value)
+                            }
+                            onBlur={() => void handleRecordAmountBlur(row)}
+                            disabled={isRecordLocked}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 pr-7 text-[11px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100 disabled:bg-slate-50"
+                          />
+                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
+                            {amountSuffix}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleRecordAmountMode(row)}
+                          disabled={
+                            isRecordLocked || (amountMode === 'rub' && !isPercentModeAvailable)
+                          }
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          title={
+                            amountMode === 'rub'
+                              ? isPercentModeAvailable
+                                ? 'Ввести в процентах от Сальдо'
+                                : 'Нельзя посчитать процент: Сальдо равно 0'
+                              : 'Ввести сумму в рублях'
+                          }
+                          aria-label={
+                            amountMode === 'rub'
+                              ? 'Переключить ввод суммы на проценты от сальдо'
+                              : 'Переключить ввод суммы на рубли'
+                          }
+                        >
+                          {amountMode === 'rub' ? '%' : '₽'}
+                        </button>
+                      </div>
+                    )}
+                    {onUpdateFinancialRecord && amountMode === 'percent' && (
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {percentPreviewAmount === null
+                          ? `Процент от Сальдо: ${paymentBalanceLabel}`
+                          : `≈ ${formatCurrencyRu(percentPreviewAmount)} от ${paymentBalanceLabel}`}
+                      </p>
                     )}
                   </td>
                 </tr>
