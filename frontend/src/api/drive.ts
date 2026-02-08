@@ -267,3 +267,19 @@ export async function trashStatementDriveFiles(
 
   return normalizeTrashResponse(payload);
 }
+
+export async function exportStatementXlsx(statementId: string): Promise<DriveFile> {
+  const payload = await request<{ file?: unknown; folder_id?: string | null }>(
+    `/finance_statements/${statementId}/export-xlsx/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+  );
+
+  if (!payload?.file) {
+    throw new Error('Failed to export statement to XLSX');
+  }
+
+  return mapDriveFile(payload.file as Record<string, unknown>);
+}

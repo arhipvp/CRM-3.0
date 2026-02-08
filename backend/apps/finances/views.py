@@ -1,3 +1,4 @@
+import re
 import zipfile
 from io import BytesIO
 
@@ -9,6 +10,7 @@ from apps.common.drive import (
     ensure_trash_folder,
     list_drive_folder_contents,
     move_drive_file_to_folder,
+    upload_file_to_drive,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
@@ -28,8 +30,11 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast, Coalesce, NullIf
 from django.http import HttpResponse
+from django.utils import timezone
 from django.utils.encoding import iri_to_uri
 from django.utils.text import get_valid_filename
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -343,6 +348,232 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         payload = StatementSerializer(statement, context={"request": request}).data
         return Response(payload)
+
+    def _sanitize_drive_filename(self, value: str) -> str:
+        # Keep Cyrillic, but remove characters forbidden for Windows filenames
+        # (and generally problematic across clients).
+        clean = (value or "").strip() or "Ведомость"
+        clean = re.sub(r'[\\\\/:*?"<>|]+', "_", clean)
+        clean = re.sub(r"\\s+", " ", clean).strip()
+        return clean[:120] if len(clean) > 120 else clean
+
+    @action(detail=True, methods=["post"], url_path="export-xlsx")
+    def export_xlsx(self, request, *args, **kwargs):
+        statement = self.get_object()
+
+        try:
+            folder_id = statement.drive_folder_id or ensure_statement_folder(statement)
+        except DriveError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        if not folder_id:
+            raise ValidationError(
+                {"detail": "Папка Google Drive для ведомости не найдена."}
+            )
+
+        now = timezone.localtime(timezone.now())
+        ts = now.strftime("%d_%m_%Y_%H_%M_%S")
+        base_name = self._sanitize_drive_filename(statement.name or "Ведомость")
+        filename = f"{base_name}_{ts}.xlsx"
+
+        records_qs = (
+            FinancialRecord.objects.filter(statement=statement, deleted_at__isnull=True)
+            .select_related(
+                "payment",
+                "payment__policy",
+                "payment__policy__insurance_type",
+                "payment__policy__sales_channel",
+                "payment__deal",
+                "payment__deal__client",
+            )
+            .order_by("created_at", "id")
+        )
+        records = list(records_qs)
+
+        payment_ids = {record.payment_id for record in records if record.payment_id}
+        payments = (
+            Payment.objects.filter(id__in=payment_ids)
+            .select_related(
+                "policy",
+                "policy__insurance_type",
+                "policy__sales_channel",
+                "deal",
+                "deal__client",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "financial_records",
+                    queryset=FinancialRecord.objects.filter(
+                        date__isnull=False, deleted_at__isnull=True
+                    )
+                    .only("id", "amount", "date", "payment_id")
+                    .order_by("-date"),
+                    to_attr="paid_records",
+                )
+            )
+        )
+        payments_by_id = {payment.id: payment for payment in payments}
+
+        def format_date(value) -> str:
+            if not value:
+                return "—"
+            if hasattr(value, "strftime"):
+                return value.strftime("%d.%m.%Y")
+            return str(value)
+
+        def format_money(value) -> str:
+            try:
+                return f"{float(value):,.2f} ₽".replace(",", " ")
+            except Exception:
+                return f"{value} ₽"
+
+        workbook = Workbook()
+        ws = workbook.active
+        ws.title = "Ведомость"
+
+        headers = [
+            "Клиент / сделка",
+            "Номер полиса",
+            "Тип полиса",
+            "Канал продаж",
+            "Платеж, ₽",
+            "Сальдо, ₽",
+            "Примечание",
+            "Сумма, ₽",
+        ]
+
+        header_font = Font(bold=True, color="1F2937")
+        header_fill = PatternFill("solid", fgColor="F8FAFC")
+        wrap_top = Alignment(wrap_text=True, vertical="top")
+
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = wrap_top
+
+        ws.freeze_panes = "A2"
+
+        # Column widths are approximate; UI has horizontal scroll anyway.
+        ws.column_dimensions["A"].width = 36
+        ws.column_dimensions["B"].width = 18
+        ws.column_dimensions["C"].width = 20
+        ws.column_dimensions["D"].width = 20
+        ws.column_dimensions["E"].width = 22
+        ws.column_dimensions["F"].width = 22
+        ws.column_dimensions["G"].width = 28
+        ws.column_dimensions["H"].width = 18
+
+        for record in records:
+            payment = payments_by_id.get(record.payment_id)
+            policy = getattr(payment, "policy", None) if payment else None
+            deal = getattr(payment, "deal", None) if payment else None
+
+            deal_title = getattr(deal, "title", None) or "-"
+            deal_client_name = (
+                getattr(getattr(deal, "client", None), "name", None) or "-"
+            )
+            policy_number = (
+                getattr(policy, "number", None)
+                or getattr(payment, "policy_number", None)
+                or "-"
+            )
+            policy_type = (
+                getattr(getattr(policy, "insurance_type", None), "name", None) or "-"
+            )
+            sales_channel = (
+                getattr(getattr(policy, "sales_channel", None), "name", None) or "-"
+            )
+
+            policy_client_name = (
+                getattr(getattr(policy, "insured_client", None), "name", None)
+                or getattr(getattr(policy, "client", None), "name", None)
+                or deal_client_name
+                or "-"
+            )
+
+            payment_amount = getattr(payment, "amount", None)
+            payment_actual = getattr(payment, "actual_date", None)
+            payment_scheduled = getattr(payment, "scheduled_date", None)
+            payment_cell = (
+                f"{format_money(payment_amount)}\n"
+                + (
+                    f"Оплачен: {format_date(payment_actual)}"
+                    if payment_actual
+                    else f"Не оплачен (план: {format_date(payment_scheduled)})"
+                )
+                if payment_amount is not None
+                else "—"
+            )
+
+            paid_records = getattr(payment, "paid_records", []) if payment else []
+            saldo_value = (
+                sum((pr.amount for pr in paid_records), 0) if paid_records else 0
+            )
+            saldo_lines = [format_money(saldo_value)]
+            if paid_records:
+                for pr in paid_records:
+                    entry_type = "Доход" if pr.amount >= 0 else "Расход"
+                    saldo_lines.append(
+                        f"{entry_type} {format_money(abs(pr.amount))} · {format_date(pr.date)}"
+                    )
+            else:
+                saldo_lines.append("Операций нет")
+            saldo_cell = "\n".join(saldo_lines)
+
+            parts = [
+                (record.note or "").strip(),
+                (record.description or "").strip(),
+                (record.source or "").strip(),
+            ]
+            parts = [p for p in parts if p]
+            comment_cell = parts[0] if parts else "—"
+            if len(parts) > 1:
+                comment_cell = f"{comment_cell}\n" + " · ".join(parts[1:])
+
+            if record.statement_id:
+                if statement.paid_at:
+                    comment_cell += f"\nВедомость от {format_date(statement.paid_at)}: {statement.name}"
+                else:
+                    comment_cell += f"\nВедомость: {statement.name}"
+
+            amount_sign = "+" if record.amount >= 0 else "-"
+            amount_cell = f"{amount_sign}{format_money(abs(record.amount))}\n{format_date(record.date)}"
+
+            client_cell = f"{policy_client_name}\n{deal_title}\nКонтакт по сделке: {deal_client_name}"
+
+            ws.append(
+                [
+                    client_cell,
+                    policy_number,
+                    policy_type,
+                    sales_channel,
+                    payment_cell,
+                    saldo_cell,
+                    comment_cell,
+                    amount_cell,
+                ]
+            )
+
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.alignment = wrap_top
+
+        buffer = BytesIO()
+        workbook.save(buffer)
+        buffer.seek(0)
+
+        try:
+            drive_file: DriveFileInfo = upload_file_to_drive(
+                folder_id,
+                buffer,
+                filename,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except DriveError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        return Response({"folder_id": folder_id, "file": drive_file})
 
     @action(
         detail=True,

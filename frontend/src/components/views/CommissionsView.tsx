@@ -7,6 +7,7 @@ import {
   fetchFinancialRecordsWithPagination,
   fetchStatementDriveFiles,
   downloadStatementDriveFiles,
+  exportStatementXlsx,
   trashStatementDriveFiles,
   uploadStatementDriveFile,
 } from '../../api';
@@ -164,6 +165,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [statementDriveDownloadMessage, setStatementDriveDownloadMessage] = useState<string | null>(
     null,
   );
+  const [isStatementExporting, setIsStatementExporting] = useState(false);
+  const [statementExportError, setStatementExportError] = useState<string | null>(null);
   const allRecordsRequestRef = useRef(0);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
@@ -216,6 +219,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setSelectedStatementDriveFileIds([]);
     setStatementDriveTrashMessage(null);
     setStatementDriveDownloadMessage(null);
+    setStatementExportError(null);
+    setIsStatementExporting(false);
   }, [selectedStatementId]);
 
   useEffect(() => {
@@ -346,6 +351,25 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       setStatementDriveLoading(false);
     }
   }, []);
+
+  const handleExportStatement = useCallback(async () => {
+    const statement = selectedStatementId ? statementsById.get(selectedStatementId) : undefined;
+    if (!statement) {
+      return;
+    }
+    setIsStatementExporting(true);
+    setStatementExportError(null);
+    try {
+      const file = await exportStatementXlsx(statement.id);
+      setStatementDriveDownloadMessage(`Файл сформирован: ${file.name}`);
+      setStatementTab('files');
+      await loadStatementDriveFiles(statement.id);
+    } catch (error) {
+      setStatementExportError(formatErrorMessage(error, 'Не удалось сформировать ведомость.'));
+    } finally {
+      setIsStatementExporting(false);
+    }
+  }, [loadStatementDriveFiles, selectedStatementId, statementsById]);
 
   const selectedStatement = selectedStatementId
     ? statementsById.get(selectedStatementId)
@@ -1833,6 +1857,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
                       <div className="flex flex-wrap items-center justify-end gap-3">
                         <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleExportStatement()}
+                            disabled={isStatementExporting}
+                            className="btn btn-secondary"
+                            title="Сформировать XLSX-файл ведомости и сохранить в Google Drive"
+                          >
+                            {isStatementExporting ? 'Формируем...' : 'Сформировать ведомость'}
+                          </button>
                           {onUpdateStatement && (
                             <button
                               type="button"
@@ -1856,6 +1889,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         </div>
                       </div>
                     </div>
+
+                    {statementExportError && (
+                      <p className="app-alert app-alert-danger">{statementExportError}</p>
+                    )}
 
                     <div
                       role="tablist"

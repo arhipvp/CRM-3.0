@@ -1,4 +1,7 @@
+from datetime import datetime
 from decimal import Decimal
+from io import BytesIO
+from unittest.mock import patch
 
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
@@ -7,6 +10,7 @@ from apps.finances.models import FinancialRecord, Payment, Statement
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from django.utils import timezone
+from openpyxl import load_workbook
 from rest_framework import status
 
 
@@ -341,6 +345,68 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.income_record.refresh_from_db()
         self.assertEqual(statement.paid_at, paid_at)
         self.assertEqual(self.income_record.date, paid_at)
+
+    def test_export_xlsx_creates_drive_file(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Выплата Алиса",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+
+        fixed_now = timezone.make_aware(
+            datetime(2026, 2, 8, 12, 34, 56), timezone=timezone.get_current_timezone()
+        )
+
+        uploaded = {}
+
+        def fake_upload(folder_id, file_obj, file_name, mime_type):
+            uploaded["folder_id"] = folder_id
+            uploaded["file_name"] = file_name
+            uploaded["mime_type"] = mime_type
+            uploaded["bytes"] = file_obj.read()
+            return {
+                "id": "file123",
+                "name": file_name,
+                "mime_type": mime_type or "",
+                "size": len(uploaded["bytes"]),
+                "created_at": None,
+                "modified_at": None,
+                "web_view_link": "https://drive.test/file123",
+                "is_folder": False,
+            }
+
+        with (
+            patch(
+                "apps.finances.views.ensure_statement_folder", return_value="folder123"
+            ),
+            patch("apps.finances.views.upload_file_to_drive", side_effect=fake_upload),
+            patch("apps.finances.views.timezone.now", return_value=fixed_now),
+        ):
+            response = self.api_client.post(
+                f"/api/v1/finance_statements/{statement.id}/export-xlsx/",
+                {},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["folder_id"], "folder123")
+        self.assertEqual(payload["file"]["id"], "file123")
+
+        self.assertTrue(
+            uploaded["file_name"].startswith("Выплата Алиса_08_02_2026_12_34_56")
+        )
+        self.assertTrue(uploaded["file_name"].endswith(".xlsx"))
+
+        workbook = load_workbook(filename=BytesIO(uploaded["bytes"]))
+        ws = workbook.active
+        headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        self.assertIn("Клиент / сделка", headers)
+        self.assertIn("Сумма, ₽", headers)
+        workbook.close()
 
 
 class FinancialRecordFilterTests(AuthenticatedAPITestCase):
