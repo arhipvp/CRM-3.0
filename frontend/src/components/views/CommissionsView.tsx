@@ -122,6 +122,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [showNonZeroBalanceOnly, setShowNonZeroBalanceOnly] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
+  const [paymentBalanceSort, setPaymentBalanceSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [targetStatementId, setTargetStatementId] = useState('');
   const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
   const [isAllRecordsLoading, setIsAllRecordsLoading] = useState(false);
@@ -254,6 +255,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (recordTypeFilter !== 'all') {
         filters.record_type = recordTypeFilter;
       }
+      if (paymentBalanceSort !== 'none') {
+        const directionPrefix = paymentBalanceSort === 'desc' ? '-' : '';
+        filters.ordering = `${directionPrefix}payment_paid_balance,-date`;
+      }
       const nextPage = mode === 'more' ? allRecordsPage + 1 : 1;
       if (mode === 'reset') {
         setIsAllRecordsLoading(true);
@@ -295,6 +300,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [
       effectiveSearch,
       allRecordsPage,
+      paymentBalanceSort,
       recordTypeFilter,
       showNonZeroBalanceOnly,
       showUnpaidOnly,
@@ -577,6 +583,38 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       return 'по возрастанию';
     }
     if (recordAmountSort === 'desc') {
+      return 'по убыванию';
+    }
+    return 'не сортируется';
+  };
+
+  const togglePaymentBalanceSort = useCallback(() => {
+    setPaymentBalanceSort((prev) => {
+      if (prev === 'none') {
+        return 'asc';
+      }
+      if (prev === 'asc') {
+        return 'desc';
+      }
+      return 'none';
+    });
+  }, []);
+
+  const getPaymentBalanceSortIndicator = () => {
+    if (paymentBalanceSort === 'asc') {
+      return '↑';
+    }
+    if (paymentBalanceSort === 'desc') {
+      return '↓';
+    }
+    return '↕';
+  };
+
+  const getPaymentBalanceSortLabel = () => {
+    if (paymentBalanceSort === 'asc') {
+      return 'по возрастанию';
+    }
+    if (paymentBalanceSort === 'desc') {
       return 'по убыванию';
     }
     return 'не сортируется';
@@ -940,8 +978,20 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 Платеж
               </TableHeadCell>
               {viewMode === 'all' && (
-                <TableHeadCell padding="sm" className="min-w-[150px]">
-                  Итог по платежу
+                <TableHeadCell padding="sm" className="min-w-[170px]" align="right">
+                  <button
+                    type="button"
+                    onClick={togglePaymentBalanceSort}
+                    aria-label={`Сортировать по итогу по платежу, текущий порядок ${getPaymentBalanceSortLabel()}`}
+                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      Итог по платежу
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                      {getPaymentBalanceSortIndicator()}
+                    </span>
+                  </button>
                 </TableHeadCell>
               )}
               <TableHeadCell padding="sm" className="min-w-[180px]" align="right">

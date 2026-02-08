@@ -431,6 +431,34 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         record_ids = {str(item["id"]) for item in results}
         self.assertIn(str(paid_income.id), record_ids)
 
+    def test_ordering_by_payment_paid_balance_works(self):
+        self.authenticate(self.seller)
+        payment_low = self.payment
+        payment_high = Payment.objects.create(
+            deal=self.deal, amount=Decimal("2000.00"), description="Other payment"
+        )
+
+        # payment_low already has a paid expense record in setUp -> contributes to balance.
+        low_paid = FinancialRecord.objects.create(
+            payment=payment_low, amount=Decimal("10.00"), date=timezone.now().date()
+        )
+        high_paid = FinancialRecord.objects.create(
+            payment=payment_high, amount=Decimal("30.00"), date=timezone.now().date()
+        )
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/?ordering=-payment_paid_balance"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        returned_ids = [str(item["id"]) for item in results]
+
+        # Records for payment_high should come before records for payment_low.
+        self.assertLess(
+            returned_ids.index(str(high_paid.id)), returned_ids.index(str(low_paid.id))
+        )
+
 
 class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):
     def setUp(self):

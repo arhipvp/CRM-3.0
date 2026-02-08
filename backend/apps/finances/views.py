@@ -63,7 +63,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
 
     serializer_class = FinancialRecordSerializer
-    ordering_fields = ["created_at", "updated_at", "date"]
+    ordering_fields = ["created_at", "updated_at", "date", "payment_paid_balance"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
