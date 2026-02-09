@@ -137,6 +137,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [, setAllRecordsPage] = useState(1);
   const allRecordsPageRef = useRef(1);
   const [isStatementModalOpen, setStatementModalOpen] = useState(false);
+  const [isStatementCreating, setIsStatementCreating] = useState(false);
   const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
   const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
   // paidAt выставляется вручную в редактировании ведомости; выплата определяется по paidAt.
@@ -936,25 +937,33 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     if (!onCreateStatement) {
       return;
     }
+    if (isStatementCreating) {
+      return;
+    }
     if (!statementForm.name.trim()) {
       return;
     }
-    const created = await onCreateStatement({
-      name: statementForm.name.trim(),
-      statementType: statementForm.statementType,
-      counterparty: statementForm.counterparty.trim(),
-      comment: statementForm.comment.trim(),
-    });
-    setStatementModalOpen(false);
-    setStatementForm({
-      name: '',
-      statementType: statementForm.statementType,
-      counterparty: '',
-      comment: '',
-    });
-    setSelectedStatementId(created.id);
-    setSelectedRecordIds([]);
-  }, [onCreateStatement, statementForm]);
+    setIsStatementCreating(true);
+    try {
+      const created = await onCreateStatement({
+        name: statementForm.name.trim(),
+        statementType: statementForm.statementType,
+        counterparty: statementForm.counterparty.trim(),
+        comment: statementForm.comment.trim(),
+      });
+      setStatementModalOpen(false);
+      setStatementForm({
+        name: '',
+        statementType: statementForm.statementType,
+        counterparty: '',
+        comment: '',
+      });
+      setSelectedStatementId(created.id);
+      setSelectedRecordIds([]);
+    } finally {
+      setIsStatementCreating(false);
+    }
+  }, [isStatementCreating, onCreateStatement, statementForm]);
 
   const handleEditStatementOpen = useCallback((statement: Statement) => {
     setEditingStatement(statement);
@@ -2127,7 +2136,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       {isStatementModalOpen && (
         <Modal
           title="Создать ведомость"
-          onClose={() => setStatementModalOpen(false)}
+          onClose={() => {
+            if (!isStatementCreating) {
+              setStatementModalOpen(false);
+            }
+          }}
           size="sm"
           closeOnOverlayClick={false}
         >
@@ -2150,6 +2163,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 }
                 className="field field-input"
                 required
+                disabled={isStatementCreating}
               />
             </div>
             <div className="space-y-2">
@@ -2166,6 +2180,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   }))
                 }
                 className="field field-input"
+                disabled={isStatementCreating}
               >
                 <option value="income">Доходы</option>
                 <option value="expense">Расходы</option>
@@ -2185,6 +2200,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   setStatementForm((prev) => ({ ...prev, counterparty: event.target.value }))
                 }
                 className="field field-input"
+                disabled={isStatementCreating}
               />
             </div>
             <div className="space-y-2">
@@ -2199,6 +2215,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 }
                 rows={3}
                 className="field-textarea"
+                disabled={isStatementCreating}
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">
@@ -2206,11 +2223,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 type="button"
                 onClick={() => setStatementModalOpen(false)}
                 className="btn btn-secondary rounded-xl"
+                disabled={isStatementCreating}
               >
                 Отмена
               </button>
-              <button type="submit" className="btn btn-primary rounded-xl">
-                Создать
+              <button
+                type="submit"
+                className="btn btn-primary rounded-xl"
+                disabled={isStatementCreating}
+              >
+                {isStatementCreating ? 'Создаём...' : 'Создать'}
               </button>
             </div>
           </form>
