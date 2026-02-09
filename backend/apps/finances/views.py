@@ -212,8 +212,12 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         statement = getattr(instance, "statement", None)
-        if statement and statement.paid_at:
-            raise ValidationError("Cannot delete records from a paid statement.")
+        if statement:
+            if statement.paid_at:
+                raise ValidationError("Cannot delete records from a paid statement.")
+            # Если запись уже добавлена в черновик ведомости, удалять её нельзя.
+            # Сначала нужно убрать запись из ведомости, чтобы не нарушить её состав.
+            raise ValidationError("Сначала уберите запись из ведомости")
         return super().destroy(request, *args, **kwargs)
 
     def get_object(self):

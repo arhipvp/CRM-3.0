@@ -1,4 +1,5 @@
 export interface FinancialRecordDraft {
+  id?: string;
   amount: string;
   date?: string;
   description?: string;
@@ -7,6 +8,7 @@ export interface FinancialRecordDraft {
 }
 
 export interface PaymentDraft {
+  id?: string;
   amount: string;
   description?: string;
   scheduledDate?: string;

@@ -42,6 +42,7 @@ const normalizeRecordAmount = (value?: string | null) => {
 };
 
 const toFinancialRecordDraft = (record: FinancialRecord): FinancialRecordDraft => ({
+  id: record.id,
   amount: normalizeRecordAmount(record.amount),
   date: record.date ?? '',
   description: record.description ?? '',
@@ -69,6 +70,7 @@ const buildPaymentDraft = (payment: Payment, financialRecords: FinancialRecord[]
     financialRecords.filter((record) => record.paymentId === payment.id);
   const { incomes, expenses } = splitFinancialRecords(records);
   return {
+    id: payment.id,
     amount: payment.amount,
     description: payment.description,
     scheduledDate: payment.scheduledDate ?? '',

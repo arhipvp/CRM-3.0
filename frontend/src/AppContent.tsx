@@ -1305,6 +1305,7 @@ const AppContent: React.FC = () => {
   const handleUpdatePolicy = useCallback(
     async (policyId: string, values: PolicyFormValues) => {
       setIsSyncing(true);
+      invalidateDealsCache();
       try {
         const {
           number,
@@ -1320,12 +1321,86 @@ const AppContent: React.FC = () => {
           endDate,
           insuredClientId,
           insuredClientName,
+          payments: paymentDrafts = [],
         } = values;
+
+        const currentPolicy = policies.find((policy) => policy.id === policyId);
+        if (!currentPolicy) {
+          throw new Error('Не удалось найти полис для обновления.');
+        }
+
+        const statementById = new Map(
+          (statements ?? []).map((statement) => [statement.id, statement]),
+        );
+
+        const existingPayments = payments.filter(
+          (payment) => payment.policyId === policyId && !payment.deletedAt,
+        );
+        const existingPaymentById = new Map(
+          existingPayments.map((payment) => [payment.id, payment]),
+        );
+        const existingPaymentIds = new Set(existingPayments.map((payment) => payment.id));
+
+        const existingRecords = financialRecords.filter(
+          (record) => existingPaymentIds.has(record.paymentId) && !record.deletedAt,
+        );
+        const existingRecordById = new Map(existingRecords.map((record) => [record.id, record]));
+
+        const draftPaymentIds = new Set(
+          paymentDrafts.map((draft) => draft.id).filter(Boolean) as string[],
+        );
+        const paymentsToDelete = existingPayments.filter(
+          (payment) => !draftPaymentIds.has(payment.id),
+        );
+
+        const getRecordDraftIds = (draft: (typeof paymentDrafts)[number]) => {
+          const ids: string[] = [];
+          for (const income of draft.incomes ?? []) {
+            if (income.id) ids.push(income.id);
+          }
+          for (const expense of draft.expenses ?? []) {
+            if (expense.id) ids.push(expense.id);
+          }
+          return ids;
+        };
+
+        const isDraftStatementLinked = (recordId: string) => {
+          const record = existingRecordById.get(recordId);
+          if (!record?.statementId) {
+            return false;
+          }
+          const statement = statementById.get(record.statementId);
+          return Boolean(statement && !statement.paidAt);
+        };
+
+        // Fail fast: запрещаем удаление записей, привязанных к черновику ведомости.
+        // Это предотвращает частичное сохранение, если далее будут сетевые запросы.
+        for (const payment of paymentsToDelete) {
+          const paymentRecords = existingRecords.filter(
+            (record) => record.paymentId === payment.id,
+          );
+          const blocked = paymentRecords.find(
+            (record) => record.statementId && isDraftStatementLinked(record.id),
+          );
+          if (blocked) {
+            throw new Error('Сначала уберите запись из ведомости');
+          }
+        }
+        for (const draft of paymentDrafts) {
+          if (!draft.id) continue;
+          const submittedRecordIds = new Set(getRecordDraftIds(draft));
+          const paymentRecords = existingRecords.filter((record) => record.paymentId === draft.id);
+          for (const record of paymentRecords) {
+            if (!submittedRecordIds.has(record.id) && isDraftStatementLinked(record.id)) {
+              throw new Error('Сначала уберите запись из ведомости');
+            }
+          }
+        }
+
         let resolvedInsuredClientId = insuredClientId;
         const normalizedInsuredName = insuredClientName?.trim();
         if (!resolvedInsuredClientId && normalizedInsuredName) {
           const normalizedLower = normalizedInsuredName.toLowerCase();
-          const currentPolicy = policies.find((policy) => policy.id === policyId);
           if (
             currentPolicy?.clientId &&
             currentPolicy?.clientName?.toLowerCase() === normalizedLower
@@ -1361,6 +1436,217 @@ const AppContent: React.FC = () => {
         updateAppData((prev) => ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
         }));
+
+        const parsePaymentAmount = (value?: string | null) => {
+          const parsed = parseNumericAmount(value ?? '');
+          return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        const parseRecordAmount = (value: string | null | undefined, sign: 1 | -1) => {
+          const parsed = parseNumericAmount(value ?? '');
+          if (!Number.isFinite(parsed)) {
+            return parsed;
+          }
+          const abs = Math.abs(parsed);
+          return sign === -1 ? -abs : abs;
+        };
+
+        const affectedDealIds = new Set<string>();
+        if (currentPolicy.dealId) {
+          affectedDealIds.add(currentPolicy.dealId);
+        }
+
+        // 1) Удаляем платежи, которые исчезли из формы.
+        for (const payment of paymentsToDelete) {
+          await deletePayment(payment.id);
+          const paymentAmount = parseAmountValue(payment.amount);
+          const paymentPaid = payment.actualDate ? paymentAmount : 0;
+          updateAppData((prev) => ({
+            payments: prev.payments.filter((item) => item.id !== payment.id),
+            financialRecords: prev.financialRecords.filter(
+              (record) => record.paymentId !== payment.id,
+            ),
+            policies: adjustPaymentsTotals(
+              prev.policies,
+              payment.policyId,
+              -paymentAmount,
+              -paymentPaid,
+            ),
+            deals: adjustPaymentsTotals(prev.deals, payment.dealId, -paymentAmount, -paymentPaid),
+          }));
+        }
+
+        // 2) Обновляем/создаем платежи и синхронизируем записи.
+        for (const draft of paymentDrafts) {
+          const draftAmount = parsePaymentAmount(draft.amount);
+          const draftScheduled = draft.scheduledDate ? draft.scheduledDate : null;
+          const draftActual = draft.actualDate ? draft.actualDate : null;
+          const draftDescription = draft.description ?? '';
+
+          let paymentId = draft.id;
+          let paymentEntity = paymentId ? existingPaymentById.get(paymentId) : undefined;
+
+          if (paymentId) {
+            const previousPayment = paymentEntity;
+            if (previousPayment) {
+              const previousAmount = parseAmountValue(previousPayment.amount);
+              const previousPaid = previousPayment.actualDate ? previousAmount : 0;
+              const nextPaid = draftActual ? draftAmount : 0;
+
+              const needsUpdate =
+                parseAmountValue(previousPayment.amount) !== draftAmount ||
+                (previousPayment.description ?? '') !== draftDescription ||
+                (previousPayment.scheduledDate ?? null) !== draftScheduled ||
+                (previousPayment.actualDate ?? null) !== draftActual;
+
+              if (needsUpdate) {
+                const updatedPayment = await updatePayment(paymentId, {
+                  policyId,
+                  dealId: currentPolicy.dealId ?? undefined,
+                  amount: draftAmount,
+                  description: draftDescription,
+                  scheduledDate: draftScheduled,
+                  actualDate: draftActual,
+                });
+
+                updateAppData((prev) => ({
+                  payments: prev.payments.map((payment) =>
+                    payment.id === updatedPayment.id ? updatedPayment : payment,
+                  ),
+                  policies: adjustPaymentsTotals(
+                    prev.policies,
+                    policyId,
+                    draftAmount - previousAmount,
+                    nextPaid - previousPaid,
+                  ),
+                  deals: adjustPaymentsTotals(
+                    prev.deals,
+                    currentPolicy.dealId,
+                    draftAmount - previousAmount,
+                    nextPaid - previousPaid,
+                  ),
+                }));
+                paymentEntity = updatedPayment;
+              }
+            }
+          } else {
+            const createdPayment = await createPayment({
+              dealId: currentPolicy.dealId,
+              policyId,
+              amount: draftAmount,
+              description: draftDescription,
+              scheduledDate: draftScheduled,
+              actualDate: draftActual,
+            });
+            paymentId = createdPayment.id;
+            paymentEntity = createdPayment;
+
+            const paidDelta = createdPayment.actualDate ? draftAmount : 0;
+            updateAppData((prev) => ({
+              payments: [createdPayment, ...prev.payments],
+              policies: adjustPaymentsTotals(prev.policies, policyId, draftAmount, paidDelta),
+              deals: adjustPaymentsTotals(prev.deals, currentPolicy.dealId, draftAmount, paidDelta),
+            }));
+          }
+
+          if (!paymentId) {
+            continue;
+          }
+
+          const paymentRecords = existingRecords.filter((record) => record.paymentId === paymentId);
+          const submittedIncomeIds = new Set(
+            (draft.incomes ?? []).map((r) => r.id).filter(Boolean) as string[],
+          );
+          const submittedExpenseIds = new Set(
+            (draft.expenses ?? []).map((r) => r.id).filter(Boolean) as string[],
+          );
+          const submittedRecordIds = new Set([...submittedIncomeIds, ...submittedExpenseIds]);
+
+          const recordsToDelete = paymentRecords.filter(
+            (record) => !submittedRecordIds.has(record.id),
+          );
+          for (const record of recordsToDelete) {
+            await deleteFinancialRecord(record.id);
+            updateAppData((prev) => ({
+              financialRecords: prev.financialRecords.filter((item) => item.id !== record.id),
+              payments: prev.payments.map((payment) =>
+                payment.id === record.paymentId
+                  ? {
+                      ...payment,
+                      financialRecords: (payment.financialRecords ?? []).filter(
+                        (item) => item.id !== record.id,
+                      ),
+                    }
+                  : payment,
+              ),
+            }));
+          }
+
+          const updateOrCreateRecord = async (
+            recordDraft: (typeof draft.incomes)[number],
+            sign: 1 | -1,
+          ) => {
+            const amount = parseRecordAmount(recordDraft.amount, sign);
+            if (!Number.isFinite(amount)) {
+              return;
+            }
+            const payload = {
+              amount,
+              date: recordDraft.date ? recordDraft.date : null,
+              description: recordDraft.description ?? '',
+              source: recordDraft.source ?? '',
+              note: recordDraft.note ?? '',
+            };
+
+            if (recordDraft.id) {
+              const updatedRecord = await updateFinancialRecord(recordDraft.id, payload);
+              updateAppData((prev) => ({
+                financialRecords: prev.financialRecords.map((record) =>
+                  record.id === updatedRecord.id ? updatedRecord : record,
+                ),
+                payments: prev.payments.map((payment) =>
+                  payment.id === updatedRecord.paymentId
+                    ? {
+                        ...payment,
+                        financialRecords: (payment.financialRecords ?? []).map((record) =>
+                          record.id === updatedRecord.id ? updatedRecord : record,
+                        ),
+                      }
+                    : payment,
+                ),
+              }));
+              return;
+            }
+
+            const createdRecord = await createFinancialRecord({
+              paymentId,
+              ...payload,
+            });
+            updateAppData((prev) => ({
+              financialRecords: [createdRecord, ...prev.financialRecords],
+              payments: prev.payments.map((payment) =>
+                payment.id === createdRecord.paymentId
+                  ? {
+                      ...payment,
+                      financialRecords: [...(payment.financialRecords ?? []), createdRecord],
+                    }
+                  : payment,
+              ),
+            }));
+          };
+
+          for (const income of draft.incomes ?? []) {
+            await updateOrCreateRecord(income, 1);
+          }
+          for (const expense of draft.expenses ?? []) {
+            await updateOrCreateRecord(expense, -1);
+          }
+        }
+
+        if (affectedDealIds.size) {
+          await syncDealsByIds(Array.from(affectedDealIds));
+        }
+        await refreshPolicies();
         setEditingPolicy(null);
       } catch (err) {
         const message =
@@ -1375,7 +1661,21 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [clients, policies, setEditingPolicy, setError, setIsSyncing, updateAppData],
+    [
+      adjustPaymentsTotals,
+      clients,
+      financialRecords,
+      invalidateDealsCache,
+      payments,
+      policies,
+      refreshPolicies,
+      setEditingPolicy,
+      setError,
+      setIsSyncing,
+      statements,
+      syncDealsByIds,
+      updateAppData,
+    ],
   );
   const handleDeletePolicy = useCallback(
     async (policyId: string) => {
