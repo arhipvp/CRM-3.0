@@ -118,11 +118,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
   const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
   const [allRecordsSearch, setAllRecordsSearch] = useState('');
-  const [showUnpaidPayments, setShowUnpaidPayments] = useState(true);
-  const [showStatementRecords, setShowStatementRecords] = useState(true);
+  const [showUnpaidPayments, setShowUnpaidPayments] = useState(false);
+  const [showStatementRecords, setShowStatementRecords] = useState(false);
   // По умолчанию в "Все записи" показываем только неоплаченные (record.date is null).
   // Галка "Показать оплаченные..." расширяет список до всех записей.
   const [showPaidRecords, setShowPaidRecords] = useState(false);
+  const [showZeroSaldo, setShowZeroSaldo] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [allRecordsSortKey, setAllRecordsSortKey] = useState<AllRecordsSortKey>('none');
@@ -260,6 +261,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (!showPaidRecords) {
         filters.unpaid_only = true;
       }
+      if (!showZeroSaldo) {
+        filters.paid_balance_not_zero = true;
+      }
       if (recordTypeFilter !== 'all') {
         filters.record_type = recordTypeFilter;
       }
@@ -320,6 +324,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       allRecordsSortKey,
       recordTypeFilter,
       showPaidRecords,
+      showZeroSaldo,
       showStatementRecords,
       showUnpaidPayments,
     ],
@@ -2070,6 +2075,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     className="check"
                   />
                   Показать оплаченные расходы/доходы
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={showZeroSaldo}
+                    onChange={(event) => setShowZeroSaldo(event.target.checked)}
+                    className="check"
+                  />
+                  Показывать нулевое сальдо
                 </label>
                 <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
                   <button
