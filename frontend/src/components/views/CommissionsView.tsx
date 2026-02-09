@@ -1001,7 +1001,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   // Ведомость считается выплаченной по факту наличия paidAt.
 
   const recordsSelectionBar = (
-    <div className="border-b border-slate-200 bg-white px-4 py-3">
+    <div className="sticky top-0 z-20 border-b border-slate-200 bg-white px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-slate-700">
           {attachStatement ? (
@@ -1013,6 +1013,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             </>
           ) : (
             <span className="text-slate-500">Выберите ведомость, чтобы добавлять записи.</span>
+          )}
+          {viewMode === 'statements' && selectedStatement && !isSelectedStatementPaid && (
+            <span className="ml-2 text-xs text-slate-500">
+              Чтобы убрать запись: выделите строку и нажмите &quot;Убрать из ведомости&quot;.
+            </span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1060,9 +1065,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   );
 
   const recordsTable = (
-    <div className="rounded-2xl border-2 border-slate-300 bg-white shadow-sm overflow-hidden">
+    <div className="rounded-2xl border-2 border-slate-300 bg-white shadow-sm">
       {recordsSelectionBar}
-      <div className="overflow-x-auto bg-white">
+      <div className="overflow-x-auto bg-white rounded-b-2xl">
         <table
           className="deals-table w-full table-fixed border-collapse text-left text-sm"
           aria-label="Доходы и расходы"
