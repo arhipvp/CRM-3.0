@@ -2076,6 +2076,34 @@ const AppContent: React.FC = () => {
     return values.recordType === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
   };
 
+  const applyStatementAggregates = (items: Statement[], records: FinancialRecord[]) => {
+    const aggregates = new Map<string, { count: number; total: number }>();
+
+    for (const record of records) {
+      if (record.deletedAt) {
+        continue;
+      }
+      const statementId = record.statementId ?? null;
+      if (!statementId) {
+        continue;
+      }
+      const amount = parseAmountValue(record.amount);
+      const current = aggregates.get(statementId) ?? { count: 0, total: 0 };
+      current.count += 1;
+      current.total += Number.isFinite(amount) ? amount : 0;
+      aggregates.set(statementId, current);
+    }
+
+    return items.map((statement) => {
+      const aggregate = aggregates.get(statement.id) ?? { count: 0, total: 0 };
+      return {
+        ...statement,
+        recordsCount: aggregate.count,
+        totalAmount: aggregate.total.toFixed(2),
+      };
+    });
+  };
+
   const handleAddFinancialRecord = useCallback(
     async (values: AddFinancialRecordFormValues) => {
       const paymentId = values.paymentId || financialRecordModal?.paymentId;
@@ -2091,17 +2119,19 @@ const AppContent: React.FC = () => {
           source: values.source,
           note: values.note,
         });
-        updateAppData((prev) => ({
-          financialRecords: [created, ...prev.financialRecords],
-          payments: prev.payments.map((payment) =>
+        updateAppData((prev) => {
+          const financialRecords = [created, ...prev.financialRecords];
+          const payments = prev.payments.map((payment) =>
             payment.id === created.paymentId
               ? {
                   ...payment,
                   financialRecords: [...(payment.financialRecords ?? []), created],
                 }
               : payment,
-          ),
-        }));
+          );
+          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
+          return { financialRecords, payments, statements };
+        });
         setFinancialRecordModal(null);
       } catch (err) {
         setError(formatErrorMessage(err, 'Ошибка при создании записи'));
@@ -2121,11 +2151,11 @@ const AppContent: React.FC = () => {
           source: values.source,
           note: values.note,
         });
-        updateAppData((prev) => ({
-          financialRecords: prev.financialRecords.map((record) =>
+        updateAppData((prev) => {
+          const financialRecords = prev.financialRecords.map((record) =>
             record.id === updated.id ? updated : record,
-          ),
-          payments: prev.payments.map((payment) =>
+          );
+          const payments = prev.payments.map((payment) =>
             payment.id === updated.paymentId
               ? {
                   ...payment,
@@ -2134,8 +2164,10 @@ const AppContent: React.FC = () => {
                   ),
                 }
               : payment,
-          ),
-        }));
+          );
+          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
+          return { financialRecords, payments, statements };
+        });
         setFinancialRecordModal(null);
       } catch (err) {
         setError(formatErrorMessage(err, 'Ошибка при обновлении записи'));
@@ -2151,21 +2183,21 @@ const AppContent: React.FC = () => {
         await deleteFinancialRecord(recordId);
         updateAppData((prev) => {
           const existing = prev.financialRecords.find((record) => record.id === recordId);
-          return {
-            financialRecords: prev.financialRecords.filter((record) => record.id !== recordId),
-            payments: existing
-              ? prev.payments.map((payment) =>
-                  payment.id === existing.paymentId
-                    ? {
-                        ...payment,
-                        financialRecords: (payment.financialRecords ?? []).filter(
-                          (record) => record.id !== recordId,
-                        ),
-                      }
-                    : payment,
-                )
-              : prev.payments,
-          };
+          const financialRecords = prev.financialRecords.filter((record) => record.id !== recordId);
+          const payments = existing
+            ? prev.payments.map((payment) =>
+                payment.id === existing.paymentId
+                  ? {
+                      ...payment,
+                      financialRecords: (payment.financialRecords ?? []).filter(
+                        (record) => record.id !== recordId,
+                      ),
+                    }
+                  : payment,
+              )
+            : prev.payments;
+          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
+          return { financialRecords, payments, statements };
         });
         setFinancialRecordModal(null);
       } catch (err) {
@@ -2191,9 +2223,30 @@ const AppContent: React.FC = () => {
         comment: values.comment,
         recordIds: values.recordIds,
       });
-      updateAppData((prev) => ({
-        statements: [created, ...(prev.statements ?? [])],
-      }));
+      updateAppData((prev) => {
+        const recordIds = values.recordIds ?? [];
+        if (!recordIds.length) {
+          return {
+            statements: [created, ...(prev.statements ?? [])],
+          };
+        }
+
+        const recordIdSet = new Set(recordIds);
+        const financialRecords = prev.financialRecords.map((record) =>
+          recordIdSet.has(record.id) ? { ...record, statementId: created.id } : record,
+        );
+        const payments = prev.payments.map((payment) => ({
+          ...payment,
+          financialRecords: (payment.financialRecords ?? []).map((record) =>
+            recordIdSet.has(record.id) ? { ...record, statementId: created.id } : record,
+          ),
+        }));
+        const statements = applyStatementAggregates(
+          [created, ...(prev.statements ?? [])],
+          financialRecords,
+        );
+        return { statements, financialRecords, payments };
+      });
       return created;
     },
     [updateAppData],
@@ -2214,7 +2267,7 @@ const AppContent: React.FC = () => {
     ) => {
       const updated = await updateFinanceStatement(statementId, values);
       updateAppData((prev) => {
-        const statements = (prev.statements ?? []).map((statement) =>
+        let statements = (prev.statements ?? []).map((statement) =>
           statement.id === updated.id ? updated : statement,
         );
         const updatedRecordIds = values.recordIds ?? [];
@@ -2232,6 +2285,7 @@ const AppContent: React.FC = () => {
               ),
             }))
           : prev.payments;
+        statements = applyStatementAggregates(statements, financialRecords);
         return { statements, financialRecords, payments };
       });
       return updated;
@@ -2267,17 +2321,20 @@ const AppContent: React.FC = () => {
     async (statementId: string, recordIds: string[]) => {
       try {
         await removeFinanceStatementRecords(statementId, recordIds);
-        updateAppData((prev) => ({
-          financialRecords: prev.financialRecords.map((record) =>
-            recordIds.includes(record.id) ? { ...record, statementId: null } : record,
-          ),
-          payments: prev.payments.map((payment) => ({
+        updateAppData((prev) => {
+          const recordIdSet = new Set(recordIds);
+          const financialRecords = prev.financialRecords.map((record) =>
+            recordIdSet.has(record.id) ? { ...record, statementId: null } : record,
+          );
+          const payments = prev.payments.map((payment) => ({
             ...payment,
             financialRecords: (payment.financialRecords ?? []).map((record) =>
-              recordIds.includes(record.id) ? { ...record, statementId: null } : record,
+              recordIdSet.has(record.id) ? { ...record, statementId: null } : record,
             ),
-          })),
-        }));
+          }));
+          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
+          return { financialRecords, payments, statements };
+        });
       } catch (err) {
         setError(formatErrorMessage(err, 'Ошибка при обновлении ведомости'));
         throw err;
