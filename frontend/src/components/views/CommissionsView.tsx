@@ -125,6 +125,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [showPaidRecords, setShowPaidRecords] = useState(false);
   const [showZeroSaldo, setShowZeroSaldo] = useState(false);
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [showPaidStatements, setShowPaidStatements] = useState(false);
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [allRecordsSortKey, setAllRecordsSortKey] = useState<AllRecordsSortKey>('none');
   const [allRecordsSortDirection, setAllRecordsSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -1788,7 +1789,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 </p>
               </div>
               {onCreateStatement && (
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap items-center gap-4">
                   <button
                     type="button"
                     onClick={() => setStatementModalOpen(true)}
@@ -1796,14 +1797,29 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   >
                     + Создать ведомость
                   </button>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={showPaidStatements}
+                      onChange={(event) => setShowPaidStatements(event.target.checked)}
+                      className="check"
+                    />
+                    Показывать оплаченные ведомости
+                  </label>
                 </div>
               )}
             </div>
 
             <div className="max-h-[360px] overflow-y-auto bg-white border-t border-slate-200">
-              {statements.length ? (
+              {(showPaidStatements
+                ? statements
+                : statements.filter((statement) => !statement.paidAt)
+              ).length ? (
                 <ul className="divide-y divide-slate-200">
-                  {statements.map((statement) => {
+                  {(showPaidStatements
+                    ? statements
+                    : statements.filter((statement) => !statement.paidAt)
+                  ).map((statement) => {
                     const isActive = statement.id === selectedStatementId;
                     const totalAmount = Number(statement.totalAmount ?? 0);
                     const totalLabel = Number.isFinite(totalAmount)
@@ -1861,7 +1877,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 </ul>
               ) : (
                 <div className="px-6 py-10 text-center">
-                  <PanelMessage>Ведомостей пока нет</PanelMessage>
+                  <PanelMessage>
+                    {showPaidStatements ? 'Ведомостей пока нет' : 'Нет черновиков ведомостей'}
+                  </PanelMessage>
                 </div>
               )}
             </div>
