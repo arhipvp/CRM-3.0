@@ -1591,6 +1591,7 @@ const AppContent: React.FC = () => {
             if (!Number.isFinite(amount)) {
               return;
             }
+
             const payload = {
               amount,
               date: recordDraft.date ? recordDraft.date : null,
@@ -1600,6 +1601,37 @@ const AppContent: React.FC = () => {
             };
 
             if (recordDraft.id) {
+              const existing = existingRecordById.get(recordDraft.id);
+              if (existing) {
+                const existingAmount = parseNumericAmount(existing.amount ?? '');
+                const existingDate = existing.date ?? null;
+                const existingDescription = (existing.description ?? '').trim();
+                const existingSource = (existing.source ?? '').trim();
+                const existingNote = (existing.note ?? '').trim();
+
+                const nextDescription = (payload.description ?? '').trim();
+                const nextSource = (payload.source ?? '').trim();
+                const nextNote = (payload.note ?? '').trim();
+
+                const hasChanges =
+                  (Number.isFinite(existingAmount) ? existingAmount : 0) !== payload.amount ||
+                  (existingDate ?? null) !== (payload.date ?? null) ||
+                  existingDescription !== nextDescription ||
+                  existingSource !== nextSource ||
+                  existingNote !== nextNote;
+
+                if (!hasChanges) {
+                  return;
+                }
+
+                const statement = existing.statementId
+                  ? statementById.get(existing.statementId)
+                  : undefined;
+                if (statement?.paidAt) {
+                  // Avoid partial saves: user is trying to change a record inside a paid statement.
+                  throw new Error('Нельзя изменять записи в выплаченной ведомости.');
+                }
+              }
               const updatedRecord = await updateFinancialRecord(recordDraft.id, payload);
               updateAppData((prev) => ({
                 financialRecords: prev.financialRecords.map((record) =>
