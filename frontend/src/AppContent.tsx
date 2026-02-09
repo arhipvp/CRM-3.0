@@ -1339,11 +1339,12 @@ const AppContent: React.FC = () => {
         const existingPaymentById = new Map(
           existingPayments.map((payment) => [payment.id, payment]),
         );
-        const existingPaymentIds = new Set(existingPayments.map((payment) => payment.id));
 
-        const existingRecords = financialRecords.filter(
-          (record) => existingPaymentIds.has(record.paymentId) && !record.deletedAt,
-        );
+        // Existing records are sourced primarily from `payments` because
+        // `financialRecords` might be loaded partially (pagination on backend).
+        const existingRecords = existingPayments
+          .flatMap((payment) => payment.financialRecords ?? [])
+          .filter((record) => !record.deletedAt);
         const existingRecordById = new Map(existingRecords.map((record) => [record.id, record]));
 
         const draftPaymentIds = new Set(
@@ -1664,7 +1665,6 @@ const AppContent: React.FC = () => {
     [
       adjustPaymentsTotals,
       clients,
-      financialRecords,
       invalidateDealsCache,
       payments,
       policies,
