@@ -219,6 +219,23 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setSelectedRecordIds([]);
   }, [targetStatementId]);
 
+  const isRecordTypeLocked = viewMode === 'all' && Boolean(targetStatementId);
+  useEffect(() => {
+    if (viewMode !== 'all') {
+      return;
+    }
+    if (!targetStatementId) {
+      setRecordTypeFilter('all');
+      return;
+    }
+    const statement = statementsById.get(targetStatementId);
+    if (!statement) {
+      setRecordTypeFilter('all');
+      return;
+    }
+    setRecordTypeFilter(statement.statementType === 'income' ? 'income' : 'expense');
+  }, [statementsById, targetStatementId, viewMode]);
+
   useEffect(() => {
     setStatementTab('records');
     setSelectedStatementDriveFileIds([]);
@@ -2107,33 +2124,51 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setRecordTypeFilter('income')}
+                    disabled={isRecordTypeLocked}
                     className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                       recordTypeFilter === 'income'
                         ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                         : 'text-slate-600 hover:bg-white'
                     }`}
+                    title={
+                      isRecordTypeLocked
+                        ? 'Тип записей выбран автоматически по ведомости'
+                        : 'Показать только доходы'
+                    }
                   >
                     Доходы
                   </button>
                   <button
                     type="button"
                     onClick={() => setRecordTypeFilter('expense')}
+                    disabled={isRecordTypeLocked}
                     className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                       recordTypeFilter === 'expense'
                         ? 'bg-rose-600 text-white hover:bg-rose-700'
                         : 'text-slate-600 hover:bg-white'
                     }`}
+                    title={
+                      isRecordTypeLocked
+                        ? 'Тип записей выбран автоматически по ведомости'
+                        : 'Показать только расходы'
+                    }
                   >
                     Расходы
                   </button>
                   <button
                     type="button"
                     onClick={() => setRecordTypeFilter('all')}
+                    disabled={isRecordTypeLocked}
                     className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                       recordTypeFilter === 'all'
                         ? 'bg-slate-900 text-white hover:bg-slate-800'
                         : 'text-slate-600 hover:bg-white'
                     }`}
+                    title={
+                      isRecordTypeLocked
+                        ? 'Тип записей выбран автоматически по ведомости'
+                        : 'Показать все записи'
+                    }
                   >
                     Все
                   </button>
