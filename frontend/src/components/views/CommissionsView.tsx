@@ -980,6 +980,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     if (!editingStatement || !onUpdateStatement) {
       return;
     }
+    const existingPaidAt = editingStatement.paidAt ?? '';
+    const nextPaidAt = editStatementForm.paidAt ?? '';
+    const isSettingPaidAtNow = Boolean(nextPaidAt) && !existingPaidAt;
+    if (isSettingPaidAtNow && typeof window !== 'undefined') {
+      const confirmText =
+        'Если указать дату выплаты, ведомость будет считаться выплаченной. ' +
+        'После сохранения редактирование и удаление ведомости будут недоступны, ' +
+        'а всем записям будет проставлена дата выплаты.\n\nПродолжить?';
+      if (!window.confirm(confirmText)) {
+        return;
+      }
+    }
     await onUpdateStatement(editingStatement.id, {
       name: editStatementForm.name.trim(),
       statementType: editStatementForm.statementType,
