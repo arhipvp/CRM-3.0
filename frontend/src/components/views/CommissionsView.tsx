@@ -2112,12 +2112,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   className="field field-input h-10 min-w-[220px] text-sm"
                 >
                   <option value="">Выберите ведомость</option>
-                  {statements.map((statement) => (
-                    <option key={statement.id} value={statement.id}>
-                      {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
-                      {normalizeText(statement.name)}
-                    </option>
-                  ))}
+                  {statements
+                    .filter((statement) => !statement.paidAt)
+                    .map((statement) => (
+                      <option key={statement.id} value={statement.id}>
+                        {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
+                        {normalizeText(statement.name)}
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>
