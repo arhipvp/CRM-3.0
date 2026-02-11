@@ -51,7 +51,21 @@ class MailcowClient:
             with urllib.request.urlopen(request, timeout=20) as response:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
-            raise MailcowError(f"Mailcow API HTTP error: {exc.code}") from exc
+            detail = f"Mailcow API HTTP error: {exc.code}"
+            try:
+                error_raw = exc.read().decode("utf-8")
+                parsed_error = json.loads(error_raw)
+                if isinstance(parsed_error, dict):
+                    msg = parsed_error.get("msg")
+                    if msg:
+                        detail = f"{detail} ({msg})"
+                elif isinstance(parsed_error, list):
+                    first = parsed_error[0] if parsed_error else None
+                    if isinstance(first, dict) and first.get("msg"):
+                        detail = f"{detail} ({first['msg']})"
+            except Exception:
+                pass
+            raise MailcowError(detail) from exc
         except urllib.error.URLError as exc:
             raise MailcowError("Mailcow API request failed") from exc
         try:

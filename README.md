@@ -58,7 +58,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - `MAILCOW_ADMIN_EMAIL`
 - `MAILCOW_ADMIN_PASS`
 - `MAILCOW_API_KEY`
-- `MAILCOW_API_ALLOW_FROM` (например: `127.0.0.1,173.249.7.183`)
+- `MAILCOW_API_ALLOW_FROM` (например: `127.0.0.1,173.249.7.183,172.22.1.0/24` для доступа backend-контейнера в mailcow-сети)
 - `MAILCOW_DOMAIN` (например: `zoom78.com`)
 - `MAILCOW_IMAP_MASTER_USER`
 - `MAILCOW_IMAP_MASTER_PASS`
