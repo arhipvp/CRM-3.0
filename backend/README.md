@@ -40,7 +40,7 @@ Backend — это одиночный Django-проект, распределё�
 
 ### Скрипты и утилиты
 - `manage.py` управляет миграциями (`makemigrations`, `migrate`), shell, `loaddata`, `test`, `check --deploy`.
-- Google Drive/OpenAI-интеграции подключаются через env и локальный `credentials.json` (файл не хранится в git).
+- Google Drive/OpenAI-интеграции подключаются через env. Для Drive поддерживаются режимы `GOOGLE_DRIVE_AUTH_MODE=auto|oauth|service_account`; в `auto` сначала используется OAuth, затем fallback на service account.
 - `entrypoint.sh` (в Docker) применяет миграции и запускает сервер (gunicorn/uvicorn).
 
 ## Запуск и окружение
@@ -52,7 +52,7 @@ copy .env.example .env    # заполнить секреты и базу
 python manage.py migrate
 python manage.py runserver
 ```
-- Для env: `DJANGO_SECRET_KEY`, `DEBUG`, `DJANGO_DB_*`, JWT-параметры, CORS, `GOOGLE_DRIVE_*`, `OPENAI_*`.
+- Для env: `DJANGO_SECRET_KEY`, `DEBUG`, `DJANGO_DB_*`, JWT-параметры, CORS, `GOOGLE_DRIVE_*` (включая `GOOGLE_DRIVE_OAUTH_CLIENT_ID`, `GOOGLE_DRIVE_OAUTH_CLIENT_SECRET`, `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN`), `OPENAI_*`.
 - Перед релизом обязательно `python manage.py check --deploy`.
 
 ## Авторизация (важно)

@@ -17,7 +17,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - **`apps/common/`** держит повторно используемые сериализаторы, permissions, миксины, фильтры, подписчики сигналов и менеджеры. Именно сюда выносятся shared-бизнес-правила.
 - **Доменные приложения (`clients`, `deals`, `tasks`, `notes`, `finances`, `documents`, `chat`, `policies`, `notifications`, `users`)** — модели, сериализаторы, ViewSet, filters, permissions и routers для каждой бизнес-функции. Новые эндпоинты добавляются через `api_router`.
 - **`tests/`** проверяют поведение CRUD, permissions, сигналы и кодировку; они используют DRF APIClient и фикстуры в `conftest.py`.
-- **Скрипты, миграции, миграции и интеграции**: `manage.py` управляет миграциями, сборкой статики, shell, loaddata; Google Drive и OpenAI-интеграции подключаются через env и локальный `credentials.json` (файл не хранится в git).
+- **Скрипты, миграции, миграции и интеграции**: `manage.py` управляет миграциями, сборкой статики, shell, loaddata; Google Drive и OpenAI-интеграции подключаются через env. Для Drive доступен `GOOGLE_DRIVE_AUTH_MODE=auto|oauth|service_account` (в `auto` OAuth используется первым, service account как fallback).
 
 ### Frontend
 - **`src/main.tsx`, `App.tsx`, `AppContent.tsx`** — точка входа, маршруты и главный UI-контейнер. `AppContent` аккумулирует layout, контролирует загрузку начальных данных и обёртки контекстов.

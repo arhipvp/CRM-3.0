@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from io import BytesIO
-from typing import Any, BinaryIO, Optional, TypedDict
+from typing import Any, BinaryIO, Callable, Optional, TypedDict, TypeVar
 
 from django.conf import settings
 from django.db import models
@@ -12,12 +13,14 @@ from django.db import models
 logger = logging.getLogger(__name__)
 
 try:
+    from google.oauth2 import credentials as _oauth_credentials
     from google.oauth2 import service_account as _service_account
     from googleapiclient.discovery import build as _gdrive_build
     from googleapiclient.errors import HttpError as _GDriveHttpError
     from googleapiclient.http import MediaIoBaseDownload as _MediaIoBaseDownload
     from googleapiclient.http import MediaIoBaseUpload as _MediaIoBaseUpload
 except ImportError as exc:  # pragma: no cover - requires optional dependency
+    _oauth_credentials = None
     _gdrive_build = None
     _GDriveHttpError = None
     _MediaIoBaseUpload = None
@@ -31,6 +34,13 @@ DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 TRASH_FOLDER_NAME = "Корзина"
 STATEMENTS_ROOT_FOLDER_NAME = "Ведомости"
+DEFAULT_GOOGLE_OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
+DRIVE_AUTH_MODE_AUTO = "auto"
+DRIVE_AUTH_MODE_OAUTH = "oauth"
+DRIVE_AUTH_MODE_SERVICE_ACCOUNT = "service_account"
+DRIVE_FALLBACK_HTTP_STATUSES = (401, 403, 404, 410)
+
+_T = TypeVar("_T")
 
 
 class DriveError(Exception):
@@ -58,33 +68,243 @@ class DriveFileInfo(TypedDict):
     is_folder: bool
 
 
-def _get_drive_service():
+def _ensure_drive_dependencies() -> None:
     if _drive_import_error:
         raise DriveConfigurationError(
             "google-api-python-client and google-auth must be installed to work with Drive."
         )
 
-    if not _gdrive_build or not _service_account:
+    if not _gdrive_build:
         raise DriveConfigurationError("Drive client dependencies are not available.")
 
-    keyfile = getattr(settings, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "").strip()
-    if not keyfile:
-        raise DriveConfigurationError(
-            "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is not configured."
-        )
 
-    try:
-        credentials = _service_account.Credentials.from_service_account_file(
-            keyfile, scopes=DRIVE_SCOPES
+def _get_drive_auth_mode() -> str:
+    mode = getattr(settings, "GOOGLE_DRIVE_AUTH_MODE", DRIVE_AUTH_MODE_AUTO)
+    normalized = (mode or DRIVE_AUTH_MODE_AUTO).strip().lower()
+    allowed_modes = {
+        DRIVE_AUTH_MODE_AUTO,
+        DRIVE_AUTH_MODE_OAUTH,
+        DRIVE_AUTH_MODE_SERVICE_ACCOUNT,
+    }
+    if normalized not in allowed_modes:
+        raise DriveConfigurationError(
+            "GOOGLE_DRIVE_AUTH_MODE must be one of: auto, oauth, service_account."
         )
+    return normalized
+
+
+def _get_oauth_settings() -> dict[str, str]:
+    return {
+        "client_id": getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "").strip(),
+        "client_secret": getattr(
+            settings, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", ""
+        ).strip(),
+        "refresh_token": getattr(
+            settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", ""
+        ).strip(),
+        "token_uri": (
+            getattr(settings, "GOOGLE_DRIVE_OAUTH_TOKEN_URI", "")
+            or DEFAULT_GOOGLE_OAUTH_TOKEN_URI
+        ).strip(),
+    }
+
+
+def _build_drive_client(credentials: Any, *, auth_type: str):
+    if not _gdrive_build:
+        raise DriveConfigurationError("Drive client dependencies are not available.")
+    try:
         return _gdrive_build(
             "drive", "v3", credentials=credentials, cache_discovery=False
         )
     except Exception as exc:  # pragma: no cover - relies on third-party errors
-        logger.exception("Failed to initialize Google Drive client")
         raise DriveConfigurationError(
-            "Unable to initialize Google Drive client."
+            f"Unable to initialize Google Drive client with {auth_type}."
         ) from exc
+
+
+def _build_oauth_drive_service():
+    oauth_settings = _get_oauth_settings()
+    has_any = any(
+        [
+            oauth_settings["client_id"],
+            oauth_settings["client_secret"],
+            oauth_settings["refresh_token"],
+        ]
+    )
+    has_all = all(
+        [
+            oauth_settings["client_id"],
+            oauth_settings["client_secret"],
+            oauth_settings["refresh_token"],
+        ]
+    )
+    if not has_any:
+        return None
+    if not has_all:
+        raise DriveConfigurationError(
+            "Google Drive OAuth settings are partially configured."
+        )
+    if not _oauth_credentials:
+        raise DriveConfigurationError(
+            "google-auth OAuth credentials support is not available."
+        )
+    credentials = _oauth_credentials.Credentials(
+        token=None,
+        refresh_token=oauth_settings["refresh_token"],
+        token_uri=oauth_settings["token_uri"] or DEFAULT_GOOGLE_OAUTH_TOKEN_URI,
+        client_id=oauth_settings["client_id"],
+        client_secret=oauth_settings["client_secret"],
+        scopes=DRIVE_SCOPES,
+    )
+    return _build_drive_client(credentials, auth_type=DRIVE_AUTH_MODE_OAUTH)
+
+
+def _build_service_account_drive_service():
+    if not _service_account:
+        raise DriveConfigurationError("Service account dependencies are not available.")
+
+    keyfile = getattr(settings, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "").strip()
+    if not keyfile:
+        return None
+    credentials = _service_account.Credentials.from_service_account_file(
+        keyfile, scopes=DRIVE_SCOPES
+    )
+    return _build_drive_client(credentials, auth_type=DRIVE_AUTH_MODE_SERVICE_ACCOUNT)
+
+
+def _extract_http_error_status_reason(exc: Exception) -> tuple[Optional[int], str]:
+    if not _GDriveHttpError or not isinstance(exc, _GDriveHttpError):
+        return None, ""
+    response = getattr(exc, "resp", None)
+    status = getattr(response, "status", None) if response is not None else None
+    reason = ""
+
+    raw_content = getattr(exc, "content", b"")
+    if isinstance(raw_content, bytes):
+        raw_content = raw_content.decode("utf-8", errors="ignore")
+    if isinstance(raw_content, str) and raw_content:
+        try:
+            payload = json.loads(raw_content)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            payload = {}
+        error_data = payload.get("error", {}) if isinstance(payload, dict) else {}
+        if isinstance(error_data, dict):
+            errors = error_data.get("errors")
+            if isinstance(errors, list):
+                for entry in errors:
+                    if not isinstance(entry, dict):
+                        continue
+                    entry_reason = str(entry.get("reason", "")).strip()
+                    if entry_reason:
+                        reason = entry_reason
+                        break
+            if not reason:
+                reason = (
+                    str(error_data.get("status", "")).strip()
+                    or str(error_data.get("message", "")).strip()
+                )
+    return status, reason
+
+
+def _log_drive_api_failure(operation: str, auth_type: str, exc: Exception) -> None:
+    status, reason = _extract_http_error_status_reason(exc)
+    if status is None:
+        logger.error(
+            "Google Drive operation failed. operation=%s auth=%s",
+            operation,
+            auth_type,
+            exc_info=True,
+        )
+        return
+
+    logger.error(
+        "Google Drive API error. operation=%s auth=%s status=%s reason=%s",
+        operation,
+        auth_type,
+        status,
+        reason or "unknown",
+        exc_info=True,
+    )
+    if status in (401, 403):
+        logger.error(
+            "Google Drive alert. operation=%s auth=%s status=%s reason=%s",
+            operation,
+            auth_type,
+            status,
+            reason or "unknown",
+        )
+
+
+def _get_drive_services() -> list[tuple[str, Any]]:
+    _ensure_drive_dependencies()
+    auth_mode = _get_drive_auth_mode()
+    oauth_service = _build_oauth_drive_service()
+    service_account_service = _build_service_account_drive_service()
+
+    if auth_mode == DRIVE_AUTH_MODE_OAUTH:
+        if not oauth_service:
+            raise DriveConfigurationError(
+                "OAuth mode is enabled but OAuth credentials are not configured."
+            )
+        return [(DRIVE_AUTH_MODE_OAUTH, oauth_service)]
+
+    if auth_mode == DRIVE_AUTH_MODE_SERVICE_ACCOUNT:
+        if not service_account_service:
+            raise DriveConfigurationError(
+                "Service account mode is enabled but GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is not configured."
+            )
+        return [(DRIVE_AUTH_MODE_SERVICE_ACCOUNT, service_account_service)]
+
+    services: list[tuple[str, Any]] = []
+    if oauth_service:
+        services.append((DRIVE_AUTH_MODE_OAUTH, oauth_service))
+    if service_account_service:
+        services.append((DRIVE_AUTH_MODE_SERVICE_ACCOUNT, service_account_service))
+    if not services:
+        raise DriveConfigurationError(
+            "Google Drive credentials are not configured. Set OAuth credentials or GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE."
+        )
+    return services
+
+
+def _run_with_drive_service(
+    operation: str,
+    action: Callable[[Any], _T],
+    *,
+    return_none_on_statuses: tuple[int, ...] = (),
+) -> Optional[_T]:
+    services = _get_drive_services()
+    for index, (auth_type, service) in enumerate(services):
+        has_fallback = index < len(services) - 1
+        try:
+            return action(service)
+        except Exception as exc:
+            status, reason = _extract_http_error_status_reason(exc)
+            _log_drive_api_failure(operation, auth_type, exc)
+            if (
+                status in return_none_on_statuses
+                and has_fallback
+                and status in DRIVE_FALLBACK_HTTP_STATUSES
+            ):
+                logger.warning(
+                    "Retrying Drive operation with fallback auth. operation=%s status=%s reason=%s",
+                    operation,
+                    status,
+                    reason or "unknown",
+                )
+                continue
+            if status in return_none_on_statuses:
+                return None
+            if has_fallback and status in DRIVE_FALLBACK_HTTP_STATUSES:
+                logger.warning(
+                    "Retrying Drive operation with fallback auth. operation=%s status=%s reason=%s",
+                    operation,
+                    status,
+                    reason or "unknown",
+                )
+                continue
+            raise
+    return None
 
 
 def _escape_name(value: str) -> str:
@@ -92,7 +312,6 @@ def _escape_name(value: str) -> str:
 
 
 def _find_folder(folder_name: str, parent_id: str) -> Optional[dict]:
-    service = _get_drive_service()
     query = " and ".join(
         (
             f"name = '{_escape_name(folder_name)}'",
@@ -102,8 +321,9 @@ def _find_folder(folder_name: str, parent_id: str) -> Optional[dict]:
         )
     )
     try:
-        response = (
-            service.files()
+        response = _run_with_drive_service(
+            "search_drive_folders",
+            lambda service: service.files()
             .list(
                 q=query,
                 spaces="drive",
@@ -111,37 +331,37 @@ def _find_folder(folder_name: str, parent_id: str) -> Optional[dict]:
                 pageSize=1,
                 supportsAllDrives=True,
             )
-            .execute()
+            .execute(),
         )
     except Exception as exc:
-        logger.exception("Error while searching Drive folders")
         raise DriveOperationError("Unable to search for Drive folders.") from exc
 
-    files = response.get("files") or []
+    files = (response or {}).get("files") or []
     return files[0] if files else None
 
 
 def _make_folder(folder_name: str, parent_id: str) -> str:
-    service = _get_drive_service()
     metadata = {
         "name": folder_name,
         "mimeType": FOLDER_MIME_TYPE,
         "parents": [parent_id],
     }
     try:
-        folder = (
-            service.files()
+        folder = _run_with_drive_service(
+            "create_drive_folder",
+            lambda service: service.files()
             .create(
                 body=metadata,
                 fields="id",
                 supportsAllDrives=True,
             )
-            .execute()
+            .execute(),
         )
     except Exception as exc:
-        logger.exception("Error while creating Drive folder")
         raise DriveOperationError("Unable to create Drive folder.") from exc
 
+    if not folder:
+        raise DriveOperationError("Unable to create Drive folder.")
     return folder["id"]
 
 
@@ -169,41 +389,36 @@ def _update_instance_folder(instance: models.Model, folder_id: str) -> None:
 def _get_folder_metadata(folder_id: str) -> Optional[dict]:
     if not folder_id:
         return None
-    service = _get_drive_service()
     try:
-        return (
-            service.files()
+        metadata = _run_with_drive_service(
+            "get_drive_folder_metadata",
+            lambda service: service.files()
             .get(fileId=folder_id, fields="id,name,parents", supportsAllDrives=True)
-            .execute()
+            .execute(),
+            return_none_on_statuses=(404, 410),
         )
+        return metadata
     except Exception as exc:
-        if _GDriveHttpError and isinstance(exc, _GDriveHttpError):
-            resp = getattr(exc, "resp", None)
-            status = getattr(resp, "status", None) if resp is not None else None
-            if status in (404, 410):
-                return None
-        logger.exception("Error while fetching Drive folder metadata")
         raise DriveOperationError("Unable to verify Drive folder.") from exc
 
 
 def _rename_drive_folder(folder_id: str, new_name: str) -> None:
     if not folder_id or not new_name:
         return
-    service = _get_drive_service()
     metadata = {"name": new_name}
     try:
-        (
-            service.files()
+        _run_with_drive_service(
+            "rename_drive_folder",
+            lambda service: service.files()
             .update(
                 fileId=folder_id,
                 body=metadata,
                 supportsAllDrives=True,
                 fields="id",
             )
-            .execute()
+            .execute(),
         )
     except Exception as exc:
-        logger.exception("Error while renaming Drive folder")
         raise DriveOperationError("Unable to rename Drive folder.") from exc
 
 
@@ -230,7 +445,6 @@ def upload_file_to_drive(
     if _MediaIoBaseUpload is None:
         raise DriveConfigurationError("Drive upload dependencies are not available.")
 
-    service = _get_drive_service()
     try:
         file_obj.seek(0)
     except Exception:
@@ -245,19 +459,22 @@ def upload_file_to_drive(
     metadata = {"name": file_name, "parents": [folder_id]}
 
     try:
-        created = (
-            service.files()
+        created = _run_with_drive_service(
+            "upload_drive_file",
+            lambda service: service.files()
             .create(
                 body=metadata,
                 media_body=media_body,
                 fields="id, name, mimeType, size, createdTime, modifiedTime, webViewLink",
                 supportsAllDrives=True,
             )
-            .execute()
+            .execute(),
         )
     except Exception as exc:
-        logger.exception("Error uploading file to Drive")
         raise DriveOperationError("Unable to upload file to Google Drive.") from exc
+
+    if not created:
+        raise DriveOperationError("Unable to upload file to Google Drive.")
 
     return DriveFileInfo(
         id=created["id"],
@@ -432,14 +649,14 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
     if not folder_id:
         raise DriveOperationError("Folder ID must be provided.")
 
-    service = _get_drive_service()
     results: list[DriveFileInfo] = []
     page_token: Optional[str] = None
 
     while True:
         try:
-            response = (
-                service.files()
+            response = _run_with_drive_service(
+                "list_drive_folder_contents",
+                lambda service: service.files()
                 .list(
                     q=f"'{folder_id}' in parents and trashed = false",
                     spaces="drive",
@@ -448,13 +665,13 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
                     pageToken=page_token,
                     supportsAllDrives=True,
                 )
-                .execute()
+                .execute(),
             )
         except Exception as exc:
-            logger.exception("Error while loading Drive folder contents")
             raise DriveOperationError("Unable to load Drive folder contents.") from exc
 
-        for item in response.get("files", []):
+        response_data = response or {}
+        for item in response_data.get("files", []):
             size_value = item.get("size")
             size = None
             if size_value:
@@ -475,7 +692,7 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
                 )
             )
 
-        page_token = response.get("nextPageToken")
+        page_token = response_data.get("nextPageToken")
         if not page_token:
             break
 
@@ -491,20 +708,25 @@ def download_drive_file(file_id: str) -> bytes:
     if _MediaIoBaseDownload is None:
         raise DriveConfigurationError("Drive download dependencies are not available.")
 
-    service = _get_drive_service()
     try:
-        request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
-        buffer = BytesIO()
-        downloader = _MediaIoBaseDownload(buffer, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
+
+        def _download(service):
+            request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+            buffer = BytesIO()
+            downloader = _MediaIoBaseDownload(buffer, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            buffer.seek(0)
+            return buffer.read()
+
+        content = _run_with_drive_service("download_drive_file", _download)
     except Exception as exc:
-        logger.exception("Error while downloading Drive file")
         raise DriveOperationError("Unable to download Drive file.") from exc
 
-    buffer.seek(0)
-    return buffer.read()
+    if content is None:
+        raise DriveOperationError("Unable to download Drive file.")
+    return content
 
 
 def move_drive_folder_to_parent(folder_id: str, target_parent_id: str) -> None:
@@ -513,29 +735,32 @@ def move_drive_folder_to_parent(folder_id: str, target_parent_id: str) -> None:
     if not folder_id or not target_parent_id:
         return
 
-    service = _get_drive_service()
     try:
-        metadata = (
-            service.files()
-            .get(fileId=folder_id, fields="parents", supportsAllDrives=True)
-            .execute()
-        )
-        parents = metadata.get("parents") or []
-        remove_parents = ",".join(
-            [parent for parent in parents if parent != target_parent_id]
-        )
 
-        update_kwargs: dict[str, Any] = {
-            "fileId": folder_id,
-            "addParents": target_parent_id,
-            "fields": "id",
-            "supportsAllDrives": True,
-        }
-        if remove_parents:
-            update_kwargs["removeParents"] = remove_parents
-        service.files().update(**update_kwargs).execute()
+        def _move(service):
+            metadata = (
+                service.files()
+                .get(fileId=folder_id, fields="parents", supportsAllDrives=True)
+                .execute()
+            )
+            parents = metadata.get("parents") or []
+            remove_parents = ",".join(
+                [parent for parent in parents if parent != target_parent_id]
+            )
+
+            update_kwargs: dict[str, Any] = {
+                "fileId": folder_id,
+                "addParents": target_parent_id,
+                "fields": "id",
+                "supportsAllDrives": True,
+            }
+            if remove_parents:
+                update_kwargs["removeParents"] = remove_parents
+            service.files().update(**update_kwargs).execute()
+            return True
+
+        _run_with_drive_service("move_drive_folder_to_parent", _move)
     except Exception as exc:
-        logger.exception("Error while moving Drive folder to a new parent")
         raise DriveOperationError("Unable to move Drive folder.") from exc
 
 
@@ -545,29 +770,32 @@ def move_drive_file_to_folder(file_id: str, target_folder_id: str) -> None:
     if not file_id or not target_folder_id:
         return
 
-    service = _get_drive_service()
     try:
-        metadata = (
-            service.files()
-            .get(fileId=file_id, fields="parents", supportsAllDrives=True)
-            .execute()
-        )
-        parents = metadata.get("parents") or []
-        remove_parents = ",".join(
-            [parent for parent in parents if parent != target_folder_id]
-        )
 
-        update_kwargs: dict[str, Any] = {
-            "fileId": file_id,
-            "addParents": target_folder_id,
-            "fields": "id",
-            "supportsAllDrives": True,
-        }
-        if remove_parents:
-            update_kwargs["removeParents"] = remove_parents
-        service.files().update(**update_kwargs).execute()
+        def _move(service):
+            metadata = (
+                service.files()
+                .get(fileId=file_id, fields="parents", supportsAllDrives=True)
+                .execute()
+            )
+            parents = metadata.get("parents") or []
+            remove_parents = ",".join(
+                [parent for parent in parents if parent != target_folder_id]
+            )
+
+            update_kwargs: dict[str, Any] = {
+                "fileId": file_id,
+                "addParents": target_folder_id,
+                "fields": "id",
+                "supportsAllDrives": True,
+            }
+            if remove_parents:
+                update_kwargs["removeParents"] = remove_parents
+            service.files().update(**update_kwargs).execute()
+            return True
+
+        _run_with_drive_service("move_drive_file_to_folder", _move)
     except Exception as exc:
-        logger.exception("Error while moving Drive file to another folder")
         raise DriveOperationError("Unable to move Drive file.") from exc
 
 
@@ -577,21 +805,23 @@ def rename_drive_file(file_id: str, new_name: str) -> DriveFileInfo:
     if not file_id or not new_name:
         raise DriveOperationError("File ID and new name must be provided.")
 
-    service = _get_drive_service()
     try:
-        updated = (
-            service.files()
+        updated = _run_with_drive_service(
+            "rename_drive_file",
+            lambda service: service.files()
             .update(
                 fileId=file_id,
                 body={"name": new_name},
                 fields="id, name, mimeType, size, createdTime, modifiedTime, webViewLink",
                 supportsAllDrives=True,
             )
-            .execute()
+            .execute(),
         )
     except Exception as exc:
-        logger.exception("Error while renaming Drive file")
         raise DriveOperationError("Unable to rename Drive file.") from exc
+
+    if not updated:
+        raise DriveOperationError("Unable to rename Drive file.")
 
     return DriveFileInfo(
         id=updated["id"],
@@ -611,13 +841,13 @@ def move_drive_folder_contents(source_folder_id: str, target_folder_id: str) -> 
     if not source_folder_id or not target_folder_id:
         return
 
-    service = _get_drive_service()
     page_token: Optional[str] = None
 
     while True:
         try:
-            response = (
-                service.files()
+            response = _run_with_drive_service(
+                "list_drive_folder_contents_for_move",
+                lambda service: service.files()
                 .list(
                     q=f"'{source_folder_id}' in parents and trashed = false",
                     spaces="drive",
@@ -626,26 +856,30 @@ def move_drive_folder_contents(source_folder_id: str, target_folder_id: str) -> 
                     pageToken=page_token,
                     supportsAllDrives=True,
                 )
-                .execute()
+                .execute(),
             )
         except Exception as exc:
-            logger.exception("Error while listing Drive folder contents")
             raise DriveOperationError("Unable to list Drive folder contents.") from exc
 
-        for item in response.get("files", []):
+        response_data = response or {}
+        for item in response_data.get("files", []):
             try:
-                service.files().update(
-                    fileId=item["id"],
-                    addParents=target_folder_id,
-                    removeParents=source_folder_id,
-                    supportsAllDrives=True,
-                    fields="id",
-                ).execute()
+                _run_with_drive_service(
+                    "move_drive_item_to_folder",
+                    lambda service: service.files()
+                    .update(
+                        fileId=item["id"],
+                        addParents=target_folder_id,
+                        removeParents=source_folder_id,
+                        supportsAllDrives=True,
+                        fields="id",
+                    )
+                    .execute(),
+                )
             except Exception as exc:
-                logger.exception("Error while moving Drive item to target folder")
                 raise DriveOperationError("Unable to move Drive file.") from exc
 
-        page_token = response.get("nextPageToken")
+        page_token = response_data.get("nextPageToken")
         if not page_token:
             break
 
@@ -656,9 +890,12 @@ def delete_drive_folder(folder_id: str) -> None:
     if not folder_id:
         return
 
-    service = _get_drive_service()
     try:
-        service.files().delete(fileId=folder_id, supportsAllDrives=True).execute()
+        _run_with_drive_service(
+            "delete_drive_folder",
+            lambda service: service.files()
+            .delete(fileId=folder_id, supportsAllDrives=True)
+            .execute(),
+        )
     except Exception as exc:
-        logger.exception("Error while deleting Drive folder")
         raise DriveOperationError("Unable to delete Drive folder.") from exc
