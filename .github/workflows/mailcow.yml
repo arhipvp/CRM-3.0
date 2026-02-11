@@ -141,10 +141,20 @@ jobs:
               else:
                   text += f"\n{key}={value}\n"
 
+          def normalize_allow_from(raw: str) -> str:
+              parts = [p.strip() for p in re.split(r"[,\s;]+", raw or "") if p.strip()]
+              required = ["127.0.0.1", "172.22.1.0/24"]
+              for item in required:
+                  if item not in parts:
+                      parts.append(item)
+              return ",".join(parts)
+
           api_key = os.environ.get("MAILCOW_API_KEY", "")
-          api_allow = os.environ.get(
+          api_allow = normalize_allow_from(
+              os.environ.get(
               "MAILCOW_API_ALLOW_FROM",
               "127.0.0.1,173.249.7.183,172.22.1.0/24",
+              )
           )
           imap_master_user = os.environ.get("MAILCOW_IMAP_MASTER_USER", "crm_master")
           imap_master_pass = os.environ.get("MAILCOW_IMAP_MASTER_PASS", "")
