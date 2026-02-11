@@ -16,6 +16,7 @@ from typing import Any, Iterator, Optional, Set
 from urllib.parse import quote_plus
 
 import psycopg
+from google.oauth2 import credentials as oauth_credentials
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -27,6 +28,11 @@ DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 DEFAULT_EXCLUDED_TABLES = ("users_auditlog",)
 DEFAULT_BACKUP_MAX_SESSIONS = 2000
+DEFAULT_GOOGLE_OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
+DRIVE_AUTH_MODE_AUTO = "auto"
+DRIVE_AUTH_MODE_OAUTH = "oauth"
+DRIVE_AUTH_MODE_SERVICE_ACCOUNT = "service_account"
+DRIVE_FALLBACK_HTTP_STATUSES = {401, 403, 404, 410}
 
 ROOT_ENV_FILES = (".env", "backend/.env")
 EXCLUDE_DIRS = {
@@ -81,6 +87,28 @@ def ensure_required_var(env: dict[str, str], name: str) -> str:
             f"{name} must be set either in the environment or in one of {ROOT_ENV_FILES}"
         )
     return value
+
+
+def _env_value(env: dict[str, str], *names: str, default: str = "") -> str:
+    for name in names:
+        value = (os.environ.get(name) or env.get(name) or "").strip()
+        if value:
+            return value
+    return default
+
+
+def get_drive_auth_mode(env: dict[str, str]) -> str:
+    raw = _env_value(env, "GOOGLE_DRIVE_AUTH_MODE", default=DRIVE_AUTH_MODE_AUTO)
+    mode = raw.lower()
+    if mode not in {
+        DRIVE_AUTH_MODE_AUTO,
+        DRIVE_AUTH_MODE_OAUTH,
+        DRIVE_AUTH_MODE_SERVICE_ACCOUNT,
+    }:
+        raise SystemExit(
+            "GOOGLE_DRIVE_AUTH_MODE must be one of: auto, oauth, service_account"
+        )
+    return mode
 
 
 def should_exclude(path: Path, root: Path) -> bool:
@@ -349,15 +377,106 @@ def export_database_to_excel(
 class DriveBackup:
     """Helper for uploading files and copying folders into the backup tree."""
 
-    def __init__(self, credentials_file: Path):
-        self.service = build(
-            "drive",
-            "v3",
-            credentials=service_account.Credentials.from_service_account_file(
-                credentials_file, scopes=DRIVE_SCOPES
-            ),
-            cache_discovery=False,
+    def __init__(self, env: dict[str, str]):
+        self.services = self._build_services(env)
+
+    def _build_services(self, env: dict[str, str]) -> list[tuple[str, Any]]:
+        mode = get_drive_auth_mode(env)
+        oauth_service = self._build_oauth_service(env)
+        service_account_service = self._build_service_account_service(env)
+
+        if mode == DRIVE_AUTH_MODE_OAUTH:
+            if not oauth_service:
+                raise SystemExit(
+                    "OAuth mode is enabled but OAuth credentials are not configured."
+                )
+            return [(DRIVE_AUTH_MODE_OAUTH, oauth_service)]
+
+        if mode == DRIVE_AUTH_MODE_SERVICE_ACCOUNT:
+            if not service_account_service:
+                raise SystemExit(
+                    "Service account mode is enabled but GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is not configured."
+                )
+            return [(DRIVE_AUTH_MODE_SERVICE_ACCOUNT, service_account_service)]
+
+        services: list[tuple[str, Any]] = []
+        if oauth_service:
+            services.append((DRIVE_AUTH_MODE_OAUTH, oauth_service))
+        if service_account_service:
+            services.append((DRIVE_AUTH_MODE_SERVICE_ACCOUNT, service_account_service))
+        if not services:
+            raise SystemExit(
+                "Drive credentials are not configured. Set OAuth credentials or GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE."
+            )
+
+        logger.info(
+            "Drive backup auth order: %s", " -> ".join(name for name, _ in services)
         )
+        return services
+
+    def _build_oauth_service(self, env: dict[str, str]) -> Optional[Any]:
+        client_id = _env_value(env, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "Client-ID")
+        client_secret = _env_value(
+            env, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "Client-key"
+        )
+        refresh_token = _env_value(env, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN")
+        token_uri = _env_value(
+            env,
+            "GOOGLE_DRIVE_OAUTH_TOKEN_URI",
+            default=DEFAULT_GOOGLE_OAUTH_TOKEN_URI,
+        )
+
+        has_any = any([client_id, client_secret, refresh_token])
+        has_all = all([client_id, client_secret, refresh_token])
+        if not has_any:
+            return None
+        if not has_all:
+            raise SystemExit(
+                "Google Drive OAuth settings are partially configured. "
+                "Expected GOOGLE_DRIVE_OAUTH_CLIENT_ID, GOOGLE_DRIVE_OAUTH_CLIENT_SECRET, GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN."
+            )
+
+        credentials = oauth_credentials.Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri=token_uri,
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=DRIVE_SCOPES,
+        )
+        return build("drive", "v3", credentials=credentials, cache_discovery=False)
+
+    def _build_service_account_service(self, env: dict[str, str]) -> Optional[Any]:
+        credentials_file = _env_value(env, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE")
+        if not credentials_file:
+            return None
+
+        key_path = Path(credentials_file).expanduser()
+        if not key_path.exists():
+            raise SystemExit(f"Service account file {key_path} does not exist.")
+
+        credentials = service_account.Credentials.from_service_account_file(
+            key_path, scopes=DRIVE_SCOPES
+        )
+        return build("drive", "v3", credentials=credentials, cache_discovery=False)
+
+    def _run(self, operation: str, action):
+        for index, (auth_type, service) in enumerate(self.services):
+            has_fallback = index < len(self.services) - 1
+            try:
+                return action(service)
+            except HttpError as exc:
+                status = getattr(getattr(exc, "resp", None), "status", None)
+                if has_fallback and status in DRIVE_FALLBACK_HTTP_STATUSES:
+                    logger.warning(
+                        "Drive %s failed with %s using %s, retrying with fallback.",
+                        operation,
+                        status,
+                        auth_type,
+                    )
+                    continue
+                raise
+        raise RuntimeError(f"Drive operation {operation} failed for all auth modes")
 
     def create_folder(self, name: str, parent_id: str) -> str:
         logger.debug("Creating Drive folder %s under %s", name, parent_id)
@@ -366,14 +485,15 @@ class DriveBackup:
             "mimeType": FOLDER_MIME_TYPE,
             "parents": [parent_id],
         }
-        response = (
-            self.service.files()
+        response = self._run(
+            "create_folder",
+            lambda service: service.files()
             .create(
                 body=metadata,
                 fields="id",
                 supportsAllDrives=True,
             )
-            .execute()
+            .execute(),
         )
         return response["id"]
 
@@ -388,8 +508,9 @@ class DriveBackup:
                 "trashed = false",
             )
         )
-        response = (
-            self.service.files()
+        response = self._run(
+            "ensure_folder_lookup",
+            lambda service: service.files()
             .list(
                 q=query,
                 spaces="drive",
@@ -397,7 +518,7 @@ class DriveBackup:
                 pageSize=1,
                 supportsAllDrives=True,
             )
-            .execute()
+            .execute(),
         )
         files = response.get("files") or []
         if files:
@@ -406,25 +527,32 @@ class DriveBackup:
 
     def upload_file(self, path: Path, parent_id: str) -> str:
         logger.info("Uploading %s to Drive", path.name)
-        request = self.service.files().create(
-            body={"name": path.name, "parents": [parent_id]},
-            media_body=MediaFileUpload(str(path), resumable=True),
-            fields="id",
-            supportsAllDrives=True,
+
+        def _upload(service):
+            request = service.files().create(
+                body={"name": path.name, "parents": [parent_id]},
+                media_body=MediaFileUpload(str(path), resumable=True),
+                fields="id",
+                supportsAllDrives=True,
+            )
+
+            response = None
+            while response is None:
+                _, response = request.next_chunk()
+            return response["id"]
+
+        return self._run(
+            "upload_file",
+            _upload,
         )
-
-        response = None
-        while response is None:
-            status, response = request.next_chunk()
-
-        return response["id"]
 
     def list_children(self, folder_id: str) -> list[dict]:
         items: list[dict] = []
         page_token: str | None = None
         while True:
-            response = (
-                self.service.files()
+            response = self._run(
+                "list_children",
+                lambda service: service.files()
                 .list(
                     q=f"'{folder_id}' in parents and trashed = false",
                     spaces="drive",
@@ -433,7 +561,7 @@ class DriveBackup:
                     supportsAllDrives=True,
                     pageSize=200,
                 )
-                .execute()
+                .execute(),
             )
 
             items.extend(response.get("files", []))
@@ -445,14 +573,15 @@ class DriveBackup:
 
     def copy_file(self, source_id: str, name: str, parent_id: str) -> str:
         logger.debug("Copying Drive file %s into %s", source_id, parent_id)
-        response = (
-            self.service.files()
+        response = self._run(
+            "copy_file",
+            lambda service: service.files()
             .copy(
                 fileId=source_id,
                 body={"name": name, "parents": [parent_id]},
                 supportsAllDrives=True,
             )
-            .execute()
+            .execute(),
         )
         return response["id"]
 
@@ -522,8 +651,9 @@ class DriveBackup:
         candidates = []
         page_token: str | None = None
         while True:
-            response = (
-                self.service.files()
+            response = self._run(
+                "prune_old_backups_list",
+                lambda service: service.files()
                 .list(
                     q=" and ".join(
                         (
@@ -539,7 +669,7 @@ class DriveBackup:
                     supportsAllDrives=True,
                     pageSize=200,
                 )
-                .execute()
+                .execute(),
             )
             for item in response.get("files", []):
                 if item["id"] in skip_ids:
@@ -557,9 +687,12 @@ class DriveBackup:
         logger.info("Pruning %d old backup folders", len(to_remove))
         for outdated in to_remove:
             try:
-                self.service.files().delete(
-                    fileId=outdated["id"], supportsAllDrives=True
-                ).execute()
+                self._run(
+                    "prune_old_backups_delete",
+                    lambda service, file_id=outdated["id"]: service.files()
+                    .delete(fileId=file_id, supportsAllDrives=True)
+                    .execute(),
+                )
                 logger.info(
                     "Removed old backup folder %s (%s)",
                     outdated["name"],
@@ -601,9 +734,6 @@ def main() -> None:
     if args.env_file:
         env.update({key: value for key, value in load_env_file(args.env_file)})
 
-    service_account_path = Path(
-        ensure_required_var(env, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE")
-    ).expanduser()
     backup_root = ensure_required_var(env, "GOOGLE_DRIVE_BACKUP_FOLDER_ID")
     drive_root = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID") or env.get(
         "GOOGLE_DRIVE_ROOT_FOLDER_ID"
@@ -614,11 +744,8 @@ def main() -> None:
 
     timestamp_label = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
-    if not service_account_path.exists():
-        raise SystemExit(f"Service account file {service_account_path} does not exist.")
-
     backup_target_name = f"crm3-backup-{timestamp_label}"
-    backup_client = DriveBackup(service_account_path)
+    backup_client = DriveBackup(env)
     session_folder_id = backup_client.create_folder(backup_target_name, backup_root)
     repo_subfolder_id = backup_client.create_folder("project-repo", session_folder_id)
 
