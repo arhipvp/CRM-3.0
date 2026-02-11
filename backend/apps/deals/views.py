@@ -1,5 +1,14 @@
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
+from apps.mailboxes.mailcow_client import MailcowClient, MailcowError
+from apps.mailboxes.models import Mailbox
+from apps.mailboxes.services import (
+    build_mailbox_local_part,
+    ensure_mailcow_domain,
+    extract_quota_left,
+    generate_mailbox_password,
+    process_mailbox_messages,
+)
 from apps.users.models import AuditLog
 from django.conf import settings
 from django.db.models import (
@@ -24,7 +33,13 @@ from rest_framework.response import Response
 
 from .filters import DealFilterSet
 from .models import Deal, DealPin, InsuranceCompany, InsuranceType, Quote, SalesChannel
-from .permissions import can_merge_deals, can_modify_deal, is_admin_user, is_deal_seller
+from .permissions import (
+    can_manage_deal_mailbox,
+    can_merge_deals,
+    can_modify_deal,
+    is_admin_user,
+    is_deal_seller,
+)
 from .query_flags import parse_bool_flag
 from .search import build_search_query
 from .serializers import (
@@ -136,7 +151,7 @@ class DealViewSet(
     def _base_queryset(self, include_deleted=False, user=None):
         manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
         queryset = (
-            manager.select_related("client", "seller", "executor")
+            manager.select_related("client", "seller", "executor", "mailbox")
             .prefetch_related("quotes", "documents")
             .all()
             .order_by(
@@ -429,6 +444,117 @@ class DealViewSet(
         deal.save(update_fields=["status", "closing_reason"])
         serializer = self.get_serializer(deal)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="mailbox/create")
+    def create_mailbox(self, request, pk=None):
+        queryset = self.get_queryset()
+        deal = get_object_or_404(queryset, pk=pk)
+        if not can_manage_deal_mailbox(request.user, deal):
+            return Response(
+                {
+                    "detail": "Создавать почтовый ящик могут только продавец или исполнитель сделки."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if getattr(deal, "mailbox", None):
+            return Response(
+                {"detail": "Для этой сделки почтовый ящик уже создан."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        domain = getattr(settings, "MAILCOW_DOMAIN", "").strip()
+        if not domain:
+            return Response(
+                {"detail": "MAILCOW_DOMAIN is not configured."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        local_part = build_mailbox_local_part(getattr(deal.client, "name", ""), domain)
+        display_name = deal.title
+        email_address = f"{local_part}@{domain}".lower()
+
+        client = MailcowClient()
+        try:
+            ensure_mailcow_domain(client, domain)
+        except MailcowError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        password = generate_mailbox_password()
+        requested_quota = int(getattr(settings, "MAILCOW_MAILBOX_QUOTA_MB", 3072))
+        try:
+            client.create_mailbox(
+                domain,
+                local_part,
+                display_name,
+                password,
+                quota_mb=requested_quota,
+            )
+        except MailcowError as exc:
+            exc_text = str(exc)
+            quota_left = extract_quota_left(exc_text)
+            if quota_left and quota_left < requested_quota:
+                try:
+                    client.create_mailbox(
+                        domain,
+                        local_part,
+                        display_name,
+                        password,
+                        quota_mb=quota_left,
+                    )
+                except MailcowError as retry_exc:
+                    return Response(
+                        {"detail": str(retry_exc)}, status=status.HTTP_502_BAD_GATEWAY
+                    )
+            else:
+                return Response(
+                    {"detail": exc_text},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        mailbox = Mailbox.objects.create(
+            user=request.user,
+            deal=deal,
+            email=email_address,
+            local_part=local_part,
+            domain=domain,
+            display_name=display_name,
+        )
+
+        serializer = self.get_serializer(deal)
+        payload = serializer.data
+        payload["mailbox_initial_password"] = password
+        payload["mailbox_email"] = mailbox.email
+        return Response(payload, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="mailbox/check")
+    def check_mailbox(self, request, pk=None):
+        queryset = self.get_queryset()
+        deal = get_object_or_404(queryset, pk=pk)
+        if not can_manage_deal_mailbox(request.user, deal):
+            return Response(
+                {
+                    "detail": "Проверять почту могут только продавец или исполнитель сделки."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        mailbox = getattr(deal, "mailbox", None)
+        if not mailbox:
+            return Response(
+                {"detail": "Для этой сделки ещё не создан почтовый ящик."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            stats = process_mailbox_messages(mailbox)
+        except MailcowError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        serializer = self.get_serializer(deal)
+        payload = serializer.data
+        payload["mailbox_sync"] = stats
+        return Response(payload)
 
     @action(detail=True, methods=["post"], url_path="reopen")
     def reopen(self, request, pk=None):

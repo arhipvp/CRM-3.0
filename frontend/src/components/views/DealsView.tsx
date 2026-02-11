@@ -16,6 +16,7 @@ import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordFo
 import type { AddPaymentFormValues } from '../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
 import type { DealFormValues } from '../forms/DealForm';
+import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../api/deals';
 import { DealDetailsPanel } from './dealsView/DealDetailsPanel';
 import { DealsList } from './dealsView/DealsList';
 import { useSelectedDeal } from '../../hooks/useSelectedDeal';
@@ -65,6 +66,8 @@ interface DealsViewProps {
   ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
+  onCreateDealMailbox: (dealId: string) => Promise<DealMailboxCreateResult>;
+  onCheckDealMailbox: (dealId: string) => Promise<DealMailboxSyncResult>;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
@@ -129,6 +132,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
   onDriveFolderCreated,
+  onCreateDealMailbox,
+  onCheckDealMailbox,
   onFetchChatMessages,
   onSendChatMessage,
   onDeleteChatMessage,
@@ -225,6 +230,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onUpdateFinancialRecord={onUpdateFinancialRecord}
             onDeleteFinancialRecord={onDeleteFinancialRecord}
             onDriveFolderCreated={onDriveFolderCreated}
+            onCreateDealMailbox={onCreateDealMailbox}
+            onCheckDealMailbox={onCheckDealMailbox}
             onFetchChatMessages={onFetchChatMessages}
             onSendChatMessage={onSendChatMessage}
             onDeleteChatMessage={onDeleteChatMessage}

@@ -6,9 +6,18 @@ from .models import Mailbox
 
 
 class MailboxSerializer(serializers.ModelSerializer):
+    deal_id = serializers.UUIDField(source="deal_id", read_only=True)
+
     class Meta:
         model = Mailbox
-        fields = ["id", "email", "display_name", "is_active", "created_at"]
+        fields = [
+            "id",
+            "deal_id",
+            "email",
+            "display_name",
+            "is_active",
+            "created_at",
+        ]
 
 
 class MailboxCreateSerializer(serializers.Serializer):

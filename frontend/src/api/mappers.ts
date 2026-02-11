@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   ActivityActionType,
   ActivityLog,
   ChatMessage,
@@ -180,6 +180,8 @@ export const mapDeal = (raw: Record<string, unknown>): Deal => {
     executor: toNullableString(raw.executor),
     sellerName: toNullableString(raw.seller_name),
     executorName: toNullableString(raw.executor_name),
+    mailboxId: raw.mailbox_id === undefined ? null : toNullableNumber(raw.mailbox_id),
+    mailboxEmail: raw.mailbox_email === undefined ? null : toNullableString(raw.mailbox_email),
     visibleUsers: Array.isArray(raw.visible_users)
       ? raw.visible_users.map((value) => String(value))
       : undefined,

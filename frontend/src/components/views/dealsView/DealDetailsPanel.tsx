@@ -13,6 +13,7 @@ import {
   Task,
   User,
 } from '../../../types';
+import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../../api/deals';
 import { useDealInlineDates } from './hooks/useDealInlineDates';
 import { useDealMerge } from './hooks/useDealMerge';
 
@@ -106,6 +107,8 @@ interface DealDetailsPanelProps {
   ) => Promise<void>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
+  onCreateDealMailbox: (dealId: string) => Promise<DealMailboxCreateResult>;
+  onCheckDealMailbox: (dealId: string) => Promise<DealMailboxSyncResult>;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
@@ -154,6 +157,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
   onDriveFolderCreated,
+  onCreateDealMailbox,
+  onCheckDealMailbox,
   onFetchChatMessages,
   onSendChatMessage,
   onDeleteChatMessage,
@@ -233,6 +238,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [isEditingDeal, setIsEditingDeal] = useState(false);
 
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isCreatingMailbox, setIsCreatingMailbox] = useState(false);
+  const [isCheckingMailbox, setIsCheckingMailbox] = useState(false);
+  const [mailboxActionError, setMailboxActionError] = useState<string | null>(null);
+  const [mailboxActionSuccess, setMailboxActionSuccess] = useState<string | null>(null);
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
@@ -359,6 +368,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   useEffect(() => {
     setChatMessages([]);
+  }, [selectedDeal?.id]);
+
+  useEffect(() => {
+    setMailboxActionError(null);
+    setMailboxActionSuccess(null);
+    setIsCreatingMailbox(false);
+    setIsCheckingMailbox(false);
   }, [selectedDeal?.id]);
 
   useEffect(() => {
@@ -827,6 +843,57 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       sortedDriveFiles={sortedDriveFiles}
       driveSortDirection={driveSortDirection}
       toggleDriveSortDirection={toggleDriveSortDirection}
+      isCreatingMailbox={isCreatingMailbox}
+      isCheckingMailbox={isCheckingMailbox}
+      mailboxActionError={mailboxActionError}
+      mailboxActionSuccess={mailboxActionSuccess}
+      onCreateMailbox={async () => {
+        const dealId = selectedDeal?.id;
+        if (!dealId) {
+          return;
+        }
+        setMailboxActionError(null);
+        setMailboxActionSuccess(null);
+        setIsCreatingMailbox(true);
+        try {
+          const result = await onCreateDealMailbox(dealId);
+          const passwordPart = result.mailboxInitialPassword
+            ? ` Пароль: ${result.mailboxInitialPassword}`
+            : '';
+          setMailboxActionSuccess(
+            `Ящик создан: ${result.deal.mailboxEmail ?? '—'}.${passwordPart}`,
+          );
+        } catch (err) {
+          console.error('Ошибка создания ящика сделки:', err);
+          setMailboxActionError(
+            err instanceof Error ? err.message : 'Не удалось создать почтовый ящик сделки.',
+          );
+        } finally {
+          setIsCreatingMailbox(false);
+        }
+      }}
+      onCheckMailbox={async () => {
+        const dealId = selectedDeal?.id;
+        if (!dealId) {
+          return;
+        }
+        setMailboxActionError(null);
+        setMailboxActionSuccess(null);
+        setIsCheckingMailbox(true);
+        try {
+          const result = await onCheckDealMailbox(dealId);
+          const sync = result.mailboxSync;
+          setMailboxActionSuccess(
+            `Почта проверена: обработано ${sync.processed}, пропущено ${sync.skipped}, ошибок ${sync.failed}, удалено ${sync.deleted}.`,
+          );
+          await loadDriveFiles();
+        } catch (err) {
+          console.error('Ошибка проверки почты сделки:', err);
+          setMailboxActionError(err instanceof Error ? err.message : 'Не удалось проверить почту.');
+        } finally {
+          setIsCheckingMailbox(false);
+        }
+      }}
     />
   );
 

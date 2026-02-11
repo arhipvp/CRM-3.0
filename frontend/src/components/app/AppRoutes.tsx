@@ -21,6 +21,7 @@ import type {
   User,
 } from '../../types';
 import type { FilterParams } from '../../api';
+import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../api/deals';
 import type { AddFinancialRecordFormValues } from '../../components/forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../../components/forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
@@ -90,6 +91,8 @@ export interface AppRoutesProps {
     }>,
   ) => Promise<Statement>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
+  onCreateDealMailbox: (dealId: string) => Promise<DealMailboxCreateResult>;
+  onCheckDealMailbox: (dealId: string) => Promise<DealMailboxSyncResult>;
   onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
@@ -173,6 +176,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onRemoveFinanceStatementRecords,
   onUpdateFinanceStatement,
   onDriveFolderCreated,
+  onCreateDealMailbox,
+  onCheckDealMailbox,
   onFetchChatMessages,
   onSendChatMessage,
   onDeleteChatMessage,
@@ -241,6 +246,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDeleteFinancialRecord={onDeleteFinancialRecord}
           onDeletePayment={onDeletePayment}
           onDriveFolderCreated={onDriveFolderCreated}
+          onCreateDealMailbox={onCreateDealMailbox}
+          onCheckDealMailbox={onCheckDealMailbox}
           onFetchChatMessages={onFetchChatMessages}
           onSendChatMessage={onSendChatMessage}
           onDeleteChatMessage={onDeleteChatMessage}

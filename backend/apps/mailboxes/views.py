@@ -1,10 +1,3 @@
-import email
-import imaplib
-import re
-import secrets
-import string
-from typing import Any
-
 from django.conf import settings
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -14,92 +7,12 @@ from rest_framework.response import Response
 from .mailcow_client import MailcowClient, MailcowError
 from .models import Mailbox
 from .serializers import MailboxCreateSerializer, MailboxSerializer
-
-
-def _generate_mailbox_password() -> str:
-    alphabet = string.ascii_letters + string.digits
-    return "Mail" + "".join(secrets.choice(alphabet) for _ in range(8))
-
-
-def _imap_login(
-    imap: imaplib.IMAP4_SSL, mailbox_email: str, master_user: str, master_pass: str
-) -> None:
-    if "@" in master_user:
-        master_login = master_user
-    else:
-        master_login = f"{master_user}@mailcow.local"
-    try:
-        imap.login(f"{mailbox_email}*{master_login}", master_pass)
-        return
-    except imaplib.IMAP4.error:
-        imap.login(f"{master_login}*{mailbox_email}", master_pass)
-
-
-def _fetch_messages(mailbox_email: str, limit: int) -> list[dict[str, Any]]:
-    host = getattr(settings, "MAILCOW_IMAP_HOST", "")
-    port = int(getattr(settings, "MAILCOW_IMAP_PORT", 993))
-    master_user = getattr(settings, "MAILCOW_IMAP_MASTER_USER", "")
-    master_pass = getattr(settings, "MAILCOW_IMAP_MASTER_PASS", "")
-    if not host or not master_user or not master_pass:
-        raise MailcowError("MAILCOW IMAP is not configured.")
-
-    with imaplib.IMAP4_SSL(host, port) as imap:
-        _imap_login(imap, mailbox_email, master_user, master_pass)
-        imap.select("INBOX", readonly=True)
-        status_code, data = imap.search(None, "ALL")
-        if status_code != "OK" or not data:
-            return []
-        ids = data[0].split()
-        selected_ids = ids[-limit:]
-        messages: list[dict[str, Any]] = []
-        for msg_id in reversed(selected_ids):
-            status_code, msg_data = imap.fetch(
-                msg_id, "(BODY.PEEK[HEADER] BODY.PEEK[TEXT])"
-            )
-            if status_code != "OK" or not msg_data:
-                continue
-            raw = b""
-            for part in msg_data:
-                if isinstance(part, tuple):
-                    raw += part[1]
-            message = email.message_from_bytes(raw)
-            subject = message.get("Subject", "")
-            sender = message.get("From", "")
-            date = message.get("Date", "")
-            snippet = ""
-            if message.is_multipart():
-                for part in message.walk():
-                    if part.get_content_type() == "text/plain":
-                        payload = part.get_payload(decode=True) or b""
-                        snippet = payload.decode(errors="ignore")
-                        break
-            else:
-                payload = message.get_payload(decode=True) or b""
-                snippet = payload.decode(errors="ignore")
-            snippet = " ".join(snippet.strip().split())[:240]
-            messages.append(
-                {
-                    "id": msg_id.decode("utf-8"),
-                    "subject": subject,
-                    "from": sender,
-                    "date": date,
-                    "snippet": snippet,
-                }
-            )
-        return messages
-
-
-def _extract_quota_left(error_text: str) -> int | None:
-    if "mailbox_quota_left_exceeded" not in error_text:
-        return None
-    matches = re.findall(r"\d+", error_text)
-    if not matches:
-        return None
-    try:
-        value = int(matches[-1])
-    except ValueError:
-        return None
-    return value if value > 0 else None
+from .services import (
+    ensure_mailcow_domain,
+    extract_quota_left,
+    fetch_mailbox_messages,
+    generate_mailbox_password,
+)
 
 
 class MailboxViewSet(viewsets.ModelViewSet):
@@ -134,15 +47,11 @@ class MailboxViewSet(viewsets.ModelViewSet):
 
         client = MailcowClient()
         try:
-            client.ensure_domain(domain)
+            ensure_mailcow_domain(client, domain)
         except MailcowError as exc:
-            lowered = str(exc).lower()
-            if "domain" not in lowered or "exist" not in lowered:
-                return Response(
-                    {"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY
-                )
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
-        password = _generate_mailbox_password()
+        password = generate_mailbox_password()
         requested_quota = int(getattr(settings, "MAILCOW_MAILBOX_QUOTA_MB", 3072))
         try:
             client.create_mailbox(
@@ -154,7 +63,7 @@ class MailboxViewSet(viewsets.ModelViewSet):
             )
         except MailcowError as exc:
             exc_text = str(exc)
-            quota_left = _extract_quota_left(exc_text)
+            quota_left = extract_quota_left(exc_text)
             if quota_left and quota_left < requested_quota:
                 try:
                     client.create_mailbox(
@@ -203,7 +112,7 @@ class MailboxViewSet(viewsets.ModelViewSet):
         except ValueError:
             limit = 20
         try:
-            messages = _fetch_messages(mailbox.email, limit)
+            messages = fetch_mailbox_messages(mailbox.email, limit)
         except MailcowError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         return Response({"items": messages})

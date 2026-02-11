@@ -44,6 +44,8 @@ import {
   clearTokens,
   APIError,
   fetchDeal,
+  createDealMailbox,
+  checkDealMailbox,
   createPolicy,
   updatePolicy,
   deletePolicy,
@@ -1761,6 +1763,30 @@ const AppContent: React.FC = () => {
     [setError],
   );
 
+  const handleCreateDealMailbox = useCallback(
+    async (dealId: string) => {
+      const result = await createDealMailbox(dealId);
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) => (deal.id === result.deal.id ? result.deal : deal)),
+      }));
+      invalidateDealsCache();
+      return result;
+    },
+    [invalidateDealsCache, updateAppData],
+  );
+
+  const handleCheckDealMailbox = useCallback(
+    async (dealId: string) => {
+      const result = await checkDealMailbox(dealId);
+      updateAppData((prev) => ({
+        deals: prev.deals.map((deal) => (deal.id === result.deal.id ? result.deal : deal)),
+      }));
+      invalidateDealsCache();
+      return result;
+    },
+    [invalidateDealsCache, updateAppData],
+  );
+
   const handleSendChatMessage = useCallback(
     async (dealId: string, body: string) => {
       try {
@@ -2422,6 +2448,8 @@ const AppContent: React.FC = () => {
         onUpdateFinanceStatement={handleUpdateFinanceStatement}
         onRemoveFinanceStatementRecords={handleRemoveFinanceStatementRecords}
         onDriveFolderCreated={handleDriveFolderCreated}
+        onCreateDealMailbox={handleCreateDealMailbox}
+        onCheckDealMailbox={handleCheckDealMailbox}
         onFetchChatMessages={handleFetchChatMessages}
         onSendChatMessage={handleSendChatMessage}
         onDeleteChatMessage={handleDeleteChatMessage}
@@ -2501,6 +2529,8 @@ const AppContent: React.FC = () => {
                 onUpdateFinancialRecord={handleUpdateFinancialRecord}
                 onDeleteFinancialRecord={handleDeleteFinancialRecord}
                 onDriveFolderCreated={handleDriveFolderCreated}
+                onCreateDealMailbox={handleCreateDealMailbox}
+                onCheckDealMailbox={handleCheckDealMailbox}
                 onFetchChatMessages={handleFetchChatMessages}
                 onSendChatMessage={handleSendChatMessage}
                 onDeleteChatMessage={handleDeleteChatMessage}

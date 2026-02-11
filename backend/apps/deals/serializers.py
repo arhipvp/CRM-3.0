@@ -142,6 +142,8 @@ class DealSerializer(serializers.ModelSerializer):
     )
     seller_name = serializers.SerializerMethodField(read_only=True)
     executor_name = serializers.SerializerMethodField(read_only=True)
+    mailbox_id = serializers.SerializerMethodField(read_only=True)
+    mailbox_email = serializers.SerializerMethodField(read_only=True)
     is_pinned = serializers.SerializerMethodField(read_only=True)
     quotes = QuoteSerializer(many=True, read_only=True)
     documents = DocumentBriefSerializer(many=True, read_only=True)
@@ -179,6 +181,14 @@ class DealSerializer(serializers.ModelSerializer):
 
     def get_executor_name(self, obj: Deal) -> str | None:
         return self._get_user_display(obj.executor)
+
+    def get_mailbox_id(self, obj: Deal) -> int | None:
+        mailbox = getattr(obj, "mailbox", None)
+        return getattr(mailbox, "id", None)
+
+    def get_mailbox_email(self, obj: Deal) -> str | None:
+        mailbox = getattr(obj, "mailbox", None)
+        return getattr(mailbox, "email", None)
 
     def get_is_pinned(self, obj: Deal) -> bool:
         if hasattr(obj, "is_pinned"):

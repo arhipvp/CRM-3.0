@@ -1,7 +1,22 @@
-﻿import { request } from './request';
+import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapActivityLog, mapDeal, mapQuote } from './mappers';
 import type { ActivityLog, Deal, DealMergeResponse, Quote } from '../types';
+
+export interface DealMailboxCreateResult {
+  deal: Deal;
+  mailboxInitialPassword?: string | null;
+}
+
+export interface DealMailboxSyncResult {
+  deal: Deal;
+  mailboxSync: {
+    processed: number;
+    skipped: number;
+    failed: number;
+    deleted: number;
+  };
+}
 
 export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
   const qs = buildQueryString(filters);
@@ -282,5 +297,42 @@ export async function mergeDeals(data: {
     targetDeal: mapDeal(targetPayload),
     mergedDealIds,
     movedCounts,
+  };
+}
+
+export async function createDealMailbox(dealId: string): Promise<DealMailboxCreateResult> {
+  const payload = await request<Record<string, unknown>>(`/deals/${dealId}/mailbox/create/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+
+  const mailboxInitialPassword =
+    typeof payload.mailbox_initial_password === 'string' ? payload.mailbox_initial_password : null;
+
+  return {
+    deal: mapDeal(payload),
+    mailboxInitialPassword,
+  };
+}
+
+export async function checkDealMailbox(dealId: string): Promise<DealMailboxSyncResult> {
+  const payload = await request<Record<string, unknown>>(`/deals/${dealId}/mailbox/check/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+
+  const rawSync =
+    payload.mailbox_sync && typeof payload.mailbox_sync === 'object'
+      ? (payload.mailbox_sync as Record<string, unknown>)
+      : {};
+
+  return {
+    deal: mapDeal(payload),
+    mailboxSync: {
+      processed: Number(rawSync.processed ?? 0),
+      skipped: Number(rawSync.skipped ?? 0),
+      failed: Number(rawSync.failed ?? 0),
+      deleted: Number(rawSync.deleted ?? 0),
+    },
   };
 }

@@ -42,6 +42,12 @@ interface FilesTabProps {
   isRenaming: boolean;
   renameMessage: string | null;
   handleRenameDriveFile: (fileId: string, name: string) => Promise<void>;
+  isCreatingMailbox: boolean;
+  isCheckingMailbox: boolean;
+  mailboxActionError: string | null;
+  mailboxActionSuccess: string | null;
+  onCreateMailbox: () => Promise<void>;
+  onCheckMailbox: () => Promise<void>;
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({
@@ -70,6 +76,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   isRenaming,
   renameMessage,
   handleRenameDriveFile,
+  isCreatingMailbox,
+  isCheckingMailbox,
+  mailboxActionError,
+  mailboxActionSuccess,
+  onCreateMailbox,
+  onCheckMailbox,
 }) => {
   const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
@@ -152,15 +164,48 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             Файлы загружаются прямо из папки, привязанной к этой сделке.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={loadDriveFiles}
-          disabled={!selectedDeal.driveFolderId || isDriveLoading}
-          className="btn btn-secondary btn-sm rounded-xl"
-        >
-          {isDriveLoading ? 'Обновляю...' : 'Обновить'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {!selectedDeal.mailboxEmail && (
+            <button
+              type="button"
+              onClick={() => {
+                void onCreateMailbox();
+              }}
+              disabled={isCreatingMailbox || isCheckingMailbox}
+              className="btn btn-primary btn-sm rounded-xl"
+            >
+              {isCreatingMailbox ? 'Создаю ящик...' : 'Создать почту сделки'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              void onCheckMailbox();
+            }}
+            disabled={!selectedDeal.mailboxEmail || isCheckingMailbox || isCreatingMailbox}
+            className="btn btn-secondary btn-sm rounded-xl"
+          >
+            {isCheckingMailbox ? 'Проверяем почту...' : 'Проверить почту'}
+          </button>
+          <button
+            type="button"
+            onClick={loadDriveFiles}
+            disabled={!selectedDeal.driveFolderId || isDriveLoading}
+            className="btn btn-secondary btn-sm rounded-xl"
+          >
+            {isDriveLoading ? 'Обновляю...' : 'Обновить'}
+          </button>
+        </div>
       </div>
+      {selectedDeal.mailboxEmail && (
+        <p className="text-xs text-slate-500">
+          Почта сделки: <span className="font-semibold">{selectedDeal.mailboxEmail}</span>
+        </p>
+      )}
+      {mailboxActionError && <div className="app-alert app-alert-danger">{mailboxActionError}</div>}
+      {mailboxActionSuccess && (
+        <div className="app-alert app-alert-success">{mailboxActionSuccess}</div>
+      )}
 
       <FileUploadManager
         onUpload={async (file) => {

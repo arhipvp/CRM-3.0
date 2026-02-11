@@ -203,6 +203,8 @@ export interface Deal {
   executor?: string | null;
   sellerName?: string | null;
   executorName?: string | null;
+  mailboxId?: number | null;
+  mailboxEmail?: string | null;
   paymentsPaid?: string;
   paymentsTotal?: string;
   visibleUsers?: string[];
