@@ -1,5 +1,6 @@
 import email
 import imaplib
+import re
 import secrets
 import string
 from typing import Any
@@ -88,6 +89,19 @@ def _fetch_messages(mailbox_email: str, limit: int) -> list[dict[str, Any]]:
         return messages
 
 
+def _extract_quota_left(error_text: str) -> int | None:
+    if "mailbox_quota_left_exceeded" not in error_text:
+        return None
+    matches = re.findall(r"\d+", error_text)
+    if not matches:
+        return None
+    try:
+        value = int(matches[-1])
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
 class MailboxViewSet(viewsets.ModelViewSet):
     serializer_class = MailboxSerializer
     permission_classes = [IsAuthenticated]
@@ -129,10 +143,35 @@ class MailboxViewSet(viewsets.ModelViewSet):
                 )
 
         password = _generate_mailbox_password()
+        requested_quota = int(getattr(settings, "MAILCOW_MAILBOX_QUOTA_MB", 3072))
         try:
-            client.create_mailbox(domain, local_part, display_name, password)
+            client.create_mailbox(
+                domain,
+                local_part,
+                display_name,
+                password,
+                quota_mb=requested_quota,
+            )
         except MailcowError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            exc_text = str(exc)
+            quota_left = _extract_quota_left(exc_text)
+            if quota_left and quota_left < requested_quota:
+                try:
+                    client.create_mailbox(
+                        domain,
+                        local_part,
+                        display_name,
+                        password,
+                        quota_mb=quota_left,
+                    )
+                except MailcowError as retry_exc:
+                    return Response(
+                        {"detail": str(retry_exc)}, status=status.HTTP_502_BAD_GATEWAY
+                    )
+            else:
+                return Response(
+                    {"detail": exc_text}, status=status.HTTP_502_BAD_GATEWAY
+                )
 
         mailbox = Mailbox.objects.create(
             user=request.user,

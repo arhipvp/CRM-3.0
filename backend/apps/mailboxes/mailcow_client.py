@@ -11,6 +11,14 @@ class MailcowError(RuntimeError):
     pass
 
 
+def _format_mailcow_msg(message: Any) -> str:
+    if isinstance(message, list):
+        return ", ".join(str(part) for part in message)
+    if isinstance(message, dict):
+        return json.dumps(message, ensure_ascii=False)
+    return str(message)
+
+
 @dataclass(frozen=True)
 class MailcowResponse:
     raw: Any
@@ -23,7 +31,7 @@ class MailcowResponse:
                 continue
             entry_type = entry.get("type")
             if entry_type in {"danger", "error"}:
-                raise MailcowError(str(entry.get("msg", entry)))
+                raise MailcowError(_format_mailcow_msg(entry.get("msg", entry)))
 
 
 class MailcowClient:
@@ -58,11 +66,11 @@ class MailcowClient:
                 if isinstance(parsed_error, dict):
                     msg = parsed_error.get("msg")
                     if msg:
-                        detail = f"{detail} ({msg})"
+                        detail = f"{detail} ({_format_mailcow_msg(msg)})"
                 elif isinstance(parsed_error, list):
                     first = parsed_error[0] if parsed_error else None
                     if isinstance(first, dict) and first.get("msg"):
-                        detail = f"{detail} ({first['msg']})"
+                        detail = f"{detail} ({_format_mailcow_msg(first.get('msg'))})"
             except Exception:
                 pass
             raise MailcowError(detail) from exc
@@ -95,6 +103,7 @@ class MailcowClient:
         local_part: str,
         display_name: str,
         password: str,
+        quota_mb: int = 3072,
     ) -> None:
         payload = {
             "active": True,
@@ -103,7 +112,7 @@ class MailcowClient:
             "name": display_name or local_part,
             "password": password,
             "password2": password,
-            "quota": 3072,
+            "quota": max(1, int(quota_mb)),
         }
         response = self._request("/add/mailbox", payload)
         response.ensure_success()
