@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
+import { copyToClipboard } from '../../../../utils/clipboard';
+import { useNotification } from '../../../../contexts/NotificationContext';
 import { TableHeadCell } from '../../../common/TableHeadCell';
 import { Modal } from '../../../Modal';
 import {
@@ -83,6 +85,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   onCreateMailbox,
   onCheckMailbox,
 }) => {
+  const { addNotification } = useNotification();
   const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -102,6 +105,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
 
   const disableUpload = !selectedDeal.driveFolderId;
   const driveFolderLink = buildDriveFolderLink(selectedDeal.driveFolderId);
+  const mailboxEmail = (selectedDeal.mailboxEmail ?? '').trim();
   const getSortIndicator = () => (driveSortDirection === 'asc' ? '↑' : '↓');
   const getSortLabel = () => (driveSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию');
   const getColumnTitleClass = () => {
@@ -197,9 +201,24 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           </button>
         </div>
       </div>
-      {selectedDeal.mailboxEmail && (
+      {mailboxEmail && (
         <p className="text-xs text-slate-500">
-          Почта сделки: <span className="font-semibold">{selectedDeal.mailboxEmail}</span>
+          Почта сделки:{' '}
+          <button
+            type="button"
+            className="link-action text-xs"
+            onClick={async (event) => {
+              event.stopPropagation();
+              const copied = await copyToClipboard(mailboxEmail);
+              if (copied) {
+                addNotification('Почта скопирована', 'success', 1600);
+              }
+            }}
+            aria-label="Скопировать почту сделки"
+            title="Скопировать почту сделки"
+          >
+            {mailboxEmail}
+          </button>
         </p>
       )}
       {mailboxActionError && <div className="app-alert app-alert-danger">{mailboxActionError}</div>}
