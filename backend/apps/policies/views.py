@@ -13,6 +13,7 @@ from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.finances.models import Payment
+from apps.notes.models import Note
 from apps.tasks.models import Task
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, DecimalField, Q, Sum, Value
@@ -323,6 +324,28 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "Failed to move recognized Drive file %s into policy folder", file_id
             )
 
+    def _detach_source_files_from_notes(self, deal: Deal, file_ids: list[str]) -> None:
+        if not deal or not file_ids:
+            return
+
+        target_ids = {
+            str(file_id).strip() for file_id in file_ids if str(file_id).strip()
+        }
+        if not target_ids:
+            return
+
+        notes = Note.objects.with_deleted().filter(deal=deal).exclude(attachments=[])
+        for note in notes:
+            attachments = note.attachments or []
+            filtered_attachments = [
+                item
+                for item in attachments
+                if str((item or {}).get("id") or "").strip() not in target_ids
+            ]
+            if len(filtered_attachments) != len(attachments):
+                note.attachments = filtered_attachments
+                note.save(update_fields=["attachments", "updated_at"])
+
     def perform_create(self, serializer):
         deal = serializer.validated_data.get("deal")
         user = self.request.user
@@ -352,6 +375,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if file_id and file_id not in moved_file_ids:
                 self._move_recognized_file_to_folder(policy, file_id)
                 moved_file_ids.add(file_id)
+        self._detach_source_files_from_notes(deal, normalized_file_ids)
 
     def perform_destroy(self, instance):
         if instance.payments.filter(
