@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { Client, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { getUserColor } from '../../utils/userColor';
+import { FormActions } from '../common/forms/FormActions';
+import { FormError } from '../common/forms/FormError';
+import { FormField } from '../common/forms/FormField';
+import { FormSection } from '../common/forms/FormSection';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
 
@@ -341,22 +345,20 @@ export const DealForm: React.FC<DealFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="app-alert app-alert-danger">{error}</p>}
+      <FormError message={error} />
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Название *</label>
+      <FormField label="Название" required>
         <input
           type="text"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
           placeholder="Например: КАСКО / ОСАГО"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Клиент *</label>
-        <div className="mt-1 flex flex-col gap-2">
+      <FormField label="Клиент" required>
+        <div className="flex flex-col gap-2">
           <div className="relative flex items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -407,15 +409,14 @@ export const DealForm: React.FC<DealFormProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </FormField>
 
       {showSellerField && (
-        <div>
-          <label className="block text-sm font-semibold text-slate-700">Ответственный</label>
+        <FormField label="Ответственный">
           <select
             value={sellerId}
             onChange={(event) => setSellerId(event.target.value)}
-            className="mt-1 field field-input"
+            className="field field-input"
           >
             <option value="">Не выбран</option>
             {users.map((user) => (
@@ -424,15 +425,14 @@ export const DealForm: React.FC<DealFormProps> = ({
               </option>
             ))}
           </select>
-        </div>
+        </FormField>
       )}
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Исполнитель</label>
+      <FormField label="Исполнитель">
         <select
           value={executorId}
           onChange={(event) => setExecutorId(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
         >
           <option value="">Не выбран</option>
           {users.map((user) => (
@@ -441,14 +441,14 @@ export const DealForm: React.FC<DealFormProps> = ({
             </option>
           ))}
         </select>
-      </div>
+      </FormField>
 
       {mode === 'edit' && (
-        <div>
-          <label className="block text-sm font-semibold text-slate-700">
-            Наблюдатели (только просмотр)
-          </label>
-          <div className="mt-2 space-y-3">
+        <FormField
+          label="Наблюдатели (только просмотр)"
+          hint="Эти пользователи видят сделку и связанные данные, но не могут редактировать."
+        >
+          <FormSection className="mt-1">
             <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               {selectedViewerUsers.length ? (
                 selectedViewerUsers.map((user) => {
@@ -506,44 +506,38 @@ export const DealForm: React.FC<DealFormProps> = ({
                 </div>
               )}
             </div>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Эти пользователи видят сделку и связанные данные, но не могут редактировать.
-          </p>
-        </div>
+          </FormSection>
+        </FormField>
       )}
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Описание</label>
+      <FormField label="Описание">
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           rows={3}
-          className="mt-1 field-textarea"
+          className="field-textarea"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Источник</label>
+      <FormField label="Источник">
         <input
           type="text"
           value={source}
           onChange={(event) => setSource(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
           placeholder="Источник сделки"
         />
-      </div>
+      </FormField>
 
       {showNextContactField && (
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-slate-700">{nextContactLabel}</label>
+        <FormField label={nextContactLabel}>
           <input
             type="date"
             value={nextContactDate}
             onChange={(event) => setNextContactDate(event.target.value)}
-            className="mt-1 field field-input"
+            className="field field-input"
           />
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {quickDateOptions.map((option) => (
               <button
                 key={option.label}
@@ -556,29 +550,26 @@ export const DealForm: React.FC<DealFormProps> = ({
               </button>
             ))}
           </div>
-        </div>
+        </FormField>
       )}
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">
-          {expectedCloseLabel ?? (expectedCloseRequired ? 'Крайний срок *' : 'Крайний срок')}
-        </label>
+      <FormField label={expectedCloseLabel ?? 'Крайний срок'} required={expectedCloseRequired}>
         <input
           type="date"
           value={expectedClose}
           onChange={(event) => setExpectedClose(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
           required={expectedCloseRequired}
         />
-      </div>
+      </FormField>
 
-      <button
-        type="submit"
-        disabled={isSubmitting || clients.length === 0}
-        className="btn btn-primary w-full rounded-xl"
-      >
-        {isSubmitting ? submittingText : submitText}
-      </button>
+      <FormActions
+        isSubmitting={isSubmitting}
+        isSubmitDisabled={clients.length === 0}
+        submitLabel={submitText}
+        submittingLabel={submittingText}
+        submitClassName="btn btn-primary w-full rounded-xl"
+      />
     </form>
   );
 };

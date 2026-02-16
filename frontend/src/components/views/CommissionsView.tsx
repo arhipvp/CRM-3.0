@@ -15,7 +15,9 @@ import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordFo
 import { FileUploadManager } from '../FileUploadManager';
 import { PanelMessage } from '../PanelMessage';
 import { TableHeadCell } from '../common/TableHeadCell';
-import { Modal } from '../Modal';
+import { FormActions } from '../common/forms/FormActions';
+import { FormField } from '../common/forms/FormField';
+import { FormModal } from '../common/modal/FormModal';
 import {
   TABLE_CELL_CLASS_SM,
   TABLE_ROW_CLASS,
@@ -2235,7 +2237,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       </div>
 
       {isStatementModalOpen && (
-        <Modal
+        <FormModal
+          isOpen
           title="Создать ведомость"
           onClose={() => {
             if (!isStatementCreating) {
@@ -2252,10 +2255,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             }}
             className="space-y-4"
           >
-            <div className="space-y-2">
-              <label htmlFor="statementName" className="app-label">
-                Название *
-              </label>
+            <FormField label="Название" htmlFor="statementName" required>
               <input
                 id="statementName"
                 value={statementForm.name}
@@ -2266,11 +2266,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 required
                 disabled={isStatementCreating}
               />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="statementType" className="app-label">
-                Тип
-              </label>
+            </FormField>
+            <FormField
+              label="Тип"
+              htmlFor="statementType"
+              hint="После пометки ведомости как «Выплачена» редактирование и удаление будут недоступны."
+            >
               <select
                 id="statementType"
                 value={statementForm.statementType}
@@ -2286,14 +2287,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <option value="income">Доходы</option>
                 <option value="expense">Расходы</option>
               </select>
-              <p className="text-xs text-slate-500">
-                После пометки ведомости как «Выплачена» редактирование и удаление будут недоступны.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="statementCounterparty" className="app-label">
-                Контрагент
-              </label>
+            </FormField>
+            <FormField label="Контрагент" htmlFor="statementCounterparty">
               <input
                 id="statementCounterparty"
                 value={statementForm.counterparty}
@@ -2303,11 +2298,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 className="field field-input"
                 disabled={isStatementCreating}
               />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="statementComment" className="app-label">
-                Комментарий
-              </label>
+            </FormField>
+            <FormField label="Комментарий" htmlFor="statementComment">
               <textarea
                 id="statementComment"
                 value={statementForm.comment}
@@ -2318,29 +2310,21 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 className="field-textarea"
                 disabled={isStatementCreating}
               />
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setStatementModalOpen(false)}
-                className="btn btn-secondary rounded-xl"
-                disabled={isStatementCreating}
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary rounded-xl"
-                disabled={isStatementCreating}
-              >
-                {isStatementCreating ? 'Создаём...' : 'Создать'}
-              </button>
-            </div>
+            </FormField>
+            <FormActions
+              onCancel={() => setStatementModalOpen(false)}
+              isSubmitting={isStatementCreating}
+              submitLabel="Создать"
+              submittingLabel="Создаём..."
+              submitClassName="btn btn-primary rounded-xl"
+              cancelClassName="btn btn-secondary rounded-xl"
+            />
           </form>
-        </Modal>
+        </FormModal>
       )}
       {editingStatement && (
-        <Modal
+        <FormModal
+          isOpen
           title="Редактировать ведомость"
           onClose={() => setEditingStatement(null)}
           size="sm"
@@ -2353,10 +2337,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             }}
             className="space-y-4"
           >
-            <div className="space-y-2">
-              <label htmlFor="editStatementName" className="app-label">
-                Название *
-              </label>
+            <FormField label="Название" htmlFor="editStatementName" required>
               <input
                 id="editStatementName"
                 value={editStatementForm.name}
@@ -2366,11 +2347,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 className="field field-input"
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="editStatementType" className="app-label">
-                Тип
-              </label>
+            </FormField>
+            <FormField label="Тип" htmlFor="editStatementType">
               <select
                 id="editStatementType"
                 value={editStatementForm.statementType}
@@ -2385,11 +2363,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 <option value="income">Доходы</option>
                 <option value="expense">Расходы</option>
               </select>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="editStatementPaidAt" className="app-label">
-                Дата выплаты
-              </label>
+            </FormField>
+            <FormField
+              label="Дата выплаты"
+              htmlFor="editStatementPaidAt"
+              hint="Ведомость считается выплаченной, когда указана дата выплаты. После этого редактирование и удаление будут недоступны, а всем записям будет проставлена дата."
+            >
               <input
                 id="editStatementPaidAt"
                 type="date"
@@ -2399,15 +2378,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 }
                 className="field field-input"
               />
-              <p className="text-xs text-slate-500">
-                Ведомость считается выплаченной, когда указана дата выплаты. После этого
-                редактирование и удаление будут недоступны, а всем записям будет проставлена дата.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="editStatementCounterparty" className="app-label">
-                Контрагент
-              </label>
+            </FormField>
+            <FormField label="Контрагент" htmlFor="editStatementCounterparty">
               <input
                 id="editStatementCounterparty"
                 value={editStatementForm.counterparty}
@@ -2419,11 +2391,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 }
                 className="field field-input"
               />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="editStatementComment" className="app-label">
-                Комментарий
-              </label>
+            </FormField>
+            <FormField label="Комментарий" htmlFor="editStatementComment">
               <textarea
                 id="editStatementComment"
                 value={editStatementForm.comment}
@@ -2436,24 +2405,19 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                 rows={3}
                 className="field-textarea"
               />
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setEditingStatement(null)}
-                className="btn btn-secondary rounded-xl"
-              >
-                Отмена
-              </button>
-              <button type="submit" className="btn btn-primary rounded-xl">
-                Сохранить
-              </button>
-            </div>
+            </FormField>
+            <FormActions
+              onCancel={() => setEditingStatement(null)}
+              submitLabel="Сохранить"
+              submitClassName="btn btn-primary rounded-xl"
+              cancelClassName="btn btn-secondary rounded-xl"
+            />
           </form>
-        </Modal>
+        </FormModal>
       )}
       {deletingStatement && (
-        <Modal
+        <FormModal
+          isOpen
           title="Удалить ведомость"
           onClose={() => setDeletingStatement(null)}
           closeOnOverlayClick={false}
@@ -2478,7 +2442,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               Удалить
             </button>
           </div>
-        </Modal>
+        </FormModal>
       )}
       <ConfirmDialogRenderer />
     </section>
