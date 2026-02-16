@@ -90,6 +90,18 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const [renameDraft, setRenameDraft] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
 
+  const splitFileName = (name: string): { baseName: string; extension: string } => {
+    const lastDotIndex = name.lastIndexOf('.');
+    if (lastDotIndex <= 0 || lastDotIndex === name.length - 1) {
+      return { baseName: name, extension: '' };
+    }
+
+    return {
+      baseName: name.slice(0, lastDotIndex),
+      extension: name.slice(lastDotIndex),
+    };
+  };
+
   if (!selectedDeal) {
     return null;
   }
@@ -123,8 +135,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     !selectedDeal.driveFolderId;
 
   const openRenameModal = (file: DriveFile) => {
+    const { baseName } = splitFileName(file.name);
     setRenamingFile(file);
-    setRenameDraft(file.name);
+    setRenameDraft(baseName);
     setRenameError(null);
   };
 
@@ -138,14 +151,17 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     if (!renamingFile) {
       return;
     }
-    const trimmedName = renameDraft.trim();
-    if (!trimmedName) {
+    const trimmedBaseName = renameDraft.trim();
+    if (!trimmedBaseName) {
       setRenameError('Название файла не должно быть пустым.');
       return;
     }
-    await handleRenameDriveFile(renamingFile.id, trimmedName);
+    const { extension } = splitFileName(renamingFile.name);
+    await handleRenameDriveFile(renamingFile.id, `${trimmedBaseName}${extension}`);
     closeRenameModal();
   };
+
+  const renameExtension = renamingFile ? splitFileName(renamingFile.name).extension : '';
 
   return (
     <section className="app-panel p-6 shadow-none space-y-5">
@@ -476,12 +492,19 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             {renameError && <p className="app-alert app-alert-danger">{renameError}</p>}
             <div>
               <label className="block text-sm font-semibold text-slate-700">Новое имя</label>
-              <input
-                type="text"
-                value={renameDraft}
-                onChange={(event) => setRenameDraft(event.target.value)}
-                className="mt-1 field field-input"
-              />
+              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                <input
+                  type="text"
+                  value={renameDraft}
+                  onChange={(event) => setRenameDraft(event.target.value)}
+                  className="min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none"
+                />
+                {renameExtension && (
+                  <span className="shrink-0 text-sm font-medium text-slate-500">
+                    {renameExtension}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <button
