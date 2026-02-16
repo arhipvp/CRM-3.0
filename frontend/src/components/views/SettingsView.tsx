@@ -15,6 +15,7 @@ import {
   type NotificationSettings,
   type TelegramLinkResponse,
 } from '../../api';
+import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export const SettingsView: React.FC = () => {
@@ -374,7 +375,7 @@ export const SettingsView: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className={BTN_SECONDARY}
                   onClick={handleGenerateTelegramCode}
                   disabled={telegramSaving}
                 >
@@ -547,7 +548,7 @@ export const SettingsView: React.FC = () => {
           </div>
           <button
             type="button"
-            className="btn btn-primary"
+            className={BTN_PRIMARY}
             onClick={handleMailboxCreate}
             disabled={mailboxCreating || !mailboxLocalPart.trim()}
           >
@@ -561,7 +562,7 @@ export const SettingsView: React.FC = () => {
               Пароль для нового ящика:{' '}
               <span className="font-semibold">{mailboxCreatedPassword}</span>
             </div>
-            <button type="button" className="btn btn-secondary" onClick={handlePasswordCopy}>
+            <button type="button" className={BTN_SECONDARY} onClick={handlePasswordCopy}>
               {mailboxPasswordCopied ? 'Скопировано' : 'Скопировать'}
             </button>
           </div>
@@ -595,7 +596,7 @@ export const SettingsView: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          className="btn btn-secondary"
+                          className={BTN_SECONDARY}
                           onClick={() => handleMailboxSelect(mailbox.id)}
                         >
                           Письма
@@ -746,7 +747,7 @@ export const SettingsView: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-end pt-2">
-          <button type="submit" className="btn btn-primary" disabled={loading}>
+          <button type="submit" className={BTN_PRIMARY} disabled={loading}>
             {loading ? 'Сохраняем...' : 'Обновить пароль'}
           </button>
         </div>

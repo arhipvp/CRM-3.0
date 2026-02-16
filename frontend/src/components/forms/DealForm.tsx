@@ -5,7 +5,7 @@ import { getUserColor } from '../../utils/userColor';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
-import { BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { BTN_PRIMARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { FormSection } from '../common/forms/FormSection';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
@@ -565,7 +565,7 @@ export const DealForm: React.FC<DealFormProps> = ({
         isSubmitDisabled={clients.length === 0}
         submitLabel={submitText}
         submittingLabel={submittingText}
-        submitClassName="btn btn-primary w-full rounded-xl"
+        submitClassName={`${BTN_PRIMARY} w-full rounded-xl`}
       />
     </form>
   );

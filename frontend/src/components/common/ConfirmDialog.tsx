@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from './buttonStyles';
 import { Modal } from '../Modal';
 
 type ConfirmTone = 'danger' | 'primary';
@@ -31,19 +32,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     return null;
   }
 
-  const confirmClassName = tone === 'danger' ? 'btn btn-danger' : 'btn btn-primary';
+  const confirmClassName = tone === 'danger' ? BTN_DANGER : BTN_PRIMARY;
 
   return (
     <Modal title={title} onClose={onCancel} size="sm" closeOnOverlayClick={false}>
       <div className="space-y-4">
         <p className="text-sm text-slate-700">{message}</p>
         <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isLoading}
-            className="btn btn-secondary"
-          >
+          <button type="button" onClick={onCancel} disabled={isLoading} className={BTN_SECONDARY}>
             {cancelText}
           </button>
           <button

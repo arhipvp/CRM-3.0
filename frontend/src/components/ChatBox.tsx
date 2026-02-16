@@ -2,7 +2,7 @@
 import { ChatMessage, User } from '../types';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import { getUserColor } from '../utils/userColor';
-import { BTN_SM_DANGER, BTN_SM_SECONDARY } from './common/buttonStyles';
+import { BTN_PRIMARY, BTN_SM_DANGER, BTN_SM_SECONDARY } from './common/buttonStyles';
 import { Modal } from './Modal';
 
 interface ChatBoxProps {
@@ -181,7 +181,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || !newMessage.trim()}
-              className="btn btn-primary flex-shrink-0"
+              className={`${BTN_PRIMARY} flex-shrink-0`}
             >
               {isSubmitting ? '...' : 'Отправить'}
             </button>

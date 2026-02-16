@@ -17,6 +17,7 @@ import {
 import { PolicyBasicsStep } from './addPolicy/components/PolicyBasicsStep';
 import { PolicyFinanceStep } from './addPolicy/components/PolicyFinanceStep';
 import { PolicyPaymentsStep } from './addPolicy/components/PolicyPaymentsStep';
+import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import {
   buildCommissionIncomeNote,
@@ -724,12 +725,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn btn-secondary"
-          disabled={isSubmitting}
-        >
+        <button type="button" onClick={onCancel} className={BTN_SECONDARY} disabled={isSubmitting}>
           Отмена
         </button>
         <div className="flex gap-3">
@@ -737,7 +733,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             <button
               type="button"
               onClick={handlePreviousStep}
-              className="btn btn-secondary"
+              className={BTN_SECONDARY}
               disabled={isSubmitting}
             >
               Назад
@@ -747,7 +743,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             <button
               type="button"
               onClick={handleNextStep}
-              className="btn btn-primary"
+              className={BTN_PRIMARY}
               disabled={isSubmitting}
             >
               Далее
@@ -757,7 +753,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               type="submit"
               onMouseDown={markFinalSubmitIntent}
               onClick={markFinalSubmitIntent}
-              className="btn btn-primary"
+              className={BTN_PRIMARY}
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Сохраняем...' : submitLabel}

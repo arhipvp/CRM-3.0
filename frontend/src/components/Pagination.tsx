@@ -1,4 +1,5 @@
 import React from 'react';
+import { BTN_PRIMARY, BTN_SECONDARY } from './common/buttonStyles';
 
 interface PaginationProps {
   currentPage: number;
@@ -70,7 +71,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="btn btn-secondary btn-sm"
+          className={`${BTN_SECONDARY} btn-sm`}
           aria-label="Предыдущая страница"
         >
           Назад
@@ -89,7 +90,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                   onClick={() => onPageChange(page as number)}
                   aria-current={currentPage === page ? 'page' : undefined}
                   aria-label={`Страница ${page}`}
-                  className={`btn btn-sm ${currentPage === page ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`${currentPage === page ? BTN_PRIMARY : BTN_SECONDARY} btn-sm`}
                 >
                   {page}
                 </button>
@@ -102,7 +103,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="btn btn-secondary btn-sm"
+          className={`${BTN_SECONDARY} btn-sm`}
           aria-label="Следующая страница"
         >
           Вперёд

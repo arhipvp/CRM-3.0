@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { BTN_DANGER, BTN_SECONDARY } from '../../common/buttonStyles';
 import { FormActions } from '../../common/forms/FormActions';
 import { FormModal } from '../../common/modal/FormModal';
 
@@ -36,8 +37,8 @@ export const DeleteStatementModal: React.FC<DeleteStatementModalProps> = ({
         <FormActions
           onCancel={onClose}
           submitLabel="Удалить"
-          submitClassName="btn btn-danger rounded-xl"
-          cancelClassName="btn btn-secondary rounded-xl"
+          submitClassName={`${BTN_DANGER} rounded-xl`}
+          cancelClassName={`${BTN_SECONDARY} rounded-xl`}
         />
       </form>
     </FormModal>

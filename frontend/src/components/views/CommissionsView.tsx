@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type { FinancialRecord, Payment, Policy, Statement } from '../../types';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
-import { BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -559,7 +559,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                             type="button"
                             onClick={() => void handleExportStatement()}
                             disabled={isStatementExporting}
-                            className="btn btn-secondary"
+                            className={BTN_SECONDARY}
                             title="Сформировать XLSX-файл ведомости и сохранить в Google Drive"
                           >
                             {isStatementExporting ? 'Формируем...' : 'Сформировать ведомость'}
@@ -569,7 +569,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                               type="button"
                               onClick={() => handleEditStatementOpen(selectedStatement)}
                               disabled={isSelectedStatementPaid}
-                              className="btn btn-primary"
+                              className={BTN_PRIMARY}
                             >
                               Редактировать
                             </button>
@@ -579,7 +579,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                               type="button"
                               onClick={() => setDeletingStatement(selectedStatement)}
                               disabled={isSelectedStatementPaid}
-                              className="btn btn-danger"
+                              className={BTN_DANGER}
                             >
                               Удалить
                             </button>

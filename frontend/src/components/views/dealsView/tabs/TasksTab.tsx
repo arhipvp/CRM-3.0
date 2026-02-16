@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState } from 'react';
 import type { Deal, Task } from '../../../../types';
-import { BTN_SM_SECONDARY } from '../../../common/buttonStyles';
+import { BTN_PRIMARY, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { TaskTable } from '../../../tasks/TaskTable';
 
@@ -55,7 +55,7 @@ export const TasksTab: React.FC<TasksTabProps> = ({
         <button
           type="button"
           onClick={onCreateTaskClick}
-          className="btn btn-primary rounded-xl self-start"
+          className={`${BTN_PRIMARY} rounded-xl self-start`}
         >
           Создать задачу
         </button>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
 
 interface DealActionsProps {
   isSelectedDealDeleted: boolean;
@@ -45,7 +46,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
         type="button"
         onClick={onEdit}
         disabled={isSelectedDealDeleted}
-        className="btn btn-primary"
+        className={BTN_PRIMARY}
       >
         Редактировать
       </button>
@@ -53,7 +54,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
         type="button"
         onClick={onDelay}
         disabled={onDelayDisabled ?? !dealEventsLength}
-        className="btn btn-secondary"
+        className={BTN_SECONDARY}
       >
         <span className="text-base leading-none">🕒</span>
         <span>Отложить</span>
@@ -62,7 +63,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
         type="button"
         onClick={onMerge}
         disabled={isSelectedDealDeleted}
-        className="btn btn-secondary"
+        className={BTN_SECONDARY}
       >
         Сцепить
       </button>
@@ -101,12 +102,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
           {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
         </button>
       ) : (
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={isDeletingDeal}
-          className="btn btn-danger"
-        >
+        <button type="button" onClick={onDelete} disabled={isDeletingDeal} className={BTN_DANGER}>
           {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
         </button>
       )}

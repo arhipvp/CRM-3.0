@@ -16,6 +16,7 @@ import {
 import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../../api/deals';
 import { useDealInlineDates } from './hooks/useDealInlineDates';
 import { useDealMerge } from './hooks/useDealMerge';
+import { BTN_SECONDARY } from '../../common/buttonStyles';
 
 import { ActivityTimeline } from '../../ActivityTimeline';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
@@ -1087,7 +1088,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             <button
               type="button"
               onClick={() => setIsEditingDeal(false)}
-              className="btn btn-secondary w-full"
+              className={`${BTN_SECONDARY} w-full`}
             >
               Отмена
             </button>

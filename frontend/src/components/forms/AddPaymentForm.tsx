@@ -4,8 +4,8 @@ import { PaymentMetadata } from './addPayment/PaymentMetadata';
 import { PolicyField } from './addPayment/PolicyField';
 import { DealField } from './addPayment/DealField';
 import { DatesFields } from './addPayment/DatesFields';
-import { FormActions } from './addPayment/FormActions';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
 
@@ -169,7 +169,11 @@ export function AddPaymentForm({
         loading={loading}
       />
 
-      <FormActions loading={loading} paymentExists={Boolean(payment)} onCancel={onCancel} />
+      <FormActions
+        onCancel={onCancel}
+        isSubmitting={loading}
+        submitLabel={payment ? 'Обновить' : 'Сохранить'}
+      />
     </form>
   );
 }

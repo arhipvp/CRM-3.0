@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Deal } from '../../../types';
+import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
 import { Modal } from '../../Modal';
 import type { DealEvent } from './eventUtils';
 import { formatDate, statusLabels } from './helpers';
@@ -149,14 +150,14 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
-        <button type="button" onClick={onClose} className="btn btn-secondary rounded-xl">
+        <button type="button" onClick={onClose} className={`${BTN_SECONDARY} rounded-xl`}>
           Отмена
         </button>
         <button
           type="button"
           onClick={onConfirm}
           disabled={!selectedEvent || !nextContactValue || isSchedulingDelay}
-          className="btn btn-primary rounded-xl"
+          className={`${BTN_PRIMARY} rounded-xl`}
         >
           {isSchedulingDelay ? 'Переносим...' : 'Перенести следующий контакт'}
         </button>
@@ -253,14 +254,14 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
-        <button type="button" onClick={onClose} className="btn btn-secondary rounded-xl">
+        <button type="button" onClick={onClose} className={`${BTN_SECONDARY} rounded-xl`}>
           Отмена
         </button>
         <button
           type="button"
           onClick={onSubmit}
           disabled={isMerging || mergeSources.length === 0}
-          className="btn btn-primary rounded-xl"
+          className={`${BTN_PRIMARY} rounded-xl`}
         >
           {isMerging ? 'Объединяем...' : 'Объединить сделки'}
         </button>

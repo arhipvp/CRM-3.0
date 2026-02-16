@@ -4,7 +4,13 @@ import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
 import { copyToClipboard } from '../../../../utils/clipboard';
 import { useNotification } from '../../../../contexts/NotificationContext';
-import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
+import {
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_SM_DANGER,
+  BTN_SM_PRIMARY,
+  BTN_SM_SECONDARY,
+} from '../../../common/buttonStyles';
 import { TableHeadCell } from '../../../common/TableHeadCell';
 import {
   LINK_ACTION_XS,
@@ -501,11 +507,15 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 type="button"
                 onClick={handleRenameSubmit}
                 disabled={isRenaming}
-                className="btn btn-primary w-full rounded-xl"
+                className={`${BTN_PRIMARY} w-full rounded-xl`}
               >
                 {isRenaming ? 'Сохраняем...' : 'Сохранить'}
               </button>
-              <button type="button" onClick={closeRenameModal} className="btn btn-secondary w-full">
+              <button
+                type="button"
+                onClick={closeRenameModal}
+                className={`${BTN_SECONDARY} w-full`}
+              >
                 Отмена
               </button>
             </div>

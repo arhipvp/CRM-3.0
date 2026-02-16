@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { User } from '../types';
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from './common/buttonStyles';
 import { UserBadge } from './common/UserBadge';
 
 export type View =
@@ -70,13 +71,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </nav>
 
         <div className="p-4 border-t border-slate-200 space-y-3 bg-white/80">
-          <button type="button" onClick={onAddDeal} className="btn btn-primary w-full rounded-xl">
+          <button type="button" onClick={onAddDeal} className={`${BTN_PRIMARY} w-full rounded-xl`}>
             + Добавить сделку
           </button>
           <button
             type="button"
             onClick={onAddClient}
-            className="btn btn-secondary w-full rounded-xl"
+            className={`${BTN_SECONDARY} w-full rounded-xl`}
           >
             + Добавить клиента
           </button>
@@ -100,7 +101,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="btn btn-danger w-full rounded-xl"
+                  className={`${BTN_DANGER} w-full rounded-xl`}
                 >
                   Выйти
                 </button>

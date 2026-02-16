@@ -20,7 +20,7 @@ import { ColoredLabel } from '../../../common/ColoredLabel';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
 import { buildPolicyNavigationActions } from '../../../policies/policyCardActions';
 import { getPolicyExpiryBadge } from '../../../policies/policyIndicators';
-import { BTN_SM_SECONDARY } from '../../../common/buttonStyles';
+import { BTN_PRIMARY, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { POLICY_TEXT } from '../../../policies/text';
 
@@ -166,7 +166,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
         <button
           type="button"
           onClick={() => onRequestAddPolicy(selectedDeal.id)}
-          className="btn btn-primary rounded-xl self-start"
+          className={`${BTN_PRIMARY} rounded-xl self-start`}
         >
           Создать полис
         </button>

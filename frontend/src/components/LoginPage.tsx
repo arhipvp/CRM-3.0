@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 import { login } from '../api';
+import { BTN_PRIMARY } from './common/buttonStyles';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface LoginPageProps {
@@ -72,7 +73,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="btn btn-primary w-full justify-center"
+            className={`${BTN_PRIMARY} w-full justify-center`}
           >
             {isLoading ? 'Входим...' : 'Войти'}
           </button>
