@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { LinkifiedText, splitTextToLinks } from '../LinkifiedText';
+import { LinkifiedText } from '../LinkifiedText';
+import { splitTextToLinks } from '../linkifyText';
 
 describe('splitTextToLinks', () => {
   it('parses links with and without protocol', () => {
