@@ -79,3 +79,8 @@
 - `src/components/views/commissions/StatementFilesTab.tsx`
 - `src/components/views/commissions/RecordsTable.tsx`
 - `src/components/views/commissions/AllRecordsPanel.tsx`
+- `src/components/views/commissions/hooks/useAllRecordsController.ts`
+- `src/components/views/commissions/hooks/useStatementRecordsSelection.ts`
+- `src/components/views/commissions/hooks/useRecordAmountEditing.ts`
+- `src/components/views/commissions/hooks/useStatementDriveManager.ts`
+- `src/components/views/commissions/hooks/useStatementsManager.ts`

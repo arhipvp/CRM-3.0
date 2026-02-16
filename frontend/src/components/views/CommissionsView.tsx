@@ -1,22 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { DriveFile, FinancialRecord, Payment, Policy, Statement } from '../../types';
-import type { FilterParams } from '../../api';
-import {
-  fetchFinancialRecordsWithPagination,
-  fetchStatementDriveFiles,
-  downloadStatementDriveFiles,
-  exportStatementXlsx,
-  trashStatementDriveFiles,
-  uploadStatementDriveFile,
-} from '../../api';
+import type { FinancialRecord, Payment, Policy, Statement } from '../../types';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
-import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { formatErrorMessage } from '../../utils/formatErrorMessage';
-import { buildDriveFolderLink } from '../../utils/links';
 import { useConfirm } from '../../hooks/useConfirm';
 import { CreateStatementModal } from './commissions/CreateStatementModal';
 import { DeleteStatementModal } from './commissions/DeleteStatementModal';
@@ -24,7 +12,12 @@ import { EditStatementModal } from './commissions/EditStatementModal';
 import { AllRecordsPanel } from './commissions/AllRecordsPanel';
 import { RecordsTable } from './commissions/RecordsTable';
 import { StatementFilesTab } from './commissions/StatementFilesTab';
-import type { AllRecordsSortKey, AmountDraft, IncomeExpenseRow } from './commissions/RecordsTable';
+import type { IncomeExpenseRow } from './commissions/RecordsTable';
+import { useAllRecordsController } from './commissions/hooks/useAllRecordsController';
+import { useRecordAmountEditing } from './commissions/hooks/useRecordAmountEditing';
+import { useStatementDriveManager } from './commissions/hooks/useStatementDriveManager';
+import { useStatementRecordsSelection } from './commissions/hooks/useStatementRecordsSelection';
+import { useStatementsManager } from './commissions/hooks/useStatementsManager';
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -93,68 +86,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
 
-  const [amountDrafts, setAmountDrafts] = useState<Record<string, AmountDraft>>({});
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
-  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
   const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
-  const [allRecordsSearch, setAllRecordsSearch] = useState('');
-  const [showUnpaidPayments, setShowUnpaidPayments] = useState(false);
-  const [showStatementRecords, setShowStatementRecords] = useState(false);
-  // По умолчанию в "Все записи" показываем только неоплаченные (record.date is null).
-  // Галка "Показать оплаченные..." расширяет список до всех записей.
-  const [showPaidRecords, setShowPaidRecords] = useState(false);
-  const [showZeroSaldo, setShowZeroSaldo] = useState(false);
-  const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [showPaidStatements, setShowPaidStatements] = useState(false);
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
-  const [allRecordsSortKey, setAllRecordsSortKey] = useState<AllRecordsSortKey>('none');
-  const [allRecordsSortDirection, setAllRecordsSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [targetStatementId, setTargetStatementId] = useState('');
-  const [allRecords, setAllRecords] = useState<FinancialRecord[]>([]);
-  const [isAllRecordsLoading, setIsAllRecordsLoading] = useState(false);
-  const [isAllRecordsLoadingMore, setIsAllRecordsLoadingMore] = useState(false);
-  const [allRecordsError, setAllRecordsError] = useState<string | null>(null);
-  const [allRecordsHasMore, setAllRecordsHasMore] = useState(false);
-  const [allRecordsTotalCount, setAllRecordsTotalCount] = useState(0);
-  const [, setAllRecordsPage] = useState(1);
-  const allRecordsPageRef = useRef(1);
-  const [isStatementModalOpen, setStatementModalOpen] = useState(false);
-  const [isStatementCreating, setIsStatementCreating] = useState(false);
-  const [editingStatement, setEditingStatement] = useState<Statement | null>(null);
-  const [deletingStatement, setDeletingStatement] = useState<Statement | null>(null);
-  // paidAt выставляется вручную в редактировании ведомости; выплата определяется по paidAt.
-  const [editStatementForm, setEditStatementForm] = useState({
-    name: '',
-    statementType: 'income' as Statement['statementType'],
-    counterparty: '',
-    comment: '',
-    paidAt: '',
-  });
-  const [statementForm, setStatementForm] = useState({
-    name: '',
-    statementType: 'income' as Statement['statementType'],
-    counterparty: '',
-    comment: '',
-  });
-  const [statementDriveFiles, setStatementDriveFiles] = useState<DriveFile[]>([]);
-  const [statementDriveFolderIds, setStatementDriveFolderIds] = useState<
-    Record<string, string | null>
-  >({});
-  const [selectedStatementDriveFileIds, setSelectedStatementDriveFileIds] = useState<string[]>([]);
-  const [isStatementDriveLoading, setStatementDriveLoading] = useState(false);
-  const [isStatementDriveUploading, setStatementDriveUploading] = useState(false);
-  const [isStatementDriveTrashing, setStatementDriveTrashing] = useState(false);
-  const [isStatementDriveDownloading, setStatementDriveDownloading] = useState(false);
-  const [statementDriveError, setStatementDriveError] = useState<string | null>(null);
-  const [statementDriveTrashMessage, setStatementDriveTrashMessage] = useState<string | null>(null);
-  const [statementDriveDownloadMessage, setStatementDriveDownloadMessage] = useState<string | null>(
-    null,
-  );
-  const [isStatementExporting, setIsStatementExporting] = useState(false);
-  const [statementExportError, setStatementExportError] = useState<string | null>(null);
-  const allRecordsRequestRef = useRef(0);
-  const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const policiesById = useMemo(
     () => new Map(policies.map((policy) => [policy.id, policy])),
@@ -168,11 +104,46 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     () => new Map(statements.map((statement) => [statement.id, statement])),
     [statements],
   );
-
-  const debouncedSearch = useDebouncedValue(allRecordsSearch.trim(), 450);
-  // Поиск должен фильтровать даже по коротким строкам; иначе при "не нашлось"
-  // пользователь видит полный список, что выглядит как баг.
-  const effectiveSearch = debouncedSearch;
+  const {
+    allRecordsSearch,
+    setAllRecordsSearch,
+    showUnpaidPayments,
+    setShowUnpaidPayments,
+    showStatementRecords,
+    setShowStatementRecords,
+    showPaidRecords,
+    setShowPaidRecords,
+    showZeroSaldo,
+    setShowZeroSaldo,
+    recordTypeFilter,
+    setRecordTypeFilter,
+    targetStatementId,
+    setTargetStatementId,
+    isRecordTypeLocked,
+    allRecords,
+    isAllRecordsLoading,
+    isAllRecordsLoadingMore,
+    allRecordsError,
+    allRecordsHasMore,
+    allRecordsTotalCount,
+    loadAllRecords,
+    toggleAllRecordsSort,
+    getAllRecordsSortLabel,
+    getAllRecordsSortIndicator,
+  } = useAllRecordsController({
+    viewMode,
+    statementsById,
+  });
+  const {
+    amountDrafts,
+    getAbsoluteSaldoBase,
+    getPercentFromSaldo,
+    handleRecordAmountChange,
+    toggleRecordAmountMode,
+    handleRecordAmountBlur,
+  } = useRecordAmountEditing({
+    onUpdateFinancialRecord,
+  });
 
   useEffect(() => {
     if (viewMode === 'all') {
@@ -189,41 +160,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   }, [selectedStatementId, statements, statementsById, viewMode]);
 
   useEffect(() => {
-    setSelectedRecordIds([]);
-  }, [selectedStatementId]);
-
-  useEffect(() => {
-    setSelectedRecordIds([]);
-  }, [viewMode]);
-
-  useEffect(() => {
-    setSelectedRecordIds([]);
-  }, [targetStatementId]);
-
-  const isRecordTypeLocked = viewMode === 'all' && Boolean(targetStatementId);
-  useEffect(() => {
-    if (viewMode !== 'all') {
-      return;
-    }
-    if (!targetStatementId) {
-      setRecordTypeFilter('all');
-      return;
-    }
-    const statement = statementsById.get(targetStatementId);
-    if (!statement) {
-      setRecordTypeFilter('all');
-      return;
-    }
-    setRecordTypeFilter(statement.statementType === 'income' ? 'income' : 'expense');
-  }, [statementsById, targetStatementId, viewMode]);
-
-  useEffect(() => {
     setStatementTab('records');
-    setSelectedStatementDriveFileIds([]);
-    setStatementDriveTrashMessage(null);
-    setStatementDriveDownloadMessage(null);
-    setStatementExportError(null);
-    setIsStatementExporting(false);
   }, [selectedStatementId]);
 
   useEffect(() => {
@@ -232,155 +169,35 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     }
   }, [viewMode]);
 
-  useEffect(() => {
-    if (!selectedStatementDriveFileIds.length) {
-      return;
-    }
-    const existingIds = new Set(statementDriveFiles.map((file) => file.id));
-    setSelectedStatementDriveFileIds((prev) => {
-      const filtered = prev.filter((id) => existingIds.has(id));
-      return filtered.length === prev.length ? prev : filtered;
-    });
-  }, [selectedStatementDriveFileIds.length, statementDriveFiles]);
-
-  const loadAllRecords = useCallback(
-    async (mode: 'reset' | 'more') => {
-      allRecordsRequestRef.current += 1;
-      const requestId = allRecordsRequestRef.current;
-      const filters: FilterParams = {};
-      if (effectiveSearch) {
-        filters.search = effectiveSearch;
-      }
-      if (!showUnpaidPayments) {
-        filters.payment_paid = true;
-      }
-      if (!showStatementRecords) {
-        filters.without_statement = true;
-      }
-      if (!showPaidRecords) {
-        filters.unpaid_only = true;
-      }
-      if (!showZeroSaldo) {
-        filters.paid_balance_not_zero = true;
-      }
-      if (recordTypeFilter !== 'all') {
-        filters.record_type = recordTypeFilter;
-      }
-      if (allRecordsSortKey !== 'none') {
-        const directionPrefix = allRecordsSortDirection === 'desc' ? '-' : '';
-        if (allRecordsSortKey === 'payment') {
-          filters.ordering = `${directionPrefix}payment_is_paid,-payment_sort_date,-created_at`;
-        } else if (allRecordsSortKey === 'saldo') {
-          filters.ordering = `${directionPrefix}payment_paid_balance,-payment_sort_date,-created_at`;
-        } else if (allRecordsSortKey === 'comment') {
-          filters.ordering = `${directionPrefix}record_comment_sort,-payment_sort_date,-created_at`;
-        } else if (allRecordsSortKey === 'amount') {
-          filters.ordering = `${directionPrefix}amount,-payment_sort_date,-created_at`;
-        }
-      }
-      const nextPage = mode === 'more' ? allRecordsPageRef.current + 1 : 1;
-      if (mode === 'reset') {
-        setIsAllRecordsLoading(true);
-        setAllRecordsError(null);
-      } else {
-        setIsAllRecordsLoadingMore(true);
-      }
-
-      try {
-        const payload = await fetchFinancialRecordsWithPagination({
-          ...filters,
-          page: nextPage,
-        });
-        if (requestId !== allRecordsRequestRef.current) {
-          return;
-        }
-        setAllRecordsTotalCount(payload.count || 0);
-        setAllRecordsHasMore(Boolean(payload.next));
-        setAllRecordsPage(nextPage);
-        allRecordsPageRef.current = nextPage;
-        setAllRecords((prev) =>
-          mode === 'more' ? [...prev, ...payload.results] : payload.results,
-        );
-      } catch (error) {
-        if (requestId !== allRecordsRequestRef.current) {
-          return;
-        }
-        if (mode === 'reset') {
-          setAllRecords([]);
-        }
-        setAllRecordsHasMore(false);
-        setAllRecordsError(formatErrorMessage(error, 'Не удалось загрузить финансовые записи.'));
-      } finally {
-        if (requestId === allRecordsRequestRef.current) {
-          setIsAllRecordsLoading(false);
-          setIsAllRecordsLoadingMore(false);
-        }
-      }
-    },
-    [
-      effectiveSearch,
-      allRecordsSortDirection,
-      allRecordsSortKey,
-      recordTypeFilter,
-      showPaidRecords,
-      showZeroSaldo,
-      showStatementRecords,
-      showUnpaidPayments,
-    ],
-  );
-
-  useEffect(() => {
-    if (viewMode !== 'all') {
-      return;
-    }
-    void loadAllRecords('reset');
-  }, [loadAllRecords, viewMode]);
-
-  // Не подмешиваем финансовые записи из props: "Все записи" должны идти строго с сервера,
-  // иначе ломается сортировка и пагинация.
-
-  const loadStatementDriveFiles = useCallback(async (statementId: string) => {
-    setStatementDriveLoading(true);
-    try {
-      const { files, folderId } = await fetchStatementDriveFiles(statementId);
-      setStatementDriveFiles(files);
-      setStatementDriveError(null);
-      if (folderId !== undefined) {
-        setStatementDriveFolderIds((prev) => ({
-          ...prev,
-          [statementId]: folderId,
-        }));
-      }
-    } catch (error) {
-      setStatementDriveFiles([]);
-      setStatementDriveError(formatErrorMessage(error, 'Не удалось загрузить файлы ведомости.'));
-    } finally {
-      setStatementDriveLoading(false);
-    }
-  }, []);
-
-  const handleExportStatement = useCallback(async () => {
-    const statement = selectedStatementId ? statementsById.get(selectedStatementId) : undefined;
-    if (!statement) {
-      return;
-    }
-    setIsStatementExporting(true);
-    setStatementExportError(null);
-    try {
-      const file = await exportStatementXlsx(statement.id);
-      setStatementDriveDownloadMessage(`Файл сформирован: ${file.name}`);
-      setStatementTab('files');
-      await loadStatementDriveFiles(statement.id);
-    } catch (error) {
-      setStatementExportError(formatErrorMessage(error, 'Не удалось сформировать ведомость.'));
-    } finally {
-      setIsStatementExporting(false);
-    }
-  }, [loadStatementDriveFiles, selectedStatementId, statementsById]);
-
   const selectedStatement = selectedStatementId
     ? statementsById.get(selectedStatementId)
     : undefined;
+  const {
+    isStatementDriveLoading,
+    isStatementDriveUploading,
+    isStatementDriveTrashing,
+    isStatementDriveDownloading,
+    selectedStatementDriveFileIds,
+    statementDriveError,
+    statementDriveTrashMessage,
+    statementDriveDownloadMessage,
+    statementDriveFolderLink,
+    hasStatementDriveFolder,
+    sortedStatementDriveFiles,
+    loadStatementDriveFiles,
+    setStatementDriveDownloadMessage,
+    toggleStatementDriveFileSelection,
+    handleTrashSelectedStatementDriveFiles,
+    handleDownloadStatementDriveFiles,
+    handleStatementDriveDelete,
+    handleUploadStatementDriveFile,
+  } = useStatementDriveManager({
+    selectedStatement,
+    statementTab,
+    viewMode,
+    confirm,
+  });
+
   const isSelectedStatementPaid = Boolean(selectedStatement?.paidAt);
   const selectedStatementTypeLabel = selectedStatement
     ? selectedStatement.statementType === 'income'
@@ -395,10 +212,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const selectedStatementPaidAt = selectedStatement?.paidAt
     ? formatDateRu(selectedStatement.paidAt)
     : null;
-  const selectedStatementDriveFolderId = selectedStatement
-    ? (statementDriveFolderIds[selectedStatement.id] ?? selectedStatement.driveFolderId ?? null)
-    : null;
-  const statementDriveFolderLink = buildDriveFolderLink(selectedStatementDriveFolderId);
   const attachStatement =
     viewMode === 'all'
       ? targetStatementId
@@ -406,102 +219,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         : undefined
       : selectedStatement;
   const isAttachStatementPaid = Boolean(attachStatement?.paidAt);
-
-  const sortedStatementDriveFiles = useMemo(() => {
-    return [...statementDriveFiles].sort((a, b) => {
-      const rawDateA = new Date(a.modifiedAt ?? a.createdAt ?? 0).getTime();
-      const rawDateB = new Date(b.modifiedAt ?? b.createdAt ?? 0).getTime();
-      const dateA = Number.isNaN(rawDateA) ? 0 : rawDateA;
-      const dateB = Number.isNaN(rawDateB) ? 0 : rawDateB;
-      if (dateA !== dateB) {
-        return dateB - dateA;
-      }
-      if (a.isFolder !== b.isFolder) {
-        return a.isFolder ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name, 'ru-RU', { sensitivity: 'base' });
-    });
-  }, [statementDriveFiles]);
-
-  const toggleStatementDriveFileSelection = useCallback((fileId: string) => {
-    setSelectedStatementDriveFileIds((prev) =>
-      prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId],
-    );
-  }, []);
-
-  const handleTrashSelectedStatementDriveFiles = useCallback(async () => {
-    if (!selectedStatement) {
-      return;
-    }
-    if (!selectedStatementDriveFileIds.length) {
-      setStatementDriveTrashMessage('Выберите хотя бы один файл для удаления.');
-      return;
-    }
-    const confirmed = await confirm({
-      title: 'Удалить файлы',
-      message: `Удалить выбранные файлы (${selectedStatementDriveFileIds.length})?`,
-      confirmText: 'Удалить',
-      tone: 'danger',
-    });
-    if (!confirmed) {
-      return;
-    }
-    setStatementDriveTrashing(true);
-    setStatementDriveTrashMessage(null);
-    try {
-      await trashStatementDriveFiles(selectedStatement.id, selectedStatementDriveFileIds);
-      setSelectedStatementDriveFileIds([]);
-      await loadStatementDriveFiles(selectedStatement.id);
-    } catch (error) {
-      setStatementDriveTrashMessage(formatErrorMessage(error, 'Не удалось удалить файлы.'));
-    } finally {
-      setStatementDriveTrashing(false);
-    }
-  }, [confirm, loadStatementDriveFiles, selectedStatement, selectedStatementDriveFileIds]);
-
-  const handleDownloadStatementDriveFiles = useCallback(
-    async (fileIds?: string[]) => {
-      if (!selectedStatement) {
-        return;
-      }
-      const targetIds = fileIds?.length ? fileIds : selectedStatementDriveFileIds;
-      if (!targetIds.length) {
-        setStatementDriveDownloadMessage('Выберите хотя бы один файл для скачивания.');
-        return;
-      }
-      setStatementDriveDownloading(true);
-      setStatementDriveDownloadMessage(null);
-      try {
-        const { blob, filename } = await downloadStatementDriveFiles(
-          selectedStatement.id,
-          targetIds,
-        );
-        if (typeof window === 'undefined') {
-          return;
-        }
-        const url = window.URL.createObjectURL(blob);
-        const link = window.document.createElement('a');
-        link.href = url;
-        let resolvedFilename = filename;
-        if (!resolvedFilename && targetIds.length === 1) {
-          const targetFile = statementDriveFiles.find((file) => file.id === targetIds[0]);
-          if (targetFile) {
-            resolvedFilename = targetFile.name;
-          }
-        }
-        link.download = resolvedFilename || 'files.zip';
-        window.document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        setStatementDriveDownloadMessage(formatErrorMessage(error, 'Не удалось скачать файлы.'));
-      } finally {
-        setStatementDriveDownloading(false);
-      }
-    },
-    [selectedStatement, selectedStatementDriveFileIds, statementDriveFiles],
-  );
 
   const statementRows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
@@ -642,46 +359,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     return 'не сортируется';
   };
 
-  const toggleAllRecordsSort = useCallback(
-    (key: AllRecordsSortKey) => {
-      if (viewMode !== 'all') {
-        return;
-      }
-      if (allRecordsSortKey !== key) {
-        setAllRecordsSortKey(key);
-        setAllRecordsSortDirection('asc');
-        return;
-      }
-      if (allRecordsSortDirection === 'asc') {
-        setAllRecordsSortDirection('desc');
-        return;
-      }
-      setAllRecordsSortKey('none');
-      setAllRecordsSortDirection('asc');
-    },
-    [allRecordsSortDirection, allRecordsSortKey, viewMode],
-  );
-
-  const getAllRecordsSortIndicator = (key: AllRecordsSortKey) => {
-    if (viewMode !== 'all') {
-      return '';
-    }
-    if (allRecordsSortKey !== key) {
-      return '↕';
-    }
-    return allRecordsSortDirection === 'asc' ? '↑' : '↓';
-  };
-
-  const getAllRecordsSortLabel = (key: AllRecordsSortKey) => {
-    if (viewMode !== 'all') {
-      return '';
-    }
-    if (allRecordsSortKey !== key) {
-      return 'не сортируется';
-    }
-    return allRecordsSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию';
-  };
-
   const handleOpenDeal = useCallback(
     (dealId: string | undefined) => {
       if (!dealId) {
@@ -697,335 +374,66 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [navigate, onDealPreview, onDealSelect],
   );
 
-  const getAbsoluteSaldoBase = useCallback((row: IncomeExpenseRow) => {
-    const value = Number(row.paymentPaidBalance ?? 0);
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return Math.abs(value);
-  }, []);
-
-  const getPercentFromSaldo = useCallback(
-    (row: IncomeExpenseRow, absoluteAmount: number) => {
-      const base = getAbsoluteSaldoBase(row);
-      if (!Number.isFinite(absoluteAmount) || base <= 0) {
-        return '';
-      }
-      const percent = (Math.abs(absoluteAmount) / base) * 100;
-      return percent.toFixed(2).replace(/\.?0+$/, '');
-    },
-    [getAbsoluteSaldoBase],
-  );
-
-  const handleRecordAmountChange = useCallback((recordId: string, value: string) => {
-    setAmountDrafts((prev) => ({
-      ...prev,
-      [recordId]: { mode: prev[recordId]?.mode ?? 'rub', value },
-    }));
-  }, []);
-
-  const toggleRecordAmountMode = useCallback(
-    (row: IncomeExpenseRow) => {
-      setAmountDrafts((prev) => {
-        const current = prev[row.recordId];
-        const currentMode: AmountDraft['mode'] = current?.mode ?? 'rub';
-        const nextMode: AmountDraft['mode'] = currentMode === 'rub' ? 'percent' : 'rub';
-
-        const base = getAbsoluteSaldoBase(row);
-        const currentValue = current?.value;
-        const currentNumber = currentValue !== undefined ? Number(currentValue) : NaN;
-
-        if (nextMode === 'percent') {
-          if (base <= 0) {
-            return prev;
-          }
-          const absoluteAmount = Number.isFinite(currentNumber)
-            ? currentNumber
-            : Math.abs(row.recordAmount);
-          return {
-            ...prev,
-            [row.recordId]: { mode: 'percent', value: getPercentFromSaldo(row, absoluteAmount) },
-          };
-        }
-
-        if (currentMode === 'percent' && base > 0) {
-          const percent = Number.isFinite(currentNumber) ? currentNumber : NaN;
-          const absoluteAmount = Number.isFinite(percent) ? (base * percent) / 100 : NaN;
-          if (Number.isFinite(absoluteAmount)) {
-            return {
-              ...prev,
-              [row.recordId]: {
-                mode: 'rub',
-                value: absoluteAmount.toFixed(2).replace(/\.?0+$/, ''),
-              },
-            };
-          }
-        }
-
-        return {
-          ...prev,
-          [row.recordId]: { mode: 'rub', value: Math.abs(row.recordAmount).toString() },
-        };
-      });
-    },
-    [getAbsoluteSaldoBase, getPercentFromSaldo],
-  );
-
-  const handleRecordAmountBlur = useCallback(
-    async (row: IncomeExpenseRow) => {
-      if (!onUpdateFinancialRecord) {
-        return;
-      }
-      const draft = amountDrafts[row.recordId];
-      if (!draft) {
-        return;
-      }
-      const parsed = Number(draft.value);
-      if (!Number.isFinite(parsed)) {
-        return;
-      }
-
-      const absoluteAmount =
-        draft.mode === 'percent'
-          ? (() => {
-              const base = getAbsoluteSaldoBase(row);
-              if (base <= 0) {
-                return NaN;
-              }
-              return (base * parsed) / 100;
-            })()
-          : parsed;
-
-      if (!Number.isFinite(absoluteAmount)) {
-        return;
-      }
-      const recordType: AddFinancialRecordFormValues['recordType'] =
-        row.recordAmount >= 0 ? 'income' : 'expense';
-      await onUpdateFinancialRecord(row.recordId, {
-        paymentId: row.payment.id,
-        recordType,
-        amount: Math.abs(absoluteAmount).toString(),
-        date: row.recordDate ?? null,
-        description: row.recordDescription ?? '',
-        source: row.recordSource ?? '',
-        note: row.recordNote ?? '',
-      });
-      setAmountDrafts((prev) => {
-        const next = { ...prev };
-        delete next[row.recordId];
-        return next;
-      });
-    },
-    [amountDrafts, getAbsoluteSaldoBase, onUpdateFinancialRecord],
-  );
-
-  useEffect(() => {
-    if (viewMode !== 'statements' || !selectedStatement) {
-      setStatementDriveFiles([]);
-      setStatementDriveError(null);
-      return;
-    }
-    if (statementTab !== 'files') {
-      return;
-    }
-    void loadStatementDriveFiles(selectedStatement.id);
-  }, [loadStatementDriveFiles, selectedStatement, statementTab, viewMode]);
-
-  const canAttachRow = useCallback(
-    (row: IncomeExpenseRow) => {
-      if (!attachStatement) {
-        return false;
-      }
-      if (row.statementId && row.statementId !== attachStatement.id) {
-        return false;
-      }
-      const isIncome = row.recordAmount > 0;
-      if (attachStatement.statementType === 'income' && !isIncome) {
-        return false;
-      }
-      if (attachStatement.statementType === 'expense' && isIncome) {
-        return false;
-      }
-      return true;
-    },
-    [attachStatement],
-  );
-
-  const toggleRecordSelection = useCallback(
-    (row: IncomeExpenseRow) => {
-      if (!attachStatement || !canAttachRow(row)) {
-        return;
-      }
-      setSelectedRecordIds((prev) =>
-        prev.includes(row.recordId)
-          ? prev.filter((id) => id !== row.recordId)
-          : [...prev, row.recordId],
-      );
-    },
-    [attachStatement, canAttachRow],
-  );
-
-  const handleAttachSelected = useCallback(async () => {
-    if (!attachStatement || !onUpdateStatement || !selectedRecordIds.length) {
-      return;
-    }
-    await onUpdateStatement(attachStatement.id, {
-      recordIds: selectedRecordIds,
-    });
-    if (viewMode === 'all') {
+  const {
+    selectedRecordIds,
+    selectableRecordIds,
+    allSelectableSelected,
+    selectAllRef,
+    canAttachRow,
+    toggleRecordSelection,
+    handleAttachSelected,
+    handleRemoveSelected,
+    toggleSelectAll,
+    resetSelection,
+  } = useStatementRecordsSelection({
+    attachStatement,
+    selectedStatement,
+    isAttachStatementPaid,
+    filteredRows,
+    viewMode,
+    onUpdateStatement,
+    onRemoveStatementRecords,
+    onRefreshAllRecords: async () => {
       await loadAllRecords('reset');
-    }
-    setSelectedRecordIds([]);
-  }, [attachStatement, loadAllRecords, onUpdateStatement, selectedRecordIds, viewMode]);
-
-  const handleRemoveSelected = useCallback(async () => {
-    if (!selectedStatement || !onRemoveStatementRecords || !selectedRecordIds.length) {
-      return;
-    }
-    await onRemoveStatementRecords(selectedStatement.id, selectedRecordIds);
-    setSelectedRecordIds([]);
-  }, [onRemoveStatementRecords, selectedRecordIds, selectedStatement]);
-
-  const selectableRecordIds = useMemo(() => {
-    if (!attachStatement || isAttachStatementPaid) {
-      return [];
-    }
-    return filteredRows.filter((row) => canAttachRow(row)).map((row) => row.recordId);
-  }, [attachStatement, canAttachRow, filteredRows, isAttachStatementPaid]);
-
-  const allSelectableSelected =
-    selectableRecordIds.length > 0 &&
-    selectableRecordIds.every((id) => selectedRecordIds.includes(id));
-  const someSelectableSelected = selectableRecordIds.some((id) => selectedRecordIds.includes(id));
+    },
+  });
 
   useEffect(() => {
-    if (!selectAllRef.current) {
-      return;
-    }
-    selectAllRef.current.indeterminate = someSelectableSelected && !allSelectableSelected;
-  }, [allSelectableSelected, someSelectableSelected]);
+    resetSelection();
+  }, [resetSelection, selectedStatementId, targetStatementId, viewMode]);
 
-  const toggleSelectAll = useCallback(() => {
-    if (!attachStatement || isAttachStatementPaid) {
-      return;
-    }
-    setSelectedRecordIds((prev) => {
-      const next = new Set(prev);
-      if (allSelectableSelected) {
-        selectableRecordIds.forEach((id) => next.delete(id));
-      } else {
-        selectableRecordIds.forEach((id) => next.add(id));
-      }
-      return Array.from(next);
-    });
-  }, [allSelectableSelected, attachStatement, isAttachStatementPaid, selectableRecordIds]);
-
-  const handleStatementDriveDelete = useCallback(
-    async (file: DriveFile) => {
-      if (!selectedStatement || file.isFolder) {
-        return;
-      }
-      const confirmed = await confirm({
-        title: 'Удалить файл',
-        message: `Удалить файл "${file.name}"?`,
-        confirmText: 'Удалить',
-        tone: 'danger',
-      });
-      if (!confirmed) {
-        return;
-      }
-      setStatementDriveTrashing(true);
-      try {
-        await trashStatementDriveFiles(selectedStatement.id, [file.id]);
-        await loadStatementDriveFiles(selectedStatement.id);
-      } catch (error) {
-        setStatementDriveError(formatErrorMessage(error, 'Не удалось удалить файл.'));
-      } finally {
-        setStatementDriveTrashing(false);
-      }
-    },
-    [confirm, loadStatementDriveFiles, selectedStatement],
-  );
-
-  const handleCreateStatement = useCallback(async () => {
-    if (!onCreateStatement) {
-      return;
-    }
-    if (isStatementCreating) {
-      return;
-    }
-    if (!statementForm.name.trim()) {
-      return;
-    }
-    setIsStatementCreating(true);
-    try {
-      const created = await onCreateStatement({
-        name: statementForm.name.trim(),
-        statementType: statementForm.statementType,
-        counterparty: statementForm.counterparty.trim(),
-        comment: statementForm.comment.trim(),
-      });
-      setStatementModalOpen(false);
-      setStatementForm({
-        name: '',
-        statementType: statementForm.statementType,
-        counterparty: '',
-        comment: '',
-      });
-      setSelectedStatementId(created.id);
-      setSelectedRecordIds([]);
-    } finally {
-      setIsStatementCreating(false);
-    }
-  }, [isStatementCreating, onCreateStatement, statementForm]);
-
-  const handleEditStatementOpen = useCallback((statement: Statement) => {
-    setEditingStatement(statement);
-    setEditStatementForm({
-      name: statement.name ?? '',
-      statementType: statement.statementType,
-      counterparty: statement.counterparty ?? '',
-      comment: statement.comment ?? '',
-      paidAt: statement.paidAt ?? '',
-    });
-  }, []);
-
-  const handleEditStatementSubmit = useCallback(async () => {
-    if (!editingStatement || !onUpdateStatement) {
-      return;
-    }
-    const existingPaidAt = editingStatement.paidAt ?? '';
-    const nextPaidAt = editStatementForm.paidAt ?? '';
-    const isSettingPaidAtNow = Boolean(nextPaidAt) && !existingPaidAt;
-    if (isSettingPaidAtNow) {
-      const confirmed = await confirm({
-        title: 'Подтвердите выплату',
-        message:
-          'Если указать дату выплаты, ведомость будет считаться выплаченной. После сохранения редактирование и удаление ведомости будут недоступны, а всем записям будет проставлена дата выплаты.\n\nПродолжить?',
-        confirmText: 'Продолжить',
-        tone: 'primary',
-      });
-      if (!confirmed) {
-        return;
-      }
-    }
-    await onUpdateStatement(editingStatement.id, {
-      name: editStatementForm.name.trim(),
-      statementType: editStatementForm.statementType,
-      counterparty: editStatementForm.counterparty.trim(),
-      comment: editStatementForm.comment.trim(),
-      paidAt: editStatementForm.paidAt || null,
-    });
-    setEditingStatement(null);
-  }, [confirm, editStatementForm, editingStatement, onUpdateStatement]);
-
-  const handleDeleteStatementConfirm = useCallback(async () => {
-    if (!deletingStatement || !onDeleteStatement) {
-      return;
-    }
-    await onDeleteStatement(deletingStatement.id);
-    setDeletingStatement(null);
-  }, [deletingStatement, onDeleteStatement]);
+  const {
+    isStatementModalOpen,
+    setStatementModalOpen,
+    isStatementCreating,
+    statementForm,
+    setStatementForm,
+    handleCreateStatement,
+    editingStatement,
+    setEditingStatement,
+    editStatementForm,
+    setEditStatementForm,
+    handleEditStatementOpen,
+    handleEditStatementSubmit,
+    deletingStatement,
+    setDeletingStatement,
+    handleDeleteStatementConfirm,
+    isStatementExporting,
+    statementExportError,
+    handleExportStatement,
+  } = useStatementsManager({
+    selectedStatementId,
+    selectedStatement,
+    onCreateStatement,
+    onUpdateStatement,
+    onDeleteStatement,
+    confirm,
+    resetSelection,
+    setSelectedStatementId,
+    setStatementTab,
+    loadStatementDriveFiles,
+    setStatementDriveDownloadMessage,
+  });
 
   // Ведомость считается выплаченной по факту наличия paidAt.
 
@@ -1052,7 +460,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       canAttachRow={canAttachRow}
       onAttachSelected={handleAttachSelected}
       onRemoveSelected={handleRemoveSelected}
-      onResetSelection={() => setSelectedRecordIds([])}
+      onResetSelection={resetSelection}
       onToggleSelectAll={toggleSelectAll}
       onToggleRecordSelection={toggleRecordSelection}
       onOpenDeal={handleOpenDeal}
@@ -1088,7 +496,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       statementDriveError={statementDriveError}
       statementDriveTrashMessage={statementDriveTrashMessage}
       statementDriveDownloadMessage={statementDriveDownloadMessage}
-      hasStatementDriveFolder={Boolean(selectedStatementDriveFolderId)}
+      hasStatementDriveFolder={hasStatementDriveFolder}
       sortedStatementDriveFiles={sortedStatementDriveFiles}
       onRefresh={() => {
         if (!selectedStatement) {
@@ -1096,21 +504,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         }
         void loadStatementDriveFiles(selectedStatement.id);
       }}
-      onUpload={async (file) => {
-        if (!selectedStatement) {
-          return;
-        }
-        setStatementDriveUploading(true);
-        try {
-          await uploadStatementDriveFile(selectedStatement.id, file);
-          await loadStatementDriveFiles(selectedStatement.id);
-          setStatementDriveError(null);
-        } catch (error) {
-          setStatementDriveError(formatErrorMessage(error, 'Не удалось загрузить файл.'));
-        } finally {
-          setStatementDriveUploading(false);
-        }
-      }}
+      onUpload={handleUploadStatementDriveFile}
       onDownloadSelected={() => {
         void handleDownloadStatementDriveFiles();
       }}
