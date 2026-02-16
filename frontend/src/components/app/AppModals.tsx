@@ -1,5 +1,4 @@
 import React from 'react';
-import { Modal } from '../Modal';
 import { ClientForm } from '../forms/ClientForm';
 import { DealForm } from '../forms/DealForm';
 import type { DealFormValues } from '../forms/DealForm';
@@ -26,6 +25,7 @@ import type {
 } from '../forms/addPolicy/types';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { PaymentModal } from '../payments/PaymentModal';
+import { FormModal } from '../common/modal/FormModal';
 
 interface PolicyPrefill {
   values: PolicyFormValues;
@@ -194,13 +194,18 @@ export const AppModals: React.FC<AppModalsProps> = ({
   return (
     <>
       {modal === 'client' && (
-        <Modal title="Новый клиент" onClose={closeClientModal}>
+        <FormModal isOpen title="Новый клиент" onClose={closeClientModal}>
           <ClientForm onSubmit={handleAddClient} />
-        </Modal>
+        </FormModal>
       )}
 
       {modal === 'deal' && (
-        <Modal title="Новая сделка" onClose={() => setModal(null)} closeOnOverlayClick={false}>
+        <FormModal
+          isOpen
+          title="Новая сделка"
+          onClose={() => setModal(null)}
+          closeOnOverlayClick={false}
+        >
           <DealForm
             clients={clients}
             users={users}
@@ -209,30 +214,31 @@ export const AppModals: React.FC<AppModalsProps> = ({
             onPreselectedClientConsumed={onPendingDealClientConsumed}
             onRequestAddClient={() => openClientModal('deal')}
           />
-        </Modal>
+        </FormModal>
       )}
 
       {quoteDealId && (
-        <Modal title="Добавить расчёт" onClose={() => setQuoteDealId(null)}>
+        <FormModal isOpen title="Добавить расчёт" onClose={() => setQuoteDealId(null)}>
           <AddQuoteForm
             onSubmit={(values) => handleAddQuote(quoteDealId, values)}
             onCancel={() => setQuoteDealId(null)}
           />
-        </Modal>
+        </FormModal>
       )}
 
       {editingQuote && (
-        <Modal title="Редактировать расчёт" onClose={() => setEditingQuote(null)}>
+        <FormModal isOpen title="Редактировать расчёт" onClose={() => setEditingQuote(null)}>
           <AddQuoteForm
             initialValues={editingQuote}
             onSubmit={handleUpdateQuote}
             onCancel={() => setEditingQuote(null)}
           />
-        </Modal>
+        </FormModal>
       )}
 
       {policyDealId && (
-        <Modal
+        <FormModal
+          isOpen
           title="Добавить полис"
           onClose={closePolicyModal}
           size="xl"
@@ -251,11 +257,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
             onSubmit={(values) => handleAddPolicy(policyDealId, values)}
             onCancel={closePolicyModal}
           />
-        </Modal>
+        </FormModal>
       )}
 
       {editingPolicy && (
-        <Modal
+        <FormModal
+          isOpen
           title="Редактировать полис"
           onClose={() => setEditingPolicy(null)}
           size="xl"
@@ -277,7 +284,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
             onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
             onCancel={() => setEditingPolicy(null)}
           />
-        </Modal>
+        </FormModal>
       )}
 
       {paymentModal && (
@@ -302,9 +309,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
       )}
 
       {isClientModalOverlayOpen && (
-        <Modal title="Новый клиент" onClose={closeClientModal} zIndex={50}>
+        <FormModal isOpen title="Новый клиент" onClose={closeClientModal} zIndex={50}>
           <ClientForm onSubmit={handleAddClient} />
-        </Modal>
+        </FormModal>
       )}
     </>
   );

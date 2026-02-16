@@ -27,6 +27,7 @@ import {
   KnowledgeSourceDetail,
 } from '../../types';
 import { Modal } from '../Modal';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const formatDate = (value?: string | null): string => {
   if (!value) {
@@ -51,6 +52,7 @@ const formatDateTime = (value?: string | null): string => {
 };
 
 export const KnowledgeDocumentsView: React.FC = () => {
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
   const [notebooks, setNotebooks] = useState<KnowledgeNotebook[]>([]);
   const [selectedNotebookId, setSelectedNotebookId] = useState('');
   const [selectedNotebookName, setSelectedNotebookName] = useState('');
@@ -221,9 +223,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
       return;
     }
     const current = notebooks.find((item) => item.id === selectedNotebookId);
-    const confirmed = window.confirm(
-      `Удалить блокнот "${current?.name ?? ''}"? Все файлы и заметки будут удалены.`,
-    );
+    const confirmed = await confirm({
+      title: 'Удалить блокнот',
+      message: `Удалить блокнот "${current?.name ?? ''}"? Все файлы и заметки будут удалены.`,
+      confirmText: 'Удалить',
+      tone: 'danger',
+    });
     if (!confirmed) {
       return;
     }
@@ -270,7 +275,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
     if (!selectedNotebookId) {
       return;
     }
-    const confirmed = window.confirm('Удалить файл из блокнота?');
+    const confirmed = await confirm({
+      title: 'Удалить файл',
+      message: 'Удалить файл из блокнота?',
+      confirmText: 'Удалить',
+      tone: 'danger',
+    });
     if (!confirmed) {
       return;
     }
@@ -356,7 +366,12 @@ export const KnowledgeDocumentsView: React.FC = () => {
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    const confirmed = window.confirm('Удалить сессию чата?');
+    const confirmed = await confirm({
+      title: 'Удалить сессию',
+      message: 'Удалить сессию чата?',
+      confirmText: 'Удалить',
+      tone: 'danger',
+    });
     if (!confirmed) {
       return;
     }
@@ -979,6 +994,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
           </div>
         </Modal>
       )}
+      <ConfirmDialogRenderer />
     </div>
   );
 };

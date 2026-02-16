@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { FinancialRecord } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { FormActions } from '../common/forms/FormActions';
+import { FormError } from '../common/forms/FormError';
+import { FormField } from '../common/forms/FormField';
 
 export interface AddFinancialRecordFormValues {
   paymentId: string;
@@ -107,7 +110,7 @@ export function AddFinancialRecordForm({
       <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900">
         {indicatorLabel} <span className="font-bold">{recordTypeLabel}</span>
       </div>
-      {error && <p className="app-alert app-alert-danger">{error}</p>}
+      <FormError message={error} />
 
       {record && (
         <div className="app-panel-muted p-4">
@@ -137,10 +140,7 @@ export function AddFinancialRecordForm({
         </div>
       )}
 
-      <div className="space-y-2">
-        <label htmlFor="recordType" className="app-label">
-          Тип операции *
-        </label>
+      <FormField label="Тип операции" htmlFor="recordType" required>
         <select
           id="recordType"
           name="recordType"
@@ -152,12 +152,9 @@ export function AddFinancialRecordForm({
           <option value="income">Доход (поступление)</option>
           <option value="expense">Расход (затраты)</option>
         </select>
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <label htmlFor="amount" className="app-label">
-          Сумма (руб.) *
-        </label>
+      <FormField label="Сумма (руб.)" htmlFor="amount" required>
         <input
           type="number"
           id="amount"
@@ -170,11 +167,8 @@ export function AddFinancialRecordForm({
           required
           className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
-      </div>
-      <div className="space-y-2">
-        <label htmlFor="date" className="app-label">
-          Дата
-        </label>
+      </FormField>
+      <FormField label="Дата" htmlFor="date">
         <input
           type="date"
           id="date"
@@ -184,12 +178,9 @@ export function AddFinancialRecordForm({
           disabled={loading}
           className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <label htmlFor="note" className="app-label">
-          Примечание
-        </label>
+      <FormField label="Примечание" htmlFor="note">
         <textarea
           id="note"
           name="note"
@@ -200,16 +191,9 @@ export function AddFinancialRecordForm({
           disabled={loading}
           className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
         />
-      </div>
+      </FormField>
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? 'Сохраняем...' : actionLabel}
-        </button>
-        <button type="button" onClick={onCancel} disabled={loading} className="btn btn-secondary">
-          Отмена
-        </button>
-      </div>
+      <FormActions onCancel={onCancel} isSubmitting={loading} submitLabel={actionLabel} />
     </form>
   );
 }

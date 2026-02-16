@@ -28,6 +28,7 @@ import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { buildDriveFolderLink } from '../../utils/links';
 import { formatDriveDate, formatDriveFileSize, getDriveItemIcon } from './dealsView/helpers';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -108,6 +109,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateStatement,
 }) => {
   const navigate = useNavigate();
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
 
   type AllRecordsSortKey = 'none' | 'payment' | 'saldo' | 'comment' | 'amount';
 
@@ -456,8 +458,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       setStatementDriveTrashMessage('Выберите хотя бы один файл для удаления.');
       return;
     }
-    const confirmText = `Удалить выбранные файлы (${selectedStatementDriveFileIds.length})?`;
-    if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
+    const confirmed = await confirm({
+      title: 'Удалить файлы',
+      message: `Удалить выбранные файлы (${selectedStatementDriveFileIds.length})?`,
+      confirmText: 'Удалить',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     setStatementDriveTrashing(true);
@@ -471,7 +478,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     } finally {
       setStatementDriveTrashing(false);
     }
-  }, [loadStatementDriveFiles, selectedStatement, selectedStatementDriveFileIds]);
+  }, [confirm, loadStatementDriveFiles, selectedStatement, selectedStatementDriveFileIds]);
 
   const handleDownloadStatementDriveFiles = useCallback(
     async (fileIds?: string[]) => {
@@ -939,8 +946,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       if (!selectedStatement || file.isFolder) {
         return;
       }
-      const shouldDelete = window.confirm(`Удалить файл "${file.name}"?`);
-      if (!shouldDelete) {
+      const confirmed = await confirm({
+        title: 'Удалить файл',
+        message: `Удалить файл "${file.name}"?`,
+        confirmText: 'Удалить',
+        tone: 'danger',
+      });
+      if (!confirmed) {
         return;
       }
       setStatementDriveTrashing(true);
@@ -953,7 +965,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         setStatementDriveTrashing(false);
       }
     },
-    [loadStatementDriveFiles, selectedStatement],
+    [confirm, loadStatementDriveFiles, selectedStatement],
   );
 
   const handleCreateStatement = useCallback(async () => {
@@ -1006,12 +1018,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     const existingPaidAt = editingStatement.paidAt ?? '';
     const nextPaidAt = editStatementForm.paidAt ?? '';
     const isSettingPaidAtNow = Boolean(nextPaidAt) && !existingPaidAt;
-    if (isSettingPaidAtNow && typeof window !== 'undefined') {
-      const confirmText =
-        'Если указать дату выплаты, ведомость будет считаться выплаченной. ' +
-        'После сохранения редактирование и удаление ведомости будут недоступны, ' +
-        'а всем записям будет проставлена дата выплаты.\n\nПродолжить?';
-      if (!window.confirm(confirmText)) {
+    if (isSettingPaidAtNow) {
+      const confirmed = await confirm({
+        title: 'Подтвердите выплату',
+        message:
+          'Если указать дату выплаты, ведомость будет считаться выплаченной. После сохранения редактирование и удаление ведомости будут недоступны, а всем записям будет проставлена дата выплаты.\n\nПродолжить?',
+        confirmText: 'Продолжить',
+        tone: 'primary',
+      });
+      if (!confirmed) {
         return;
       }
     }
@@ -1023,7 +1038,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       paidAt: editStatementForm.paidAt || null,
     });
     setEditingStatement(null);
-  }, [editStatementForm, editingStatement, onUpdateStatement]);
+  }, [confirm, editStatementForm, editingStatement, onUpdateStatement]);
 
   const handleDeleteStatementConfirm = useCallback(async () => {
     if (!deletingStatement || !onDeleteStatement) {
@@ -2465,6 +2480,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           </div>
         </Modal>
       )}
+      <ConfirmDialogRenderer />
     </section>
   );
 };

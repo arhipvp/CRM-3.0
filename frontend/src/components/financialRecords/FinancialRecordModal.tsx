@@ -1,11 +1,11 @@
 import React from 'react';
 
 import type { FinancialRecord } from '../../types';
-import { Modal } from '../Modal';
 import {
   AddFinancialRecordForm,
   AddFinancialRecordFormValues,
 } from '../forms/AddFinancialRecordForm';
+import { FormModal } from '../common/modal/FormModal';
 
 interface FinancialRecordModalProps {
   isOpen: boolean;
@@ -26,14 +26,17 @@ export const FinancialRecordModal: React.FC<FinancialRecordModalProps> = ({
   onSubmit,
   onClose,
 }) => {
-  if (!isOpen) {
-    return null;
-  }
-
   const resolvedPaymentId = record?.paymentId || paymentId;
 
   return (
-    <Modal title={title} onClose={onClose} size="sm" zIndex={50} closeOnOverlayClick={false}>
+    <FormModal
+      isOpen={isOpen}
+      title={title}
+      onClose={onClose}
+      size="sm"
+      zIndex={50}
+      closeOnOverlayClick={false}
+    >
       <AddFinancialRecordForm
         paymentId={resolvedPaymentId}
         defaultRecordType={defaultRecordType}
@@ -41,6 +44,6 @@ export const FinancialRecordModal: React.FC<FinancialRecordModalProps> = ({
         onSubmit={onSubmit}
         onCancel={onClose}
       />
-    </Modal>
+    </FormModal>
   );
 };

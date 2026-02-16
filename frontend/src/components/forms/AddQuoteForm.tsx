@@ -3,6 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
 import type { InsuranceCompany, InsuranceType } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { FormActions } from '../common/forms/FormActions';
+import { FormError } from '../common/forms/FormError';
+import { FormField } from '../common/forms/FormField';
 
 export interface QuoteFormValues {
   insuranceCompanyId: string;
@@ -106,18 +109,17 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="app-alert app-alert-danger">{error}</p>}
-      {optionsError && <p className="app-alert app-alert-danger">{optionsError}</p>}
+    <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
+      <FormError message={error} />
+      <FormError message={optionsError} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="block text-sm font-semibold text-slate-700">Страховая компания *</label>
+        <FormField label="Страховая компания" required>
           <select
             value={insuranceCompanyId}
             onChange={(event) => setInsuranceCompanyId(event.target.value)}
             disabled={loadingOptions}
-            className="mt-1 field field-input disabled:cursor-not-allowed disabled:bg-slate-50"
+            className="field field-input disabled:cursor-not-allowed disabled:bg-slate-50"
           >
             <option value="">Выберите компанию</option>
             {companies.map((company) => (
@@ -126,15 +128,14 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
               </option>
             ))}
           </select>
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-semibold text-slate-700">Тип страхования *</label>
+        <FormField label="Тип страхования" required>
           <select
             value={insuranceTypeId}
             onChange={(event) => setInsuranceTypeId(event.target.value)}
             disabled={loadingOptions}
-            className="mt-1 field field-input disabled:cursor-not-allowed disabled:bg-slate-50"
+            className="field field-input disabled:cursor-not-allowed disabled:bg-slate-50"
           >
             <option value="">Выберите тип</option>
             {types.map((insuranceType) => (
@@ -143,31 +144,29 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
               </option>
             ))}
           </select>
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-semibold text-slate-700">Страховая сумма, ₽ *</label>
+        <FormField label="Страховая сумма, ₽" required>
           <input
             type="number"
             min="0"
             step="0.01"
             value={sumInsured}
             onChange={(event) => setSumInsured(event.target.value)}
-            className="mt-1 field field-input"
+            className="field field-input"
           />
-        </div>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-semibold text-slate-700">Премия, ₽ *</label>
+        <FormField label="Премия, ₽" required>
           <input
             type="number"
             min="0"
             step="0.01"
             value={premium}
             onChange={(event) => setPremium(event.target.value)}
-            className="mt-1 field field-input"
+            className="field field-input"
           />
-        </div>
+        </FormField>
       </div>
 
       <div className="flex flex-wrap gap-6">
@@ -191,43 +190,32 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         </label>
       </div>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Франшиза</label>
+      <FormField label="Франшиза">
         <input
           type="text"
           value={deductible}
           onChange={(event) => setDeductible(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Комментарий</label>
+      <FormField label="Комментарий">
         <textarea
           value={comments}
           onChange={(event) => setComments(event.target.value)}
           rows={3}
-          className="mt-1 field-textarea"
+          className="field-textarea"
         />
-      </div>
+      </FormField>
 
-      <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn btn-secondary rounded-xl"
-          disabled={isSubmitting}
-        >
-          Отмена
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting || loadingOptions}
-          className="btn btn-primary rounded-xl"
-        >
-          {isSubmitting ? 'Сохраняем...' : submitLabel}
-        </button>
-      </div>
+      <FormActions
+        onCancel={onCancel}
+        isSubmitting={isSubmitting}
+        isSubmitDisabled={loadingOptions}
+        submitLabel={submitLabel}
+        submitClassName="btn btn-primary rounded-xl"
+        cancelClassName="btn btn-secondary rounded-xl"
+      />
 
       {loadingOptions && <p className="mt-2 text-xs text-slate-500">Загружаю справочники...</p>}
     </form>

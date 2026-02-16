@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { FormActions } from '../common/forms/FormActions';
+import { FormError } from '../common/forms/FormError';
+import { FormField } from '../common/forms/FormField';
 
 interface ClientFormProps {
   initial?: {
@@ -56,66 +59,63 @@ export const ClientForm: React.FC<ClientFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="app-alert app-alert-danger">{error}</p>}
+    <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
+      <FormError message={error} />
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Имя *</label>
+      <FormField label="Имя" required>
         <input
           type="text"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
           placeholder='Например: "Иван Иванов"'
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">E-mail</label>
+      <FormField label="E-mail">
         <input
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
           placeholder="client@example.ru"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Телефон</label>
+      <FormField label="Телефон">
         <input
           type="tel"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
           placeholder="+7 (900) 000-00-00"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Дата рождения</label>
+      <FormField label="Дата рождения">
         <input
           type="date"
           value={birthDate ?? ''}
           onChange={(event) => setBirthDate(event.target.value)}
-          className="mt-1 field field-input"
+          className="field field-input"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label className="block text-sm font-semibold text-slate-700">Примечание</label>
+      <FormField label="Примечание">
         <textarea
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
           rows={3}
-          className="mt-1 field-textarea"
+          className="field-textarea"
           placeholder="Дополнительная информация по клиенту"
         />
-      </div>
+      </FormField>
 
-      <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full rounded-xl">
-        {isSubmitting ? 'Сохраняем...' : submitLabel}
-      </button>
+      <FormActions
+        isSubmitting={isSubmitting}
+        submitLabel={submitLabel}
+        submitClassName="btn btn-primary w-full rounded-xl"
+      />
     </form>
   );
 };

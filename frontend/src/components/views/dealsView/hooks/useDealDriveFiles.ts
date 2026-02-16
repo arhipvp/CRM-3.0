@@ -14,6 +14,7 @@ import {
 interface UseDealDriveFilesParams {
   selectedDeal: Deal | null;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
+  onConfirmAction?: (message: string) => Promise<boolean>;
   onRefreshPolicies?: () => Promise<void>;
   onPolicyDraftReady?: (
     dealId: string,
@@ -27,6 +28,7 @@ interface UseDealDriveFilesParams {
 export const useDealDriveFiles = ({
   selectedDeal,
   onDriveFolderCreated,
+  onConfirmAction,
   onRefreshPolicies,
   onPolicyDraftReady,
 }: UseDealDriveFilesParams) => {
@@ -224,7 +226,8 @@ export const useDealDriveFiles = ({
     }
 
     const confirmText = `Удалить выбранные файлы (${selectedDriveFileIds.length})?`;
-    if (typeof window !== 'undefined' && !window.confirm(confirmText)) {
+    const confirmed = onConfirmAction ? await onConfirmAction(confirmText) : true;
+    if (!confirmed) {
       return;
     }
 
@@ -251,7 +254,7 @@ export const useDealDriveFiles = ({
         setIsTrashing(false);
       }
     }
-  }, [loadDriveFiles, selectedDeal, selectedDriveFileIds]);
+  }, [loadDriveFiles, onConfirmAction, selectedDeal, selectedDriveFileIds]);
 
   const handleDownloadDriveFiles = useCallback(
     async (fileIds?: string[]) => {

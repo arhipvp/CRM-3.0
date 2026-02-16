@@ -11,6 +11,8 @@ import {
   TABLE_THEAD_CLASS,
 } from '../common/tableStyles';
 import { FilterParams } from '../../api';
+import { DataTableShell } from '../common/table/DataTableShell';
+import { EmptyTableState } from '../common/table/EmptyTableState';
 
 type PaymentSortKey = 'scheduledDate' | 'actualDate' | 'amount';
 
@@ -99,72 +101,65 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
           },
         ]}
       />
-      <div className="app-panel shadow-none overflow-hidden">
-        <div className="overflow-x-auto bg-white">
-          <table className="deals-table min-w-full border-collapse text-left text-sm">
-            <thead className={TABLE_THEAD_CLASS}>
-              <tr>
-                <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
-                <TableHeadCell className="min-w-[160px]">Сумма</TableHeadCell>
-                <TableHeadCell className="min-w-[170px]">Плановая дата</TableHeadCell>
-                <TableHeadCell className="min-w-[170px]">Фактическая дата</TableHeadCell>
-                <TableHeadCell align="right" className="min-w-[200px]">
-                  Действие
-                </TableHeadCell>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {filteredPayments.map((payment) => {
-                const dealTitle = payment.dealTitle || '-';
-                const clientName = payment.dealClientName || '-';
+      <DataTableShell>
+        <table className="deals-table min-w-full border-collapse text-left text-sm">
+          <thead className={TABLE_THEAD_CLASS}>
+            <tr>
+              <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
+              <TableHeadCell className="min-w-[160px]">Сумма</TableHeadCell>
+              <TableHeadCell className="min-w-[170px]">Плановая дата</TableHeadCell>
+              <TableHeadCell className="min-w-[170px]">Фактическая дата</TableHeadCell>
+              <TableHeadCell align="right" className="min-w-[200px]">
+                Действие
+              </TableHeadCell>
+            </tr>
+          </thead>
+          <tbody className="bg-white">
+            {filteredPayments.map((payment) => {
+              const dealTitle = payment.dealTitle || '-';
+              const clientName = payment.dealClientName || '-';
 
-                return (
-                  <tr key={payment.id} className={TABLE_ROW_CLASS}>
-                    <td className={TABLE_CELL_CLASS_LG}>
-                      <p className="text-base font-semibold text-slate-900">{dealTitle}</p>
-                      <p className="text-xs text-slate-500 mt-1">{clientName}</p>
-                    </td>
-                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700 font-semibold`}>
-                      {formatCurrencyRu(payment.amount)}
-                    </td>
-                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      {formatDateRu(payment.scheduledDate)}
-                    </td>
-                    <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
-                      {formatDateRu(payment.actualDate)}
-                    </td>
-                    <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
-                      <div className={TABLE_ACTIONS_CLASS_ROW}>
-                        {!payment.actualDate ? (
-                          <button
-                            type="button"
-                            onClick={() => onMarkPaid(payment.id)}
-                            className="btn btn-secondary btn-sm rounded-xl"
-                          >
-                            Отметить оплаченным
-                          </button>
-                        ) : (
-                          <span className="text-xs text-emerald-700 font-semibold">Оплачен</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {!filteredPayments.length && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="border border-slate-200 px-6 py-10 text-center text-slate-600"
-                  >
-                    <PanelMessage>Платежей пока нет</PanelMessage>
+              return (
+                <tr key={payment.id} className={TABLE_ROW_CLASS}>
+                  <td className={TABLE_CELL_CLASS_LG}>
+                    <p className="text-base font-semibold text-slate-900">{dealTitle}</p>
+                    <p className="text-xs text-slate-500 mt-1">{clientName}</p>
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700 font-semibold`}>
+                    {formatCurrencyRu(payment.amount)}
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                    {formatDateRu(payment.scheduledDate)}
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
+                    {formatDateRu(payment.actualDate)}
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
+                    <div className={TABLE_ACTIONS_CLASS_ROW}>
+                      {!payment.actualDate ? (
+                        <button
+                          type="button"
+                          onClick={() => onMarkPaid(payment.id)}
+                          className="btn btn-secondary btn-sm rounded-xl"
+                        >
+                          Отметить оплаченным
+                        </button>
+                      ) : (
+                        <span className="text-xs text-emerald-700 font-semibold">Оплачен</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              );
+            })}
+            {!filteredPayments.length && (
+              <EmptyTableState colSpan={5}>
+                <PanelMessage>Платежей пока нет</PanelMessage>
+              </EmptyTableState>
+            )}
+          </tbody>
+        </table>
+      </DataTableShell>
     </div>
   );
 };

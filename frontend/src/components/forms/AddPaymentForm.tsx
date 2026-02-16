@@ -6,6 +6,8 @@ import { DealField } from './addPayment/DealField';
 import { DatesFields } from './addPayment/DatesFields';
 import { FormActions } from './addPayment/FormActions';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { FormError } from '../common/forms/FormError';
+import { FormField } from '../common/forms/FormField';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -109,7 +111,7 @@ export function AddPaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
-      {error && <p className="app-alert app-alert-danger">{error}</p>}
+      <FormError message={error} />
 
       {payment && <PaymentMetadata payment={payment} />}
 
@@ -132,10 +134,7 @@ export function AddPaymentForm({
         onChange={(e) => setFormData((prev) => ({ ...prev, dealId: e.target.value || null }))}
       />
 
-      <div className="space-y-2">
-        <label htmlFor="amount" className="app-label">
-          Сумма (руб.) *
-        </label>
+      <FormField label="Сумма (руб.)" htmlFor="amount" required>
         <input
           type="number"
           id="amount"
@@ -148,12 +147,9 @@ export function AddPaymentForm({
           required
           className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <label htmlFor="description" className="app-label">
-          Комментарий
-        </label>
+      <FormField label="Комментарий" htmlFor="description">
         <textarea
           id="description"
           name="description"
@@ -164,7 +160,7 @@ export function AddPaymentForm({
           disabled={loading}
           className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
         />
-      </div>
+      </FormField>
 
       <DatesFields
         scheduledDate={formData.scheduledDate}

@@ -53,6 +53,7 @@ import { useFinancialRecordModal } from '../../../hooks/useFinancialRecordModal'
 import { PaymentModal } from '../../payments/PaymentModal';
 import { usePaymentModal } from '../../../hooks/usePaymentModal';
 import { fetchNotificationSettings } from '../../../api/notifications';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface DealDetailsPanelProps {
   deals: Deal[];
@@ -170,6 +171,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onRestoreDeal,
 }) => {
   const navigate = useNavigate();
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
   const sellerDisplayName = sellerUser
     ? getUserDisplayName(sellerUser)
     : selectedDeal?.sellerName || '—';
@@ -319,6 +321,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   } = useDealDriveFiles({
     selectedDeal,
     onDriveFolderCreated,
+    onConfirmAction: async (message) =>
+      confirm({
+        title: 'Удалить файлы',
+        message,
+        confirmText: 'Удалить',
+        tone: 'danger',
+      }),
     onRefreshPolicies,
     onPolicyDraftReady,
   });
@@ -1209,6 +1218,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           onSubmit={handleMergeSubmit}
         />
       )}
+      <ConfirmDialogRenderer />
     </>
   );
 };

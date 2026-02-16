@@ -25,6 +25,7 @@ import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
+import { DataTableShell } from '../common/table/DataTableShell';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-start_date', label: 'Начало (убывание)' },
@@ -206,150 +207,146 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       </div>
 
       {filteredPolicies.length ? (
-        <div className="app-panel shadow-none overflow-hidden">
-          <div className="overflow-x-auto bg-white">
-            <table
-              className="deals-table w-full table-fixed border-collapse text-left text-sm"
-              aria-label="Список полисов"
-            >
-              <thead className={TABLE_THEAD_CLASS}>
-                <tr>
-                  <TableHeadCell padding="md" className="w-[18%]">
-                    Полис
-                  </TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[16%]">
-                    Клиент
-                  </TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[18%]">
-                    Компания
-                  </TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[18%]">
-                    Тип / ТС
-                  </TableHeadCell>
-                  <TableHeadCell padding="md" className="w-[12%]">
-                    Канал
-                  </TableHeadCell>
-                  <TableHeadCell padding="md" align="right" className="w-[18%]">
-                    Сумма
-                  </TableHeadCell>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                {paymentsByPolicy.map(({ policy, payments }) => {
-                  const paymentsPanelId = `policy-${policy.id}-payments`;
-                  const model = buildPolicyCardModel(policy, payments);
-                  const hasUnpaidPayments = unpaidPaymentsPolicies.has(policy.id);
-                  const hasUnpaidRecords = unpaidRecordsPolicies.has(policy.id);
-                  const expiryBadge = getPolicyExpiryBadge(policy.endDate);
-                  const transportSummary = policy.isVehicle
-                    ? getPolicyTransportSummary(policy)
-                    : '';
+        <DataTableShell>
+          <table
+            className="deals-table w-full table-fixed border-collapse text-left text-sm"
+            aria-label="Список полисов"
+          >
+            <thead className={TABLE_THEAD_CLASS}>
+              <tr>
+                <TableHeadCell padding="md" className="w-[18%]">
+                  Полис
+                </TableHeadCell>
+                <TableHeadCell padding="md" className="w-[16%]">
+                  Клиент
+                </TableHeadCell>
+                <TableHeadCell padding="md" className="w-[18%]">
+                  Компания
+                </TableHeadCell>
+                <TableHeadCell padding="md" className="w-[18%]">
+                  Тип / ТС
+                </TableHeadCell>
+                <TableHeadCell padding="md" className="w-[12%]">
+                  Канал
+                </TableHeadCell>
+                <TableHeadCell padding="md" align="right" className="w-[18%]">
+                  Сумма
+                </TableHeadCell>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {paymentsByPolicy.map(({ policy, payments }) => {
+                const paymentsPanelId = `policy-${policy.id}-payments`;
+                const model = buildPolicyCardModel(policy, payments);
+                const hasUnpaidPayments = unpaidPaymentsPolicies.has(policy.id);
+                const hasUnpaidRecords = unpaidRecordsPolicies.has(policy.id);
+                const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+                const transportSummary = policy.isVehicle ? getPolicyTransportSummary(policy) : '';
 
-                  return (
-                    <React.Fragment key={policy.id}>
-                      <tr className={`${TABLE_ROW_CLASS} border-t-2 border-slate-300`}>
-                        <td className={TABLE_CELL_CLASS_MD}>
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <PolicyNumberButton
-                                value={model.number}
-                                className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
-                              />
-                              {hasUnpaidPayments && (
-                                <span
-                                  className={[
-                                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                                    expiryBadge?.tone === 'red'
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-orange-100 text-orange-700',
-                                  ].join(' ')}
-                                >
-                                  {POLICY_TEXT.badges.unpaidPayments}
-                                </span>
-                              )}
-                              {hasUnpaidRecords && (
-                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                                  {POLICY_TEXT.badges.unpaidRecords}
-                                </span>
-                              )}
-                              {expiryBadge && (
-                                <span
-                                  className={[
-                                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                                    expiryBadge.tone === 'red'
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-orange-100 text-orange-700',
-                                  ].join(' ')}
-                                >
-                                  {expiryBadge.label}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-500">
-                              Начало: {model.startDate} · Окончание: {model.endDate}
-                            </p>
-                          </div>
-                        </td>
-                        <td className={TABLE_CELL_CLASS_MD}>
-                          <p className="text-sm font-semibold text-slate-900 break-words">
-                            {model.client}
-                          </p>
-                        </td>
-                        <td className={TABLE_CELL_CLASS_MD}>
-                          <div className="min-w-0">
-                            <ColoredLabel
-                              value={policy.insuranceCompany}
-                              showDot
-                              className="max-w-full truncate font-semibold text-slate-900"
+                return (
+                  <React.Fragment key={policy.id}>
+                    <tr className={`${TABLE_ROW_CLASS} border-t-2 border-slate-300`}>
+                      <td className={TABLE_CELL_CLASS_MD}>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <PolicyNumberButton
+                              value={model.number}
+                              className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
                             />
-                          </div>
-                        </td>
-                        <td className={TABLE_CELL_CLASS_MD}>
-                          <p className="text-sm font-semibold text-slate-900 break-words">
-                            {model.insuranceType}
-                          </p>
-                          {transportSummary && (
-                            <p className="mt-1 text-xs text-slate-500">{transportSummary}</p>
-                          )}
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_MD} text-slate-700 break-words`}>
-                          {model.salesChannel}
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
-                          <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                        </td>
-                      </tr>
-                      <tr className={`${TABLE_ROW_CLASS_PLAIN} border-t border-slate-200`}>
-                        <td
-                          colSpan={6}
-                          className="border border-slate-200 border-b-2 border-slate-300 bg-slate-50/70 px-4 py-3"
-                        >
-                          <div id={paymentsPanelId} className="space-y-2">
-                            {payments.length ? (
-                              payments.map((payment) => (
-                                <PaymentCard
-                                  key={payment.id}
-                                  payment={payment}
-                                  onRequestAddRecord={openCreateFinancialRecord}
-                                  onEditFinancialRecord={openEditFinancialRecord}
-                                  onDeleteFinancialRecord={onDeleteFinancialRecord}
-                                  onDeletePayment={onDeletePayment}
-                                  variant="table"
-                                />
-                              ))
-                            ) : (
-                              <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
+                            {hasUnpaidPayments && (
+                              <span
+                                className={[
+                                  'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                  expiryBadge?.tone === 'red'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-orange-100 text-orange-700',
+                                ].join(' ')}
+                              >
+                                {POLICY_TEXT.badges.unpaidPayments}
+                              </span>
+                            )}
+                            {hasUnpaidRecords && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                {POLICY_TEXT.badges.unpaidRecords}
+                              </span>
+                            )}
+                            {expiryBadge && (
+                              <span
+                                className={[
+                                  'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                  expiryBadge.tone === 'red'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-orange-100 text-orange-700',
+                                ].join(' ')}
+                              >
+                                {expiryBadge.label}
+                              </span>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                          <p className="text-xs text-slate-500">
+                            Начало: {model.startDate} · Окончание: {model.endDate}
+                          </p>
+                        </div>
+                      </td>
+                      <td className={TABLE_CELL_CLASS_MD}>
+                        <p className="text-sm font-semibold text-slate-900 break-words">
+                          {model.client}
+                        </p>
+                      </td>
+                      <td className={TABLE_CELL_CLASS_MD}>
+                        <div className="min-w-0">
+                          <ColoredLabel
+                            value={policy.insuranceCompany}
+                            showDot
+                            className="max-w-full truncate font-semibold text-slate-900"
+                          />
+                        </div>
+                      </td>
+                      <td className={TABLE_CELL_CLASS_MD}>
+                        <p className="text-sm font-semibold text-slate-900 break-words">
+                          {model.insuranceType}
+                        </p>
+                        {transportSummary && (
+                          <p className="mt-1 text-xs text-slate-500">{transportSummary}</p>
+                        )}
+                      </td>
+                      <td className={`${TABLE_CELL_CLASS_MD} text-slate-700 break-words`}>
+                        {model.salesChannel}
+                      </td>
+                      <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
+                        <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
+                      </td>
+                    </tr>
+                    <tr className={`${TABLE_ROW_CLASS_PLAIN} border-t border-slate-200`}>
+                      <td
+                        colSpan={6}
+                        className="border border-slate-200 border-b-2 border-slate-300 bg-slate-50/70 px-4 py-3"
+                      >
+                        <div id={paymentsPanelId} className="space-y-2">
+                          {payments.length ? (
+                            payments.map((payment) => (
+                              <PaymentCard
+                                key={payment.id}
+                                payment={payment}
+                                onRequestAddRecord={openCreateFinancialRecord}
+                                onEditFinancialRecord={openEditFinancialRecord}
+                                onDeleteFinancialRecord={onDeleteFinancialRecord}
+                                onDeletePayment={onDeletePayment}
+                                variant="table"
+                              />
+                            ))
+                          ) : (
+                            <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </DataTableShell>
       ) : (
         <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
           {isPoliciesLoading ? 'Загрузка полисов...' : 'Нет полисов для отображения'}

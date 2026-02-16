@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Task, TaskPriority, TaskStatus, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { FormActions } from '../common/forms/FormActions';
+import { FormError } from '../common/forms/FormError';
+import { FormField } from '../common/forms/FormField';
 
 export interface AddTaskFormValues {
   title: string;
@@ -72,12 +75,9 @@ export function AddTaskForm({
 
   return (
     <form onSubmit={handleSubmit} className="app-panel p-6 shadow-none space-y-6">
-      {error && <p className="app-alert app-alert-danger">{error}</p>}
+      <FormError message={error} />
 
-      <div className="space-y-2">
-        <label htmlFor="title" className="app-label">
-          Название задачи *
-        </label>
+      <FormField label="Название задачи" htmlFor="title" required>
         <input
           type="text"
           id="title"
@@ -89,12 +89,9 @@ export function AddTaskForm({
           required
           className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <label htmlFor="description" className="app-label">
-          Описание
-        </label>
+      <FormField label="Описание" htmlFor="description">
         <textarea
           id="description"
           name="description"
@@ -105,12 +102,13 @@ export function AddTaskForm({
           disabled={loading}
           className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <label htmlFor="assigneeId" className="app-label">
-          Исполнитель
-        </label>
+      <FormField
+        label="Исполнитель"
+        htmlFor="assigneeId"
+        hint={!task ? 'По умолчанию будет назначен исполнитель сделки.' : undefined}
+      >
         <select
           id="assigneeId"
           name="assigneeId"
@@ -126,16 +124,10 @@ export function AddTaskForm({
             </option>
           ))}
         </select>
-        {!task && (
-          <p className="text-sm text-slate-600">По умолчанию будет назначен исполнитель сделки.</p>
-        )}
-      </div>
+      </FormField>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <label htmlFor="priority" className="app-label">
-            Приоритет
-          </label>
+        <FormField label="Приоритет" htmlFor="priority">
           <select
             id="priority"
             name="priority"
@@ -149,12 +141,9 @@ export function AddTaskForm({
             <option value="high">Высокий</option>
             <option value="urgent">Срочный</option>
           </select>
-        </div>
+        </FormField>
 
-        <div className="space-y-2">
-          <label htmlFor="dueAt" className="app-label">
-            Срок выполнения
-          </label>
+        <FormField label="Срок выполнения" htmlFor="dueAt">
           <input
             type="date"
             id="dueAt"
@@ -164,14 +153,11 @@ export function AddTaskForm({
             disabled={loading}
             className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
           />
-        </div>
+        </FormField>
       </div>
 
       {task && (
-        <div className="space-y-2">
-          <label htmlFor="status" className="app-label">
-            Статус
-          </label>
+        <FormField label="Статус" htmlFor="status">
           <select
             id="status"
             name="status"
@@ -186,17 +172,14 @@ export function AddTaskForm({
             <option value="overdue">Просрочено</option>
             <option value="canceled">Отменено</option>
           </select>
-        </div>
+        </FormField>
       )}
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? 'Сохраняем...' : task ? 'Обновить' : 'Создать'}
-        </button>
-        <button type="button" onClick={onCancel} disabled={loading} className="btn btn-secondary">
-          Отмена
-        </button>
-      </div>
+      <FormActions
+        onCancel={onCancel}
+        isSubmitting={loading}
+        submitLabel={task ? 'Обновить' : 'Создать'}
+      />
     </form>
   );
 }

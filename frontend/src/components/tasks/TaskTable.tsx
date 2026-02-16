@@ -9,6 +9,9 @@ import {
 } from '../common/tableStyles';
 import { formatDate, formatDateTime } from '../views/dealsView/helpers';
 import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
+import { DataTableShell } from '../common/table/DataTableShell';
+import { EmptyTableState } from '../common/table/EmptyTableState';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface TaskTableProps {
   tasks: Task[];
@@ -41,6 +44,7 @@ export function TaskTable({
   completingTaskIds = [],
   onDealClick,
 }: TaskTableProps) {
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
   const hasActions =
     showActions && (Boolean(onMarkTaskDone) || Boolean(onEditTask) || Boolean(onDeleteTask));
 
@@ -62,24 +66,33 @@ export function TaskTable({
     .filter(Boolean)
     .join(' ');
 
-  const handleDelete = (taskId: string) => {
+  const handleDelete = async (taskId: string) => {
     if (!onDeleteTask) {
       return;
     }
-    if (
-      typeof window !== 'undefined' &&
-      !window.confirm('Вы уверены, что хотите удалить задачу?')
-    ) {
+    const confirmed = await confirm({
+      title: 'Удаление задачи',
+      message: 'Вы уверены, что хотите удалить задачу?',
+      confirmText: 'Удалить',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     onDeleteTask(taskId).catch(() => undefined);
   };
 
-  const handleMarkDone = (taskId: string) => {
+  const handleMarkDone = async (taskId: string) => {
     if (!onMarkTaskDone) {
       return;
     }
-    if (typeof window !== 'undefined' && !window.confirm('Отметить задачу выполненной?')) {
+    const confirmed = await confirm({
+      title: 'Выполнение задачи',
+      message: 'Отметить задачу выполненной?',
+      confirmText: 'Подтвердить',
+      tone: 'primary',
+    });
+    if (!confirmed) {
       return;
     }
     onMarkTaskDone(taskId);
@@ -93,8 +106,8 @@ export function TaskTable({
   };
 
   return (
-    <div className="app-panel shadow-none overflow-hidden">
-      <div className="overflow-x-auto bg-white">
+    <>
+      <DataTableShell>
         <table className="deals-table min-w-full table-fixed border-collapse text-left text-sm">
           <thead className={TABLE_THEAD_CLASS}>
             <tr>
@@ -301,18 +314,12 @@ export function TaskTable({
             })}
 
             {!tasks.length && (
-              <tr>
-                <td
-                  colSpan={columnCount}
-                  className="border border-slate-200 px-4 py-8 text-center text-slate-600"
-                >
-                  {emptyMessage}
-                </td>
-              </tr>
+              <EmptyTableState colSpan={columnCount}>{emptyMessage}</EmptyTableState>
             )}
           </tbody>
         </table>
-      </div>
-    </div>
+      </DataTableShell>
+      <ConfirmDialogRenderer />
+    </>
   );
 }

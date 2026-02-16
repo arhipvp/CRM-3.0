@@ -25,6 +25,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - **`components/`** содержит переиспользуемые визуальные блоки (карточки клиентов, таблицы сделок, формы фильтрации).
 - **`hooks/` и `contexts/`** поддерживают состояние (например, `useAuth`, `useDealsFilter`, контексты auth/session) и управляют подписками на WebSocket/интервалами.
 - **`utils/`, `types/` и `src/__tests__/`** — утилиты, типы и Vitest/Testing Library сценарии для компонентов и helpers.
+- **Унификация переиспользования**: базовые примитивы формы/таблиц/confirm лежат в `src/components/common/*` и `src/hooks/useConfirm.ts`; подробности в `frontend/docs/component-reuse-audit.md`.
 - **`public/`** хватка favicon, manifest, Robots, а `vite.config.ts` описывает прокси к backend и сборку.
 
 ### Инфраструктура

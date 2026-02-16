@@ -1,8 +1,8 @@
 import React from 'react';
 
 import type { Payment, Policy } from '../../types';
-import { Modal } from '../Modal';
 import { AddPaymentForm, AddPaymentFormValues } from '../forms/AddPaymentForm';
+import { FormModal } from '../common/modal/FormModal';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -27,12 +27,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onSubmit,
   onClose,
 }) => {
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <Modal title={title} onClose={onClose} size="sm" zIndex={50} closeOnOverlayClick={false}>
+    <FormModal
+      isOpen={isOpen}
+      title={title}
+      onClose={onClose}
+      size="sm"
+      zIndex={50}
+      closeOnOverlayClick={false}
+    >
       <AddPaymentForm
         payment={payment}
         dealId={dealId}
@@ -42,6 +45,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         onSubmit={onSubmit}
         onCancel={onClose}
       />
-    </Modal>
+    </FormModal>
   );
 };

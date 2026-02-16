@@ -66,6 +66,7 @@ import { useAppData } from './hooks/useAppData';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
+import { useConfirm } from './hooks/useConfirm';
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
@@ -84,6 +85,7 @@ import {
 
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
   const [modal, setModal] = useState<ModalType>(null);
   const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
   const [clientModalReturnTo, setClientModalReturnTo] = useState<ModalType | null>(null);
@@ -826,7 +828,13 @@ const AppContent: React.FC = () => {
   );
   const handleDeleteDeal = useCallback(
     async (dealId: string) => {
-      if (!confirm('Вы уверены, что хотите удалить эту сделку?')) {
+      const confirmed = await confirm({
+        title: 'Удалить сделку',
+        message: 'Вы уверены, что хотите удалить эту сделку?',
+        confirmText: 'Удалить',
+        tone: 'danger',
+      });
+      if (!confirmed) {
         return;
       }
 
@@ -846,7 +854,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, dealFilters, refreshDealsWithSelection, setError, setIsSyncing],
+    [addNotification, confirm, dealFilters, refreshDealsWithSelection, setError, setIsSyncing],
   );
 
   const handleRestoreDeal = useCallback(
@@ -2062,11 +2070,14 @@ const AppContent: React.FC = () => {
       if (!payment) {
         return;
       }
-      if (typeof window !== 'undefined') {
-        const confirmText = 'Удалить платёж и все связанные записи?';
-        if (!window.confirm(confirmText)) {
-          return;
-        }
+      const confirmed = await confirm({
+        title: 'Удалить платёж',
+        message: 'Удалить платёж и все связанные записи?',
+        confirmText: 'Удалить',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
       }
       try {
         await deletePayment(paymentId);
@@ -2091,7 +2102,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [adjustPaymentsTotals, payments, setError, syncDealsByIds, updateAppData],
+    [adjustPaymentsTotals, confirm, payments, setError, syncDealsByIds, updateAppData],
   );
 
   const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
@@ -2695,6 +2706,7 @@ const AppContent: React.FC = () => {
           </div>
         </Modal>
       )}
+      <ConfirmDialogRenderer />
       <NotificationDisplay />
 
       {error && (
