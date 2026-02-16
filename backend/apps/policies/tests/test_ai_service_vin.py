@@ -18,8 +18,23 @@ class SourceVinExtractionTests(SimpleTestCase):
         )
         self.assertEqual(_extract_vin_from_source_text(text), "WP0ZZZYAZSL060921")
 
+    def test_extracts_vin_before_anchor_for_tabular_line(self) -> None:
+        text = (
+            "VOLKSWAGEN TOUAREG XW8ZZZ7PZGG001078 T002PK777 2015 249 "
+            "Марка,модель Идентификационный номер Государственный регистрационный знак"
+        )
+        self.assertEqual(_extract_vin_from_source_text(text), "XW8ZZZ7PZGG001078")
+
+    def test_picks_nearest_vin_when_multiple_candidates_around_anchor(self) -> None:
+        text = (
+            "AAAAAAAABBBBBBBBB далеко от поля "
+            "Идентификационный номер WP0ZZZYAZSL060921 "
+            "дополнительно XW8ZZZ7PZGG001078"
+        )
+        self.assertEqual(_extract_vin_from_source_text(text), "WP0ZZZYAZSL060921")
+
     def test_ignores_tokens_without_vin_anchor(self) -> None:
-        text = "Случайная строка ABCDEFGH123456789 без явного поля VIN."
+        text = "Случайная строка ABCDEFGH123456789 без явного поля номера кузова."
         self.assertEqual(_extract_vin_from_source_text(text), "")
 
 
@@ -90,3 +105,40 @@ class RecognizePolicyVinFailSoftTests(SimpleTestCase):
         data, _, _ = recognize_policy_interactive(text)
 
         self.assertEqual(data["policy"]["vehicle_vin"], "WP0ZZZYAZSL060921")
+
+    @patch("apps.policies.ai_service._chat")
+    def test_repairs_broken_json_and_recovers_vin_from_source_text(
+        self, chat_mock
+    ) -> None:
+        chat_mock.return_value = """{
+  "client_name": "БЕЛОВ ДМИТРИЙ АНАТОЛЬЕВИЧ",
+  "policy": {
+    "policy_number": "SYS2942242418",
+    "insurance_type": "ОСАГО",
+    "insurance_company": "РЕСО-ГАРАНТИЯ",
+    "contractor": "",
+    "sales_channel": "",
+    "start_date": "2026-02-18",
+    "end_date": "2027-02-17",
+    "vehicle_brand": "VOLKSWAGEN",
+    "vehicle_model": "TOUAREG",
+    "vehicle_vin": "  ,
+    "note": "импортировано с помощью ИИ"
+  },
+  "payments": [
+    {
+      "amount": 5400,
+      "payment_date": "2026-02-18",
+      "actual_payment_date": "2026-02-18"
+    }
+  ]
+}"""
+        text = (
+            "VOLKSWAGEN TOUAREG XW8ZZZ7PZGG001078 T002PK777 2015 249 "
+            "Марка,модель Идентификационный номер Государственный регистрационный знак"
+        )
+
+        data, _, _ = recognize_policy_interactive(text)
+
+        self.assertEqual(data["policy"]["vehicle_vin"], "XW8ZZZ7PZGG001078")
+        self.assertEqual(chat_mock.call_count, 1)

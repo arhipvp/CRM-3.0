@@ -38,6 +38,8 @@ VIN_ANCHOR_RE = re.compile(
     r"(?:\bVIN\b|Идентификацион(?:ный|ного)\s+номер)", flags=re.IGNORECASE
 )
 VIN_TOKEN_RE = re.compile(r"[A-Za-z0-9]{17,}")
+VIN_WINDOW_BEFORE = 180
+VIN_WINDOW_AFTER = 180
 
 
 DEFAULT_PROMPT = """Ты — ассистент, отвечающий за импорт данных из страховых полисов в CRM.
@@ -612,13 +614,46 @@ def _extract_vin_from_source_text(text: str) -> str:
     if not normalized_text:
         return ""
 
+    best_match: tuple[int, str] | None = None
     for anchor_match in VIN_ANCHOR_RE.finditer(normalized_text):
-        window = normalized_text[anchor_match.end() : anchor_match.end() + 180]
+        anchor_start = anchor_match.start()
+        anchor_end = anchor_match.end()
+        window_start = max(0, anchor_start - VIN_WINDOW_BEFORE)
+        window_end = min(len(normalized_text), anchor_end + VIN_WINDOW_AFTER)
+        window = normalized_text[window_start:window_end]
+        candidates_found = 0
+
         for token_match in VIN_TOKEN_RE.finditer(window):
             token = token_match.group(0)
-            candidate = token[:17]
-            if re.fullmatch(VIN_PATTERN, candidate):
-                return candidate
+            candidate = token[:17].strip().upper()
+            if not re.fullmatch(VIN_PATTERN, candidate):
+                continue
+            candidates_found += 1
+            token_abs_start = window_start + token_match.start()
+            token_abs_end = token_abs_start + len(candidate)
+            if token_abs_end <= anchor_start:
+                distance = anchor_start - token_abs_end
+            elif token_abs_start >= anchor_end:
+                distance = token_abs_start - anchor_end
+            else:
+                distance = 0
+            if best_match is None or distance < best_match[0]:
+                best_match = (distance, candidate)
+
+        logger.info(
+            "VIN anchor matched: anchor='%s' at [%s:%s], candidates=%s",
+            anchor_match.group(0),
+            anchor_start,
+            anchor_end,
+            candidates_found,
+        )
+    if best_match:
+        logger.info(
+            "VIN selected from source text: vin=%s distance_to_anchor=%s",
+            best_match[1],
+            best_match[0],
+        )
+        return best_match[1]
     return ""
 
 
@@ -632,7 +667,7 @@ def _apply_vin_fail_soft(data: dict, source_text: str) -> dict:
         return data
 
     raw_vin = policy.get("vehicle_vin")
-    normalized_vin = raw_vin.strip() if isinstance(raw_vin, str) else ""
+    normalized_vin = raw_vin.strip().upper() if isinstance(raw_vin, str) else ""
     source_vin = _extract_vin_from_source_text(source_text)
 
     if source_vin:
