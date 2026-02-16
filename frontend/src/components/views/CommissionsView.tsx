@@ -12,25 +12,19 @@ import {
   uploadStatementDriveFile,
 } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
-import { FileUploadManager } from '../FileUploadManager';
 import { PanelMessage } from '../PanelMessage';
-import { TableHeadCell } from '../common/TableHeadCell';
-import { FormActions } from '../common/forms/FormActions';
-import { FormField } from '../common/forms/FormField';
-import { FormModal } from '../common/modal/FormModal';
-import {
-  TABLE_CELL_CLASS_SM,
-  TABLE_ROW_CLASS,
-  TABLE_ROW_CLASS_PLAIN,
-  TABLE_THEAD_CLASS,
-} from '../common/tableStyles';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { buildDriveFolderLink } from '../../utils/links';
-import { formatDriveDate, formatDriveFileSize, getDriveItemIcon } from './dealsView/helpers';
-import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { useConfirm } from '../../hooks/useConfirm';
+import { CreateStatementModal } from './commissions/CreateStatementModal';
+import { DeleteStatementModal } from './commissions/DeleteStatementModal';
+import { EditStatementModal } from './commissions/EditStatementModal';
+import { AllRecordsPanel } from './commissions/AllRecordsPanel';
+import { RecordsTable } from './commissions/RecordsTable';
+import { StatementFilesTab } from './commissions/StatementFilesTab';
+import type { AllRecordsSortKey, AmountDraft, IncomeExpenseRow } from './commissions/RecordsTable';
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -66,20 +60,6 @@ interface CommissionsViewProps {
   ) => Promise<Statement>;
 }
 
-type IncomeExpenseRow = {
-  key: string;
-  payment: Payment;
-  recordId: string;
-  statementId?: string | null;
-  recordAmount: number;
-  paymentPaidBalance?: number;
-  paymentPaidEntries?: Array<{ amount: string; date: string }>;
-  recordDate?: string | null;
-  recordDescription?: string;
-  recordSource?: string;
-  recordNote?: string;
-};
-
 const MOJIBAKE_RE = /Ð/;
 
 const normalizeText = (value?: string | null) => {
@@ -113,9 +93,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
 
-  type AllRecordsSortKey = 'none' | 'payment' | 'saldo' | 'comment' | 'amount';
-
-  type AmountDraft = { mode: 'rub' | 'percent'; value: string };
   const [amountDrafts, setAmountDrafts] = useState<Record<string, AmountDraft>>({});
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
@@ -1052,470 +1029,46 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
   // Ведомость считается выплаченной по факту наличия paidAt.
 
-  const recordsSelectionBar = (
-    <div className="sticky top-0 z-20 border-b border-slate-200 bg-white px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-slate-700">
-          {attachStatement ? (
-            <>
-              Выбрано: <span className="font-semibold">{selectedRecordIds.length}</span>
-              {viewMode === 'all' && attachStatement
-                ? ` · Ведомость: ${normalizeText(attachStatement.name)}`
-                : ''}
-            </>
-          ) : (
-            <span className="text-slate-500">Выберите ведомость, чтобы добавлять записи.</span>
-          )}
-          {viewMode === 'statements' && selectedStatement && !isSelectedStatementPaid && (
-            <span className="ml-2 text-xs text-slate-500">
-              Чтобы убрать запись: выделите строку и нажмите &quot;Убрать из ведомости&quot;.
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {viewMode === 'statements' ? (
-            <button
-              type="button"
-              onClick={() => void handleRemoveSelected()}
-              className="btn btn-danger btn-sm rounded-xl"
-              disabled={
-                !selectedRecordIds.length ||
-                !onRemoveStatementRecords ||
-                isSelectedStatementPaid ||
-                !selectedStatement
-              }
-            >
-              Убрать из ведомости
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleAttachSelected()}
-              className="btn btn-primary btn-sm rounded-xl"
-              disabled={
-                !selectedRecordIds.length ||
-                !onUpdateStatement ||
-                !attachStatement ||
-                isAttachStatementPaid
-              }
-            >
-              Добавить выбранные
-            </button>
-          )}
-          {selectedRecordIds.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedRecordIds([])}
-              className="btn btn-secondary btn-sm rounded-xl"
-            >
-              Сбросить выделение
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   const recordsTable = (
-    <div className="rounded-2xl border-2 border-slate-300 bg-white shadow-sm">
-      {recordsSelectionBar}
-      <div className="overflow-x-auto bg-white rounded-b-2xl">
-        <table
-          className="deals-table w-full table-fixed border-collapse text-left text-sm"
-          aria-label="Доходы и расходы"
-        >
-          <thead className={TABLE_THEAD_CLASS}>
-            <tr>
-              <TableHeadCell padding="sm" align="center" className="w-10">
-                <input
-                  ref={selectAllRef}
-                  type="checkbox"
-                  checked={allSelectableSelected}
-                  onChange={toggleSelectAll}
-                  disabled={
-                    !attachStatement || isAttachStatementPaid || selectableRecordIds.length === 0
-                  }
-                  className="check"
-                  aria-label="Выбрать все видимые записи"
-                  title={
-                    !attachStatement
-                      ? 'Выберите ведомость для добавления записей'
-                      : isAttachStatementPaid
-                        ? 'Выплаченная ведомость недоступна для изменений'
-                        : undefined
-                  }
-                />
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[22%] min-w-0">
-                Клиент / сделка
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[12%] min-w-0">
-                Номер полиса
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[12%] min-w-0">
-                Тип полиса
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[9%] min-w-0">
-                Канал продаж
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[14%] min-w-0" align="right">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleAllRecordsSort('payment')}
-                    aria-label={`Сортировать по платежу, текущий порядок ${getAllRecordsSortLabel('payment')}`}
-                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Платеж
-                    </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      {getAllRecordsSortIndicator('payment')}
-                    </span>
-                  </button>
-                ) : (
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Платеж
-                  </span>
-                )}
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[15%] min-w-0" align="right">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleAllRecordsSort('saldo')}
-                    aria-label={`Сортировать по сальдо, текущий порядок ${getAllRecordsSortLabel('saldo')}`}
-                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Сальдо
-                    </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      {getAllRecordsSortIndicator('saldo')}
-                    </span>
-                  </button>
-                ) : (
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Сальдо
-                  </span>
-                )}
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[16%] min-w-0">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleAllRecordsSort('comment')}
-                    aria-label={`Сортировать по примечанию, текущий порядок ${getAllRecordsSortLabel('comment')}`}
-                    className="flex w-full items-center justify-start gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Примечание
-                    </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      {getAllRecordsSortIndicator('comment')}
-                    </span>
-                  </button>
-                ) : (
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Примечание
-                  </span>
-                )}
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[220px]" align="right">
-                {viewMode === 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleAllRecordsSort('amount')}
-                    aria-label={`Сортировать по сумме, текущий порядок ${getAllRecordsSortLabel('amount')}`}
-                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Сумма, ₽
-                    </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      {getAllRecordsSortIndicator('amount')}
-                    </span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={toggleAmountSort}
-                    aria-label={`Сортировать по сумме, текущий порядок ${getAmountSortLabel()}`}
-                    className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      Сумма, ₽
-                    </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                      {getAmountSortIndicator()}
-                    </span>
-                  </button>
-                )}
-              </TableHeadCell>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
-            {filteredRows.map((row) => {
-              const payment = row.payment;
-              const policy = payment.policyId ? policiesById.get(payment.policyId) : undefined;
-              const policyNumber =
-                normalizeText(payment.policyNumber) ||
-                normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
-                '-';
-              const policyType =
-                normalizeText(payment.policyInsuranceType) ||
-                normalizeText(policiesById.get(payment.policyId ?? '')?.insuranceType) ||
-                '-';
-              const salesChannelLabel =
-                normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
-                normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
-                '-';
-              const dealClientName = normalizeText(payment.dealClientName) || '-';
-              const policyClientName =
-                normalizeText(policy?.insuredClientName) ||
-                normalizeText(policy?.clientName) ||
-                dealClientName ||
-                '-';
-              const dealTitle = normalizeText(payment.dealTitle) || '-';
-              const paymentActualDate = payment.actualDate
-                ? formatDateRu(payment.actualDate)
-                : null;
-              const paymentScheduledDate = payment.scheduledDate
-                ? formatDateRu(payment.scheduledDate)
-                : null;
-              const isPaymentPaid = Boolean(payment.actualDate);
-              const recordAmount = row.recordAmount;
-              const isIncome = recordAmount > 0;
-              const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
-              const recordDateLabel = formatDateRu(row.recordDate);
-              const paymentBalance = row.paymentPaidBalance;
-              const paymentBalanceLabel =
-                paymentBalance === undefined ? '—' : formatCurrencyRu(paymentBalance);
-              const paymentEntries = (row.paymentPaidEntries ?? []).slice().sort((a, b) => {
-                const aTime = new Date(a.date).getTime();
-                const bTime = new Date(b.date).getTime();
-                return bTime - aTime;
-              });
-              const commentParts = [row.recordNote, row.recordDescription, row.recordSource]
-                .map((value) => normalizeText(value?.toString().trim()))
-                .filter(Boolean);
-              const primaryComment = commentParts[0] ?? '';
-              const secondaryComment =
-                commentParts.length > 1 ? commentParts.slice(1).join(' · ') : '';
-              const amountDraft = amountDrafts[row.recordId];
-              const amountMode: AmountDraft['mode'] = amountDraft?.mode ?? 'rub';
-              const amountValue =
-                amountDraft?.value ??
-                (amountMode === 'rub'
-                  ? Math.abs(recordAmount).toString()
-                  : getPercentFromSaldo(row, Math.abs(recordAmount)));
-              const saldoBase = getAbsoluteSaldoBase(row);
-              const isPercentModeAvailable = saldoBase > 0;
-              const amountSuffix = amountMode === 'rub' ? '₽' : '%';
-              const percentPreviewAmount =
-                amountMode === 'percent' && Number.isFinite(Number(amountValue)) && saldoBase > 0
-                  ? (saldoBase * Number(amountValue)) / 100
-                  : null;
-              const recordStatement = row.statementId
-                ? statementsById.get(row.statementId)
-                : undefined;
-              const isRecordLocked = Boolean(recordStatement?.paidAt);
-              const statementNote = recordStatement
-                ? recordStatement.paidAt
-                  ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(
-                      recordStatement.name,
-                    )}`
-                  : `Ведомость: ${normalizeText(recordStatement.name)}`
-                : null;
-              const isSelectable = attachStatement ? canAttachRow(row) : false;
-              const isSelected = selectedRecordIds.includes(row.recordId);
-
-              return (
-                <tr key={row.key} className={TABLE_ROW_CLASS}>
-                  <td className="border border-slate-200 px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleRecordSelection(row)}
-                      disabled={!isSelectable || isAttachStatementPaid}
-                      className="check"
-                      title={
-                        !attachStatement
-                          ? 'Выберите ведомость для добавления записей'
-                          : !isSelectable
-                            ? 'Запись нельзя добавить в выбранную ведомость'
-                            : undefined
-                      }
-                    />
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0`}>
-                    <p className="text-sm font-semibold text-slate-900">{policyClientName}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
-                      {payment.dealId && onDealSelect ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDeal(payment.dealId)}
-                          className="link-action text-[11px] font-semibold"
-                        >
-                          {dealTitle}
-                        </button>
-                      ) : (
-                        <span>{dealTitle}</span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Контакт по сделке:{' '}
-                      <span className="font-semibold text-slate-700">{dealClientName}</span>
-                    </p>
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700`}>
-                    <PolicyNumberButton
-                      value={policyNumber === '-' ? '' : policyNumber}
-                      placeholder="-"
-                      className="link-action text-left"
-                    />
-                  </td>
-                  <td
-                    lang="ru"
-                    className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700 hyphens-auto break-words`}
-                  >
-                    {policyType}
-                  </td>
-                  <td
-                    className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700 hyphens-auto break-words`}
-                  >
-                    {salesChannelLabel}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-right text-slate-700`}>
-                    <p className="text-sm font-semibold">
-                      {formatCurrencyRu(Number(payment.amount))}
-                    </p>
-                    {isPaymentPaid ? (
-                      <p className="mt-1 text-[11px] font-semibold text-emerald-700">
-                        Оплачен{paymentActualDate ? `: ${paymentActualDate}` : ''}
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[11px] font-semibold text-rose-700">
-                        Не оплачен{paymentScheduledDate ? ` (план: ${paymentScheduledDate})` : ''}
-                      </p>
-                    )}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-right text-slate-700`}>
-                    <p className="text-sm font-semibold">{paymentBalanceLabel}</p>
-                    {paymentEntries.length ? (
-                      <div className="mt-1 space-y-1 text-[11px] text-slate-500">
-                        {paymentEntries.map((entry, index) => {
-                          const entryAmount = Number(entry.amount);
-                          const entryLabel = Number.isFinite(entryAmount)
-                            ? formatCurrencyRu(Math.abs(entryAmount))
-                            : entry.amount;
-                          const entryDate = formatDateRu(entry.date);
-                          const entryType = entryAmount >= 0 ? 'Доход' : 'Расход';
-                          return (
-                            <p key={`${row.payment.id}-${index}`}>
-                              {entryType} {entryLabel} · {entryDate}
-                            </p>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-[11px] text-slate-500">Операций нет</p>
-                    )}
-                  </td>
-                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700`}>
-                    {primaryComment ? (
-                      <p className="text-sm font-semibold text-slate-900">{primaryComment}</p>
-                    ) : (
-                      <p className="text-sm font-semibold text-slate-400">—</p>
-                    )}
-                    {secondaryComment && (
-                      <p className="mt-1 text-[11px] text-slate-500">{secondaryComment}</p>
-                    )}
-                    {statementNote && (
-                      <p className="mt-1 text-[11px] text-slate-500">{statementNote}</p>
-                    )}
-                  </td>
-                  <td
-                    className={`${TABLE_CELL_CLASS_SM} w-[220px] min-w-[220px] text-right text-slate-700`}
-                  >
-                    <p className={`text-sm font-semibold ${recordClass}`}>
-                      {isIncome ? '+' : '-'}
-                      {formatCurrencyRu(Math.abs(recordAmount))}
-                    </p>
-                    <p className="mt-1 text-[11px] text-slate-500">{recordDateLabel}</p>
-                    {onUpdateFinancialRecord && (
-                      <div className="mt-1 flex w-full items-start justify-end gap-2">
-                        <div className="relative w-full max-w-[160px]">
-                          <input
-                            type="number"
-                            step={amountMode === 'rub' ? '0.01' : '0.1'}
-                            value={amountValue}
-                            onChange={(event) =>
-                              handleRecordAmountChange(row.recordId, event.target.value)
-                            }
-                            onBlur={() => void handleRecordAmountBlur(row)}
-                            disabled={isRecordLocked}
-                            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 pr-7 text-[11px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100 disabled:bg-slate-50"
-                          />
-                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-                            {amountSuffix}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleRecordAmountMode(row)}
-                          disabled={
-                            isRecordLocked || (amountMode === 'rub' && !isPercentModeAvailable)
-                          }
-                          className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                          title={
-                            amountMode === 'rub'
-                              ? isPercentModeAvailable
-                                ? 'Ввести в процентах от Сальдо'
-                                : 'Нельзя посчитать процент: Сальдо равно 0'
-                              : 'Ввести сумму в рублях'
-                          }
-                          aria-label={
-                            amountMode === 'rub'
-                              ? 'Переключить ввод суммы на проценты от сальдо'
-                              : 'Переключить ввод суммы на рубли'
-                          }
-                        >
-                          {amountMode === 'rub' ? '%' : '₽'}
-                        </button>
-                      </div>
-                    )}
-                    {onUpdateFinancialRecord && amountMode === 'percent' && (
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        {percentPreviewAmount === null
-                          ? `Процент от Сальдо: ${paymentBalanceLabel}`
-                          : `≈ ${formatCurrencyRu(percentPreviewAmount)} от ${paymentBalanceLabel}`}
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {!filteredRows.length && (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="border border-slate-200 px-6 py-10 text-center text-slate-600"
-                >
-                  <PanelMessage>
-                    {viewMode === 'all' && isAllRecordsLoading
-                      ? 'Загрузка записей...'
-                      : viewMode === 'statements' && selectedStatement
-                        ? 'Записей в ведомости пока нет'
-                        : 'Записей пока нет'}
-                  </PanelMessage>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <RecordsTable
+      attachStatement={attachStatement}
+      isAttachStatementPaid={isAttachStatementPaid}
+      selectedStatement={selectedStatement}
+      isSelectedStatementPaid={isSelectedStatementPaid}
+      viewMode={viewMode}
+      selectedRecordIds={selectedRecordIds}
+      selectableRecordIds={selectableRecordIds}
+      allSelectableSelected={allSelectableSelected}
+      selectAllRef={selectAllRef}
+      filteredRows={filteredRows}
+      policiesById={policiesById}
+      statementsById={statementsById}
+      amountDrafts={amountDrafts}
+      isAllRecordsLoading={isAllRecordsLoading}
+      isRecordAmountEditable={Boolean(onUpdateFinancialRecord)}
+      canAttachSelectedAction={Boolean(onUpdateStatement)}
+      canRemoveSelectedAction={Boolean(onRemoveStatementRecords)}
+      normalizeText={normalizeText}
+      canAttachRow={canAttachRow}
+      onAttachSelected={handleAttachSelected}
+      onRemoveSelected={handleRemoveSelected}
+      onResetSelection={() => setSelectedRecordIds([])}
+      onToggleSelectAll={toggleSelectAll}
+      onToggleRecordSelection={toggleRecordSelection}
+      onOpenDeal={handleOpenDeal}
+      onDealSelect={onDealSelect}
+      onToggleAllRecordsSort={toggleAllRecordsSort}
+      getAllRecordsSortLabel={getAllRecordsSortLabel}
+      getAllRecordsSortIndicator={getAllRecordsSortIndicator}
+      onToggleAmountSort={toggleAmountSort}
+      getAmountSortLabel={getAmountSortLabel}
+      getAmountSortIndicator={getAmountSortIndicator}
+      getPercentFromSaldo={getPercentFromSaldo}
+      getAbsoluteSaldoBase={getAbsoluteSaldoBase}
+      onRecordAmountChange={handleRecordAmountChange}
+      onRecordAmountBlur={handleRecordAmountBlur}
+      onToggleRecordAmountMode={toggleRecordAmountMode}
+    />
   );
 
   const statementTabs = [
@@ -1524,236 +1077,54 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   ];
 
   const statementFilesTab = (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="app-label">Файлы</p>
-            {statementDriveFolderLink && (
-              <a
-                href={statementDriveFolderLink}
-                target="_blank"
-                rel="noreferrer"
-                className="link-action text-xs"
-              >
-                Открыть папку в Google Drive
-              </a>
-            )}
-          </div>
-          <p className="text-xs text-slate-500">
-            Файлы загружаются прямо из папки, привязанной к этой ведомости.
-          </p>
-        </div>
-        {selectedStatement && (
-          <button
-            type="button"
-            onClick={() => void loadStatementDriveFiles(selectedStatement.id)}
-            disabled={isStatementDriveLoading}
-            className="btn btn-secondary btn-sm rounded-xl"
-          >
-            {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
-          </button>
-        )}
-      </div>
-
-      <FileUploadManager
-        onUpload={async (file) => {
-          if (!selectedStatement) {
-            return;
-          }
-          setStatementDriveUploading(true);
-          try {
-            await uploadStatementDriveFile(selectedStatement.id, file);
-            await loadStatementDriveFiles(selectedStatement.id);
-            setStatementDriveError(null);
-          } catch (error) {
-            setStatementDriveError(formatErrorMessage(error, 'Не удалось загрузить файл.'));
-          } finally {
-            setStatementDriveUploading(false);
-          }
-        }}
-        disabled={
-          !selectedStatement ||
-          isStatementDriveUploading ||
-          isStatementDriveLoading ||
-          isStatementDriveTrashing ||
-          isStatementDriveDownloading
+    <StatementFilesTab
+      selectedStatement={selectedStatement}
+      statementDriveFolderLink={statementDriveFolderLink}
+      isStatementDriveLoading={isStatementDriveLoading}
+      isStatementDriveUploading={isStatementDriveUploading}
+      isStatementDriveTrashing={isStatementDriveTrashing}
+      isStatementDriveDownloading={isStatementDriveDownloading}
+      selectedStatementDriveFileIds={selectedStatementDriveFileIds}
+      statementDriveError={statementDriveError}
+      statementDriveTrashMessage={statementDriveTrashMessage}
+      statementDriveDownloadMessage={statementDriveDownloadMessage}
+      hasStatementDriveFolder={Boolean(selectedStatementDriveFolderId)}
+      sortedStatementDriveFiles={sortedStatementDriveFiles}
+      onRefresh={() => {
+        if (!selectedStatement) {
+          return;
         }
-      />
-
-      <div className="flex flex-wrap items-center gap-2 pt-2">
-        <button
-          type="button"
-          onClick={() => void handleDownloadStatementDriveFiles()}
-          disabled={
-            isStatementDriveDownloading ||
-            isStatementDriveTrashing ||
-            isStatementDriveLoading ||
-            !selectedStatement ||
-            selectedStatementDriveFileIds.length === 0 ||
-            !!statementDriveError
-          }
-          className="btn btn-secondary btn-sm rounded-xl"
-        >
-          {isStatementDriveDownloading ? 'Скачиваю...' : 'Скачать'}
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleTrashSelectedStatementDriveFiles()}
-          disabled={
-            isStatementDriveDownloading ||
-            isStatementDriveTrashing ||
-            isStatementDriveLoading ||
-            !selectedStatement ||
-            selectedStatementDriveFileIds.length === 0 ||
-            !!statementDriveError
-          }
-          className="btn btn-danger btn-sm rounded-xl"
-        >
-          {isStatementDriveTrashing ? 'Удаляю...' : 'Удалить'}
-        </button>
-        <p className="text-xs text-slate-500">
-          {selectedStatementDriveFileIds.length
-            ? `${selectedStatementDriveFileIds.length} файл${
-                selectedStatementDriveFileIds.length === 1 ? '' : 'ов'
-              } выбрано`
-            : 'Выберите файлы для действий.'}
-        </p>
-      </div>
-
-      {statementDriveError && <p className="app-alert app-alert-danger">{statementDriveError}</p>}
-
-      {statementDriveTrashMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
-          {statementDriveTrashMessage}
-        </p>
-      )}
-
-      {statementDriveDownloadMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
-          {statementDriveDownloadMessage}
-        </p>
-      )}
-
-      {!statementDriveError &&
-        selectedStatementDriveFolderId &&
-        !isStatementDriveLoading &&
-        sortedStatementDriveFiles.length === 0 && (
-          <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">Папка пуста.</div>
-        )}
-
-      {!statementDriveError && sortedStatementDriveFiles.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className={TABLE_THEAD_CLASS}>
-                <tr>
-                  <TableHeadCell padding="sm" className="w-10">
-                    <span className="sr-only">Выбор</span>
-                  </TableHeadCell>
-                  <TableHeadCell padding="sm">Файл</TableHeadCell>
-                  <TableHeadCell padding="sm" align="right">
-                    Размер
-                  </TableHeadCell>
-                  <TableHeadCell padding="sm" align="right">
-                    Дата
-                  </TableHeadCell>
-                  <TableHeadCell padding="sm" align="right">
-                    Действия
-                  </TableHeadCell>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedStatementDriveFiles.map((file) => {
-                  const isSelected = selectedStatementDriveFileIds.includes(file.id);
-                  const canSelect =
-                    !file.isFolder &&
-                    !isStatementDriveLoading &&
-                    !isStatementDriveTrashing &&
-                    !isStatementDriveDownloading;
-
-                  return (
-                    <tr key={file.id} className={TABLE_ROW_CLASS_PLAIN}>
-                      <td className={TABLE_CELL_CLASS_SM}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          disabled={!canSelect}
-                          onChange={() => toggleStatementDriveFileSelection(file.id)}
-                          className="check rounded-sm"
-                          aria-label={`Выбрать файл: ${file.name}`}
-                        />
-                      </td>
-                      <td className={TABLE_CELL_CLASS_SM}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-lg">{getDriveItemIcon(file.isFolder)}</span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 break-all">
-                              {file.name}
-                            </p>
-                            <p className="text-xs text-slate-500">{file.mimeType || '—'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
-                        {formatDriveFileSize(file.size)}
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
-                        {formatDriveDate(file.modifiedAt ?? file.createdAt)}
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_SM} text-right`}>
-                        <div className="flex items-center justify-end gap-3">
-                          {file.webViewLink ? (
-                            <a
-                              href={file.webViewLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="link-action text-xs"
-                            >
-                              Открыть
-                            </a>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => void handleDownloadStatementDriveFiles([file.id])}
-                            disabled={
-                              file.isFolder ||
-                              isStatementDriveDownloading ||
-                              isStatementDriveTrashing ||
-                              isStatementDriveLoading ||
-                              !!statementDriveError
-                            }
-                            className="link-action text-xs disabled:text-slate-300"
-                          >
-                            Скачать
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleStatementDriveDelete(file)}
-                            disabled={
-                              file.isFolder ||
-                              isStatementDriveDownloading ||
-                              isStatementDriveTrashing ||
-                              isStatementDriveLoading ||
-                              !!statementDriveError
-                            }
-                            className="link-action text-xs disabled:text-slate-300"
-                          >
-                            Удалить
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </section>
+        void loadStatementDriveFiles(selectedStatement.id);
+      }}
+      onUpload={async (file) => {
+        if (!selectedStatement) {
+          return;
+        }
+        setStatementDriveUploading(true);
+        try {
+          await uploadStatementDriveFile(selectedStatement.id, file);
+          await loadStatementDriveFiles(selectedStatement.id);
+          setStatementDriveError(null);
+        } catch (error) {
+          setStatementDriveError(formatErrorMessage(error, 'Не удалось загрузить файл.'));
+        } finally {
+          setStatementDriveUploading(false);
+        }
+      }}
+      onDownloadSelected={() => {
+        void handleDownloadStatementDriveFiles();
+      }}
+      onTrashSelected={() => {
+        void handleTrashSelectedStatementDriveFiles();
+      }}
+      onToggleSelection={toggleStatementDriveFileSelection}
+      onDownloadFile={(fileId) => {
+        void handleDownloadStatementDriveFiles([fileId]);
+      }}
+      onDeleteFile={(file) => {
+        void handleStatementDriveDelete(file);
+      }}
+    />
   );
 
   return (
@@ -2058,392 +1429,62 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           className="outline-none"
           hidden={viewMode !== 'all'}
         >
-          <div className="divide-y divide-slate-200">
-            <div className="px-4 py-4 bg-white">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
-                    Все финансовые записи
-                  </span>
-                  <span className="text-sm text-slate-500 whitespace-nowrap">
-                    Фильтры по записям
-                  </span>
-                </div>
-                <div className="w-full max-w-sm">
-                  <label htmlFor="allFinancialSearch" className="sr-only">
-                    Поиск по записям
-                  </label>
-                  <input
-                    id="allFinancialSearch"
-                    type="search"
-                    value={allRecordsSearch}
-                    onChange={(event) => setAllRecordsSearch(event.target.value)}
-                    placeholder="Поиск по клиенту, полису, сделке, примечанию..."
-                    className="field field-input"
-                  />
-                </div>
-              </div>
-            </div>
-            {allRecordsError && (
-              <div className="px-4 py-3 bg-white border-b border-slate-200">
-                <div className="app-alert app-alert-danger flex flex-wrap items-center justify-between gap-3">
-                  <span>{allRecordsError}</span>
-                  <button
-                    type="button"
-                    onClick={() => void loadAllRecords('reset')}
-                    className="btn btn-secondary btn-sm rounded-xl"
-                    disabled={isAllRecordsLoading}
-                  >
-                    Повторить
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="px-4 py-4 border-b border-slate-200 bg-white">
-              <div className="flex flex-wrap items-center gap-4">
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showUnpaidPayments}
-                    onChange={(event) => setShowUnpaidPayments(event.target.checked)}
-                    className="check"
-                  />
-                  Показывать неоплаченные платежи
-                </label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showStatementRecords}
-                    onChange={(event) => setShowStatementRecords(event.target.checked)}
-                    className="check"
-                  />
-                  Показывать записи в ведомостях
-                </label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showPaidRecords}
-                    onChange={(event) => setShowPaidRecords(event.target.checked)}
-                    className="check"
-                  />
-                  Показать оплаченные расходы/доходы
-                </label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                  <input
-                    type="checkbox"
-                    checked={showZeroSaldo}
-                    onChange={(event) => setShowZeroSaldo(event.target.checked)}
-                    className="check"
-                  />
-                  Показывать нулевое сальдо
-                </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setRecordTypeFilter('income')}
-                    disabled={isRecordTypeLocked}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                      recordTypeFilter === 'income'
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        : 'text-slate-600 hover:bg-white'
-                    }`}
-                    title={
-                      isRecordTypeLocked
-                        ? 'Тип записей выбран автоматически по ведомости'
-                        : 'Показать только доходы'
-                    }
-                  >
-                    Доходы
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRecordTypeFilter('expense')}
-                    disabled={isRecordTypeLocked}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                      recordTypeFilter === 'expense'
-                        ? 'bg-rose-600 text-white hover:bg-rose-700'
-                        : 'text-slate-600 hover:bg-white'
-                    }`}
-                    title={
-                      isRecordTypeLocked
-                        ? 'Тип записей выбран автоматически по ведомости'
-                        : 'Показать только расходы'
-                    }
-                  >
-                    Расходы
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRecordTypeFilter('all')}
-                    disabled={isRecordTypeLocked}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                      recordTypeFilter === 'all'
-                        ? 'bg-slate-900 text-white hover:bg-slate-800'
-                        : 'text-slate-600 hover:bg-white'
-                    }`}
-                    title={
-                      isRecordTypeLocked
-                        ? 'Тип записей выбран автоматически по ведомости'
-                        : 'Показать все записи'
-                    }
-                  >
-                    Все
-                  </button>
-                </div>
-                <select
-                  value={targetStatementId}
-                  onChange={(event) => setTargetStatementId(event.target.value)}
-                  className="field field-input h-10 min-w-[220px] text-sm"
-                >
-                  <option value="">Выберите ведомость</option>
-                  {statements
-                    .filter((statement) => !statement.paidAt)
-                    .map((statement) => (
-                      <option key={statement.id} value={statement.id}>
-                        {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
-                        {normalizeText(statement.name)}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
-            <div className="px-4 py-5 bg-white space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-                <span>
-                  Показано:{' '}
-                  <span className="font-semibold text-slate-700">{allRecords.length}</span>
-                  {allRecordsTotalCount ? ` из ${allRecordsTotalCount}` : ''}
-                </span>
-                {isAllRecordsLoading && <span>Загрузка...</span>}
-              </div>
-
-              {recordsTable}
-
-              {allRecordsHasMore && (
-                <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => void loadAllRecords('more')}
-                    disabled={isAllRecordsLoadingMore || isAllRecordsLoading}
-                    className="btn btn-quiet btn-sm rounded-xl"
-                  >
-                    {isAllRecordsLoadingMore ? 'Загрузка...' : 'Показать ещё'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <AllRecordsPanel
+            allRecordsSearch={allRecordsSearch}
+            onSearchChange={setAllRecordsSearch}
+            allRecordsError={allRecordsError}
+            isAllRecordsLoading={isAllRecordsLoading}
+            onRetryLoad={() => {
+              void loadAllRecords('reset');
+            }}
+            showUnpaidPayments={showUnpaidPayments}
+            onToggleShowUnpaidPayments={setShowUnpaidPayments}
+            showStatementRecords={showStatementRecords}
+            onToggleShowStatementRecords={setShowStatementRecords}
+            showPaidRecords={showPaidRecords}
+            onToggleShowPaidRecords={setShowPaidRecords}
+            showZeroSaldo={showZeroSaldo}
+            onToggleShowZeroSaldo={setShowZeroSaldo}
+            recordTypeFilter={recordTypeFilter}
+            onRecordTypeFilterChange={setRecordTypeFilter}
+            isRecordTypeLocked={isRecordTypeLocked}
+            targetStatementId={targetStatementId}
+            onTargetStatementChange={setTargetStatementId}
+            statements={statements}
+            normalizeText={normalizeText}
+            shownRecordsCount={allRecords.length}
+            totalRecordsCount={allRecordsTotalCount}
+            isAllRecordsLoadingMore={isAllRecordsLoadingMore}
+            allRecordsHasMore={allRecordsHasMore}
+            onLoadMore={() => {
+              void loadAllRecords('more');
+            }}
+            recordsTable={recordsTable}
+          />
         </div>
       </div>
 
-      {isStatementModalOpen && (
-        <FormModal
-          isOpen
-          title="Создать ведомость"
-          onClose={() => {
-            if (!isStatementCreating) {
-              setStatementModalOpen(false);
-            }
-          }}
-          size="sm"
-          closeOnOverlayClick={false}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handleCreateStatement();
-            }}
-            className="space-y-4"
-          >
-            <FormField label="Название" htmlFor="statementName" required>
-              <input
-                id="statementName"
-                value={statementForm.name}
-                onChange={(event) =>
-                  setStatementForm((prev) => ({ ...prev, name: event.target.value }))
-                }
-                className="field field-input"
-                required
-                disabled={isStatementCreating}
-              />
-            </FormField>
-            <FormField
-              label="Тип"
-              htmlFor="statementType"
-              hint="После пометки ведомости как «Выплачена» редактирование и удаление будут недоступны."
-            >
-              <select
-                id="statementType"
-                value={statementForm.statementType}
-                onChange={(event) =>
-                  setStatementForm((prev) => ({
-                    ...prev,
-                    statementType: event.target.value as Statement['statementType'],
-                  }))
-                }
-                className="field field-input"
-                disabled={isStatementCreating}
-              >
-                <option value="income">Доходы</option>
-                <option value="expense">Расходы</option>
-              </select>
-            </FormField>
-            <FormField label="Контрагент" htmlFor="statementCounterparty">
-              <input
-                id="statementCounterparty"
-                value={statementForm.counterparty}
-                onChange={(event) =>
-                  setStatementForm((prev) => ({ ...prev, counterparty: event.target.value }))
-                }
-                className="field field-input"
-                disabled={isStatementCreating}
-              />
-            </FormField>
-            <FormField label="Комментарий" htmlFor="statementComment">
-              <textarea
-                id="statementComment"
-                value={statementForm.comment}
-                onChange={(event) =>
-                  setStatementForm((prev) => ({ ...prev, comment: event.target.value }))
-                }
-                rows={3}
-                className="field-textarea"
-                disabled={isStatementCreating}
-              />
-            </FormField>
-            <FormActions
-              onCancel={() => setStatementModalOpen(false)}
-              isSubmitting={isStatementCreating}
-              submitLabel="Создать"
-              submittingLabel="Создаём..."
-              submitClassName="btn btn-primary rounded-xl"
-              cancelClassName="btn btn-secondary rounded-xl"
-            />
-          </form>
-        </FormModal>
-      )}
-      {editingStatement && (
-        <FormModal
-          isOpen
-          title="Редактировать ведомость"
-          onClose={() => setEditingStatement(null)}
-          size="sm"
-          closeOnOverlayClick={false}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handleEditStatementSubmit();
-            }}
-            className="space-y-4"
-          >
-            <FormField label="Название" htmlFor="editStatementName" required>
-              <input
-                id="editStatementName"
-                value={editStatementForm.name}
-                onChange={(event) =>
-                  setEditStatementForm((prev) => ({ ...prev, name: event.target.value }))
-                }
-                className="field field-input"
-                required
-              />
-            </FormField>
-            <FormField label="Тип" htmlFor="editStatementType">
-              <select
-                id="editStatementType"
-                value={editStatementForm.statementType}
-                onChange={(event) =>
-                  setEditStatementForm((prev) => ({
-                    ...prev,
-                    statementType: event.target.value as Statement['statementType'],
-                  }))
-                }
-                className="field field-input"
-              >
-                <option value="income">Доходы</option>
-                <option value="expense">Расходы</option>
-              </select>
-            </FormField>
-            <FormField
-              label="Дата выплаты"
-              htmlFor="editStatementPaidAt"
-              hint="Ведомость считается выплаченной, когда указана дата выплаты. После этого редактирование и удаление будут недоступны, а всем записям будет проставлена дата."
-            >
-              <input
-                id="editStatementPaidAt"
-                type="date"
-                value={editStatementForm.paidAt}
-                onChange={(event) =>
-                  setEditStatementForm((prev) => ({ ...prev, paidAt: event.target.value }))
-                }
-                className="field field-input"
-              />
-            </FormField>
-            <FormField label="Контрагент" htmlFor="editStatementCounterparty">
-              <input
-                id="editStatementCounterparty"
-                value={editStatementForm.counterparty}
-                onChange={(event) =>
-                  setEditStatementForm((prev) => ({
-                    ...prev,
-                    counterparty: event.target.value,
-                  }))
-                }
-                className="field field-input"
-              />
-            </FormField>
-            <FormField label="Комментарий" htmlFor="editStatementComment">
-              <textarea
-                id="editStatementComment"
-                value={editStatementForm.comment}
-                onChange={(event) =>
-                  setEditStatementForm((prev) => ({
-                    ...prev,
-                    comment: event.target.value,
-                  }))
-                }
-                rows={3}
-                className="field-textarea"
-              />
-            </FormField>
-            <FormActions
-              onCancel={() => setEditingStatement(null)}
-              submitLabel="Сохранить"
-              submitClassName="btn btn-primary rounded-xl"
-              cancelClassName="btn btn-secondary rounded-xl"
-            />
-          </form>
-        </FormModal>
-      )}
-      {deletingStatement && (
-        <FormModal
-          isOpen
-          title="Удалить ведомость"
-          onClose={() => setDeletingStatement(null)}
-          closeOnOverlayClick={false}
-        >
-          <p className="text-sm text-slate-700">
-            Ведомость <span className="font-bold">{normalizeText(deletingStatement.name)}</span>{' '}
-            будет удалена. Все записи отвяжутся от ведомости.
-          </p>
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setDeletingStatement(null)}
-              className="btn btn-secondary rounded-xl"
-            >
-              Отмена
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleDeleteStatementConfirm()}
-              className="btn btn-danger rounded-xl"
-            >
-              Удалить
-            </button>
-          </div>
-        </FormModal>
-      )}
+      <CreateStatementModal
+        isOpen={isStatementModalOpen}
+        isSubmitting={isStatementCreating}
+        form={statementForm}
+        onClose={() => setStatementModalOpen(false)}
+        onSubmit={handleCreateStatement}
+        onFormChange={setStatementForm}
+      />
+      <EditStatementModal
+        isOpen={Boolean(editingStatement)}
+        form={editStatementForm}
+        onClose={() => setEditingStatement(null)}
+        onSubmit={handleEditStatementSubmit}
+        onFormChange={setEditStatementForm}
+      />
+      <DeleteStatementModal
+        isOpen={Boolean(deletingStatement)}
+        statementName={normalizeText(deletingStatement?.name)}
+        onClose={() => setDeletingStatement(null)}
+        onConfirm={handleDeleteStatementConfirm}
+      />
       <ConfirmDialogRenderer />
     </section>
   );

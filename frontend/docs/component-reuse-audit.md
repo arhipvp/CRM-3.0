@@ -73,3 +73,9 @@
 - `src/components/forms/addPolicy/components/PolicyBasicsStep.tsx`
 - `src/components/forms/addPolicy/components/PolicyPaymentsStep.tsx`
 - `src/components/forms/addPolicy/components/PolicyFinanceStep.tsx`
+- `src/components/views/commissions/CreateStatementModal.tsx`
+- `src/components/views/commissions/EditStatementModal.tsx`
+- `src/components/views/commissions/DeleteStatementModal.tsx`
+- `src/components/views/commissions/StatementFilesTab.tsx`
+- `src/components/views/commissions/RecordsTable.tsx`
+- `src/components/views/commissions/AllRecordsPanel.tsx`
