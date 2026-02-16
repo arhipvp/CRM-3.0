@@ -34,6 +34,10 @@ NOTE_VALUE = "импортировано с помощью ИИ"
 
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x1F\x7F]")
 WHITESPACE_RE = re.compile(r"\s+")
+VIN_ANCHOR_RE = re.compile(
+    r"(?:\bVIN\b|Идентификацион(?:ный|ного)\s+номер)", flags=re.IGNORECASE
+)
+VIN_TOKEN_RE = re.compile(r"[A-Za-z0-9]{17,}")
 
 
 DEFAULT_PROMPT = """Ты — ассистент, отвечающий за импорт данных из страховых полисов в CRM.
@@ -599,6 +603,77 @@ def _extract_valid_vin(data: dict) -> str:
     return ""
 
 
+def _extract_vin_from_source_text(text: str) -> str:
+    """Детерминированно извлечь VIN из исходного текста рядом с VIN-якорями."""
+
+    if not isinstance(text, str):
+        return ""
+    normalized_text = _sanitize_text(text)
+    if not normalized_text:
+        return ""
+
+    for anchor_match in VIN_ANCHOR_RE.finditer(normalized_text):
+        window = normalized_text[anchor_match.end() : anchor_match.end() + 180]
+        for token_match in VIN_TOKEN_RE.finditer(window):
+            token = token_match.group(0)
+            candidate = token[:17]
+            if re.fullmatch(VIN_PATTERN, candidate):
+                return candidate
+    return ""
+
+
+def _apply_vin_fail_soft(data: dict, source_text: str) -> dict:
+    """Применить fail-soft для VIN до schema validation."""
+
+    if not isinstance(data, dict):
+        return data
+    policy = data.get("policy")
+    if not isinstance(policy, dict):
+        return data
+
+    raw_vin = policy.get("vehicle_vin")
+    normalized_vin = raw_vin.strip() if isinstance(raw_vin, str) else ""
+    source_vin = _extract_vin_from_source_text(source_text)
+
+    if source_vin:
+        if normalized_vin and normalized_vin != source_vin:
+            logger.info(
+                "VIN override from source text: model_vin=%s source_vin=%s",
+                normalized_vin,
+                source_vin,
+            )
+        policy["vehicle_vin"] = source_vin
+        return data
+
+    if normalized_vin and not re.fullmatch(VIN_PATTERN, normalized_vin):
+        logger.warning(
+            "VIN fail-soft: invalid VIN cleared before validation: %s",
+            normalized_vin,
+        )
+        policy["vehicle_vin"] = ""
+        return data
+
+    if isinstance(raw_vin, str):
+        policy["vehicle_vin"] = normalized_vin
+    else:
+        policy["vehicle_vin"] = ""
+    return data
+
+
+def _build_retry_message_for_validation(exc: ValidationError) -> str:
+    """Сформировать уточняющее сообщение для повторного запроса после ошибки валидации."""
+
+    error_text = str(exc)
+    if "vehicle_vin" in error_text or (
+        "pattern" in error_text and "A-Za-z0-9" in error_text
+    ):
+        return (
+            f"{REMINDER} VIN должен состоять из 17 латинских букв и цифр; "
+            'если VIN не указан или есть сомнения — верни "vehicle_vin": "".'
+        )
+    return REMINDER
+
+
 def _maybe_refine_vin(
     data: dict,
     messages: List[dict],
@@ -765,6 +840,7 @@ def recognize_policy_interactive(
             repaired = _repair_json_payload(extracted)
             data = json.loads(repaired, strict=False)
             data = _normalize_policy_payload(data)
+            data = _apply_vin_fail_soft(data, text)
             if HAVE_JSONSCHEMA:
                 validate(instance=data, schema=POLICY_SCHEMA)
             else:
@@ -780,14 +856,15 @@ def recognize_policy_interactive(
             messages.append({"role": "user", "content": REMINDER})
             continue
         except ValidationError as exc:
+            reminder_message = _build_retry_message_for_validation(exc)
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)
                 raise PolicyRecognitionError(
                     f"Ошибка валидации схемы: {exc}", transcript
                 )
             if progress_cb:
-                progress_cb("user", REMINDER)
-            messages.append({"role": "user", "content": REMINDER})
+                progress_cb("user", reminder_message)
+            messages.append({"role": "user", "content": reminder_message})
             continue
         _check_cancel()
         data = _maybe_refine_vin(
