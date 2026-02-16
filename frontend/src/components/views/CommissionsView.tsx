@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import type { FinancialRecord, Payment, Policy, Statement } from '../../types';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
+import { BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { useConfirm } from '../../hooks/useConfirm';
 import { CreateStatementModal } from './commissions/CreateStatementModal';
@@ -440,7 +442,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setStatementModalOpen(true)}
-                    className="btn btn-secondary btn-sm rounded-xl"
+                    className={BTN_SM_SECONDARY}
                   >
                     + Создать ведомость
                   </button>
@@ -545,7 +547,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                           {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
                         </p>
                         {selectedStatement.paidAt && (
-                          <p className="text-xs text-rose-600">
+                          <p className={STATUS_TEXT_DANGER_XS}>
                             Выплаченная ведомость недоступна для редактирования и удаления.
                           </p>
                         )}

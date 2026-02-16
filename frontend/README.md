@@ -38,6 +38,13 @@ npm run test         # Vitest с Testing Library и setupTests
 - `npm run test` запускает Vitest (настройка в `setupTests.ts`) и выполняет юнит-тесты в `frontend/__tests__/` и `src/__tests__/` (включая mock API и событие в DOM).
 - `tsconfig.app.json`, `tsconfig.node.json` и `tsconfig.json` обеспечивают строгую типизацию и поддержку библиотеки React.
 
+## Переиспользование UI
+
+- Confirm-диалоги: используйте `src/hooks/useConfirm.ts` и словарь `src/constants/confirmTexts.ts`; прямой `window.confirm` не использовать.
+- Малые action-кнопки: используйте константы `BTN_SM_PRIMARY`, `BTN_SM_SECONDARY`, `BTN_SM_DANGER` из `src/components/common/buttonStyles.ts`.
+- Частые UI-классы: используйте `src/components/common/uiClassNames.ts` (`LINK_ACTION_XS`, `PANEL_MUTED_TEXT`, `STATUS_*`) вместо локальных строковых дублей.
+- Формы и таблицы: опирайтесь на примитивы из `src/components/common/forms/*` и `src/components/common/table/*` вместо локальных JSX-паттернов.
+
 ## Docker и CI
 
 - `frontend/Dockerfile` собирает образ на Node 20, копирует `package.json`, `package-lock.json`, выполняет `npm install`, `npm run build` и запускает Vite (или serve) в контейнере.

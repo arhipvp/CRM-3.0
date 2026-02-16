@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchSellerDashboard } from '../../api/policies';
 import type {
   SellerDashboardPaymentsByDay,
@@ -6,6 +6,7 @@ import type {
   SellerDashboardTasksByExecutor,
 } from '../../types';
 import { formatCurrencyRu, formatDateRu, RU_LOCALE } from '../../utils/formatting';
+import { BTN_SM_PRIMARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 const CHART_HEIGHT = 190;
@@ -563,7 +564,7 @@ export const SellerDashboardView: React.FC = () => {
           <button
             type="button"
             onClick={handleApply}
-            className="btn btn-primary btn-sm rounded-xl"
+            className={BTN_SM_PRIMARY}
             disabled={isLoading}
           >
             Показать

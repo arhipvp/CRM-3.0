@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import type { Client, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { getUserColor } from '../../utils/userColor';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
+import { BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { FormSection } from '../common/forms/FormSection';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
@@ -399,11 +400,7 @@ export const DealForm: React.FC<DealFormProps> = ({
             </div>
 
             {shouldShowAddClient && (
-              <button
-                type="button"
-                onClick={onRequestAddClient}
-                className="btn btn-secondary btn-sm rounded-xl"
-              >
+              <button type="button" onClick={onRequestAddClient} className={BTN_SM_SECONDARY}>
                 + Клиент
               </button>
             )}

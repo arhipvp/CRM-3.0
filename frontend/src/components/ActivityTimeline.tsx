@@ -1,5 +1,6 @@
 import { ActivityLog } from '../types';
 import { ColoredLabel } from './common/ColoredLabel';
+import { PANEL_MUTED_TEXT } from './common/uiClassNames';
 
 interface ActivityTimelineProps {
   activities: ActivityLog[];
@@ -91,11 +92,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   }
 
   if (activities.length === 0) {
-    return (
-      <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-        Пока нет событий по сделке.
-      </div>
-    );
+    return <div className={PANEL_MUTED_TEXT}>Пока нет событий по сделке.</div>;
   }
 
   return (

@@ -3,12 +3,16 @@ import type { RefObject } from 'react';
 import type { Payment, Policy, Statement } from '../../../types';
 import { formatCurrencyRu, formatDateRu } from '../../../utils/formatting';
 import { PanelMessage } from '../../PanelMessage';
+import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../common/buttonStyles';
 import { TableHeadCell } from '../../common/TableHeadCell';
 import { TABLE_CELL_CLASS_SM, TABLE_ROW_CLASS, TABLE_THEAD_CLASS } from '../../common/tableStyles';
 import { PolicyNumberButton } from '../../policies/PolicyNumberButton';
 
 export type AllRecordsSortKey = 'none' | 'payment' | 'saldo' | 'comment' | 'amount';
 export type AmountDraft = { mode: 'rub' | 'percent'; value: string };
+const SORT_LABEL_CLASS = 'text-[11px] font-semibold uppercase tracking-wide text-slate-900';
+const SORT_BUTTON_BASE_CLASS =
+  'flex w-full items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
 export type IncomeExpenseRow = {
   key: string;
@@ -126,7 +130,7 @@ export const RecordsTable = ({
             <button
               type="button"
               onClick={() => void onRemoveSelected()}
-              className="btn btn-danger btn-sm rounded-xl"
+              className={BTN_SM_DANGER}
               disabled={
                 !selectedRecordIds.length ||
                 !canRemoveSelectedAction ||
@@ -140,7 +144,7 @@ export const RecordsTable = ({
             <button
               type="button"
               onClick={() => void onAttachSelected()}
-              className="btn btn-primary btn-sm rounded-xl"
+              className={BTN_SM_PRIMARY}
               disabled={
                 !selectedRecordIds.length ||
                 !canAttachSelectedAction ||
@@ -152,11 +156,7 @@ export const RecordsTable = ({
             </button>
           )}
           {selectedRecordIds.length > 0 && (
-            <button
-              type="button"
-              onClick={onResetSelection}
-              className="btn btn-secondary btn-sm rounded-xl"
-            >
+            <button type="button" onClick={onResetSelection} className={BTN_SM_SECONDARY}>
               Сбросить выделение
             </button>
           )}
@@ -208,19 +208,13 @@ export const RecordsTable = ({
                   type="button"
                   onClick={() => onToggleAllRecordsSort('payment')}
                   aria-label={`Сортировать по платежу, текущий порядок ${getAllRecordsSortLabel('payment')}`}
-                  className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  className={`${SORT_BUTTON_BASE_CLASS} justify-end`}
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Платеж
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    {getAllRecordsSortIndicator('payment')}
-                  </span>
+                  <span className={SORT_LABEL_CLASS}>Платеж</span>
+                  <span className={SORT_LABEL_CLASS}>{getAllRecordsSortIndicator('payment')}</span>
                 </button>
               ) : (
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                  Платеж
-                </span>
+                <span className={SORT_LABEL_CLASS}>Платеж</span>
               )}
             </TableHeadCell>
             <TableHeadCell padding="sm" className="w-[15%] min-w-0" align="right">
@@ -229,19 +223,13 @@ export const RecordsTable = ({
                   type="button"
                   onClick={() => onToggleAllRecordsSort('saldo')}
                   aria-label={`Сортировать по сальдо, текущий порядок ${getAllRecordsSortLabel('saldo')}`}
-                  className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  className={`${SORT_BUTTON_BASE_CLASS} justify-end`}
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Сальдо
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    {getAllRecordsSortIndicator('saldo')}
-                  </span>
+                  <span className={SORT_LABEL_CLASS}>Сальдо</span>
+                  <span className={SORT_LABEL_CLASS}>{getAllRecordsSortIndicator('saldo')}</span>
                 </button>
               ) : (
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                  Сальдо
-                </span>
+                <span className={SORT_LABEL_CLASS}>Сальдо</span>
               )}
             </TableHeadCell>
             <TableHeadCell padding="sm" className="w-[16%] min-w-0">
@@ -250,19 +238,13 @@ export const RecordsTable = ({
                   type="button"
                   onClick={() => onToggleAllRecordsSort('comment')}
                   aria-label={`Сортировать по примечанию, текущий порядок ${getAllRecordsSortLabel('comment')}`}
-                  className="flex w-full items-center justify-start gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  className={`${SORT_BUTTON_BASE_CLASS} justify-start`}
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Примечание
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    {getAllRecordsSortIndicator('comment')}
-                  </span>
+                  <span className={SORT_LABEL_CLASS}>Примечание</span>
+                  <span className={SORT_LABEL_CLASS}>{getAllRecordsSortIndicator('comment')}</span>
                 </button>
               ) : (
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                  Примечание
-                </span>
+                <span className={SORT_LABEL_CLASS}>Примечание</span>
               )}
             </TableHeadCell>
             <TableHeadCell padding="sm" className="w-[220px]" align="right">
@@ -271,28 +253,20 @@ export const RecordsTable = ({
                   type="button"
                   onClick={() => onToggleAllRecordsSort('amount')}
                   aria-label={`Сортировать по сумме, текущий порядок ${getAllRecordsSortLabel('amount')}`}
-                  className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  className={`${SORT_BUTTON_BASE_CLASS} justify-end`}
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Сумма, ₽
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    {getAllRecordsSortIndicator('amount')}
-                  </span>
+                  <span className={SORT_LABEL_CLASS}>Сумма, ₽</span>
+                  <span className={SORT_LABEL_CLASS}>{getAllRecordsSortIndicator('amount')}</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={onToggleAmountSort}
                   aria-label={`Сортировать по сумме, текущий порядок ${getAmountSortLabel()}`}
-                  className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  className={`${SORT_BUTTON_BASE_CLASS} justify-end`}
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    Сумма, ₽
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                    {getAmountSortIndicator()}
-                  </span>
+                  <span className={SORT_LABEL_CLASS}>Сумма, ₽</span>
+                  <span className={SORT_LABEL_CLASS}>{getAmountSortIndicator()}</span>
                 </button>
               )}
             </TableHeadCell>

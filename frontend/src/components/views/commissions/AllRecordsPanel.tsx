@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { Statement } from '../../../types';
+import { BTN_SM_SECONDARY } from '../../common/buttonStyles';
 
 interface AllRecordsPanelProps {
   allRecordsSearch: string;
@@ -90,7 +91,7 @@ export const AllRecordsPanel = ({
           <button
             type="button"
             onClick={onRetryLoad}
-            className="btn btn-secondary btn-sm rounded-xl"
+            className={BTN_SM_SECONDARY}
             disabled={isAllRecordsLoading}
           >
             Повторить

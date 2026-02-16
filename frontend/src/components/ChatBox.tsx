@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { ChatMessage, User } from '../types';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import { getUserColor } from '../utils/userColor';
+import { BTN_SM_DANGER, BTN_SM_SECONDARY } from './common/buttonStyles';
 import { Modal } from './Modal';
 
 interface ChatBoxProps {
@@ -196,7 +197,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
             <button
               type="button"
               onClick={() => setMessageToDelete(null)}
-              className="btn btn-secondary btn-sm rounded-xl"
+              className={BTN_SM_SECONDARY}
             >
               Отмена
             </button>
@@ -204,7 +205,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
               type="button"
               onClick={handleConfirmDelete}
               disabled={isDeletingMessage}
-              className="btn btn-danger btn-sm rounded-xl"
+              className={BTN_SM_DANGER}
             >
               {isDeletingMessage ? 'Удаление...' : 'Удалить'}
             </button>

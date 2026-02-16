@@ -2,6 +2,12 @@ import React from 'react';
 
 import type { DriveFile, Statement } from '../../../types';
 import { FileUploadManager } from '../../FileUploadManager';
+import { BTN_SM_DANGER, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import {
+  LINK_ACTION_XS,
+  PANEL_MUTED_TEXT,
+  STATUS_BADGE_DANGER_XS,
+} from '../../common/uiClassNames';
 import { TableHeadCell } from '../../common/TableHeadCell';
 import {
   TABLE_CELL_CLASS_SM,
@@ -64,7 +70,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                 href={statementDriveFolderLink}
                 target="_blank"
                 rel="noreferrer"
-                className="link-action text-xs"
+                className={LINK_ACTION_XS}
               >
                 Открыть папку в Google Drive
               </a>
@@ -79,7 +85,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
             type="button"
             onClick={onRefresh}
             disabled={isStatementDriveLoading}
-            className="btn btn-secondary btn-sm rounded-xl"
+            className={BTN_SM_SECONDARY}
           >
             {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
           </button>
@@ -109,7 +115,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
             selectedStatementDriveFileIds.length === 0 ||
             !!statementDriveError
           }
-          className="btn btn-secondary btn-sm rounded-xl"
+          className={BTN_SM_SECONDARY}
         >
           {isStatementDriveDownloading ? 'Скачиваю...' : 'Скачать'}
         </button>
@@ -124,7 +130,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
             selectedStatementDriveFileIds.length === 0 ||
             !!statementDriveError
           }
-          className="btn btn-danger btn-sm rounded-xl"
+          className={BTN_SM_DANGER}
         >
           {isStatementDriveTrashing ? 'Удаляю...' : 'Удалить'}
         </button>
@@ -138,22 +144,18 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
       {statementDriveError && <p className="app-alert app-alert-danger">{statementDriveError}</p>}
 
       {statementDriveTrashMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
-          {statementDriveTrashMessage}
-        </p>
+        <p className={STATUS_BADGE_DANGER_XS}>{statementDriveTrashMessage}</p>
       )}
 
       {statementDriveDownloadMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">
-          {statementDriveDownloadMessage}
-        </p>
+        <p className={STATUS_BADGE_DANGER_XS}>{statementDriveDownloadMessage}</p>
       )}
 
       {!statementDriveError &&
         hasStatementDriveFolder &&
         !isStatementDriveLoading &&
         sortedStatementDriveFiles.length === 0 && (
-          <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">Папка пуста.</div>
+          <div className={PANEL_MUTED_TEXT}>Папка пуста.</div>
         )}
 
       {!statementDriveError && sortedStatementDriveFiles.length > 0 && (
@@ -222,7 +224,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                               href={file.webViewLink}
                               target="_blank"
                               rel="noreferrer"
-                              className="link-action text-xs"
+                              className={LINK_ACTION_XS}
                             >
                               Открыть
                             </a>
@@ -239,7 +241,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                               isStatementDriveLoading ||
                               !!statementDriveError
                             }
-                            className="link-action text-xs disabled:text-slate-300"
+                            className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                           >
                             Скачать
                           </button>
@@ -253,7 +255,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                               isStatementDriveLoading ||
                               !!statementDriveError
                             }
-                            className="link-action text-xs disabled:text-slate-300"
+                            className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                           >
                             Удалить
                           </button>

@@ -1,5 +1,6 @@
-import React, { useId, useState } from 'react';
+﻿import React, { useId, useState } from 'react';
 import { FilterParams } from '../api';
+import { BTN_SM_SECONDARY } from './common/buttonStyles';
 
 type CustomFilterDefinition =
   | { key: string; label: string; type: 'text' }
@@ -191,7 +192,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <button
               type="button"
               onClick={handleClearFilters}
-              className="btn btn-secondary btn-sm rounded-xl whitespace-nowrap"
+              className={`${BTN_SM_SECONDARY} whitespace-nowrap`}
             >
               Сбросить фильтры
             </button>

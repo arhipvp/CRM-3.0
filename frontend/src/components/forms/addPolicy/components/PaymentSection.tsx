@@ -1,6 +1,7 @@
 import React from 'react';
 import { FinancialRecordInputs } from './FinancialRecordInputs';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
+import { LINK_ACTION_XS } from '../../../common/uiClassNames';
 
 interface PaymentSectionProps {
   paymentIndex: number;
@@ -99,7 +100,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Доходы</h4>
             <button
               type="button"
-              className="link-action text-xs"
+              className={LINK_ACTION_XS}
               onClick={() => onAddRecord(paymentIndex, 'incomes')}
             >
               + Добавить доход
@@ -125,7 +126,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             </h4>
             <button
               type="button"
-              className="link-action text-xs"
+              className={LINK_ACTION_XS}
               onClick={() => onAddRecord(paymentIndex, 'expenses')}
             >
               + Добавить расход

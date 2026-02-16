@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo, useState } from 'react';
+﻿import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Task, TaskPriority, User } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { FilterParams } from '../../api';
 
 import { STATUS_LABELS, PRIORITY_LABELS } from '../tasks/constants';
+import { BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { TaskTable } from '../tasks/TaskTable';
 
 type TaskSortKey = 'dueAt' | 'priority' | 'createdAt';
@@ -200,11 +201,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           </div>
           {isTasksEmpty && (
             <div className="flex flex-wrap justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/deals')}
-                className="btn btn-secondary btn-sm rounded-xl"
-              >
+              <button type="button" onClick={() => navigate('/deals')} className={BTN_SM_SECONDARY}>
                 Перейти к сделкам
               </button>
             </div>

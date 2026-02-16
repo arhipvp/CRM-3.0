@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import type { Deal, Quote } from '../../../../types';
 import { formatCurrency, formatDate } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
@@ -9,6 +9,8 @@ import {
   TABLE_ROW_CLASS_PLAIN,
   TABLE_THEAD_CLASS,
 } from '../../../common/tableStyles';
+import { BTN_SM_SECONDARY } from '../../../common/buttonStyles';
+import { LINK_ACTION_XS } from '../../../common/uiClassNames';
 
 type QuoteSortKey =
   | 'insuranceType'
@@ -166,7 +168,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
         <button
           type="button"
           onClick={() => onRequestAddQuote(selectedDeal.id)}
-          className="btn btn-secondary btn-sm rounded-xl"
+          className={BTN_SM_SECONDARY}
         >
           + Добавить расчёт
         </button>
@@ -268,7 +270,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                     <td className={`${TABLE_CELL_CLASS_SM} align-top whitespace-nowrap`}>
                       <div className={TABLE_ACTIONS_CLASS_ROW}>
                         <button
-                          className="link-action text-xs"
+                          className={LINK_ACTION_XS}
                           onClick={() => onRequestEditQuote(quote)}
                           type="button"
                         >

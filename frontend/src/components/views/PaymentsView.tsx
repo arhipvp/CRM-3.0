@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { Payment } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { PanelMessage } from '../PanelMessage';
@@ -12,6 +12,7 @@ import {
 } from '../common/tableStyles';
 import { FilterParams } from '../../api';
 import { DataTableShell } from '../common/table/DataTableShell';
+import { BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 
 type PaymentSortKey = 'scheduledDate' | 'actualDate' | 'amount';
@@ -140,7 +141,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
                         <button
                           type="button"
                           onClick={() => onMarkPaid(payment.id)}
-                          className="btn btn-secondary btn-sm rounded-xl"
+                          className={BTN_SM_SECONDARY}
                         >
                           Отметить оплаченным
                         </button>

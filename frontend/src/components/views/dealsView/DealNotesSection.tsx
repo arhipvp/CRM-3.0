@@ -8,6 +8,8 @@ import { ColoredLabel } from '../../common/ColoredLabel';
 import { LinkifiedText } from '../../common/LinkifiedText';
 import { FileUploadManager } from '../../FileUploadManager';
 import { Modal } from '../../Modal';
+import { BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { PANEL_MUTED_TEXT } from '../../common/uiClassNames';
 import { dedupeFiles } from '../../../utils/fileUpload';
 
 const attachmentImageCache = new Map<string, string>();
@@ -65,10 +67,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
   onRestoreNote,
 }) => {
   const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
-    const className =
-      tone === 'danger'
-        ? 'app-alert app-alert-danger'
-        : 'app-panel-muted px-4 py-3 text-sm text-slate-600';
+    const className = tone === 'danger' ? 'app-alert app-alert-danger' : PANEL_MUTED_TEXT;
 
     return <div className={className}>{message}</div>;
   };
@@ -328,7 +327,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="btn btn-primary btn-sm rounded-xl"
+            className={BTN_SM_PRIMARY}
           >
             Добавить заметку
           </button>
@@ -516,7 +515,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="btn btn-secondary btn-sm rounded-xl"
+                className={BTN_SM_SECONDARY}
               >
                 Отмена
               </button>
@@ -524,7 +523,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                 type="button"
                 onClick={onAddNote}
                 disabled={notesAction === 'create' || noteAttachmentsUploading}
-                className="btn btn-primary btn-sm rounded-xl"
+                className={BTN_SM_PRIMARY}
               >
                 {notesAction === 'create' ? 'Добавляем...' : 'Добавить заметку'}
               </button>

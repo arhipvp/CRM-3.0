@@ -4,7 +4,13 @@ import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
 import { copyToClipboard } from '../../../../utils/clipboard';
 import { useNotification } from '../../../../contexts/NotificationContext';
+import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { TableHeadCell } from '../../../common/TableHeadCell';
+import {
+  LINK_ACTION_XS,
+  PANEL_MUTED_TEXT,
+  STATUS_BADGE_DANGER_XS,
+} from '../../../common/uiClassNames';
 import { Modal } from '../../../Modal';
 import {
   TABLE_CELL_CLASS_SM,
@@ -107,10 +113,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   }
 
   const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
-    const className =
-      tone === 'danger'
-        ? 'app-alert app-alert-danger'
-        : 'app-panel-muted px-4 py-3 text-sm text-slate-600';
+    const className = tone === 'danger' ? 'app-alert app-alert-danger' : PANEL_MUTED_TEXT;
 
     return <div className={className}>{message}</div>;
   };
@@ -170,12 +173,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <p className="app-label">Файлы</p>
             {driveFolderLink && (
-              <a
-                href={driveFolderLink}
-                target="_blank"
-                rel="noreferrer"
-                className="link-action text-xs"
-              >
+              <a href={driveFolderLink} target="_blank" rel="noreferrer" className={LINK_ACTION_XS}>
                 Открыть папку в Google Drive
               </a>
             )}
@@ -192,7 +190,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 void onCreateMailbox();
               }}
               disabled={isCreatingMailbox || isCheckingMailbox}
-              className="btn btn-primary btn-sm rounded-xl"
+              className={BTN_SM_PRIMARY}
             >
               {isCreatingMailbox ? 'Создаю ящик...' : 'Создать почту сделки'}
             </button>
@@ -203,7 +201,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               void onCheckMailbox();
             }}
             disabled={!selectedDeal.mailboxEmail || isCheckingMailbox || isCreatingMailbox}
-            className="btn btn-secondary btn-sm rounded-xl"
+            className={BTN_SM_SECONDARY}
           >
             {isCheckingMailbox ? 'Проверяем почту...' : 'Проверить почту'}
           </button>
@@ -211,7 +209,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             type="button"
             onClick={loadDriveFiles}
             disabled={!selectedDeal.driveFolderId || isDriveLoading}
-            className="btn btn-secondary btn-sm rounded-xl"
+            className={BTN_SM_SECONDARY}
           >
             {isDriveLoading ? 'Обновляю...' : 'Обновить'}
           </button>
@@ -222,7 +220,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           Почта сделки:{' '}
           <button
             type="button"
-            className="link-action text-xs"
+            className={LINK_ACTION_XS}
             onClick={async (event) => {
               event.stopPropagation();
               const copied = await copyToClipboard(mailboxEmail);
@@ -263,7 +261,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             !canRecognizeSelectedFiles ||
             !!driveError
           }
-          className="btn btn-primary btn-sm rounded-xl"
+          className={BTN_SM_PRIMARY}
         >
           {isRecognizing ? 'Распознаём...' : 'Распознать полис (только PDF)'}
         </button>
@@ -278,7 +276,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             selectedDriveFileIds.length === 0 ||
             !!driveError
           }
-          className="btn btn-secondary btn-sm rounded-xl"
+          className={BTN_SM_SECONDARY}
         >
           {isDownloading ? 'Скачиваю...' : 'Скачать'}
         </button>
@@ -293,7 +291,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             selectedDriveFileIds.length === 0 ||
             !!driveError
           }
-          className="btn btn-danger btn-sm rounded-xl"
+          className={BTN_SM_DANGER}
         >
           {isTrashing ? 'Удаляю...' : 'Удалить'}
         </button>
@@ -306,21 +304,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         </p>
       </div>
 
-      {recognitionMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{recognitionMessage}</p>
-      )}
+      {recognitionMessage && <p className={STATUS_BADGE_DANGER_XS}>{recognitionMessage}</p>}
 
-      {trashMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{trashMessage}</p>
-      )}
+      {trashMessage && <p className={STATUS_BADGE_DANGER_XS}>{trashMessage}</p>}
 
-      {downloadMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{downloadMessage}</p>
-      )}
+      {downloadMessage && <p className={STATUS_BADGE_DANGER_XS}>{downloadMessage}</p>}
 
-      {renameMessage && (
-        <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{renameMessage}</p>
-      )}
+      {renameMessage && <p className={STATUS_BADGE_DANGER_XS}>{renameMessage}</p>}
 
       {recognitionResults.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3 text-xs">
@@ -442,7 +432,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                                 href={file.webViewLink}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="link-action text-xs"
+                                className={LINK_ACTION_XS}
                               >
                                 Открыть
                               </a>
@@ -455,7 +445,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                               disabled={
                                 isDownloading || isTrashing || isDriveLoading || !!driveError
                               }
-                              className="link-action text-xs disabled:text-slate-300"
+                              className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                             >
                               Скачать
                             </button>
@@ -464,7 +454,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                                 type="button"
                                 onClick={() => openRenameModal(file)}
                                 disabled={isRenameDisabled}
-                                className="link-action text-xs disabled:text-slate-300"
+                                className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                               >
                                 Переименовать
                               </button>

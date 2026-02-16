@@ -23,6 +23,14 @@
 - `DataTableShell` как общий контейнер таблицы.
 - `EmptyTableState` как единый пустой state в `<tbody>`.
 
+5. Кнопки действий:
+
+- `src/components/common/buttonStyles.ts` для унифицированных small action buttons (`primary/secondary/danger`).
+
+6. Частые UI-классы:
+
+- `src/components/common/uiClassNames.ts` для повторяющихся классов (`link-action`, muted panel, status badges).
+
 ## Что переведено
 
 ### Формы
@@ -67,6 +75,8 @@
 - `src/components/common/ConfirmDialog.tsx`
 - `src/hooks/useConfirm.ts`
 - `src/constants/confirmTexts.ts`
+- `src/components/common/buttonStyles.ts`
+- `src/components/common/uiClassNames.ts`
 - `src/components/common/table/DataTableShell.tsx`
 - `src/components/common/table/EmptyTableState.tsx`
 

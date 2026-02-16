@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
+import { BTN_SM_SECONDARY } from './common/buttonStyles';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import {
   buildFallbackKey,
@@ -401,7 +402,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button
           type="button"
-          className="btn btn-secondary btn-sm rounded-xl"
+          className={BTN_SM_SECONDARY}
           onClick={handleClipboardButtonClick}
           disabled={isUploading || disabled}
         >

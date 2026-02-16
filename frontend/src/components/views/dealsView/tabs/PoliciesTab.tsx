@@ -20,6 +20,8 @@ import { ColoredLabel } from '../../../common/ColoredLabel';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
 import { buildPolicyNavigationActions } from '../../../policies/policyCardActions';
 import { getPolicyExpiryBadge } from '../../../policies/policyIndicators';
+import { BTN_SM_SECONDARY } from '../../../common/buttonStyles';
+import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { POLICY_TEXT } from '../../../policies/text';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
@@ -129,7 +131,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   }
 
   const renderStatusMessage = (message: string) => (
-    <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">{message}</div>
+    <div className={PANEL_MUTED_TEXT}>{message}</div>
   );
 
   const sortLabel = POLICY_SORT_LABELS[policySortKey] ?? policySortKey;
@@ -263,7 +265,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           <button
             type="button"
             onClick={() => onRequestAddPolicy(selectedDeal.id)}
-            className="btn btn-secondary btn-sm rounded-xl"
+            className={BTN_SM_SECONDARY}
           >
             + Создать полис
           </button>

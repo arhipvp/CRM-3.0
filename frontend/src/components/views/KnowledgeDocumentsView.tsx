@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { FileUploadManager } from '../FileUploadManager';
 import {
   askKnowledgeBase,
@@ -27,6 +27,8 @@ import {
   KnowledgeSourceDetail,
 } from '../../types';
 import { Modal } from '../Modal';
+import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { PANEL_MUTED_TEXT, STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { useConfirm } from '../../hooks/useConfirm';
 import { confirmTexts } from '../../constants/confirmTexts';
 
@@ -545,7 +547,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              className="btn btn-secondary btn-sm rounded-xl"
+              className={BTN_SM_SECONDARY}
               onClick={handleRenameNotebook}
               disabled={!selectedNotebookId || isNotebookBusy}
             >
@@ -553,7 +555,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             </button>
             <button
               type="button"
-              className="btn btn-danger btn-sm rounded-xl"
+              className={BTN_SM_DANGER}
               onClick={handleDeleteNotebook}
               disabled={!selectedNotebookId || isNotebookBusy}
             >
@@ -573,7 +575,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
           />
           <button
             type="button"
-            className="btn btn-primary btn-sm rounded-xl"
+            className={BTN_SM_PRIMARY}
             onClick={handleCreateNotebook}
             disabled={isNotebookBusy}
           >
@@ -607,13 +609,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
           </label>
           <button
             type="button"
-            className="btn btn-secondary btn-sm rounded-xl"
+            className={BTN_SM_SECONDARY}
             onClick={() => setIsSessionsModalOpen(true)}
             disabled={!selectedNotebookId}
           >
             Сессии чата
           </button>
-          {sessionsError && <span className="text-xs text-rose-600">{sessionsError}</span>}
+          {sessionsError && <span className={STATUS_TEXT_DANGER_XS}>{sessionsError}</span>}
         </div>
         <textarea
           value={question}
@@ -626,13 +628,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            className="btn btn-primary btn-sm rounded-xl"
+            className={BTN_SM_PRIMARY}
             onClick={handleAsk}
             disabled={isAsking || !selectedNotebookId}
           >
             {isAsking ? 'Отвечаем...' : 'Спросить'}
           </button>
-          {askError && <span className="text-xs text-rose-600">{askError}</span>}
+          {askError && <span className={STATUS_TEXT_DANGER_XS}>{askError}</span>}
         </div>
         {answer && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
@@ -667,13 +669,13 @@ export const KnowledgeDocumentsView: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="btn btn-secondary btn-sm rounded-xl"
+                className={BTN_SM_SECONDARY}
                 onClick={handleSaveAnswer}
                 disabled={savingAnswer || !selectedNotebookId}
               >
                 {savingAnswer ? 'Сохраняем...' : 'Сохранить ответ'}
               </button>
-              {savedError && <span className="text-xs text-rose-600">{savedError}</span>}
+              {savedError && <span className={STATUS_TEXT_DANGER_XS}>{savedError}</span>}
             </div>
           </div>
         )}
@@ -693,9 +695,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
         <div className="p-6 space-y-4">
           {savedError && <div className="app-alert app-alert-danger">{savedError}</div>}
           {savedAnswers.length === 0 && (
-            <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              Пока нет сохранённых ответов.
-            </div>
+            <div className={PANEL_MUTED_TEXT}>Пока нет сохранённых ответов.</div>
           )}
           {savedAnswers.map((item) => (
             <div
@@ -739,7 +739,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="btn btn-danger btn-sm rounded-xl"
+                  className={BTN_SM_DANGER}
                   onClick={() => handleDeleteSavedAnswer(item.id)}
                 >
                   Удалить
@@ -774,9 +774,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             <div className="text-xs uppercase tracking-wide text-slate-400">Загрузка...</div>
           )}
           {sortedSources.length === 0 && !sourcesLoading && (
-            <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-              Пока нет загруженных файлов.
-            </div>
+            <div className={PANEL_MUTED_TEXT}>Пока нет загруженных файлов.</div>
           )}
           {sortedSources.map((source) => (
             <div
@@ -802,7 +800,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                     href={source.fileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn btn-secondary btn-sm rounded-xl"
+                    className={BTN_SM_SECONDARY}
                   >
                     Открыть файл
                   </a>
@@ -811,7 +809,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                 )}
                 <button
                   type="button"
-                  className="btn btn-danger btn-sm rounded-xl"
+                  className={BTN_SM_DANGER}
                   onClick={() => handleDeleteSource(source.id)}
                 >
                   Удалить
@@ -841,14 +839,14 @@ export const KnowledgeDocumentsView: React.FC = () => {
               />
               <button
                 type="button"
-                className="btn btn-primary btn-sm rounded-xl"
+                className={BTN_SM_PRIMARY}
                 onClick={handleCreateSession}
                 disabled={!selectedNotebookId}
               >
                 Создать
               </button>
             </div>
-            {sessionsError && <div className="text-xs text-rose-600">{sessionsError}</div>}
+            {sessionsError && <div className={STATUS_TEXT_DANGER_XS}>{sessionsError}</div>}
             <div className="space-y-2">
               {chatSessions.length === 0 && (
                 <div className="text-sm text-slate-500">Сессий пока нет.</div>
@@ -874,14 +872,14 @@ export const KnowledgeDocumentsView: React.FC = () => {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            className="btn btn-primary btn-sm rounded-xl"
+                            className={BTN_SM_PRIMARY}
                             onClick={handleSaveSessionTitle}
                           >
                             Сохранить
                           </button>
                           <button
                             type="button"
-                            className="btn btn-secondary btn-sm rounded-xl"
+                            className={BTN_SM_SECONDARY}
                             onClick={handleCancelEditSession}
                           >
                             Отмена
@@ -902,21 +900,21 @@ export const KnowledgeDocumentsView: React.FC = () => {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              className="btn btn-secondary btn-sm rounded-xl"
+                              className={BTN_SM_SECONDARY}
                               onClick={() => setSelectedSessionId(session.id)}
                             >
                               Использовать
                             </button>
                             <button
                               type="button"
-                              className="btn btn-secondary btn-sm rounded-xl"
+                              className={BTN_SM_SECONDARY}
                               onClick={() => handleStartEditSession(session)}
                             >
                               Переименовать
                             </button>
                             <button
                               type="button"
-                              className="btn btn-danger btn-sm rounded-xl"
+                              className={BTN_SM_DANGER}
                               onClick={() => handleDeleteSession(session.id)}
                             >
                               Удалить
@@ -959,7 +957,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                       href={sourceDetail.fileUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn btn-secondary btn-sm rounded-xl"
+                      className={BTN_SM_SECONDARY}
                     >
                       Открыть файл
                     </a>
@@ -969,7 +967,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
                       href={sourceDetail.assetUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn btn-secondary btn-sm rounded-xl"
+                      className={BTN_SM_SECONDARY}
                     >
                       Оригинал
                     </a>

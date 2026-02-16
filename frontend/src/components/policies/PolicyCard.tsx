@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 import type { Payment, Policy } from '../../types';
 import { ColoredLabel } from '../common/ColoredLabel';
@@ -8,6 +8,8 @@ import type { PolicyCardModel } from './policyCardModel';
 import { PolicyNumberButton } from './PolicyNumberButton';
 import { getPolicyExpiryBadge } from './policyIndicators';
 import { POLICY_PLACEHOLDER, POLICY_TEXT } from './text';
+import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { PANEL_MUTED_TEXT } from '../common/uiClassNames';
 import { hasUnpaidPayment, hasUnpaidRecord } from '../views/dealsView/helpers';
 
 export type PolicyCardActionVariant = 'secondary' | 'quiet' | 'danger';
@@ -39,12 +41,12 @@ interface PolicyCardProps {
 
 const actionClassName = (variant: PolicyCardActionVariant | undefined) => {
   if (variant === 'danger') {
-    return 'btn btn-danger btn-sm rounded-xl whitespace-nowrap';
+    return `${BTN_SM_DANGER} whitespace-nowrap`;
   }
   if (variant === 'quiet') {
     return 'btn btn-quiet btn-sm rounded-xl whitespace-nowrap';
   }
-  return 'btn btn-secondary btn-sm rounded-xl whitespace-nowrap';
+  return `${BTN_SM_SECONDARY} whitespace-nowrap`;
 };
 
 export const PolicyCard: React.FC<PolicyCardProps> = ({
@@ -246,16 +248,12 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
               onClick={onTogglePaymentsExpanded}
               aria-expanded={false}
               aria-controls={paymentsPanelId}
-              className="btn btn-primary btn-sm rounded-xl"
+              className={BTN_SM_PRIMARY}
             >
               {paymentsToggleLabel}
             </button>
             {onRequestAddPayment && (
-              <button
-                type="button"
-                onClick={onRequestAddPayment}
-                className="btn btn-secondary btn-sm rounded-xl"
-              >
+              <button type="button" onClick={onRequestAddPayment} className={BTN_SM_SECONDARY}>
                 {POLICY_TEXT.actions.addPayment}
               </button>
             )}
@@ -273,11 +271,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
 
             <div className="flex flex-wrap items-center gap-2">
               {onRequestAddPayment && (
-                <button
-                  type="button"
-                  onClick={onRequestAddPayment}
-                  className="btn btn-secondary btn-sm rounded-xl"
-                >
+                <button type="button" onClick={onRequestAddPayment} className={BTN_SM_SECONDARY}>
                   {POLICY_TEXT.actions.addPayment}
                 </button>
               )}
@@ -298,9 +292,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
 
           {payments.length === 0 ? (
             <div className="mt-3">
-              <div className="app-panel-muted px-4 py-3 text-sm text-slate-600">
-                {POLICY_TEXT.messages.noPayments}
-              </div>
+              <div className={PANEL_MUTED_TEXT}>{POLICY_TEXT.messages.noPayments}</div>
             </div>
           ) : (
             <div id={paymentsPanelId} className="mt-3 space-y-2">

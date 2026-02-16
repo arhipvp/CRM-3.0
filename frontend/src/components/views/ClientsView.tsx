@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Client, Deal } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { Pagination } from '../Pagination';
@@ -14,6 +14,7 @@ import {
 import { formatDateRu } from '../../utils/formatting';
 import { buildWhatsAppLink } from '../../utils/links';
 import { DataTableShell } from '../common/table/DataTableShell';
+import { BTN_SM_DANGER, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 
 const PAGE_SIZE = 20;
@@ -206,7 +207,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setFilesModalClient(client)}
-                      className="btn btn-secondary btn-sm rounded-xl"
+                      className={BTN_SM_SECONDARY}
                       aria-label={`Файлы клиента ${client.name}`}
                     >
                       Файлы
@@ -229,7 +230,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onClientDelete(client)}
-                            className="btn btn-danger btn-sm rounded-xl"
+                            className={BTN_SM_DANGER}
                             aria-label={`Удалить клиента ${client.name}`}
                           >
                             Удалить
