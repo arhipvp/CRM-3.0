@@ -15,7 +15,9 @@ import {
   type NotificationSettings,
   type TelegramLinkResponse,
 } from '../../api';
-import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
+import { BTN_OUTLINE, BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
+import { FORM_INPUT_DISABLED } from '../common/forms/formClassNames';
+import { InlineAlert } from '../common/InlineAlert';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export const SettingsView: React.FC = () => {
@@ -342,7 +344,7 @@ export const SettingsView: React.FC = () => {
           </p>
         </header>
 
-        {telegramError && <p className="app-alert app-alert-danger">{telegramError}</p>}
+        {telegramError && <InlineAlert as="p">{telegramError}</InlineAlert>}
 
         {telegramLoading ? (
           <p className="text-sm text-slate-500">Загружаем настройки Telegram...</p>
@@ -384,7 +386,7 @@ export const SettingsView: React.FC = () => {
                 {telegramLinked && (
                   <button
                     type="button"
-                    className="btn btn-outline"
+                    className={BTN_OUTLINE}
                     onClick={handleUnlinkTelegram}
                     disabled={telegramSaving}
                   >
@@ -504,7 +506,7 @@ export const SettingsView: React.FC = () => {
           </p>
         </header>
 
-        {mailboxError && <p className="app-alert app-alert-danger">{mailboxError}</p>}
+        {mailboxError && <InlineAlert as="p">{mailboxError}</InlineAlert>}
 
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end">
           <div className="space-y-2">
@@ -603,7 +605,7 @@ export const SettingsView: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          className="btn btn-outline"
+                          className={BTN_OUTLINE}
                           onClick={() => handleMailboxDelete(mailbox.id)}
                         >
                           Удалить
@@ -619,7 +621,7 @@ export const SettingsView: React.FC = () => {
                 <p className="text-sm font-medium text-slate-700">Входящие</p>
                 <button
                   type="button"
-                  className="btn btn-outline"
+                  className={BTN_OUTLINE}
                   onClick={handleMailboxRefresh}
                   disabled={!selectedMailboxId || mailMessagesLoading}
                 >
@@ -664,9 +666,7 @@ export const SettingsView: React.FC = () => {
           </p>
         </header>
 
-        {nextContactLeadDaysError && (
-          <p className="app-alert app-alert-danger">{nextContactLeadDaysError}</p>
-        )}
+        {nextContactLeadDaysError && <InlineAlert as="p">{nextContactLeadDaysError}</InlineAlert>}
 
         <div className="max-w-xs space-y-2">
           <label htmlFor="next-contact-lead-days" className="app-label">
@@ -689,7 +689,7 @@ export const SettingsView: React.FC = () => {
               }
             }}
             disabled={nextContactLeadDaysSaving || telegramLoading}
-            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+            className={FORM_INPUT_DISABLED}
           />
           <p className="text-xs text-slate-500">
             Минимум 1. Значение влияет на «Отложить до следующего контакта».
@@ -698,8 +698,12 @@ export const SettingsView: React.FC = () => {
       </section>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
-        {error && <p className="app-alert app-alert-danger">{error}</p>}
-        {success && <p className="app-alert app-alert-success">{success}</p>}
+        {error && <InlineAlert as="p">{error}</InlineAlert>}
+        {success && (
+          <InlineAlert as="p" tone="success">
+            {success}
+          </InlineAlert>
+        )}
 
         <div className="space-y-2">
           <label htmlFor="current-password" className="app-label">
@@ -712,7 +716,7 @@ export const SettingsView: React.FC = () => {
             onChange={(event) => setCurrentPassword(event.target.value)}
             disabled={loading}
             required
-            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+            className={FORM_INPUT_DISABLED}
           />
         </div>
 
@@ -727,7 +731,7 @@ export const SettingsView: React.FC = () => {
             onChange={(event) => setNewPassword(event.target.value)}
             disabled={loading}
             required
-            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+            className={FORM_INPUT_DISABLED}
           />
         </div>
 
@@ -742,7 +746,7 @@ export const SettingsView: React.FC = () => {
             onChange={(event) => setConfirmPassword(event.target.value)}
             disabled={loading}
             required
-            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+            className={FORM_INPUT_DISABLED}
           />
         </div>
 

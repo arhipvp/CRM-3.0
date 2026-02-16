@@ -3,18 +3,14 @@ import React from 'react';
 import type { DriveFile, Statement } from '../../../types';
 import { FileUploadManager } from '../../FileUploadManager';
 import { BTN_SM_DANGER, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { InlineAlert } from '../../common/InlineAlert';
+import { DriveFilesTable } from '../../common/table/DriveFilesTable';
 import {
   LINK_ACTION_XS,
   PANEL_MUTED_TEXT,
   STATUS_BADGE_DANGER_XS,
 } from '../../common/uiClassNames';
-import { TableHeadCell } from '../../common/TableHeadCell';
-import {
-  TABLE_CELL_CLASS_SM,
-  TABLE_ROW_CLASS_PLAIN,
-  TABLE_THEAD_CLASS,
-} from '../../common/tableStyles';
-import { formatDriveDate, formatDriveFileSize, getDriveItemIcon } from '../dealsView/helpers';
+import { formatDriveDate, formatDriveFileSize } from '../dealsView/helpers';
 
 interface StatementFilesTabProps {
   selectedStatement?: Statement;
@@ -141,7 +137,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
         </p>
       </div>
 
-      {statementDriveError && <p className="app-alert app-alert-danger">{statementDriveError}</p>}
+      {statementDriveError && <InlineAlert as="p">{statementDriveError}</InlineAlert>}
 
       {statementDriveTrashMessage && (
         <p className={STATUS_BADGE_DANGER_XS}>{statementDriveTrashMessage}</p>
@@ -159,115 +155,64 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
         )}
 
       {!statementDriveError && sortedStatementDriveFiles.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className={TABLE_THEAD_CLASS}>
-                <tr>
-                  <TableHeadCell padding="sm" className="w-10">
-                    <span className="sr-only">Выбор</span>
-                  </TableHeadCell>
-                  <TableHeadCell padding="sm">Файл</TableHeadCell>
-                  <TableHeadCell padding="sm" align="right">
-                    Размер
-                  </TableHeadCell>
-                  <TableHeadCell padding="sm" align="right">
-                    Дата
-                  </TableHeadCell>
-                  <TableHeadCell padding="sm" align="right">
-                    Действия
-                  </TableHeadCell>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedStatementDriveFiles.map((file) => {
-                  const isSelected = selectedStatementDriveFileIds.includes(file.id);
-                  const canSelect =
-                    !file.isFolder &&
-                    !isStatementDriveLoading &&
-                    !isStatementDriveTrashing &&
-                    !isStatementDriveDownloading;
-
-                  return (
-                    <tr key={file.id} className={TABLE_ROW_CLASS_PLAIN}>
-                      <td className={TABLE_CELL_CLASS_SM}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          disabled={!canSelect}
-                          onChange={() => onToggleSelection(file.id)}
-                          className="check rounded-sm"
-                          aria-label={`Выбрать файл: ${file.name}`}
-                        />
-                      </td>
-                      <td className={TABLE_CELL_CLASS_SM}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-lg">{getDriveItemIcon(file.isFolder)}</span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 break-all">
-                              {file.name}
-                            </p>
-                            <p className="text-xs text-slate-500">{file.mimeType || '—'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
-                        {formatDriveFileSize(file.size)}
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
-                        {formatDriveDate(file.modifiedAt ?? file.createdAt)}
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_SM} text-right`}>
-                        <div className="flex items-center justify-end gap-3">
-                          {file.webViewLink ? (
-                            <a
-                              href={file.webViewLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={LINK_ACTION_XS}
-                            >
-                              Открыть
-                            </a>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => onDownloadFile(file.id)}
-                            disabled={
-                              file.isFolder ||
-                              isStatementDriveDownloading ||
-                              isStatementDriveTrashing ||
-                              isStatementDriveLoading ||
-                              !!statementDriveError
-                            }
-                            className={`${LINK_ACTION_XS} disabled:text-slate-300`}
-                          >
-                            Скачать
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDeleteFile(file)}
-                            disabled={
-                              file.isFolder ||
-                              isStatementDriveDownloading ||
-                              isStatementDriveTrashing ||
-                              isStatementDriveLoading ||
-                              !!statementDriveError
-                            }
-                            className={`${LINK_ACTION_XS} disabled:text-slate-300`}
-                          >
-                            Удалить
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DriveFilesTable
+          files={sortedStatementDriveFiles}
+          selectedFileIds={selectedStatementDriveFileIds}
+          onToggleSelection={onToggleSelection}
+          isSelectionDisabled={(file) =>
+            file.isFolder ||
+            isStatementDriveLoading ||
+            isStatementDriveTrashing ||
+            isStatementDriveDownloading
+          }
+          renderDate={(file) => formatDriveDate(file.modifiedAt ?? file.createdAt)}
+          renderSize={(file) => formatDriveFileSize(file.size)}
+          renderActions={(file) => (
+            <div className="flex items-center justify-end gap-3">
+              {file.webViewLink ? (
+                <a
+                  href={file.webViewLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={LINK_ACTION_XS}
+                >
+                  Открыть
+                </a>
+              ) : (
+                <span className="text-xs text-slate-400">—</span>
+              )}
+              <button
+                type="button"
+                onClick={() => onDownloadFile(file.id)}
+                disabled={
+                  file.isFolder ||
+                  isStatementDriveDownloading ||
+                  isStatementDriveTrashing ||
+                  isStatementDriveLoading ||
+                  !!statementDriveError
+                }
+                className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+              >
+                Скачать
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeleteFile(file)}
+                disabled={
+                  file.isFolder ||
+                  isStatementDriveDownloading ||
+                  isStatementDriveTrashing ||
+                  isStatementDriveLoading ||
+                  !!statementDriveError
+                }
+                className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+              >
+                Удалить
+              </button>
+            </div>
+          )}
+          emptyMessage="Папка пуста."
+        />
       )}
     </section>
   );

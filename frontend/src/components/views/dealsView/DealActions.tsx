@@ -1,5 +1,11 @@
 import React from 'react';
-import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
+import {
+  BTN_DANGER,
+  BTN_PRIMARY,
+  BTN_QUIET,
+  BTN_SECONDARY,
+  BTN_SUCCESS,
+} from '../../common/buttonStyles';
 
 interface DealActionsProps {
   isSelectedDealDeleted: boolean;
@@ -76,7 +82,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
         disabled={
           isSelectedDealDeleted || isDealClosedStatus || isClosingDeal || !isCurrentUserSeller
         }
-        className="btn btn-success"
+        className={BTN_SUCCESS}
       >
         {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
       </button>
@@ -86,19 +92,14 @@ export const DealActions: React.FC<DealActionsProps> = ({
           type="button"
           onClick={onReopen}
           disabled={isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal}
-          className="btn btn-quiet"
+          className={BTN_QUIET}
         >
           {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
         </button>
       )}
 
       {isSelectedDealDeleted ? (
-        <button
-          type="button"
-          onClick={onRestore}
-          disabled={isRestoringDeal}
-          className="btn btn-quiet"
-        >
+        <button type="button" onClick={onRestore} disabled={isRestoringDeal} className={BTN_QUIET}>
           {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
         </button>
       ) : (

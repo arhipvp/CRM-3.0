@@ -1,4 +1,5 @@
 import React from 'react';
+import { BTN_SM_QUIET } from '../../common/buttonStyles';
 
 interface QuickOption {
   label: string;
@@ -45,7 +46,7 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
               key={option.label}
               type="button"
               onClick={() => onQuickShift(option.days)}
-              className="btn btn-quiet btn-sm rounded-xl"
+              className={BTN_SM_QUIET}
             >
               {option.label}
             </button>

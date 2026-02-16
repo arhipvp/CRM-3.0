@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
@@ -11,24 +11,15 @@ import {
   BTN_SM_PRIMARY,
   BTN_SM_SECONDARY,
 } from '../../../common/buttonStyles';
-import { TableHeadCell } from '../../../common/TableHeadCell';
+import { DriveFilesTable } from '../../../common/table/DriveFilesTable';
 import {
   LINK_ACTION_XS,
   PANEL_MUTED_TEXT,
   STATUS_BADGE_DANGER_XS,
 } from '../../../common/uiClassNames';
+import { InlineAlert } from '../../../common/InlineAlert';
 import { Modal } from '../../../Modal';
-import {
-  TABLE_CELL_CLASS_SM,
-  TABLE_ROW_CLASS_PLAIN,
-  TABLE_THEAD_CLASS,
-} from '../../../common/tableStyles';
-import {
-  formatDriveDate,
-  formatDriveFileSize,
-  formatRecognitionSummary,
-  getDriveItemIcon,
-} from '../helpers';
+import { formatDriveDate, formatDriveFileSize, formatRecognitionSummary } from '../helpers';
 
 interface FilesTabProps {
   selectedDeal: Deal | null;
@@ -119,9 +110,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   }
 
   const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
-    const className = tone === 'danger' ? 'app-alert app-alert-danger' : PANEL_MUTED_TEXT;
-
-    return <div className={className}>{message}</div>;
+    if (tone === 'danger') {
+      return <InlineAlert>{message}</InlineAlert>;
+    }
+    return <div className={PANEL_MUTED_TEXT}>{message}</div>;
   };
 
   const disableUpload = !selectedDeal.driveFolderId;
@@ -241,10 +233,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           </button>
         </p>
       )}
-      {mailboxActionError && <div className="app-alert app-alert-danger">{mailboxActionError}</div>}
-      {mailboxActionSuccess && (
-        <div className="app-alert app-alert-success">{mailboxActionSuccess}</div>
-      )}
+      {mailboxActionError && <InlineAlert>{mailboxActionError}</InlineAlert>}
+      {mailboxActionSuccess && <InlineAlert tone="success">{mailboxActionSuccess}</InlineAlert>}
 
       <FileUploadManager
         onUpload={async (file) => {
@@ -368,112 +358,63 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           renderStatusMessage('Папка пуста.')}
 
         {!driveError && sortedDriveFiles.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className={TABLE_THEAD_CLASS}>
-                  <tr>
-                    <TableHeadCell padding="sm" className="w-10">
-                      <span className="sr-only">Выбор</span>
-                    </TableHeadCell>
-                    <TableHeadCell padding="sm">Файл</TableHeadCell>
-                    <TableHeadCell padding="sm" align="right">
-                      Размер
-                    </TableHeadCell>
-                    <TableHeadCell padding="sm" align="right" aria-sort={getAriaSort()}>
-                      <button
-                        type="button"
-                        onClick={toggleDriveSortDirection}
-                        aria-label={`Сортировать по дате, текущий порядок ${getSortLabel()}`}
-                        className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                      >
-                        <span className={getColumnTitleClass()}>Дата</span>
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                          {getSortIndicator()}
-                        </span>
-                      </button>
-                    </TableHeadCell>
-                    <TableHeadCell padding="sm" align="right">
-                      Действия
-                    </TableHeadCell>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedDriveFiles.map((file) => {
-                    const isSelected = selectedDriveFileIds.includes(file.id);
-                    const canSelect = !isDriveLoading && !isTrashing && !isDownloading;
-                    return (
-                      <tr key={file.id} className={TABLE_ROW_CLASS_PLAIN}>
-                        <td className={TABLE_CELL_CLASS_SM}>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            disabled={!canSelect}
-                            onChange={() => toggleDriveFileSelection(file.id)}
-                            className="check rounded-sm"
-                            aria-label={`Выбрать файл: ${file.name}`}
-                          />
-                        </td>
-                        <td className={TABLE_CELL_CLASS_SM}>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-lg">{getDriveItemIcon(file.isFolder)}</span>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-slate-900 break-all">
-                                {file.name}
-                              </p>
-                              <p className="text-xs text-slate-500">{file.mimeType || '—'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
-                          {formatDriveFileSize(file.size)}
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_SM} text-right text-xs text-slate-500`}>
-                          {formatDriveDate(file.modifiedAt ?? file.createdAt)}
-                        </td>
-                        <td className={`${TABLE_CELL_CLASS_SM} text-right`}>
-                          <div className="flex items-center justify-end gap-3">
-                            {file.webViewLink ? (
-                              <a
-                                href={file.webViewLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={LINK_ACTION_XS}
-                              >
-                                Открыть
-                              </a>
-                            ) : (
-                              <span className="text-xs text-slate-400">—</span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadDriveFiles([file.id])}
-                              disabled={
-                                isDownloading || isTrashing || isDriveLoading || !!driveError
-                              }
-                              className={`${LINK_ACTION_XS} disabled:text-slate-300`}
-                            >
-                              Скачать
-                            </button>
-                            {!file.isFolder && (
-                              <button
-                                type="button"
-                                onClick={() => openRenameModal(file)}
-                                disabled={isRenameDisabled}
-                                className={`${LINK_ACTION_XS} disabled:text-slate-300`}
-                              >
-                                Переименовать
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DriveFilesTable
+            files={sortedDriveFiles}
+            selectedFileIds={selectedDriveFileIds}
+            onToggleSelection={toggleDriveFileSelection}
+            isSelectionDisabled={() => isDriveLoading || isTrashing || isDownloading}
+            dateHeaderAriaSort={getAriaSort()}
+            dateHeaderContent={
+              <button
+                type="button"
+                onClick={toggleDriveSortDirection}
+                aria-label={`Сортировать по дате, текущий порядок ${getSortLabel()}`}
+                className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                <span className={getColumnTitleClass()}>Дата</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
+                  {getSortIndicator()}
+                </span>
+              </button>
+            }
+            renderDate={(file) => formatDriveDate(file.modifiedAt ?? file.createdAt)}
+            renderSize={(file) => formatDriveFileSize(file.size)}
+            renderActions={(file) => (
+              <div className="flex items-center justify-end gap-3">
+                {file.webViewLink ? (
+                  <a
+                    href={file.webViewLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={LINK_ACTION_XS}
+                  >
+                    Открыть
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400">—</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadDriveFiles([file.id])}
+                  disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
+                  className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+                >
+                  Скачать
+                </button>
+                {!file.isFolder && (
+                  <button
+                    type="button"
+                    onClick={() => openRenameModal(file)}
+                    disabled={isRenameDisabled}
+                    className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+                  >
+                    Переименовать
+                  </button>
+                )}
+              </div>
+            )}
+            emptyMessage="Папка пуста."
+          />
         )}
       </div>
       {renamingFile && (
@@ -485,7 +426,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           closeOnOverlayClick={false}
         >
           <div className="space-y-4">
-            {renameError && <p className="app-alert app-alert-danger">{renameError}</p>}
+            {renameError && <InlineAlert as="p">{renameError}</InlineAlert>}
             <div>
               <label className="block text-sm font-semibold text-slate-700">Новое имя</label>
               <div className="mt-1 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">

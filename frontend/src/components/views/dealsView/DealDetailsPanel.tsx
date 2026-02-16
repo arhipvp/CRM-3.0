@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -49,7 +49,10 @@ import { DealNotesSection } from './DealNotesSection';
 import { DealDateControls } from './DealDateControls';
 import { useDealNotes } from './hooks/useDealNotes';
 import { useDealDriveFiles } from './hooks/useDealDriveFiles';
+import { useDealCommunication } from './hooks/useDealCommunication';
 import { FinancialRecordModal } from '../../financialRecords/FinancialRecordModal';
+import { InlineAlert } from '../../common/InlineAlert';
+import { PromptDialog } from '../../common/modal/PromptDialog';
 import { useFinancialRecordModal } from '../../../hooks/useFinancialRecordModal';
 import { PaymentModal } from '../../payments/PaymentModal';
 import { usePaymentModal } from '../../../hooks/usePaymentModal';
@@ -218,6 +221,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [isDeletingDeal, setIsDeletingDeal] = useState(false);
   const [isRestoringDeal, setIsRestoringDeal] = useState(false);
   const [isClosingDeal, setIsClosingDeal] = useState(false);
+  const [isCloseDealPromptOpen, setIsCloseDealPromptOpen] = useState(false);
+  const [closeDealReason, setCloseDealReason] = useState('');
+  const [closeDealReasonError, setCloseDealReasonError] = useState<string | null>(null);
   const [isReopeningDeal, setIsReopeningDeal] = useState(false);
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
   const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
@@ -228,16 +234,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [delayValidationError, setDelayValidationError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const hasRequestedPoliciesRef = useRef(false);
-
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-
-  const [isChatLoading, setIsChatLoading] = useState(false);
-
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-
-  const [isActivityLoading, setIsActivityLoading] = useState(false);
-
-  const [activityError, setActivityError] = useState<string | null>(null);
 
   const [isEditingDeal, setIsEditingDeal] = useState(false);
 
@@ -366,13 +362,26 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     onSelectDeal,
     onPostponeDeal,
   });
+  const {
+    chatMessages,
+    isChatLoading,
+    activityLogs,
+    isActivityLoading,
+    activityError,
+    handleChatSendMessage,
+    handleChatDelete,
+  } = useDealCommunication({
+    selectedDealId: selectedDeal?.id,
+    selectedDealDeletedAt: selectedDeal?.deletedAt,
+    activeTab,
+    onFetchChatMessages,
+    onSendChatMessage,
+    onDeleteChatMessage,
+    onFetchDealHistory,
+  });
 
   useEffect(() => {
     setActiveTab('overview');
-  }, [selectedDeal?.id]);
-
-  useEffect(() => {
-    setChatMessages([]);
   }, [selectedDeal?.id]);
 
   useEffect(() => {
@@ -413,68 +422,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     };
   }, [isDelayModalOpen]);
 
-  const loadChatMessages = useCallback(async () => {
-    const dealId = selectedDeal?.id;
-
-    if (!dealId) {
-      return;
-    }
-
-    setIsChatLoading(true);
-
-    try {
-      const messages = await onFetchChatMessages(dealId);
-
-      setChatMessages(messages);
-    } catch (err) {
-      console.error('Ошибка загрузки сообщений:', err);
-    } finally {
-      setIsChatLoading(false);
-    }
-  }, [onFetchChatMessages, selectedDeal?.id]);
-
-  useEffect(() => {
-    if (!selectedDeal?.id) {
-      return;
-    }
-
-    void loadChatMessages();
-  }, [loadChatMessages, selectedDeal?.id]);
-
-  const handleChatSendMessage = useCallback(
-    async (body: string): Promise<ChatMessage> => {
-      const dealId = selectedDeal?.id;
-
-      if (!dealId) {
-        throw new Error('Сделка не выбрана');
-      }
-
-      const newMessage = await onSendChatMessage(dealId, body);
-
-      setChatMessages((prev) => [...prev, newMessage]);
-
-      return newMessage;
-    },
-
-    [onSendChatMessage, selectedDeal?.id],
-  );
-
-  const handleChatDelete = useCallback(
-    async (messageId: string) => {
-      const dealId = selectedDeal?.id;
-
-      if (!dealId) {
-        return;
-      }
-
-      await onDeleteChatMessage(messageId);
-
-      setChatMessages((prev) => prev.filter((message) => message.id !== messageId));
-    },
-
-    [onDeleteChatMessage, selectedDeal?.id],
-  );
-
   const handleEditDealClick = useCallback(() => {
     if (!selectedDeal || isSelectedDealDeleted) {
       return;
@@ -513,31 +460,45 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
   }, [isSelectedDealDeleted, onRestoreDeal, selectedDeal]);
 
-  const handleCloseDealClick = useCallback(async () => {
+  const handleCloseDealClick = useCallback(() => {
+    if (!selectedDeal || isSelectedDealDeleted || isDealClosedStatus || !isCurrentUserSeller) {
+      return;
+    }
+    setCloseDealReason('');
+    setCloseDealReasonError(null);
+    setIsCloseDealPromptOpen(true);
+  }, [isCurrentUserSeller, isDealClosedStatus, isSelectedDealDeleted, selectedDeal]);
+
+  const handleCloseDealConfirm = useCallback(async () => {
     if (!selectedDeal || isSelectedDealDeleted || isDealClosedStatus || !isCurrentUserSeller) {
       return;
     }
 
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const reason = window.prompt('Укажите причину закрытия сделки');
-    const trimmedReason = reason?.trim();
+    const trimmedReason = closeDealReason.trim();
     if (!trimmedReason) {
+      setCloseDealReasonError('Укажите причину закрытия сделки.');
       return;
     }
 
+    setCloseDealReasonError(null);
     setIsClosingDeal(true);
-
     try {
       await onCloseDeal(selectedDeal.id, { reason: trimmedReason, status: 'won' });
+      setIsCloseDealPromptOpen(false);
+      setCloseDealReason('');
     } catch (err) {
       console.error('Ошибка закрытия сделки:', err);
     } finally {
       setIsClosingDeal(false);
     }
-  }, [isCurrentUserSeller, isDealClosedStatus, isSelectedDealDeleted, onCloseDeal, selectedDeal]);
+  }, [
+    closeDealReason,
+    isCurrentUserSeller,
+    isDealClosedStatus,
+    isSelectedDealDeleted,
+    onCloseDeal,
+    selectedDeal,
+  ]);
 
   const handleReopenDealClick = useCallback(async () => {
     if (!selectedDeal || !isDealClosedStatus || !canReopenClosedDeal) {
@@ -561,44 +522,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
     openMergeModal();
   }, [isSelectedDealDeleted, openMergeModal, selectedDeal]);
-
-  const loadActivityLogs = useCallback(async () => {
-    const dealId = selectedDeal?.id;
-
-    if (!dealId) {
-      return;
-    }
-
-    setActivityError(null);
-    setIsActivityLoading(true);
-
-    try {
-      const logs = await onFetchDealHistory(dealId, Boolean(selectedDeal?.deletedAt));
-
-      setActivityLogs(logs);
-    } catch (err) {
-      console.error('Ошибка загрузки истории:', err);
-      setActivityError('Не удалось загрузить историю.');
-    } finally {
-      setIsActivityLoading(false);
-    }
-  }, [onFetchDealHistory, selectedDeal?.id, selectedDeal?.deletedAt]);
-
-  // Reload activity log when the "history" tab becomes active
-
-  useEffect(() => {
-    if (activeTab === 'history') {
-      void loadActivityLogs();
-    }
-  }, [activeTab, loadActivityLogs]);
-
-  // Reload chat messages when the "chat" tab becomes active
-
-  useEffect(() => {
-    if (activeTab === 'chat') {
-      void loadChatMessages();
-    }
-  }, [activeTab, loadChatMessages]);
 
   const handleMarkTaskDone = async (taskId: string) => {
     if (completingTaskIds.includes(taskId)) {
@@ -918,7 +841,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       <div className="flex items-center justify-between">
         <p className="app-label">История</p>
       </div>
-      {activityError && <div className="app-alert app-alert-danger">{activityError}</div>}
+      {activityError && <InlineAlert>{activityError}</InlineAlert>}
       <ActivityTimeline activities={activityLogs} isLoading={isActivityLoading} />
     </section>
   );
@@ -1214,6 +1137,30 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           onSubmit={handleMergeSubmit}
         />
       )}
+      <PromptDialog
+        isOpen={isCloseDealPromptOpen}
+        title="Закрыть сделку"
+        label="Причина закрытия"
+        value={closeDealReason}
+        onChange={(value) => {
+          setCloseDealReason(value);
+          setCloseDealReasonError(null);
+        }}
+        onCancel={() => {
+          if (isClosingDeal) {
+            return;
+          }
+          setIsCloseDealPromptOpen(false);
+          setCloseDealReasonError(null);
+        }}
+        onConfirm={() => {
+          void handleCloseDealConfirm();
+        }}
+        confirmLabel="Закрыть сделку"
+        isSubmitting={isClosingDeal}
+        placeholder="Напишите причину"
+        error={closeDealReasonError}
+      />
       <ConfirmDialogRenderer />
     </>
   );

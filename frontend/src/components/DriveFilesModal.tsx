@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { DriveFile } from '../types';
+
 import {
   fetchClientDriveFiles,
   fetchPolicyDriveFiles,
   uploadClientDriveFile,
   uploadPolicyDriveFile,
 } from '../api';
-import { FileUploadManager } from './FileUploadManager';
-import { Modal } from './Modal';
-import { TableHeadCell } from './common/TableHeadCell';
-import { TABLE_CELL_CLASS_MD, TABLE_ROW_CLASS, TABLE_THEAD_CLASS } from './common/tableStyles';
+import type { DriveFile } from '../types';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import { formatDateTimeRu } from '../utils/formatting';
+import { InlineAlert } from './common/InlineAlert';
+import { DriveFilesTable } from './common/table/DriveFilesTable';
+import { FileUploadManager } from './FileUploadManager';
+import { Modal } from './Modal';
 
 interface DriveFilesModalProps {
   isOpen: boolean;
@@ -34,8 +35,6 @@ const formatDriveFileSize = (bytes?: number | null) => {
   return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
 };
 
-const getDriveItemIcon = (isFolder: boolean) => (isFolder ? '📁' : '📄');
-
 export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
   isOpen,
   onClose,
@@ -48,7 +47,9 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const loadFiles = useCallback(async () => {
-    if (!entityId) return;
+    if (!entityId) {
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -88,72 +89,35 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
       <div className="space-y-6">
         <FileUploadManager onUpload={handleUpload} />
 
-        {error && <div className="app-alert app-alert-danger">{error}</div>}
+        {error && <InlineAlert>{error}</InlineAlert>}
 
         {isLoading ? (
-          <div className="text-center py-8 text-slate-500">Загрузка...</div>
+          <div className="py-8 text-center text-slate-500">Загрузка...</div>
         ) : (
-          <div className="app-panel shadow-none overflow-hidden">
-            <div className="overflow-x-auto bg-white">
-              <table className="deals-table min-w-full border-collapse text-left text-sm">
-                <thead className={TABLE_THEAD_CLASS}>
-                  <tr>
-                    <TableHeadCell padding="md">Имя</TableHeadCell>
-                    <TableHeadCell padding="md" className="w-[140px]">
-                      Размер
-                    </TableHeadCell>
-                    <TableHeadCell padding="md" className="w-[180px]">
-                      Изменён
-                    </TableHeadCell>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {sortedFiles.map((file) => (
-                    <tr key={file.id} className={TABLE_ROW_CLASS}>
-                      <td className={TABLE_CELL_CLASS_MD}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{getDriveItemIcon(file.isFolder)}</span>
-                          {file.webViewLink ? (
-                            <a
-                              href={file.webViewLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="link-action truncate max-w-[220px] sm:max-w-md block"
-                              title={file.name}
-                            >
-                              {file.name}
-                            </a>
-                          ) : (
-                            <span
-                              className="font-semibold text-slate-900 truncate max-w-[220px] sm:max-w-md block"
-                              title={file.name}
-                            >
-                              {file.name}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_MD} text-slate-600 whitespace-nowrap`}>
-                        {formatDriveFileSize(file.size)}
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_MD} text-slate-600 whitespace-nowrap`}>
-                        {formatDateTimeRu(file.modifiedAt || file.createdAt)}
-                      </td>
-                    </tr>
-                  ))}
-                  {!files.length && (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="border border-slate-200 px-4 py-8 text-center text-slate-600"
-                      >
-                        Папка пуста
-                      </td>
-                    </tr>
+          <div className="app-panel overflow-hidden shadow-none">
+            <DriveFilesTable
+              files={sortedFiles}
+              renderDate={(file) => formatDateTimeRu(file.modifiedAt || file.createdAt)}
+              renderSize={(file) => formatDriveFileSize(file.size)}
+              renderActions={(file) => (
+                <div className="flex items-center justify-end gap-3">
+                  {file.webViewLink ? (
+                    <a
+                      href={file.webViewLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link-action text-[11px] font-semibold"
+                      title={file.name}
+                    >
+                      Открыть
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              )}
+              emptyMessage="Папка пуста"
+            />
           </div>
         )}
       </div>

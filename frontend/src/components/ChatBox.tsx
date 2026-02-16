@@ -3,6 +3,7 @@ import { ChatMessage, User } from '../types';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import { getUserColor } from '../utils/userColor';
 import { BTN_PRIMARY, BTN_SM_DANGER, BTN_SM_SECONDARY } from './common/buttonStyles';
+import { InlineAlert } from './common/InlineAlert';
 import { Modal } from './Modal';
 
 interface ChatBoxProps {
@@ -160,7 +161,11 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
       </div>
 
       <div className="border-t border-slate-200 bg-white px-4 py-3">
-        {error && <p className="app-alert app-alert-danger">{error}</p>}
+        {error && (
+          <InlineAlert as="p" className="mb-2">
+            {error}
+          </InlineAlert>
+        )}
 
         <form onSubmit={handleSendMessage} className="space-y-2">
           <div className="text-xs text-slate-600">

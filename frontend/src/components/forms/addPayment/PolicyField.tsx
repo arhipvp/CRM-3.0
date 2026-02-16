@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Policy } from '../../../types';
+import { FORM_INPUT_DISABLED } from '../../common/forms/formClassNames';
 
 interface PolicyFieldProps {
   policyId: string;
@@ -35,7 +36,7 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
           value={fixedPolicyDisplay}
           disabled
           required
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         />
         {fixedPolicy?.insuranceType && (
           <p className="text-sm text-slate-600">{fixedPolicy.insuranceType}</p>
@@ -57,7 +58,7 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
           onChange={onChange}
           disabled={loading}
           required
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         >
           <option value="">Выберите полис</option>
           {policyOptions.map((policy) => (
@@ -85,7 +86,7 @@ export const PolicyField: React.FC<PolicyFieldProps> = ({
         placeholder="ID полиса"
         disabled={loading}
         required
-        className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+        className={FORM_INPUT_DISABLED}
       />
     </div>
   );

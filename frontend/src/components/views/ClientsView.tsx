@@ -14,7 +14,7 @@ import {
 import { formatDateRu } from '../../utils/formatting';
 import { buildWhatsAppLink } from '../../utils/links';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { BTN_SM_DANGER, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { BTN_SM_DANGER, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 
 const PAGE_SIZE = 20;
@@ -220,7 +220,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onClientEdit(client)}
-                            className="btn btn-quiet btn-sm rounded-xl"
+                            className={BTN_SM_QUIET}
                             aria-label={`Редактировать клиента ${client.name}`}
                           >
                             Редактировать
@@ -240,7 +240,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onClientMerge(client)}
-                            className="btn btn-quiet btn-sm rounded-xl"
+                            className={BTN_SM_QUIET}
                             aria-label={`Объединить клиента ${client.name}`}
                           >
                             Объединить

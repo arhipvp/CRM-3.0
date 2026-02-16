@@ -4,6 +4,7 @@ import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
+import { FORM_INPUT_DISABLED, FORM_TEXTAREA_DISABLED } from '../common/forms/formClassNames';
 
 export interface AddFinancialRecordFormValues {
   paymentId: string;
@@ -147,7 +148,7 @@ export function AddFinancialRecordForm({
           value={formData.recordType}
           onChange={handleChange}
           disabled={loading}
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         >
           <option value="income">Доход (поступление)</option>
           <option value="expense">Расход (затраты)</option>
@@ -165,7 +166,7 @@ export function AddFinancialRecordForm({
           step="0.01"
           disabled={loading}
           required
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         />
       </FormField>
       <FormField label="Дата" htmlFor="date">
@@ -176,7 +177,7 @@ export function AddFinancialRecordForm({
           value={formData.date || ''}
           onChange={handleChange}
           disabled={loading}
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         />
       </FormField>
 
@@ -189,7 +190,7 @@ export function AddFinancialRecordForm({
           placeholder="Дополнительные детали"
           rows={3}
           disabled={loading}
-          className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_TEXTAREA_DISABLED}
         />
       </FormField>
 

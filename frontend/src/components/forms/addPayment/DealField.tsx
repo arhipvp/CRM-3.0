@@ -1,4 +1,5 @@
 import React from 'react';
+import { FORM_INPUT_DISABLED } from '../../common/forms/formClassNames';
 
 interface DealFieldProps {
   dealDisplayValue: string;
@@ -27,7 +28,7 @@ export const DealField: React.FC<DealFieldProps> = ({
         name="dealId"
         value={dealDisplayValue}
         disabled
-        className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+        className={FORM_INPUT_DISABLED}
       />
     </div>
   ) : (
@@ -43,7 +44,7 @@ export const DealField: React.FC<DealFieldProps> = ({
         onChange={onChange}
         placeholder="ID сделки"
         disabled={loading}
-        className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+        className={FORM_INPUT_DISABLED}
       />
     </div>
   );

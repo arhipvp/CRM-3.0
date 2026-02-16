@@ -26,6 +26,7 @@ import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
+import { BTN_SM_QUIET } from '../common/buttonStyles';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-start_date', label: 'Начало (убывание)' },
@@ -361,7 +362,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
               void onLoadMorePolicies();
             }}
             disabled={isLoadingMorePolicies}
-            className="btn btn-quiet btn-sm rounded-xl"
+            className={BTN_SM_QUIET}
           >
             {isLoadingMorePolicies ? 'Загрузка...' : 'Показать ещё'}
           </button>

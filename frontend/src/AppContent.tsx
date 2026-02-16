@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
@@ -8,6 +8,9 @@ import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
 import { ClientForm } from './components/forms/ClientForm';
 import { PanelMessage } from './components/PanelMessage';
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from './components/common/buttonStyles';
+import { FormActions } from './components/common/forms/FormActions';
+import { FormModal } from './components/common/modal/FormModal';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { DealFormValues } from './components/forms/DealForm';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
@@ -2603,42 +2606,48 @@ const AppContent: React.FC = () => {
         </Modal>
       )}
       {clientDeleteTarget && (
-        <Modal
+        <FormModal
+          isOpen
           title="Удалить клиента"
           onClose={() => setClientDeleteTarget(null)}
           closeOnOverlayClick={false}
         >
-          <p className="text-sm text-slate-700">
-            Клиент <span className="font-bold">{clientDeleteTarget.name}</span> и все его данные
-            станут недоступны.
-          </p>
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setClientDeleteTarget(null)}
-              className="btn btn-secondary rounded-xl"
-              disabled={isSyncing}
-            >
-              Отмена
-            </button>
-            <button
-              type="button"
-              onClick={handleDeleteClient}
-              className="btn btn-danger rounded-xl"
-              disabled={isSyncing}
-            >
-              {isSyncing ? 'Удаляем...' : 'Удалить'}
-            </button>
-          </div>
-        </Modal>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleDeleteClient();
+            }}
+            className="space-y-4"
+          >
+            <p className="text-sm text-slate-700">
+              Клиент <span className="font-bold">{clientDeleteTarget.name}</span> и все его данные
+              станут недоступны.
+            </p>
+            <FormActions
+              onCancel={() => setClientDeleteTarget(null)}
+              isSubmitting={isSyncing}
+              submitLabel="Удалить"
+              submittingLabel="Удаляем..."
+              submitClassName={`${BTN_DANGER} rounded-xl`}
+              cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+            />
+          </form>
+        </FormModal>
       )}
       {mergeTargetClient && (
-        <Modal
+        <FormModal
+          isOpen
           title={`Объединить клиента ${mergeTargetClient.name}`}
           onClose={closeMergeModal}
           size="lg"
         >
-          <div className="space-y-5">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleMergeSubmit();
+            }}
+            className="space-y-5"
+          >
             <p className="text-sm text-slate-600">
               Выберите клиентов, которые будут объединены в «{mergeTargetClient.name}».
             </p>
@@ -2676,26 +2685,17 @@ const AppContent: React.FC = () => {
               )}
             </div>
             {mergeError && <p className="text-sm text-rose-600">{mergeError}</p>}
-          </div>
-          <div className="flex items-center justify-end gap-3 mt-6 border-t border-slate-200 pt-4">
-            <button
-              type="button"
-              onClick={closeMergeModal}
-              className="btn btn-secondary rounded-xl"
-              disabled={isMergingClients}
-            >
-              Отмена
-            </button>
-            <button
-              type="button"
-              onClick={handleMergeSubmit}
-              disabled={isMergingClients || !mergeSources.length}
-              className="btn btn-primary rounded-xl"
-            >
-              {isMergingClients ? 'Объединяем...' : 'Объединить клиентов'}
-            </button>
-          </div>
-        </Modal>
+            <FormActions
+              onCancel={closeMergeModal}
+              isSubmitting={isMergingClients}
+              isSubmitDisabled={!mergeSources.length}
+              submitLabel="Объединить клиентов"
+              submittingLabel="Объединяем..."
+              submitClassName={`${BTN_PRIMARY} rounded-xl`}
+              cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+            />
+          </form>
+        </FormModal>
       )}
       <ConfirmDialogRenderer />
       <NotificationDisplay />

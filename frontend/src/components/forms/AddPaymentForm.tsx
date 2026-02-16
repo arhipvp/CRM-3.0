@@ -8,6 +8,7 @@ import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
+import { FORM_INPUT_DISABLED, FORM_TEXTAREA_DISABLED } from '../common/forms/formClassNames';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -145,7 +146,7 @@ export function AddPaymentForm({
           step="0.01"
           disabled={loading}
           required
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         />
       </FormField>
 
@@ -158,7 +159,7 @@ export function AddPaymentForm({
           placeholder="Комментарий к платёжному поручению"
           rows={3}
           disabled={loading}
-          className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_TEXTAREA_DISABLED}
         />
       </FormField>
 

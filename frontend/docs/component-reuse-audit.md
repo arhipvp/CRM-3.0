@@ -22,14 +22,19 @@
 
 - `DataTableShell` как общий контейнер таблицы.
 - `EmptyTableState` как единый пустой state в `<tbody>`.
+- `DriveFilesTable` как общий примитив для file-like таблиц.
 
 5. Кнопки действий:
 
-- `src/components/common/buttonStyles.ts` для унифицированных small action buttons (`primary/secondary/danger`).
+- `src/components/common/buttonStyles.ts` для унифицированных кнопочных вариантов (`primary/secondary/danger/quiet/success/outline` и `sm`-варианты).
 
 6. Частые UI-классы:
 
 - `src/components/common/uiClassNames.ts` для повторяющихся классов (`link-action`, muted panel, status badges).
+
+7. Статус и ошибки:
+
+- `InlineAlert` как единый примитив для inline-ошибок/успеха вместо ручных `app-alert`-блоков.
 
 ## Что переведено
 
@@ -79,6 +84,10 @@
 - `src/components/common/uiClassNames.ts`
 - `src/components/common/table/DataTableShell.tsx`
 - `src/components/common/table/EmptyTableState.tsx`
+- `src/components/common/table/DriveFilesTable.tsx`
+- `src/components/common/modal/PromptDialog.tsx`
+- `src/components/common/InlineAlert.tsx`
+- `src/components/common/forms/formClassNames.ts`
 
 ## Дополнительная декомпозиция P1
 
@@ -98,3 +107,21 @@
 - `src/components/views/commissions/hooks/useStatementsManager.ts`
 - `src/components/views/commissions/hooks/useCommissionsRows.ts`
 - `src/components/views/commissions/hooks/useCommissionsViewModel.ts`
+
+## Обновления (2026-02-16)
+
+- Убран `window.prompt` из закрытия сделки; теперь используется `PromptDialog`.
+- File-like таблицы сведены к общему `DriveFilesTable`:
+  - `src/components/DriveFilesModal.tsx`
+  - `src/components/views/commissions/StatementFilesTab.tsx`
+  - `src/components/views/dealsView/tabs/FilesTab.tsx`
+- Табличный shell дополнительно выровнен в:
+  - `src/components/views/dealsView/DealsList.tsx`
+  - `src/components/views/dealsView/tabs/QuotesTab.tsx`
+  - `src/components/views/commissions/RecordsTable.tsx`
+- Добавлены button-варианты в `buttonStyles.ts`:
+  - `BTN_SUCCESS`, `BTN_OUTLINE`, `BTN_QUIET`, `BTN_SM_QUIET`.
+- Добавлены form class helpers:
+  - `FORM_INPUT_DISABLED`, `FORM_TEXTAREA_DISABLED`.
+- Статус/ошибки в ключевых экранах переведены на `InlineAlert`.
+- Чат/история из `DealDetailsPanel` частично вынесены в `hooks/useDealCommunication.ts`.

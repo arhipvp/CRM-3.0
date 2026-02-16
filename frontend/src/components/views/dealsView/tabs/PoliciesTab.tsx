@@ -20,7 +20,7 @@ import { ColoredLabel } from '../../../common/ColoredLabel';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
 import { buildPolicyNavigationActions } from '../../../policies/policyCardActions';
 import { getPolicyExpiryBadge } from '../../../policies/policyIndicators';
-import { BTN_PRIMARY, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
+import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { POLICY_TEXT } from '../../../policies/text';
 
@@ -271,7 +271,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           </button>
           <button
             type="button"
-            className="btn btn-quiet btn-sm rounded-xl"
+            className={BTN_SM_QUIET}
             onClick={() => {
               setPaymentsExpanded((prev) => {
                 const next = { ...prev };
@@ -286,7 +286,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           </button>
           <button
             type="button"
-            className="btn btn-quiet btn-sm rounded-xl"
+            className={BTN_SM_QUIET}
             onClick={() => {
               setPaymentsExpanded((prev) => {
                 const next = { ...prev };

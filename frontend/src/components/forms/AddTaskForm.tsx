@@ -4,6 +4,7 @@ import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
+import { FORM_INPUT_DISABLED, FORM_TEXTAREA_DISABLED } from '../common/forms/formClassNames';
 
 export interface AddTaskFormValues {
   title: string;
@@ -87,7 +88,7 @@ export function AddTaskForm({
           placeholder="Название задачи"
           disabled={loading}
           required
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         />
       </FormField>
 
@@ -100,7 +101,7 @@ export function AddTaskForm({
           placeholder="Описание задачи"
           rows={3}
           disabled={loading}
-          className="field-textarea disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_TEXTAREA_DISABLED}
         />
       </FormField>
 
@@ -115,7 +116,7 @@ export function AddTaskForm({
           value={formData.assigneeId ?? ''}
           onChange={handleChange}
           disabled={loading}
-          className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+          className={FORM_INPUT_DISABLED}
         >
           <option value="">Не назначен</option>
           {users.map((user) => (
@@ -134,7 +135,7 @@ export function AddTaskForm({
             value={formData.priority}
             onChange={handleChange}
             disabled={loading}
-            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+            className={FORM_INPUT_DISABLED}
           >
             <option value="low">Низкий</option>
             <option value="normal">Обычный</option>
@@ -151,7 +152,7 @@ export function AddTaskForm({
             value={formData.dueAt || ''}
             onChange={handleChange}
             disabled={loading}
-            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+            className={FORM_INPUT_DISABLED}
           />
         </FormField>
       </div>
@@ -164,7 +165,7 @@ export function AddTaskForm({
             value={formData.status || 'todo'}
             onChange={handleChange}
             disabled={loading}
-            className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+            className={FORM_INPUT_DISABLED}
           >
             <option value="todo">К выполнению</option>
             <option value="in_progress">В работе</option>

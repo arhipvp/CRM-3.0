@@ -41,9 +41,12 @@ npm run test         # Vitest с Testing Library и setupTests
 ## Переиспользование UI
 
 - Confirm-диалоги: используйте `src/hooks/useConfirm.ts` и словарь `src/constants/confirmTexts.ts`; прямой `window.confirm` не использовать.
-- Малые action-кнопки: используйте константы `BTN_SM_PRIMARY`, `BTN_SM_SECONDARY`, `BTN_SM_DANGER` из `src/components/common/buttonStyles.ts`.
+- Prompt-потоки: вместо `window.prompt` используйте `src/components/common/modal/PromptDialog.tsx`.
+- Малые action-кнопки: используйте константы из `src/components/common/buttonStyles.ts` (`BTN_SM_PRIMARY`, `BTN_SM_SECONDARY`, `BTN_SM_DANGER`, `BTN_SM_QUIET`, а также `BTN_OUTLINE`/`BTN_SUCCESS`).
+- Form input классы: используйте `FORM_INPUT_DISABLED` и `FORM_TEXTAREA_DISABLED` из `src/components/common/forms/formClassNames.ts`.
 - Частые UI-классы: используйте `src/components/common/uiClassNames.ts` (`LINK_ACTION_XS`, `PANEL_MUTED_TEXT`, `STATUS_*`) вместо локальных строковых дублей.
-- Формы и таблицы: опирайтесь на примитивы из `src/components/common/forms/*` и `src/components/common/table/*` вместо локальных JSX-паттернов.
+- Статус/ошибки: используйте `src/components/common/InlineAlert.tsx` вместо ручных `app-alert app-alert-*`.
+- Формы и таблицы: опирайтесь на примитивы из `src/components/common/forms/*` и `src/components/common/table/*` (`DataTableShell`, `EmptyTableState`, `DriveFilesTable`) вместо локальных JSX-паттернов.
 
 ## Docker и CI
 

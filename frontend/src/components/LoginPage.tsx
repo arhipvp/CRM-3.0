@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 
 import { login } from '../api';
 import { BTN_PRIMARY } from './common/buttonStyles';
+import { FORM_INPUT_DISABLED } from './common/forms/formClassNames';
+import { InlineAlert } from './common/InlineAlert';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 
 interface LoginPageProps {
@@ -49,7 +51,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={isLoading}
-              className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+              className={FORM_INPUT_DISABLED}
             />
           </div>
 
@@ -64,11 +66,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
-              className="field field-input disabled:bg-slate-50 disabled:text-slate-500"
+              className={FORM_INPUT_DISABLED}
             />
           </div>
 
-          {error && <p className="app-alert app-alert-danger">{error}</p>}
+          {error && <InlineAlert as="p">{error}</InlineAlert>}
 
           <button
             type="submit"

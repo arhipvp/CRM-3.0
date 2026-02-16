@@ -28,6 +28,7 @@ import {
 } from '../../types';
 import { Modal } from '../Modal';
 import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { InlineAlert } from '../common/InlineAlert';
 import { PANEL_MUTED_TEXT, STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { useConfirm } from '../../hooks/useConfirm';
 import { confirmTexts } from '../../constants/confirmTexts';
@@ -582,7 +583,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             Создать блокнот
           </button>
         </div>
-        {notebookError && <div className="app-alert app-alert-danger">{notebookError}</div>}
+        {notebookError && <InlineAlert>{notebookError}</InlineAlert>}
       </section>
 
       <section className="app-panel space-y-6 p-6 shadow-none">
@@ -693,7 +694,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
           </div>
         </div>
         <div className="p-6 space-y-4">
-          {savedError && <div className="app-alert app-alert-danger">{savedError}</div>}
+          {savedError && <InlineAlert>{savedError}</InlineAlert>}
           {savedAnswers.length === 0 && (
             <div className={PANEL_MUTED_TEXT}>Пока нет сохранённых ответов.</div>
           )}
@@ -768,7 +769,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
           </label>
         </div>
         <FileUploadManager onUpload={handleUpload} disabled={!selectedNotebookId} />
-        {sourcesError && <div className="app-alert app-alert-danger">{sourcesError}</div>}
+        {sourcesError && <InlineAlert>{sourcesError}</InlineAlert>}
         <div className="space-y-4">
           {sourcesLoading && (
             <div className="text-xs uppercase tracking-wide text-slate-400">Загрузка...</div>

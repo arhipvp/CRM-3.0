@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 
 import type { Statement } from '../../../types';
-import { BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { InlineAlert } from '../../common/InlineAlert';
 
 interface AllRecordsPanelProps {
   allRecordsSearch: string;
@@ -86,7 +87,7 @@ export const AllRecordsPanel = ({
     </div>
     {allRecordsError && (
       <div className="px-4 py-3 bg-white border-b border-slate-200">
-        <div className="app-alert app-alert-danger flex flex-wrap items-center justify-between gap-3">
+        <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
           <span>{allRecordsError}</span>
           <button
             type="button"
@@ -96,7 +97,7 @@ export const AllRecordsPanel = ({
           >
             Повторить
           </button>
-        </div>
+        </InlineAlert>
       </div>
     )}
     <div className="px-4 py-4 border-b border-slate-200 bg-white">
@@ -224,7 +225,7 @@ export const AllRecordsPanel = ({
             type="button"
             onClick={onLoadMore}
             disabled={isAllRecordsLoadingMore || isAllRecordsLoading}
-            className="btn btn-quiet btn-sm rounded-xl"
+            className={BTN_SM_QUIET}
           >
             {isAllRecordsLoadingMore ? 'Загрузка...' : 'Показать ещё'}
           </button>

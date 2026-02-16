@@ -8,7 +8,12 @@ import type { PolicyCardModel } from './policyCardModel';
 import { PolicyNumberButton } from './PolicyNumberButton';
 import { getPolicyExpiryBadge } from './policyIndicators';
 import { POLICY_PLACEHOLDER, POLICY_TEXT } from './text';
-import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import {
+  BTN_SM_DANGER,
+  BTN_SM_PRIMARY,
+  BTN_SM_QUIET,
+  BTN_SM_SECONDARY,
+} from '../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../common/uiClassNames';
 import { hasUnpaidPayment, hasUnpaidRecord } from '../views/dealsView/helpers';
 
@@ -44,7 +49,7 @@ const actionClassName = (variant: PolicyCardActionVariant | undefined) => {
     return `${BTN_SM_DANGER} whitespace-nowrap`;
   }
   if (variant === 'quiet') {
-    return 'btn btn-quiet btn-sm rounded-xl whitespace-nowrap';
+    return `${BTN_SM_QUIET} whitespace-nowrap`;
   }
   return `${BTN_SM_SECONDARY} whitespace-nowrap`;
 };
@@ -282,7 +287,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                   onClick={onTogglePaymentsExpanded}
                   aria-expanded={isPaymentsExpanded}
                   aria-controls={paymentsPanelId}
-                  className="btn btn-quiet btn-sm rounded-xl"
+                  className={BTN_SM_QUIET}
                 >
                   {paymentsToggleLabel}
                 </button>

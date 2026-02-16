@@ -2,8 +2,9 @@ import type { RefObject } from 'react';
 
 import type { Payment, Policy, Statement } from '../../../types';
 import { formatCurrencyRu, formatDateRu } from '../../../utils/formatting';
-import { PanelMessage } from '../../PanelMessage';
 import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { DataTableShell } from '../../common/table/DataTableShell';
+import { EmptyTableState } from '../../common/table/EmptyTableState';
 import { TableHeadCell } from '../../common/TableHeadCell';
 import { TABLE_CELL_CLASS_SM, TABLE_ROW_CLASS, TABLE_THEAD_CLASS } from '../../common/tableStyles';
 import { PolicyNumberButton } from '../../policies/PolicyNumberButton';
@@ -163,7 +164,7 @@ export const RecordsTable = ({
         </div>
       </div>
     </div>
-    <div className="overflow-x-auto bg-white rounded-b-2xl">
+    <DataTableShell className="rounded-none border-0 shadow-none">
       <table
         className="deals-table w-full table-fixed border-collapse text-left text-sm"
         aria-label="Доходы и расходы"
@@ -514,23 +515,16 @@ export const RecordsTable = ({
             );
           })}
           {!filteredRows.length && (
-            <tr>
-              <td
-                colSpan={9}
-                className="border border-slate-200 px-6 py-10 text-center text-slate-600"
-              >
-                <PanelMessage>
-                  {viewMode === 'all' && isAllRecordsLoading
-                    ? 'Загрузка записей...'
-                    : viewMode === 'statements' && selectedStatement
-                      ? 'Записей в ведомости пока нет'
-                      : 'Записей пока нет'}
-                </PanelMessage>
-              </td>
-            </tr>
+            <EmptyTableState colSpan={9}>
+              {viewMode === 'all' && isAllRecordsLoading
+                ? 'Загрузка записей...'
+                : viewMode === 'statements' && selectedStatement
+                  ? 'Записей в ведомости пока нет'
+                  : 'Записей пока нет'}
+            </EmptyTableState>
           )}
         </tbody>
       </table>
-    </div>
+    </DataTableShell>
   </div>
 );

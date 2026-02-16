@@ -6,6 +6,7 @@ import { API_BASE, requestBlob } from '../../../api/request';
 import { formatDate } from './helpers';
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { LinkifiedText } from '../../common/LinkifiedText';
+import { InlineAlert } from '../../common/InlineAlert';
 import { FileUploadManager } from '../../FileUploadManager';
 import { Modal } from '../../Modal';
 import { BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../common/buttonStyles';
@@ -67,9 +68,10 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
   onRestoreNote,
 }) => {
   const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
-    const className = tone === 'danger' ? 'app-alert app-alert-danger' : PANEL_MUTED_TEXT;
-
-    return <div className={className}>{message}</div>;
+    if (tone === 'danger') {
+      return <InlineAlert>{message}</InlineAlert>;
+    }
+    return <div className={PANEL_MUTED_TEXT}>{message}</div>;
   };
 
   const buildAttachmentPath = (noteId: string, fileId: string) =>
