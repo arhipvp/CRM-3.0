@@ -31,6 +31,8 @@
 - `src/components/forms/AddFinancialRecordForm.tsx`
 - `src/components/forms/ClientForm.tsx`
 - `src/components/forms/AddQuoteForm.tsx`
+- `src/components/forms/DealForm.tsx`
+- `src/components/forms/AddPolicyForm.tsx` (декомпозиция шагов)
 
 ### Модалки
 
@@ -65,3 +67,9 @@
 - `src/hooks/useConfirm.ts`
 - `src/components/common/table/DataTableShell.tsx`
 - `src/components/common/table/EmptyTableState.tsx`
+
+## Дополнительная декомпозиция P1
+
+- `src/components/forms/addPolicy/components/PolicyBasicsStep.tsx`
+- `src/components/forms/addPolicy/components/PolicyPaymentsStep.tsx`
+- `src/components/forms/addPolicy/components/PolicyFinanceStep.tsx`
