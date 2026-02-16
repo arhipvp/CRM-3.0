@@ -5,6 +5,7 @@ import { downloadDealDriveFiles } from '../../../api';
 import { API_BASE, requestBlob } from '../../../api/request';
 import { formatDate } from './helpers';
 import { ColoredLabel } from '../../common/ColoredLabel';
+import { LinkifiedText } from '../../common/LinkifiedText';
 import { FileUploadManager } from '../../FileUploadManager';
 import { Modal } from '../../Modal';
 import { dedupeFiles } from '../../../utils/fileUpload';
@@ -369,7 +370,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                     />
                   </p>
                   <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-slate-900">
-                    {note.body || '—'}
+                    <LinkifiedText text={note.body} />
                   </p>
                   {note.attachments && note.attachments.length > 0 && (
                     <div className="mt-4 space-y-2">

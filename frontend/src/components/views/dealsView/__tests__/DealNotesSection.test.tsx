@@ -6,7 +6,7 @@ import { DealNotesSection } from '../DealNotesSection';
 const note = {
   id: 'note-1',
   dealId: 'deal-1',
-  body: 'Test note',
+  body: 'Test note bampadu.ru/form',
   authorName: 'Agent',
   isImportant: false,
   createdAt: '2024-01-01T00:00:00Z',
@@ -42,6 +42,10 @@ describe('DealNotesSection', () => {
 
   it('renders filters, note modal and invokes handlers', () => {
     render(<DealNotesSection {...baseProps} />);
+
+    const noteLink = screen.getByRole('link', { name: 'bampadu.ru/form' });
+    expect(noteLink).toHaveAttribute('href', 'https://bampadu.ru/form');
+    expect(noteLink).toHaveAttribute('target', '_blank');
 
     fireEvent.click(screen.getByRole('button', { name: 'Активные' }));
     expect(baseProps.onSetFilter).toHaveBeenCalledWith('active');
