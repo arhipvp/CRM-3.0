@@ -16,6 +16,7 @@
 3. Confirm-потоки:
 
 - `useConfirm` + `ConfirmDialog` вместо прямого `window.confirm`.
+- `src/constants/confirmTexts.ts` как единый словарь заголовков/текстов confirm-диалогов.
 
 4. Таблицы:
 
@@ -65,6 +66,7 @@
 - `src/components/common/modal/FormModal.tsx`
 - `src/components/common/ConfirmDialog.tsx`
 - `src/hooks/useConfirm.ts`
+- `src/constants/confirmTexts.ts`
 - `src/components/common/table/DataTableShell.tsx`
 - `src/components/common/table/EmptyTableState.tsx`
 
@@ -84,3 +86,5 @@
 - `src/components/views/commissions/hooks/useRecordAmountEditing.ts`
 - `src/components/views/commissions/hooks/useStatementDriveManager.ts`
 - `src/components/views/commissions/hooks/useStatementsManager.ts`
+- `src/components/views/commissions/hooks/useCommissionsRows.ts`
+- `src/components/views/commissions/hooks/useCommissionsViewModel.ts`

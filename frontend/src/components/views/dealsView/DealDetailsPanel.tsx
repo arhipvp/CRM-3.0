@@ -54,6 +54,7 @@ import { PaymentModal } from '../../payments/PaymentModal';
 import { usePaymentModal } from '../../../hooks/usePaymentModal';
 import { fetchNotificationSettings } from '../../../api/notifications';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { confirmTexts } from '../../../constants/confirmTexts';
 
 interface DealDetailsPanelProps {
   deals: Deal[];
@@ -321,13 +322,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   } = useDealDriveFiles({
     selectedDeal,
     onDriveFolderCreated,
-    onConfirmAction: async (message) =>
-      confirm({
-        title: 'Удалить файлы',
-        message,
-        confirmText: 'Удалить',
-        tone: 'danger',
-      }),
+    onConfirmAction: async (message) => confirm(confirmTexts.deleteDriveFiles(message)),
     onRefreshPolicies,
     onPolicyDraftReady,
   });

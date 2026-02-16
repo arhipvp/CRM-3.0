@@ -12,6 +12,7 @@ import { PRIORITY_LABELS, STATUS_LABELS } from './constants';
 import { DataTableShell } from '../common/table/DataTableShell';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 import { useConfirm } from '../../hooks/useConfirm';
+import { confirmTexts } from '../../constants/confirmTexts';
 
 interface TaskTableProps {
   tasks: Task[];
@@ -70,12 +71,7 @@ export function TaskTable({
     if (!onDeleteTask) {
       return;
     }
-    const confirmed = await confirm({
-      title: 'Удаление задачи',
-      message: 'Вы уверены, что хотите удалить задачу?',
-      confirmText: 'Удалить',
-      tone: 'danger',
-    });
+    const confirmed = await confirm(confirmTexts.deleteTask());
     if (!confirmed) {
       return;
     }
@@ -86,12 +82,7 @@ export function TaskTable({
     if (!onMarkTaskDone) {
       return;
     }
-    const confirmed = await confirm({
-      title: 'Выполнение задачи',
-      message: 'Отметить задачу выполненной?',
-      confirmText: 'Подтвердить',
-      tone: 'primary',
-    });
+    const confirmed = await confirm(confirmTexts.completeTask());
     if (!confirmed) {
       return;
     }

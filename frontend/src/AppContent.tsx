@@ -67,6 +67,7 @@ import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
 import { useConfirm } from './hooks/useConfirm';
+import { confirmTexts } from './constants/confirmTexts';
 import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
 import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
@@ -828,12 +829,7 @@ const AppContent: React.FC = () => {
   );
   const handleDeleteDeal = useCallback(
     async (dealId: string) => {
-      const confirmed = await confirm({
-        title: 'Удалить сделку',
-        message: 'Вы уверены, что хотите удалить эту сделку?',
-        confirmText: 'Удалить',
-        tone: 'danger',
-      });
+      const confirmed = await confirm(confirmTexts.deleteDeal());
       if (!confirmed) {
         return;
       }
@@ -2070,12 +2066,7 @@ const AppContent: React.FC = () => {
       if (!payment) {
         return;
       }
-      const confirmed = await confirm({
-        title: 'Удалить платёж',
-        message: 'Удалить платёж и все связанные записи?',
-        confirmText: 'Удалить',
-        tone: 'danger',
-      });
+      const confirmed = await confirm(confirmTexts.deletePayment());
       if (!confirmed) {
         return;
       }

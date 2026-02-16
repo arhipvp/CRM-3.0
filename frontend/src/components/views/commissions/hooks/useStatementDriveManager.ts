@@ -6,23 +6,17 @@ import {
   trashStatementDriveFiles,
   uploadStatementDriveFile,
 } from '../../../../api';
+import { confirmTexts } from '../../../../constants/confirmTexts';
 import type { DriveFile, Statement } from '../../../../types';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import { buildDriveFolderLink } from '../../../../utils/links';
-
-interface ConfirmOptions {
-  title?: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  tone?: 'danger' | 'primary';
-}
+import type { ConfirmDialogOptions } from '../../../../constants/confirmTexts';
 
 interface UseStatementDriveManagerArgs {
   selectedStatement?: Statement;
   statementTab: 'records' | 'files';
   viewMode: 'all' | 'statements';
-  confirm: (options: ConfirmOptions) => Promise<boolean>;
+  confirm: (options: ConfirmDialogOptions) => Promise<boolean>;
 }
 
 export const useStatementDriveManager = ({
@@ -130,12 +124,9 @@ export const useStatementDriveManager = ({
       setStatementDriveTrashMessage('Выберите хотя бы один файл для удаления.');
       return;
     }
-    const confirmed = await confirm({
-      title: 'Удалить файлы',
-      message: `Удалить выбранные файлы (${selectedStatementDriveFileIds.length})?`,
-      confirmText: 'Удалить',
-      tone: 'danger',
-    });
+    const confirmed = await confirm(
+      confirmTexts.deleteStatementDriveFiles(selectedStatementDriveFileIds.length),
+    );
     if (!confirmed) {
       return;
     }
@@ -201,12 +192,7 @@ export const useStatementDriveManager = ({
       if (!selectedStatement || file.isFolder) {
         return;
       }
-      const confirmed = await confirm({
-        title: 'Удалить файл',
-        message: `Удалить файл "${file.name}"?`,
-        confirmText: 'Удалить',
-        tone: 'danger',
-      });
+      const confirmed = await confirm(confirmTexts.deleteStatementDriveFile(file.name));
       if (!confirmed) {
         return;
       }

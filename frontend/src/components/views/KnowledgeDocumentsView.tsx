@@ -28,6 +28,7 @@ import {
 } from '../../types';
 import { Modal } from '../Modal';
 import { useConfirm } from '../../hooks/useConfirm';
+import { confirmTexts } from '../../constants/confirmTexts';
 
 const formatDate = (value?: string | null): string => {
   if (!value) {
@@ -223,12 +224,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
       return;
     }
     const current = notebooks.find((item) => item.id === selectedNotebookId);
-    const confirmed = await confirm({
-      title: 'Удалить блокнот',
-      message: `Удалить блокнот "${current?.name ?? ''}"? Все файлы и заметки будут удалены.`,
-      confirmText: 'Удалить',
-      tone: 'danger',
-    });
+    const confirmed = await confirm(confirmTexts.deleteNotebook(current?.name));
     if (!confirmed) {
       return;
     }
@@ -275,12 +271,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
     if (!selectedNotebookId) {
       return;
     }
-    const confirmed = await confirm({
-      title: 'Удалить файл',
-      message: 'Удалить файл из блокнота?',
-      confirmText: 'Удалить',
-      tone: 'danger',
-    });
+    const confirmed = await confirm(confirmTexts.deleteNotebookSource());
     if (!confirmed) {
       return;
     }
@@ -366,12 +357,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    const confirmed = await confirm({
-      title: 'Удалить сессию',
-      message: 'Удалить сессию чата?',
-      confirmText: 'Удалить',
-      tone: 'danger',
-    });
+    const confirmed = await confirm(confirmTexts.deleteChatSession());
     if (!confirmed) {
       return;
     }

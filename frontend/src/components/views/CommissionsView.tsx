@@ -12,8 +12,9 @@ import { EditStatementModal } from './commissions/EditStatementModal';
 import { AllRecordsPanel } from './commissions/AllRecordsPanel';
 import { RecordsTable } from './commissions/RecordsTable';
 import { StatementFilesTab } from './commissions/StatementFilesTab';
-import type { IncomeExpenseRow } from './commissions/RecordsTable';
 import { useAllRecordsController } from './commissions/hooks/useAllRecordsController';
+import { useCommissionsRows } from './commissions/hooks/useCommissionsRows';
+import { useCommissionsViewModel } from './commissions/hooks/useCommissionsViewModel';
 import { useRecordAmountEditing } from './commissions/hooks/useRecordAmountEditing';
 import { useStatementDriveManager } from './commissions/hooks/useStatementDriveManager';
 import { useStatementRecordsSelection } from './commissions/hooks/useStatementRecordsSelection';
@@ -86,11 +87,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
 
-  const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
   const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
   const [showPaidStatements, setShowPaidStatements] = useState(false);
-  const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
 
   const policiesById = useMemo(
     () => new Map(policies.map((policy) => [policy.id, policy])),
@@ -144,20 +143,30 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   } = useRecordAmountEditing({
     onUpdateFinancialRecord,
   });
-
-  useEffect(() => {
-    if (viewMode === 'all') {
-      setSelectedStatementId(null);
-      return;
-    }
-    if (!statements.length) {
-      setSelectedStatementId(null);
-      return;
-    }
-    if (!selectedStatementId || !statementsById.has(selectedStatementId)) {
-      setSelectedStatementId(statements[0].id);
-    }
-  }, [selectedStatementId, statements, statementsById, viewMode]);
+  const {
+    selectedStatementId,
+    setSelectedStatementId,
+    selectedStatement,
+    isSelectedStatementPaid,
+    selectedStatementTypeLabel,
+    selectedStatementStatusLabel,
+    selectedStatementPaidAt,
+    attachStatement,
+    isAttachStatementPaid,
+  } = useCommissionsViewModel({
+    statements,
+    statementsById,
+    viewMode,
+    targetStatementId,
+  });
+  const { filteredRows, toggleAmountSort, getAmountSortIndicator, getAmountSortLabel } =
+    useCommissionsRows({
+      payments,
+      allRecords,
+      paymentsById,
+      selectedStatementId,
+      viewMode,
+    });
 
   useEffect(() => {
     setStatementTab('records');
@@ -169,9 +178,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     }
   }, [viewMode]);
 
-  const selectedStatement = selectedStatementId
-    ? statementsById.get(selectedStatementId)
-    : undefined;
   const {
     isStatementDriveLoading,
     isStatementDriveUploading,
@@ -197,167 +203,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     viewMode,
     confirm,
   });
-
-  const isSelectedStatementPaid = Boolean(selectedStatement?.paidAt);
-  const selectedStatementTypeLabel = selectedStatement
-    ? selectedStatement.statementType === 'income'
-      ? 'Доходы'
-      : 'Расходы'
-    : '';
-  const selectedStatementStatusLabel = selectedStatement
-    ? selectedStatement.paidAt
-      ? 'Выплачена'
-      : 'Черновик'
-    : '';
-  const selectedStatementPaidAt = selectedStatement?.paidAt
-    ? formatDateRu(selectedStatement.paidAt)
-    : null;
-  const attachStatement =
-    viewMode === 'all'
-      ? targetStatementId
-        ? statementsById.get(targetStatementId)
-        : undefined
-      : selectedStatement;
-  const isAttachStatementPaid = Boolean(attachStatement?.paidAt);
-
-  const statementRows = useMemo<IncomeExpenseRow[]>(() => {
-    const result: IncomeExpenseRow[] = [];
-    payments.forEach((payment) => {
-      const records = payment.financialRecords ?? [];
-      const paidEntries = records
-        .filter((record) => Boolean(record.date))
-        .map((record) => ({
-          amount: record.amount,
-          date: record.date as string,
-        }));
-      const paidBalance = paidEntries.reduce((sum, entry) => {
-        const value = Number(entry.amount);
-        return Number.isFinite(value) ? sum + value : sum;
-      }, 0);
-      const paymentPaidBalance = Number.isFinite(paidBalance) ? paidBalance : undefined;
-
-      records.forEach((record) => {
-        const amount = Number(record.amount);
-        if (!Number.isFinite(amount) || amount === 0) {
-          return;
-        }
-        result.push({
-          key: `${payment.id}-${record.id}`,
-          payment,
-          recordId: record.id,
-          statementId: record.statementId,
-          recordAmount: amount,
-          paymentPaidBalance,
-          paymentPaidEntries: paidEntries,
-          recordDate: record.date ?? null,
-          recordDescription: record.description,
-          recordSource: record.source,
-          recordNote: record.note,
-        });
-      });
-    });
-    return result;
-  }, [payments]);
-
-  const allRows = useMemo<IncomeExpenseRow[]>(() => {
-    const result: IncomeExpenseRow[] = [];
-    allRecords.forEach((record) => {
-      const payment = paymentsById.get(record.paymentId);
-      if (!payment) {
-        return;
-      }
-      const amount = Number(record.amount);
-      if (!Number.isFinite(amount) || amount === 0) {
-        return;
-      }
-      const paidBalanceValue = record.paymentPaidBalance;
-      const paidBalance = paidBalanceValue ? Number(paidBalanceValue) : undefined;
-      const paidEntries =
-        record.paymentPaidEntries?.map((entry) => ({
-          amount: entry.amount,
-          date: entry.date,
-        })) ?? [];
-      result.push({
-        key: `${payment.id}-${record.id}`,
-        payment,
-        recordId: record.id,
-        statementId: record.statementId,
-        recordAmount: amount,
-        paymentPaidBalance: Number.isFinite(paidBalance) ? paidBalance : undefined,
-        paymentPaidEntries: paidEntries,
-        recordDate: record.date ?? null,
-        recordDescription: record.description,
-        recordSource: record.source,
-        recordNote: record.note,
-      });
-    });
-    return result;
-  }, [allRecords, paymentsById]);
-
-  const filteredRows = useMemo(() => {
-    // В режиме "Все записи" сортировка и пагинация должны соответствовать серверу.
-    // Любая клиентская сортировка ломает порядок (особенно при "Показать ещё").
-    if (viewMode === 'all') {
-      return [...allRows];
-    }
-
-    if (!selectedStatementId) {
-      return [];
-    }
-
-    const result = statementRows.filter((row) => row.statementId === selectedStatementId);
-    const compareByDate = (a: IncomeExpenseRow, b: IncomeExpenseRow) => {
-      const aTime = a.recordDate ? new Date(a.recordDate).getTime() : 0;
-      const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
-      return bTime - aTime;
-    };
-
-    if (recordAmountSort !== 'none') {
-      result.sort((a, b) => {
-        const aAmount = Number(a.recordAmount) || 0;
-        const bAmount = Number(b.recordAmount) || 0;
-        if (aAmount === bAmount) {
-          return compareByDate(a, b);
-        }
-        return recordAmountSort === 'asc' ? aAmount - bAmount : bAmount - aAmount;
-      });
-    } else {
-      result.sort(compareByDate);
-    }
-    return result;
-  }, [allRows, recordAmountSort, selectedStatementId, statementRows, viewMode]);
-
-  const toggleAmountSort = useCallback(() => {
-    setRecordAmountSort((prev) => {
-      if (prev === 'none') {
-        return 'asc';
-      }
-      if (prev === 'asc') {
-        return 'desc';
-      }
-      return 'none';
-    });
-  }, []);
-
-  const getAmountSortIndicator = () => {
-    if (recordAmountSort === 'asc') {
-      return '↑';
-    }
-    if (recordAmountSort === 'desc') {
-      return '↓';
-    }
-    return '↕';
-  };
-
-  const getAmountSortLabel = () => {
-    if (recordAmountSort === 'asc') {
-      return 'по возрастанию';
-    }
-    if (recordAmountSort === 'desc') {
-      return 'по убыванию';
-    }
-    return 'не сортируется';
-  };
 
   const handleOpenDeal = useCallback(
     (dealId: string | undefined) => {
@@ -483,6 +328,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     { id: 'records' as const, label: 'Записи', count: selectedStatement?.recordsCount ?? 0 },
     { id: 'files' as const, label: 'Файлы', count: sortedStatementDriveFiles.length },
   ];
+  const visibleStatements = showPaidStatements
+    ? statements
+    : statements.filter((statement) => !statement.paidAt);
 
   const statementFilesTab = (
     <StatementFilesTab
@@ -610,15 +458,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             </div>
 
             <div className="max-h-[360px] overflow-y-auto bg-white border-t border-slate-200">
-              {(showPaidStatements
-                ? statements
-                : statements.filter((statement) => !statement.paidAt)
-              ).length ? (
+              {visibleStatements.length ? (
                 <ul className="divide-y divide-slate-200">
-                  {(showPaidStatements
-                    ? statements
-                    : statements.filter((statement) => !statement.paidAt)
-                  ).map((statement) => {
+                  {visibleStatements.map((statement) => {
                     const isActive = statement.id === selectedStatementId;
                     const totalAmount = Number(statement.totalAmount ?? 0);
                     const totalLabel = Number.isFinite(totalAmount)

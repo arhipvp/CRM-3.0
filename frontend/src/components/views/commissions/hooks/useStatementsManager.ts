@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { exportStatementXlsx } from '../../../../api';
+import { confirmTexts } from '../../../../constants/confirmTexts';
 import type { Statement } from '../../../../types';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
-
-interface ConfirmOptions {
-  title?: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  tone?: 'danger' | 'primary';
-}
+import type { ConfirmDialogOptions } from '../../../../constants/confirmTexts';
 
 interface UseStatementsManagerArgs {
   selectedStatementId: string | null;
@@ -34,7 +28,7 @@ interface UseStatementsManagerArgs {
     }>,
   ) => Promise<Statement>;
   onDeleteStatement?: (statementId: string) => Promise<void>;
-  confirm: (options: ConfirmOptions) => Promise<boolean>;
+  confirm: (options: ConfirmDialogOptions) => Promise<boolean>;
   resetSelection: () => void;
   setSelectedStatementId: (statementId: string | null) => void;
   setStatementTab: (tab: 'records' | 'files') => void;
@@ -160,13 +154,7 @@ export const useStatementsManager = ({
     const nextPaidAt = editStatementForm.paidAt ?? '';
     const isSettingPaidAtNow = Boolean(nextPaidAt) && !existingPaidAt;
     if (isSettingPaidAtNow) {
-      const confirmed = await confirm({
-        title: 'Подтвердите выплату',
-        message:
-          'Если указать дату выплаты, ведомость будет считаться выплаченной. После сохранения редактирование и удаление ведомости будут недоступны, а всем записям будет проставлена дата выплаты.\n\nПродолжить?',
-        confirmText: 'Продолжить',
-        tone: 'primary',
-      });
+      const confirmed = await confirm(confirmTexts.markStatementAsPaid());
       if (!confirmed) {
         return;
       }
