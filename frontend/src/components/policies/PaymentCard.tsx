@@ -2,7 +2,7 @@ import React from 'react';
 import type { FinancialRecord, Payment } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 import { POLICY_TEXT } from './text';
-import { NESTED_TABLE_CELL_CLASS, NESTED_TABLE_ROW_CLASS } from '../common/tableStyles';
+import { NESTED_TABLE_CELL_CLASS_COMPACT, NESTED_TABLE_ROW_CLASS } from '../common/tableStyles';
 
 interface PaymentCardProps {
   payment: Payment;
@@ -243,20 +243,20 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
     return (
       <>
         <tr className={NESTED_TABLE_ROW_CLASS}>
-          <td className={NESTED_TABLE_CELL_CLASS}>
+          <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
             <p className="text-xs font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
           </td>
-          <td className={NESTED_TABLE_CELL_CLASS}>
+          <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
             <p className="text-xs text-slate-700">
               {payment.note || payment.description || POLICY_TEXT.paymentTable.emptyDescription}
             </p>
           </td>
-          <td className={NESTED_TABLE_CELL_CLASS}>
+          <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
             <p className="text-xs font-semibold text-slate-700">
               {formatDate(payment.scheduledDate)}
             </p>
           </td>
-          <td className={NESTED_TABLE_CELL_CLASS}>
+          <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
             <p
               className={`text-xs font-semibold ${payment.actualDate ? 'text-emerald-600' : 'text-rose-500'}`}
             >
@@ -265,10 +265,10 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
                 : POLICY_TEXT.paymentTable.noDate}
             </p>
           </td>
-          <td className={NESTED_TABLE_CELL_CLASS}>
-            <div className="space-y-1">
+          <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
+            <div className="space-y-0.5">
               {renderRecordsSummary(incomes, 'income', true)}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => onRequestAddRecord(payment.id, 'income')}
@@ -288,10 +288,10 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
               </div>
             </div>
           </td>
-          <td className={NESTED_TABLE_CELL_CLASS}>
-            <div className="space-y-1">
+          <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
+            <div className="space-y-0.5">
               {renderRecordsSummary(expenses, 'expense', true)}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => onRequestAddRecord(payment.id, 'expense')}
@@ -312,8 +312,8 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             </div>
           </td>
           {!hideRowActions && (
-            <td className={NESTED_TABLE_CELL_CLASS}>
-              <div className="flex flex-wrap items-center gap-2">
+            <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
+              <div className="flex flex-wrap items-center gap-1.5">
                 {onEditPayment && (
                   <button
                     type="button"
@@ -344,11 +344,14 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
         </tr>
         {hasExpandedDetails && (
           <tr className={NESTED_TABLE_ROW_CLASS}>
-            <td colSpan={detailsColSpan} className={`${NESTED_TABLE_CELL_CLASS} bg-slate-50/70`}>
-              <div className="grid gap-3 lg:grid-cols-2">
+            <td
+              colSpan={detailsColSpan}
+              className={`${NESTED_TABLE_CELL_CLASS_COMPACT} bg-slate-50/70`}
+            >
+              <div className="grid gap-2 lg:grid-cols-2">
                 {isIncomeExpanded && (
-                  <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
+                  <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-2">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                         {RECORD_TITLES.income}
                       </p>
@@ -370,8 +373,8 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
                   </section>
                 )}
                 {isExpenseExpanded && (
-                  <section className="rounded-lg border border-rose-200 bg-rose-50/60 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
+                  <section className="rounded-lg border border-rose-200 bg-rose-50/60 p-2">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                         {RECORD_TITLES.expense}
                       </p>

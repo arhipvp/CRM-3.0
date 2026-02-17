@@ -134,8 +134,11 @@ describe('PoliciesView', () => {
     );
 
     expect(screen.getAllByText('Сумма').length).toBeGreaterThan(1);
+    expect(screen.getByText('Начало')).toBeInTheDocument();
+    expect(screen.getByText('Окончание')).toBeInTheDocument();
     expect(screen.getByText('Доходы')).toBeInTheDocument();
     expect(screen.getByText('Расходы')).toBeInTheDocument();
+    expect(screen.queryByText(/Начало:/)).toBeNull();
     expect(screen.queryByText('Действия')).toBeNull();
     const paymentCard = screen.getByTestId('payment-card-payment-1');
     expect(paymentCard.dataset.variant).toBe('table-row');

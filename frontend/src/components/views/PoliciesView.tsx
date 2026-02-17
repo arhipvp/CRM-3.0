@@ -12,11 +12,11 @@ import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
-  NESTED_TABLE_CELL_CLASS,
+  NESTED_TABLE_CELL_CLASS_COMPACT,
   NESTED_TABLE_CLASS,
-  NESTED_TABLE_HEAD_CELL_CLASS,
+  NESTED_TABLE_HEAD_CELL_CLASS_COMPACT,
   NESTED_TABLE_HEAD_CLASS,
-  TABLE_CELL_CLASS_MD,
+  TABLE_CELL_CLASS_COMPACT,
   TABLE_ROW_CLASS,
   TABLE_ROW_CLASS_PLAIN,
   TABLE_THEAD_CLASS,
@@ -196,11 +196,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   } = useFinancialRecordModal(allFinancialRecords);
 
   return (
-    <section aria-labelledby="policiesViewHeading" className="app-panel p-6 shadow-none space-y-4">
+    <section aria-labelledby="policiesViewHeading" className="app-panel p-4 shadow-none space-y-3">
       <h1 id="policiesViewHeading" className="sr-only">
         Полисы
       </h1>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <FilterBar
           onFilterChange={setFilters}
           searchPlaceholder="Поиск по номеру, клиенту или компании..."
@@ -221,22 +221,28 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           >
             <thead className={TABLE_THEAD_CLASS}>
               <tr>
-                <TableHeadCell padding="md" className="w-[18%]">
+                <TableHeadCell padding="sm" className="w-[16%]">
                   Полис
                 </TableHeadCell>
-                <TableHeadCell padding="md" className="w-[16%]">
+                <TableHeadCell padding="sm" className="w-[8%]">
+                  Начало
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[8%]">
+                  Окончание
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[15%]">
                   Клиент
                 </TableHeadCell>
-                <TableHeadCell padding="md" className="w-[18%]">
+                <TableHeadCell padding="sm" className="w-[17%]">
                   Компания
                 </TableHeadCell>
-                <TableHeadCell padding="md" className="w-[18%]">
+                <TableHeadCell padding="sm" className="w-[16%]">
                   Тип / ТС
                 </TableHeadCell>
-                <TableHeadCell padding="md" className="w-[12%]">
+                <TableHeadCell padding="sm" className="w-[11%]">
                   Канал
                 </TableHeadCell>
-                <TableHeadCell padding="md" align="right" className="w-[18%]">
+                <TableHeadCell padding="sm" align="right" className="w-[9%]">
                   Сумма
                 </TableHeadCell>
               </tr>
@@ -252,10 +258,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
                 return (
                   <React.Fragment key={policy.id}>
-                    <tr className={`${TABLE_ROW_CLASS} border-t-2 border-slate-300`}>
-                      <td className={TABLE_CELL_CLASS_MD}>
+                    <tr className={`${TABLE_ROW_CLASS} border-t border-slate-300`}>
+                      <td className={TABLE_CELL_CLASS_COMPACT}>
                         <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <PolicyNumberButton
                               value={model.number}
                               className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
@@ -263,7 +269,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             {hasUnpaidPayments && (
                               <span
                                 className={[
-                                  'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
                                   expiryBadge?.tone === 'red'
                                     ? 'bg-red-100 text-red-700'
                                     : 'bg-orange-100 text-orange-700',
@@ -273,14 +279,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                               </span>
                             )}
                             {hasUnpaidRecords && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                                 {POLICY_TEXT.badges.unpaidRecords}
                               </span>
                             )}
                             {expiryBadge && (
                               <span
                                 className={[
-                                  'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
                                   expiryBadge.tone === 'red'
                                     ? 'bg-red-100 text-red-700'
                                     : 'bg-orange-100 text-orange-700',
@@ -293,24 +299,31 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onRequestEditPolicy(policy)}
-                                className={BTN_SM_SECONDARY}
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
                                 aria-label={`Редактировать полис ${model.number}`}
                               >
                                 Редактировать
                               </button>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500">
-                            Начало: {model.startDate} · Окончание: {model.endDate}
-                          </p>
                         </div>
                       </td>
-                      <td className={TABLE_CELL_CLASS_MD}>
+                      <td
+                        className={`${TABLE_CELL_CLASS_COMPACT} text-xs font-semibold text-slate-700`}
+                      >
+                        {model.startDate}
+                      </td>
+                      <td
+                        className={`${TABLE_CELL_CLASS_COMPACT} text-xs font-semibold text-slate-700`}
+                      >
+                        {model.endDate}
+                      </td>
+                      <td className={TABLE_CELL_CLASS_COMPACT}>
                         <p className="text-sm font-semibold text-slate-900 break-words">
                           {model.client}
                         </p>
                       </td>
-                      <td className={TABLE_CELL_CLASS_MD}>
+                      <td className={TABLE_CELL_CLASS_COMPACT}>
                         <div className="min-w-0">
                           <ColoredLabel
                             value={policy.insuranceCompany}
@@ -319,7 +332,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           />
                         </div>
                       </td>
-                      <td className={TABLE_CELL_CLASS_MD}>
+                      <td className={TABLE_CELL_CLASS_COMPACT}>
                         <p className="text-sm font-semibold text-slate-900 break-words">
                           {model.insuranceType}
                         </p>
@@ -327,21 +340,21 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           <p className="mt-1 text-xs text-slate-500">{transportSummary}</p>
                         )}
                       </td>
-                      <td className={`${TABLE_CELL_CLASS_MD} text-slate-700 break-words`}>
+                      <td className={`${TABLE_CELL_CLASS_COMPACT} text-slate-700 break-words`}>
                         {model.salesChannel}
                       </td>
-                      <td className={`${TABLE_CELL_CLASS_MD} text-right`}>
+                      <td className={`${TABLE_CELL_CLASS_COMPACT} text-right`}>
                         <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                       </td>
                     </tr>
                     <tr className={`${TABLE_ROW_CLASS_PLAIN} border-t border-slate-200`}>
                       <td
-                        colSpan={6}
-                        className="border border-slate-200 border-b-2 border-slate-300 bg-slate-50/70 px-4 py-3"
+                        colSpan={8}
+                        className="border border-slate-200 border-b border-slate-300 bg-slate-50/70 px-2 py-2"
                       >
                         <div
                           id={paymentsPanelId}
-                          className="rounded-xl border border-slate-200 bg-white"
+                          className="rounded-lg border border-slate-200 bg-white"
                         >
                           {payments.length ? (
                             <table
@@ -350,22 +363,22 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             >
                               <thead className={NESTED_TABLE_HEAD_CLASS}>
                                 <tr>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[11%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[12%]`}>
                                     {POLICY_TEXT.paymentTable.amount}
                                   </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[22%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[24%]`}>
                                     {POLICY_TEXT.paymentTable.description}
                                   </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[10%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[11%]`}>
                                     {POLICY_TEXT.paymentTable.scheduledAt}
                                   </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[10%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[11%]`}>
                                     {POLICY_TEXT.paymentTable.actualAt}
                                   </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[20%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[21%]`}>
                                     {POLICY_TEXT.paymentTable.incomes}
                                   </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[20%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[21%]`}>
                                     {POLICY_TEXT.paymentTable.expenses}
                                   </th>
                                 </tr>
@@ -386,7 +399,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                               </tbody>
                             </table>
                           ) : (
-                            <div className={`${NESTED_TABLE_CELL_CLASS} border-0`}>
+                            <div className={`${NESTED_TABLE_CELL_CLASS_COMPACT} border-0`}>
                               <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
                             </div>
                           )}
