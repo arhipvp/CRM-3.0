@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
 import { useNotification } from './contexts/NotificationContext';
@@ -7,6 +7,7 @@ import { NotificationDisplay } from './components/NotificationDisplay';
 import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
 import { ClientForm } from './components/forms/ClientForm';
+import { AddTaskForm } from './components/forms/AddTaskForm';
 import { PanelMessage } from './components/PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from './components/common/buttonStyles';
 import { FormActions } from './components/common/forms/FormActions';
@@ -86,6 +87,92 @@ import {
   resolveSalesChannelName,
   shouldAutofillCommissionNote,
 } from './utils/financialRecordNotes';
+import { CommandPalette, type CommandPaletteItem } from './components/common/modal/CommandPalette';
+import { formatShortcut } from './hotkeys/formatShortcut';
+import { useGlobalHotkeys } from './hotkeys/useGlobalHotkeys';
+
+type PaletteMode = null | 'commands' | 'help' | 'taskDeal';
+
+const NAVIGATION_COMMANDS: Array<{ path: string; label: string }> = [
+  { path: '/seller-dashboard', label: 'Дашборд продавца' },
+  { path: '/deals', label: 'Сделки' },
+  { path: '/clients', label: 'Клиенты' },
+  { path: '/policies', label: 'Полисы' },
+  { path: '/commissions', label: 'Доходы и расходы' },
+  { path: '/tasks', label: 'Задачи' },
+  { path: '/settings', label: 'Настройки' },
+];
+
+const HOTKEY_HELP_ITEMS: CommandPaletteItem[] = [
+  {
+    id: 'help-open-palette',
+    title: 'Открыть командную палитру',
+    shortcut: formatShortcut('mod+k'),
+    disabled: true,
+  },
+  {
+    id: 'help-open-hotkeys',
+    title: 'Открыть справку по горячим клавишам',
+    shortcut: formatShortcut('mod+/'),
+    disabled: true,
+  },
+  {
+    id: 'help-create-deal',
+    title: 'Создать сделку',
+    shortcut: formatShortcut('mod+shift+d'),
+    disabled: true,
+  },
+  {
+    id: 'help-create-client',
+    title: 'Создать клиента',
+    shortcut: formatShortcut('mod+shift+c'),
+    disabled: true,
+  },
+  {
+    id: 'help-create-task',
+    title: 'Создать задачу',
+    shortcut: formatShortcut('mod+shift+t'),
+    disabled: true,
+  },
+  {
+    id: 'help-close-layer',
+    title: 'Закрыть активное окно',
+    shortcut: formatShortcut('escape'),
+    disabled: true,
+  },
+  {
+    id: 'help-context-switch',
+    title: 'Текущий раздел: переключить выбранную сущность',
+    shortcut: `${formatShortcut('alt+arrowup')} / ${formatShortcut('alt+arrowdown')}`,
+    disabled: true,
+  },
+  {
+    id: 'help-context-open',
+    title: 'Текущий раздел: открыть выбранную сущность',
+    shortcut: formatShortcut('mod+o'),
+    disabled: true,
+  },
+  {
+    id: 'help-context-delete',
+    title: 'Текущий раздел: удалить выбранную сущность (где доступно)',
+    shortcut: formatShortcut('mod+backspace'),
+    disabled: true,
+  },
+  {
+    id: 'help-deals-restore',
+    title: 'Сделки: восстановить выбранную',
+    shortcut: formatShortcut('mod+shift+r'),
+    disabled: true,
+  },
+  {
+    id: 'help-tasks-done',
+    title: 'Задачи: отметить выбранную выполненной',
+    shortcut: formatShortcut('mod+enter'),
+    disabled: true,
+  },
+];
+
+const PALETTE_HINT_SESSION_KEY = 'crm_hotkeys_palette_hint_seen';
 
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
@@ -94,7 +181,7 @@ const AppContent: React.FC = () => {
   const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
   const [clientModalReturnTo, setClientModalReturnTo] = useState<ModalType | null>(null);
   const [pendingDealClientId, setPendingDealClientId] = useState<string | null>(null);
-  const openClientModal = (afterModal: ModalType | null = null) => {
+  const openClientModal = useCallback((afterModal: ModalType | null = null) => {
     if (afterModal) {
       setClientModalOverlayOpen(true);
       setClientModalReturnTo(afterModal);
@@ -102,7 +189,7 @@ const AppContent: React.FC = () => {
     }
     setClientModalReturnTo(null);
     setModal('client');
-  };
+  }, []);
 
   const closeClientModal = useCallback(() => {
     if (isClientModalOverlayOpen) {
@@ -187,8 +274,11 @@ const AppContent: React.FC = () => {
     tasks,
     users,
   } = dataState;
+  const navigate = useNavigate();
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [previewDealId, setPreviewDealId] = useState<string | null>(null);
+  const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
+  const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
   const location = useLocation();
   const {
     dealSearch,
@@ -222,6 +312,7 @@ const AppContent: React.FC = () => {
       });
     }
   }, [isAuthenticated, location.pathname, refreshPolicies, setError]);
+
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
     deals.forEach((deal) => {
@@ -310,6 +401,163 @@ const AppContent: React.FC = () => {
   const previewClient = previewDeal ? (clientsById.get(previewDeal.clientId) ?? null) : null;
   const previewSellerUser = previewDeal ? usersById.get(previewDeal.seller ?? '') : undefined;
   const previewExecutorUser = previewDeal ? usersById.get(previewDeal.executor ?? '') : undefined;
+  const quickTaskDeal = quickTaskDealId ? (dealsById.get(quickTaskDealId) ?? null) : null;
+  const selectedDeal = selectedDealId ? (dealsById.get(selectedDealId) ?? null) : null;
+  const isDealsRoute = location.pathname.startsWith('/deals');
+  const isClientsRoute = location.pathname.startsWith('/clients');
+  const isPoliciesRoute = location.pathname.startsWith('/policies');
+  const isTasksRoute = location.pathname.startsWith('/tasks');
+  const [selectedClientShortcutId, setSelectedClientShortcutId] = useState<string | null>(null);
+  const [selectedPolicyShortcutId, setSelectedPolicyShortcutId] = useState<string | null>(null);
+  const [selectedTaskShortcutId, setSelectedTaskShortcutId] = useState<string | null>(null);
+
+  const sortedClientsForShortcuts = useMemo(
+    () =>
+      [...clients].sort((left, right) => {
+        const dateDiff =
+          Date.parse(right.updatedAt ?? right.createdAt ?? '') -
+          Date.parse(left.updatedAt ?? left.createdAt ?? '');
+        if (Number.isFinite(dateDiff) && dateDiff !== 0) {
+          return dateDiff;
+        }
+        return (left.name ?? '').localeCompare(right.name ?? '');
+      }),
+    [clients],
+  );
+  const selectedClientShortcut = selectedClientShortcutId
+    ? (clientsById.get(selectedClientShortcutId) ?? null)
+    : null;
+
+  const sortedPoliciesForShortcuts = useMemo(
+    () =>
+      [...policiesList].sort((left, right) => {
+        const dateDiff =
+          Date.parse(right.updatedAt ?? right.createdAt ?? '') -
+          Date.parse(left.updatedAt ?? left.createdAt ?? '');
+        if (Number.isFinite(dateDiff) && dateDiff !== 0) {
+          return dateDiff;
+        }
+        return (left.number ?? '').localeCompare(right.number ?? '');
+      }),
+    [policiesList],
+  );
+  const selectedPolicyShortcut = selectedPolicyShortcutId
+    ? (sortedPoliciesForShortcuts.find((policy) => policy.id === selectedPolicyShortcutId) ?? null)
+    : null;
+
+  const sortedTasksForShortcuts = useMemo(
+    () =>
+      [...tasks].sort((left, right) => {
+        const leftDue = left.dueAt ? Date.parse(left.dueAt) : Number.MAX_SAFE_INTEGER;
+        const rightDue = right.dueAt ? Date.parse(right.dueAt) : Number.MAX_SAFE_INTEGER;
+        if (leftDue !== rightDue) {
+          return leftDue - rightDue;
+        }
+        return Date.parse(right.createdAt ?? '') - Date.parse(left.createdAt ?? '');
+      }),
+    [tasks],
+  );
+  const selectedTaskShortcut = selectedTaskShortcutId
+    ? (sortedTasksForShortcuts.find((task) => task.id === selectedTaskShortcutId) ?? null)
+    : null;
+
+  const activeShortcutContext = useMemo(() => {
+    if (isDealsRoute && selectedDeal) {
+      return {
+        title: 'Сделки',
+        label: selectedDeal.title,
+      };
+    }
+    if (isClientsRoute && selectedClientShortcut) {
+      return {
+        title: 'Клиенты',
+        label: selectedClientShortcut.name,
+      };
+    }
+    if (isPoliciesRoute && selectedPolicyShortcut) {
+      return {
+        title: 'Полисы',
+        label: selectedPolicyShortcut.number,
+      };
+    }
+    if (isTasksRoute && selectedTaskShortcut) {
+      return {
+        title: 'Задачи',
+        label: selectedTaskShortcut.title,
+      };
+    }
+    return null;
+  }, [
+    isClientsRoute,
+    isDealsRoute,
+    isPoliciesRoute,
+    isTasksRoute,
+    selectedClientShortcut,
+    selectedDeal,
+    selectedPolicyShortcut,
+    selectedTaskShortcut,
+  ]);
+
+  useEffect(() => {
+    if (!isClientsRoute) {
+      return;
+    }
+    if (!sortedClientsForShortcuts.length) {
+      setSelectedClientShortcutId(null);
+      return;
+    }
+    setSelectedClientShortcutId((prev) =>
+      prev && sortedClientsForShortcuts.some((client) => client.id === prev)
+        ? prev
+        : sortedClientsForShortcuts[0].id,
+    );
+  }, [isClientsRoute, sortedClientsForShortcuts]);
+
+  useEffect(() => {
+    if (!isPoliciesRoute) {
+      return;
+    }
+    if (!sortedPoliciesForShortcuts.length) {
+      setSelectedPolicyShortcutId(null);
+      return;
+    }
+    setSelectedPolicyShortcutId((prev) =>
+      prev && sortedPoliciesForShortcuts.some((policy) => policy.id === prev)
+        ? prev
+        : sortedPoliciesForShortcuts[0].id,
+    );
+  }, [isPoliciesRoute, sortedPoliciesForShortcuts]);
+
+  useEffect(() => {
+    if (!isTasksRoute) {
+      return;
+    }
+    if (!sortedTasksForShortcuts.length) {
+      setSelectedTaskShortcutId(null);
+      return;
+    }
+    setSelectedTaskShortcutId((prev) =>
+      prev && sortedTasksForShortcuts.some((task) => task.id === prev)
+        ? prev
+        : sortedTasksForShortcuts[0].id,
+    );
+  }, [isTasksRoute, sortedTasksForShortcuts]);
+
+  const openDealCreateModal = useCallback(() => {
+    setModal('deal');
+  }, []);
+
+  const openClientCreateModal = useCallback(() => {
+    openClientModal();
+  }, [openClientModal]);
+
+  const openTaskCreateFlow = useCallback(() => {
+    if (selectedDealId && dealsById.has(selectedDealId)) {
+      setQuickTaskDealId(selectedDealId);
+      return;
+    }
+    setPaletteMode('taskDeal');
+  }, [dealsById, selectedDealId]);
 
   const adjustPaymentsTotals = useCallback(
     <T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }>(
@@ -884,6 +1132,50 @@ const AppContent: React.FC = () => {
       setIsSyncing,
     ],
   );
+
+  const cycleSelectedDeal = useCallback(
+    (direction: 1 | -1) => {
+      if (!isDealsRoute || !deals.length) {
+        return;
+      }
+
+      if (!selectedDealId) {
+        handleSelectDeal(deals[0].id);
+        return;
+      }
+
+      const currentIndex = deals.findIndex((deal) => deal.id === selectedDealId);
+      if (currentIndex < 0) {
+        handleSelectDeal(deals[0].id);
+        return;
+      }
+
+      const nextIndex = (currentIndex + direction + deals.length) % deals.length;
+      handleSelectDeal(deals[nextIndex].id);
+    },
+    [deals, handleSelectDeal, isDealsRoute, selectedDealId],
+  );
+
+  const openSelectedDealPreview = useCallback(() => {
+    if (!isDealsRoute || !selectedDeal?.id) {
+      return;
+    }
+    handleOpenDealPreview(selectedDeal.id);
+  }, [handleOpenDealPreview, isDealsRoute, selectedDeal?.id]);
+
+  const deleteSelectedDeal = useCallback(async () => {
+    if (!isDealsRoute || !selectedDeal?.id || selectedDeal.deletedAt) {
+      return;
+    }
+    await handleDeleteDeal(selectedDeal.id);
+  }, [handleDeleteDeal, isDealsRoute, selectedDeal]);
+
+  const restoreSelectedDeal = useCallback(async () => {
+    if (!isDealsRoute || !selectedDeal?.id || !selectedDeal.deletedAt) {
+      return;
+    }
+    await handleRestoreDeal(selectedDeal.id);
+  }, [handleRestoreDeal, isDealsRoute, selectedDeal]);
 
   const handleMergeDeals = useCallback(
     async (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => {
@@ -1869,6 +2161,180 @@ const AppContent: React.FC = () => {
     [setError, updateAppData],
   );
 
+  const cycleSelectedClient = useCallback(
+    (direction: 1 | -1) => {
+      if (!isClientsRoute || !sortedClientsForShortcuts.length) {
+        return;
+      }
+      if (!selectedClientShortcutId) {
+        setSelectedClientShortcutId(sortedClientsForShortcuts[0].id);
+        return;
+      }
+      const currentIndex = sortedClientsForShortcuts.findIndex(
+        (client) => client.id === selectedClientShortcutId,
+      );
+      if (currentIndex < 0) {
+        setSelectedClientShortcutId(sortedClientsForShortcuts[0].id);
+        return;
+      }
+      const nextIndex =
+        (currentIndex + direction + sortedClientsForShortcuts.length) %
+        sortedClientsForShortcuts.length;
+      setSelectedClientShortcutId(sortedClientsForShortcuts[nextIndex].id);
+    },
+    [isClientsRoute, selectedClientShortcutId, sortedClientsForShortcuts],
+  );
+
+  const cycleSelectedPolicy = useCallback(
+    (direction: 1 | -1) => {
+      if (!isPoliciesRoute || !sortedPoliciesForShortcuts.length) {
+        return;
+      }
+      if (!selectedPolicyShortcutId) {
+        setSelectedPolicyShortcutId(sortedPoliciesForShortcuts[0].id);
+        return;
+      }
+      const currentIndex = sortedPoliciesForShortcuts.findIndex(
+        (policy) => policy.id === selectedPolicyShortcutId,
+      );
+      if (currentIndex < 0) {
+        setSelectedPolicyShortcutId(sortedPoliciesForShortcuts[0].id);
+        return;
+      }
+      const nextIndex =
+        (currentIndex + direction + sortedPoliciesForShortcuts.length) %
+        sortedPoliciesForShortcuts.length;
+      setSelectedPolicyShortcutId(sortedPoliciesForShortcuts[nextIndex].id);
+    },
+    [isPoliciesRoute, selectedPolicyShortcutId, sortedPoliciesForShortcuts],
+  );
+
+  const cycleSelectedTask = useCallback(
+    (direction: 1 | -1) => {
+      if (!isTasksRoute || !sortedTasksForShortcuts.length) {
+        return;
+      }
+      if (!selectedTaskShortcutId) {
+        setSelectedTaskShortcutId(sortedTasksForShortcuts[0].id);
+        return;
+      }
+      const currentIndex = sortedTasksForShortcuts.findIndex(
+        (task) => task.id === selectedTaskShortcutId,
+      );
+      if (currentIndex < 0) {
+        setSelectedTaskShortcutId(sortedTasksForShortcuts[0].id);
+        return;
+      }
+      const nextIndex =
+        (currentIndex + direction + sortedTasksForShortcuts.length) %
+        sortedTasksForShortcuts.length;
+      setSelectedTaskShortcutId(sortedTasksForShortcuts[nextIndex].id);
+    },
+    [isTasksRoute, selectedTaskShortcutId, sortedTasksForShortcuts],
+  );
+
+  const openSelectedClient = useCallback(() => {
+    if (!isClientsRoute || !selectedClientShortcut) {
+      return;
+    }
+    handleClientEditRequest(selectedClientShortcut);
+  }, [handleClientEditRequest, isClientsRoute, selectedClientShortcut]);
+
+  const deleteSelectedClient = useCallback(() => {
+    if (!isClientsRoute || !selectedClientShortcut) {
+      return;
+    }
+    handleClientDeleteRequest(selectedClientShortcut);
+  }, [handleClientDeleteRequest, isClientsRoute, selectedClientShortcut]);
+
+  const openSelectedPolicy = useCallback(() => {
+    if (!isPoliciesRoute || !selectedPolicyShortcut) {
+      return;
+    }
+    handleRequestEditPolicy(selectedPolicyShortcut);
+  }, [handleRequestEditPolicy, isPoliciesRoute, selectedPolicyShortcut]);
+
+  const openSelectedTaskDealPreview = useCallback(() => {
+    if (!isTasksRoute || !selectedTaskShortcut?.dealId) {
+      return;
+    }
+    handleOpenDealPreview(selectedTaskShortcut.dealId);
+  }, [handleOpenDealPreview, isTasksRoute, selectedTaskShortcut?.dealId]);
+
+  const markSelectedTaskDone = useCallback(async () => {
+    if (!isTasksRoute || !selectedTaskShortcut || selectedTaskShortcut.status === 'done') {
+      return;
+    }
+    await handleUpdateTask(selectedTaskShortcut.id, { status: 'done' });
+  }, [handleUpdateTask, isTasksRoute, selectedTaskShortcut]);
+
+  const cycleActiveContextSelection = useCallback(
+    (direction: 1 | -1) => {
+      if (isDealsRoute) {
+        cycleSelectedDeal(direction);
+        return;
+      }
+      if (isClientsRoute) {
+        cycleSelectedClient(direction);
+        return;
+      }
+      if (isPoliciesRoute) {
+        cycleSelectedPolicy(direction);
+        return;
+      }
+      if (isTasksRoute) {
+        cycleSelectedTask(direction);
+      }
+    },
+    [
+      cycleSelectedClient,
+      cycleSelectedDeal,
+      cycleSelectedPolicy,
+      cycleSelectedTask,
+      isClientsRoute,
+      isDealsRoute,
+      isPoliciesRoute,
+      isTasksRoute,
+    ],
+  );
+
+  const openPrimaryContextAction = useCallback(() => {
+    if (isDealsRoute) {
+      openSelectedDealPreview();
+      return;
+    }
+    if (isClientsRoute) {
+      openSelectedClient();
+      return;
+    }
+    if (isPoliciesRoute) {
+      openSelectedPolicy();
+      return;
+    }
+    if (isTasksRoute) {
+      openSelectedTaskDealPreview();
+    }
+  }, [
+    isDealsRoute,
+    isClientsRoute,
+    isPoliciesRoute,
+    isTasksRoute,
+    openSelectedDealPreview,
+    openSelectedClient,
+    openSelectedPolicy,
+    openSelectedTaskDealPreview,
+  ]);
+
+  const deletePrimaryContextAction = useCallback(async () => {
+    if (isDealsRoute) {
+      await deleteSelectedDeal();
+      return;
+    }
+    if (isClientsRoute) {
+      deleteSelectedClient();
+    }
+  }, [deleteSelectedClient, deleteSelectedDeal, isClientsRoute, isDealsRoute]);
+
   const loadDealTasks = useCallback(
     async (dealId: string) => {
       try {
@@ -2393,6 +2859,326 @@ const AppContent: React.FC = () => {
     });
   }, [resetPoliciesListState, resetPoliciesState, setAppData, setCurrentUser, setIsAuthenticated]);
 
+  const openCommandsPalette = useCallback(() => {
+    setPaletteMode((prev) => (prev === 'commands' ? null : 'commands'));
+  }, []);
+
+  const openHelpPalette = useCallback(() => {
+    setPaletteMode((prev) => (prev === 'help' ? null : 'help'));
+  }, []);
+
+  const closePalette = useCallback(() => {
+    setPaletteMode(null);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (window.sessionStorage.getItem(PALETTE_HINT_SESSION_KEY) === '1') {
+      return;
+    }
+
+    addNotification(
+      `Откройте командную палитру: ${formatShortcut('mod+k')} (справка: ${formatShortcut('mod+/')})`,
+      'success',
+      7000,
+    );
+    window.sessionStorage.setItem(PALETTE_HINT_SESSION_KEY, '1');
+  }, [addNotification, isAuthenticated]);
+
+  const commandItems = useMemo<CommandPaletteItem[]>(
+    () => [
+      ...NAVIGATION_COMMANDS.map((item) => ({
+        id: `nav-${item.path}`,
+        title: item.label,
+        subtitle: 'Перейти в раздел',
+        keywords: [item.path, 'раздел', 'навигация'],
+        onSelect: () => navigate(item.path),
+      })),
+      {
+        id: 'create-deal',
+        title: 'Новая сделка',
+        subtitle: 'Создание',
+        shortcut: formatShortcut('mod+shift+d'),
+        keywords: ['сделка', 'создать'],
+        onSelect: openDealCreateModal,
+      },
+      {
+        id: 'create-client',
+        title: 'Новый клиент',
+        subtitle: 'Создание',
+        shortcut: formatShortcut('mod+shift+c'),
+        keywords: ['клиент', 'создать'],
+        onSelect: openClientCreateModal,
+      },
+      {
+        id: 'create-task',
+        title: 'Новая задача',
+        subtitle: 'Создание',
+        shortcut: formatShortcut('mod+shift+t'),
+        keywords: ['задача', 'создать'],
+        onSelect: openTaskCreateFlow,
+      },
+      {
+        id: 'show-hotkeys-help',
+        title: 'Справка по горячим клавишам',
+        subtitle: 'Помощь',
+        shortcut: formatShortcut('mod+/'),
+        keywords: ['шорткаты', 'горячие клавиши', 'помощь'],
+        onSelect: () => {
+          setPaletteMode('help');
+          return false;
+        },
+      },
+      ...(isDealsRoute && selectedDeal
+        ? [
+            {
+              id: 'deal-open-preview',
+              title: `Открыть сделку: ${selectedDeal.title}`,
+              subtitle: 'Контекст сделки',
+              shortcut: formatShortcut('mod+o'),
+              keywords: ['сделка', 'открыть', 'превью'],
+              onSelect: openSelectedDealPreview,
+            },
+            {
+              id: 'deal-delete',
+              title: `Удалить сделку: ${selectedDeal.title}`,
+              subtitle: 'Контекст сделки',
+              shortcut: formatShortcut('mod+backspace'),
+              keywords: ['сделка', 'удалить'],
+              disabled: Boolean(selectedDeal.deletedAt),
+              onSelect: deleteSelectedDeal,
+            },
+            {
+              id: 'deal-restore',
+              title: `Восстановить сделку: ${selectedDeal.title}`,
+              subtitle: 'Контекст сделки',
+              shortcut: formatShortcut('mod+shift+r'),
+              keywords: ['сделка', 'восстановить'],
+              disabled: !selectedDeal.deletedAt,
+              onSelect: restoreSelectedDeal,
+            },
+          ]
+        : []),
+      ...(isClientsRoute && selectedClientShortcut
+        ? [
+            {
+              id: 'client-open-edit',
+              title: `Открыть клиента: ${selectedClientShortcut.name}`,
+              subtitle: 'Контекст клиентов',
+              shortcut: formatShortcut('mod+o'),
+              keywords: ['клиент', 'открыть', 'редактировать'],
+              onSelect: openSelectedClient,
+            },
+            {
+              id: 'client-delete',
+              title: `Удалить клиента: ${selectedClientShortcut.name}`,
+              subtitle: 'Контекст клиентов',
+              shortcut: formatShortcut('mod+backspace'),
+              keywords: ['клиент', 'удалить'],
+              onSelect: deleteSelectedClient,
+            },
+          ]
+        : []),
+      ...(isPoliciesRoute && selectedPolicyShortcut
+        ? [
+            {
+              id: 'policy-open-edit',
+              title: `Открыть полис: ${selectedPolicyShortcut.number}`,
+              subtitle: 'Контекст полисов',
+              shortcut: formatShortcut('mod+o'),
+              keywords: ['полис', 'открыть', 'редактировать'],
+              onSelect: openSelectedPolicy,
+            },
+          ]
+        : []),
+      ...(isTasksRoute && selectedTaskShortcut
+        ? [
+            {
+              id: 'task-open-deal-preview',
+              title: `Открыть сделку задачи: ${selectedTaskShortcut.title}`,
+              subtitle: 'Контекст задач',
+              shortcut: formatShortcut('mod+o'),
+              keywords: ['задача', 'сделка', 'открыть'],
+              disabled: !selectedTaskShortcut.dealId,
+              onSelect: openSelectedTaskDealPreview,
+            },
+            {
+              id: 'task-mark-done',
+              title: `Отметить выполненной: ${selectedTaskShortcut.title}`,
+              subtitle: 'Контекст задач',
+              shortcut: formatShortcut('mod+enter'),
+              keywords: ['задача', 'выполнено', 'done'],
+              disabled: selectedTaskShortcut.status === 'done',
+              onSelect: markSelectedTaskDone,
+            },
+          ]
+        : []),
+    ],
+    [
+      deleteSelectedClient,
+      deleteSelectedDeal,
+      isClientsRoute,
+      isDealsRoute,
+      isPoliciesRoute,
+      isTasksRoute,
+      markSelectedTaskDone,
+      navigate,
+      openClientCreateModal,
+      openDealCreateModal,
+      openSelectedClient,
+      openSelectedDealPreview,
+      openSelectedPolicy,
+      openSelectedTaskDealPreview,
+      openTaskCreateFlow,
+      restoreSelectedDeal,
+      selectedClientShortcut,
+      selectedDeal,
+      selectedPolicyShortcut,
+      selectedTaskShortcut,
+    ],
+  );
+
+  const taskDealItems = useMemo<CommandPaletteItem[]>(() => {
+    const candidates = deals
+      .filter((deal) => !deal.deletedAt)
+      .sort((left, right) => {
+        const leftPinned = left.isPinned ? 1 : 0;
+        const rightPinned = right.isPinned ? 1 : 0;
+        if (leftPinned !== rightPinned) {
+          return rightPinned - leftPinned;
+        }
+        return (right.createdAt ?? '').localeCompare(left.createdAt ?? '');
+      });
+
+    return candidates.map((deal) => ({
+      id: `task-deal-${deal.id}`,
+      title: deal.title,
+      subtitle: deal.clientName ? `Клиент: ${deal.clientName}` : 'Выбор сделки для задачи',
+      keywords: [deal.clientName ?? '', deal.executorName ?? ''],
+      onSelect: () => {
+        setSelectedDealId(deal.id);
+        setQuickTaskDealId(deal.id);
+      },
+    }));
+  }, [deals]);
+
+  useGlobalHotkeys([
+    {
+      id: 'open-command-palette',
+      combo: 'mod+k',
+      handler: openCommandsPalette,
+      allowInInput: true,
+      enabled: isAuthenticated,
+    },
+    {
+      id: 'open-hotkeys-help',
+      combo: 'mod+/',
+      handler: openHelpPalette,
+      allowInInput: true,
+      enabled: isAuthenticated,
+    },
+    {
+      id: 'create-deal-hotkey',
+      combo: 'mod+shift+d',
+      handler: openDealCreateModal,
+      enabled: isAuthenticated,
+    },
+    {
+      id: 'create-client-hotkey',
+      combo: 'mod+shift+c',
+      handler: openClientCreateModal,
+      enabled: isAuthenticated,
+    },
+    {
+      id: 'create-task-hotkey',
+      combo: 'mod+shift+t',
+      handler: openTaskCreateFlow,
+      enabled: isAuthenticated,
+    },
+    {
+      id: 'context-prev-selection-hotkey',
+      combo: 'alt+arrowup',
+      handler: () => cycleActiveContextSelection(-1),
+      enabled:
+        isAuthenticated &&
+        ((isDealsRoute && deals.length > 0) ||
+          (isClientsRoute && sortedClientsForShortcuts.length > 0) ||
+          (isPoliciesRoute && sortedPoliciesForShortcuts.length > 0) ||
+          (isTasksRoute && sortedTasksForShortcuts.length > 0)),
+    },
+    {
+      id: 'context-next-selection-hotkey',
+      combo: 'alt+arrowdown',
+      handler: () => cycleActiveContextSelection(1),
+      enabled:
+        isAuthenticated &&
+        ((isDealsRoute && deals.length > 0) ||
+          (isClientsRoute && sortedClientsForShortcuts.length > 0) ||
+          (isPoliciesRoute && sortedPoliciesForShortcuts.length > 0) ||
+          (isTasksRoute && sortedTasksForShortcuts.length > 0)),
+    },
+    {
+      id: 'context-open-hotkey',
+      combo: 'mod+o',
+      handler: () => {
+        void openPrimaryContextAction();
+      },
+      enabled:
+        isAuthenticated &&
+        ((isDealsRoute && selectedDeal?.id != null) ||
+          (isClientsRoute && selectedClientShortcut != null) ||
+          (isPoliciesRoute && selectedPolicyShortcut != null) ||
+          (isTasksRoute && selectedTaskShortcut?.dealId != null)),
+    },
+    {
+      id: 'context-delete-hotkey',
+      combo: 'mod+backspace',
+      handler: () => {
+        void deletePrimaryContextAction();
+      },
+      enabled:
+        isAuthenticated &&
+        ((isDealsRoute && selectedDeal?.id != null && selectedDeal?.deletedAt == null) ||
+          (isClientsRoute && selectedClientShortcut != null)),
+    },
+    {
+      id: 'deals-restore-selected-hotkey',
+      combo: 'mod+shift+r',
+      handler: () => {
+        void restoreSelectedDeal();
+      },
+      enabled:
+        isAuthenticated &&
+        isDealsRoute &&
+        selectedDeal?.id != null &&
+        selectedDeal?.deletedAt != null,
+    },
+    {
+      id: 'tasks-mark-done-hotkey',
+      combo: 'mod+enter',
+      handler: () => {
+        void markSelectedTaskDone();
+      },
+      enabled:
+        isAuthenticated &&
+        isTasksRoute &&
+        selectedTaskShortcut != null &&
+        selectedTaskShortcut.status !== 'done',
+    },
+    {
+      id: 'close-palette-hotkey',
+      combo: 'escape',
+      handler: closePalette,
+      allowInInput: true,
+      enabled: isAuthenticated && paletteMode !== null,
+    },
+  ]);
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
@@ -2407,11 +3193,41 @@ const AppContent: React.FC = () => {
 
   return (
     <MainLayout
-      onAddDeal={() => setModal('deal')}
-      onAddClient={() => openClientModal()}
+      onAddDeal={openDealCreateModal}
+      onAddClient={openClientCreateModal}
+      onOpenCommandPalette={openCommandsPalette}
       currentUser={currentUser || undefined}
       onLogout={handleLogout}
     >
+      {activeShortcutContext && (
+        <div className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="font-semibold text-sky-900">
+              {activeShortcutContext.title}: выбрано для хоткеев
+            </span>
+            <span className="rounded-lg border border-sky-200 bg-white px-2 py-1 font-medium text-slate-800">
+              {activeShortcutContext.label}
+            </span>
+            <span className="text-sky-800">
+              {formatShortcut('alt+arrowup')} / {formatShortcut('alt+arrowdown')} — переключить
+            </span>
+            <span className="text-sky-800">{formatShortcut('mod+o')} — открыть</span>
+            {(isDealsRoute || isClientsRoute) && (
+              <span className="text-sky-800">
+                {formatShortcut('mod+backspace')} — удалить
+              </span>
+            )}
+            {isDealsRoute && (
+              <span className="text-sky-800">{formatShortcut('mod+shift+r')} — восстановить</span>
+            )}
+            {isTasksRoute && (
+              <span className="text-sky-800">
+                {formatShortcut('mod+enter')} — отметить выполненной
+              </span>
+            )}
+          </div>
+        </div>
+      )}
       <AppRoutes
         deals={deals}
         clients={clients}
@@ -2486,6 +3302,28 @@ const AppContent: React.FC = () => {
         policiesHasMore={policiesHasMore}
         isLoadingMorePolicies={isLoadingMorePolicies}
         isPoliciesListLoading={isPoliciesListLoading}
+      />
+      <CommandPalette
+        isOpen={paletteMode === 'commands'}
+        title="Командная палитра"
+        placeholder="Поиск по разделам и действиям..."
+        items={commandItems}
+        onClose={closePalette}
+      />
+      <CommandPalette
+        isOpen={paletteMode === 'help'}
+        title="Горячие клавиши"
+        placeholder="Поиск по сочетаниям..."
+        items={HOTKEY_HELP_ITEMS}
+        onClose={closePalette}
+      />
+      <CommandPalette
+        isOpen={paletteMode === 'taskDeal'}
+        title="Выберите сделку для задачи"
+        placeholder="Поиск сделки или клиента..."
+        emptyMessage="Не найдено подходящих сделок для создания задачи."
+        items={taskDealItems}
+        onClose={closePalette}
       />
 
       {previewDealId && (
@@ -2591,6 +3429,26 @@ const AppContent: React.FC = () => {
         handleUpdateFinancialRecord={handleUpdateFinancialRecord}
         financialRecords={financialRecords}
       />
+      {quickTaskDeal && (
+        <Modal
+          title={`Новая задача: ${quickTaskDeal.title}`}
+          onClose={() => setQuickTaskDealId(null)}
+          size="sm"
+          zIndex={60}
+          closeOnOverlayClick={false}
+        >
+          <AddTaskForm
+            dealId={quickTaskDeal.id}
+            users={users}
+            defaultAssigneeId={quickTaskDeal.executor ?? null}
+            onSubmit={async (data) => {
+              await handleCreateTask(quickTaskDeal.id, data);
+              setQuickTaskDealId(null);
+            }}
+            onCancel={() => setQuickTaskDealId(null)}
+          />
+        </Modal>
+      )}
       {editingClient && (
         <Modal title="Редактировать клиента" onClose={() => setEditingClient(null)}>
           <ClientForm

@@ -29,13 +29,6 @@ export const Modal: React.FC<ModalProps> = ({
   zIndex = 40,
 }) => {
   const titleId = React.useId();
-
-  const handleOverlayClick = () => {
-    if (closeOnOverlayClick) {
-      onClose();
-    }
-  };
-
   const sizeClass = MODAL_SIZE_TO_CLASS[size];
 
   React.useEffect(() => {
@@ -57,7 +50,11 @@ export const Modal: React.FC<ModalProps> = ({
     <div
       className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
       style={{ zIndex }}
-      onClick={handleOverlayClick}
+      onClick={() => {
+        if (closeOnOverlayClick) {
+          onClose();
+        }
+      }}
     >
       <div
         className={`w-full rounded-2xl border border-slate-200 bg-white shadow-2xl ${sizeClass}`}
@@ -71,7 +68,7 @@ export const Modal: React.FC<ModalProps> = ({
             {title}
           </h2>
           <button type="button" onClick={onClose} className="icon-btn" aria-label="Закрыть">
-            ×
+            &times;
           </button>
         </div>
         <div className="p-5">{children}</div>
