@@ -342,6 +342,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     removeNoteAttachment,
     archiveNote: handleArchiveNote,
     restoreNote: handleRestoreNote,
+    reloadNotes,
   } = useDealNotes(selectedDeal?.id);
   const {
     nextContactInputValue,
@@ -814,6 +815,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           setMailboxActionSuccess(
             `Почта проверена: обработано ${sync.processed}, пропущено ${sync.skipped}, ошибок ${sync.failed}, удалено ${sync.deleted}.`,
           );
+          await reloadNotes();
           await loadDriveFiles();
         } catch (err) {
           console.error('Ошибка проверки почты сделки:', err);

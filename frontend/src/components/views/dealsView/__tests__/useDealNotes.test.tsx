@@ -123,6 +123,32 @@ describe('useDealNotes', () => {
     await waitFor(() => expect(resultRef.current?.noteDraft).toBe(''));
   });
 
+  it('reloads notes on demand with current filter', async () => {
+    fetchDealNotesMock.mockResolvedValue([]);
+    const { resultRef } = renderDealNotesHook('deal-1');
+
+    await waitFor(() => {
+      expect(fetchDealNotesMock).toHaveBeenCalledWith('deal-1', false);
+    });
+
+    act(() => {
+      resultRef.current?.setNotesFilter('archived');
+    });
+
+    await waitFor(() => {
+      expect(fetchDealNotesMock).toHaveBeenCalledWith('deal-1', true);
+    });
+
+    await act(async () => {
+      await resultRef.current?.reloadNotes();
+    });
+
+    await waitFor(() => {
+      expect(fetchDealNotesMock).toHaveBeenCalledTimes(3);
+    });
+    expect(fetchDealNotesMock).toHaveBeenLastCalledWith('deal-1', true);
+  });
+
   it('prevents creating a completely empty note', async () => {
     fetchDealNotesMock.mockResolvedValueOnce([]);
     const { resultRef } = renderDealNotesHook('deal-1');

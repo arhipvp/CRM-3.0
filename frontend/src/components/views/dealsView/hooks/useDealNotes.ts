@@ -217,6 +217,10 @@ export const useDealNotes = (dealId?: string | null) => {
     [dealId],
   );
 
+  const reloadNotes = useCallback(async () => {
+    await loadNotes(notesFilter);
+  }, [loadNotes, notesFilter]);
+
   return {
     notes,
     notesLoading,
@@ -235,5 +239,6 @@ export const useDealNotes = (dealId?: string | null) => {
     removeNoteAttachment,
     archiveNote,
     restoreNote,
+    reloadNotes,
   };
 };
