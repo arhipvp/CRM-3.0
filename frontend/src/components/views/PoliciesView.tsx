@@ -30,7 +30,7 @@ import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { BTN_SM_QUIET } from '../common/buttonStyles';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-start_date', label: 'Начало (убывание)' },
