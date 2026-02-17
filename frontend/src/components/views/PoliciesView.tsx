@@ -12,6 +12,10 @@ import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
+  NESTED_TABLE_CELL_CLASS,
+  NESTED_TABLE_CLASS,
+  NESTED_TABLE_HEAD_CELL_CLASS,
+  NESTED_TABLE_HEAD_CLASS,
   TABLE_CELL_CLASS_MD,
   TABLE_ROW_CLASS,
   TABLE_ROW_CLASS_PLAIN,
@@ -202,9 +206,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           initialFilters={{ ordering: '-start_date' }}
           sortOptions={POLICY_SORT_OPTIONS}
           customFilters={customFilters}
+          density="compact"
+          layout="inline-wrap"
         />
         {isDebouncePending && <div className="text-xs text-slate-500">Применяю фильтр...</div>}
-        <div className="flex flex-wrap gap-3" />
       </div>
 
       {filteredPolicies.length ? (
@@ -323,21 +328,58 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                         colSpan={6}
                         className="border border-slate-200 border-b-2 border-slate-300 bg-slate-50/70 px-4 py-3"
                       >
-                        <div id={paymentsPanelId} className="space-y-2">
+                        <div
+                          id={paymentsPanelId}
+                          className="rounded-xl border border-slate-200 bg-white"
+                        >
                           {payments.length ? (
-                            payments.map((payment) => (
-                              <PaymentCard
-                                key={payment.id}
-                                payment={payment}
-                                onRequestAddRecord={openCreateFinancialRecord}
-                                onEditFinancialRecord={openEditFinancialRecord}
-                                onDeleteFinancialRecord={onDeleteFinancialRecord}
-                                onDeletePayment={onDeletePayment}
-                                variant="table"
-                              />
-                            ))
+                            <table
+                              className={NESTED_TABLE_CLASS}
+                              aria-label={`Платежи полиса ${model.number}`}
+                            >
+                              <thead className={NESTED_TABLE_HEAD_CLASS}>
+                                <tr>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[11%]`}>
+                                    {POLICY_TEXT.paymentTable.amount}
+                                  </th>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[22%]`}>
+                                    {POLICY_TEXT.paymentTable.description}
+                                  </th>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[10%]`}>
+                                    {POLICY_TEXT.paymentTable.scheduledAt}
+                                  </th>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[10%]`}>
+                                    {POLICY_TEXT.paymentTable.actualAt}
+                                  </th>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[16%]`}>
+                                    {POLICY_TEXT.paymentTable.incomes}
+                                  </th>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[16%]`}>
+                                    {POLICY_TEXT.paymentTable.expenses}
+                                  </th>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[15%]`}>
+                                    {POLICY_TEXT.paymentTable.actions}
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {payments.map((payment) => (
+                                  <PaymentCard
+                                    key={payment.id}
+                                    payment={payment}
+                                    onRequestAddRecord={openCreateFinancialRecord}
+                                    onEditFinancialRecord={openEditFinancialRecord}
+                                    onDeleteFinancialRecord={onDeleteFinancialRecord}
+                                    onDeletePayment={onDeletePayment}
+                                    variant="table-row"
+                                  />
+                                ))}
+                              </tbody>
+                            </table>
                           ) : (
-                            <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
+                            <div className={`${NESTED_TABLE_CELL_CLASS} border-0`}>
+                              <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
+                            </div>
                           )}
                         </div>
                       </td>

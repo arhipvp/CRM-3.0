@@ -1,6 +1,8 @@
 import React from 'react';
 import type { FinancialRecord, Payment } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
+import { POLICY_TEXT } from './text';
+import { NESTED_TABLE_CELL_CLASS, NESTED_TABLE_ROW_CLASS } from '../common/tableStyles';
 
 interface PaymentCardProps {
   payment: Payment;
@@ -10,12 +12,59 @@ interface PaymentCardProps {
   onEditFinancialRecord: (recordId: string) => void;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   recordsExpandedOverride?: boolean;
-  variant?: 'default' | 'table';
+  variant?: 'default' | 'table' | 'table-row';
 }
 
 const RECORD_TITLES: Record<'income' | 'expense', string> = {
   income: 'Доходы',
   expense: 'Расходы',
+};
+
+const RECORD_TYPE_TONE: Record<'income' | 'expense', string> = {
+  income: 'text-emerald-700',
+  expense: 'text-rose-700',
+};
+
+const resolveRecordGroups = (payment: Payment) => {
+  const records = (payment.financialRecords ?? []).filter((record) => !record.deletedAt);
+  return {
+    incomes: records.filter((record) => record.recordType === 'Доход'),
+    expenses: records.filter((record) => record.recordType === 'Расход'),
+  };
+};
+
+const getRecordsAmount = (records: FinancialRecord[]) =>
+  records.reduce((total, record) => total + Math.abs(Number(record.amount) || 0), 0);
+
+const describeRecordsCount = (records: FinancialRecord[]) =>
+  records.length
+    ? `${records.length} ${records.length === 1 ? 'запись' : 'записей'}`
+    : POLICY_TEXT.messages.noRecords;
+
+const renderRecordsSummary = (
+  records: FinancialRecord[],
+  recordType: 'income' | 'expense',
+  compact = false,
+) => {
+  if (!records.length) {
+    return (
+      <span className={compact ? 'text-[11px] text-slate-500' : 'text-xs text-slate-500'}>
+        {POLICY_TEXT.messages.noRecords}
+      </span>
+    );
+  }
+
+  return (
+    <div className={compact ? 'space-y-0.5' : 'space-y-1'}>
+      <p className={compact ? 'text-[11px] text-slate-500' : 'text-xs text-slate-500'}>
+        {describeRecordsCount(records)}
+      </p>
+      <p className={`text-xs font-semibold ${RECORD_TYPE_TONE[recordType]}`}>
+        {recordType === 'income' ? '+' : '-'}
+        {formatCurrency(getRecordsAmount(records).toString())}
+      </p>
+    </div>
+  );
 };
 
 const renderRecordList = (
@@ -28,7 +77,7 @@ const renderRecordList = (
   if (!records.length) {
     return (
       <p className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-        Записей нет
+        {POLICY_TEXT.messages.noRecords}
       </p>
     );
   }
@@ -103,11 +152,6 @@ const renderRecordList = (
   );
 };
 
-const describeRecordsCount = (records: FinancialRecord[]) =>
-  records.length
-    ? `${records.length} ${records.length === 1 ? 'запись' : 'записей'}`
-    : 'Нет записей';
-
 export const PaymentCard: React.FC<PaymentCardProps> = ({
   payment,
   onEditPayment,
@@ -117,9 +161,9 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   onDeleteFinancialRecord,
   variant = 'default',
 }) => {
-  const incomes = payment.financialRecords?.filter((record) => record.recordType === 'Доход') || [];
-  const expenses =
-    payment.financialRecords?.filter((record) => record.recordType === 'Расход') || [];
+  const [isIncomeExpanded, setIsIncomeExpanded] = React.useState(false);
+  const [isExpenseExpanded, setIsExpenseExpanded] = React.useState(false);
+  const { incomes, expenses } = React.useMemo(() => resolveRecordGroups(payment), [payment]);
 
   const paidText = payment.actualDate ? formatDate(payment.actualDate) : 'нет';
   const paidTone = payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
@@ -184,6 +228,173 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
     );
   };
 
+  if (variant === 'table-row') {
+    const hasExpandedDetails = isIncomeExpanded || isExpenseExpanded;
+    const incomeToggleLabel = isIncomeExpanded
+      ? POLICY_TEXT.actions.hide
+      : POLICY_TEXT.actions.details;
+    const expenseToggleLabel = isExpenseExpanded
+      ? POLICY_TEXT.actions.hide
+      : POLICY_TEXT.actions.details;
+
+    return (
+      <>
+        <tr className={NESTED_TABLE_ROW_CLASS}>
+          <td className={NESTED_TABLE_CELL_CLASS}>
+            <p className="text-xs font-semibold text-slate-900">{formatCurrency(payment.amount)}</p>
+          </td>
+          <td className={NESTED_TABLE_CELL_CLASS}>
+            <p className="text-xs text-slate-700">
+              {payment.note || payment.description || POLICY_TEXT.paymentTable.emptyDescription}
+            </p>
+          </td>
+          <td className={NESTED_TABLE_CELL_CLASS}>
+            <p className="text-xs font-semibold text-slate-700">
+              {formatDate(payment.scheduledDate)}
+            </p>
+          </td>
+          <td className={NESTED_TABLE_CELL_CLASS}>
+            <p
+              className={`text-xs font-semibold ${payment.actualDate ? 'text-emerald-600' : 'text-rose-500'}`}
+            >
+              {payment.actualDate
+                ? formatDate(payment.actualDate)
+                : POLICY_TEXT.paymentTable.noDate}
+            </p>
+          </td>
+          <td className={NESTED_TABLE_CELL_CLASS}>
+            <div className="space-y-1">
+              {renderRecordsSummary(incomes, 'income', true)}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onRequestAddRecord(payment.id, 'income')}
+                  className="link-action text-[11px] font-semibold"
+                >
+                  Добавить
+                </button>
+                {incomes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsIncomeExpanded((prev) => !prev)}
+                    className="link-action text-[11px] font-semibold"
+                  >
+                    {incomeToggleLabel}
+                  </button>
+                )}
+              </div>
+            </div>
+          </td>
+          <td className={NESTED_TABLE_CELL_CLASS}>
+            <div className="space-y-1">
+              {renderRecordsSummary(expenses, 'expense', true)}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onRequestAddRecord(payment.id, 'expense')}
+                  className="link-action text-[11px] font-semibold"
+                >
+                  Добавить
+                </button>
+                {expenses.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsExpenseExpanded((prev) => !prev)}
+                    className="link-action text-[11px] font-semibold"
+                  >
+                    {expenseToggleLabel}
+                  </button>
+                )}
+              </div>
+            </div>
+          </td>
+          <td className={NESTED_TABLE_CELL_CLASS}>
+            <div className="flex flex-wrap items-center gap-2">
+              {onEditPayment && (
+                <button
+                  type="button"
+                  onClick={() => onEditPayment(payment.id)}
+                  className="link-action whitespace-nowrap text-[11px] font-semibold"
+                >
+                  Изменить
+                </button>
+              )}
+              {onDeletePayment && (
+                <button
+                  type="button"
+                  onClick={() => onDeletePayment(payment.id).catch(() => undefined)}
+                  className="link-danger whitespace-nowrap text-[11px] font-semibold"
+                  disabled={payment.canDelete === false}
+                  title={
+                    payment.canDelete === false
+                      ? 'Сначала удалите полученные доходы или выплаченные расходы'
+                      : 'Удалить платёж'
+                  }
+                >
+                  Удалить
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+        {hasExpandedDetails && (
+          <tr className={NESTED_TABLE_ROW_CLASS}>
+            <td colSpan={7} className={`${NESTED_TABLE_CELL_CLASS} bg-slate-50/70`}>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {isIncomeExpanded && (
+                  <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                        {RECORD_TITLES.income}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onRequestAddRecord(payment.id, 'income')}
+                        className="link-action text-[11px] font-semibold"
+                      >
+                        Добавить
+                      </button>
+                    </div>
+                    {renderRecordList(
+                      incomes,
+                      'income',
+                      onEditFinancialRecord,
+                      onDeleteFinancialRecord,
+                      true,
+                    )}
+                  </section>
+                )}
+                {isExpenseExpanded && (
+                  <section className="rounded-lg border border-rose-200 bg-rose-50/60 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                        {RECORD_TITLES.expense}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onRequestAddRecord(payment.id, 'expense')}
+                        className="link-action text-[11px] font-semibold"
+                      >
+                        Добавить
+                      </button>
+                    </div>
+                    {renderRecordList(
+                      expenses,
+                      'expense',
+                      onEditFinancialRecord,
+                      onDeleteFinancialRecord,
+                      true,
+                    )}
+                  </section>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      </>
+    );
+  }
+
   return (
     <div className={`${containerClassName} ${spacingClassName}`}>
       <div className={headerClassName}>
@@ -202,7 +413,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
               compact ? 'text-xs text-slate-500 truncate' : 'text-sm text-slate-500 truncate'
             }
           >
-            {payment.note || payment.description || 'Без описания'}
+            {payment.note || payment.description || POLICY_TEXT.paymentTable.emptyDescription}
           </p>
         </div>
         <div className={metaClassName}>

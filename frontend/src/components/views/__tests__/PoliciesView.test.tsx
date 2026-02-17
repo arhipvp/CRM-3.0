@@ -15,12 +15,12 @@ vi.mock('../../policies/PaymentCard', () => ({
   PaymentCard: (props: PaymentCardProps) => {
     paymentCardMockProps.push(props);
     return (
-      <div
+      <tr
         data-testid={`payment-card-${props.payment.id}`}
-        data-expanded={props.recordsExpandedOverride ? 'true' : 'false'}
+        data-variant={props.variant ?? 'default'}
       >
-        {props.payment.id}
-      </div>
+        <td>{props.payment.id}</td>
+      </tr>
     );
   },
 }));
@@ -132,9 +132,24 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.getAllByText('Сумма').length).toBeGreaterThan(1);
+    expect(screen.getByText('Доходы')).toBeInTheDocument();
+    expect(screen.getByText('Расходы')).toBeInTheDocument();
     const paymentCard = screen.getByTestId('payment-card-payment-1');
-    expect(paymentCard.dataset.expanded).toBe('false');
+    expect(paymentCard.dataset.variant).toBe('table-row');
     expect(screen.queryByText('Раскрыть все')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Платежи (1)' })).toBeNull();
+  });
+
+  it('shows empty state when no policies', () => {
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView policies={[]} payments={[]} {...defaultProps} />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Нет полисов для отображения')).toBeInTheDocument();
   });
 });

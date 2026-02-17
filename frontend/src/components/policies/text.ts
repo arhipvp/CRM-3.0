@@ -22,9 +22,11 @@ export const POLICY_TEXT = {
     addPayment: '+ Добавить платёж',
     show: 'Показать',
     hide: 'Скрыть',
+    details: 'Подробнее',
   },
   messages: {
     noPayments: 'Платежей пока нет.',
+    noRecords: 'Записей нет',
   },
   badges: {
     unpaidPayments: 'Неоплаченные платежи',
@@ -33,6 +35,18 @@ export const POLICY_TEXT = {
   filters: {
     unpaidPaymentsOnly: 'Только с неоплаченными платежами',
     unpaidRecordsOnly: 'Только с неоплаченными записями',
+  },
+  paymentTable: {
+    amount: 'Сумма',
+    description: 'Описание',
+    scheduledAt: 'План',
+    actualAt: 'Факт',
+    incomes: 'Доходы',
+    expenses: 'Расходы',
+    actions: 'Действия',
+    recordsCount: 'зап.',
+    emptyDescription: 'Без описания',
+    noDate: 'не оплачено',
   },
 } as const;
 

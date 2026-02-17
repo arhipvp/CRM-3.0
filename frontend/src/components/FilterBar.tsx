@@ -18,6 +18,8 @@ export interface FilterBarProps {
   searchPlaceholder?: string;
   sortOptions?: Array<{ value: string; label: string }>;
   customFilters?: CustomFilterDefinition[];
+  density?: 'default' | 'compact';
+  layout?: 'flow' | 'inline-wrap';
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -26,6 +28,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   searchPlaceholder = 'Поиск...',
   sortOptions = [],
   customFilters = [],
+  density = 'default',
+  layout = 'flow',
 }) => {
   const idPrefix = useId();
   const initialSearch = (initialFilters?.search as string | undefined) ?? '';
@@ -92,13 +96,28 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     search !== initialSearch ||
     ordering !== initialOrdering ||
     Object.values(customFilterValues).some((value) => value && value.length > 0);
+  const isCompact = density === 'compact';
+  const panelClassName = ['app-panel shadow-none mb-4', isCompact ? 'p-3' : 'p-4']
+    .filter(Boolean)
+    .join(' ');
+  const rootGapClassName = isCompact ? 'flex flex-col gap-3' : 'flex flex-col gap-4';
+  const controlsClassName =
+    layout === 'inline-wrap'
+      ? 'flex flex-wrap items-end gap-2'
+      : 'flex flex-col md:flex-row gap-3 items-end flex-wrap';
+  const inputWidthClassName = layout === 'inline-wrap' ? 'flex-1 min-w-56' : 'flex-1 min-w-48';
+  const compactLabelClassName = isCompact ? 'text-[10px] tracking-[0.2em]' : '';
+  const compactCheckboxClassName = isCompact ? 'px-2.5 py-1.5 text-[11px]' : 'px-3 py-2 text-xs';
 
   return (
-    <div className="app-panel p-4 shadow-none mb-4">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
-          <div className="flex-1 min-w-48">
-            <label htmlFor={searchInputId} className="app-label mb-1 block">
+    <div className={panelClassName}>
+      <div className={rootGapClassName}>
+        <div className={controlsClassName}>
+          <div className={inputWidthClassName}>
+            <label
+              htmlFor={searchInputId}
+              className={`app-label mb-1 block ${compactLabelClassName}`}
+            >
               Поиск
             </label>
             <input
@@ -107,20 +126,25 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               value={search}
               onChange={(event) => handleSearchChange(event.target.value)}
               placeholder={searchPlaceholder}
-              className="field field-input"
+              className={`field field-input ${isCompact ? 'h-9 text-xs' : ''}`}
             />
           </div>
 
           {sortOptions.length > 0 && (
-            <div className="w-full md:w-auto">
-              <label htmlFor={orderingSelectId} className="app-label mb-1 block">
+            <div className={layout === 'inline-wrap' ? 'w-auto min-w-52' : 'w-full md:w-auto'}>
+              <label
+                htmlFor={orderingSelectId}
+                className={`app-label mb-1 block ${compactLabelClassName}`}
+              >
                 Сортировка
               </label>
               <select
                 id={orderingSelectId}
                 value={ordering}
                 onChange={(event) => handleOrderingChange(event.target.value)}
-                className="field field-select w-full md:w-auto"
+                className={`field field-select ${layout === 'inline-wrap' ? 'w-full' : 'w-full md:w-auto'} ${
+                  isCompact ? 'h-9 text-[11px]' : ''
+                }`}
               >
                 <option value="">Выбрать направление</option>
                 {sortOptions.map((option) => (
@@ -133,13 +157,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
 
           {customFilters.map((filter) => (
-            <div key={filter.key} className="w-full md:w-auto">
+            <div
+              key={filter.key}
+              className={layout === 'inline-wrap' ? 'w-auto' : 'w-full md:w-auto'}
+            >
               {filter.type === 'checkbox' ? (
                 <>
                   {(() => {
                     const checkboxId = `${idPrefix}-${filter.key}`;
                     return (
-                      <label className="app-panel-muted flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-700">
+                      <label
+                        htmlFor={checkboxId}
+                        className={`app-panel-muted flex items-center gap-2 rounded-xl text-slate-700 ${compactCheckboxClassName}`}
+                      >
                         <input
                           id={checkboxId}
                           type="checkbox"
@@ -156,7 +186,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 </>
               ) : (
                 <>
-                  <label htmlFor={`${idPrefix}-${filter.key}`} className="app-label mb-1 block">
+                  <label
+                    htmlFor={`${idPrefix}-${filter.key}`}
+                    className={`app-label mb-1 block ${compactLabelClassName}`}
+                  >
                     {filter.label}
                   </label>
                   {filter.type === 'text' ? (
@@ -166,14 +199,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                       value={customFilterValues[filter.key] || ''}
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
                       placeholder={filter.label}
-                      className="field field-input w-full md:w-auto"
+                      className={`field field-input ${layout === 'inline-wrap' ? 'w-56' : 'w-full md:w-auto'} ${
+                        isCompact ? 'h-9 text-xs' : ''
+                      }`}
                     />
                   ) : (
                     <select
                       id={`${idPrefix}-${filter.key}`}
                       value={customFilterValues[filter.key] || ''}
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
-                      className="field field-select w-full md:w-auto"
+                      className={`field field-select ${layout === 'inline-wrap' ? 'w-56' : 'w-full md:w-auto'} ${
+                        isCompact ? 'h-9 text-[11px]' : ''
+                      }`}
                     >
                       <option value="">Не важно</option>
                       {filter.options.map((option) => (
