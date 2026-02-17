@@ -38,6 +38,45 @@ npm run test         # Vitest с Testing Library и setupTests
 - `npm run test` запускает Vitest (настройка в `setupTests.ts`) и выполняет юнит-тесты в `frontend/__tests__/` и `src/__tests__/` (включая mock API и событие в DOM).
 - `tsconfig.app.json`, `tsconfig.node.json` и `tsconfig.json` обеспечивают строгую типизацию и поддержку библиотеки React.
 
+## Горячие клавиши
+
+Слой хоткеев реализован без внешних библиотек через `frontend/src/hotkeys/*` и подключается в `frontend/src/AppContent.tsx` через `useGlobalHotkeys`.
+
+### Единые правила
+
+- Используется `mod`-нотация (`Ctrl` на Windows/Linux, `Cmd` на macOS).
+- Ввод в `input/textarea/contenteditable` защищён по умолчанию; точечно разрешается через `allowInInput`.
+- По умолчанию событие `keydown` гасится (`preventDefault`), чтобы избежать конфликтов браузера/страницы.
+- Для discoverability есть палитра команд и справка по сочетаниям.
+
+### Таблица хоткеев
+
+| Контекст                           | Сочетание                       | Действие                                         |
+| ---------------------------------- | ------------------------------- | ------------------------------------------------ |
+| Global                             | `Ctrl/Cmd+K`                    | Открыть командную палитру                        |
+| Global                             | `Ctrl/Cmd+/`                    | Открыть справку по горячим клавишам              |
+| Global                             | `Ctrl/Cmd+Shift+D`              | Создать сделку                                   |
+| Global                             | `Ctrl/Cmd+Shift+C`              | Создать клиента                                  |
+| Global                             | `Ctrl/Cmd+Shift+T`              | Создать задачу                                   |
+| Global                             | `Esc`                           | Закрыть активный слой (палитра/модалка)          |
+| Deals / Clients / Policies / Tasks | `Alt+ArrowUp` / `Alt+ArrowDown` | Переключить выбранную сущность в текущем разделе |
+| Deals / Clients / Policies / Tasks | `Ctrl/Cmd+O`                    | Открыть выбранную сущность (primary action)      |
+| Deals / Clients                    | `Ctrl/Cmd+Backspace`            | Удалить выбранную сущность                       |
+| Deals                              | `Ctrl/Cmd+Shift+R`              | Восстановить удалённую сделку                    |
+| Tasks                              | `Ctrl/Cmd+Enter`                | Отметить выбранную задачу выполненной            |
+
+### Как расширить реестр хоткеев
+
+1. Добавьте или измените binding в массиве `useGlobalHotkeys([...])` в `frontend/src/AppContent.tsx`.
+2. Для каждого binding используйте `id`, `combo`, `handler`, и при необходимости `enabled`, `allowInInput`, `preventDefault`.
+3. Для новых сочетаний добавьте человекочитаемый ярлык через `formatShortcut(...)` в help/подсказках интерфейса.
+4. Если действие зависит от раздела или выбранной сущности, оформляйте это через `enabled`, а не через ранний `return` внутри handler.
+5. Проверьте отсутствие конфликтов с уже занятыми комбинациями и системными/browser hotkeys.
+6. Обновите тесты:
+   - unit для матчинга в `frontend/src/__tests__/hotkeys/matchHotkey.test.ts`;
+   - интеграцию в `frontend/src/__tests__/AppContent.hotkeys.test.tsx`.
+7. После изменений прогоните проверки: `npm run format:check`, `npm run lint`, `npm run test`.
+
 ## Переиспользование UI
 
 - Confirm-диалоги: используйте `src/hooks/useConfirm.ts` и словарь `src/constants/confirmTexts.ts`; прямой `window.confirm` не использовать.

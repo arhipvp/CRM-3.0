@@ -3213,9 +3213,7 @@ const AppContent: React.FC = () => {
             </span>
             <span className="text-sky-800">{formatShortcut('mod+o')} — открыть</span>
             {(isDealsRoute || isClientsRoute) && (
-              <span className="text-sky-800">
-                {formatShortcut('mod+backspace')} — удалить
-              </span>
+              <span className="text-sky-800">{formatShortcut('mod+backspace')} — удалить</span>
             )}
             {isDealsRoute && (
               <span className="text-sky-800">{formatShortcut('mod+shift+r')} — восстановить</span>

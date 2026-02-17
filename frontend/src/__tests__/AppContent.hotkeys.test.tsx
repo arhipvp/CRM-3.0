@@ -1,0 +1,395 @@
+import React from 'react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import AppContent from '../AppContent';
+import { updateTask } from '../api';
+
+vi.mock('../contexts/NotificationContext', () => ({
+  useNotification: () => ({
+    addNotification: vi.fn(),
+    notifications: [],
+    removeNotification: vi.fn(),
+  }),
+}));
+
+vi.mock('../hooks/useConfirm', () => ({
+  useConfirm: () => ({
+    confirm: vi.fn().mockResolvedValue(true),
+    ConfirmDialogRenderer: () => null,
+  }),
+}));
+
+vi.mock('../hooks/useAuthBootstrap', () => ({
+  useAuthBootstrap: () => ({
+    authLoading: false,
+    currentUser: { id: 'user-1', username: 'Tester', roles: ['Admin'] },
+    handleLoginSuccess: vi.fn(),
+    isAuthenticated: true,
+    setCurrentUser: vi.fn(),
+    setIsAuthenticated: vi.fn(),
+  }),
+}));
+
+const appDataMock = vi.hoisted(() => ({
+  clients: [] as Array<{
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+  }>,
+  deals: [] as Array<{
+    id: string;
+    title: string;
+    clientId: string;
+    status: 'open' | 'won' | 'lost' | 'on_hold';
+    createdAt: string;
+    quotes: [];
+    documents: [];
+    clientName?: string;
+  }>,
+  tasks: [] as Array<{
+    id: string;
+    title: string;
+    status: 'todo' | 'in_progress' | 'done' | 'overdue' | 'canceled';
+    priority: 'low' | 'normal' | 'high' | 'urgent';
+    createdAt: string;
+    dueAt?: string | null;
+    dealId?: string;
+  }>,
+  policiesList: [] as Array<{
+    id: string;
+    number: string;
+    insuranceCompanyId: string;
+    insuranceCompany: string;
+    insuranceTypeId: string;
+    insuranceType: string;
+    dealId: string;
+    status: 'active' | 'inactive' | 'expired' | 'canceled';
+    createdAt: string;
+    updatedAt?: string;
+  }>,
+}));
+
+const updateAppDataMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../hooks/useAppData', () => ({
+  useAppData: () => ({
+    dataState: {
+      clients: appDataMock.clients,
+      deals: appDataMock.deals,
+      policies: appDataMock.policiesList,
+      salesChannels: [],
+      payments: [],
+      financialRecords: [],
+      statements: [],
+      tasks: appDataMock.tasks,
+      users: [],
+    },
+    loadData: vi.fn(),
+    refreshDeals: vi.fn().mockResolvedValue(appDataMock.deals),
+    invalidateDealsCache: vi.fn(),
+    refreshPolicies: vi.fn().mockResolvedValue([]),
+    refreshPoliciesList: vi.fn().mockResolvedValue([]),
+    updateAppData: updateAppDataMock,
+    setAppData: vi.fn(),
+    resetPoliciesState: vi.fn(),
+    resetPoliciesListState: vi.fn(),
+    loadMoreDeals: vi.fn().mockResolvedValue(undefined),
+    dealsHasMore: false,
+    dealsTotalCount: appDataMock.deals.length,
+    policiesList: appDataMock.policiesList,
+    loadMorePolicies: vi.fn().mockResolvedValue(undefined),
+    policiesHasMore: false,
+    isPoliciesListLoading: false,
+    isLoadingMorePolicies: false,
+    isLoadingMoreDeals: false,
+    isLoading: false,
+    isSyncing: false,
+    setIsSyncing: vi.fn(),
+    error: null,
+    setError: vi.fn(),
+  }),
+}));
+
+vi.mock('../components/MainLayout', () => ({
+  MainLayout: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="main-layout">{children}</div>
+  ),
+}));
+
+vi.mock('../components/app/AppRoutes', () => ({
+  AppRoutes: () => <div data-testid="app-routes" />,
+}));
+
+vi.mock('../components/app/AppModals', () => ({
+  AppModals: ({
+    modal,
+    editingPolicy,
+  }: {
+    modal: string | null;
+    editingPolicy?: { number: string } | null;
+  }) => (
+    <div data-testid="app-modals">
+      <span>{modal}</span>
+      {editingPolicy && (
+        <span data-testid="app-modals-editing-policy">editing-policy:{editingPolicy.number}</span>
+      )}
+    </div>
+  ),
+}));
+
+vi.mock('../components/views/dealsView/DealDetailsPanel', () => ({
+  DealDetailsPanel: ({ selectedDeal }: { selectedDeal?: { title?: string } | null }) => (
+    <div data-testid="deal-preview-panel">{selectedDeal?.title ?? 'preview'}</div>
+  ),
+}));
+
+vi.mock('../components/Modal', () => ({
+  Modal: ({
+    title,
+    children,
+  }: {
+    title: string;
+    children: React.ReactNode;
+    onClose: () => void;
+  }) => (
+    <div role="dialog" aria-label={title}>
+      <h2>{title}</h2>
+      {children}
+    </div>
+  ),
+}));
+
+vi.mock('../components/forms/ClientForm', () => ({
+  ClientForm: ({ initial }: { initial?: { name?: string } }) => (
+    <div data-testid="client-form">{initial?.name ?? 'new-client'}</div>
+  ),
+}));
+
+vi.mock('../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api')>();
+  return {
+    ...actual,
+    updateTask: vi
+      .fn()
+      .mockImplementation(async (taskId: string, payload: { status?: string }) => ({
+        id: taskId,
+        title: 'Task',
+        status: (payload.status ?? 'todo') as
+          | 'todo'
+          | 'in_progress'
+          | 'done'
+          | 'overdue'
+          | 'canceled',
+        priority: 'normal' as const,
+        createdAt: '2026-01-01T00:00:00Z',
+      })),
+  };
+});
+
+const renderAppContent = (path: string) =>
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <AppContent />
+    </MemoryRouter>,
+  );
+
+describe('AppContent hotkeys integration', () => {
+  beforeEach(() => {
+    vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('Win32');
+    appDataMock.clients = [];
+    appDataMock.deals = [];
+    appDataMock.tasks = [];
+    appDataMock.policiesList = [];
+    updateAppDataMock.mockReset();
+    vi.mocked(updateTask).mockClear();
+  });
+
+  it('opens command palette via Ctrl+K', async () => {
+    renderAppContent('/deals');
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Командная палитра/i)).toBeInTheDocument();
+    });
+  });
+
+  it('switches selected deal and opens preview with Ctrl+O', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+      {
+        id: 'deal-2',
+        title: 'Сделка вторая',
+        clientId: 'client-2',
+        status: 'open',
+        createdAt: '2026-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 2',
+      },
+    ];
+
+    renderAppContent('/deals?dealId=deal-1');
+
+    expect(screen.getByText('Сделка первая')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByText('Сделка вторая')).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Сделка: Сделка вторая/i)).toBeInTheDocument();
+      expect(screen.getByTestId('deal-preview-panel')).toHaveTextContent('Сделка вторая');
+    });
+  });
+
+  it('opens client delete modal via Ctrl+Backspace in clients context', async () => {
+    appDataMock.clients = [
+      {
+        id: 'client-old',
+        name: 'Клиент Старый',
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+      {
+        id: 'client-new',
+        name: 'Клиент Новый',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+    ];
+
+    renderAppContent('/clients');
+
+    fireEvent.keyDown(window, { key: 'Backspace', ctrlKey: true });
+
+    await waitFor(() => {
+      const dialog = screen.getByRole('dialog', { name: /Удалить клиента/i });
+      expect(dialog).toBeInTheDocument();
+      expect(within(dialog).getByText(/Клиент Новый/i)).toBeInTheDocument();
+    });
+  });
+
+  it('switches selected client and opens edit modal via Ctrl+O in clients context', async () => {
+    appDataMock.clients = [
+      {
+        id: 'client-old',
+        name: 'Клиент Старый',
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+      {
+        id: 'client-new',
+        name: 'Клиент Новый',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+    ];
+
+    renderAppContent('/clients');
+
+    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
+    fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
+
+    await waitFor(() => {
+      const dialog = screen.getByRole('dialog', { name: /Редактировать клиента/i });
+      expect(dialog).toBeInTheDocument();
+      expect(within(dialog).getByTestId('client-form')).toHaveTextContent(/Клиент Старый/i);
+    });
+  });
+
+  it('switches selected policy and opens edit policy by Ctrl+O', async () => {
+    appDataMock.policiesList = [
+      {
+        id: 'policy-1',
+        number: 'AAA-001',
+        insuranceCompanyId: 'ins-1',
+        insuranceCompany: 'Inscorp',
+        insuranceTypeId: 'type-1',
+        insuranceType: 'КАСКО',
+        dealId: 'deal-1',
+        status: 'active',
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+      {
+        id: 'policy-2',
+        number: 'BBB-002',
+        insuranceCompanyId: 'ins-2',
+        insuranceCompany: 'Inscorp 2',
+        insuranceTypeId: 'type-2',
+        insuranceType: 'ОСАГО',
+        dealId: 'deal-2',
+        status: 'active',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+    ];
+
+    renderAppContent('/policies');
+
+    expect(screen.getByText('BBB-002')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByText('AAA-001')).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('app-modals-editing-policy')).toHaveTextContent(
+        'editing-policy:AAA-001',
+      );
+    });
+  });
+
+  it('switches selected task and marks it done via Ctrl+Enter', async () => {
+    appDataMock.tasks = [
+      {
+        id: 'task-1',
+        title: 'Перезвонить клиенту',
+        status: 'todo',
+        priority: 'normal',
+        createdAt: '2026-01-02T00:00:00Z',
+        dueAt: '2026-01-02',
+        dealId: 'deal-1',
+      },
+      {
+        id: 'task-2',
+        title: 'Отправить документы',
+        status: 'todo',
+        priority: 'normal',
+        createdAt: '2026-01-03T00:00:00Z',
+        dueAt: '2026-01-03',
+        dealId: 'deal-2',
+      },
+    ];
+
+    renderAppContent('/tasks');
+
+    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
+    fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true });
+
+    await waitFor(() => {
+      expect(updateTask).toHaveBeenCalledWith('task-2', { status: 'done' });
+    });
+  });
+});
