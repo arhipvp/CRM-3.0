@@ -74,6 +74,7 @@ const defaultProps = {
 describe('PoliciesView', () => {
   beforeEach(() => {
     paymentCardMockProps.length = 0;
+    defaultProps.onRequestEditPolicy.mockClear();
   });
 
   it('filters to only unpaid policies', async () => {
@@ -135,10 +136,32 @@ describe('PoliciesView', () => {
     expect(screen.getAllByText('Сумма').length).toBeGreaterThan(1);
     expect(screen.getByText('Доходы')).toBeInTheDocument();
     expect(screen.getByText('Расходы')).toBeInTheDocument();
+    expect(screen.queryByText('Действия')).toBeNull();
     const paymentCard = screen.getByTestId('payment-card-payment-1');
     expect(paymentCard.dataset.variant).toBe('table-row');
+    expect(paymentCardMockProps[0]?.hideRowActions).toBe(true);
     expect(screen.queryByText('Раскрыть все')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Платежи (1)' })).toBeNull();
+  });
+
+  it('opens policy edit by explicit action button', () => {
+    const policy = buildPolicy({ id: 'policy-edit', number: 'POL-EDIT' });
+    const payments: Payment[] = [
+      buildPayment({ id: 'payment-edit', policyId: 'policy-edit', actualDate: '' }),
+    ];
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView policies={[policy]} payments={payments} {...defaultProps} />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Редактировать полис POL-EDIT' }));
+    expect(defaultProps.onRequestEditPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'policy-edit' }),
+    );
   });
 
   it('shows empty state when no policies', () => {

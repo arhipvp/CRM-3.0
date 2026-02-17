@@ -13,6 +13,7 @@ interface PaymentCardProps {
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   recordsExpandedOverride?: boolean;
   variant?: 'default' | 'table' | 'table-row';
+  hideRowActions?: boolean;
 }
 
 const RECORD_TITLES: Record<'income' | 'expense', string> = {
@@ -160,6 +161,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   onEditFinancialRecord,
   onDeleteFinancialRecord,
   variant = 'default',
+  hideRowActions = false,
 }) => {
   const [isIncomeExpanded, setIsIncomeExpanded] = React.useState(false);
   const [isExpenseExpanded, setIsExpenseExpanded] = React.useState(false);
@@ -230,6 +232,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
 
   if (variant === 'table-row') {
     const hasExpandedDetails = isIncomeExpanded || isExpenseExpanded;
+    const detailsColSpan = hideRowActions ? 6 : 7;
     const incomeToggleLabel = isIncomeExpanded
       ? POLICY_TEXT.actions.hide
       : POLICY_TEXT.actions.details;
@@ -308,38 +311,40 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
               </div>
             </div>
           </td>
-          <td className={NESTED_TABLE_CELL_CLASS}>
-            <div className="flex flex-wrap items-center gap-2">
-              {onEditPayment && (
-                <button
-                  type="button"
-                  onClick={() => onEditPayment(payment.id)}
-                  className="link-action whitespace-nowrap text-[11px] font-semibold"
-                >
-                  Изменить
-                </button>
-              )}
-              {onDeletePayment && (
-                <button
-                  type="button"
-                  onClick={() => onDeletePayment(payment.id).catch(() => undefined)}
-                  className="link-danger whitespace-nowrap text-[11px] font-semibold"
-                  disabled={payment.canDelete === false}
-                  title={
-                    payment.canDelete === false
-                      ? 'Сначала удалите полученные доходы или выплаченные расходы'
-                      : 'Удалить платёж'
-                  }
-                >
-                  Удалить
-                </button>
-              )}
-            </div>
-          </td>
+          {!hideRowActions && (
+            <td className={NESTED_TABLE_CELL_CLASS}>
+              <div className="flex flex-wrap items-center gap-2">
+                {onEditPayment && (
+                  <button
+                    type="button"
+                    onClick={() => onEditPayment(payment.id)}
+                    className="link-action whitespace-nowrap text-[11px] font-semibold"
+                  >
+                    Изменить
+                  </button>
+                )}
+                {onDeletePayment && (
+                  <button
+                    type="button"
+                    onClick={() => onDeletePayment(payment.id).catch(() => undefined)}
+                    className="link-danger whitespace-nowrap text-[11px] font-semibold"
+                    disabled={payment.canDelete === false}
+                    title={
+                      payment.canDelete === false
+                        ? 'Сначала удалите полученные доходы или выплаченные расходы'
+                        : 'Удалить платёж'
+                    }
+                  >
+                    Удалить
+                  </button>
+                )}
+              </div>
+            </td>
+          )}
         </tr>
         {hasExpandedDetails && (
           <tr className={NESTED_TABLE_ROW_CLASS}>
-            <td colSpan={7} className={`${NESTED_TABLE_CELL_CLASS} bg-slate-50/70`}>
+            <td colSpan={detailsColSpan} className={`${NESTED_TABLE_CELL_CLASS} bg-slate-50/70`}>
               <div className="grid gap-3 lg:grid-cols-2">
                 {isIncomeExpanded && (
                   <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">

@@ -30,7 +30,7 @@ import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { BTN_SM_QUIET } from '../common/buttonStyles';
+import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
 
 const POLICY_SORT_OPTIONS = [
   { value: '-start_date', label: 'Начало (убывание)' },
@@ -73,6 +73,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   isLoadingMorePolicies = false,
   isPoliciesLoading = false,
   onRefreshPoliciesList,
+  onRequestEditPolicy,
   onAddFinancialRecord,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
@@ -288,6 +289,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                 {expiryBadge.label}
                               </span>
                             )}
+                            {onRequestEditPolicy && (
+                              <button
+                                type="button"
+                                onClick={() => onRequestEditPolicy(policy)}
+                                className={BTN_SM_SECONDARY}
+                                aria-label={`Редактировать полис ${model.number}`}
+                              >
+                                Редактировать
+                              </button>
+                            )}
                           </div>
                           <p className="text-xs text-slate-500">
                             Начало: {model.startDate} · Окончание: {model.endDate}
@@ -351,14 +362,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                   <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[10%]`}>
                                     {POLICY_TEXT.paymentTable.actualAt}
                                   </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[16%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[20%]`}>
                                     {POLICY_TEXT.paymentTable.incomes}
                                   </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[16%]`}>
+                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[20%]`}>
                                     {POLICY_TEXT.paymentTable.expenses}
-                                  </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS} w-[15%]`}>
-                                    {POLICY_TEXT.paymentTable.actions}
                                   </th>
                                 </tr>
                               </thead>
@@ -372,6 +380,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                     onDeleteFinancialRecord={onDeleteFinancialRecord}
                                     onDeletePayment={onDeletePayment}
                                     variant="table-row"
+                                    hideRowActions
                                   />
                                 ))}
                               </tbody>

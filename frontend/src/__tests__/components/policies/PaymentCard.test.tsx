@@ -76,4 +76,46 @@ describe('PaymentCard table-row variant', () => {
     fireEvent.click(screen.getByTitle('Удалить платёж'));
     expect(onDeletePayment).toHaveBeenCalledWith('payment-1');
   });
+
+  it('hides actions column content when hideRowActions is enabled', () => {
+    const onRequestAddRecord = vi.fn();
+    const onEditFinancialRecord = vi.fn();
+    const onDeleteFinancialRecord = vi.fn().mockResolvedValue(undefined);
+    const onDeletePayment = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <table>
+        <tbody>
+          <PaymentCard
+            payment={buildPayment({
+              financialRecords: [
+                {
+                  id: 'income-hidden',
+                  paymentId: 'payment-1',
+                  amount: '300',
+                  recordType: 'Доход',
+                  date: '2026-01-12',
+                  note: 'Доход',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+            })}
+            onRequestAddRecord={onRequestAddRecord}
+            onEditFinancialRecord={onEditFinancialRecord}
+            onDeleteFinancialRecord={onDeleteFinancialRecord}
+            onDeletePayment={onDeletePayment}
+            variant="table-row"
+            hideRowActions
+          />
+        </tbody>
+      </table>,
+    );
+
+    expect(screen.queryByTitle('Удалить платёж')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Изменить' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Подробнее' }));
+    const detailsCell = screen.getByText('Доходы').closest('td');
+    expect(detailsCell?.getAttribute('colspan')).toBe('6');
+  });
 });
