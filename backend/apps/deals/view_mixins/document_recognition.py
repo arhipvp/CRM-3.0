@@ -118,6 +118,7 @@ class DealDocumentRecognitionMixin:
                         "confidence": recognition.confidence,
                         "warnings": recognition.warnings,
                         "data": recognition.data,
+                        "extractedText": getattr(recognition, "extracted_text", ""),
                         "transcript": recognition.transcript,
                     }
                 )
@@ -179,12 +180,17 @@ class DealDocumentRecognitionMixin:
                     + ", ".join(str(warning) for warning in item.get("warnings", []))
                 )
             if item.get("data") is not None:
+                human_data = self._format_human_data(item.get("data"))
+                if human_data:
+                    blocks.append(f"Ключевые данные (текстом):\n{human_data}")
                 blocks.append(
                     "Данные:\n"
                     + json.dumps(
                         item.get("data"), ensure_ascii=False, indent=2, default=str
                     )
                 )
+            if item.get("extractedText"):
+                blocks.append(f"Распознанный текст:\n{item.get('extractedText')}")
             if item.get("transcript"):
                 blocks.append(f"Transcript:\n{item.get('transcript')}")
             if item.get("message"):
@@ -203,3 +209,33 @@ class DealDocumentRecognitionMixin:
             author=user if user and user.is_authenticated else None,
             author_name=author_name,
         )
+
+    def _format_human_data(self, data: Any) -> str:
+        if not isinstance(data, dict):
+            return ""
+        lines: list[str] = []
+        for key, value in data.items():
+            if value is None:
+                continue
+            if isinstance(value, str):
+                text_value = value.strip()
+                if not text_value:
+                    continue
+                lines.append(f"- {key}: {text_value}")
+                continue
+            if isinstance(value, list):
+                values = [str(item).strip() for item in value if str(item).strip()]
+                if values:
+                    lines.append(f"- {key}: {', '.join(values)}")
+                continue
+            if isinstance(value, dict):
+                nested_parts = []
+                for nested_key, nested_value in value.items():
+                    nested_text = str(nested_value).strip()
+                    if nested_text:
+                        nested_parts.append(f"{nested_key}={nested_text}")
+                if nested_parts:
+                    lines.append(f"- {key}: {', '.join(nested_parts)}")
+                continue
+            lines.append(f"- {key}: {value}")
+        return "\n".join(lines)

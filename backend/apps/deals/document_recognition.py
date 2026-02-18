@@ -28,6 +28,7 @@ class RecognitionPayload:
     confidence: float | None
     warnings: list[str]
     data: dict[str, Any]
+    extracted_text: str
     transcript: str
 
 
@@ -40,8 +41,9 @@ DOCUMENT_SCHEMA: dict[str, Any] = {
         "confidence": {"anyOf": [{"type": "number"}, {"type": "null"}]},
         "warnings": {"type": "array", "items": {"type": "string"}},
         "data": {"type": "object", "additionalProperties": True},
+        "extracted_text": {"type": "string"},
     },
-    "required": ["document_type", "confidence", "warnings", "data"],
+    "required": ["document_type", "confidence", "warnings", "data", "extracted_text"],
     "additionalProperties": False,
 }
 
@@ -57,7 +59,8 @@ DOCUMENT_PROMPT = """Ты извлекаешь данные из российс�
   "document_type": "тип документа свободным текстом (например: passport, driver_license, epts, sts, СТС, Паспорт РФ и т.д.)",
   "confidence": 0.0..1.0 или null,
   "warnings": ["..."],
-  "data": {...}
+  "data": {...},
+  "extracted_text": "распознанный текст документа"
 }
 
 Правила:
@@ -79,6 +82,7 @@ DOCUMENT_PROMPT = """Ты извлекаешь данные из российс�
 6) Не путай epts и sts:
 - если это карточка/бланк свидетельства о регистрации ТС (двусторонний документ с серией/номером СТС) — это sts;
 - epts выбирай только когда явно указано, что это электронный ПТС.
+7) Поле extracted_text обязательно: верни максимально полный читабельный текст с документа, который удалось распознать.
 """
 
 DATE_DDMMYYYY_RE = re.compile(r"^(\d{2})[./-](\d{2})[./-](\d{4})$")
@@ -250,6 +254,7 @@ def _normalize_recognition_payload(
     data_raw = parsed_payload.get("data")
     data = data_raw if isinstance(data_raw, dict) else {}
     data = _normalize_data(normalized_type, data)
+    extracted_text = str(parsed_payload.get("extracted_text") or "").strip()
 
     return RecognitionPayload(
         document_type=raw_document_type,
@@ -257,6 +262,7 @@ def _normalize_recognition_payload(
         confidence=confidence,
         warnings=warnings,
         data=data,
+        extracted_text=extracted_text,
         transcript=transcript,
     )
 
