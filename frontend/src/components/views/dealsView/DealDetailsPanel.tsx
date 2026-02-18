@@ -292,6 +292,26 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   }, [activeTab, onRefreshPolicies]);
 
   const {
+    notes,
+    notesLoading,
+    notesFilter,
+    noteDraft,
+    noteIsImportant,
+    notesError,
+    notesAction,
+    noteAttachments,
+    noteAttachmentsUploading,
+    setNoteDraft,
+    setNoteIsImportant,
+    setNotesFilter,
+    addNote: handleAddNote,
+    attachNoteFile,
+    removeNoteAttachment,
+    archiveNote: handleArchiveNote,
+    restoreNote: handleRestoreNote,
+    reloadNotes,
+  } = useDealNotes(selectedDeal?.id);
+  const {
     isDriveLoading,
     driveError,
     selectedDriveFileIds,
@@ -329,27 +349,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     onRefreshNotes: reloadNotes,
     onPolicyDraftReady,
   });
-
-  const {
-    notes,
-    notesLoading,
-    notesFilter,
-    noteDraft,
-    noteIsImportant,
-    notesError,
-    notesAction,
-    noteAttachments,
-    noteAttachmentsUploading,
-    setNoteDraft,
-    setNoteIsImportant,
-    setNotesFilter,
-    addNote: handleAddNote,
-    attachNoteFile,
-    removeNoteAttachment,
-    archiveNote: handleArchiveNote,
-    restoreNote: handleRestoreNote,
-    reloadNotes,
-  } = useDealNotes(selectedDeal?.id);
   const {
     nextContactInputValue,
     expectedCloseInputValue,
