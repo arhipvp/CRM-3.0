@@ -190,3 +190,46 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
 
         self.assertEqual(payload.document_type, "my_custom_vehicle_doc")
         self.assertIsNone(payload.normalized_type)
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_passport_data_is_inferred_from_extracted_text_when_empty(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "passport",
+                "confidence": 0.95,
+                "warnings": [],
+                "data": {},
+                "extracted_text": (
+                    "ГУ МВД РОССИИ ПО МОСКОВСКОЙ ОБЛАСТИ\n"
+                    "17.10.2025\n"
+                    "500-053\n"
+                    "БОРИСОВА\n"
+                    "СВЕТЛАНА\n"
+                    "ГЕННАДЬЕВНА\n"
+                    "46 25 248252\n"
+                    "24.04.1995\n"
+                    "PNRUSBORISOVA<<SVETLANA<GENNAD9EVNA<<<<<<<<<\n"
+                    "4622482523RUS9504246F<<<<<<<5251017500053<44"
+                ),
+            }
+        )
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "passport.jpg")
+
+        self.assertEqual(payload.normalized_type, "passport")
+        self.assertEqual(payload.data.get("series"), "4625")
+        self.assertEqual(payload.data.get("number"), "248252")
+        self.assertEqual(payload.data.get("issuer_code"), "500-053")
+        self.assertEqual(payload.data.get("birth_date"), "1995-04-24")
+        self.assertEqual(payload.data.get("gender"), "Ж")

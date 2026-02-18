@@ -83,10 +83,17 @@ DOCUMENT_PROMPT = """Ты извлекаешь данные из российс�
 - если это карточка/бланк свидетельства о регистрации ТС (двусторонний документ с серией/номером СТС) — это sts;
 - epts выбирай только когда явно указано, что это электронный ПТС.
 7) Поле extracted_text обязательно: верни максимально полный читабельный текст с документа, который удалось распознать.
+8) Если extracted_text непустой, data не должен быть пустым: заполни максимум полей, которые можно достоверно извлечь.
 """
 
 DATE_DDMMYYYY_RE = re.compile(r"^(\d{2})[./-](\d{2})[./-](\d{4})$")
 DATE_YYYYMMDD_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+DATE_ANY_RE = re.compile(r"\b(\d{2})[./-](\d{2})[./-](\d{4})\b")
+PASSPORT_SERIES_NUMBER_RE = re.compile(r"\b(\d{2})\s?(\d{2})\s?(\d{6})\b")
+ISSUER_CODE_RE = re.compile(r"\b(\d{3}-\d{3})\b")
+MRZ_SECOND_LINE_RE = re.compile(
+    r"^(?P<passport_no>\d{10})[A-Z<]{3}(?P<birth>\d{6})\d(?P<gender>[MF])[A-Z<]*$"
+)
 DEFAULT_LLM_TIMEOUT_SECONDS = 45
 DEFAULT_MAX_RETRIES = 2
 DEFAULT_RETRY_BASE_DELAY = 0.8
@@ -215,6 +222,139 @@ def _normalize_data(
     return normalized
 
 
+def _to_iso_date_from_ddmmyyyy(text: str) -> str:
+    match = DATE_DDMMYYYY_RE.fullmatch(text.strip())
+    if not match:
+        return ""
+    day, month, year = match.groups()
+    return f"{year}-{month}-{day}"
+
+
+def _extract_mrz_lines(text: str) -> tuple[str, str]:
+    lines = [line.strip().upper() for line in text.splitlines() if line.strip()]
+    first = ""
+    second = ""
+    for idx, line in enumerate(lines):
+        if line.startswith("PNRUS"):
+            first = line
+            if idx + 1 < len(lines):
+                second = lines[idx + 1].replace(" ", "")
+            break
+    return first, second
+
+
+def _guess_full_name(lines: list[str]) -> str:
+    upper_lines = [line.strip() for line in lines if line.strip()]
+    cyrillic_upper = [
+        line
+        for line in upper_lines
+        if re.fullmatch(r"[А-ЯЁ][А-ЯЁ\s-]{2,}", line) and len(line.split()) <= 3
+    ]
+    if len(cyrillic_upper) >= 3:
+        return " ".join(cyrillic_upper[:3])
+    return ""
+
+
+def _extract_registration_address(lines: list[str]) -> str:
+    start_idx = -1
+    for idx, line in enumerate(lines):
+        if "ЗАРЕГИСТРИРОВАН" in line.upper():
+            start_idx = idx
+            break
+    if start_idx < 0:
+        return ""
+
+    collected: list[str] = []
+    for line in lines[start_idx + 1 :]:
+        upper = line.upper()
+        if (
+            "ОТДЕЛ" in upper
+            or "ПОДРАЗДЕЛ" in upper
+            or "МИГРАЦ" in upper
+            or "ЗАВЕР" in upper
+        ):
+            break
+        if line.strip():
+            collected.append(line.strip())
+    return ", ".join(collected).strip(", ")
+
+
+def _infer_passport_data_from_text(text: str) -> dict[str, Any]:
+    if not text.strip():
+        return {}
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    joined = "\n".join(lines)
+    inferred: dict[str, Any] = {}
+
+    full_name = _guess_full_name(lines)
+    if full_name:
+        inferred["full_name"] = full_name
+
+    gender = ""
+    upper_text = joined.upper()
+    if "ЖЕН" in upper_text:
+        gender = "Ж"
+    elif "МУЖ" in upper_text:
+        gender = "М"
+    if gender:
+        inferred["gender"] = gender
+
+    issuer_code_match = ISSUER_CODE_RE.search(joined)
+    if issuer_code_match:
+        inferred["issuer_code"] = issuer_code_match.group(1)
+
+    all_dates = [m.group(0) for m in DATE_ANY_RE.finditer(joined)]
+    if all_dates:
+        inferred["issue_date"] = _to_iso_date_from_ddmmyyyy(all_dates[0])
+    if len(all_dates) > 1:
+        inferred["birth_date"] = _to_iso_date_from_ddmmyyyy(all_dates[-1])
+
+    series_number_match = PASSPORT_SERIES_NUMBER_RE.search(joined.replace("\n", " "))
+    if series_number_match:
+        s1, s2, number = series_number_match.groups()
+        inferred["series"] = f"{s1}{s2}"
+        inferred["number"] = number
+
+    mrz_first, mrz_second = _extract_mrz_lines(joined)
+    if mrz_first and not inferred.get("full_name"):
+        name_chunk = mrz_first.replace("PNRUS", "", 1)
+        name_chunk = name_chunk.replace("<", " ").strip()
+        if name_chunk:
+            inferred["full_name_latin"] = re.sub(r"\s+", " ", name_chunk)
+    if mrz_second:
+        mrz_match = MRZ_SECOND_LINE_RE.fullmatch(mrz_second)
+        if mrz_match:
+            passport_no = mrz_match.group("passport_no")
+            inferred.setdefault("series", passport_no[:4])
+            inferred.setdefault("number", passport_no[4:])
+            birth = mrz_match.group("birth")
+            inferred.setdefault(
+                "birth_date",
+                f"19{birth[0:2]}-{birth[2:4]}-{birth[4:6]}",
+            )
+            inferred.setdefault(
+                "gender", "Ж" if mrz_match.group("gender") == "F" else "М"
+            )
+
+    registration_address = _extract_registration_address(lines)
+    if registration_address:
+        inferred["registration_address"] = registration_address
+
+    return {k: v for k, v in inferred.items() if v not in ("", None)}
+
+
+def _merge_missing_data(
+    existing: dict[str, Any], inferred: dict[str, Any]
+) -> dict[str, Any]:
+    merged = dict(existing)
+    for key, value in inferred.items():
+        current = merged.get(key)
+        if current in (None, "", []):
+            merged[key] = value
+    return merged
+
+
 def _parse_response_payload(content: str) -> dict[str, Any]:
     cleaned = (content or "").strip()
     if not cleaned:
@@ -255,6 +395,8 @@ def _normalize_recognition_payload(
     data = data_raw if isinstance(data_raw, dict) else {}
     data = _normalize_data(normalized_type, data)
     extracted_text = str(parsed_payload.get("extracted_text") or "").strip()
+    if normalized_type == "passport" and extracted_text:
+        data = _merge_missing_data(data, _infer_passport_data_from_text(extracted_text))
 
     return RecognitionPayload(
         document_type=raw_document_type,

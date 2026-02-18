@@ -22,6 +22,7 @@ interface UseDealDriveFilesParams {
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onConfirmAction?: (message: string) => Promise<boolean>;
   onRefreshPolicies?: () => Promise<void>;
+  onRefreshNotes?: () => Promise<void>;
   onPolicyDraftReady?: (
     dealId: string,
     parsed: Record<string, unknown>,
@@ -36,6 +37,7 @@ export const useDealDriveFiles = ({
   onDriveFolderCreated,
   onConfirmAction,
   onRefreshPolicies,
+  onRefreshNotes,
   onPolicyDraftReady,
 }: UseDealDriveFilesParams) => {
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
@@ -266,6 +268,9 @@ export const useDealDriveFiles = ({
       }
       setDocumentRecognitionResults(results);
       setSelectedDriveFileIds([]);
+      if (onRefreshNotes) {
+        await onRefreshNotes();
+      }
       await loadDriveFiles();
     } catch (error) {
       if (latestDealIdRef.current !== currentDealId) {
@@ -282,7 +287,13 @@ export const useDealDriveFiles = ({
         setDocumentRecognizing(false);
       }
     }
-  }, [canRecognizeSelectedDocumentFiles, loadDriveFiles, selectedDeal, selectedDriveFileIds]);
+  }, [
+    canRecognizeSelectedDocumentFiles,
+    loadDriveFiles,
+    onRefreshNotes,
+    selectedDeal,
+    selectedDriveFileIds,
+  ]);
 
   const handleTrashSelectedFiles = useCallback(async () => {
     const deal = selectedDeal;

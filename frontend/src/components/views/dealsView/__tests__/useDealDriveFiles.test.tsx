@@ -41,6 +41,7 @@ const renderDriveHook = (
   options?: {
     onDriveFolderCreated?: (dealId: string, folderId: string) => void;
     onRefreshPolicies?: () => Promise<void>;
+    onRefreshNotes?: () => Promise<void>;
     onPolicyDraftReady?: (
       dealId: string,
       parsed: Record<string, unknown>,
@@ -58,6 +59,7 @@ const renderDriveHook = (
       selectedDeal: deal,
       onDriveFolderCreated: options?.onDriveFolderCreated ?? (() => {}),
       onRefreshPolicies: options?.onRefreshPolicies,
+      onRefreshNotes: options?.onRefreshNotes,
       onPolicyDraftReady: options?.onPolicyDraftReady,
     });
     useEffect(() => {
@@ -179,7 +181,7 @@ describe('useDealDriveFiles', () => {
       webViewLink: 'https://drive.google.com/file',
       isFolder: false,
     };
-    fetchDealDriveFilesMock.mockResolvedValueOnce({ files: [file], folderId: null });
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [file], folderId: null });
     recognizeDealDocumentsMock.mockResolvedValueOnce({
       noteId: 'note-1',
       results: [
@@ -196,7 +198,8 @@ describe('useDealDriveFiles', () => {
       ],
     });
 
-    const { resultRef } = renderDriveHook(deal);
+    const onRefreshNotes = vi.fn().mockResolvedValue(undefined);
+    const { resultRef } = renderDriveHook(deal, { onRefreshNotes });
     await act(async () => {
       await resultRef.current?.loadDriveFiles();
     });
@@ -210,6 +213,7 @@ describe('useDealDriveFiles', () => {
     await waitFor(() => {
       expect(recognizeDealDocumentsMock).toHaveBeenCalledWith(deal.id, [file.id]);
       expect(resultRef.current?.documentRecognitionResults[0]?.documentType).toBe('passport');
+      expect(onRefreshNotes).toHaveBeenCalledTimes(1);
     });
   });
 });
