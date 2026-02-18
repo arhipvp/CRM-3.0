@@ -118,7 +118,9 @@ class DealDocumentRecognitionMixin:
                         "confidence": recognition.confidence,
                         "warnings": recognition.warnings,
                         "data": recognition.data,
-                        "extractedText": getattr(recognition, "extracted_text", ""),
+                        "extractedText": str(
+                            getattr(recognition, "extracted_text", "") or ""
+                        ),
                         "transcript": recognition.transcript,
                     }
                 )

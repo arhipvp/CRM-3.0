@@ -74,6 +74,7 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
                     "series": "1234",
                     "number": "567890",
                 }
+                recognize_mock.return_value.extracted_text = "Серия 1234 Номер 567890"
                 recognize_mock.return_value.transcript = '{"document_type":"passport"}'
 
                 response = self.api_client.post(
@@ -125,6 +126,7 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
                         "confidence": 0.9,
                         "warnings": [],
                         "data": {"number": "123"},
+                        "extracted_text": "Номер 123",
                         "transcript": "ok",
                     },
                 )(),
