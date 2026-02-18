@@ -357,15 +357,46 @@ export async function recognizeDealDocuments(
   const rawResults = Array.isArray(payload.results)
     ? (payload.results as Record<string, unknown>[])
     : [];
+  const normalizeDocumentType = (
+    value: unknown,
+  ): 'passport' | 'driver_license' | 'epts' | 'sts' | null => {
+    const raw = String(value ?? '')
+      .trim()
+      .toLowerCase();
+    if (!raw || raw === 'unknown') {
+      return null;
+    }
+    if (raw === 'passport' || raw === 'паспорт' || raw === 'паспорт рф') {
+      return 'passport';
+    }
+    if (
+      raw === 'driver_license' ||
+      raw === 'driver licence' ||
+      raw === 'driver license' ||
+      raw === 'в/у' ||
+      raw === 'водительское удостоверение'
+    ) {
+      return 'driver_license';
+    }
+    if (raw === 'epts' || raw === 'эптс' || raw === 'электронный птс') {
+      return 'epts';
+    }
+    if (
+      raw === 'sts' ||
+      raw === 'стс' ||
+      raw === 'свидетельство о регистрации тс' ||
+      raw === 'свидетельство о регистрации транспортного средства'
+    ) {
+      return 'sts';
+    }
+    return null;
+  };
   const results: DocumentRecognitionResult[] = rawResults.map((item) => {
     const status = String(item.status ?? 'error') === 'parsed' ? 'parsed' : 'error';
-    const documentTypeRaw = String(item.documentType ?? item.document_type ?? 'unknown');
-    const documentType =
-      documentTypeRaw === 'passport' ||
-      documentTypeRaw === 'driver_license' ||
-      documentTypeRaw === 'epts'
-        ? documentTypeRaw
-        : 'unknown';
+    const documentTypeRaw = String(item.documentType ?? item.document_type ?? '').trim();
+    const normalizedType =
+      normalizeDocumentType(item.normalizedType ?? item.normalized_type) ??
+      normalizeDocumentType(documentTypeRaw);
     const warningsRaw = Array.isArray(item.warnings) ? item.warnings : [];
     const data = typeof item.data === 'object' && item.data !== null ? item.data : {};
     const confidenceRaw = item.confidence;
@@ -377,7 +408,8 @@ export async function recognizeDealDocuments(
       fileId: String(item.fileId ?? item.file_id ?? ''),
       fileName: item.fileName === undefined ? null : String(item.fileName ?? item.file_name ?? ''),
       status,
-      documentType,
+      documentType: documentTypeRaw || 'unknown',
+      normalizedType,
       confidence,
       warnings: warningsRaw.map((warning) => String(warning)).filter(Boolean),
       message: item.message === undefined ? undefined : String(item.message ?? ''),

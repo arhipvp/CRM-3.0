@@ -23,6 +23,7 @@ class DocumentRecognitionError(ValueError):
 @dataclass
 class RecognitionPayload:
     document_type: str
+    normalized_type: str | None
     confidence: float | None
     warnings: list[str]
     data: dict[str, Any]
@@ -34,7 +35,6 @@ DOCUMENT_SCHEMA: dict[str, Any] = {
     "properties": {
         "document_type": {
             "type": "string",
-            "enum": ["passport", "driver_license", "epts", "unknown"],
         },
         "confidence": {"anyOf": [{"type": "number"}, {"type": "null"}]},
         "warnings": {"type": "array", "items": {"type": "string"}},
@@ -53,25 +53,31 @@ DOCUMENT_FUNCTION: dict[str, Any] = {
 DOCUMENT_PROMPT = """Ты извлекаешь данные из российских документов.
 Требуется вернуть только валидный JSON по схеме:
 {
-  "document_type": "passport | driver_license | epts | unknown",
+  "document_type": "тип документа свободным текстом (например: passport, driver_license, epts, sts, СТС, Паспорт РФ и т.д.)",
   "confidence": 0.0..1.0 или null,
   "warnings": ["..."],
   "data": {...}
 }
 
 Правила:
-1) Типы документов:
-- passport: паспорт РФ
-- driver_license: водительское удостоверение
-- epts: электронный ПТС
-- unknown: если тип определить нельзя
+1) Всегда пытайся определить тип документа и записать его в document_type понятным текстом.
+2) Если тип определить нельзя, верни "unknown".
+3) Предпочтительные каноничные значения, если уверен:
+- passport
+- driver_license
+- epts
+- sts
 2) Никаких выдумок. Если поле не найдено: пустая строка или null (в зависимости от уместности).
 3) Для каждого типа используй расширенный набор полей:
 - passport: full_name, birth_date, birth_place, series, number, issue_date, issuer, issuer_code, registration_address, gender
 - driver_license: full_name, birth_date, series, number, issue_date, expiry_date, issuer, categories
 - epts: epts_number, status, issue_date, vin, vehicle_brand, vehicle_model, vehicle_type, year, body_number, chassis_number, engine_number, color, power_hp, eco_class, gross_weight, curb_weight, owner
+- sts: sts_series, sts_number, issue_date, issued_by, plate_number, vin, vehicle_brand, vehicle_model, vehicle_type, year, color, engine_power_hp, max_weight, unladen_weight, owner
 4) Даты приводи к YYYY-MM-DD, если возможно.
 5) VIN возвращай в верхнем регистре.
+6) Не путай epts и sts:
+- если это карточка/бланк свидетельства о регистрации ТС (двусторонний документ с серией/номером СТС) — это sts;
+- epts выбирай только когда явно указано, что это электронный ПТС.
 """
 
 DATE_DDMMYYYY_RE = re.compile(r"^(\d{2})[./-](\d{2})[./-](\d{4})$")
@@ -137,11 +143,12 @@ def _render_image_with_rotations(image_bytes: bytes) -> list[bytes]:
     return images
 
 
-def _normalize_document_type(value: Any) -> str:
+def _normalize_document_type(value: Any) -> str | None:
     text = str(value or "").strip().lower()
     aliases = {
         "passport": "passport",
         "паспорт": "passport",
+        "паспорт рф": "passport",
         "driver_license": "driver_license",
         "driver licence": "driver_license",
         "driver license": "driver_license",
@@ -150,9 +157,14 @@ def _normalize_document_type(value: Any) -> str:
         "epts": "epts",
         "эптс": "epts",
         "электронный птс": "epts",
-        "unknown": "unknown",
+        "sts": "sts",
+        "стс": "sts",
+        "свидетельство о регистрации тс": "sts",
+        "свидетельство о регистрации транспортного средства": "sts",
+        "vehicle_registration_certificate": "sts",
+        "unknown": None,
     }
-    return aliases.get(text, "unknown")
+    return aliases.get(text)
 
 
 def _normalize_date(value: Any) -> str:
@@ -185,7 +197,9 @@ def _normalize_confidence(value: Any) -> float | None:
     return round(parsed, 4)
 
 
-def _normalize_data(document_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _normalize_data(
+    document_type: str | None, payload: dict[str, Any]
+) -> dict[str, Any]:
     normalized: dict[str, Any] = {}
     for key, value in payload.items():
         if isinstance(value, str):
@@ -197,8 +211,9 @@ def _normalize_data(document_type: str, payload: dict[str, Any]) -> dict[str, An
         "passport": {"birth_date", "issue_date"},
         "driver_license": {"birth_date", "issue_date", "expiry_date"},
         "epts": {"issue_date"},
+        "sts": {"issue_date"},
     }
-    for key in date_fields.get(document_type, set()):
+    for key in date_fields.get(document_type or "", set()):
         if key in normalized:
             normalized[key] = _normalize_date(normalized.get(key))
 
@@ -273,7 +288,10 @@ def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPa
     message = response.choices[0].message
     parsed_payload, transcript = _extract_response_json(message)
 
-    document_type = _normalize_document_type(parsed_payload.get("document_type"))
+    raw_document_type = str(parsed_payload.get("document_type") or "").strip()
+    normalized_type = _normalize_document_type(raw_document_type)
+    if not raw_document_type:
+        raw_document_type = normalized_type or "unknown"
     confidence = _normalize_confidence(parsed_payload.get("confidence"))
     warnings_raw = parsed_payload.get("warnings")
     warnings = (
@@ -283,10 +301,11 @@ def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPa
     )
     data_raw = parsed_payload.get("data")
     data = data_raw if isinstance(data_raw, dict) else {}
-    data = _normalize_data(document_type, data)
+    data = _normalize_data(normalized_type, data)
 
     return RecognitionPayload(
-        document_type=document_type,
+        document_type=raw_document_type,
+        normalized_type=normalized_type,
         confidence=confidence,
         warnings=warnings,
         data=data,

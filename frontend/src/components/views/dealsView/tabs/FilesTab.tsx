@@ -390,6 +390,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               >
                 {formatDocumentRecognitionSummary(result)}
               </p>
+              {result.normalizedType && (
+                <p className="text-[11px] text-slate-500">
+                  Категория CRM: <span className="font-medium">{result.normalizedType}</span>
+                </p>
+              )}
               {result.warnings.length > 0 && (
                 <p className="text-[11px] text-amber-700">
                   Предупреждения: {result.warnings.join(', ')}

@@ -114,6 +114,7 @@ class DealDocumentRecognitionMixin:
                         "fileName": file_name,
                         "status": "parsed",
                         "documentType": recognition.document_type,
+                        "normalizedType": getattr(recognition, "normalized_type", None),
                         "confidence": recognition.confidence,
                         "warnings": recognition.warnings,
                         "data": recognition.data,
@@ -168,6 +169,8 @@ class DealDocumentRecognitionMixin:
             blocks.append(f"Статус: {item.get('status')}")
             if item.get("documentType"):
                 blocks.append(f"Тип документа: {item.get('documentType')}")
+            if item.get("normalizedType"):
+                blocks.append(f"Категория CRM: {item.get('normalizedType')}")
             if item.get("confidence") is not None:
                 blocks.append(f"Уверенность: {item.get('confidence')}")
             if item.get("warnings"):

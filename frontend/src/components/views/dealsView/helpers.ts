@@ -192,14 +192,18 @@ export const formatRecognitionSummary = (result: PolicyRecognitionResult) => {
 
 export const formatDocumentRecognitionSummary = (result: DocumentRecognitionResult) => {
   if (result.status === 'parsed') {
-    const typeLabel =
-      result.documentType === 'passport'
+    const normalizedLabel =
+      result.normalizedType === 'passport'
         ? 'паспорт'
-        : result.documentType === 'driver_license'
+        : result.normalizedType === 'driver_license'
           ? 'водительское удостоверение'
-          : result.documentType === 'epts'
-            ? 'эПТС'
-            : 'неизвестный тип';
+          : result.normalizedType === 'sts'
+            ? 'СТС'
+            : result.normalizedType === 'epts'
+              ? 'эПТС'
+              : '';
+    const aiType = (result.documentType || '').trim();
+    const typeLabel = normalizedLabel || aiType || 'неизвестный тип';
     const confidenceLabel =
       result.confidence === null ? 'без оценки' : `${Math.round(result.confidence * 100)}%`;
     return `Распознано: ${typeLabel}, уверенность ${confidenceLabel}.`;

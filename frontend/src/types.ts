@@ -171,7 +171,8 @@ export interface DocumentRecognitionResult {
   fileId: string;
   fileName?: string | null;
   status: 'parsed' | 'error';
-  documentType: 'passport' | 'driver_license' | 'epts' | 'unknown';
+  documentType: string;
+  normalizedType?: 'passport' | 'driver_license' | 'epts' | 'sts' | null;
   confidence: number | null;
   warnings: string[];
   message?: string;
