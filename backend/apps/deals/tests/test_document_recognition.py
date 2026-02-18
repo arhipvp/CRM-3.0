@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import signal
+from contextlib import contextmanager
 from unittest.mock import patch
 
 from apps.clients.models import Client
@@ -8,6 +10,21 @@ from apps.deals.models import Deal
 from apps.notes.models import Note
 from django.contrib.auth.models import User
 from rest_framework import status
+
+
+@contextmanager
+def _time_limit(seconds: int):
+    def _handle_timeout(signum, frame):  # pragma: no cover - signal handler
+        raise TimeoutError(f"Тест превысил лимит {seconds} секунд")
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
@@ -29,37 +46,41 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         self.token_for(self.other_user)
 
     def test_recognize_documents_success_creates_note(self):
-        self.authenticate(self.seller)
-        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
-        drive_files = [
-            {"id": "file-1", "name": "passport.jpg", "is_folder": False},
-        ]
+        with _time_limit(30):
+            self.authenticate(self.seller)
+            Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+            drive_files = [
+                {"id": "file-1", "name": "passport.jpg", "is_folder": False},
+            ]
 
-        with (
-            patch(
-                "apps.deals.view_mixins.document_recognition.list_drive_folder_contents",
-                return_value=drive_files,
-            ),
-            patch(
-                "apps.deals.view_mixins.document_recognition.download_drive_file",
-                return_value=b"image-bytes",
-            ),
-            patch(
-                "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
-            ) as recognize_mock,
-        ):
-            recognize_mock.return_value.document_type = "passport"
-            recognize_mock.return_value.normalized_type = "passport"
-            recognize_mock.return_value.confidence = 0.93
-            recognize_mock.return_value.warnings = []
-            recognize_mock.return_value.data = {"series": "1234", "number": "567890"}
-            recognize_mock.return_value.transcript = '{"document_type":"passport"}'
+            with (
+                patch(
+                    "apps.deals.view_mixins.document_recognition.list_drive_folder_contents",
+                    return_value=drive_files,
+                ),
+                patch(
+                    "apps.deals.view_mixins.document_recognition.download_drive_file",
+                    return_value=b"image-bytes",
+                ),
+                patch(
+                    "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
+                ) as recognize_mock,
+            ):
+                recognize_mock.return_value.document_type = "passport"
+                recognize_mock.return_value.normalized_type = "passport"
+                recognize_mock.return_value.confidence = 0.93
+                recognize_mock.return_value.warnings = []
+                recognize_mock.return_value.data = {
+                    "series": "1234",
+                    "number": "567890",
+                }
+                recognize_mock.return_value.transcript = '{"document_type":"passport"}'
 
-            response = self.api_client.post(
-                f"/api/v1/deals/{self.deal.id}/recognize-documents/",
-                {"file_ids": ["file-1"]},
-                format="json",
-            )
+                response = self.api_client.post(
+                    f"/api/v1/deals/{self.deal.id}/recognize-documents/",
+                    {"file_ids": ["file-1"]},
+                    format="json",
+                )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
