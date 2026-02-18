@@ -49,6 +49,7 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
             ) as recognize_mock,
         ):
             recognize_mock.return_value.document_type = "passport"
+            recognize_mock.return_value.normalized_type = "passport"
             recognize_mock.return_value.confidence = 0.93
             recognize_mock.return_value.warnings = []
             recognize_mock.return_value.data = {"series": "1234", "number": "567890"}
@@ -65,6 +66,7 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         item = response.data["results"][0]
         self.assertEqual(item["status"], "parsed")
         self.assertEqual(item["documentType"], "passport")
+        self.assertEqual(item["normalizedType"], "passport")
         self.assertEqual(item["confidence"], 0.93)
         self.assertTrue(response.data.get("noteId"))
         note = Note.objects.get(pk=response.data["noteId"])
@@ -98,6 +100,7 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
                     (),
                     {
                         "document_type": "passport",
+                        "normalized_type": "passport",
                         "confidence": 0.9,
                         "warnings": [],
                         "data": {"number": "123"},

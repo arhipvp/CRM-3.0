@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
@@ -82,16 +83,10 @@ DOCUMENT_PROMPT = """Ты извлекаешь данные из российс�
 
 DATE_DDMMYYYY_RE = re.compile(r"^(\d{2})[./-](\d{2})[./-](\d{4})$")
 DATE_YYYYMMDD_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
-
-IMAGE_MIME_BY_EXT = {
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".webp": "image/webp",
-    ".bmp": "image/bmp",
-    ".tif": "image/tiff",
-    ".tiff": "image/tiff",
-}
+DEFAULT_LLM_TIMEOUT_SECONDS = 45
+DEFAULT_MAX_RETRIES = 2
+DEFAULT_RETRY_BASE_DELAY = 0.8
+DEFAULT_MIN_CONFIDENCE = 0.75
 
 
 def _resolve_openrouter_config() -> tuple[str, str, str]:
@@ -103,14 +98,6 @@ def _resolve_openrouter_config() -> tuple[str, str, str]:
     )
     model = getattr(settings, "OPENROUTER_MODEL", "") or "gpt-5.2"
     return api_key, base_url, model
-
-
-def _guess_image_mime(filename: str) -> str:
-    lower_name = (filename or "").lower()
-    for ext, mime in IMAGE_MIME_BY_EXT.items():
-        if lower_name.endswith(ext):
-            return mime
-    return "image/png"
 
 
 def _to_data_uri(image_bytes: bytes, mime_type: str) -> str:
@@ -133,14 +120,15 @@ def _image_to_png_bytes(image: Image.Image) -> bytes:
     return buffer.getvalue()
 
 
-def _render_image_with_rotations(image_bytes: bytes) -> list[bytes]:
-    images: list[bytes] = []
+def _render_image_with_rotations(image_bytes: bytes) -> tuple[bytes, list[bytes]]:
     with Image.open(BytesIO(image_bytes)) as source:
         normalized = ImageOps.exif_transpose(source).convert("RGB")
-        images.append(_image_to_png_bytes(normalized))
-        for angle in (90, 180, 270):
-            images.append(_image_to_png_bytes(normalized.rotate(angle, expand=True)))
-    return images
+        primary = _image_to_png_bytes(normalized)
+        rotated = [
+            _image_to_png_bytes(normalized.rotate(angle, expand=True))
+            for angle in (90, 180, 270)
+        ]
+    return primary, rotated
 
 
 def _normalize_document_type(value: Any) -> str | None:
@@ -245,49 +233,9 @@ def _extract_response_json(message: Any) -> tuple[dict[str, Any], str]:
     return _parse_response_payload(content), str(content)
 
 
-def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPayload:
-    api_key, base_url, model = _resolve_openrouter_config()
-    client = openai.OpenAI(api_key=api_key, base_url=base_url)
-
-    images: list[bytes]
-    if (filename or "").lower().endswith(".pdf"):
-        images = _render_pdf_pages(content)
-    else:
-        images = _render_image_with_rotations(content)
-
-    if not images:
-        raise DocumentRecognitionError(
-            "Не удалось подготовить изображения для распознавания"
-        )
-
-    mime_type = _guess_image_mime(filename)
-    user_content: list[dict[str, Any]] = [
-        {
-            "type": "text",
-            "text": "Извлеки структурированные данные документа по схеме.",
-        }
-    ]
-    for image_bytes in images:
-        user_content.append(
-            {
-                "type": "image_url",
-                "image_url": {"url": _to_data_uri(image_bytes, mime_type)},
-            }
-        )
-
-    response = client.chat.completions.create(
-        model=model,
-        temperature=0,
-        messages=[
-            {"role": "system", "content": DOCUMENT_PROMPT},
-            {"role": "user", "content": user_content},
-        ],
-        tools=[{"type": "function", "function": DOCUMENT_FUNCTION}],
-        tool_choice={"type": "function", "function": {"name": "extract_document_data"}},
-    )
-    message = response.choices[0].message
-    parsed_payload, transcript = _extract_response_json(message)
-
+def _normalize_recognition_payload(
+    parsed_payload: dict[str, Any], transcript: str
+) -> RecognitionPayload:
     raw_document_type = str(parsed_payload.get("document_type") or "").strip()
     normalized_type = _normalize_document_type(raw_document_type)
     if not raw_document_type:
@@ -311,3 +259,183 @@ def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPa
         data=data,
         transcript=transcript,
     )
+
+
+def _create_with_retries(
+    client: openai.OpenAI,
+    *,
+    model: str,
+    messages: list[dict[str, Any]],
+    timeout_seconds: int,
+    max_retries: int,
+    retry_base_delay: float,
+):
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            return client.chat.completions.create(
+                model=model,
+                temperature=0,
+                messages=messages,
+                tools=[{"type": "function", "function": DOCUMENT_FUNCTION}],
+                tool_choice={
+                    "type": "function",
+                    "function": {"name": "extract_document_data"},
+                },
+                timeout=timeout_seconds,
+            )
+        except Exception as exc:
+            last_exc = exc
+            if attempt >= max_retries:
+                break
+            delay = retry_base_delay * (2**attempt)
+            logger.warning(
+                "Повтор запроса к ИИ через %.2fs после ошибки: %s",
+                delay,
+                exc,
+            )
+            time.sleep(delay)
+    raise DocumentRecognitionError(f"Ошибка запроса к ИИ: {last_exc}") from last_exc
+
+
+def _recognize_from_images(
+    client: openai.OpenAI,
+    *,
+    model: str,
+    images: list[bytes],
+    timeout_seconds: int,
+    max_retries: int,
+    retry_base_delay: float,
+) -> RecognitionPayload:
+    if not images:
+        raise DocumentRecognitionError("Не переданы изображения для распознавания")
+    user_content: list[dict[str, Any]] = [
+        {
+            "type": "text",
+            "text": "Извлеки структурированные данные документа по схеме.",
+        }
+    ]
+    for image_bytes in images:
+        user_content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": _to_data_uri(image_bytes, "image/png")},
+            }
+        )
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": DOCUMENT_PROMPT},
+        {"role": "user", "content": user_content},
+    ]
+    response = _create_with_retries(
+        client,
+        model=model,
+        messages=messages,
+        timeout_seconds=timeout_seconds,
+        max_retries=max_retries,
+        retry_base_delay=retry_base_delay,
+    )
+    message = response.choices[0].message
+    parsed_payload, transcript = _extract_response_json(message)
+    return _normalize_recognition_payload(parsed_payload, transcript)
+
+
+def _recognition_quality_score(
+    payload: RecognitionPayload,
+) -> tuple[int, float, int, int]:
+    confidence = payload.confidence if payload.confidence is not None else -1.0
+    return (
+        1 if payload.normalized_type else 0,
+        confidence,
+        len(payload.data),
+        -len(payload.warnings),
+    )
+
+
+def _needs_rotation_fallback(
+    payload: RecognitionPayload, min_confidence: float
+) -> bool:
+    if payload.normalized_type is None:
+        return True
+    confidence = payload.confidence
+    if confidence is None:
+        return True
+    return confidence < min_confidence
+
+
+def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPayload:
+    api_key, base_url, model = _resolve_openrouter_config()
+    client = openai.OpenAI(api_key=api_key, base_url=base_url)
+    timeout_seconds = int(
+        getattr(
+            settings,
+            "DOCUMENT_RECOGNITION_LLM_TIMEOUT_SECONDS",
+            DEFAULT_LLM_TIMEOUT_SECONDS,
+        )
+    )
+    max_retries = int(
+        getattr(
+            settings,
+            "DOCUMENT_RECOGNITION_LLM_MAX_RETRIES",
+            DEFAULT_MAX_RETRIES,
+        )
+    )
+    retry_base_delay = float(
+        getattr(
+            settings,
+            "DOCUMENT_RECOGNITION_LLM_RETRY_BASE_DELAY",
+            DEFAULT_RETRY_BASE_DELAY,
+        )
+    )
+    min_confidence = float(
+        getattr(
+            settings,
+            "DOCUMENT_RECOGNITION_MIN_CONFIDENCE_FOR_SINGLE_PASS",
+            DEFAULT_MIN_CONFIDENCE,
+        )
+    )
+
+    if (filename or "").lower().endswith(".pdf"):
+        images = _render_pdf_pages(content)
+        if not images:
+            raise DocumentRecognitionError(
+                "Не удалось подготовить изображения для распознавания"
+            )
+        return _recognize_from_images(
+            client,
+            model=model,
+            images=images,
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+            retry_base_delay=retry_base_delay,
+        )
+
+    primary_image, rotated_images = _render_image_with_rotations(content)
+    if not primary_image:
+        raise DocumentRecognitionError(
+            "Не удалось подготовить изображения для распознавания"
+        )
+    best = _recognize_from_images(
+        client,
+        model=model,
+        images=[primary_image],
+        timeout_seconds=timeout_seconds,
+        max_retries=max_retries,
+        retry_base_delay=retry_base_delay,
+    )
+    if not _needs_rotation_fallback(best, min_confidence):
+        return best
+
+    for rotated_image in rotated_images:
+        candidate = _recognize_from_images(
+            client,
+            model=model,
+            images=[rotated_image],
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+            retry_base_delay=retry_base_delay,
+        )
+        if _recognition_quality_score(candidate) > _recognition_quality_score(best):
+            best = candidate
+        if not _needs_rotation_fallback(best, min_confidence):
+            break
+    return best

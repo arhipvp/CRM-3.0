@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+import json
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+from apps.deals.document_recognition import (
+    DocumentRecognitionError,
+    recognize_document_from_file,
+)
+from django.test import SimpleTestCase
+
+
+def _response_with_json(payload: dict):
+    arguments = json.dumps(payload, ensure_ascii=False)
+    message = SimpleNamespace(
+        tool_calls=[
+            SimpleNamespace(function=SimpleNamespace(arguments=arguments)),
+        ],
+        content="",
+    )
+    return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+class DocumentRecognitionServiceTests(SimpleTestCase):
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_image_sent_as_png_data_uri(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-primary", [])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "passport",
+                "confidence": 0.96,
+                "warnings": [],
+                "data": {},
+            }
+        )
+        openai_mock.return_value = client
+
+        recognize_document_from_file(b"raw-image", "photo.jpg")
+
+        call_kwargs = client.chat.completions.create.call_args.kwargs
+        image_url = call_kwargs["messages"][1]["content"][1]["image_url"]["url"]
+        self.assertTrue(image_url.startswith("data:image/png;base64,"))
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_rotation_fallback_runs_only_for_low_confidence(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [b"img-90", b"img-180"])
+        client = Mock()
+        client.chat.completions.create.side_effect = [
+            _response_with_json(
+                {
+                    "document_type": "unknown",
+                    "confidence": 0.21,
+                    "warnings": ["low confidence"],
+                    "data": {},
+                }
+            ),
+            _response_with_json(
+                {
+                    "document_type": "sts",
+                    "confidence": 0.89,
+                    "warnings": [],
+                    "data": {"sts_number": "1234"},
+                }
+            ),
+        ]
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "photo.png")
+
+        self.assertEqual(client.chat.completions.create.call_count, 2)
+        self.assertEqual(payload.normalized_type, "sts")
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_rotation_fallback_not_used_for_high_confidence(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [b"img-90", b"img-180"])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "passport",
+                "confidence": 0.95,
+                "warnings": [],
+                "data": {"series": "1234"},
+            }
+        )
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "photo.png")
+
+        self.assertEqual(client.chat.completions.create.call_count, 1)
+        self.assertEqual(payload.normalized_type, "passport")
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.time.sleep")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_retries_on_transient_llm_error(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        sleep_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        client.chat.completions.create.side_effect = [
+            RuntimeError("temporary failure"),
+            _response_with_json(
+                {
+                    "document_type": "passport",
+                    "confidence": 0.92,
+                    "warnings": [],
+                    "data": {},
+                }
+            ),
+        ]
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "photo.png")
+
+        self.assertEqual(client.chat.completions.create.call_count, 2)
+        self.assertEqual(sleep_mock.call_count, 1)
+        self.assertEqual(payload.normalized_type, "passport")
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_pdf_pages")
+    def test_empty_pdf_render_raises_error(
+        self,
+        render_pdf_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_pdf_mock.return_value = []
+        openai_mock.return_value = Mock()
+
+        with self.assertRaises(DocumentRecognitionError):
+            recognize_document_from_file(b"%PDF-1.7 broken", "broken.pdf")
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_unknown_custom_type_is_preserved(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "my_custom_vehicle_doc",
+                "confidence": 0.66,
+                "warnings": [],
+                "data": {},
+            }
+        )
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "doc.png")
+
+        self.assertEqual(payload.document_type, "my_custom_vehicle_doc")
+        self.assertIsNone(payload.normalized_type)
