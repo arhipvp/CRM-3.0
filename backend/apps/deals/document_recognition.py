@@ -92,7 +92,7 @@ DATE_ANY_RE = re.compile(r"\b(\d{2})[./-](\d{2})[./-](\d{4})\b")
 PASSPORT_SERIES_NUMBER_RE = re.compile(r"\b(\d{2})\s?(\d{2})\s?(\d{6})\b")
 ISSUER_CODE_RE = re.compile(r"\b(\d{3}-\d{3})\b")
 MRZ_SECOND_LINE_RE = re.compile(
-    r"^(?P<passport_no>\d{10})[A-Z<]{3}(?P<birth>\d{6})\d(?P<gender>[MF])[A-Z<]*$"
+    r"^(?P<passport_no>\d{10})[A-Z<]{3}(?P<birth>\d{6})\d(?P<gender>[MF])[A-Z0-9<]*$"
 )
 DEFAULT_LLM_TIMEOUT_SECONDS = 45
 DEFAULT_MAX_RETRIES = 2
