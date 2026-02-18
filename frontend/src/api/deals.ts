@@ -1,7 +1,13 @@
 import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapActivityLog, mapDeal, mapQuote } from './mappers';
-import type { ActivityLog, Deal, DealMergeResponse, Quote } from '../types';
+import type {
+  ActivityLog,
+  Deal,
+  DealMergeResponse,
+  DocumentRecognitionResult,
+  Quote,
+} from '../types';
 
 export interface DealMailboxCreateResult {
   deal: Deal;
@@ -334,5 +340,56 @@ export async function checkDealMailbox(dealId: string): Promise<DealMailboxSyncR
       failed: Number(rawSync.failed ?? 0),
       deleted: Number(rawSync.deleted ?? 0),
     },
+  };
+}
+
+export async function recognizeDealDocuments(
+  dealId: string,
+  fileIds: string[],
+): Promise<{ results: DocumentRecognitionResult[]; noteId: string | null }> {
+  const payload = await request<{ results?: unknown[]; noteId?: unknown }>(
+    `/deals/${dealId}/recognize-documents/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ file_ids: fileIds }),
+    },
+  );
+  const rawResults = Array.isArray(payload.results)
+    ? (payload.results as Record<string, unknown>[])
+    : [];
+  const results: DocumentRecognitionResult[] = rawResults.map((item) => {
+    const status = String(item.status ?? 'error') === 'parsed' ? 'parsed' : 'error';
+    const documentTypeRaw = String(item.documentType ?? item.document_type ?? 'unknown');
+    const documentType =
+      documentTypeRaw === 'passport' ||
+      documentTypeRaw === 'driver_license' ||
+      documentTypeRaw === 'epts'
+        ? documentTypeRaw
+        : 'unknown';
+    const warningsRaw = Array.isArray(item.warnings) ? item.warnings : [];
+    const data = typeof item.data === 'object' && item.data !== null ? item.data : {};
+    const confidenceRaw = item.confidence;
+    const confidence =
+      confidenceRaw === null || confidenceRaw === undefined || Number.isNaN(Number(confidenceRaw))
+        ? null
+        : Number(confidenceRaw);
+    return {
+      fileId: String(item.fileId ?? item.file_id ?? ''),
+      fileName: item.fileName === undefined ? null : String(item.fileName ?? item.file_name ?? ''),
+      status,
+      documentType,
+      confidence,
+      warnings: warningsRaw.map((warning) => String(warning)).filter(Boolean),
+      message: item.message === undefined ? undefined : String(item.message ?? ''),
+      transcript:
+        item.transcript === undefined
+          ? null
+          : String(item.transcript ?? item.transcript_text ?? ''),
+      data: data as Record<string, unknown>,
+    };
+  });
+  return {
+    results,
+    noteId: payload.noteId === undefined || payload.noteId === null ? null : String(payload.noteId),
   };
 }

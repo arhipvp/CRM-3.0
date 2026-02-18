@@ -1,5 +1,6 @@
 import type {
   DealStatus,
+  DocumentRecognitionResult,
   FinancialRecord,
   Payment,
   Policy,
@@ -187,6 +188,23 @@ export const formatRecognitionSummary = (result: PolicyRecognitionResult) => {
     return 'Полис распознан, можно перейти к заполнению.';
   }
   return result.message ?? 'Ошибка при распознавании полиса';
+};
+
+export const formatDocumentRecognitionSummary = (result: DocumentRecognitionResult) => {
+  if (result.status === 'parsed') {
+    const typeLabel =
+      result.documentType === 'passport'
+        ? 'паспорт'
+        : result.documentType === 'driver_license'
+          ? 'водительское удостоверение'
+          : result.documentType === 'epts'
+            ? 'эПТС'
+            : 'неизвестный тип';
+    const confidenceLabel =
+      result.confidence === null ? 'без оценки' : `${Math.round(result.confidence * 100)}%`;
+    return `Распознано: ${typeLabel}, уверенность ${confidenceLabel}.`;
+  }
+  return result.message ?? 'Ошибка при распознавании документа';
 };
 
 const isPaymentDeleted = (payment: Payment) => Boolean(payment.deletedAt);

@@ -167,6 +167,18 @@ export interface PolicyRecognitionResult {
   data?: Record<string, unknown>;
 }
 
+export interface DocumentRecognitionResult {
+  fileId: string;
+  fileName?: string | null;
+  status: 'parsed' | 'error';
+  documentType: 'passport' | 'driver_license' | 'epts' | 'unknown';
+  confidence: number | null;
+  warnings: string[];
+  message?: string;
+  transcript?: string | null;
+  data: Record<string, unknown>;
+}
+
 export interface ChatMessage {
   id: string;
   deal: string;

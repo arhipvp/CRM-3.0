@@ -50,6 +50,7 @@ from .serializers import (
     SalesChannelSerializer,
 )
 from .view_mixins import (
+    DealDocumentRecognitionMixin,
     DealDriveMixin,
     DealHistoryMixin,
     DealMergeMixin,
@@ -60,6 +61,7 @@ CLOSED_STATUSES = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
 
 
 class DealViewSet(
+    DealDocumentRecognitionMixin,
     DealHistoryMixin,
     DealDriveMixin,
     DealMergeMixin,

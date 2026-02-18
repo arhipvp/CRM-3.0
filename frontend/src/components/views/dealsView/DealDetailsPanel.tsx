@@ -296,9 +296,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     driveError,
     selectedDriveFileIds,
     canRecognizeSelectedFiles,
+    canRecognizeSelectedDocumentFiles,
     isRecognizing,
     recognitionResults,
     recognitionMessage,
+    isDocumentRecognizing,
+    documentRecognitionResults,
+    documentRecognitionMessage,
     isTrashing,
     trashMessage,
     isDownloading,
@@ -312,6 +316,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     toggleDriveFileSelection,
     toggleDriveSortDirection,
     handleRecognizePolicies,
+    handleRecognizeDocuments,
     handleTrashSelectedFiles,
     handleDownloadDriveFiles,
     handleRenameDriveFile,
@@ -755,10 +760,15 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       selectedDriveFileIds={selectedDriveFileIds}
       toggleDriveFileSelection={toggleDriveFileSelection}
       handleRecognizePolicies={handleRecognizePolicies}
+      handleRecognizeDocuments={handleRecognizeDocuments}
       canRecognizeSelectedFiles={canRecognizeSelectedFiles}
+      canRecognizeSelectedDocumentFiles={canRecognizeSelectedDocumentFiles}
       isRecognizing={isRecognizing}
       recognitionResults={recognitionResults}
       recognitionMessage={recognitionMessage}
+      isDocumentRecognizing={isDocumentRecognizing}
+      documentRecognitionResults={documentRecognitionResults}
+      documentRecognitionMessage={documentRecognitionMessage}
       isTrashing={isTrashing}
       trashMessage={trashMessage}
       isDownloading={isDownloading}
