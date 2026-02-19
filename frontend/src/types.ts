@@ -373,6 +373,24 @@ export interface SellerDashboardTasksByExecutor {
   count: number;
 }
 
+export interface SellerDashboardFinancialTotals {
+  incomeTotal: string;
+  expenseTotal: string;
+  netTotal: string;
+  recordsCount: number;
+}
+
+export interface SellerDashboardFinancialByCompanyTypeRow {
+  insuranceCompanyId?: string | null;
+  insuranceCompanyName: string;
+  insuranceTypeId?: string | null;
+  insuranceTypeName: string;
+  incomeTotal: string;
+  expenseTotal: string;
+  netTotal: string;
+  recordsCount: number;
+}
+
 export interface SellerDashboardResponse {
   rangeStart: string;
   rangeEnd: string;
@@ -384,6 +402,8 @@ export interface SellerDashboardResponse {
   tasksCompletedByExecutor: SellerDashboardTasksByExecutor[];
   policyExpirationsByDay: SellerDashboardDayCount[];
   nextContactsByDay: SellerDashboardDayCount[];
+  financialTotals: SellerDashboardFinancialTotals;
+  financialByCompanyType: SellerDashboardFinancialByCompanyTypeRow[];
   policies: SellerDashboardPolicy[];
 }
 

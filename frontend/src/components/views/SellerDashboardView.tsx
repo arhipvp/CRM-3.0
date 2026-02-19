@@ -1,6 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchSellerDashboard } from '../../api/policies';
 import type {
+  SellerDashboardFinancialByCompanyTypeRow,
   SellerDashboardPaymentsByDay,
   SellerDashboardResponse,
   SellerDashboardTasksByExecutor,
@@ -10,9 +11,9 @@ import { BTN_SM_PRIMARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 const CHART_HEIGHT = 190;
-const CHART_WIDTH = 720;
 const CHART_PADDING = 28;
 const TOOLTIP_OFFSET = 12;
+const MIN_CHART_WIDTH = 320;
 const EXECUTOR_COLORS = [
   '#0284c7',
   '#0ea5e9',
@@ -48,6 +49,25 @@ type CalendarDay = {
   nextContacts: number;
 };
 
+type FinancialCell = {
+  income: number;
+  expense: number;
+  net: number;
+  count: number;
+};
+
+type FinancialCompanyRow = {
+  companyKey: string;
+  companyName: string;
+  cells: Map<string, FinancialCell>;
+  totals: FinancialCell;
+};
+
+type FinancialTypeColumn = {
+  typeKey: string;
+  typeName: string;
+};
+
 const parseNumber = (value: string | number) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -75,6 +95,50 @@ const addUtcDays = (date: Date, days: number) => {
 
 const weekdayIndex = (date: Date) => (date.getUTCDay() + 6) % 7;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+const UNKNOWN_GROUP_LABEL = 'Не указано';
+
+const createEmptyFinancialCell = (): FinancialCell => ({
+  income: 0,
+  expense: 0,
+  net: 0,
+  count: 0,
+});
+
+const buildFinancialCellFromRow = (
+  row: SellerDashboardFinancialByCompanyTypeRow,
+): FinancialCell => ({
+  income: parseNumber(row.incomeTotal),
+  expense: parseNumber(row.expenseTotal),
+  net: parseNumber(row.netTotal),
+  count: Number(row.recordsCount ?? 0),
+});
+
+const appendFinancialCell = (target: FinancialCell, cell: FinancialCell) => {
+  target.income += cell.income;
+  target.expense += cell.expense;
+  target.net += cell.net;
+  target.count += cell.count;
+};
+
+const compareFinancialGroupLabels = (left: string, right: string) => {
+  const leftUnknown = left === UNKNOWN_GROUP_LABEL;
+  const rightUnknown = right === UNKNOWN_GROUP_LABEL;
+  if (leftUnknown && !rightUnknown) {
+    return 1;
+  }
+  if (!leftUnknown && rightUnknown) {
+    return -1;
+  }
+  return left.localeCompare(right, RU_LOCALE);
+};
+
+const resolveChartWidth = (container: HTMLDivElement | null) => {
+  if (!container) {
+    return MIN_CHART_WIDTH;
+  }
+  const width = Math.round(container.getBoundingClientRect().width || 0);
+  return Math.max(width, MIN_CHART_WIDTH);
+};
 
 const formatShortDate = (value: string) => {
   const date = new Date(value);
@@ -198,11 +262,38 @@ const ChartTooltip: React.FC<{ left: number; top: number; children: React.ReactN
   </div>
 );
 
+const useResponsiveChartWidth = (containerRef: React.RefObject<HTMLDivElement | null>) => {
+  const [width, setWidth] = useState(MIN_CHART_WIDTH);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    setWidth(resolveChartWidth(container));
+
+    if (typeof ResizeObserver === 'undefined') {
+      const handleResize = () => setWidth(resolveChartWidth(containerRef.current));
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+
+    const observer = new ResizeObserver(() => {
+      setWidth(resolveChartWidth(containerRef.current));
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [containerRef]);
+
+  return width;
+};
+
 const LineChart: React.FC<{ points: ChartPoint[]; formatter: (value: number) => string }> = ({
   points,
   formatter,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartWidth = useResponsiveChartWidth(containerRef);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   if (!points.length) {
@@ -217,7 +308,7 @@ const LineChart: React.FC<{ points: ChartPoint[]; formatter: (value: number) => 
   const minValue = Math.min(...points.map((point) => point.value), 0);
   const range = maxValue - minValue || 1;
 
-  const width = CHART_WIDTH;
+  const width = chartWidth;
   const height = CHART_HEIGHT;
   const plotWidth = width - CHART_PADDING * 2;
   const plotHeight = height - CHART_PADDING * 2;
@@ -237,6 +328,7 @@ const LineChart: React.FC<{ points: ChartPoint[]; formatter: (value: number) => 
   const startLabel = formatShortDate(points[0].date);
   const endLabel = formatShortDate(points[points.length - 1].date);
   const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
+  const tooltipMaxLeft = Math.max(width - 220, TOOLTIP_OFFSET);
 
   return (
     <div
@@ -281,7 +373,10 @@ const LineChart: React.FC<{ points: ChartPoint[]; formatter: (value: number) => 
         </div>
       </div>
       {hoverPoint && (
-        <ChartTooltip left={toX(hoverIndex ?? 0) + TOOLTIP_OFFSET} top={CHART_PADDING}>
+        <ChartTooltip
+          left={clamp(toX(hoverIndex ?? 0) + TOOLTIP_OFFSET, TOOLTIP_OFFSET, tooltipMaxLeft)}
+          top={CHART_PADDING}
+        >
           <div className="font-semibold text-slate-900">{formatShortDate(hoverPoint.date)}</div>
           <div>{formatter(hoverPoint.value)}</div>
         </ChartTooltip>
@@ -295,6 +390,7 @@ const StackedBarChart: React.FC<{
   executors: ExecutorSeries[];
 }> = ({ points, executors }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartWidth = useResponsiveChartWidth(containerRef);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   if (!points.length) {
@@ -309,7 +405,7 @@ const StackedBarChart: React.FC<{
     executors.reduce((sum, executor) => sum + (point.totals[executor.id] ?? 0), 0),
   );
   const maxValue = Math.max(...totals, 1);
-  const width = CHART_WIDTH;
+  const width = chartWidth;
   const height = CHART_HEIGHT;
   const plotWidth = width - CHART_PADDING * 2;
   const plotHeight = height - CHART_PADDING * 2;
@@ -318,6 +414,7 @@ const StackedBarChart: React.FC<{
   const startLabel = formatShortDate(points[0].date);
   const endLabel = formatShortDate(points[points.length - 1].date);
   const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
+  const tooltipMaxLeft = Math.max(width - 220, TOOLTIP_OFFSET);
 
   return (
     <div
@@ -369,7 +466,10 @@ const StackedBarChart: React.FC<{
         </div>
       </div>
       {hoverPoint && (
-        <ChartTooltip left={CHART_PADDING + TOOLTIP_OFFSET} top={CHART_PADDING}>
+        <ChartTooltip
+          left={clamp(CHART_PADDING + TOOLTIP_OFFSET, TOOLTIP_OFFSET, tooltipMaxLeft)}
+          top={CHART_PADDING}
+        >
           <div className="font-semibold text-slate-900">{formatShortDate(hoverPoint.date)}</div>
           {executors.map((executor) => (
             <div key={executor.id} className="flex items-center gap-2">
@@ -385,6 +485,24 @@ const StackedBarChart: React.FC<{
           ))}
         </ChartTooltip>
       )}
+    </div>
+  );
+};
+
+const FinancialCellView: React.FC<{ cell?: FinancialCell | null }> = ({ cell }) => {
+  if (!cell || (!cell.income && !cell.expense && !cell.net && !cell.count)) {
+    return <span className="text-xs text-slate-400">—</span>;
+  }
+  return (
+    <div className="space-y-1 text-xs">
+      <div className="text-emerald-700">+ {formatCurrencyRu(cell.income, '—')}</div>
+      <div className="text-rose-700">- {formatCurrencyRu(cell.expense, '—')}</div>
+      <div
+        className={cell.net < 0 ? 'font-semibold text-rose-700' : 'font-semibold text-slate-900'}
+      >
+        = {formatCurrencyRu(cell.net, '—')}
+      </div>
+      <div className="text-[11px] text-slate-400">Записей: {cell.count}</div>
     </div>
   );
 };
@@ -494,6 +612,80 @@ export const SellerDashboardView: React.FC = () => {
     const totals = calendarDays.map((day) => day.nextContacts);
     return Math.max(...totals, 0);
   }, [calendarDays]);
+
+  const financialRows = useMemo(
+    () => dashboard?.financialByCompanyType ?? [],
+    [dashboard?.financialByCompanyType],
+  );
+  const financialTotals = useMemo(
+    () =>
+      dashboard?.financialTotals ?? {
+        incomeTotal: '0',
+        expenseTotal: '0',
+        netTotal: '0',
+        recordsCount: 0,
+      },
+    [dashboard?.financialTotals],
+  );
+  const financialMatrix = useMemo(() => {
+    const companyNames = new Map<string, string>();
+    const typeNames = new Map<string, string>();
+    const rowsByCompany = new Map<string, FinancialCompanyRow>();
+    const columnTotals = new Map<string, FinancialCell>();
+    const grandTotals = createEmptyFinancialCell();
+
+    financialRows.forEach((row) => {
+      const companyName = (row.insuranceCompanyName || '').trim() || UNKNOWN_GROUP_LABEL;
+      const typeName = (row.insuranceTypeName || '').trim() || UNKNOWN_GROUP_LABEL;
+      const companyKey = row.insuranceCompanyId || `unknown-company:${companyName}`;
+      const typeKey = row.insuranceTypeId || `unknown-type:${typeName}`;
+
+      companyNames.set(companyKey, companyName);
+      typeNames.set(typeKey, typeName);
+
+      if (!rowsByCompany.has(companyKey)) {
+        rowsByCompany.set(companyKey, {
+          companyKey,
+          companyName,
+          cells: new Map<string, FinancialCell>(),
+          totals: createEmptyFinancialCell(),
+        });
+      }
+      const companyRow = rowsByCompany.get(companyKey);
+      if (!companyRow) {
+        return;
+      }
+      companyRow.companyName = companyName;
+      const nextCell = buildFinancialCellFromRow(row);
+      companyRow.cells.set(typeKey, nextCell);
+      appendFinancialCell(companyRow.totals, nextCell);
+
+      if (!columnTotals.has(typeKey)) {
+        columnTotals.set(typeKey, createEmptyFinancialCell());
+      }
+      const columnTotal = columnTotals.get(typeKey);
+      if (columnTotal) {
+        appendFinancialCell(columnTotal, nextCell);
+      }
+      appendFinancialCell(grandTotals, nextCell);
+    });
+
+    const types: FinancialTypeColumn[] = Array.from(typeNames.entries())
+      .map(([typeKey, typeName]) => ({ typeKey, typeName }))
+      .sort((left, right) => compareFinancialGroupLabels(left.typeName, right.typeName));
+
+    const rows: FinancialCompanyRow[] = Array.from(rowsByCompany.values()).sort((left, right) =>
+      compareFinancialGroupLabels(left.companyName, right.companyName),
+    );
+
+    return {
+      rows,
+      types,
+      columnTotals,
+      grandTotals,
+    };
+  }, [financialRows]);
+  const hasFinancialRows = financialRows.length > 0;
 
   const handleApply = useCallback(() => {
     void loadDashboard({
@@ -623,6 +815,117 @@ export const SellerDashboardView: React.FC = () => {
             </div>
           )}
         </div>
+      </section>
+
+      <section className="app-panel p-6 shadow-none space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-700">Финансовая аналитика</h2>
+            <p className="text-xs text-slate-500">
+              Доходы и расходы по проведенным финзаписям в полисах выбранного периода
+            </p>
+          </div>
+          <div className="text-xs text-slate-500">
+            Проведено записей:{' '}
+            <span className="font-semibold text-slate-700">{financialTotals.recordsCount}</span>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Доходы</p>
+            <p className="text-2xl font-semibold text-slate-900">
+              {formatCurrencyRu(financialTotals.incomeTotal, '—')}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-rose-50 px-4 py-3 text-right">
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Расходы</p>
+            <p className="text-2xl font-semibold text-slate-900">
+              {formatCurrencyRu(financialTotals.expenseTotal, '—')}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-slate-100 px-4 py-3 text-right">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Чистая</p>
+            <p
+              className={`text-2xl font-semibold ${
+                parseNumber(financialTotals.netTotal) < 0 ? 'text-rose-700' : 'text-slate-900'
+              }`}
+            >
+              {formatCurrencyRu(financialTotals.netTotal, '—')}
+            </p>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="app-panel-muted flex h-[240px] items-center justify-center text-sm text-slate-500">
+            Загрузка данных...
+          </div>
+        ) : !hasFinancialRows ? (
+          <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
+            Нет проведенных финансовых записей за выбранный период.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-10 border-b border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Страховая компания
+                  </th>
+                  {financialMatrix.types.map((typeColumn) => (
+                    <th
+                      key={typeColumn.typeKey}
+                      className="border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >
+                      {typeColumn.typeName}
+                    </th>
+                  ))}
+                  <th className="border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Итого по СК
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {financialMatrix.rows.map((companyRow) => (
+                  <tr key={companyRow.companyKey} className="align-top">
+                    <td className="sticky left-0 z-10 border-b border-slate-100 bg-white px-3 py-3 text-sm font-semibold text-slate-700">
+                      {companyRow.companyName}
+                    </td>
+                    {financialMatrix.types.map((typeColumn) => (
+                      <td
+                        key={`${companyRow.companyKey}-${typeColumn.typeKey}`}
+                        className="border-b border-slate-100 px-3 py-3"
+                      >
+                        <FinancialCellView cell={companyRow.cells.get(typeColumn.typeKey)} />
+                      </td>
+                    ))}
+                    <td className="border-b border-slate-100 bg-slate-50 px-3 py-3">
+                      <FinancialCellView cell={companyRow.totals} />
+                    </td>
+                  </tr>
+                ))}
+                <tr className="align-top">
+                  <td className="sticky left-0 z-10 border-t border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-900">
+                    Итого по видам
+                  </td>
+                  {financialMatrix.types.map((typeColumn) => (
+                    <td
+                      key={`totals-${typeColumn.typeKey}`}
+                      className="border-t border-slate-300 bg-slate-50 px-3 py-3"
+                    >
+                      <FinancialCellView
+                        cell={financialMatrix.columnTotals.get(typeColumn.typeKey)}
+                      />
+                    </td>
+                  ))}
+                  <td className="border-t border-slate-300 bg-slate-100 px-3 py-3">
+                    <FinancialCellView cell={financialMatrix.grandTotals} />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="app-panel p-6 shadow-none space-y-4">

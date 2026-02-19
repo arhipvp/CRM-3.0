@@ -151,6 +151,13 @@ export async function fetchSellerDashboard(params?: {
   const rawNextContacts = Array.isArray(payload.next_contacts_by_day)
     ? payload.next_contacts_by_day
     : [];
+  const rawFinancialTotals =
+    payload.financial_totals && typeof payload.financial_totals === 'object'
+      ? (payload.financial_totals as Record<string, unknown>)
+      : {};
+  const rawFinancialByCompanyType = Array.isArray(payload.financial_by_company_type)
+    ? payload.financial_by_company_type
+    : [];
   return {
     rangeStart: toStringValue(payload.start_date ?? payload.startDate ?? ''),
     rangeEnd: toStringValue(payload.end_date ?? payload.endDate ?? ''),
@@ -192,6 +199,37 @@ export async function fetchSellerDashboard(params?: {
       return {
         date: toStringValue(record.date),
         count: Number(record.count ?? 0),
+      };
+    }),
+    financialTotals: {
+      incomeTotal: toStringValue(
+        rawFinancialTotals.income_total ?? rawFinancialTotals.incomeTotal ?? '0',
+      ),
+      expenseTotal: toStringValue(
+        rawFinancialTotals.expense_total ?? rawFinancialTotals.expenseTotal ?? '0',
+      ),
+      netTotal: toStringValue(rawFinancialTotals.net_total ?? rawFinancialTotals.netTotal ?? '0'),
+      recordsCount: Number(
+        rawFinancialTotals.records_count ?? rawFinancialTotals.recordsCount ?? 0,
+      ),
+    },
+    financialByCompanyType: rawFinancialByCompanyType.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        insuranceCompanyId: toNullableString(
+          record.insurance_company_id ?? record.insuranceCompanyId,
+        ),
+        insuranceCompanyName: toStringValue(
+          record.insurance_company_name ?? record.insuranceCompanyName ?? 'Не указано',
+        ),
+        insuranceTypeId: toNullableString(record.insurance_type_id ?? record.insuranceTypeId),
+        insuranceTypeName: toStringValue(
+          record.insurance_type_name ?? record.insuranceTypeName ?? 'Не указано',
+        ),
+        incomeTotal: toStringValue(record.income_total ?? record.incomeTotal ?? '0'),
+        expenseTotal: toStringValue(record.expense_total ?? record.expenseTotal ?? '0'),
+        netTotal: toStringValue(record.net_total ?? record.netTotal ?? '0'),
+        recordsCount: Number(record.records_count ?? record.recordsCount ?? 0),
       };
     }),
     policies: rawPolicies.map((item) => {

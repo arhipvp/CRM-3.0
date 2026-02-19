@@ -12,7 +12,7 @@ from apps.common.drive import (
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
-from apps.finances.models import Payment
+from apps.finances.models import FinancialRecord, Payment
 from apps.notes.models import Note
 from apps.tasks.models import Task
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -605,6 +605,92 @@ class SellerDashboardView(APIView):
             for item in next_contacts_by_day
         ]
 
+        records_queryset = FinancialRecord.objects.filter(
+            deleted_at__isnull=True,
+            date__isnull=False,
+            payment__policy__isnull=False,
+            payment__policy__deal__seller=user,
+            payment__policy__start_date__isnull=False,
+            payment__policy__start_date__gte=start_date,
+            payment__policy__start_date__lte=end_date,
+        )
+
+        records_totals = records_queryset.aggregate(
+            income_total=Coalesce(
+                Sum("amount", filter=Q(amount__gt=0)),
+                Value(0),
+                output_field=decimal_field,
+            ),
+            expense_total_raw=Coalesce(
+                Sum("amount", filter=Q(amount__lt=0)),
+                Value(0),
+                output_field=decimal_field,
+            ),
+            net_total=Coalesce(
+                Sum("amount"),
+                Value(0),
+                output_field=decimal_field,
+            ),
+            records_count=Count("id"),
+        )
+        expenses_total_raw = records_totals.get("expense_total_raw") or 0
+        expenses_total = abs(expenses_total_raw)
+
+        grouped_financial_rows = (
+            records_queryset.values(
+                "payment__policy__insurance_company_id",
+                "payment__policy__insurance_company__name",
+                "payment__policy__insurance_type_id",
+                "payment__policy__insurance_type__name",
+            )
+            .annotate(
+                income_total=Coalesce(
+                    Sum("amount", filter=Q(amount__gt=0)),
+                    Value(0),
+                    output_field=decimal_field,
+                ),
+                expense_total_raw=Coalesce(
+                    Sum("amount", filter=Q(amount__lt=0)),
+                    Value(0),
+                    output_field=decimal_field,
+                ),
+                net_total=Coalesce(
+                    Sum("amount"),
+                    Value(0),
+                    output_field=decimal_field,
+                ),
+                records_count=Count("id"),
+            )
+            .order_by(
+                "payment__policy__insurance_company__name",
+                "payment__policy__insurance_type__name",
+            )
+        )
+
+        financial_by_company_type = []
+        for row in grouped_financial_rows:
+            company_name = (
+                row.get("payment__policy__insurance_company__name") or ""
+            ).strip()
+            insurance_type_name = (
+                row.get("payment__policy__insurance_type__name") or ""
+            ).strip()
+            expense_raw = row.get("expense_total_raw") or 0
+            financial_by_company_type.append(
+                {
+                    "insurance_company_id": row.get(
+                        "payment__policy__insurance_company_id"
+                    ),
+                    "insurance_company_name": company_name or "Не указано",
+                    "insurance_type_id": row.get("payment__policy__insurance_type_id"),
+                    "insurance_type_name": insurance_type_name or "Не указано",
+                    "income_total": format_amount(row.get("income_total")),
+                    "expense_total": format_amount(abs(expense_raw)),
+                    "net_total": format_amount(row.get("net_total")),
+                    "records_count": row.get("records_count") or 0,
+                }
+            )
+
         return Response(
             {
                 "start_date": start_date,
@@ -617,6 +703,13 @@ class SellerDashboardView(APIView):
                 "tasks_completed_by_executor": tasks_executor_series,
                 "policy_expirations_by_day": policy_expirations_series,
                 "next_contacts_by_day": next_contacts_series,
+                "financial_totals": {
+                    "income_total": format_amount(records_totals.get("income_total")),
+                    "expense_total": format_amount(expenses_total),
+                    "net_total": format_amount(records_totals.get("net_total")),
+                    "records_count": records_totals.get("records_count") or 0,
+                },
+                "financial_by_company_type": financial_by_company_type,
                 "policies": policies,
             }
         )
