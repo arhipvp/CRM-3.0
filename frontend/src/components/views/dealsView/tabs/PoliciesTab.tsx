@@ -56,6 +56,7 @@ interface PoliciesTabProps {
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
+  isLoading?: boolean;
 }
 
 const INCOME_RECORD_TYPE = 'Доход';
@@ -78,6 +79,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onRequestAddPolicy,
   onDeletePolicy,
   onRequestEditPolicy,
+  isLoading = false,
 }) => {
   const { paymentsExpanded, setPaymentsExpanded } = usePoliciesExpansionState();
   const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
@@ -128,6 +130,22 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
   if (!selectedDeal) {
     return null;
+  }
+
+  if (isLoading && !sortedPolicies.length) {
+    return (
+      <section className="app-panel p-6 shadow-none space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="app-label">Полисы</p>
+          <span className="text-xs text-slate-500">Загружаем...</span>
+        </div>
+        <div className="space-y-3 animate-pulse">
+          <div className="h-10 rounded-xl bg-slate-200" />
+          <div className="h-10 rounded-xl bg-slate-200" />
+          <div className="h-10 rounded-xl bg-slate-200" />
+        </div>
+      </section>
+    );
   }
 
   const renderStatusMessage = (message: string) => (
@@ -238,6 +256,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <p className="app-label">Полисы</p>
+          {isLoading && (
+            <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-sky-600 animate-spin" />
+          )}
           <span className="text-xs text-slate-500">
             Сортировка: {sortLabel} {sortOrderSymbol}
           </span>

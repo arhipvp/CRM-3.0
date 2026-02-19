@@ -115,6 +115,7 @@ export const useDealCommunication = ({
     isActivityLoading,
     activityError,
     loadChatMessages,
+    loadActivityLogs,
     handleChatSendMessage,
     handleChatDelete,
   };

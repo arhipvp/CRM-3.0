@@ -25,6 +25,8 @@ interface DealActionsProps {
   onMerge: () => void;
   onDelay: () => void;
   onDelayDisabled?: boolean;
+  onRefresh: () => void;
+  isRefreshing?: boolean;
 }
 
 export const DealActions: React.FC<DealActionsProps> = ({
@@ -45,6 +47,8 @@ export const DealActions: React.FC<DealActionsProps> = ({
   onMerge,
   onDelay,
   onDelayDisabled,
+  onRefresh,
+  isRefreshing = false,
 }) => (
   <div className="flex flex-wrap items-center justify-between gap-3 app-panel-muted p-3 shadow-none">
     <div className="flex flex-wrap items-center gap-2">
@@ -72,6 +76,9 @@ export const DealActions: React.FC<DealActionsProps> = ({
         className={BTN_SECONDARY}
       >
         Сцепить
+      </button>
+      <button type="button" onClick={onRefresh} disabled={isRefreshing} className={BTN_SECONDARY}>
+        {isRefreshing ? 'Обновляем...' : 'Обновить'}
       </button>
     </div>
 

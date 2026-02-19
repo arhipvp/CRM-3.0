@@ -57,4 +57,17 @@ describe('computeSelectedDeal', () => {
     expect(result.selectedDeal?.id).toBe('d1');
     expect(result.selectedClient?.id).toBe('client-1');
   });
+
+  it('does not fallback to first deal when focus is explicitly cleared', () => {
+    const deals = [createDeal('d1', '2025-12-01'), createDeal('d2', '2025-11-01')];
+    const result = computeSelectedDeal({
+      deals,
+      clients,
+      users,
+      selectedDealId: null,
+      isDealFocusCleared: true,
+    });
+
+    expect(result.selectedDeal).toBeNull();
+  });
 });

@@ -24,6 +24,7 @@ const renderInlineDatesHook = ({
   sortedDeals,
   onUpdateDeal,
   onSelectDeal,
+  onPostponeDeal,
 }: Parameters<typeof useDealInlineDates>[0]) => {
   const resultRef: { current: ReturnType<typeof useDealInlineDates> | null } = {
     current: null,
@@ -35,6 +36,7 @@ const renderInlineDatesHook = ({
       sortedDeals,
       onUpdateDeal,
       onSelectDeal,
+      onPostponeDeal,
     });
     useEffect(() => {
       resultRef.current = state;
@@ -104,5 +106,45 @@ describe('useDealInlineDates', () => {
     });
     expect(expectedNextContactDate).toBeDefined();
     expect(resultRef.current?.nextContactInputValue).toBe(expectedNextContactDate);
+  });
+
+  it('uses unified postpone flow for quick and modal updates', async () => {
+    const deal = createDeal();
+    const onUpdateDeal = vi.fn().mockResolvedValue(undefined);
+    const onSelectDeal = vi.fn();
+    const onPostponeDeal = vi.fn().mockResolvedValue(undefined);
+    const resultRef = renderInlineDatesHook({
+      selectedDeal: deal,
+      sortedDeals: [deal],
+      onUpdateDeal,
+      onSelectDeal,
+      onPostponeDeal,
+    });
+
+    await act(async () => {
+      await resultRef.current?.quickInlinePostponeShift(2);
+    });
+
+    await waitFor(() => {
+      expect(onPostponeDeal).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await resultRef.current?.postponeDealDates({
+        nextContactDate: '2025-01-12',
+        expectedClose: '2025-01-20',
+      });
+    });
+
+    await waitFor(() => {
+      expect(onPostponeDeal).toHaveBeenCalledWith(
+        deal.id,
+        expect.objectContaining({
+          nextContactDate: '2025-01-12',
+          expectedClose: '2025-01-20',
+        }),
+      );
+    });
+    expect(onUpdateDeal).not.toHaveBeenCalled();
   });
 });

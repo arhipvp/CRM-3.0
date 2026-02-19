@@ -140,13 +140,24 @@ export const useDealInlineDates = ({
   );
 
   const handleQuickNextContactPostpone = useCallback(
-    async (newValue: string) => {
+    async (
+      fields: {
+        nextContactDate?: string | null;
+        expectedClose?: string | null;
+      },
+      options?: { updateInput?: boolean },
+    ) => {
       if (!selectedDeal || !onPostponeDeal) {
         return;
       }
-
-      setNextContactInputValue(newValue);
-      const payload = buildPayload({ nextContactDate: newValue || null });
+      const nextContactDateValue = fields.nextContactDate ?? '';
+      if (options?.updateInput ?? true) {
+        setNextContactInputValue(nextContactDateValue);
+      }
+      const payload = buildPayload({
+        nextContactDate: fields.nextContactDate ?? null,
+        expectedClose: fields.expectedClose,
+      });
       if (!payload) {
         return;
       }
@@ -158,6 +169,13 @@ export const useDealInlineDates = ({
       }
     },
     [buildPayload, onPostponeDeal, selectedDeal],
+  );
+
+  const postponeDealDates = useCallback(
+    async (fields: { nextContactDate?: string | null; expectedClose?: string | null }) => {
+      await handleQuickNextContactPostpone(fields, { updateInput: true });
+    },
+    [handleQuickNextContactPostpone],
   );
 
   const quickInlineShift = useCallback(
@@ -177,7 +195,7 @@ export const useDealInlineDates = ({
       today.setHours(0, 0, 0, 0);
       const targetDate = new Date(today);
       targetDate.setDate(targetDate.getDate() + days);
-      handleQuickNextContactPostpone(formatDateForInput(targetDate));
+      void handleQuickNextContactPostpone({ nextContactDate: formatDateForInput(targetDate) });
     },
     [handleQuickNextContactPostpone],
   );
@@ -200,5 +218,6 @@ export const useDealInlineDates = ({
     quickInlinePostponeShift,
     quickInlineDateOptions,
     updateDealDates,
+    postponeDealDates,
   };
 };

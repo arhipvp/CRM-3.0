@@ -5,9 +5,15 @@ interface DealTabsProps {
   activeTab: DealTabId;
   onChange: (tabId: DealTabId) => void;
   tabCounts?: Partial<Record<DealTabId, number>>;
+  loadingByTab?: Partial<Record<DealTabId, boolean>>;
 }
 
-export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange, tabCounts }) => (
+export const DealTabs: React.FC<DealTabsProps> = ({
+  activeTab,
+  onChange,
+  tabCounts,
+  loadingByTab,
+}) => (
   <div
     role="tablist"
     aria-label="Разделы выбранной сделки"
@@ -17,6 +23,7 @@ export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange, tabCoun
       const isActive = activeTab === tab.id;
       const count = tabCounts?.[tab.id];
       const hasCount = typeof count === 'number';
+      const isLoading = Boolean(loadingByTab?.[tab.id]);
       const ariaLabel = hasCount ? `${tab.label} ${count}` : tab.label;
       return (
         <button
@@ -36,10 +43,17 @@ export const DealTabs: React.FC<DealTabsProps> = ({ activeTab, onChange, tabCoun
         >
           <span className="flex items-center justify-center gap-2">
             <span className={isActive ? 'font-semibold' : 'font-medium'}>{tab.label}</span>
-            {hasCount && (
-              <span className="app-counter" aria-hidden="true">
-                {count}
-              </span>
+            {isLoading ? (
+              <span
+                className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-sky-600 animate-spin"
+                aria-label="Загрузка"
+              />
+            ) : (
+              hasCount && (
+                <span className="app-counter" aria-hidden="true">
+                  {count}
+                </span>
+              )
             )}
           </span>
         </button>

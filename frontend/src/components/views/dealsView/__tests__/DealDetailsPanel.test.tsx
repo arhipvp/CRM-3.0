@@ -7,6 +7,11 @@ const { reloadNotesMock, loadDriveFilesMock } = vi.hoisted(() => ({
   reloadNotesMock: vi.fn().mockResolvedValue(undefined),
   loadDriveFilesMock: vi.fn().mockResolvedValue(undefined),
 }));
+const { driveFilesState } = vi.hoisted(() => ({
+  driveFilesState: {
+    isDriveLoading: false,
+  },
+}));
 
 const { dealTimeTrackingState } = vi.hoisted(() => ({
   dealTimeTrackingState: {
@@ -81,7 +86,7 @@ vi.mock('../hooks/useDealMerge', () => ({
 
 vi.mock('../hooks/useDealDriveFiles', () => ({
   useDealDriveFiles: () => ({
-    isDriveLoading: false,
+    isDriveLoading: driveFilesState.isDriveLoading,
     driveError: null,
     selectedDriveFileIds: [],
     canRecognizeSelectedFiles: true,
@@ -159,6 +164,8 @@ vi.mock('../hooks/useDealCommunication', () => ({
     activityLogs: [],
     isActivityLoading: false,
     activityError: null,
+    loadChatMessages: vi.fn().mockResolvedValue(undefined),
+    loadActivityLogs: vi.fn().mockResolvedValue(undefined),
     handleChatSendMessage: vi.fn(),
     handleChatDelete: vi.fn(),
   }),
@@ -173,7 +180,14 @@ vi.mock('../DealHeader', () => ({
 }));
 
 vi.mock('../DealActions', () => ({
-  DealActions: () => <div data-testid="deal-actions" />,
+  DealActions: ({ onRefresh, isRefreshing }: { onRefresh: () => void; isRefreshing?: boolean }) => (
+    <div data-testid="deal-actions">
+      <button type="button" onClick={onRefresh}>
+        Обновить сделку
+      </button>
+      {isRefreshing && <span>Обновляем...</span>}
+    </div>
+  ),
 }));
 
 vi.mock('../DealDateControls', () => ({
@@ -234,10 +248,19 @@ vi.mock('../../forms/AddTaskForm', () => ({
 }));
 
 vi.mock('../DealTabs', () => ({
-  DealTabs: ({ onChange }: { onChange: (tab: string) => void }) => (
-    <button type="button" onClick={() => onChange('files')}>
-      Open Files
-    </button>
+  DealTabs: ({
+    onChange,
+    loadingByTab,
+  }: {
+    onChange: (tab: string) => void;
+    loadingByTab?: { files?: boolean };
+  }) => (
+    <div>
+      <button type="button" onClick={() => onChange('files')}>
+        Open Files
+      </button>
+      {loadingByTab?.files && <span data-testid="files-tab-loading">Loading Files</span>}
+    </div>
   ),
 }));
 
@@ -285,6 +308,7 @@ describe('DealDetailsPanel', () => {
     vi.clearAllMocks();
     reloadNotesMock.mockResolvedValue(undefined);
     loadDriveFilesMock.mockResolvedValue(undefined);
+    driveFilesState.isDriveLoading = false;
     dealTimeTrackingState.myTotalSeconds = 0;
     dealTimeTrackingState.myTotalLabel = '00:00:00';
     dealTimeTrackingState.isConfirmModalOpen = false;
@@ -434,5 +458,124 @@ describe('DealDetailsPanel', () => {
       expect(onDealSelectionBlockedChange).toHaveBeenCalledWith(true);
     });
     expect(screen.getByText('Продолжить учет времени по сделке?')).toBeInTheDocument();
+  });
+
+  it('clears selected deal focus by close button', async () => {
+    const onClearDealFocus = vi.fn();
+
+    render(
+      <DealDetailsPanel
+        deals={[selectedDeal]}
+        clients={[]}
+        policies={[]}
+        payments={[]}
+        financialRecords={[]}
+        tasks={[]}
+        users={[currentUser]}
+        currentUser={currentUser}
+        sortedDeals={[selectedDeal]}
+        selectedDeal={selectedDeal}
+        selectedClient={null}
+        onSelectDeal={vi.fn()}
+        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
+        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
+        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
+        onRefreshDeal={vi.fn().mockResolvedValue(undefined)}
+        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onRequestAddPolicy={vi.fn()}
+        onRequestEditPolicy={vi.fn()}
+        onRequestAddClient={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onAddPayment={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDriveFolderCreated={vi.fn()}
+        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal })}
+        onCheckDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal, mailboxSync: {} })}
+        onFetchChatMessages={vi.fn().mockResolvedValue([])}
+        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
+        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
+        onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onCreateTask={vi.fn().mockResolvedValue(undefined)}
+        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
+        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
+        onClearDealFocus={onClearDealFocus}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Снять фокус со сделки' }));
+    expect(onClearDealFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes selected deal and shows loading marker for files tab', async () => {
+    driveFilesState.isDriveLoading = true;
+    const onRefreshDeal = vi.fn().mockResolvedValue(undefined);
+    const onRefreshPolicies = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DealDetailsPanel
+        deals={[selectedDeal]}
+        clients={[]}
+        policies={[]}
+        payments={[]}
+        financialRecords={[]}
+        tasks={[]}
+        users={[currentUser]}
+        currentUser={currentUser}
+        sortedDeals={[selectedDeal]}
+        selectedDeal={selectedDeal}
+        selectedClient={null}
+        onSelectDeal={vi.fn()}
+        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
+        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
+        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
+        onRefreshDeal={onRefreshDeal}
+        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onRequestAddPolicy={vi.fn()}
+        onRequestEditPolicy={vi.fn()}
+        onRequestAddClient={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onRefreshPolicies={onRefreshPolicies}
+        onAddPayment={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDriveFolderCreated={vi.fn()}
+        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal })}
+        onCheckDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal, mailboxSync: {} })}
+        onFetchChatMessages={vi.fn().mockResolvedValue([])}
+        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
+        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
+        onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onCreateTask={vi.fn().mockResolvedValue(undefined)}
+        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
+        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByTestId('files-tab-loading')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить сделку' }));
+
+    await waitFor(() => {
+      expect(onRefreshDeal).toHaveBeenCalledWith('deal-1');
+      expect(onRefreshPolicies).toHaveBeenCalledWith({ force: true });
+      expect(reloadNotesMock).toHaveBeenCalled();
+      expect(loadDriveFilesMock).toHaveBeenCalled();
+    });
   });
 });

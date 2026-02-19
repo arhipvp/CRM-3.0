@@ -42,7 +42,9 @@ export interface AppRoutesProps {
   users: User[];
   currentUser: User | null;
   selectedDealId: string | null;
+  isDealFocusCleared?: boolean;
   onSelectDeal: (dealId: string) => void;
+  onClearDealFocus?: () => void;
   onDealPreview?: (dealId: string) => void;
   onCloseDeal: (
     dealId: string,
@@ -50,6 +52,7 @@ export interface AppRoutesProps {
   ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
+  onRefreshDeal?: (dealId: string) => Promise<void>;
   onPinDeal: (dealId: string) => Promise<void>;
   onUnpinDeal: (dealId: string) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -99,7 +102,7 @@ export interface AppRoutesProps {
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
-  onRefreshPolicies?: () => Promise<void>;
+  onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
@@ -151,11 +154,14 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   users,
   currentUser,
   selectedDealId,
+  isDealFocusCleared,
   onSelectDeal,
+  onClearDealFocus,
   onDealPreview,
   onCloseDeal,
   onReopenDeal,
   onUpdateDeal,
+  onRefreshDeal,
   onPinDeal,
   onUnpinDeal,
   onPostponeDeal,
@@ -228,10 +234,13 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           users={users}
           currentUser={currentUser}
           selectedDealId={selectedDealId}
+          isDealFocusCleared={isDealFocusCleared}
           onSelectDeal={onSelectDeal}
+          onClearDealFocus={onClearDealFocus}
           onCloseDeal={onCloseDeal}
           onReopenDeal={onReopenDeal}
           onUpdateDeal={onUpdateDeal}
+          onRefreshDeal={onRefreshDeal}
           onPinDeal={onPinDeal}
           onUnpinDeal={onUnpinDeal}
           onPostponeDeal={onPostponeDeal}

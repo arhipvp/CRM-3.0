@@ -32,13 +32,16 @@ interface DealsViewProps {
   users: User[];
   currentUser: User | null;
   selectedDealId: string | null;
+  isDealFocusCleared?: boolean;
   onSelectDeal: (dealId: string) => void;
+  onClearDealFocus?: () => void;
   onCloseDeal: (
     dealId: string,
     payload: { reason: string; status?: 'won' | 'lost' },
   ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
+  onRefreshDeal?: (dealId: string) => Promise<void>;
   onPinDeal: (dealId: string) => Promise<void>;
   onUnpinDeal: (dealId: string) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -49,7 +52,7 @@ interface DealsViewProps {
   onRequestAddClient: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
-  onRefreshPolicies?: () => Promise<void>;
+  onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
   onPolicyDraftReady?: (
     dealId: string,
     parsed: Record<string, unknown>,
@@ -110,10 +113,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
   users,
   currentUser,
   selectedDealId,
+  isDealFocusCleared = false,
   onSelectDeal,
+  onClearDealFocus,
   onCloseDeal,
   onReopenDeal,
   onUpdateDeal,
+  onRefreshDeal,
   onPinDeal,
   onUnpinDeal,
   onPostponeDeal,
@@ -167,6 +173,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
     clients,
     users,
     selectedDealId,
+    isDealFocusCleared,
   });
   const handleDealSelectionBlockedChange = React.useCallback(
     (blocked: boolean) => {
@@ -232,6 +239,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onCloseDeal={onCloseDeal}
             onReopenDeal={onReopenDeal}
             onUpdateDeal={onUpdateDeal}
+            onRefreshDeal={onRefreshDeal}
             onPostponeDeal={onPostponeDeal}
             onMergeDeals={onMergeDeals}
             onRequestAddQuote={onRequestAddQuote}
@@ -262,6 +270,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onDeleteDeal={onDeleteDeal}
             onRestoreDeal={onRestoreDeal}
             onDealSelectionBlockedChange={handleDealSelectionBlockedChange}
+            onClearDealFocus={onClearDealFocus}
           />
         </div>
       </section>

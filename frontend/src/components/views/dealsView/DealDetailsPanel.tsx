@@ -97,7 +97,7 @@ interface DealDetailsPanelProps {
   onRequestAddClient: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
-  onRefreshPolicies?: () => Promise<void>;
+  onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
   onPolicyDraftReady?: (
     dealId: string,
     parsed: Record<string, unknown>,
@@ -127,6 +127,8 @@ interface DealDetailsPanelProps {
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
   onDealSelectionBlockedChange?: (blocked: boolean) => void;
+  onClearDealFocus?: () => void;
+  onRefreshDeal?: (dealId: string) => Promise<void>;
 }
 
 export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
@@ -178,6 +180,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onDeleteDeal,
   onRestoreDeal,
   onDealSelectionBlockedChange,
+  onClearDealFocus,
+  onRefreshDeal,
 }) => {
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
@@ -231,6 +235,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [isReopeningDeal, setIsReopeningDeal] = useState(false);
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
   const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
+  const [isDealRefreshing, setIsDealRefreshing] = useState(false);
+  const [isPoliciesRefreshing, setIsPoliciesRefreshing] = useState(false);
+  const [dealRefreshError, setDealRefreshError] = useState<string | null>(null);
   const [selectedDelayEventId, setSelectedDelayEventId] = useState<string | null>(null);
   const [delayLeadDays, setDelayLeadDays] = useState<number | null>(null);
   const [delayLeadDaysLoading, setDelayLeadDaysLoading] = useState(false);
@@ -297,7 +304,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       return;
     }
     hasRequestedPoliciesRef.current = true;
-    onRefreshPolicies().catch(() => undefined);
+    setIsPoliciesRefreshing(true);
+    onRefreshPolicies()
+      .catch(() => undefined)
+      .finally(() => setIsPoliciesRefreshing(false));
   }, [activeTab, onRefreshPolicies]);
 
   const {
@@ -370,6 +380,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     quickInlineShift,
     quickInlineDateOptions,
     updateDealDates,
+    postponeDealDates,
   } = useDealInlineDates({
     selectedDeal,
     sortedDeals,
@@ -383,6 +394,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     activityLogs,
     isActivityLoading,
     activityError,
+    loadChatMessages,
+    loadActivityLogs,
     handleChatSendMessage,
     handleChatDelete,
   } = useDealCommunication({
@@ -575,10 +588,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     }
     setIsSchedulingDelay(true);
     try {
-      await updateDealDates({
-        nextContactDate: delayNextContactInput,
-        expectedClose: selectedDelayEvent.date,
-      });
+      if (onPostponeDeal) {
+        await postponeDealDates({
+          nextContactDate: delayNextContactInput,
+          expectedClose: selectedDelayEvent.date,
+        });
+      } else {
+        await updateDealDates({
+          nextContactDate: delayNextContactInput,
+          expectedClose: selectedDelayEvent.date,
+        });
+      }
       setIsDelayModalOpen(false);
     } catch (err) {
       console.error('Ошибка обновления даты сделки:', err);
@@ -751,6 +771,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       setEditingFinancialRecordId={setEditingFinancialRecordId}
       onDeleteFinancialRecord={onDeleteFinancialRecord}
       onDeletePayment={onDeletePayment}
+      isLoading={isPoliciesRefreshing}
     />
   );
 
@@ -872,6 +893,51 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     </section>
   );
 
+  const handleRefreshDeal = useCallback(async () => {
+    if (!selectedDeal?.id || isDealRefreshing) {
+      return;
+    }
+
+    setDealRefreshError(null);
+    setIsDealRefreshing(true);
+    try {
+      await onRefreshDeal?.(selectedDeal.id);
+      const operations: Promise<unknown>[] = [reloadNotes(), loadDriveFiles()];
+      if (onRefreshPolicies) {
+        setIsPoliciesRefreshing(true);
+        operations.push(
+          onRefreshPolicies({ force: true }).finally(() => {
+            setIsPoliciesRefreshing(false);
+          }),
+        );
+      }
+      if (activeTab === 'chat') {
+        operations.push(loadChatMessages());
+      }
+      if (activeTab === 'history') {
+        operations.push(loadActivityLogs());
+      }
+      await Promise.all(operations);
+    } catch (err) {
+      console.error('Ошибка обновления сделки:', err);
+      setDealRefreshError(
+        err instanceof Error ? err.message : 'Не удалось обновить данные сделки.',
+      );
+    } finally {
+      setIsDealRefreshing(false);
+    }
+  }, [
+    activeTab,
+    isDealRefreshing,
+    loadActivityLogs,
+    loadChatMessages,
+    loadDriveFiles,
+    onRefreshDeal,
+    onRefreshPolicies,
+    reloadNotes,
+    selectedDeal?.id,
+  ]);
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview': {
@@ -924,12 +990,21 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       <div className="px-4 py-5 space-y-4">
         {selectedDeal ? (
           <div
-            className={`rounded-2xl border bg-white shadow-md p-6 space-y-6 ${
+            className={`relative rounded-2xl border bg-white shadow-md p-6 space-y-6 ${
               selectedDeal.isPinned
                 ? 'border-rose-500 ring-2 ring-rose-500/30'
                 : 'border-sky-500 ring-2 ring-sky-400/30'
             }`}
           >
+            <button
+              type="button"
+              onClick={onClearDealFocus}
+              className="icon-btn absolute right-3 top-3 z-10 h-8 w-8"
+              aria-label="Снять фокус со сделки"
+              title="Снять фокус со сделки"
+            >
+              ✕
+            </button>
             <div className="flex flex-col gap-4">
               <DealHeader
                 deal={selectedDeal}
@@ -958,8 +1033,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 onReopen={handleReopenDealClick}
                 onMerge={handleMergeClick}
                 onDelay={() => setIsDelayModalOpen(true)}
+                onRefresh={handleRefreshDeal}
+                isRefreshing={isDealRefreshing}
               />
             </div>
+            {dealRefreshError && <InlineAlert>{dealRefreshError}</InlineAlert>}
             <DealDateControls
               nextContactValue={nextContactInputValue}
               expectedCloseValue={expectedCloseInputValue}
@@ -981,6 +1059,12 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   policies: policiesCount,
                   chat: chatCount,
                   files: filesCount,
+                }}
+                loadingByTab={{
+                  policies: isPoliciesRefreshing,
+                  chat: isChatLoading,
+                  files: isDriveLoading,
+                  history: isActivityLoading,
                 }}
               />
               <div

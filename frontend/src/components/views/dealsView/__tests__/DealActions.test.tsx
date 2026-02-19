@@ -20,6 +20,7 @@ const baseProps = {
   onReopen: vi.fn(),
   onMerge: vi.fn(),
   onDelay: vi.fn(),
+  onRefresh: vi.fn(),
 };
 
 describe('DealActions', () => {
@@ -44,6 +45,9 @@ describe('DealActions', () => {
 
     fireEvent.click(screen.getByText('Отложить'));
     expect(baseProps.onDelay).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Обновить'));
+    expect(baseProps.onRefresh).toHaveBeenCalled();
   });
 
   it('shows restore button when deal deleted and calls restore', () => {

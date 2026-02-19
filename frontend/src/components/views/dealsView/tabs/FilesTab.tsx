@@ -190,6 +190,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="app-label">Файлы</p>
+            {isDriveLoading && (
+              <span
+                className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-sky-600 animate-spin"
+                aria-label="Идет загрузка файлов"
+              />
+            )}
             {driveFolderLink && (
               <a href={driveFolderLink} target="_blank" rel="noreferrer" className={LINK_ACTION_XS}>
                 Открыть папку в Google Drive

@@ -7,6 +7,7 @@ interface UseSelectedDealArgs {
   clients: Client[];
   users: User[];
   selectedDealId: string | null;
+  isDealFocusCleared?: boolean;
 }
 
 export interface SelectedDealResult {
@@ -22,6 +23,7 @@ export const computeSelectedDeal = ({
   clients,
   users,
   selectedDealId,
+  isDealFocusCleared = false,
 }: UseSelectedDealArgs): SelectedDealResult => {
   const clientsById = new Map<string, Client>();
   clients.forEach((client) => clientsById.set(client.id, client));
@@ -33,7 +35,9 @@ export const computeSelectedDeal = ({
 
   const selectedDeal = selectedDealId
     ? (sortedDeals.find((deal) => deal.id === selectedDealId) ?? null)
-    : (sortedDeals[0] ?? null);
+    : isDealFocusCleared
+      ? null
+      : (sortedDeals[0] ?? null);
 
   const selectedClient = selectedDeal ? (clientsById.get(selectedDeal.clientId) ?? null) : null;
   const sellerUser = selectedDeal ? usersById.get(selectedDeal.seller ?? '') : undefined;
@@ -42,8 +46,14 @@ export const computeSelectedDeal = ({
   return { sortedDeals, selectedDeal, selectedClient, sellerUser, executorUser };
 };
 
-export const useSelectedDeal = ({ deals, clients, users, selectedDealId }: UseSelectedDealArgs) =>
+export const useSelectedDeal = ({
+  deals,
+  clients,
+  users,
+  selectedDealId,
+  isDealFocusCleared = false,
+}: UseSelectedDealArgs) =>
   useMemo(
-    () => computeSelectedDeal({ deals, clients, users, selectedDealId }),
-    [deals, clients, users, selectedDealId],
+    () => computeSelectedDeal({ deals, clients, users, selectedDealId, isDealFocusCleared }),
+    [deals, clients, users, selectedDealId, isDealFocusCleared],
   );

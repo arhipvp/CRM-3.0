@@ -276,6 +276,15 @@ const AppContent: React.FC = () => {
   } = dataState;
   const navigate = useNavigate();
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [isDealFocusCleared, setIsDealFocusCleared] = useState(false);
+  const clearSelectedDealFocus = useCallback(() => {
+    setSelectedDealId(null);
+    setIsDealFocusCleared(true);
+  }, []);
+  const selectDealById = useCallback((dealId: string) => {
+    setSelectedDealId(dealId);
+    setIsDealFocusCleared(false);
+  }, []);
   const [isDealSelectionBlocked, setDealSelectionBlocked] = useState(false);
   const [previewDealId, setPreviewDealId] = useState<string | null>(null);
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
@@ -299,9 +308,9 @@ const AppContent: React.FC = () => {
     const params = new URLSearchParams(location.search);
     const dealId = params.get('dealId');
     if (dealId) {
-      setSelectedDealId(dealId);
+      selectDealById(dealId);
     }
-  }, [location.search, setSelectedDealId]);
+  }, [location.search, selectDealById]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -346,15 +355,12 @@ const AppContent: React.FC = () => {
   const refreshDealsWithSelection = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
       const dealsData = await refreshDeals(filters, options);
-      setSelectedDealId((prev) => {
-        if (prev && dealsData.some((deal) => deal.id === prev)) {
-          return prev;
-        }
-        return dealsData[0]?.id ?? null;
-      });
+      if (selectedDealId && !dealsData.some((deal) => deal.id === selectedDealId)) {
+        clearSelectedDealFocus();
+      }
       return dealsData;
     },
-    [refreshDeals],
+    [clearSelectedDealFocus, refreshDeals, selectedDealId],
   );
 
   const syncDealsByIds = useCallback(
@@ -381,7 +387,7 @@ const AppContent: React.FC = () => {
       if (isDealSelectionBlocked) {
         return;
       }
-      setSelectedDealId(dealId);
+      selectDealById(dealId);
       if (!dealId || dealsById.has(dealId)) {
         return;
       }
@@ -389,7 +395,7 @@ const AppContent: React.FC = () => {
         setError(formatErrorMessage(err, 'Не удалось загрузить сделку'));
       });
     },
-    [dealsById, isDealSelectionBlocked, setError, setSelectedDealId, syncDealsByIds],
+    [dealsById, isDealSelectionBlocked, selectDealById, setError, syncDealsByIds],
   );
   const handleOpenDealPreview = useCallback(
     (dealId: string) => {
@@ -397,6 +403,13 @@ const AppContent: React.FC = () => {
       handleSelectDeal(dealId);
     },
     [handleSelectDeal],
+  );
+  const handleRefreshSelectedDeal = useCallback(
+    async (dealId: string) => {
+      await syncDealsByIds([dealId]);
+      await refreshDealsWithSelection(dealFilters, { force: true });
+    },
+    [dealFilters, refreshDealsWithSelection, syncDealsByIds],
   );
   const handleCloseDealPreview = useCallback(() => {
     setPreviewDealId(null);
@@ -905,10 +918,10 @@ const AppContent: React.FC = () => {
         visibleUserIds: data.visibleUserIds,
       });
       updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
-      setSelectedDealId(created.id);
+      selectDealById(created.id);
       setModal(null);
     },
-    [invalidateDealsCache, setModal, setSelectedDealId, updateAppData],
+    [invalidateDealsCache, selectDealById, setModal, updateAppData],
   );
 
   const handleCloseDeal = useCallback(
@@ -944,7 +957,7 @@ const AppContent: React.FC = () => {
         updateAppData((prev) => ({
           deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
         }));
-        setSelectedDealId(updated.id);
+        selectDealById(updated.id);
       } catch (err) {
         if (err instanceof APIError && err.status === 403) {
           addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
@@ -955,14 +968,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [
-      addNotification,
-      invalidateDealsCache,
-      setError,
-      setIsSyncing,
-      setSelectedDealId,
-      updateAppData,
-    ],
+    [addNotification, invalidateDealsCache, setError, setIsSyncing, selectDealById, updateAppData],
   );
 
   const handleUpdateDeal = useCallback(
@@ -974,7 +980,7 @@ const AppContent: React.FC = () => {
         updateAppData((prev) => ({
           deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
         }));
-        setSelectedDealId(updated.id);
+        selectDealById(updated.id);
       } catch (err) {
         if (err instanceof APIError && err.status === 403) {
           addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
@@ -986,14 +992,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [
-      addNotification,
-      invalidateDealsCache,
-      setError,
-      setIsSyncing,
-      setSelectedDealId,
-      updateAppData,
-    ],
+    [addNotification, invalidateDealsCache, setError, setIsSyncing, selectDealById, updateAppData],
   );
 
   const handlePinDeal = useCallback(
@@ -1054,17 +1053,29 @@ const AppContent: React.FC = () => {
     async (dealId: string, data: DealFormValues) => {
       invalidateDealsCache();
       const previousSelection = selectedDealId;
+      const previousFocusCleared = isDealFocusCleared;
       setIsSyncing(true);
       try {
         await updateDeal(dealId, data);
         const refreshed = await refreshDeals(dealFilters, { force: true });
-        setSelectedDealId(refreshed[0]?.id ?? null);
+        if (previousSelection && refreshed.some((deal) => deal.id === previousSelection)) {
+          selectDealById(previousSelection);
+        } else if (previousSelection) {
+          clearSelectedDealFocus();
+        }
       } catch (err) {
-        setSelectedDealId(previousSelection);
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('?????? ??????? ??? ?????????? ??????', 'error', 4000);
+        if (previousSelection) {
+          selectDealById(previousSelection);
+        } else if (previousFocusCleared) {
+          clearSelectedDealFocus();
         } else {
-          setError(formatErrorMessage(err, '?? ??????? ???????? ??????'));
+          setSelectedDealId(null);
+          setIsDealFocusCleared(false);
+        }
+        if (err instanceof APIError && err.status === 403) {
+          addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
+        } else {
+          setError(formatErrorMessage(err, 'Не удалось обновить сделку'));
         }
         throw err;
       } finally {
@@ -1073,13 +1084,16 @@ const AppContent: React.FC = () => {
     },
     [
       addNotification,
+      clearSelectedDealFocus,
       dealFilters,
       invalidateDealsCache,
+      isDealFocusCleared,
       refreshDeals,
       selectedDealId,
+      selectDealById,
       setError,
+      setIsDealFocusCleared,
       setIsSyncing,
-      setSelectedDealId,
     ],
   );
   const handleDeleteDeal = useCallback(
@@ -1114,7 +1128,7 @@ const AppContent: React.FC = () => {
       try {
         const restored = await restoreDeal(dealId);
         await refreshDealsWithSelection(dealFilters, { force: true });
-        setSelectedDealId(restored.id);
+        selectDealById(restored.id);
         setError(null);
         addNotification('Сделка восстановлена', 'success', 4000);
       } catch (err) {
@@ -1132,7 +1146,7 @@ const AppContent: React.FC = () => {
       dealFilters,
       refreshDealsWithSelection,
       setError,
-      setSelectedDealId,
+      selectDealById,
       setIsSyncing,
     ],
   );
@@ -1228,7 +1242,7 @@ const AppContent: React.FC = () => {
             ),
           };
         });
-        setSelectedDealId(result.targetDeal.id);
+        selectDealById(result.targetDeal.id);
         setError(null);
         addNotification('Сделки объединены', 'success', 4000);
       } catch (err) {
@@ -1238,14 +1252,7 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [
-      addNotification,
-      invalidateDealsCache,
-      setError,
-      setSelectedDealId,
-      setIsSyncing,
-      updateAppData,
-    ],
+    [addNotification, invalidateDealsCache, setError, selectDealById, setIsSyncing, updateAppData],
   );
 
   const handleAddQuote = useCallback(
@@ -1547,7 +1554,7 @@ const AppContent: React.FC = () => {
               ? prev.deals.map((deal) => (deal.id === refreshedDeal.id ? refreshedDeal : deal))
               : [refreshedDeal, ...prev.deals],
           }));
-          setSelectedDealId(refreshedDeal.id);
+          selectDealById(refreshedDeal.id);
         } catch (refreshErr) {
           setError(
             refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить данные сделки',
@@ -1595,7 +1602,7 @@ const AppContent: React.FC = () => {
       salesChannels,
       setError,
       setIsSyncing,
-      setSelectedDealId,
+      selectDealById,
       updateAppData,
     ],
   );
@@ -3065,11 +3072,11 @@ const AppContent: React.FC = () => {
       subtitle: deal.clientName ? `Клиент: ${deal.clientName}` : 'Выбор сделки для задачи',
       keywords: [deal.clientName ?? '', deal.executorName ?? ''],
       onSelect: () => {
-        setSelectedDealId(deal.id);
+        selectDealById(deal.id);
         setQuickTaskDealId(deal.id);
       },
     }));
-  }, [deals]);
+  }, [deals, selectDealById]);
 
   useGlobalHotkeys([
     {
@@ -3245,11 +3252,14 @@ const AppContent: React.FC = () => {
         users={users}
         currentUser={currentUser}
         selectedDealId={selectedDealId}
+        isDealFocusCleared={isDealFocusCleared}
         onSelectDeal={handleSelectDeal}
+        onClearDealFocus={clearSelectedDealFocus}
         onDealPreview={handleOpenDealPreview}
         onCloseDeal={handleCloseDeal}
         onReopenDeal={handleReopenDeal}
         onUpdateDeal={handleUpdateDeal}
+        onRefreshDeal={handleRefreshSelectedDeal}
         onPinDeal={handlePinDeal}
         onUnpinDeal={handleUnpinDeal}
         onPostponeDeal={handlePostponeDeal}
