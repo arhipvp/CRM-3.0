@@ -174,3 +174,4 @@ tools/local_migration/
 *.migration-state.jsonl
 *.migration-review.json
 *.migration-errors.log
+backend/tools/Полисы.xlsx
