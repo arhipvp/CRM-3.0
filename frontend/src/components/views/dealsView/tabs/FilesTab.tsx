@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import type {
   Deal,
   DocumentRecognitionResult,
@@ -390,23 +390,18 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               >
                 {formatDocumentRecognitionSummary(result)}
               </p>
-              {result.normalizedType && (
+              {result.doc?.normalizedType && (
                 <p className="text-[11px] text-slate-500">
-                  Категория CRM: <span className="font-medium">{result.normalizedType}</span>
+                  Категория CRM: <span className="font-medium">{result.doc.normalizedType}</span>
                 </p>
               )}
-              {result.warnings.length > 0 && (
+              {result.doc?.warnings && result.doc.warnings.length > 0 && (
                 <p className="text-[11px] text-amber-700">
-                  Предупреждения: {result.warnings.join(', ')}
+                  Предупреждения: {result.doc.warnings.join(', ')}
                 </p>
               )}
-              {result.transcript && (
-                <details className="text-[10px] text-slate-400">
-                  <summary>Показать транскрипт</summary>
-                  <pre className="whitespace-pre-wrap text-[11px] leading-snug">
-                    {result.transcript}
-                  </pre>
-                </details>
+              {result.error?.message && result.status === 'error' && (
+                <p className="text-[11px] text-rose-600">Ошибка: {result.error.message}</p>
               )}
             </div>
           ))}

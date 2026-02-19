@@ -395,31 +395,58 @@ export async function recognizeDealDocuments(
   };
   const results: DocumentRecognitionResult[] = rawResults.map((item) => {
     const status = String(item.status ?? 'error') === 'parsed' ? 'parsed' : 'error';
-    const documentTypeRaw = String(item.documentType ?? item.document_type ?? '').trim();
+    const rawDoc =
+      item.doc && typeof item.doc === 'object' ? (item.doc as Record<string, unknown>) : null;
+    const rawValidation =
+      rawDoc?.validation && typeof rawDoc.validation === 'object'
+        ? (rawDoc.validation as Record<string, unknown>)
+        : {};
+    const rawType = String(rawDoc?.rawType ?? '').trim();
     const normalizedType =
-      normalizeDocumentType(item.normalizedType ?? item.normalized_type) ??
-      normalizeDocumentType(documentTypeRaw);
-    const warningsRaw = Array.isArray(item.warnings) ? item.warnings : [];
-    const data = typeof item.data === 'object' && item.data !== null ? item.data : {};
-    const confidenceRaw = item.confidence;
+      normalizeDocumentType(rawDoc?.normalizedType) ?? normalizeDocumentType(rawType);
+    const warningsRaw = Array.isArray(rawDoc?.warnings) ? rawDoc?.warnings : [];
+    const fields =
+      rawDoc?.fields && typeof rawDoc.fields === 'object'
+        ? (rawDoc.fields as Record<string, unknown>)
+        : {};
+    const acceptedRaw = Array.isArray(rawValidation.accepted) ? rawValidation.accepted : [];
+    const rejectedRaw =
+      rawValidation.rejected && typeof rawValidation.rejected === 'object'
+        ? (rawValidation.rejected as Record<string, unknown>)
+        : {};
+    const confidenceRaw = rawDoc?.confidence;
     const confidence =
       confidenceRaw === null || confidenceRaw === undefined || Number.isNaN(Number(confidenceRaw))
         ? null
         : Number(confidenceRaw);
+    const rawError =
+      item.error && typeof item.error === 'object' ? (item.error as Record<string, unknown>) : null;
     return {
       fileId: String(item.fileId ?? item.file_id ?? ''),
       fileName: item.fileName === undefined ? null : String(item.fileName ?? item.file_name ?? ''),
       status,
-      documentType: documentTypeRaw || 'unknown',
-      normalizedType,
-      confidence,
-      warnings: warningsRaw.map((warning) => String(warning)).filter(Boolean),
-      message: item.message === undefined ? undefined : String(item.message ?? ''),
-      transcript:
-        item.transcript === undefined
-          ? null
-          : String(item.transcript ?? item.transcript_text ?? ''),
-      data: data as Record<string, unknown>,
+      doc: rawDoc
+        ? {
+            rawType: rawType || 'unknown',
+            normalizedType,
+            confidence,
+            warnings: warningsRaw.map((warning) => String(warning)).filter(Boolean),
+            fields,
+            validation: {
+              accepted: acceptedRaw.map((field) => String(field)).filter(Boolean),
+              rejected: Object.fromEntries(
+                Object.entries(rejectedRaw).map(([key, value]) => [key, String(value)]),
+              ),
+            },
+            extractedText: String(rawDoc.extractedText ?? ''),
+          }
+        : null,
+      error: rawError
+        ? {
+            code: String(rawError.code ?? 'recognition_error'),
+            message: String(rawError.message ?? 'Ошибка распознавания документа.'),
+          }
+        : null,
     };
   });
   return {

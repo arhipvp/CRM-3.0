@@ -99,7 +99,11 @@ class DealDocumentRecognitionMixin:
                     {
                         "fileId": file_id,
                         "status": "error",
-                        "message": "Файл не найден в папке сделки.",
+                        "doc": None,
+                        "error": {
+                            "code": "file_not_found",
+                            "message": "Файл не найден в папке сделки.",
+                        },
                     }
                 )
                 continue
@@ -113,15 +117,23 @@ class DealDocumentRecognitionMixin:
                         "fileId": file_id,
                         "fileName": file_name,
                         "status": "parsed",
-                        "documentType": recognition.document_type,
-                        "normalizedType": getattr(recognition, "normalized_type", None),
-                        "confidence": recognition.confidence,
-                        "warnings": recognition.warnings,
-                        "data": recognition.data,
-                        "extractedText": str(
-                            getattr(recognition, "extracted_text", "") or ""
-                        ),
-                        "transcript": recognition.transcript,
+                        "doc": {
+                            "rawType": recognition.document_type,
+                            "normalizedType": getattr(
+                                recognition, "normalized_type", None
+                            ),
+                            "confidence": recognition.confidence,
+                            "warnings": recognition.warnings,
+                            "fields": recognition.data,
+                            "validation": {
+                                "accepted": getattr(recognition, "accepted_fields", []),
+                                "rejected": getattr(recognition, "rejected_fields", {}),
+                            },
+                            "extractedText": str(
+                                getattr(recognition, "extracted_text", "") or ""
+                            ),
+                        },
+                        "error": None,
                     }
                 )
             except (DriveError, DocumentRecognitionError) as exc:
@@ -131,7 +143,11 @@ class DealDocumentRecognitionMixin:
                         "fileId": file_id,
                         "fileName": file_name,
                         "status": "error",
-                        "message": str(exc),
+                        "doc": None,
+                        "error": {
+                            "code": "recognition_error",
+                            "message": str(exc),
+                        },
                     }
                 )
             except Exception:
@@ -143,7 +159,11 @@ class DealDocumentRecognitionMixin:
                         "fileId": file_id,
                         "fileName": file_name,
                         "status": "error",
-                        "message": "Внутренняя ошибка распознавания документа.",
+                        "doc": None,
+                        "error": {
+                            "code": "internal_error",
+                            "message": "Внутренняя ошибка распознавания документа.",
+                        },
                     }
                 )
 
@@ -170,33 +190,32 @@ class DealDocumentRecognitionMixin:
             file_label = item.get("fileName") or item.get("fileId") or f"Файл {index}"
             blocks.append(f"{index}. {file_label}")
             blocks.append(f"Статус: {item.get('status')}")
-            if item.get("documentType"):
-                blocks.append(f"Тип документа: {item.get('documentType')}")
-            if item.get("normalizedType"):
-                blocks.append(f"Категория CRM: {item.get('normalizedType')}")
-            if item.get("confidence") is not None:
-                blocks.append(f"Уверенность: {item.get('confidence')}")
-            if item.get("warnings"):
+            doc = item.get("doc") if isinstance(item.get("doc"), dict) else {}
+            if doc.get("rawType"):
+                blocks.append(f"Тип документа: {doc.get('rawType')}")
+            if doc.get("normalizedType"):
+                blocks.append(f"Категория CRM: {doc.get('normalizedType')}")
+            if doc.get("confidence") is not None:
+                blocks.append(f"Уверенность: {doc.get('confidence')}")
+            if doc.get("warnings"):
                 blocks.append(
                     "Предупреждения: "
-                    + ", ".join(str(warning) for warning in item.get("warnings", []))
+                    + ", ".join(str(warning) for warning in doc.get("warnings", []))
                 )
-            if item.get("data") is not None:
-                human_data = self._format_human_data(item.get("data"))
+            fields = doc.get("fields") if isinstance(doc.get("fields"), dict) else None
+            if fields is not None:
+                human_data = self._format_human_data(fields)
                 if human_data:
                     blocks.append(f"Ключевые данные (текстом):\n{human_data}")
                 blocks.append(
                     "Данные:\n"
-                    + json.dumps(
-                        item.get("data"), ensure_ascii=False, indent=2, default=str
-                    )
+                    + json.dumps(fields, ensure_ascii=False, indent=2, default=str)
                 )
-            if item.get("extractedText"):
-                blocks.append(f"Распознанный текст:\n{item.get('extractedText')}")
-            if item.get("transcript"):
-                blocks.append(f"Transcript:\n{item.get('transcript')}")
-            if item.get("message"):
-                blocks.append(f"Ошибка: {item.get('message')}")
+            if doc.get("extractedText"):
+                blocks.append(f"Распознанный текст:\n{doc.get('extractedText')}")
+            error = item.get("error") if isinstance(item.get("error"), dict) else {}
+            if error.get("message"):
+                blocks.append(f"Ошибка: {error.get('message')}")
             blocks.append("")
 
         note_body = "\n".join(blocks).strip()

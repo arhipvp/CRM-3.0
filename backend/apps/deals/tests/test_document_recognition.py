@@ -70,6 +70,8 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
                 recognize_mock.return_value.normalized_type = "passport"
                 recognize_mock.return_value.confidence = 0.93
                 recognize_mock.return_value.warnings = []
+                recognize_mock.return_value.accepted_fields = ["number", "series"]
+                recognize_mock.return_value.rejected_fields = {}
                 recognize_mock.return_value.data = {
                     "series": "1234",
                     "number": "567890",
@@ -87,13 +89,17 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         self.assertEqual(len(response.data["results"]), 1)
         item = response.data["results"][0]
         self.assertEqual(item["status"], "parsed")
-        self.assertEqual(item["documentType"], "passport")
-        self.assertEqual(item["normalizedType"], "passport")
-        self.assertEqual(item["confidence"], 0.93)
+        self.assertEqual(item["doc"]["rawType"], "passport")
+        self.assertEqual(item["doc"]["normalizedType"], "passport")
+        self.assertEqual(item["doc"]["confidence"], 0.93)
+        self.assertEqual(item["doc"]["validation"]["accepted"], ["number", "series"])
+        self.assertEqual(item["doc"]["validation"]["rejected"], {})
+        self.assertIsNone(item["error"])
         self.assertTrue(response.data.get("noteId"))
         note = Note.objects.get(pk=response.data["noteId"])
         self.assertIn("Распознавание документов (ИИ)", note.body)
         self.assertIn("passport.jpg", note.body)
+        self.assertNotIn("Transcript:", note.body)
 
     def test_recognize_documents_returns_partial_errors(self):
         self.authenticate(self.seller)
@@ -125,6 +131,8 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
                         "normalized_type": "passport",
                         "confidence": 0.9,
                         "warnings": [],
+                        "accepted_fields": ["number"],
+                        "rejected_fields": {},
                         "data": {"number": "123"},
                         "extracted_text": "Номер 123",
                         "transcript": "ok",
@@ -144,6 +152,10 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         statuses = [item["status"] for item in response.data["results"]]
         self.assertIn("parsed", statuses)
         self.assertIn("error", statuses)
+        error_item = next(
+            item for item in response.data["results"] if item["status"] == "error"
+        )
+        self.assertEqual(error_item["error"]["code"], "internal_error")
 
     def test_recognize_documents_marks_missing_file_as_error(self):
         self.authenticate(self.seller)
@@ -160,7 +172,10 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"][0]["status"], "error")
-        self.assertIn("не найден", response.data["results"][0]["message"].lower())
+        self.assertEqual(response.data["results"][0]["error"]["code"], "file_not_found")
+        self.assertIn(
+            "не найден", response.data["results"][0]["error"]["message"].lower()
+        )
 
     def test_other_user_cannot_access_recognition(self):
         self.authenticate(self.other_user)

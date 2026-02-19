@@ -233,3 +233,111 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(payload.data.get("issuer_code"), "500-053")
         self.assertEqual(payload.data.get("birth_date"), "1995-04-24")
         self.assertEqual(payload.data.get("gender"), "Ж")
+        self.assertIn("series", payload.accepted_fields)
+        self.assertEqual(payload.rejected_fields, {})
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_passport_registration_page_does_not_set_issue_date(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "passport",
+                "confidence": 0.9,
+                "warnings": [],
+                "data": {"issue_date": "22.04.2025"},
+                "extracted_text": (
+                    "МЕСТО ЖИТЕЛЬСТВА\n"
+                    "ЗАРЕГИСТРИРОВАН\n"
+                    "22.04.2025\n"
+                    "Г. МОСКВА, УЛ. АРТЮХИНОЙ, Д. 25 К. 2, КВ. 77\n"
+                    "ОТДЕЛ ПО ВОПРОСАМ МИГРАЦИИ"
+                ),
+            }
+        )
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(
+            b"raw-image", "passport-registration.jpg"
+        )
+
+        self.assertEqual(payload.normalized_type, "passport")
+        self.assertNotIn("issue_date", payload.data)
+        self.assertIn("registration_address", payload.data)
+        self.assertIn("issue_date", payload.rejected_fields)
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_sts_invalid_vin_is_rejected(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "sts",
+                "confidence": 0.88,
+                "warnings": [],
+                "data": {
+                    "vin": "BAD-VIN",
+                    "sts_series": "50ТТ",
+                    "sts_number": "123456",
+                },
+                "extracted_text": "СТС",
+            }
+        )
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "sts.jpg")
+
+        self.assertEqual(payload.normalized_type, "sts")
+        self.assertNotIn("vin", payload.data)
+        self.assertIn("vin", payload.rejected_fields)
+        self.assertEqual(payload.data.get("sts_series"), "50ТТ")
+        self.assertEqual(payload.data.get("sts_number"), "123456")
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_passport_full_name_ignores_service_words(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "passport",
+                "confidence": 0.9,
+                "warnings": [],
+                "data": {"full_name": "ПОССИЙСКАЯ ОБЛАСТИ БОРИСОВА"},
+                "extracted_text": (
+                    "ГУ МВД РОССИИ ПО МОСКОВСКОЙ ОБЛАСТИ\n"
+                    "БОРИСОВА\n"
+                    "СВЕТЛАНА\n"
+                    "ГЕННАДЬЕВНА"
+                ),
+            }
+        )
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "passport-main.jpg")
+
+        self.assertEqual(payload.data.get("full_name"), "БОРИСОВА СВЕТЛАНА ГЕННАДЬЕВНА")
+        self.assertIn("full_name", payload.rejected_fields)

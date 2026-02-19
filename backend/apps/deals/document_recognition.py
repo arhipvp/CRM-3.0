@@ -6,6 +6,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass
+from datetime import date
 from io import BytesIO
 from typing import Any
 
@@ -28,6 +29,8 @@ class RecognitionPayload:
     confidence: float | None
     warnings: list[str]
     data: dict[str, Any]
+    accepted_fields: list[str]
+    rejected_fields: dict[str, str]
     extracted_text: str
     transcript: str
 
@@ -71,7 +74,7 @@ DOCUMENT_PROMPT = """Ты извлекаешь данные из российс�
 - driver_license
 - epts
 - sts
-2) Никаких выдумок. Если поле не найдено: пустая строка или null (в зависимости от уместности).
+2) Никаких выдумок. Если поле не найдено или ты сомневаешься — оставь пустую строку или null.
 3) Для каждого типа используй расширенный набор полей:
 - passport: full_name, birth_date, birth_place, series, number, issue_date, issuer, issuer_code, registration_address, gender
 - driver_license: full_name, birth_date, series, number, issue_date, expiry_date, issuer, categories
@@ -91,6 +94,16 @@ DATE_YYYYMMDD_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 DATE_ANY_RE = re.compile(r"\b(\d{2})[./-](\d{2})[./-](\d{4})\b")
 PASSPORT_SERIES_NUMBER_RE = re.compile(r"\b(\d{2})\s?(\d{2})\s?(\d{6})\b")
 ISSUER_CODE_RE = re.compile(r"\b(\d{3}-\d{3})\b")
+VIN_RE = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
+PASSPORT_SERIES_RE = re.compile(r"^\d{4}$")
+PASSPORT_NUMBER_RE = re.compile(r"^\d{6}$")
+DL_SERIES_RE = re.compile(r"^[A-ZА-ЯЁ0-9]{4,10}$")
+DL_NUMBER_RE = re.compile(r"^\d{5,10}$")
+STS_SERIES_RE = re.compile(r"^\d{2}[А-ЯЁA-Z]{2}$")
+STS_NUMBER_RE = re.compile(r"^\d{6}$")
+PLATE_NUMBER_RE = re.compile(
+    r"^[АВЕКМНОРСТУХABEKMHOPCTYX]\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\d{2,3}$"
+)
 MRZ_SECOND_LINE_RE = re.compile(
     r"^(?P<passport_no>\d{10})[A-Z<]{3}(?P<birth>\d{6})\d(?P<gender>[MF])[A-Z0-9<]*$"
 )
@@ -98,6 +111,35 @@ DEFAULT_LLM_TIMEOUT_SECONDS = 45
 DEFAULT_MAX_RETRIES = 2
 DEFAULT_RETRY_BASE_DELAY = 0.8
 DEFAULT_MIN_CONFIDENCE = 0.75
+CURRENT_YEAR = date.today().year
+
+PASSPORT_STOPWORDS = {
+    "РОССИЙСКАЯ",
+    "ФЕДЕРАЦИЯ",
+    "ОБЛАСТИ",
+    "ОБЛАСТЬ",
+    "ПАСПОРТ",
+    "ГУ",
+    "МВД",
+    "РОССИИ",
+    "ЖЕН",
+    "МУЖ",
+    "МЕСТО",
+    "ЖИТЕЛЬСТВА",
+    "ЗАРЕГИСТРИРОВАН",
+}
+
+
+def _is_valid_passport_full_name(value: Any) -> bool:
+    normalized = re.sub(r"\s+", " ", str(value or "").upper()).strip()
+    if not normalized:
+        return False
+    words = normalized.split()
+    if len(words) < 2:
+        return False
+    if any(word in PASSPORT_STOPWORDS for word in words):
+        return False
+    return all(re.fullmatch(r"[А-ЯЁ-]{2,}", word) for word in words)
 
 
 def _resolve_openrouter_config() -> tuple[str, str, str]:
@@ -222,6 +264,37 @@ def _normalize_data(
     return normalized
 
 
+def _looks_like_registration_page(text: str) -> bool:
+    upper = text.upper()
+    return "МЕСТО ЖИТЕЛЬСТВА" in upper or "ЗАРЕГИСТРИРОВАН" in upper
+
+
+def _is_reasonable_iso_date(value: str) -> bool:
+    if not DATE_YYYYMMDD_RE.fullmatch(value):
+        return False
+    year = int(value[:4])
+    if year < 1900 or year > CURRENT_YEAR + 10:
+        return False
+    return True
+
+
+def _as_int(value: Any) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    text = re.sub(r"[^\d]", "", text)
+    if not text:
+        return None
+    return int(text)
+
+
+def _normalize_vin(value: Any) -> str:
+    text = re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
+    if not text:
+        return ""
+    return text
+
+
 def _to_iso_date_from_ddmmyyyy(text: str) -> str:
     match = DATE_DDMMYYYY_RE.fullmatch(text.strip())
     if not match:
@@ -244,14 +317,23 @@ def _extract_mrz_lines(text: str) -> tuple[str, str]:
 
 
 def _guess_full_name(lines: list[str]) -> str:
-    upper_lines = [line.strip() for line in lines if line.strip()]
-    cyrillic_upper = [
-        line
-        for line in upper_lines
-        if re.fullmatch(r"[А-ЯЁ][А-ЯЁ\s-]{2,}", line) and len(line.split()) <= 3
-    ]
-    if len(cyrillic_upper) >= 3:
-        return " ".join(cyrillic_upper[:3])
+    normalized_lines = [line.strip().upper() for line in lines if line.strip()]
+    candidates: list[tuple[int, str]] = []
+    for idx, line in enumerate(normalized_lines):
+        if not re.fullmatch(r"[А-ЯЁ-]{2,}", line):
+            continue
+        if line in PASSPORT_STOPWORDS:
+            continue
+        if any(token in PASSPORT_STOPWORDS for token in line.split()):
+            continue
+        candidates.append((idx, line))
+
+    for pos in range(0, len(candidates) - 2):
+        i1, p1 = candidates[pos]
+        i2, p2 = candidates[pos + 1]
+        i3, p3 = candidates[pos + 2]
+        if i2 == i1 + 1 and i3 == i2 + 1:
+            return f"{p1} {p2} {p3}"
     return ""
 
 
@@ -305,7 +387,7 @@ def _infer_passport_data_from_text(text: str) -> dict[str, Any]:
         inferred["issuer_code"] = issuer_code_match.group(1)
 
     all_dates = [m.group(0) for m in DATE_ANY_RE.finditer(joined)]
-    if all_dates:
+    if all_dates and not _looks_like_registration_page(joined):
         inferred["issue_date"] = _to_iso_date_from_ddmmyyyy(all_dates[0])
     if len(all_dates) > 1:
         inferred["birth_date"] = _to_iso_date_from_ddmmyyyy(all_dates[-1])
@@ -355,6 +437,322 @@ def _merge_missing_data(
     return merged
 
 
+def _merge_warnings(existing: list[str], extra: list[str]) -> list[str]:
+    merged = [item for item in existing if item]
+    for item in extra:
+        if item and item not in merged:
+            merged.append(item)
+    return merged
+
+
+def _reject_field(
+    rejected: dict[str, str],
+    warnings: list[str],
+    field: str,
+    reason: str,
+) -> None:
+    if field not in rejected:
+        rejected[field] = reason
+    warning_text = f"{field}: {reason}"
+    if warning_text not in warnings:
+        warnings.append(warning_text)
+
+
+def _validate_passport_fields(
+    data: dict[str, Any], extracted_text: str
+) -> tuple[dict[str, Any], dict[str, str], list[str]]:
+    validated: dict[str, Any] = {}
+    rejected: dict[str, str] = {}
+    warnings: list[str] = []
+    is_registration_page = _looks_like_registration_page(extracted_text)
+
+    for key, value in data.items():
+        text = str(value).strip() if isinstance(value, str) else value
+        if text in ("", None):
+            continue
+        if key == "series":
+            normalized = re.sub(r"\D", "", str(text))
+            if PASSPORT_SERIES_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "ожидалось 4 цифры")
+            continue
+        if key == "number":
+            normalized = re.sub(r"\D", "", str(text))
+            if PASSPORT_NUMBER_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "ожидалось 6 цифр")
+            continue
+        if key == "issuer_code":
+            normalized = str(text).replace("/", "").strip()
+            if ISSUER_CODE_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "ожидался формат 000-000")
+            continue
+        if key in {"birth_date", "issue_date"}:
+            normalized = _normalize_date(text)
+            if not normalized or not _is_reasonable_iso_date(normalized):
+                _reject_field(rejected, warnings, key, "некорректная дата")
+                continue
+            if key == "issue_date" and is_registration_page:
+                _reject_field(
+                    rejected,
+                    warnings,
+                    key,
+                    "дата со страницы регистрации не считается датой выдачи",
+                )
+                continue
+            validated[key] = normalized
+            continue
+        if key == "gender":
+            normalized = str(text).upper()
+            if normalized in {"Ж", "ЖЕН", "F"}:
+                validated[key] = "Ж"
+            elif normalized in {"М", "МУЖ", "M"}:
+                validated[key] = "М"
+            else:
+                _reject_field(rejected, warnings, key, "невалидное значение пола")
+            continue
+        if key == "full_name":
+            normalized = re.sub(r"\s+", " ", str(text).upper()).strip()
+            if not _is_valid_passport_full_name(normalized):
+                _reject_field(rejected, warnings, key, "ожидалось ФИО кириллицей")
+                continue
+            validated[key] = normalized
+            continue
+        if key == "registration_address":
+            normalized = re.sub(r"\s+", " ", str(text)).strip(" ,")
+            if len(normalized) < 8:
+                _reject_field(rejected, warnings, key, "слишком короткий адрес")
+                continue
+            validated[key] = normalized
+            continue
+        validated[key] = text
+
+    birth_date = str(validated.get("birth_date") or "")
+    issue_date = str(validated.get("issue_date") or "")
+    if birth_date and issue_date and issue_date < birth_date:
+        validated.pop("issue_date", None)
+        _reject_field(
+            rejected, warnings, "issue_date", "дата выдачи раньше даты рождения"
+        )
+    return validated, rejected, warnings
+
+
+def _validate_driver_license_fields(
+    data: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str], list[str]]:
+    validated: dict[str, Any] = {}
+    rejected: dict[str, str] = {}
+    warnings: list[str] = []
+
+    for key, value in data.items():
+        text = str(value).strip() if isinstance(value, str) else value
+        if text in ("", None):
+            continue
+        if key == "series":
+            normalized = re.sub(r"[^A-ZА-ЯЁ0-9]", "", str(text).upper())
+            if DL_SERIES_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректная серия ВУ")
+            continue
+        if key == "number":
+            normalized = re.sub(r"\D", "", str(text))
+            if DL_NUMBER_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректный номер ВУ")
+            continue
+        if key in {"birth_date", "issue_date", "expiry_date"}:
+            normalized = _normalize_date(text)
+            if not _is_reasonable_iso_date(normalized):
+                _reject_field(rejected, warnings, key, "некорректная дата")
+                continue
+            validated[key] = normalized
+            continue
+        if key == "categories":
+            if isinstance(value, list):
+                raw_categories = [str(item).strip().upper() for item in value]
+            else:
+                raw_categories = [
+                    item.strip().upper() for item in re.split(r"[,; ]+", str(text))
+                ]
+            categories = [
+                cat
+                for cat in raw_categories
+                if cat and re.fullmatch(r"[A-ZА-ЯЁ0-9]{1,4}", cat)
+            ]
+            if categories:
+                validated[key] = categories
+            else:
+                _reject_field(
+                    rejected, warnings, key, "не удалось распознать категории"
+                )
+            continue
+        validated[key] = text
+
+    issue_date = str(validated.get("issue_date") or "")
+    expiry_date = str(validated.get("expiry_date") or "")
+    if issue_date and expiry_date and expiry_date < issue_date:
+        validated.pop("expiry_date", None)
+        _reject_field(
+            rejected, warnings, "expiry_date", "срок действия раньше даты выдачи"
+        )
+    return validated, rejected, warnings
+
+
+def _validate_sts_fields(
+    data: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str], list[str]]:
+    validated: dict[str, Any] = {}
+    rejected: dict[str, str] = {}
+    warnings: list[str] = []
+
+    for key, value in data.items():
+        text = str(value).strip() if isinstance(value, str) else value
+        if text in ("", None):
+            continue
+        if key == "vin":
+            normalized = _normalize_vin(text)
+            if VIN_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректный VIN")
+            continue
+        if key == "plate_number":
+            normalized = re.sub(r"[^A-ZА-ЯЁ0-9]", "", str(text).upper())
+            if PLATE_NUMBER_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректный госномер")
+            continue
+        if key == "sts_series":
+            normalized = re.sub(r"[^A-ZА-ЯЁ0-9]", "", str(text).upper())
+            if STS_SERIES_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректная серия СТС")
+            continue
+        if key == "sts_number":
+            normalized = re.sub(r"\D", "", str(text))
+            if STS_NUMBER_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректный номер СТС")
+            continue
+        if key == "issue_date":
+            normalized = _normalize_date(text)
+            if _is_reasonable_iso_date(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректная дата")
+            continue
+        if key in {"year", "max_weight", "unladen_weight", "engine_power_hp"}:
+            parsed = _as_int(text)
+            if parsed is None:
+                _reject_field(rejected, warnings, key, "ожидалось числовое значение")
+                continue
+            if key == "year" and (parsed < 1900 or parsed > CURRENT_YEAR + 1):
+                _reject_field(rejected, warnings, key, "нереалистичный год")
+                continue
+            if key != "year" and parsed <= 0:
+                _reject_field(
+                    rejected, warnings, key, "значение должно быть положительным"
+                )
+                continue
+            validated[key] = parsed
+            continue
+        validated[key] = text
+
+    return validated, rejected, warnings
+
+
+def _validate_epts_fields(
+    data: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str], list[str]]:
+    validated: dict[str, Any] = {}
+    rejected: dict[str, str] = {}
+    warnings: list[str] = []
+
+    for key, value in data.items():
+        text = str(value).strip() if isinstance(value, str) else value
+        if text in ("", None):
+            continue
+        if key == "vin":
+            normalized = _normalize_vin(text)
+            if VIN_RE.fullmatch(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректный VIN")
+            continue
+        if key in {"issue_date"}:
+            normalized = _normalize_date(text)
+            if _is_reasonable_iso_date(normalized):
+                validated[key] = normalized
+            else:
+                _reject_field(rejected, warnings, key, "некорректная дата")
+            continue
+        if key in {"year", "power_hp", "gross_weight", "curb_weight"}:
+            parsed = _as_int(text)
+            if parsed is None:
+                _reject_field(rejected, warnings, key, "ожидалось числовое значение")
+                continue
+            if key == "year" and (parsed < 1900 or parsed > CURRENT_YEAR + 1):
+                _reject_field(rejected, warnings, key, "нереалистичный год")
+                continue
+            if key != "year" and parsed <= 0:
+                _reject_field(
+                    rejected, warnings, key, "значение должно быть положительным"
+                )
+                continue
+            validated[key] = parsed
+            continue
+        validated[key] = text
+
+    return validated, rejected, warnings
+
+
+def _postprocess_data(
+    normalized_type: str | None,
+    data: dict[str, Any],
+    extracted_text: str,
+) -> tuple[dict[str, Any], list[str], list[str], dict[str, str]]:
+    warnings: list[str] = []
+    rejected_fields: dict[str, str] = {}
+    payload = dict(data)
+
+    if normalized_type == "passport" and extracted_text:
+        inferred = _infer_passport_data_from_text(extracted_text)
+        payload = _merge_missing_data(payload, inferred)
+        if inferred.get("full_name") and not _is_valid_passport_full_name(
+            payload.get("full_name")
+        ):
+            payload["full_name"] = inferred["full_name"]
+
+    if normalized_type == "passport":
+        validated, rejected, local_warnings = _validate_passport_fields(
+            payload, extracted_text
+        )
+    elif normalized_type == "driver_license":
+        validated, rejected, local_warnings = _validate_driver_license_fields(payload)
+    elif normalized_type == "sts":
+        validated, rejected, local_warnings = _validate_sts_fields(payload)
+    elif normalized_type == "epts":
+        validated, rejected, local_warnings = _validate_epts_fields(payload)
+    else:
+        validated = {k: v for k, v in payload.items() if v not in ("", None, [], {})}
+        rejected = {}
+        local_warnings = []
+
+    warnings = _merge_warnings(warnings, local_warnings)
+    rejected_fields.update(rejected)
+    accepted_fields = sorted(validated.keys())
+    return validated, warnings, accepted_fields, rejected_fields
+
+
 def _parse_response_payload(content: str) -> dict[str, Any]:
     cleaned = (content or "").strip()
     if not cleaned:
@@ -395,8 +793,12 @@ def _normalize_recognition_payload(
     data = data_raw if isinstance(data_raw, dict) else {}
     data = _normalize_data(normalized_type, data)
     extracted_text = str(parsed_payload.get("extracted_text") or "").strip()
-    if normalized_type == "passport" and extracted_text:
-        data = _merge_missing_data(data, _infer_passport_data_from_text(extracted_text))
+    data, validation_warnings, accepted_fields, rejected_fields = _postprocess_data(
+        normalized_type,
+        data,
+        extracted_text,
+    )
+    warnings = _merge_warnings(warnings, validation_warnings)
 
     return RecognitionPayload(
         document_type=raw_document_type,
@@ -404,6 +806,8 @@ def _normalize_recognition_payload(
         confidence=confidence,
         warnings=warnings,
         data=data,
+        accepted_fields=accepted_fields,
+        rejected_fields=rejected_fields,
         extracted_text=extracted_text,
         transcript=transcript,
     )

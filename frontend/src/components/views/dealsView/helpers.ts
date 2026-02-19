@@ -191,24 +191,24 @@ export const formatRecognitionSummary = (result: PolicyRecognitionResult) => {
 };
 
 export const formatDocumentRecognitionSummary = (result: DocumentRecognitionResult) => {
-  if (result.status === 'parsed') {
+  if (result.status === 'parsed' && result.doc) {
     const normalizedLabel =
-      result.normalizedType === 'passport'
+      result.doc.normalizedType === 'passport'
         ? 'паспорт'
-        : result.normalizedType === 'driver_license'
+        : result.doc.normalizedType === 'driver_license'
           ? 'водительское удостоверение'
-          : result.normalizedType === 'sts'
+          : result.doc.normalizedType === 'sts'
             ? 'СТС'
-            : result.normalizedType === 'epts'
+            : result.doc.normalizedType === 'epts'
               ? 'эПТС'
               : '';
-    const aiType = (result.documentType || '').trim();
+    const aiType = (result.doc.rawType || '').trim();
     const typeLabel = normalizedLabel || aiType || 'неизвестный тип';
     const confidenceLabel =
-      result.confidence === null ? 'без оценки' : `${Math.round(result.confidence * 100)}%`;
+      result.doc.confidence === null ? 'без оценки' : `${Math.round(result.doc.confidence * 100)}%`;
     return `Распознано: ${typeLabel}, уверенность ${confidenceLabel}.`;
   }
-  return result.message ?? 'Ошибка при распознавании документа';
+  return result.error?.message ?? 'Ошибка при распознавании документа';
 };
 
 const isPaymentDeleted = (payment: Payment) => Boolean(payment.deletedAt);

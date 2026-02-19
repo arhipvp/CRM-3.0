@@ -171,13 +171,22 @@ export interface DocumentRecognitionResult {
   fileId: string;
   fileName?: string | null;
   status: 'parsed' | 'error';
-  documentType: string;
-  normalizedType?: 'passport' | 'driver_license' | 'epts' | 'sts' | null;
-  confidence: number | null;
-  warnings: string[];
-  message?: string;
-  transcript?: string | null;
-  data: Record<string, unknown>;
+  doc: {
+    rawType: string;
+    normalizedType?: 'passport' | 'driver_license' | 'epts' | 'sts' | null;
+    confidence: number | null;
+    warnings: string[];
+    fields: Record<string, unknown>;
+    validation: {
+      accepted: string[];
+      rejected: Record<string, string>;
+    };
+    extractedText: string;
+  } | null;
+  error: {
+    code: string;
+    message: string;
+  } | null;
 }
 
 export interface ChatMessage {

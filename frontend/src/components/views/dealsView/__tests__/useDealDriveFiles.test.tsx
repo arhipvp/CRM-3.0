@@ -189,11 +189,16 @@ describe('useDealDriveFiles', () => {
           fileId: file.id,
           fileName: file.name,
           status: 'parsed',
-          documentType: 'passport',
-          confidence: 0.91,
-          warnings: [],
-          data: { number: '1234 567890' },
-          transcript: '{}',
+          doc: {
+            rawType: 'passport',
+            normalizedType: 'passport',
+            confidence: 0.91,
+            warnings: [],
+            fields: { number: '1234 567890' },
+            validation: { accepted: ['number'], rejected: {} },
+            extractedText: '',
+          },
+          error: null,
         },
       ],
     });
@@ -212,7 +217,7 @@ describe('useDealDriveFiles', () => {
 
     await waitFor(() => {
       expect(recognizeDealDocumentsMock).toHaveBeenCalledWith(deal.id, [file.id]);
-      expect(resultRef.current?.documentRecognitionResults[0]?.documentType).toBe('passport');
+      expect(resultRef.current?.documentRecognitionResults[0]?.doc?.rawType).toBe('passport');
       expect(onRefreshNotes).toHaveBeenCalledTimes(1);
     });
   });
