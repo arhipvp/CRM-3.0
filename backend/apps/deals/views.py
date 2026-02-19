@@ -126,7 +126,7 @@ class DealViewSet(
                 getattr(
                     settings,
                     "DEAL_TIME_TRACKING_CONFIRM_INTERVAL_SECONDS",
-                    180,
+                    600,
                 )
             ),
         )

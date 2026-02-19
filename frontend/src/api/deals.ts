@@ -467,7 +467,7 @@ export async function fetchDealTimeTrackingSummary(
     enabled: Boolean(payload.enabled ?? true),
     tickSeconds: Number(payload.tick_seconds ?? payload.tickSeconds ?? 10),
     confirmIntervalSeconds: Number(
-      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 180,
+      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 600,
     ),
     myTotalSeconds: Number(payload.my_total_seconds ?? payload.myTotalSeconds ?? 0),
     myTotalHuman: String(payload.my_total_human ?? payload.myTotalHuman ?? '00:00:00'),
@@ -485,7 +485,7 @@ export async function sendDealTimeTrackingTick(
     enabled: Boolean(payload.enabled ?? true),
     tickSeconds: Number(payload.tick_seconds ?? payload.tickSeconds ?? 10),
     confirmIntervalSeconds: Number(
-      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 180,
+      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 600,
     ),
     counted: Boolean(payload.counted ?? false),
     bucketStart:

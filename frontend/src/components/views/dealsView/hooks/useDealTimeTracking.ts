@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchDealTimeTrackingSummary, sendDealTimeTrackingTick } from '../../../../api/deals';
 
 const DEFAULT_TICK_SECONDS = 10;
-const DEFAULT_CONFIRM_INTERVAL_SECONDS = 180;
+const DEFAULT_CONFIRM_INTERVAL_SECONDS = 600;
 
 const formatSecondsAsHms = (value: number) => {
   const safeValue = Number.isFinite(value) ? Math.max(Math.trunc(value), 0) : 0;

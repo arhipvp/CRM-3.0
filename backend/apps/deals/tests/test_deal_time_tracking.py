@@ -12,7 +12,7 @@ from rest_framework import status
 @override_settings(
     DEAL_TIME_TRACKING_ENABLED=True,
     DEAL_TIME_TRACKING_TICK_SECONDS=10,
-    DEAL_TIME_TRACKING_CONFIRM_INTERVAL_SECONDS=180,
+    DEAL_TIME_TRACKING_CONFIRM_INTERVAL_SECONDS=600,
 )
 class DealTimeTrackingTests(AuthenticatedAPITestCase):
     def setUp(self):
@@ -47,7 +47,7 @@ class DealTimeTrackingTests(AuthenticatedAPITestCase):
         payload = response.json()
         self.assertTrue(payload["enabled"])
         self.assertEqual(payload["tick_seconds"], 10)
-        self.assertEqual(payload["confirm_interval_seconds"], 180)
+        self.assertEqual(payload["confirm_interval_seconds"], 600)
         self.assertEqual(payload["my_total_seconds"], 0)
         self.assertEqual(payload["my_total_human"], "00:00:00")
 

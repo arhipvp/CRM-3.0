@@ -40,14 +40,14 @@ describe('useDealTimeTracking', () => {
     fetchSummaryMock.mockResolvedValue({
       enabled: true,
       tickSeconds: 10,
-      confirmIntervalSeconds: 180,
+      confirmIntervalSeconds: 600,
       myTotalSeconds: 0,
       myTotalHuman: '00:00:00',
     });
     sendTickMock.mockResolvedValue({
       enabled: true,
       tickSeconds: 10,
-      confirmIntervalSeconds: 180,
+      confirmIntervalSeconds: 600,
       counted: true,
       bucketStart: '2026-02-19T00:00:00Z',
       myTotalSeconds: 10,
@@ -71,11 +71,11 @@ describe('useDealTimeTracking', () => {
     expect(ref.current?.myTotalSeconds).toBe(10);
   });
 
-  it('opens confirmation modal after 180 seconds and pauses until continue', async () => {
+  it('opens confirmation modal after 600 seconds and pauses until continue', async () => {
     sendTickMock.mockImplementation(async () => ({
       enabled: true,
       tickSeconds: 10,
-      confirmIntervalSeconds: 180,
+      confirmIntervalSeconds: 600,
       counted: true,
       bucketStart: '2026-02-19T00:00:00Z',
       myTotalSeconds: 10,
@@ -86,7 +86,7 @@ describe('useDealTimeTracking', () => {
     expect(fetchSummaryMock).toHaveBeenCalled();
 
     await act(async () => {
-      vi.advanceTimersByTime(180_000);
+      vi.advanceTimersByTime(600_000);
     });
     await flushPromises();
     expect(ref.current?.isConfirmModalOpen).toBe(true);
