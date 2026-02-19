@@ -61,8 +61,16 @@ function normalizeTrashResponse(
 export async function fetchDealDriveFiles(
   dealId: string,
   includeDeleted = false,
+  parentId?: string | null,
 ): Promise<DriveFilesResponse> {
-  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const query = new URLSearchParams();
+  if (includeDeleted) {
+    query.set('show_deleted', '1');
+  }
+  if (parentId) {
+    query.set('parent_id', parentId);
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : '';
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
     `/deals/${dealId}/drive-files/${suffix}`,
   );

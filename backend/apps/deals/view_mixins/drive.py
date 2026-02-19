@@ -54,6 +54,34 @@ class DealDriveDownloadSerializer(serializers.Serializer):
 
 
 class DealDriveMixin:
+    def _folder_belongs_to_deal_tree(
+        self, root_folder_id: str, target_folder_id: str
+    ) -> bool:
+        if not root_folder_id or not target_folder_id:
+            return False
+        if root_folder_id == target_folder_id:
+            return True
+
+        queue = [root_folder_id]
+        visited: set[str] = set()
+
+        while queue:
+            current_folder_id = queue.pop(0)
+            if current_folder_id in visited:
+                continue
+            visited.add(current_folder_id)
+
+            for item in list_drive_folder_contents(current_folder_id):
+                if not item["is_folder"]:
+                    continue
+                folder_id = item["id"]
+                if folder_id == target_folder_id:
+                    return True
+                if folder_id not in visited:
+                    queue.append(folder_id)
+
+        return False
+
     def _create_download_response(
         self,
         content: bytes,
@@ -114,6 +142,32 @@ class DealDriveMixin:
         queryset = self.filter_queryset(self.get_queryset())
         deal = get_object_or_404(queryset, pk=pk)
         uploaded_file = request.FILES.get("file") if request.method == "POST" else None
+
+        if request.method == "GET":
+            parent_id = (request.query_params.get("parent_id") or "").strip()
+            try:
+                folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
+                if not folder_id:
+                    return Response({"folder_id": None, "files": []})
+
+                target_folder_id = folder_id
+                if parent_id:
+                    if not self._folder_belongs_to_deal_tree(folder_id, parent_id):
+                        return Response(
+                            {
+                                "detail": "Указанная папка не принадлежит дереву папок сделки."
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    target_folder_id = parent_id
+
+                drive_files = list_drive_folder_contents(target_folder_id)
+                return Response({"folder_id": folder_id, "files": drive_files})
+            except DriveError as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
 
         if request.method == "PATCH":
             serializer = DealDriveRenameSerializer(data=request.data)

@@ -350,7 +350,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     renameMessage,
     sortedDriveFiles,
     driveSortDirection,
+    expandedFolderIds,
     loadDriveFiles,
+    toggleFolderExpanded,
+    isFolderLoading,
+    getDriveFileDepth,
     handleDriveFileUpload,
     toggleDriveFileSelection,
     toggleDriveSortDirection,
@@ -816,6 +820,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       driveError={driveError}
       sortedDriveFiles={sortedDriveFiles}
       driveSortDirection={driveSortDirection}
+      expandedFolderIds={expandedFolderIds}
+      toggleFolderExpanded={toggleFolderExpanded}
+      isFolderLoading={isFolderLoading}
+      getDriveFileDepth={getDriveFileDepth}
       toggleDriveSortDirection={toggleDriveSortDirection}
       isCreatingMailbox={isCreatingMailbox}
       isCheckingMailbox={isCheckingMailbox}

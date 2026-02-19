@@ -209,6 +209,7 @@ export const mapDriveFile = (raw: Record<string, unknown>): DriveFile => {
     modifiedAt: toNullableString(raw.modified_at ?? raw.modifiedAt),
     webViewLink: toNullableString(raw.web_view_link ?? raw.webViewLink),
     isFolder: Boolean(raw.is_folder ?? raw.isFolder ?? false),
+    parentId: toNullableString(raw.parent_id ?? raw.parentId),
   };
 };
 

@@ -55,6 +55,10 @@ interface FilesTabProps {
   handleDownloadDriveFiles: (fileIds?: string[]) => Promise<void>;
   driveError: string | null;
   sortedDriveFiles: DriveFile[];
+  expandedFolderIds: Set<string>;
+  toggleFolderExpanded: (folderId: string) => void;
+  isFolderLoading: (folderId: string) => boolean;
+  getDriveFileDepth: (fileId: string) => number;
   canRecognizeSelectedFiles: boolean;
   canRecognizeSelectedDocumentFiles: boolean;
   driveSortDirection: 'asc' | 'desc';
@@ -96,6 +100,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   canRecognizeSelectedFiles,
   canRecognizeSelectedDocumentFiles,
   sortedDriveFiles,
+  expandedFolderIds,
+  toggleFolderExpanded,
+  isFolderLoading,
+  getDriveFileDepth,
   driveSortDirection,
   toggleDriveSortDirection,
   isRenaming,
@@ -454,6 +462,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               isRecognizing ||
               isDocumentRecognizing
             }
+            expandedFolderIds={expandedFolderIds}
+            onToggleFolder={toggleFolderExpanded}
+            isFolderLoading={isFolderLoading}
+            getRowDepth={(file) => getDriveFileDepth(file.id)}
             dateHeaderAriaSort={getAriaSort()}
             dateHeaderContent={
               <button

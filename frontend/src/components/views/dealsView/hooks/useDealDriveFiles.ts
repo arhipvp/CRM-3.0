@@ -8,13 +8,13 @@ import type {
 } from '../../../../types';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import {
-  fetchDealDriveFiles,
   downloadDealDriveFiles,
+  fetchDealDriveFiles,
+  recognizeDealDocuments,
+  recognizeDealPolicies,
+  renameDealDriveFile,
   trashDealDriveFiles,
   uploadDealDriveFile,
-  renameDealDriveFile,
-  recognizeDealPolicies,
-  recognizeDealDocuments,
 } from '../../../../api';
 
 interface UseDealDriveFilesParams {
@@ -32,6 +32,29 @@ interface UseDealDriveFilesParams {
   ) => void;
 }
 
+const sortDriveFiles = (files: DriveFile[], direction: 'asc' | 'desc'): DriveFile[] => {
+  return [...files].sort((a, b) => {
+    const multiplier = direction === 'asc' ? 1 : -1;
+    const rawDateA = new Date(a.modifiedAt ?? a.createdAt ?? 0).getTime();
+    const rawDateB = new Date(b.modifiedAt ?? b.createdAt ?? 0).getTime();
+    const dateA = Number.isNaN(rawDateA) ? 0 : rawDateA;
+    const dateB = Number.isNaN(rawDateB) ? 0 : rawDateB;
+    if (dateA !== dateB) {
+      return (dateA - dateB) * multiplier;
+    }
+    if (a.isFolder !== b.isFolder) {
+      return a.isFolder ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, 'ru-RU', { sensitivity: 'base' });
+  });
+};
+
+const normalizeParent = (files: DriveFile[], parentId: string | null): DriveFile[] =>
+  files.map((file) => ({
+    ...file,
+    parentId: file.parentId ?? parentId,
+  }));
+
 export const useDealDriveFiles = ({
   selectedDeal,
   onDriveFolderCreated,
@@ -40,7 +63,11 @@ export const useDealDriveFiles = ({
   onRefreshNotes,
   onPolicyDraftReady,
 }: UseDealDriveFilesParams) => {
-  const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+  const [rootFiles, setRootFiles] = useState<DriveFile[]>([]);
+  const [childrenByParentId, setChildrenByParentId] = useState<Record<string, DriveFile[]>>({});
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
+  const [loadingFolderIds, setLoadingFolderIds] = useState<Set<string>>(new Set());
+  const [folderErrors, setFolderErrors] = useState<Record<string, string | null>>({});
   const [isDriveLoading, setIsDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState<string | null>(null);
   const [selectedDriveFileIds, setSelectedDriveFileIds] = useState<string[]>([]);
@@ -74,23 +101,76 @@ export const useDealDriveFiles = ({
     setTrashMessage(null);
     setDownloadMessage(null);
     setRenameMessage(null);
+    setChildrenByParentId({});
+    setExpandedFolderIds(new Set());
+    setLoadingFolderIds(new Set());
+    setFolderErrors({});
   }, [selectedDeal?.id]);
 
-  useEffect(() => {
-    if (!selectedDriveFileIds.length) {
-      return;
-    }
-    const fileIds = new Set(driveFiles.map((file) => file.id));
-    setSelectedDriveFileIds((prev) => {
-      const filtered = prev.filter((id) => fileIds.has(id));
-      return filtered.length === prev.length ? prev : filtered;
+  const sortedRootFiles = useMemo(
+    () => sortDriveFiles(rootFiles, driveSortDirection),
+    [driveSortDirection, rootFiles],
+  );
+
+  const sortedChildrenByParentId = useMemo(() => {
+    const result: Record<string, DriveFile[]> = {};
+    Object.entries(childrenByParentId).forEach(([parentId, files]) => {
+      result[parentId] = sortDriveFiles(files, driveSortDirection);
     });
-  }, [driveFiles, selectedDriveFileIds.length]);
+    return result;
+  }, [childrenByParentId, driveSortDirection]);
+
+  const loadFolderContents = useCallback(
+    async (folderId: string): Promise<void> => {
+      const deal = selectedDeal;
+      if (!deal || !folderId) {
+        return;
+      }
+      const currentDealId = deal.id;
+      const includeDeleted = Boolean(deal.deletedAt);
+      latestDealIdRef.current = currentDealId;
+      setLoadingFolderIds((prev) => {
+        const next = new Set(prev);
+        next.add(folderId);
+        return next;
+      });
+      setFolderErrors((prev) => ({ ...prev, [folderId]: null }));
+
+      try {
+        const { files } = await fetchDealDriveFiles(currentDealId, includeDeleted, folderId);
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        setChildrenByParentId((prev) => ({
+          ...prev,
+          [folderId]: normalizeParent(files, folderId),
+        }));
+      } catch (error) {
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        setFolderErrors((prev) => ({
+          ...prev,
+          [folderId]: formatErrorMessage(error, 'Не удалось загрузить содержимое папки.'),
+        }));
+      } finally {
+        if (latestDealIdRef.current === currentDealId) {
+          setLoadingFolderIds((prev) => {
+            const next = new Set(prev);
+            next.delete(folderId);
+            return next;
+          });
+        }
+      }
+    },
+    [selectedDeal],
+  );
 
   const loadDriveFiles = useCallback(async () => {
     const deal = selectedDeal;
     if (!deal) {
-      setDriveFiles([]);
+      setRootFiles([]);
+      setChildrenByParentId({});
       setDriveError(null);
       return;
     }
@@ -106,24 +186,34 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      setDriveFiles(files);
+
+      setRootFiles(normalizeParent(files, null));
       setDriveError(null);
+
       if (folderId && folderId !== previousFolderId) {
         onDriveFolderCreated(currentDealId, folderId);
+      }
+
+      const foldersToRefresh = Array.from(expandedFolderIds);
+      if (foldersToRefresh.length) {
+        await Promise.all(
+          foldersToRefresh.map((expandedFolderId) => loadFolderContents(expandedFolderId)),
+        );
       }
     } catch (error) {
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
       console.error('Ошибка Google Drive:', error);
-      setDriveFiles([]);
+      setRootFiles([]);
+      setChildrenByParentId({});
       setDriveError(formatErrorMessage(error, 'Не удалось загрузить файлы из Google Drive.'));
     } finally {
       if (latestDealIdRef.current === currentDealId) {
         setIsDriveLoading(false);
       }
     }
-  }, [onDriveFolderCreated, selectedDeal]);
+  }, [expandedFolderIds, loadFolderContents, onDriveFolderCreated, selectedDeal]);
 
   const handleDriveFileUpload = useCallback(
     async (file: File) => {
@@ -136,22 +226,114 @@ export const useDealDriveFiles = ({
   );
 
   const resetDriveState = useCallback(() => {
-    setDriveFiles([]);
+    setRootFiles([]);
+    setChildrenByParentId({});
     setDriveError(null);
   }, []);
 
-  const toggleDriveFileSelection = useCallback((fileId: string) => {
-    setSelectedDriveFileIds((prev) =>
-      prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId],
-    );
-  }, []);
+  const sortedDriveFiles = useMemo(() => {
+    const flattened: DriveFile[] = [];
+    const traverse = (files: DriveFile[]) => {
+      files.forEach((file) => {
+        flattened.push(file);
+        if (file.isFolder && expandedFolderIds.has(file.id)) {
+          traverse(sortedChildrenByParentId[file.id] ?? []);
+        }
+      });
+    };
+    traverse(sortedRootFiles);
+    return flattened;
+  }, [expandedFolderIds, sortedChildrenByParentId, sortedRootFiles]);
+
+  const fileDepthMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const traverse = (files: DriveFile[], depth: number) => {
+      files.forEach((file) => {
+        map.set(file.id, depth);
+        if (file.isFolder && expandedFolderIds.has(file.id)) {
+          traverse(sortedChildrenByParentId[file.id] ?? [], depth + 1);
+        }
+      });
+    };
+    traverse(sortedRootFiles, 0);
+    return map;
+  }, [expandedFolderIds, sortedChildrenByParentId, sortedRootFiles]);
+
+  const getDriveFileDepth = useCallback(
+    (fileId: string): number => {
+      return fileDepthMap.get(fileId) ?? 0;
+    },
+    [fileDepthMap],
+  );
+
+  const isFolderLoading = useCallback(
+    (folderId: string): boolean => loadingFolderIds.has(folderId),
+    [loadingFolderIds],
+  );
+
+  const toggleFolderExpanded = useCallback(
+    (folderId: string) => {
+      if (!folderId) {
+        return;
+      }
+      const hasLoadedChildren = childrenByParentId[folderId] !== undefined;
+      const isExpanded = expandedFolderIds.has(folderId);
+
+      if (isExpanded) {
+        setExpandedFolderIds((prev) => {
+          const next = new Set(prev);
+          next.delete(folderId);
+          return next;
+        });
+        return;
+      }
+
+      setExpandedFolderIds((prev) => {
+        const next = new Set(prev);
+        next.add(folderId);
+        return next;
+      });
+
+      if (!hasLoadedChildren && !loadingFolderIds.has(folderId)) {
+        void loadFolderContents(folderId);
+      }
+    },
+    [childrenByParentId, expandedFolderIds, loadFolderContents, loadingFolderIds],
+  );
+
+  useEffect(() => {
+    if (!selectedDriveFileIds.length) {
+      return;
+    }
+    const fileMap = new Map(sortedDriveFiles.map((file) => [file.id, file]));
+    setSelectedDriveFileIds((prev) => {
+      const filtered = prev.filter((id) => {
+        const file = fileMap.get(id);
+        return Boolean(file && !file.isFolder);
+      });
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [selectedDriveFileIds.length, sortedDriveFiles]);
+
+  const toggleDriveFileSelection = useCallback(
+    (fileId: string) => {
+      const target = sortedDriveFiles.find((file) => file.id === fileId);
+      if (!target || target.isFolder) {
+        return;
+      }
+      setSelectedDriveFileIds((prev) =>
+        prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId],
+      );
+    },
+    [sortedDriveFiles],
+  );
 
   const selectedDriveFiles = useMemo(
     () =>
       selectedDriveFileIds
-        .map((id) => driveFiles.find((file) => file.id === id))
-        .filter((file): file is DriveFile => Boolean(file)),
-    [driveFiles, selectedDriveFileIds],
+        .map((id) => sortedDriveFiles.find((file) => file.id === id))
+        .filter((file): file is DriveFile => Boolean(file && !file.isFolder)),
+    [selectedDriveFileIds, sortedDriveFiles],
   );
 
   const canRecognizeSelectedFiles = useMemo(
@@ -371,7 +553,7 @@ export const useDealDriveFiles = ({
         link.href = url;
         let resolvedFilename = filename;
         if (!resolvedFilename && targetIds.length === 1) {
-          const targetFile = driveFiles.find((file) => file.id === targetIds[0]);
+          const targetFile = sortedDriveFiles.find((file) => file.id === targetIds[0]);
           if (targetFile) {
             resolvedFilename = targetFile.isFolder
               ? `${targetFile.name || 'folder'}.zip`
@@ -395,8 +577,23 @@ export const useDealDriveFiles = ({
         }
       }
     },
-    [driveFiles, selectedDeal, selectedDriveFileIds],
+    [selectedDeal, selectedDriveFileIds, sortedDriveFiles],
   );
+
+  const updateFileInTree = useCallback((updatedFile: DriveFile) => {
+    setRootFiles((prev) =>
+      prev.map((file) => (file.id === updatedFile.id ? { ...file, ...updatedFile } : file)),
+    );
+    setChildrenByParentId((prev) => {
+      const next: Record<string, DriveFile[]> = {};
+      Object.entries(prev).forEach(([parentId, files]) => {
+        next[parentId] = files.map((file) =>
+          file.id === updatedFile.id ? { ...file, ...updatedFile } : file,
+        );
+      });
+      return next;
+    });
+  }, []);
 
   const handleRenameDriveFile = useCallback(
     async (fileId: string, name: string) => {
@@ -426,9 +623,7 @@ export const useDealDriveFiles = ({
         if (latestDealIdRef.current !== currentDealId) {
           return;
         }
-        setDriveFiles((prev) =>
-          prev.map((file) => (file.id === updated.id ? { ...file, ...updated } : file)),
-        );
+        updateFileInTree(updated);
       } catch (error) {
         if (latestDealIdRef.current !== currentDealId) {
           return;
@@ -441,25 +636,8 @@ export const useDealDriveFiles = ({
         }
       }
     },
-    [selectedDeal],
+    [selectedDeal, updateFileInTree],
   );
-
-  const sortedDriveFiles = useMemo(() => {
-    return [...driveFiles].sort((a, b) => {
-      const multiplier = driveSortDirection === 'asc' ? 1 : -1;
-      const rawDateA = new Date(a.modifiedAt ?? a.createdAt ?? 0).getTime();
-      const rawDateB = new Date(b.modifiedAt ?? b.createdAt ?? 0).getTime();
-      const dateA = Number.isNaN(rawDateA) ? 0 : rawDateA;
-      const dateB = Number.isNaN(rawDateB) ? 0 : rawDateB;
-      if (dateA !== dateB) {
-        return (dateA - dateB) * multiplier;
-      }
-      if (a.isFolder !== b.isFolder) {
-        return a.isFolder ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name, 'ru-RU', { sensitivity: 'base' });
-    });
-  }, [driveFiles, driveSortDirection]);
 
   const toggleDriveSortDirection = useCallback(() => {
     setDriveSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -485,7 +663,13 @@ export const useDealDriveFiles = ({
     renameMessage,
     sortedDriveFiles,
     driveSortDirection,
+    expandedFolderIds,
+    folderErrors,
     loadDriveFiles,
+    loadFolderContents,
+    toggleFolderExpanded,
+    isFolderLoading,
+    getDriveFileDepth,
     handleDriveFileUpload,
     toggleDriveFileSelection,
     toggleDriveSortDirection,

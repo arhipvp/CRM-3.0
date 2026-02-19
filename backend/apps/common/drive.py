@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from io import BytesIO
-from typing import Any, BinaryIO, Callable, Optional, TypedDict, TypeVar
+from typing import Any, BinaryIO, Callable, NotRequired, Optional, TypedDict, TypeVar
 
 from django.conf import settings
 from django.db import models
@@ -66,6 +66,7 @@ class DriveFileInfo(TypedDict):
     modified_at: Optional[str]
     web_view_link: Optional[str]
     is_folder: bool
+    parent_id: NotRequired[Optional[str]]
 
 
 def _ensure_drive_dependencies() -> None:
@@ -689,6 +690,7 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
                     modified_at=item.get("modifiedTime"),
                     web_view_link=item.get("webViewLink"),
                     is_folder=item.get("mimeType") == FOLDER_MIME_TYPE,
+                    parent_id=folder_id,
                 )
             )
 

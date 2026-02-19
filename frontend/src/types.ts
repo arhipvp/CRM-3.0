@@ -156,6 +156,7 @@ export interface DriveFile {
   modifiedAt?: string | null;
   webViewLink?: string | null;
   isFolder: boolean;
+  parentId?: string | null;
 }
 
 export interface PolicyRecognitionResult {

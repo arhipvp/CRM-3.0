@@ -9,6 +9,9 @@ vi.mock('../../../../api', () => ({
   APIError: class APIError extends Error {},
   fetchDealDriveFiles: vi.fn(),
   uploadDealDriveFile: vi.fn(),
+  downloadDealDriveFiles: vi.fn(),
+  trashDealDriveFiles: vi.fn(),
+  renameDealDriveFile: vi.fn(),
   recognizeDealPolicies: vi.fn(),
   recognizeDealDocuments: vi.fn(),
 }));
@@ -88,6 +91,7 @@ describe('useDealDriveFiles', () => {
       modifiedAt: '2025-01-01T00:00:00Z',
       webViewLink: 'https://drive.google.com/file',
       isFolder: false,
+      parentId: null,
     };
     const folderId = 'folder-new';
     fetchDealDriveFilesMock.mockResolvedValueOnce({ files: [file], folderId });
@@ -102,6 +106,62 @@ describe('useDealDriveFiles', () => {
     expect(fetchDealDriveFilesMock).toHaveBeenCalledWith(deal.id, false);
     expect(resultRef.current?.sortedDriveFiles).toEqual([file]);
     expect(onDriveFolderCreated).toHaveBeenCalledWith(deal.id, folderId);
+  });
+
+  it('loads folder children lazily and ignores folder selection', async () => {
+    const deal = createDeal();
+    const folder = {
+      id: 'folder-1',
+      name: 'Папка',
+      mimeType: 'application/vnd.google-apps.folder',
+      size: null,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/folder',
+      isFolder: true,
+      parentId: null,
+    };
+    const nestedFile = {
+      id: 'file-inside-1',
+      name: 'nested.pdf',
+      mimeType: 'application/pdf',
+      size: 100,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/file',
+      isFolder: false,
+      parentId: 'folder-1',
+    };
+    fetchDealDriveFilesMock
+      .mockResolvedValueOnce({ files: [folder], folderId: 'folder-1' })
+      .mockResolvedValueOnce({ files: [nestedFile], folderId: 'folder-1' });
+
+    const { resultRef } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+
+    expect(resultRef.current?.sortedDriveFiles.map((item) => item.id)).toEqual(['folder-1']);
+
+    act(() => {
+      resultRef.current?.toggleDriveFileSelection(folder.id);
+    });
+
+    expect(resultRef.current?.selectedDriveFileIds).toEqual([]);
+
+    await act(async () => {
+      resultRef.current?.toggleFolderExpanded(folder.id);
+    });
+
+    await waitFor(() => {
+      expect(fetchDealDriveFilesMock).toHaveBeenNthCalledWith(2, deal.id, false, folder.id);
+    });
+
+    expect(resultRef.current?.sortedDriveFiles.map((item) => item.id)).toEqual([
+      'folder-1',
+      'file-inside-1',
+    ]);
   });
 
   it('shows a message when recognition is triggered without selection', async () => {
@@ -130,6 +190,7 @@ describe('useDealDriveFiles', () => {
       modifiedAt: '2025-01-01T00:00:00Z',
       webViewLink: 'https://drive.google.com/file',
       isFolder: false,
+      parentId: null,
     };
     const parsedResult = {
       fileId: file.id,
@@ -180,6 +241,7 @@ describe('useDealDriveFiles', () => {
       modifiedAt: '2025-01-01T00:00:00Z',
       webViewLink: 'https://drive.google.com/file',
       isFolder: false,
+      parentId: null,
     };
     fetchDealDriveFilesMock.mockResolvedValue({ files: [file], folderId: null });
     recognizeDealDocumentsMock.mockResolvedValueOnce({
