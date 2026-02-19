@@ -133,6 +133,17 @@ export const DealsList: React.FC<DealsListProps> = ({
     return direction === 'asc' ? 'ascending' : 'descending';
   };
 
+  const handleClientDealsCountClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    clientName: string | null | undefined,
+  ) => {
+    event.stopPropagation();
+    if (!clientName) {
+      return;
+    }
+    onDealSearchChange(clientName);
+  };
+
   return (
     <>
       <div className="px-4 py-4 bg-white">
@@ -147,14 +158,26 @@ export const DealsList: React.FC<DealsListProps> = ({
             <label htmlFor="dealSearch" className="sr-only">
               Поиск по сделкам
             </label>
-            <input
-              id="dealSearch"
-              type="search"
-              value={dealSearch}
-              onChange={(event) => onDealSearchChange(event.target.value)}
-              placeholder="Поиск по сделкам"
-              className="field field-input"
-            />
+            <div className="relative">
+              <input
+                id="dealSearch"
+                type="text"
+                value={dealSearch}
+                onChange={(event) => onDealSearchChange(event.target.value)}
+                placeholder="Поиск по сделкам"
+                className="field field-input pr-10"
+              />
+              {dealSearch && (
+                <button
+                  type="button"
+                  onClick={() => onDealSearchChange('')}
+                  aria-label="Очистить поиск сделок"
+                  className="search-clear-btn"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -274,11 +297,6 @@ export const DealsList: React.FC<DealsListProps> = ({
                   const isSelected = selectedDeal?.id === deal.id;
                   const isPinned = Boolean(deal.isPinned);
                   const activeDealsCount = deal.clientActiveDealsCount;
-                  const clientLabel = deal.clientName
-                    ? `${deal.clientName}${
-                        activeDealsCount !== undefined ? ` (${activeDealsCount})` : ''
-                      }`
-                    : '—';
                   const canPin =
                     Boolean(currentUser) &&
                     (currentUser?.roles?.includes('Admin') || deal.seller === currentUser?.id);
@@ -379,7 +397,29 @@ export const DealsList: React.FC<DealsListProps> = ({
                       <td
                         className={`${TABLE_CELL_CLASS_LG} text-sm text-slate-900 ${deletedTextClass}`}
                       >
-                        <span className={deletedTextClass}>{clientLabel}</span>
+                        {deal.clientName ? (
+                          <span className={deletedTextClass}>
+                            {deal.clientName}
+                            {activeDealsCount !== undefined && (
+                              <>
+                                {' '}
+                                <button
+                                  type="button"
+                                  onClick={(event) =>
+                                    handleClientDealsCountClick(event, deal.clientName)
+                                  }
+                                  className="font-semibold text-sky-700 underline decoration-dotted underline-offset-2 transition hover:text-sky-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                                  aria-label={`Показать все сделки клиента ${deal.clientName}`}
+                                  title={`Показать сделки клиента ${deal.clientName}`}
+                                >
+                                  ({activeDealsCount})
+                                </button>
+                              </>
+                            )}
+                          </span>
+                        ) : (
+                          <span className={deletedTextClass}>—</span>
+                        )}
                       </td>
                       <td
                         className={`${TABLE_CELL_CLASS_LG} text-sm text-right ${deletedTextClass}`}

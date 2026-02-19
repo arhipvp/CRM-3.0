@@ -143,3 +143,32 @@ body {
 .deals-table th:hover {
   text-shadow: 0 0 6px rgba(15, 23, 42, 0.22);
 }
+
+.search-clear-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: #475569;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search-clear-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.search-clear-btn:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 1px;
+}
