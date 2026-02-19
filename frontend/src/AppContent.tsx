@@ -351,11 +351,22 @@ const AppContent: React.FC = () => {
   const policyDealExecutorName = getDealExecutorName(policyDealId);
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const searchInitialized = useRef(false);
+  const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
 
   const refreshDealsWithSelection = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
       const dealsData = await refreshDeals(filters, options);
+      if (selectedDealId && dealsData.some((deal) => deal.id === selectedDealId)) {
+        if (skipNextMissingSelectedDealClearRef.current === selectedDealId) {
+          skipNextMissingSelectedDealClearRef.current = null;
+        }
+        return dealsData;
+      }
       if (selectedDealId && !dealsData.some((deal) => deal.id === selectedDealId)) {
+        if (skipNextMissingSelectedDealClearRef.current === selectedDealId) {
+          skipNextMissingSelectedDealClearRef.current = null;
+          return dealsData;
+        }
         clearSelectedDealFocus();
       }
       return dealsData;
@@ -918,6 +929,7 @@ const AppContent: React.FC = () => {
         visibleUserIds: data.visibleUserIds,
       });
       updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
+      skipNextMissingSelectedDealClearRef.current = created.id;
       selectDealById(created.id);
       setModal(null);
     },
