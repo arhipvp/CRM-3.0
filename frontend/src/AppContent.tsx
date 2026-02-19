@@ -1057,12 +1057,8 @@ const AppContent: React.FC = () => {
       setIsSyncing(true);
       try {
         await updateDeal(dealId, data);
-        const refreshed = await refreshDeals(dealFilters, { force: true });
-        if (previousSelection && refreshed.some((deal) => deal.id === previousSelection)) {
-          selectDealById(previousSelection);
-        } else if (previousSelection) {
-          clearSelectedDealFocus();
-        }
+        await refreshDeals(dealFilters, { force: true });
+        clearSelectedDealFocus();
       } catch (err) {
         if (previousSelection) {
           selectDealById(previousSelection);

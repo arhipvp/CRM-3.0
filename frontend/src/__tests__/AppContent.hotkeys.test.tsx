@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppContent from '../AppContent';
-import { updateTask } from '../api';
+import { updateDeal, updateTask } from '../api';
 
 vi.mock('../contexts/NotificationContext', () => ({
   useNotification: () => ({
@@ -73,6 +73,8 @@ const appDataMock = vi.hoisted(() => ({
 }));
 
 const updateAppDataMock = vi.hoisted(() => vi.fn());
+const refreshDealsMock = vi.hoisted(() => vi.fn());
+const updateDealMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../hooks/useAppData', () => ({
   useAppData: () => ({
@@ -88,7 +90,7 @@ vi.mock('../hooks/useAppData', () => ({
       users: [],
     },
     loadData: vi.fn(),
-    refreshDeals: vi.fn().mockResolvedValue(appDataMock.deals),
+    refreshDeals: refreshDealsMock.mockImplementation(async () => appDataMock.deals),
     invalidateDealsCache: vi.fn(),
     refreshPolicies: vi.fn().mockResolvedValue([]),
     refreshPoliciesList: vi.fn().mockResolvedValue([]),
@@ -120,7 +122,35 @@ vi.mock('../components/MainLayout', () => ({
 }));
 
 vi.mock('../components/app/AppRoutes', () => ({
-  AppRoutes: () => <div data-testid="app-routes" />,
+  AppRoutes: ({
+    onPostponeDeal,
+    selectedDealId,
+    isDealFocusCleared,
+  }: {
+    onPostponeDeal?: (dealId: string, data: Record<string, unknown>) => Promise<void>;
+    selectedDealId?: string | null;
+    isDealFocusCleared?: boolean;
+  }) => (
+    <div data-testid="app-routes">
+      <div data-testid="selected-deal">{selectedDealId ?? 'null'}</div>
+      <div data-testid="focus-cleared">{isDealFocusCleared ? 'true' : 'false'}</div>
+      <button
+        type="button"
+        onClick={() =>
+          void onPostponeDeal?.('deal-1', {
+            title: 'Сделка первая',
+            description: '',
+            clientId: 'client-1',
+            source: null,
+            nextContactDate: '2026-12-31',
+            expectedClose: '2027-02-28',
+          }).catch(() => undefined)
+        }
+      >
+        Trigger postpone
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('../components/app/AppModals', () => ({
@@ -186,6 +216,7 @@ vi.mock('../api', async (importOriginal) => {
         priority: 'normal' as const,
         createdAt: '2026-01-01T00:00:00Z',
       })),
+    updateDeal: updateDealMock,
   };
 });
 
@@ -205,6 +236,19 @@ describe('AppContent hotkeys integration', () => {
     appDataMock.policiesList = [];
     updateAppDataMock.mockReset();
     vi.mocked(updateTask).mockClear();
+    vi.mocked(updateDeal).mockClear();
+    refreshDealsMock.mockReset();
+    refreshDealsMock.mockImplementation(async () => appDataMock.deals);
+    updateDealMock.mockReset();
+    updateDealMock.mockResolvedValue({
+      id: 'deal-1',
+      title: 'Сделка первая',
+      clientId: 'client-1',
+      status: 'open',
+      createdAt: '2025-01-01T00:00:00Z',
+      quotes: [],
+      documents: [],
+    });
   });
 
   it('opens command palette via Ctrl+K', async () => {
@@ -256,6 +300,60 @@ describe('AppContent hotkeys integration', () => {
     await waitFor(() => {
       expect(screen.getByText(/Сделка: Сделка вторая/i)).toBeInTheDocument();
       expect(screen.getByTestId('deal-preview-panel')).toHaveTextContent('Сделка вторая');
+    });
+  });
+
+  it('always clears deal focus after successful postpone', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+    refreshDealsMock.mockResolvedValue(appDataMock.deals);
+
+    renderAppContent('/deals?dealId=deal-1');
+
+    expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+    expect(screen.getByTestId('focus-cleared')).toHaveTextContent('false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger postpone' }));
+
+    await waitFor(() => {
+      expect(updateDealMock).toHaveBeenCalled();
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('null');
+      expect(screen.getByTestId('focus-cleared')).toHaveTextContent('true');
+    });
+  });
+
+  it('restores previous selection when postpone fails', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+    updateDealMock.mockRejectedValueOnce(new Error('network'));
+
+    renderAppContent('/deals?dealId=deal-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger postpone' }));
+
+    await waitFor(() => {
+      expect(updateDealMock).toHaveBeenCalled();
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+      expect(screen.getByTestId('focus-cleared')).toHaveTextContent('false');
     });
   });
 
