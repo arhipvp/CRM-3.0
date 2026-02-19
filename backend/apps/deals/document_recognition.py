@@ -723,13 +723,24 @@ def _postprocess_data(
     warnings: list[str] = []
     rejected_fields: dict[str, str] = {}
     payload = dict(data)
+    pre_validation_warnings: list[str] = []
+    pre_validation_rejected: dict[str, str] = {}
 
     if normalized_type == "passport" and extracted_text:
         inferred = _infer_passport_data_from_text(extracted_text)
         payload = _merge_missing_data(payload, inferred)
+        current_full_name = payload.get("full_name")
+        had_original_full_name = str(data.get("full_name") or "").strip() != ""
         if inferred.get("full_name") and not _is_valid_passport_full_name(
-            payload.get("full_name")
+            current_full_name
         ):
+            if had_original_full_name:
+                _reject_field(
+                    pre_validation_rejected,
+                    pre_validation_warnings,
+                    "full_name",
+                    "исходное значение отклонено и заменено по OCR",
+                )
             payload["full_name"] = inferred["full_name"]
 
     if normalized_type == "passport":
@@ -747,7 +758,9 @@ def _postprocess_data(
         rejected = {}
         local_warnings = []
 
+    warnings = _merge_warnings(warnings, pre_validation_warnings)
     warnings = _merge_warnings(warnings, local_warnings)
+    rejected_fields.update(pre_validation_rejected)
     rejected_fields.update(rejected)
     accepted_fields = sorted(validated.keys())
     return validated, warnings, accepted_fields, rejected_fields
