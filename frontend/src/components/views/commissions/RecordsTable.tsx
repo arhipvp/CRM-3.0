@@ -291,8 +291,8 @@ export const RecordsTable = ({
               '-';
             const dealClientName = normalizeText(payment.dealClientName) || '-';
             const policyClientName =
-              normalizeText(policy?.insuredClientName) ||
               normalizeText(policy?.clientName) ||
+              normalizeText(policy?.insuredClientName) ||
               dealClientName ||
               '-';
             const dealTitle = normalizeText(payment.dealTitle) || '-';

@@ -130,6 +130,33 @@ class PolicySerializer(serializers.ModelSerializer):
         return normalized
 
     def validate(self, attrs):
+        client = attrs.get("client") if "client" in attrs else None
+        insured_client = (
+            attrs.get("insured_client") if "insured_client" in attrs else None
+        )
+
+        # Source of truth: `client`.
+        # Legacy compatibility: map insured_client -> client when client is omitted.
+        if "client" not in attrs and insured_client is not None:
+            attrs["client"] = insured_client
+            client = insured_client
+
+        if (
+            "client" in attrs
+            and "insured_client" in attrs
+            and client is not None
+            and insured_client is not None
+            and client != insured_client
+        ):
+            raise serializers.ValidationError(
+                {
+                    "insured_client": (
+                        "legacy insured_client conflicts with client; "
+                        "use the same value or omit insured_client."
+                    )
+                }
+            )
+
         start_date = attrs.get("start_date") or getattr(
             self.instance, "start_date", None
         )

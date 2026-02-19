@@ -176,8 +176,8 @@ export const buildPolicyDraftFromRecognition = (
       pickRecognitionValue(parsed, policyData, ['end_date', 'endDate', 'finish_date']),
     ),
     payments: buildPaymentDrafts(parsed, policyData),
-    insuredClientId: '',
-    insuredClientName: toOptionalString(
+    clientId: '',
+    clientName: toOptionalString(
       pickRecognitionValue(parsed, policyData, [
         'insured_client_name',
         'insuredClientName',

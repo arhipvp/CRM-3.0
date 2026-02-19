@@ -169,7 +169,7 @@ export const getPolicySortValue = (policy: Policy, key: PolicySortKey) => {
     case 'insuranceType':
       return policy.insuranceType ?? '';
     case 'client':
-      return policy.insuredClientName ?? policy.clientName ?? policy.clientId ?? '';
+      return policy.clientName ?? policy.insuredClientName ?? policy.clientId ?? '';
     case 'salesChannel':
       return policy.salesChannelName ?? policy.salesChannel ?? '';
     case 'startDate':

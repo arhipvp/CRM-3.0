@@ -30,8 +30,8 @@ export interface PolicyFormValues {
   startDate?: string | null;
   endDate?: string | null;
   payments: PaymentDraft[];
-  insuredClientId?: string;
-  insuredClientName?: string;
+  clientId?: string;
+  clientName?: string;
 }
 
 export const createEmptyRecord = (amount = '0', note = ''): FinancialRecordDraft => ({

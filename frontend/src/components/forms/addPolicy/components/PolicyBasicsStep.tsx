@@ -15,13 +15,13 @@ interface PolicyBasicsStepProps {
   salesChannelId: string;
   onSalesChannelChange: (value: string) => void;
   salesChannels: SalesChannel[];
-  insuredQuery: string;
-  onInsuredQueryChange: (value: string) => void;
-  onInsuredQueryFocus: () => void;
-  onInsuredQueryBlur: () => void;
-  showInsuredSuggestions: boolean;
-  filteredInsuredClients: Client[];
-  onInsuredSelect: (client: Client) => void;
+  clientQuery: string;
+  onClientQueryChange: (value: string) => void;
+  onClientQueryFocus: () => void;
+  onClientQueryBlur: () => void;
+  showClientSuggestions: boolean;
+  filteredClients: Client[];
+  onClientSelect: (client: Client) => void;
   onRequestAddClient: () => void;
   isVehicle: boolean;
   onIsVehicleChange: (next: boolean) => void;
@@ -48,13 +48,13 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
   salesChannelId,
   onSalesChannelChange,
   salesChannels,
-  insuredQuery,
-  onInsuredQueryChange,
-  onInsuredQueryFocus,
-  onInsuredQueryBlur,
-  showInsuredSuggestions,
-  filteredInsuredClients,
-  onInsuredSelect,
+  clientQuery,
+  onClientQueryChange,
+  onClientQueryFocus,
+  onClientQueryBlur,
+  showClientSuggestions,
+  filteredClients,
+  onClientSelect,
   onRequestAddClient,
   isVehicle,
   onIsVehicleChange,
@@ -140,24 +140,24 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
             <div className="relative flex-1">
               <input
                 type="text"
-                value={insuredQuery}
-                onFocus={onInsuredQueryFocus}
-                onChange={(event) => onInsuredQueryChange(event.target.value)}
-                onBlur={onInsuredQueryBlur}
+                value={clientQuery}
+                onFocus={onClientQueryFocus}
+                onChange={(event) => onClientQueryChange(event.target.value)}
+                onBlur={onClientQueryBlur}
                 className="field field-input"
                 placeholder="Начните вводить клиента"
               />
-              {showInsuredSuggestions && (
+              {showClientSuggestions && (
                 <div className="absolute inset-x-0 top-full z-10 mt-2 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                  {filteredInsuredClients.length ? (
-                    filteredInsuredClients.map((client) => (
+                  {filteredClients.length ? (
+                    filteredClients.map((client) => (
                       <button
                         key={client.id}
                         type="button"
                         className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                         onMouseDown={(event) => {
                           event.preventDefault();
-                          onInsuredSelect(client);
+                          onClientSelect(client);
                         }}
                       >
                         {client.name}

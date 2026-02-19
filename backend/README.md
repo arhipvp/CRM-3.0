@@ -78,6 +78,6 @@ python manage.py runserver
 | `python manage.py drf_create_token` | Создание токена DRF, если команда доступна |
 
 ## Ресурсы
-- `backend/tests/` — примерыความ объяснить etc ??? Need mention? Already done.
+- `backend/tests/` — примеры API-тестов, проверок прав и регрессий по доменным приложениям.
 - `AGENTS.md` указывает на кодировку, SSH, безопасность.
 - `docker-compose.yml` связывает backend с Postgres (порт 5435) и nginx.

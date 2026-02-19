@@ -681,7 +681,7 @@ const AppContent: React.FC = () => {
         ),
       }));
 
-      const recognizedInsuredName = normalizeStringValue(
+      const recognizedPolicyClientName = normalizeStringValue(
         parsed.insured_client_name ??
           parsed.client_name ??
           policyObj.insured_client_name ??
@@ -690,9 +690,9 @@ const AppContent: React.FC = () => {
           policyObj.insured_client ??
           policyObj.contractor,
       );
-      const matchedInsuredClient = recognizedInsuredName?.length
+      const matchedPolicyClient = recognizedPolicyClientName?.length
         ? clients.find(
-            (client) => client.name.toLowerCase() === recognizedInsuredName.toLowerCase(),
+            (client) => client.name.toLowerCase() === recognizedPolicyClientName.toLowerCase(),
           )
         : undefined;
 
@@ -700,8 +700,8 @@ const AppContent: React.FC = () => {
         ...draft,
         salesChannelId: matchedChannel?.id,
         payments: paymentsWithNotes,
-        insuredClientId: matchedInsuredClient?.id ?? undefined,
-        insuredClientName: matchedInsuredClient?.name ?? (recognizedInsuredName || undefined),
+        clientId: matchedPolicyClient?.id ?? undefined,
+        clientName: matchedPolicyClient?.name ?? (recognizedPolicyClientName || undefined),
       };
       const recognizedInsuranceType = normalizeStringValue(
         policyObj.insurance_type ??
@@ -1525,8 +1525,8 @@ const AppContent: React.FC = () => {
         startDate,
         endDate,
         salesChannelId,
-        insuredClientId,
-        insuredClientName,
+        clientId: selectedPolicyClientId,
+        clientName: selectedPolicyClientName,
         counterparty,
         payments: paymentDrafts = [],
       } = values;
@@ -1551,29 +1551,28 @@ const AppContent: React.FC = () => {
       }
 
       try {
-        let resolvedInsuredClientId = insuredClientId;
-        const normalizedInsuredName = insuredClientName?.trim();
-        if (!resolvedInsuredClientId && normalizedInsuredName) {
-          const normalizedLower = normalizedInsuredName.toLowerCase();
+        let resolvedPolicyClientId = selectedPolicyClientId;
+        const normalizedPolicyClientName = selectedPolicyClientName?.trim();
+        if (!resolvedPolicyClientId && normalizedPolicyClientName) {
+          const normalizedLower = normalizedPolicyClientName.toLowerCase();
           if (clientId && deal?.clientName?.toLowerCase() === normalizedLower) {
-            resolvedInsuredClientId = clientId;
+            resolvedPolicyClientId = clientId;
           } else {
             const matchedClient = clients.find(
               (client) => client.name.toLowerCase() === normalizedLower,
             );
             if (matchedClient) {
-              resolvedInsuredClientId = matchedClient.id;
+              resolvedPolicyClientId = matchedClient.id;
             } else {
-              const createdClient = await createClient({ name: normalizedInsuredName });
+              const createdClient = await createClient({ name: normalizedPolicyClientName });
               updateAppData((prev) => ({ clients: [createdClient, ...prev.clients] }));
-              resolvedInsuredClientId = createdClient.id;
+              resolvedPolicyClientId = createdClient.id;
             }
           }
         }
         const created = await createPolicy({
           dealId,
-          clientId,
-          insuredClientId: resolvedInsuredClientId,
+          clientId: resolvedPolicyClientId || clientId,
           number,
           insuranceCompanyId,
           insuranceTypeId,
@@ -1813,8 +1812,8 @@ const AppContent: React.FC = () => {
           salesChannelId,
           startDate,
           endDate,
-          insuredClientId,
-          insuredClientName,
+          clientId: selectedPolicyClientId,
+          clientName: selectedPolicyClientName,
           payments: paymentDrafts = [],
         } = values;
 
@@ -1892,25 +1891,25 @@ const AppContent: React.FC = () => {
           }
         }
 
-        let resolvedInsuredClientId = insuredClientId;
-        const normalizedInsuredName = insuredClientName?.trim();
-        if (!resolvedInsuredClientId && normalizedInsuredName) {
-          const normalizedLower = normalizedInsuredName.toLowerCase();
+        let resolvedPolicyClientId = selectedPolicyClientId;
+        const normalizedPolicyClientName = selectedPolicyClientName?.trim();
+        if (!resolvedPolicyClientId && normalizedPolicyClientName) {
+          const normalizedLower = normalizedPolicyClientName.toLowerCase();
           if (
             currentPolicy?.clientId &&
             currentPolicy?.clientName?.toLowerCase() === normalizedLower
           ) {
-            resolvedInsuredClientId = currentPolicy.clientId;
+            resolvedPolicyClientId = currentPolicy.clientId;
           } else {
             const matchedClient = clients.find(
               (client) => client.name.toLowerCase() === normalizedLower,
             );
             if (matchedClient) {
-              resolvedInsuredClientId = matchedClient.id;
+              resolvedPolicyClientId = matchedClient.id;
             } else {
-              const createdClient = await createClient({ name: normalizedInsuredName });
+              const createdClient = await createClient({ name: normalizedPolicyClientName });
               updateAppData((prev) => ({ clients: [createdClient, ...prev.clients] }));
-              resolvedInsuredClientId = createdClient.id;
+              resolvedPolicyClientId = createdClient.id;
             }
           }
         }
@@ -1926,7 +1925,7 @@ const AppContent: React.FC = () => {
           salesChannelId,
           startDate,
           endDate,
-          insuredClientId: resolvedInsuredClientId,
+          clientId: resolvedPolicyClientId || currentPolicy.clientId,
         });
         updateAppData((prev) => ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),

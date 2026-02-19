@@ -32,7 +32,7 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     number: fallback(policy.number),
     startDate: formatDate(policy.startDate),
     endDate: formatDate(policy.endDate),
-    client: fallback(policy.insuredClientName ?? policy.clientName),
+    client: fallback(policy.clientName ?? policy.insuredClientName),
     insuranceCompany: fallback(policy.insuranceCompany),
     salesChannel: fallback(policy.salesChannelName ?? policy.salesChannel),
     sum: `${formatCurrency(policy.paymentsPaid)} / ${formatCurrency(policy.paymentsTotal)}`,
@@ -43,6 +43,6 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     paymentsCount,
     paymentsCountLabel: describeCount(paymentsCount, 'запись', 'записей'),
     dealId: policy.dealId,
-    clientId: policy.insuredClientId ?? policy.clientId ?? null,
+    clientId: policy.clientId ?? policy.insuredClientId ?? null,
   };
 };

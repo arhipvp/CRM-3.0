@@ -490,8 +490,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
             policy_client_name = (
-                getattr(getattr(policy, "insured_client", None), "name", None)
-                or getattr(getattr(policy, "client", None), "name", None)
+                getattr(getattr(policy, "client", None), "name", None)
+                or getattr(getattr(policy, "insured_client", None), "name", None)
                 or deal_client_name
                 or "-"
             )

@@ -39,9 +39,12 @@ describe('buildPolicyCardModel', () => {
     expect(model.paymentsCountLabel).toBe('2 записей');
   });
 
-  it('keeps insured client name when present', () => {
-    const policy = createPolicy({ insuredClientName: 'Insured' });
+  it('prefers policy client name over legacy insured client name', () => {
+    const policy = createPolicy({
+      clientName: 'Policy Client',
+      insuredClientName: 'Legacy Insured',
+    });
     const model = buildPolicyCardModel(policy, []);
-    expect(model.client).toBe('Insured');
+    expect(model.client).toBe('Policy Client');
   });
 });

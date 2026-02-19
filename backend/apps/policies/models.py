@@ -149,23 +149,23 @@ class Policy(SoftDeleteModel):
         return f"Policy {self.number} ({type_name} - {company}){client_suffix}"
 
     def save(self, *args, **kwargs):
-        client_id = getattr(self.deal, "client_id", None)
-        if self.deal_id and not client_id:
+        deal_client_id = getattr(self.deal, "client_id", None)
+        if self.deal_id and not deal_client_id:
             from apps.deals.models import Deal
 
-            client_id = (
+            deal_client_id = (
                 Deal.objects.filter(pk=self.deal_id)
                 .values_list("client_id", flat=True)
                 .first()
             )
-        if client_id:
-            if not self.client_id:
-                self.client_id = client_id
-            # LEGACY/DEPRECATED behavior:
-            # по историческим причинам подставляем insured_client из клиента сделки,
-            # чтобы не ломать старые интеграции и данные.
-            if not self.insured_client_id:
-                self.insured_client_id = client_id
+
+        resolved_client_id = self.client_id or deal_client_id
+        if resolved_client_id and not self.client_id:
+            self.client_id = resolved_client_id
+        # LEGACY/DEPRECATED behavior:
+        # поддерживаем historical mirror в insured_client для обратной совместимости.
+        if self.client_id and not self.insured_client_id:
+            self.insured_client_id = self.client_id
 
         super().save(*args, **kwargs)
 

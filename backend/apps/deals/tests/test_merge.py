@@ -91,6 +91,29 @@ class DealMergeServiceTestCase(TestCase):
             },
         )
 
+    def test_merge_does_not_change_policy_client_fields(self):
+        external_client = Client.objects.create(name="External Policy Client")
+        policy = Policy.objects.create(
+            number="P-CLIENT-LOCK",
+            insurance_company=InsuranceCompany.objects.create(name="Comp B"),
+            insurance_type=InsuranceType.objects.create(name="Type B"),
+            deal=self.source,
+            client=external_client,
+            insured_client=external_client,
+        )
+
+        DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            resulting_client=self.client_obj,
+            actor=self.user,
+        ).merge()
+
+        policy.refresh_from_db()
+        self.assertEqual(policy.deal_id, self.target.id)
+        self.assertEqual(policy.client_id, external_client.id)
+        self.assertEqual(policy.insured_client_id, external_client.id)
+
 
 class DealMergeAPITestCase(AuthenticatedAPITestCase):
     def setUp(self):

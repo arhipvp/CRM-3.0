@@ -96,8 +96,8 @@ const buildPolicyFormValues = (
   salesChannelId: policy.salesChannelId,
   startDate: policy.startDate,
   endDate: policy.endDate,
-  insuredClientId: policy.insuredClientId,
-  insuredClientName: policy.insuredClientName ?? policy.clientName,
+  clientId: policy.clientId ?? policy.insuredClientId,
+  clientName: policy.clientName ?? policy.insuredClientName,
   payments: payments.map((payment) => buildPaymentDraft(payment, financialRecords)),
 });
 

@@ -16,7 +16,7 @@ class PolicyResource(resources.ModelResource):
             "id",
             "number",
             "deal",
-            "insured_client",
+            "client",
             "insurance_type",
             "insurance_company",
             "is_vehicle",
@@ -53,7 +53,7 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         "sales_channel",
         "status_badge",
         "period_display",
-        "insured_client",
+        "client",
         "deal",
         "created_at",
     )
@@ -65,6 +65,7 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         "brand",
         "model",
         "deal__title",
+        "client__name",
         "counterparty",
         "sales_channel__name",
     )
@@ -85,7 +86,7 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
     actions = ["mark_as_active", "mark_as_inactive", "restore_policies"]
 
     fieldsets = (
-        ("Main information", {"fields": ("id", "number", "deal", "insured_client")}),
+        ("Main information", {"fields": ("id", "number", "deal", "client")}),
         (
             "Insurance information",
             {

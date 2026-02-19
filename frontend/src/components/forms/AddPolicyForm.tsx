@@ -39,7 +39,7 @@ interface AddPolicyFormProps {
   onRequestAddClient: () => void;
 }
 
-const MAX_INSURED_SUGGESTIONS = 5;
+const MAX_CLIENT_SUGGESTIONS = 5;
 const VIN_REGEX = /^[A-Za-z0-9]{17}$/;
 const normalizeTypeForComparison = (value: string) =>
   value
@@ -80,20 +80,20 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   );
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [insuredClientId, setInsuredClientId] = useState('');
+  const [policyClientId, setPolicyClientId] = useState('');
   const [payments, setPayments] = useState<PaymentDraft[]>(() => [
     createPaymentWithDefaultIncome(buildCommissionIncomeNote()),
   ]);
   const [expandedPaymentIndex, setExpandedPaymentIndex] = useState<number | null>(0);
-  const [insuredQuery, setInsuredQuery] = useState('');
-  const [showInsuredSuggestions, setShowInsuredSuggestions] = useState(false);
-  const filteredInsuredClients = useMemo(() => {
-    const normalizedQuery = insuredQuery.trim().toLowerCase();
+  const [clientQuery, setClientQuery] = useState('');
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const filteredClients = useMemo(() => {
+    const normalizedQuery = clientQuery.trim().toLowerCase();
     const candidates = normalizedQuery
       ? clients.filter((client) => client.name.toLowerCase().includes(normalizedQuery))
       : clients;
-    return candidates.slice(0, MAX_INSURED_SUGGESTIONS);
-  }, [clients, insuredQuery]);
+    return candidates.slice(0, MAX_CLIENT_SUGGESTIONS);
+  }, [clients, clientQuery]);
 
   useEffect(() => {
     setPayments((prev) =>
@@ -106,18 +106,18 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     );
   }, [commissionNote]);
 
-  const resolveInsuredFromQuery = () => {
-    const query = insuredQuery.trim().toLowerCase();
+  const resolveClientFromQuery = () => {
+    const query = clientQuery.trim().toLowerCase();
     if (!query) {
       return null;
     }
     return clients.find((client) => client.name.toLowerCase() === query) ?? null;
   };
 
-  const handleInsuredSelect = (client: Client) => {
-    setInsuredClientId(client.id);
-    setInsuredQuery(client.name);
-    setShowInsuredSuggestions(false);
+  const handleClientSelect = (client: Client) => {
+    setPolicyClientId(client.id);
+    setClientQuery(client.name);
+    setShowClientSuggestions(false);
   };
   const [hasManualEndDate, setHasManualEndDate] = useState(false);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
@@ -181,8 +181,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setHasManualEndDate(false);
       setPayments([createPaymentWithDefaultIncome(buildCommissionIncomeNote())]);
       setCurrentStep(1);
-      setInsuredClientId('');
-      setInsuredQuery('');
+      setPolicyClientId('');
+      setClientQuery('');
       return;
     }
     setNumber(initialValues.number || '');
@@ -206,8 +206,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       })),
     );
     setCounterpartyTouched(Boolean(initialValues.counterparty));
-    setInsuredClientId(initialValues.insuredClientId || '');
-    setInsuredQuery(initialValues.insuredClientName ?? '');
+    setPolicyClientId(initialValues.clientId || '');
+    setClientQuery(initialValues.clientName ?? '');
     setCurrentStep(1);
   }, [initialValues]);
 
@@ -581,14 +581,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setSubmitting(true);
 
     try {
-      const resolvedInsured = resolveInsuredFromQuery();
-      const selectedInsuredId = resolvedInsured?.id || insuredClientId;
-      const selectedInsuredName =
-        resolvedInsured?.name ||
-        (selectedInsuredId
-          ? clients.find((client) => client.id === selectedInsuredId)?.name
+      const resolvedClient = resolveClientFromQuery();
+      const selectedClientId = resolvedClient?.id || policyClientId;
+      const selectedClientName =
+        resolvedClient?.name ||
+        (selectedClientId
+          ? clients.find((client) => client.id === selectedClientId)?.name
           : undefined) ||
-        insuredQuery.trim() ||
+        clientQuery.trim() ||
         undefined;
 
       await onSubmit({
@@ -601,8 +601,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         vin: isVehicle ? normalizedVin : undefined,
         counterparty: counterparty.trim() || undefined,
         salesChannelId: salesChannelId || undefined,
-        insuredClientId: selectedInsuredId || undefined,
-        insuredClientName: selectedInsuredName,
+        clientId: selectedClientId || undefined,
+        clientName: selectedClientName,
         startDate: startDate || null,
         endDate: endDate || null,
         payments,
@@ -651,19 +651,19 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           salesChannelId={salesChannelId}
           onSalesChannelChange={setSalesChannelId}
           salesChannels={salesChannels}
-          insuredQuery={insuredQuery}
-          onInsuredQueryChange={(value) => {
-            setInsuredQuery(value);
-            setShowInsuredSuggestions(true);
-            setInsuredClientId('');
+          clientQuery={clientQuery}
+          onClientQueryChange={(value) => {
+            setClientQuery(value);
+            setShowClientSuggestions(true);
+            setPolicyClientId('');
           }}
-          onInsuredQueryFocus={() => setShowInsuredSuggestions(true)}
-          onInsuredQueryBlur={() => {
-            setTimeout(() => setShowInsuredSuggestions(false), 120);
+          onClientQueryFocus={() => setShowClientSuggestions(true)}
+          onClientQueryBlur={() => {
+            setTimeout(() => setShowClientSuggestions(false), 120);
           }}
-          showInsuredSuggestions={showInsuredSuggestions}
-          filteredInsuredClients={filteredInsuredClients}
-          onInsuredSelect={handleInsuredSelect}
+          showClientSuggestions={showClientSuggestions}
+          filteredClients={filteredClients}
+          onClientSelect={handleClientSelect}
           onRequestAddClient={onRequestAddClient}
           isVehicle={isVehicle}
           onIsVehicleChange={(checked) => {
