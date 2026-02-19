@@ -96,6 +96,7 @@ interface DealsViewProps {
   onDealShowClosedChange: (value: boolean) => void;
   dealOrdering?: string;
   onDealOrderingChange: (value: string | undefined) => void;
+  onDealSelectionBlockedChange?: (blocked: boolean) => void;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -158,13 +159,31 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDealShowClosedChange,
   dealOrdering,
   onDealOrderingChange,
+  onDealSelectionBlockedChange,
 }) => {
+  const [isDealSelectionBlocked, setDealSelectionBlocked] = React.useState(false);
   const { sortedDeals, selectedDeal, selectedClient, sellerUser, executorUser } = useSelectedDeal({
     deals,
     clients,
     users,
     selectedDealId,
   });
+  const handleDealSelectionBlockedChange = React.useCallback(
+    (blocked: boolean) => {
+      setDealSelectionBlocked(blocked);
+      onDealSelectionBlockedChange?.(blocked);
+    },
+    [onDealSelectionBlockedChange],
+  );
+  const handleSelectDeal = React.useCallback(
+    (dealId: string) => {
+      if (isDealSelectionBlocked) {
+        return;
+      }
+      onSelectDeal(dealId);
+    },
+    [isDealSelectionBlocked, onSelectDeal],
+  );
 
   return (
     <div className="flex h-full flex-col gap-6">
@@ -188,10 +207,11 @@ export const DealsView: React.FC<DealsViewProps> = ({
             dealsTotalCount={dealsTotalCount}
             isLoadingMoreDeals={isLoadingMoreDeals}
             onLoadMoreDeals={onLoadMoreDeals}
-            onSelectDeal={onSelectDeal}
+            onSelectDeal={handleSelectDeal}
             onPinDeal={onPinDeal}
             onUnpinDeal={onUnpinDeal}
             currentUser={currentUser}
+            isDealSelectionBlocked={isDealSelectionBlocked}
           />
           <DealDetailsPanel
             deals={deals}
@@ -208,7 +228,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             selectedClient={selectedClient}
             sellerUser={sellerUser}
             executorUser={executorUser}
-            onSelectDeal={onSelectDeal}
+            onSelectDeal={handleSelectDeal}
             onCloseDeal={onCloseDeal}
             onReopenDeal={onReopenDeal}
             onUpdateDeal={onUpdateDeal}
@@ -241,6 +261,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onDeleteTask={onDeleteTask}
             onDeleteDeal={onDeleteDeal}
             onRestoreDeal={onRestoreDeal}
+            onDealSelectionBlockedChange={handleDealSelectionBlockedChange}
           />
         </div>
       </section>

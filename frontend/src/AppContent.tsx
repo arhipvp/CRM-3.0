@@ -276,6 +276,7 @@ const AppContent: React.FC = () => {
   } = dataState;
   const navigate = useNavigate();
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [isDealSelectionBlocked, setDealSelectionBlocked] = useState(false);
   const [previewDealId, setPreviewDealId] = useState<string | null>(null);
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
@@ -377,6 +378,9 @@ const AppContent: React.FC = () => {
 
   const handleSelectDeal = useCallback(
     (dealId: string) => {
+      if (isDealSelectionBlocked) {
+        return;
+      }
       setSelectedDealId(dealId);
       if (!dealId || dealsById.has(dealId)) {
         return;
@@ -385,7 +389,7 @@ const AppContent: React.FC = () => {
         setError(formatErrorMessage(err, 'Не удалось загрузить сделку'));
       });
     },
-    [dealsById, setError, setSelectedDealId, syncDealsByIds],
+    [dealsById, isDealSelectionBlocked, setError, setSelectedDealId, syncDealsByIds],
   );
   const handleOpenDealPreview = useCallback(
     (dealId: string) => {
@@ -3290,6 +3294,7 @@ const AppContent: React.FC = () => {
         onDealShowClosedChange={setDealShowClosed}
         dealOrdering={dealOrdering}
         onDealOrderingChange={setDealOrdering}
+        onDealSelectionBlockedChange={setDealSelectionBlocked}
         onPolicyDraftReady={handlePolicyDraftReady}
         onLoadMoreDeals={loadMoreDeals}
         dealsHasMore={dealsHasMore}
@@ -3381,6 +3386,7 @@ const AppContent: React.FC = () => {
                 onDeleteTask={handleDeleteTask}
                 onDeleteDeal={handleDeleteDeal}
                 onRestoreDeal={handleRestoreDeal}
+                onDealSelectionBlockedChange={setDealSelectionBlocked}
               />
             ) : (
               <PanelMessage>Загрузка сделки...</PanelMessage>

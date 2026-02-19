@@ -13,6 +13,7 @@ interface FormModalProps {
   zIndex?: number;
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
+  hideCloseButton?: boolean;
 }
 
 export const FormModal: React.FC<FormModalProps> = ({
@@ -24,6 +25,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   zIndex,
   closeOnOverlayClick,
   closeOnEscape,
+  hideCloseButton,
 }) => {
   if (!isOpen) {
     return null;
@@ -37,6 +39,7 @@ export const FormModal: React.FC<FormModalProps> = ({
       zIndex={zIndex}
       closeOnOverlayClick={closeOnOverlayClick}
       closeOnEscape={closeOnEscape}
+      hideCloseButton={hideCloseButton}
     >
       {children}
     </Modal>

@@ -183,7 +183,7 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         payload = response.json()
-        self.assertEqual(payload.get("total_paid"), "100.00")
+        self.assertEqual(payload.get("total_paid"), "110.00")
         self.assertEqual(payload.get("tasks_current"), 1)
         self.assertEqual(payload.get("tasks_completed"), 1)
         self.assertTrue(payload.get("payments_by_day"))

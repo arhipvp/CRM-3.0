@@ -223,6 +223,24 @@ export interface Deal {
   visibleUsers?: string[];
 }
 
+export interface DealTimeTrackingSummary {
+  enabled: boolean;
+  tickSeconds: number;
+  confirmIntervalSeconds: number;
+  myTotalSeconds: number;
+  myTotalHuman: string;
+}
+
+export interface DealTimeTrackingTickResponse {
+  enabled: boolean;
+  tickSeconds: number;
+  confirmIntervalSeconds: number;
+  counted: boolean;
+  bucketStart?: string | null;
+  myTotalSeconds: number;
+  reason?: string;
+}
+
 export interface DealMergeResponse {
   targetDeal: Deal;
   mergedDealIds: string[];

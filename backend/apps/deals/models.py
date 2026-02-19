@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import uuid
+
 from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.db import models
@@ -202,6 +204,38 @@ class DealViewer(models.Model):
             models.UniqueConstraint(fields=["deal", "user"], name="unique_deal_viewer")
         ]
         ordering = ["-created_at"]
+
+
+class DealTimeTick(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="deal_time_ticks",
+        on_delete=models.CASCADE,
+    )
+    deal = models.ForeignKey(
+        "deals.Deal",
+        related_name="time_ticks",
+        on_delete=models.CASCADE,
+    )
+    bucket_start = models.DateTimeField()
+    seconds = models.PositiveSmallIntegerField(default=10)
+    source = models.CharField(max_length=64, default="deal_details_panel")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-bucket_start", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "bucket_start"],
+                name="deals_unique_user_bucket_tick",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["deal", "user"]),
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["deal", "created_at"]),
+        ]
 
 
 class Quote(SoftDeleteModel):

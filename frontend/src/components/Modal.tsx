@@ -15,6 +15,7 @@ interface ModalProps {
   children: React.ReactNode;
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
+  hideCloseButton?: boolean;
   size?: ModalSize;
   zIndex?: number;
 }
@@ -25,6 +26,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   closeOnOverlayClick = true,
   closeOnEscape = true,
+  hideCloseButton = false,
   size = 'md',
   zIndex = 40,
 }) => {
@@ -67,9 +69,11 @@ export const Modal: React.FC<ModalProps> = ({
           <h2 id={titleId} className="text-lg font-semibold text-slate-900">
             {title}
           </h2>
-          <button type="button" onClick={onClose} className="icon-btn" aria-label="Закрыть">
-            &times;
-          </button>
+          {!hideCloseButton && (
+            <button type="button" onClick={onClose} className="icon-btn" aria-label="Закрыть">
+              &times;
+            </button>
+          )}
         </div>
         <div className="p-5">{children}</div>
       </div>

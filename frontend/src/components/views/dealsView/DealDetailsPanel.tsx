@@ -16,7 +16,7 @@ import {
 import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../../api/deals';
 import { useDealInlineDates } from './hooks/useDealInlineDates';
 import { useDealMerge } from './hooks/useDealMerge';
-import { BTN_SECONDARY } from '../../common/buttonStyles';
+import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
 
 import { ActivityTimeline } from '../../ActivityTimeline';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
@@ -53,12 +53,14 @@ import { useDealCommunication } from './hooks/useDealCommunication';
 import { FinancialRecordModal } from '../../financialRecords/FinancialRecordModal';
 import { InlineAlert } from '../../common/InlineAlert';
 import { PromptDialog } from '../../common/modal/PromptDialog';
+import { FormModal } from '../../common/modal/FormModal';
 import { useFinancialRecordModal } from '../../../hooks/useFinancialRecordModal';
 import { PaymentModal } from '../../payments/PaymentModal';
 import { usePaymentModal } from '../../../hooks/usePaymentModal';
 import { fetchNotificationSettings } from '../../../api/notifications';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { confirmTexts } from '../../../constants/confirmTexts';
+import { useDealTimeTracking } from './hooks/useDealTimeTracking';
 
 interface DealDetailsPanelProps {
   deals: Deal[];
@@ -124,6 +126,7 @@ interface DealDetailsPanelProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
+  onDealSelectionBlockedChange?: (blocked: boolean) => void;
 }
 
 export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
@@ -174,6 +177,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onDeleteTask,
   onDeleteDeal,
   onRestoreDeal,
+  onDealSelectionBlockedChange,
 }) => {
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
@@ -234,6 +238,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [delayValidationError, setDelayValidationError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DealTabId>('overview');
   const hasRequestedPoliciesRef = useRef(false);
+  const {
+    myTotalLabel,
+    isConfirmModalOpen: isTimeTrackingConfirmModalOpen,
+    continueTracking,
+  } = useDealTimeTracking(selectedDeal?.id);
 
   const [isEditingDeal, setIsEditingDeal] = useState(false);
 
@@ -389,6 +398,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   useEffect(() => {
     setActiveTab('overview');
   }, [selectedDeal?.id]);
+
+  useEffect(() => {
+    onDealSelectionBlockedChange?.(isTimeTrackingConfirmModalOpen);
+    return () => onDealSelectionBlockedChange?.(false);
+  }, [isTimeTrackingConfirmModalOpen, onDealSelectionBlockedChange]);
 
   useEffect(() => {
     setMailboxActionError(null);
@@ -924,6 +938,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 clientPhone={selectedClient?.phone}
                 sellerDisplayName={sellerDisplayName}
                 executorDisplayName={executorDisplayName}
+                myTrackedTimeLabel={myTotalLabel}
                 onClientEdit={onClientEdit}
               />
               <DealActions
@@ -1174,6 +1189,26 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         error={closeDealReasonError}
       />
       <ConfirmDialogRenderer />
+      <FormModal
+        isOpen={isTimeTrackingConfirmModalOpen}
+        title="Продолжить учет времени по сделке?"
+        onClose={() => undefined}
+        size="sm"
+        closeOnOverlayClick={false}
+        closeOnEscape={false}
+        hideCloseButton
+        zIndex={80}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">
+            Учет времени приостановлен. Чтобы продолжить работу со сделкой, подтвердите продолжение
+            учета времени.
+          </p>
+          <button type="button" onClick={continueTracking} className={`${BTN_PRIMARY} w-full`}>
+            Продолжить
+          </button>
+        </div>
+      </FormModal>
     </>
   );
 };

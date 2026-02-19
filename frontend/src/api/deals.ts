@@ -5,6 +5,8 @@ import type {
   ActivityLog,
   Deal,
   DealMergeResponse,
+  DealTimeTrackingSummary,
+  DealTimeTrackingTickResponse,
   DocumentRecognitionResult,
   Quote,
 } from '../types';
@@ -423,5 +425,43 @@ export async function recognizeDealDocuments(
   return {
     results,
     noteId: payload.noteId === undefined || payload.noteId === null ? null : String(payload.noteId),
+  };
+}
+
+export async function fetchDealTimeTrackingSummary(
+  dealId: string,
+): Promise<DealTimeTrackingSummary> {
+  const payload = await request<Record<string, unknown>>(`/deals/${dealId}/time-track/summary/`);
+  return {
+    enabled: Boolean(payload.enabled ?? true),
+    tickSeconds: Number(payload.tick_seconds ?? payload.tickSeconds ?? 10),
+    confirmIntervalSeconds: Number(
+      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 180,
+    ),
+    myTotalSeconds: Number(payload.my_total_seconds ?? payload.myTotalSeconds ?? 0),
+    myTotalHuman: String(payload.my_total_human ?? payload.myTotalHuman ?? '00:00:00'),
+  };
+}
+
+export async function sendDealTimeTrackingTick(
+  dealId: string,
+): Promise<DealTimeTrackingTickResponse> {
+  const payload = await request<Record<string, unknown>>(`/deals/${dealId}/time-track/tick/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return {
+    enabled: Boolean(payload.enabled ?? true),
+    tickSeconds: Number(payload.tick_seconds ?? payload.tickSeconds ?? 10),
+    confirmIntervalSeconds: Number(
+      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 180,
+    ),
+    counted: Boolean(payload.counted ?? false),
+    bucketStart:
+      payload.bucket_start === undefined && payload.bucketStart === undefined
+        ? null
+        : String(payload.bucket_start ?? payload.bucketStart ?? ''),
+    myTotalSeconds: Number(payload.my_total_seconds ?? payload.myTotalSeconds ?? 0),
+    reason: payload.reason === undefined ? undefined : String(payload.reason),
   };
 }

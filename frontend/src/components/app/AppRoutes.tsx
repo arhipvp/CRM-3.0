@@ -119,6 +119,7 @@ export interface AppRoutesProps {
   onDealShowClosedChange: (value: boolean) => void;
   dealOrdering?: string;
   onDealOrderingChange: (value: string | undefined) => void;
+  onDealSelectionBlockedChange?: (blocked: boolean) => void;
   onPolicyDraftReady?: (
     dealId: string,
     parsed: Record<string, unknown>,
@@ -200,6 +201,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onDealShowClosedChange,
   dealOrdering,
   onDealOrderingChange,
+  onDealSelectionBlockedChange,
   onPolicyDraftReady,
   onLoadMoreDeals,
   dealsHasMore,
@@ -268,6 +270,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onDealShowClosedChange={onDealShowClosedChange}
           dealOrdering={dealOrdering}
           onDealOrderingChange={onDealOrderingChange}
+          onDealSelectionBlockedChange={onDealSelectionBlockedChange}
           onRequestAddClient={onRequestAddClient}
           onPolicyDraftReady={onPolicyDraftReady}
           onRefreshPolicies={onRefreshPolicies}

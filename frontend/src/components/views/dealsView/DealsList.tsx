@@ -35,6 +35,7 @@ interface DealsListProps {
   onPinDeal: (dealId: string) => Promise<void>;
   onUnpinDeal: (dealId: string) => Promise<void>;
   currentUser: User | null;
+  isDealSelectionBlocked?: boolean;
 }
 
 export const DealsList: React.FC<DealsListProps> = ({
@@ -59,6 +60,7 @@ export const DealsList: React.FC<DealsListProps> = ({
   onPinDeal,
   onUnpinDeal,
   currentUser,
+  isDealSelectionBlocked = false,
 }) => {
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
 
@@ -208,6 +210,11 @@ export const DealsList: React.FC<DealsListProps> = ({
             </select>
           </div>
         </div>
+        {isDealSelectionBlocked && (
+          <p className="mt-3 text-xs font-semibold text-rose-700">
+            Подтвердите продолжение учета времени, чтобы переключиться на другую сделку.
+          </p>
+        )}
       </div>
 
       <DataTableShell>
@@ -283,6 +290,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                     'border-sky-500',
                     'hover:bg-slate-50/80 hover:border-sky-500',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+                    isDealSelectionBlocked ? 'cursor-not-allowed opacity-80' : '',
                     isSelected
                       ? 'bg-sky-100/80 border-sky-600 shadow-sm ring-2 ring-sky-400/60 ring-inset'
                       : '',
@@ -294,10 +302,18 @@ export const DealsList: React.FC<DealsListProps> = ({
                   return (
                     <tr
                       key={deal.id}
-                      onClick={() => onSelectDeal(deal.id)}
+                      onClick={() => {
+                        if (isDealSelectionBlocked) {
+                          return;
+                        }
+                        onSelectDeal(deal.id);
+                      }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
+                          if (isDealSelectionBlocked) {
+                            return;
+                          }
                           onSelectDeal(deal.id);
                         }
                       }}
@@ -317,6 +333,9 @@ export const DealsList: React.FC<DealsListProps> = ({
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
+                                if (isDealSelectionBlocked) {
+                                  return;
+                                }
                                 if (isPinned) {
                                   void onUnpinDeal(deal.id);
                                 } else {
@@ -325,6 +344,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                               }}
                               aria-label={isPinned ? 'Открепить сделку' : 'Закрепить сделку'}
                               title={isPinned ? 'Открепить' : 'Закрепить'}
+                              disabled={isDealSelectionBlocked}
                               className={`icon-btn h-7 w-7 ${
                                 isPinned
                                   ? 'border-rose-200 text-rose-600 hover:bg-rose-50'
