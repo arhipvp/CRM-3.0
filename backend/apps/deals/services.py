@@ -166,6 +166,9 @@ class DealMergeService:
 
             for alias, model in self._RELATED_MODELS:
                 manager = self._manager_for(model)
+                # Важно: при merge сделок переносим только связь с deal.
+                # Поля Policy.client / Policy.insured_client не изменяем,
+                # т.к. страхователь полиса может отличаться от контактного лица сделки.
                 moved_counts[alias] = manager.filter(
                     deal_id__in=self._source_ids
                 ).update(deal=self.target_deal)

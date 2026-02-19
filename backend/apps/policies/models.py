@@ -46,13 +46,17 @@ class Policy(SoftDeleteModel):
         help_text="Client",
     )
 
+    # LEGACY/DEPRECATED:
+    # Поле оставлено только для обратной совместимости со старыми данными/API.
+    # В актуальной бизнес-логике источником "страхователя" является поле `client`.
+    # Новые сценарии должны ориентироваться на `client`, а не на `insured_client`.
     insured_client = models.ForeignKey(
         "clients.Client",
         related_name="insured_policies",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        help_text="Страхователь",
+        help_text="(Legacy) Insured client; kept for backward compatibility.",
     )
 
     is_vehicle = models.BooleanField(
@@ -157,6 +161,9 @@ class Policy(SoftDeleteModel):
         if client_id:
             if not self.client_id:
                 self.client_id = client_id
+            # LEGACY/DEPRECATED behavior:
+            # по историческим причинам подставляем insured_client из клиента сделки,
+            # чтобы не ломать старые интеграции и данные.
             if not self.insured_client_id:
                 self.insured_client_id = client_id
 

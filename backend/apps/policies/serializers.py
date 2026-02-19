@@ -16,7 +16,10 @@ class PolicySerializer(serializers.ModelSerializer):
     )
     client_name = serializers.CharField(source="client.name", read_only=True)
     insured_client_name = serializers.CharField(
-        source="insured_client.name", read_only=True, allow_null=True
+        source="insured_client.name",
+        read_only=True,
+        allow_null=True,
+        help_text="Legacy field, kept for backward compatibility.",
     )
     sales_channel_name = serializers.CharField(
         source="sales_channel.name", read_only=True, allow_null=True
@@ -85,6 +88,11 @@ class PolicySerializer(serializers.ModelSerializer):
             "payments_total",
             "deal_title",
         )
+        extra_kwargs = {
+            "insured_client": {
+                "help_text": "Legacy field, kept for backward compatibility."
+            },
+        }
 
     def validate_vin(self, value: str) -> str:
         """Убедиться, что VIN — 17 латинских символов или цифр."""
