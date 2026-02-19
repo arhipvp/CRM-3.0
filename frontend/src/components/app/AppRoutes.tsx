@@ -33,6 +33,7 @@ export interface AppRoutesProps {
   onClientEdit: (client: Client) => void;
   onClientDelete: (client: Client) => void;
   onClientMerge: (client: Client) => void;
+  onClientFindSimilar: (client: Client) => void;
   policies: Policy[];
   policiesList: Policy[];
   payments: Payment[];
@@ -146,6 +147,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onClientEdit,
   onClientDelete,
   onClientMerge,
+  onClientFindSimilar,
   policies,
   policiesList,
   payments,
@@ -300,6 +302,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onClientEdit={onClientEdit}
           onClientDelete={onClientDelete}
           onClientMerge={onClientMerge}
+          onClientFindSimilar={onClientFindSimilar}
         />
       }
     />

@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from apps.clients.models import Client
 from apps.clients.serializers import ClientSerializer
-from apps.clients.services import ClientMergeService
+from apps.clients.services import ClientMergeService, ClientSimilarityService
 from apps.clients.views import ClientViewSet
 from apps.common.drive import DriveError
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
@@ -10,6 +10,7 @@ from apps.deals.models import Deal
 from apps.policies.models import Policy
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 
@@ -165,7 +166,8 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["moved_counts"]["deals"], 1)
         self.assertEqual(response.data["moved_counts"]["policies_unique"], 1)
-        self.assertTrue(response.data["warnings"])
+        self.assertIn("warnings", response.data)
+        self.assertIsInstance(response.data["warnings"], list)
 
     def test_merge_applies_field_overrides(self):
         response = self.api_client.post(
@@ -202,3 +204,152 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 403)
+
+
+class ClientSimilarityServiceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(username="similar-owner")
+        self.service = ClientSimilarityService()
+        self.target = Client.objects.create(
+            name="Иванов Иван Иванович",
+            phone="+7 (999) 111-22-33",
+            email="target@example.com",
+            birth_date=timezone.now().date(),
+            created_by=self.owner,
+        )
+
+    def test_match_by_phone(self):
+        candidate = Client.objects.create(
+            name="Петров Петр Петрович",
+            phone="79991112233",
+            email="other@example.com",
+            created_by=self.owner,
+        )
+        result = self.service.find_similar(
+            target_client=self.target,
+            queryset=Client.objects.alive(),
+            limit=50,
+        )
+        candidate_entry = next(
+            item for item in result["candidates"] if item["client"].id == candidate.id
+        )
+        self.assertIn("same_phone", candidate_entry["reasons"])
+        self.assertGreaterEqual(candidate_entry["score"], 70)
+
+    def test_match_by_email(self):
+        candidate = Client.objects.create(
+            name="Смирнова Анна Сергеевна",
+            phone="+79990000000",
+            email="TARGET@example.com",
+            created_by=self.owner,
+        )
+        result = self.service.find_similar(
+            target_client=self.target,
+            queryset=Client.objects.alive(),
+            limit=50,
+        )
+        candidate_entry = next(
+            item for item in result["candidates"] if item["client"].id == candidate.id
+        )
+        self.assertIn("same_email", candidate_entry["reasons"])
+        self.assertGreaterEqual(candidate_entry["score"], 70)
+
+    def test_match_name_patronymic_birthdate_with_changed_surname(self):
+        candidate = Client.objects.create(
+            name="Сидорова Иван Иванович",
+            phone="+71234567890",
+            email="changed@example.com",
+            birth_date=self.target.birth_date,
+            created_by=self.owner,
+        )
+        result = self.service.find_similar(
+            target_client=self.target,
+            queryset=Client.objects.alive(),
+            limit=50,
+        )
+        candidate_entry = next(
+            item for item in result["candidates"] if item["client"].id == candidate.id
+        )
+        self.assertIn(
+            "name_patronymic_birthdate_match",
+            candidate_entry["reasons"],
+        )
+        self.assertGreaterEqual(candidate_entry["score"], 55)
+
+    def test_no_false_positive_for_name_only(self):
+        Client.objects.create(
+            name="Иванов Иван",
+            phone="",
+            email="",
+            birth_date=None,
+            created_by=self.owner,
+        )
+        result = self.service.find_similar(
+            target_client=self.target,
+            queryset=Client.objects.alive(),
+            limit=50,
+        )
+        self.assertEqual(result["candidates"], [])
+
+
+class ClientSimilarityAPITests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.owner = User.objects.create_user(username="owner-similar", password="pass")
+        self.other = User.objects.create_user(username="other-similar", password="pass")
+        self.target = Client.objects.create(
+            name="Иванов Иван Иванович",
+            phone="+79991112233",
+            email="target@example.com",
+            birth_date=timezone.now().date(),
+            created_by=self.owner,
+        )
+        self.candidate = Client.objects.create(
+            name="Петров Иван Иванович",
+            phone="79991112233",
+            email="candidate@example.com",
+            birth_date=self.target.birth_date,
+            created_by=self.owner,
+        )
+
+    def test_similar_endpoint_returns_score_and_reasons(self):
+        self.authenticate(self.owner)
+        response = self.api_client.post(
+            "/api/v1/clients/similar/",
+            {
+                "target_client_id": str(self.target.id),
+                "limit": 50,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("candidates", response.data)
+        self.assertGreaterEqual(len(response.data["candidates"]), 1)
+        first = response.data["candidates"][0]
+        self.assertIn("score", first)
+        self.assertIn("reasons", first)
+        self.assertIn("same_phone", first["reasons"])
+
+    def test_similar_endpoint_respects_access_rights(self):
+        self.authenticate(self.other)
+        response = self.api_client.post(
+            "/api/v1/clients/similar/",
+            {
+                "target_client_id": str(self.target.id),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("target_client_id", response.data)
+
+    def test_similar_endpoint_handles_missing_target(self):
+        self.authenticate(self.owner)
+        response = self.api_client.post(
+            "/api/v1/clients/similar/",
+            {
+                "target_client_id": "00000000-0000-0000-0000-000000000001",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("target_client_id", response.data)

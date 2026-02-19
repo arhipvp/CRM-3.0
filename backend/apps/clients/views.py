@@ -1,4 +1,4 @@
-from apps.clients.services import ClientMergeService
+from apps.clients.services import ClientMergeService, ClientSimilarityService
 from apps.common.drive import DriveError, ensure_client_folder
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
@@ -17,6 +17,7 @@ from .serializers import (
     ClientMergePreviewSerializer,
     ClientMergeSerializer,
     ClientSerializer,
+    ClientSimilarSerializer,
 )
 
 
@@ -185,6 +186,48 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             include_deleted=include_deleted,
         ).build_preview()
         return Response(preview)
+
+    @action(detail=False, methods=["post"], url_path="similar")
+    def similar(self, request):
+        serializer = ClientSimilarSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target_client_id = serializer.validated_data["target_client_id"]
+        limit = serializer.validated_data.get("limit", 50)
+        include_self = serializer.validated_data.get("include_self", False)
+
+        queryset = self.get_queryset()
+        target_client = queryset.filter(id=target_client_id).first()
+        if not target_client:
+            raise ValidationError(
+                {"target_client_id": "Клиент не найден или недоступен."}
+            )
+
+        result = ClientSimilarityService().find_similar(
+            target_client=target_client,
+            queryset=queryset,
+            limit=limit,
+            include_self=include_self,
+        )
+
+        candidates_payload = []
+        for item in result["candidates"]:
+            candidates_payload.append(
+                {
+                    "client": ClientSerializer(item["client"]).data,
+                    "score": item["score"],
+                    "confidence": item["confidence"],
+                    "reasons": item["reasons"],
+                    "matched_fields": item["matched_fields"],
+                }
+            )
+
+        return Response(
+            {
+                "target_client": ClientSerializer(target_client).data,
+                "candidates": candidates_payload,
+                "meta": result["meta"],
+            }
+        )
 
     def _resolve_merge_clients(self, data):
         target_id = str(data["target_client_id"])

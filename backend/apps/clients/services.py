@@ -16,6 +16,7 @@ from apps.deals.models import Deal
 from apps.policies.models import Policy
 from apps.users.models import User
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import Client
@@ -327,3 +328,189 @@ class ClientMergeService:
                 lambda deal=deal: ensure_deal_folder(deal),
                 description=f"ensure deal folder for {deal.pk}",
             )
+
+
+class ClientSimilarityService:
+    SCORE_VERSION = "v1"
+
+    SAME_PHONE_SCORE = 70
+    SAME_EMAIL_SCORE = 70
+    NAME_PATRONYMIC_BIRTHDATE_SCORE = 55
+    SAME_FULL_NAME_SCORE = 25
+    SAME_BIRTH_DATE_ONLY_SCORE = 10
+    MISSING_CONTACT_PENALTY = -10
+
+    @staticmethod
+    def _normalize_email(value: str | None) -> str:
+        return (value or "").strip().lower()
+
+    @staticmethod
+    def _normalize_name(value: str | None) -> str:
+        return " ".join((value or "").split()).strip().lower()
+
+    @staticmethod
+    def _name_tokens(value: str | None) -> list[str]:
+        return [
+            token
+            for token in ClientSimilarityService._normalize_name(value).split()
+            if token
+        ]
+
+    @staticmethod
+    def _extract_first_and_patronymic(tokens: list[str]) -> tuple[str, str]:
+        if len(tokens) >= 3:
+            return tokens[1], tokens[2]
+        if len(tokens) == 2:
+            return tokens[0], tokens[1]
+        return "", ""
+
+    @staticmethod
+    def _confidence(score: int) -> str:
+        if score >= 80:
+            return "high"
+        if score >= 50:
+            return "medium"
+        return "low"
+
+    def _candidate_window(self, target_client: Client, queryset):
+        target_tokens = self._name_tokens(target_client.name)
+        first_name = ""
+        if len(target_tokens) >= 2:
+            first_name = target_tokens[1]
+        elif target_tokens:
+            first_name = target_tokens[0]
+
+        has_metadata = (
+            ~Q(phone__exact="") | Q(email__isnull=False) | Q(birth_date__isnull=False)
+        )
+        name_hint = Q()
+        if first_name:
+            name_hint = Q(name__icontains=first_name)
+        return queryset.filter(has_metadata | name_hint).only(
+            "id",
+            "name",
+            "phone",
+            "email",
+            "birth_date",
+            "notes",
+            "created_at",
+            "updated_at",
+            "drive_folder_id",
+        )
+
+    def _score_pair(self, target_client: Client, candidate: Client) -> dict:
+        target_phone = _normalize_phone(target_client.phone)
+        candidate_phone = _normalize_phone(candidate.phone)
+        target_email = self._normalize_email(target_client.email)
+        candidate_email = self._normalize_email(candidate.email)
+        target_name = self._normalize_name(target_client.name)
+        candidate_name = self._normalize_name(candidate.name)
+        target_tokens = self._name_tokens(target_client.name)
+        candidate_tokens = self._name_tokens(candidate.name)
+        target_first, target_patronymic = self._extract_first_and_patronymic(
+            target_tokens
+        )
+        candidate_first, candidate_patronymic = self._extract_first_and_patronymic(
+            candidate_tokens
+        )
+        same_birth_date = bool(
+            target_client.birth_date
+            and candidate.birth_date
+            and target_client.birth_date == candidate.birth_date
+        )
+
+        score = 0
+        reasons: list[str] = []
+        matched_fields: dict[str, bool] = {}
+
+        if target_phone and candidate_phone and target_phone == candidate_phone:
+            score += self.SAME_PHONE_SCORE
+            reasons.append("same_phone")
+            matched_fields["phone"] = True
+
+        if target_email and candidate_email and target_email == candidate_email:
+            score += self.SAME_EMAIL_SCORE
+            reasons.append("same_email")
+            matched_fields["email"] = True
+
+        if (
+            same_birth_date
+            and target_first
+            and target_patronymic
+            and target_first == candidate_first
+            and target_patronymic == candidate_patronymic
+        ):
+            score += self.NAME_PATRONYMIC_BIRTHDATE_SCORE
+            reasons.append("name_patronymic_birthdate_match")
+            matched_fields["birth_date"] = True
+            matched_fields["first_name"] = True
+            matched_fields["patronymic"] = True
+        elif same_birth_date:
+            score += self.SAME_BIRTH_DATE_ONLY_SCORE
+            reasons.append("same_birth_date_only")
+            matched_fields["birth_date"] = True
+
+        if target_name and candidate_name and target_name == candidate_name:
+            score += self.SAME_FULL_NAME_SCORE
+            reasons.append("same_full_name")
+            matched_fields["full_name"] = True
+
+        if (not target_phone and not target_email) or (
+            not candidate_phone and not candidate_email
+        ):
+            score += self.MISSING_CONTACT_PENALTY
+            reasons.append("phone_or_email_missing_penalty")
+
+        score = max(0, min(100, score))
+
+        return {
+            "score": score,
+            "confidence": self._confidence(score),
+            "reasons": reasons,
+            "matched_fields": matched_fields,
+        }
+
+    def find_similar(
+        self,
+        *,
+        target_client: Client,
+        queryset,
+        limit: int = 50,
+        include_self: bool = False,
+    ) -> dict:
+        base_queryset = queryset
+        if not include_self:
+            base_queryset = base_queryset.exclude(pk=target_client.pk)
+        candidates_queryset = self._candidate_window(target_client, base_queryset)
+        candidates = list(candidates_queryset)
+
+        scored = []
+        for candidate in candidates:
+            score_result = self._score_pair(target_client, candidate)
+            if score_result["score"] <= 0:
+                continue
+            scored.append(
+                {
+                    "client": candidate,
+                    "score": score_result["score"],
+                    "confidence": score_result["confidence"],
+                    "reasons": score_result["reasons"],
+                    "matched_fields": score_result["matched_fields"],
+                }
+            )
+
+        scored.sort(
+            key=lambda item: (
+                -int(item["score"]),
+                str(getattr(item["client"], "name", "")).lower(),
+            )
+        )
+        limited = scored[:limit]
+        return {
+            "candidates": limited,
+            "meta": {
+                "total_checked": len(candidates),
+                "returned": len(limited),
+                "scoring_version": self.SCORE_VERSION,
+            },
+        }

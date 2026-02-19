@@ -100,3 +100,19 @@ class ClientMergePreviewSerializer(serializers.Serializer):
                 "Список исходных клиентов содержит дубликаты."
             )
         return attrs
+
+
+class ClientSimilarSerializer(serializers.Serializer):
+    target_client_id = serializers.UUIDField(help_text="ID клиента для поиска дублей.")
+    limit = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        max_value=200,
+        default=50,
+        help_text="Максимум кандидатов в ответе.",
+    )
+    include_self = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Включать ли самого клиента в список кандидатов.",
+    )

@@ -1,7 +1,13 @@
 import { API_BASE, request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapClient, mapUser } from './mappers';
-import type { Client, ClientMergePreviewResponse, ClientMergeResponse, User } from '../types';
+import type {
+  Client,
+  ClientMergePreviewResponse,
+  ClientMergeResponse,
+  ClientSimilarResponse,
+  User,
+} from '../types';
 
 export async function fetchClientsWithPagination(
   filters?: FilterParams,
@@ -239,5 +245,67 @@ export async function previewClientMerge(data: {
       ? payload.drive_plan.map((value) => value as Record<string, unknown>)
       : [],
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
+  };
+}
+
+export async function fetchSimilarClients(data: {
+  targetClientId: string;
+  limit?: number;
+  includeSelf?: boolean;
+}): Promise<ClientSimilarResponse> {
+  const payload = await request<Record<string, unknown>>('/clients/similar/', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_client_id: data.targetClientId,
+      limit: data.limit ?? 50,
+      include_self: data.includeSelf ?? false,
+    }),
+  });
+
+  const targetRaw = payload.target_client as Record<string, unknown> | undefined;
+  if (!targetRaw) {
+    throw new Error('Similar clients response is missing target client');
+  }
+
+  const candidatesRaw = Array.isArray(payload.candidates)
+    ? (payload.candidates as Array<Record<string, unknown>>)
+    : [];
+  const metaRaw =
+    payload.meta && typeof payload.meta === 'object'
+      ? (payload.meta as Record<string, unknown>)
+      : {};
+
+  return {
+    targetClient: mapClient(targetRaw),
+    candidates: candidatesRaw
+      .map((candidate) => {
+        const clientRaw = candidate.client as Record<string, unknown> | undefined;
+        if (!clientRaw) {
+          return null;
+        }
+        const confidenceRaw = candidate.confidence;
+        const confidence: 'high' | 'medium' | 'low' =
+          confidenceRaw === 'high' || confidenceRaw === 'medium' || confidenceRaw === 'low'
+            ? confidenceRaw
+            : 'low';
+        return {
+          client: mapClient(clientRaw),
+          score: Number(candidate.score ?? 0),
+          confidence,
+          reasons: Array.isArray(candidate.reasons)
+            ? candidate.reasons.map((value) => String(value))
+            : [],
+          matchedFields:
+            candidate.matched_fields && typeof candidate.matched_fields === 'object'
+              ? (candidate.matched_fields as Record<string, boolean>)
+              : {},
+        };
+      })
+      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null),
+    meta: {
+      totalChecked: Number(metaRaw.total_checked ?? 0),
+      returned: Number(metaRaw.returned ?? 0),
+      scoringVersion: String(metaRaw.scoring_version ?? 'v1'),
+    },
   };
 }

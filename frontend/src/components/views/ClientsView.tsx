@@ -25,6 +25,7 @@ interface ClientsViewProps {
   onClientEdit?: (client: Client) => void;
   onClientDelete?: (client: Client) => void;
   onClientMerge?: (client: Client) => void;
+  onClientFindSimilar?: (client: Client) => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -33,6 +34,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onClientEdit,
   onClientDelete,
   onClientMerge,
+  onClientFindSimilar,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterParams>({});
@@ -214,7 +216,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     </button>
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
-                    {onClientEdit || onClientDelete || onClientMerge ? (
+                    {onClientEdit || onClientDelete || onClientMerge || onClientFindSimilar ? (
                       <div className={TABLE_ACTIONS_CLASS_COL}>
                         {onClientEdit && (
                           <button
@@ -244,6 +246,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                             aria-label={`Объединить клиента ${client.name}`}
                           >
                             Объединить
+                          </button>
+                        )}
+                        {onClientFindSimilar && (
+                          <button
+                            type="button"
+                            onClick={() => onClientFindSimilar(client)}
+                            className={BTN_SM_SECONDARY}
+                            aria-label={`Найти похожих клиентов для ${client.name}`}
+                          >
+                            Объединить похожих
                           </button>
                         )}
                       </div>

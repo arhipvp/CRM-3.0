@@ -12,6 +12,7 @@ import { PanelMessage } from './components/PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from './components/common/buttonStyles';
 import { FormActions } from './components/common/forms/FormActions';
 import { FormModal } from './components/common/modal/FormModal';
+import { SimilarClientsModal } from './components/views/SimilarClientsModal';
 import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { DealFormValues } from './components/forms/DealForm';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
@@ -23,6 +24,7 @@ import {
   createClient,
   updateClient,
   deleteClient,
+  fetchSimilarClients,
   mergeClients,
   previewClientMerge,
   createDeal,
@@ -69,6 +71,7 @@ import type { FilterParams } from './api';
 import {
   Client,
   ClientMergePreviewResponse,
+  ClientSimilarityCandidate,
   Deal,
   FinancialRecord,
   Payment,
@@ -235,6 +238,10 @@ const AppContent: React.FC = () => {
     useState<FinancialRecordModalState | null>(null);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [clientDeleteTarget, setClientDeleteTarget] = useState<Client | null>(null);
+  const [similarClientTargetId, setSimilarClientTargetId] = useState<string | null>(null);
+  const [similarCandidates, setSimilarCandidates] = useState<ClientSimilarityCandidate[]>([]);
+  const [isSimilarClientsLoading, setIsSimilarClientsLoading] = useState(false);
+  const [similarClientsError, setSimilarClientsError] = useState<string | null>(null);
   const [mergeClientTargetId, setMergeClientTargetId] = useState<string | null>(null);
   const [mergeSources, setMergeSources] = useState<string[]>([]);
   const [mergeSearch, setMergeSearch] = useState('');
@@ -828,20 +835,51 @@ const AppContent: React.FC = () => {
     }
   }, [addNotification, clientDeleteTarget, setError, setIsSyncing, updateAppData]);
 
-  const handleClientMergeRequest = useCallback((client: Client) => {
-    setMergeClientTargetId(client.id);
-    setMergeSources([]);
-    setMergeSearch('');
-    setMergeError(null);
-    setClientMergePreview(null);
-    setIsClientMergePreviewConfirmed(false);
-    setClientMergeStep('select');
-    setClientMergeFieldOverrides({
-      name: client.name ?? '',
-      phone: client.phone ?? '',
-      email: client.email ?? '',
-      notes: client.notes ?? '',
-    });
+  const handleClientMergeRequest = useCallback(
+    (client: Client, preselectedSources: string[] = []) => {
+      setMergeClientTargetId(client.id);
+      setMergeSources(preselectedSources);
+      setMergeSearch('');
+      setMergeError(null);
+      setClientMergePreview(null);
+      setIsClientMergePreviewConfirmed(false);
+      setClientMergeStep('select');
+      setClientMergeFieldOverrides({
+        name: client.name ?? '',
+        phone: client.phone ?? '',
+        email: client.email ?? '',
+        notes: client.notes ?? '',
+      });
+    },
+    [],
+  );
+
+  const handleClientFindSimilarRequest = useCallback(async (client: Client) => {
+    setSimilarClientTargetId(client.id);
+    setSimilarCandidates([]);
+    setSimilarClientsError(null);
+    setIsSimilarClientsLoading(true);
+    try {
+      const result = await fetchSimilarClients({
+        targetClientId: client.id,
+        limit: 50,
+      });
+      const sortedCandidates = [...result.candidates].sort(
+        (left, right) => right.score - left.score,
+      );
+      setSimilarCandidates(sortedCandidates);
+    } catch (err) {
+      setSimilarClientsError(formatErrorMessage(err, 'Не удалось найти похожих клиентов.'));
+    } finally {
+      setIsSimilarClientsLoading(false);
+    }
+  }, []);
+
+  const closeSimilarClientsModal = useCallback(() => {
+    setSimilarClientTargetId(null);
+    setSimilarCandidates([]);
+    setSimilarClientsError(null);
+    setIsSimilarClientsLoading(false);
   }, []);
 
   const toggleMergeSource = useCallback((clientId: string) => {
@@ -1026,6 +1064,20 @@ const AppContent: React.FC = () => {
   const mergeTargetClient = mergeClientTargetId
     ? (clients.find((client) => client.id === mergeClientTargetId) ?? null)
     : null;
+  const similarTargetClient = similarClientTargetId
+    ? (clients.find((client) => client.id === similarClientTargetId) ?? null)
+    : null;
+
+  const handleMergeFromSimilar = useCallback(
+    (candidateClientId: string) => {
+      if (!similarTargetClient) {
+        return;
+      }
+      closeSimilarClientsModal();
+      handleClientMergeRequest(similarTargetClient, [candidateClientId]);
+    },
+    [closeSimilarClientsModal, handleClientMergeRequest, similarTargetClient],
+  );
 
   const handleAddDeal = useCallback(
     async (data: DealFormValues) => {
@@ -3373,6 +3425,7 @@ const AppContent: React.FC = () => {
         onClientEdit={handleClientEditRequest}
         onClientDelete={handleClientDeleteRequest}
         onClientMerge={handleClientMergeRequest}
+        onClientFindSimilar={handleClientFindSimilarRequest}
         policies={policies}
         policiesList={policiesList}
         payments={payments}
@@ -3636,6 +3689,15 @@ const AppContent: React.FC = () => {
           </form>
         </FormModal>
       )}
+      <SimilarClientsModal
+        isOpen={Boolean(similarClientTargetId)}
+        targetClient={similarTargetClient}
+        candidates={similarCandidates}
+        isLoading={isSimilarClientsLoading}
+        error={similarClientsError}
+        onClose={closeSimilarClientsModal}
+        onMerge={handleMergeFromSimilar}
+      />
       {mergeTargetClient && (
         <FormModal
           isOpen
