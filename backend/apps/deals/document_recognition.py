@@ -101,6 +101,31 @@ DL_SERIES_RE = re.compile(r"^[A-ZА-ЯЁ0-9]{4,10}$")
 DL_NUMBER_RE = re.compile(r"^\d{5,10}$")
 STS_SERIES_RE = re.compile(r"^\d{2}[А-ЯЁA-Z]{2}$")
 STS_NUMBER_RE = re.compile(r"^\d{6}$")
+STS_SERIES_NUMBER_RE = re.compile(r"\b(\d{2})\s?(\d{2})\s?(\d{6})\b")
+STS_OWNER_HEADER_RE = re.compile(r"СОБСТВЕННИК", re.IGNORECASE)
+STS_PLATE_RE = re.compile(
+    r"\b[АВЕКМНОРСТУХABEKMHOPCTYX]\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\d{2,3}\b",
+    re.IGNORECASE,
+)
+STS_ISSUE_DATE_RE = re.compile(
+    r"ДАТА\s+ВЫДАЧИ\s*([0-3]?\d[./-][01]?\d[./-]\d{4})", re.IGNORECASE
+)
+STS_GIBDD_CODE_RE = re.compile(
+    r"КОД\s+ПОДРАЗДЕЛЕНИЯ\s+ГИБДД\s*([0-9]{5,8})", re.IGNORECASE
+)
+STS_BRAND_RE = re.compile(r"МАРКА\s*([A-ZА-ЯЁ0-9][A-ZА-ЯЁ0-9 .-]+)", re.IGNORECASE)
+STS_MODEL_RE = re.compile(r"МОДЕЛ[ЬЯ]\s*([A-ZА-ЯЁ0-9][A-ZА-ЯЁ0-9 .-]+)", re.IGNORECASE)
+STS_TYPE_RE = re.compile(r"ТИП\s*ТС\s*([А-ЯЁA-Z0-9 .,-]+)", re.IGNORECASE)
+STS_YEAR_RE = re.compile(r"ГОД\s+ВЫПУСКА\s*ТС?\s*([12][0-9]{3})", re.IGNORECASE)
+STS_COLOR_RE = re.compile(r"ЦВЕТ\s*([А-ЯЁA-Z][А-ЯЁA-Z .-]+)", re.IGNORECASE)
+STS_MAX_WEIGHT_RE = re.compile(
+    r"МАКС\.?\s*МАСС[АЫ][^0-9]{0,12}([1-9][0-9]{2,4})",
+    re.IGNORECASE,
+)
+STS_UNLADEN_WEIGHT_RE = re.compile(
+    r"СНАРЯЖЕННОМ\s+СОСТОЯНИИ[^0-9]{0,12}([1-9][0-9]{2,4})",
+    re.IGNORECASE,
+)
 PLATE_NUMBER_RE = re.compile(
     r"^[АВЕКМНОРСТУХABEKMHOPCTYX]\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\d{2,3}$"
 )
@@ -426,6 +451,101 @@ def _infer_passport_data_from_text(text: str) -> dict[str, Any]:
     return {k: v for k, v in inferred.items() if v not in ("", None)}
 
 
+def _extract_owner_from_sts_lines(lines: list[str]) -> str:
+    owner_start = -1
+    for idx, line in enumerate(lines):
+        if STS_OWNER_HEADER_RE.search(line):
+            owner_start = idx
+            break
+    if owner_start < 0:
+        return ""
+
+    owner_parts: list[str] = []
+    for line in lines[owner_start + 1 :]:
+        upper = line.upper()
+        if (
+            "СУБЪЕКТ" in upper
+            or "ОСОБЫЕ ОТМЕТКИ" in upper
+            or "КОД ПОДРАЗДЕЛЕНИЯ" in upper
+        ):
+            break
+        if not re.fullmatch(r"[А-ЯЁA-Z -]{2,}", line.strip()):
+            continue
+        if re.fullmatch(r"[A-Z -]{2,}", line.strip()):
+            continue
+        owner_parts.append(re.sub(r"\s+", " ", line.strip().upper()))
+        if len(owner_parts) >= 3:
+            break
+    return " ".join(owner_parts).strip()
+
+
+def _infer_sts_data_from_text(text: str) -> dict[str, Any]:
+    if not text.strip():
+        return {}
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    upper_text = "\n".join(lines).upper()
+    inferred: dict[str, Any] = {}
+
+    series_number_match = STS_SERIES_NUMBER_RE.search(upper_text.replace("\n", " "))
+    if series_number_match:
+        p1, p2, number = series_number_match.groups()
+        inferred["sts_series"] = f"{p1}{p2}"
+        inferred["sts_number"] = number
+
+    plate_match = STS_PLATE_RE.search(upper_text)
+    if plate_match:
+        inferred["plate_number"] = plate_match.group(0).upper()
+
+    vin_candidates = re.findall(r"[A-Z0-9-]{8,20}", upper_text)
+    for vin_candidate in vin_candidates:
+        normalized_vin = _normalize_vin(vin_candidate)
+        if VIN_RE.fullmatch(normalized_vin):
+            inferred["vin"] = normalized_vin
+            break
+
+    brand_match = STS_BRAND_RE.search(upper_text)
+    if brand_match:
+        inferred["vehicle_brand"] = re.sub(r"\s+", " ", brand_match.group(1)).strip()
+
+    model_match = STS_MODEL_RE.search(upper_text)
+    if model_match:
+        inferred["vehicle_model"] = re.sub(r"\s+", " ", model_match.group(1)).strip()
+
+    type_match = STS_TYPE_RE.search(upper_text)
+    if type_match:
+        inferred["vehicle_type"] = re.sub(r"\s+", " ", type_match.group(1)).strip()
+
+    year_match = STS_YEAR_RE.search(upper_text)
+    if year_match:
+        inferred["year"] = year_match.group(1)
+
+    color_match = STS_COLOR_RE.search(upper_text)
+    if color_match:
+        inferred["color"] = re.sub(r"\s+", " ", color_match.group(1)).strip()
+
+    max_weight_match = STS_MAX_WEIGHT_RE.search(upper_text)
+    if max_weight_match:
+        inferred["max_weight"] = max_weight_match.group(1)
+
+    unladen_weight_match = STS_UNLADEN_WEIGHT_RE.search(upper_text)
+    if unladen_weight_match:
+        inferred["unladen_weight"] = unladen_weight_match.group(1)
+
+    issue_date_match = STS_ISSUE_DATE_RE.search(upper_text)
+    if issue_date_match:
+        inferred["issue_date"] = issue_date_match.group(1)
+
+    gibdd_match = STS_GIBDD_CODE_RE.search(upper_text)
+    if gibdd_match:
+        inferred["issued_by"] = gibdd_match.group(1)
+
+    owner_name = _extract_owner_from_sts_lines(lines)
+    if owner_name:
+        inferred["owner"] = owner_name
+
+    return {k: v for k, v in inferred.items() if v not in ("", None)}
+
+
 def _merge_missing_data(
     existing: dict[str, Any], inferred: dict[str, Any]
 ) -> dict[str, Any]:
@@ -631,7 +751,9 @@ def _validate_sts_fields(
             continue
         if key == "sts_series":
             normalized = re.sub(r"[^A-ZА-ЯЁ0-9]", "", str(text).upper())
-            if STS_SERIES_RE.fullmatch(normalized):
+            if STS_SERIES_RE.fullmatch(normalized) or re.fullmatch(
+                r"\d{4}", normalized
+            ):
                 validated[key] = normalized
             else:
                 _reject_field(rejected, warnings, key, "некорректная серия СТС")
@@ -742,6 +864,9 @@ def _postprocess_data(
                     "исходное значение отклонено и заменено по OCR",
                 )
             payload["full_name"] = inferred["full_name"]
+    if normalized_type == "sts" and extracted_text:
+        inferred_sts = _infer_sts_data_from_text(extracted_text)
+        payload = _merge_missing_data(payload, inferred_sts)
 
     if normalized_type == "passport":
         validated, rejected, local_warnings = _validate_passport_fields(

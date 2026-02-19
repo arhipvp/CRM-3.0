@@ -312,6 +312,59 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
     @patch("apps.deals.document_recognition._resolve_openrouter_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_sts_data_is_inferred_from_extracted_text_when_empty(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        client.chat.completions.create.return_value = _response_with_json(
+            {
+                "document_type": "sts",
+                "confidence": 0.9,
+                "warnings": [],
+                "data": {},
+                "extracted_text": (
+                    "ГОСУДАРСТВЕННЫЙ РЕГИСТРАЦИОННЫЙ НОМЕР\n"
+                    "C116CB797\n"
+                    "МАРКА HONDA STEPWGN\n"
+                    "МОДЕЛЬ HONDA STEPWGN\n"
+                    "ТИП ТС ЛЕГКОВОЙ ПРОЧЕЕ\n"
+                    "ГОД ВЫПУСКА ТС 2018\n"
+                    "ЦВЕТ БЕЛЫЙ\n"
+                    "ТЕХНИЧЕСКИ ДОПУСТИМАЯ МАКС. МАССА, КГ 2163\n"
+                    "МАССА В СНАРЯЖЕННОМ СОСТОЯНИИ, КГ 1680\n"
+                    "99 72 941313\n"
+                    "СОБСТВЕННИК\n"
+                    "КАЛАШНИКОВ\n"
+                    "МАКСИМ\n"
+                    "МИХАЙЛОВИЧ\n"
+                    "КОД ПОДРАЗДЕЛЕНИЯ ГИБДД 1145044\n"
+                    "ДАТА ВЫДАЧИ 15.03.2025\n"
+                ),
+            }
+        )
+        openai_mock.return_value = client
+
+        payload = recognize_document_from_file(b"raw-image", "sts.jpg")
+
+        self.assertEqual(payload.normalized_type, "sts")
+        self.assertEqual(payload.data.get("sts_series"), "9972")
+        self.assertEqual(payload.data.get("sts_number"), "941313")
+        self.assertEqual(payload.data.get("plate_number"), "C116CB797")
+        self.assertEqual(payload.data.get("vehicle_brand"), "HONDA STEPWGN")
+        self.assertEqual(payload.data.get("vehicle_model"), "HONDA STEPWGN")
+        self.assertEqual(payload.data.get("year"), 2018)
+        self.assertEqual(payload.data.get("issue_date"), "2025-03-15")
+        self.assertEqual(payload.data.get("issued_by"), "1145044")
+        self.assertEqual(payload.data.get("owner"), "КАЛАШНИКОВ МАКСИМ МИХАЙЛОВИЧ")
+
+    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_passport_full_name_ignores_service_words(
         self,
         render_mock: Mock,

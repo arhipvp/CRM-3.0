@@ -198,6 +198,7 @@ describe('useDealDriveFiles', () => {
             validation: { accepted: ['number'], rejected: {} },
             extractedText: '',
           },
+          transcript: '{"document_type":"passport"}',
           error: null,
         },
       ],
@@ -218,6 +219,9 @@ describe('useDealDriveFiles', () => {
     await waitFor(() => {
       expect(recognizeDealDocumentsMock).toHaveBeenCalledWith(deal.id, [file.id]);
       expect(resultRef.current?.documentRecognitionResults[0]?.doc?.rawType).toBe('passport');
+      expect(resultRef.current?.documentRecognitionResults[0]?.transcript).toBe(
+        '{"document_type":"passport"}',
+      );
       expect(onRefreshNotes).toHaveBeenCalledTimes(1);
     });
   });

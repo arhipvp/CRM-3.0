@@ -425,6 +425,10 @@ export async function recognizeDealDocuments(
       fileId: String(item.fileId ?? item.file_id ?? ''),
       fileName: item.fileName === undefined ? null : String(item.fileName ?? item.file_name ?? ''),
       status,
+      transcript:
+        item.transcript === undefined
+          ? null
+          : String(item.transcript ?? item.transcript_text ?? ''),
       doc: rawDoc
         ? {
             rawType: rawType || 'unknown',

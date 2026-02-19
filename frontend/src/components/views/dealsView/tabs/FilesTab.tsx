@@ -409,6 +409,14 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               {result.error?.message && result.status === 'error' && (
                 <p className="text-[11px] text-rose-600">Ошибка: {result.error.message}</p>
               )}
+              {result.transcript && (
+                <details className="text-[10px] text-slate-400">
+                  <summary>Показать транскрипт</summary>
+                  <pre className="whitespace-pre-wrap text-[11px] leading-snug">
+                    {result.transcript}
+                  </pre>
+                </details>
+              )}
             </div>
           ))}
         </div>

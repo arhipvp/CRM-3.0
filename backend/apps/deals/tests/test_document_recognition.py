@@ -94,11 +94,15 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         self.assertEqual(item["doc"]["confidence"], 0.93)
         self.assertEqual(item["doc"]["validation"]["accepted"], ["number", "series"])
         self.assertEqual(item["doc"]["validation"]["rejected"], {})
+        self.assertEqual(item["transcript"], '{"document_type":"passport"}')
         self.assertIsNone(item["error"])
         self.assertTrue(response.data.get("noteId"))
         note = Note.objects.get(pk=response.data["noteId"])
         self.assertIn("Распознавание документов (ИИ)", note.body)
-        self.assertIn("passport.jpg", note.body)
+        self.assertIn("series: 1234", note.body)
+        self.assertIn("number: 567890", note.body)
+        self.assertNotIn("1. passport.jpg", note.body)
+        self.assertNotIn("Статус:", note.body)
         self.assertNotIn("Transcript:", note.body)
 
     def test_recognize_documents_returns_partial_errors(self):
@@ -152,10 +156,79 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         statuses = [item["status"] for item in response.data["results"]]
         self.assertIn("parsed", statuses)
         self.assertIn("error", statuses)
+        parsed_item = next(
+            item for item in response.data["results"] if item["status"] == "parsed"
+        )
+        self.assertEqual(parsed_item["transcript"], "ok")
         error_item = next(
             item for item in response.data["results"] if item["status"] == "error"
         )
         self.assertEqual(error_item["error"]["code"], "internal_error")
+
+    def test_recognize_documents_note_aggregates_conflicting_values(self):
+        self.authenticate(self.seller)
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+        drive_files = [
+            {"id": "file-1", "name": "sts-front.jpg", "is_folder": False},
+            {"id": "file-2", "name": "sts-back.jpg", "is_folder": False},
+        ]
+
+        with (
+            patch(
+                "apps.deals.view_mixins.document_recognition.list_drive_folder_contents",
+                return_value=drive_files,
+            ),
+            patch(
+                "apps.deals.view_mixins.document_recognition.download_drive_file",
+                side_effect=[b"front", b"back"],
+            ),
+            patch(
+                "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
+            ) as recognize_mock,
+        ):
+            recognize_mock.side_effect = [
+                type(
+                    "Payload",
+                    (),
+                    {
+                        "document_type": "sts",
+                        "normalized_type": "sts",
+                        "confidence": 0.92,
+                        "warnings": [],
+                        "accepted_fields": ["owner"],
+                        "rejected_fields": {},
+                        "data": {"owner": "ИВАНОВ ИВАН ИВАНОВИЧ"},
+                        "extracted_text": "owner 1",
+                        "transcript": "t1",
+                    },
+                )(),
+                type(
+                    "Payload",
+                    (),
+                    {
+                        "document_type": "sts",
+                        "normalized_type": "sts",
+                        "confidence": 0.95,
+                        "warnings": [],
+                        "accepted_fields": ["owner"],
+                        "rejected_fields": {},
+                        "data": {"owner": "ПЕТРОВ ПЕТР ПЕТРОВИЧ"},
+                        "extracted_text": "owner 2",
+                        "transcript": "t2",
+                    },
+                )(),
+            ]
+
+            response = self.api_client.post(
+                f"/api/v1/deals/{self.deal.id}/recognize-documents/",
+                {"file_ids": ["file-1", "file-2"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        note = Note.objects.get(pk=response.data["noteId"])
+        self.assertIn("owner: ИВАНОВ ИВАН ИВАНОВИЧ", note.body)
+        self.assertIn("owner: ПЕТРОВ ПЕТР ПЕТРОВИЧ", note.body)
 
     def test_recognize_documents_marks_missing_file_as_error(self):
         self.authenticate(self.seller)

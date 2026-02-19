@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import logging
+from collections import OrderedDict
 from typing import Any
 
 from apps.common.drive import (
@@ -100,6 +100,7 @@ class DealDocumentRecognitionMixin:
                         "fileId": file_id,
                         "status": "error",
                         "doc": None,
+                        "transcript": None,
                         "error": {
                             "code": "file_not_found",
                             "message": "Файл не найден в папке сделки.",
@@ -133,6 +134,7 @@ class DealDocumentRecognitionMixin:
                                 getattr(recognition, "extracted_text", "") or ""
                             ),
                         },
+                        "transcript": str(getattr(recognition, "transcript", "") or ""),
                         "error": None,
                     }
                 )
@@ -144,6 +146,7 @@ class DealDocumentRecognitionMixin:
                         "fileName": file_name,
                         "status": "error",
                         "doc": None,
+                        "transcript": None,
                         "error": {
                             "code": "recognition_error",
                             "message": str(exc),
@@ -160,6 +163,7 @@ class DealDocumentRecognitionMixin:
                         "fileName": file_name,
                         "status": "error",
                         "doc": None,
+                        "transcript": None,
                         "error": {
                             "code": "internal_error",
                             "message": "Внутренняя ошибка распознавания документа.",
@@ -185,40 +189,28 @@ class DealDocumentRecognitionMixin:
         self, deal, user, results: list[dict[str, Any]]
     ):
         title = "Распознавание документов (ИИ)"
-        blocks: list[str] = [title, ""]
-        for index, item in enumerate(results, start=1):
-            file_label = item.get("fileName") or item.get("fileId") or f"Файл {index}"
-            blocks.append(f"{index}. {file_label}")
-            blocks.append(f"Статус: {item.get('status')}")
+        aggregated_fields: OrderedDict[str, list[str]] = OrderedDict()
+        for item in results:
+            if item.get("status") != "parsed":
+                continue
             doc = item.get("doc") if isinstance(item.get("doc"), dict) else {}
-            if doc.get("rawType"):
-                blocks.append(f"Тип документа: {doc.get('rawType')}")
-            if doc.get("normalizedType"):
-                blocks.append(f"Категория CRM: {doc.get('normalizedType')}")
-            if doc.get("confidence") is not None:
-                blocks.append(f"Уверенность: {doc.get('confidence')}")
-            if doc.get("warnings"):
-                blocks.append(
-                    "Предупреждения: "
-                    + ", ".join(str(warning) for warning in doc.get("warnings", []))
-                )
-            fields = doc.get("fields") if isinstance(doc.get("fields"), dict) else None
-            if fields is not None:
-                human_data = self._format_human_data(fields)
-                if human_data:
-                    blocks.append(f"Ключевые данные (текстом):\n{human_data}")
-                blocks.append(
-                    "Данные:\n"
-                    + json.dumps(fields, ensure_ascii=False, indent=2, default=str)
-                )
-            if doc.get("extractedText"):
-                blocks.append(f"Распознанный текст:\n{doc.get('extractedText')}")
-            error = item.get("error") if isinstance(item.get("error"), dict) else {}
-            if error.get("message"):
-                blocks.append(f"Ошибка: {error.get('message')}")
-            blocks.append("")
+            fields = doc.get("fields") if isinstance(doc.get("fields"), dict) else {}
+            for key, value in fields.items():
+                field_values = self._normalize_field_values(value)
+                if not field_values:
+                    continue
+                if key not in aggregated_fields:
+                    aggregated_fields[key] = []
+                for field_value in field_values:
+                    if field_value not in aggregated_fields[key]:
+                        aggregated_fields[key].append(field_value)
 
-        note_body = "\n".join(blocks).strip()
+        lines: list[str] = [title, ""]
+        for key, values in aggregated_fields.items():
+            for value in values:
+                lines.append(f"{key}: {value}")
+
+        note_body = "\n".join(lines).strip()
         if not note_body:
             return None
         author_name = ""
@@ -231,32 +223,26 @@ class DealDocumentRecognitionMixin:
             author_name=author_name,
         )
 
-    def _format_human_data(self, data: Any) -> str:
-        if not isinstance(data, dict):
-            return ""
-        lines: list[str] = []
-        for key, value in data.items():
+    def _normalize_field_values(self, value: Any) -> list[str]:
+        values: list[str] = []
+        if isinstance(value, list):
+            joined = ", ".join(
+                normalized
+                for item in value
+                for normalized in self._normalize_field_values(item)
+            ).strip(", ")
+            return [joined] if joined else []
+        if isinstance(value, dict):
+            parts = []
             if value is None:
-                continue
-            if isinstance(value, str):
-                text_value = value.strip()
-                if not text_value:
-                    continue
-                lines.append(f"- {key}: {text_value}")
-                continue
-            if isinstance(value, list):
-                values = [str(item).strip() for item in value if str(item).strip()]
-                if values:
-                    lines.append(f"- {key}: {', '.join(values)}")
-                continue
-            if isinstance(value, dict):
-                nested_parts = []
-                for nested_key, nested_value in value.items():
-                    nested_text = str(nested_value).strip()
-                    if nested_text:
-                        nested_parts.append(f"{nested_key}={nested_text}")
-                if nested_parts:
-                    lines.append(f"- {key}: {', '.join(nested_parts)}")
-                continue
-            lines.append(f"- {key}: {value}")
-        return "\n".join(lines)
+                return []
+            for nested_key, nested_value in value.items():
+                nested_values = self._normalize_field_values(nested_value)
+                if nested_values:
+                    parts.extend(f"{nested_key}={nested}" for nested in nested_values)
+            return [", ".join(parts)] if parts else []
+        text_value = str(value).strip()
+        if not text_value:
+            return []
+        values.append(text_value)
+        return values
