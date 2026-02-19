@@ -1,7 +1,7 @@
 from apps.clients.models import Client
 from apps.common.drive import DriveError
 from apps.deals.models import Deal
-from apps.deals.serializers import DealMergeSerializer
+from apps.deals.serializers import DealMergePreviewSerializer, DealMergeSerializer
 from apps.deals.services import DealMergeService
 from apps.users.models import AuditLog
 from rest_framework import status
@@ -11,51 +11,50 @@ from rest_framework.response import Response
 
 
 class DealMergeMixin:
+    @action(detail=False, methods=["post"], url_path="merge/preview")
+    def merge_preview(self, request):
+        serializer = DealMergePreviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        target_deal, source_deals = self._resolve_deals_for_merge(
+            serializer.validated_data
+        )
+        resulting_client = self._resolve_resulting_client(
+            target_deal=target_deal,
+            source_deals=source_deals,
+            resulting_client_id=serializer.validated_data.get("resulting_client_id"),
+        )
+        include_deleted = serializer.validated_data.get("include_deleted", True)
+
+        for deal in (target_deal, *source_deals):
+            if not hasattr(self, "_can_merge") or not self._can_merge(
+                request.user, deal
+            ):
+                raise PermissionDenied("Only deal owner or admin can merge deals.")
+
+        preview = DealMergeService(
+            target_deal=target_deal,
+            source_deals=source_deals,
+            resulting_client=resulting_client,
+            include_deleted=include_deleted,
+        ).build_preview()
+        return Response(preview)
+
     @action(detail=False, methods=["post"], url_path="merge")
     def merge(self, request):
         serializer = DealMergeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        target_id = str(serializer.validated_data["target_deal_id"])
-        source_ids = [
-            str(value) for value in serializer.validated_data["source_deal_ids"]
-        ]
-        combined_ids = {target_id, *source_ids}
-
-        deals_qs = (
-            Deal.objects.with_deleted()
-            .select_related("client")
-            .filter(id__in=combined_ids)
+        target_deal, source_deals = self._resolve_deals_for_merge(
+            serializer.validated_data
         )
-        deals = list(deals_qs)
-        if len(deals) != len(combined_ids):
-            found_ids = {str(deal.id) for deal in deals}
-            missing = sorted(combined_ids - found_ids)
-            raise ValidationError(
-                {"detail": f"Some deals were not found: {', '.join(missing)}"}
-            )
-
-        deals_by_id = {str(deal.id): deal for deal in deals}
-        target_deal = deals_by_id.get(target_id)
-        if not target_deal:
-            raise ValidationError({"target_deal_id": "Target deal not found."})
-        if target_deal.deleted_at is not None:
-            raise ValidationError({"target_deal_id": "Target deal is deleted."})
-
-        source_deals = [deals_by_id[source_id] for source_id in source_ids]
-        resulting_client_id = serializer.validated_data.get("resulting_client_id")
-        resulting_client = None
-        if resulting_client_id:
-            resulting_client = Client.objects.filter(id=resulting_client_id).first()
-            if not resulting_client:
-                raise ValidationError({"resulting_client_id": "Client not found."})
-        elif target_deal.client:
-            resulting_client = target_deal.client
-        for deal in source_deals:
-            if deal.deleted_at is not None:
-                raise ValidationError(
-                    {"source_deal_ids": "Source deals must not be deleted."}
-                )
+        resulting_client = self._resolve_resulting_client(
+            target_deal=target_deal,
+            source_deals=source_deals,
+            resulting_client_id=serializer.validated_data.get("resulting_client_id"),
+        )
+        include_deleted = serializer.validated_data.get("include_deleted", True)
+        preview_snapshot_id = serializer.validated_data.get("preview_snapshot_id", "")
         for deal in (target_deal, *source_deals):
             if not hasattr(self, "_can_merge") or not self._can_merge(
                 request.user, deal
@@ -69,6 +68,7 @@ class DealMergeMixin:
                 source_deals=source_deals,
                 resulting_client=resulting_client,
                 actor=actor,
+                include_deleted=include_deleted,
             ).merge()
         except DriveError as exc:
             return Response(
@@ -94,6 +94,11 @@ class DealMergeMixin:
             new_value={
                 "merged_deals": merge_result["merged_deal_ids"],
                 "moved_counts": merge_result["moved_counts"],
+                "preview_snapshot_id": preview_snapshot_id or None,
+                "include_deleted": include_deleted,
+                "resulting_client_id": (
+                    str(resulting_client.id) if resulting_client else None
+                ),
             },
         )
 
@@ -104,5 +109,70 @@ class DealMergeMixin:
                 "target_deal": self.get_serializer(target_instance).data,
                 "merged_deal_ids": merge_result["merged_deal_ids"],
                 "moved_counts": merge_result["moved_counts"],
+                "warnings": merge_result.get("warnings", []),
+                "details": {
+                    "include_deleted": include_deleted,
+                    "resulting_client_id": (
+                        str(resulting_client.id) if resulting_client else None
+                    ),
+                },
             }
         )
+
+    def _resolve_deals_for_merge(self, data):
+        target_id = str(data["target_deal_id"])
+        source_ids = [str(value) for value in data["source_deal_ids"]]
+        combined_ids = {target_id, *source_ids}
+
+        deals_qs = (
+            Deal.objects.with_deleted()
+            .select_related("client")
+            .filter(id__in=combined_ids)
+        )
+        deals = list(deals_qs)
+        if len(deals) != len(combined_ids):
+            found_ids = {str(deal.id) for deal in deals}
+            missing = sorted(combined_ids - found_ids)
+            raise ValidationError(
+                {"detail": f"Some deals were not found: {', '.join(missing)}"}
+            )
+
+        deals_by_id = {str(deal.id): deal for deal in deals}
+        target_deal = deals_by_id.get(target_id)
+        if not target_deal:
+            raise ValidationError({"target_deal_id": "Target deal not found."})
+        if target_deal.deleted_at is not None:
+            raise ValidationError({"target_deal_id": "Target deal is deleted."})
+
+        source_deals = [deals_by_id[source_id] for source_id in source_ids]
+        for deal in source_deals:
+            if deal.deleted_at is not None:
+                raise ValidationError(
+                    {"source_deal_ids": "Source deals must not be deleted."}
+                )
+        return target_deal, source_deals
+
+    def _resolve_resulting_client(
+        self, *, target_deal, source_deals, resulting_client_id
+    ) -> Client | None:
+        involved_client_ids = {
+            str(deal.client_id)
+            for deal in (target_deal, *source_deals)
+            if deal.client_id is not None
+        }
+        resulting_client = None
+        if resulting_client_id:
+            resulting_client = Client.objects.filter(id=resulting_client_id).first()
+            if not resulting_client:
+                raise ValidationError({"resulting_client_id": "Client not found."})
+        elif len(involved_client_ids) > 1:
+            raise ValidationError(
+                {
+                    "resulting_client_id": (
+                        "resulting_client_id is required when merging deals from different clients."
+                    )
+                }
+            )
+        elif target_deal.client:
+            resulting_client = target_deal.client
+        return resulting_client

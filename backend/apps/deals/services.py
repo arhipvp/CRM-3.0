@@ -73,6 +73,7 @@ class DealMergeService:
         source_deals: Sequence[Deal],
         resulting_client: Client | None = None,
         actor: User | None = None,
+        include_deleted: bool = True,
     ) -> None:
         if not source_deals:
             raise ValueError("At least one source deal is required to merge deals.")
@@ -80,7 +81,72 @@ class DealMergeService:
         self.source_deals = list(source_deals)
         self.actor = actor
         self.resulting_client = resulting_client
+        self.include_deleted = include_deleted
         self._source_ids = [deal.pk for deal in self.source_deals]
+
+    def _manager_for(self, model):
+        base_manager = getattr(model, "objects", None)
+        with_deleted = getattr(base_manager, "with_deleted", None)
+        if self.include_deleted and callable(with_deleted):
+            return with_deleted()
+        return base_manager
+
+    def build_preview(self) -> dict:
+        moved_counts: dict[str, int] = {}
+        items: dict[str, list[dict]] = {}
+        for alias, model in self._RELATED_MODELS:
+            manager = self._manager_for(model)
+            queryset = manager.filter(deal_id__in=self._source_ids)
+            moved_counts[alias] = queryset.count()
+            items[alias] = [
+                {
+                    "id": str(record["id"]),
+                    "deleted_at": record.get("deleted_at"),
+                }
+                for record in queryset.values("id", "deleted_at")[:200]
+            ]
+
+        client_ids = {
+            str(deal.client_id) for deal in [self.target_deal, *self.source_deals]
+        }
+        warnings: list[str] = []
+        if len(client_ids) > 1 and not self.resulting_client:
+            warnings.append(
+                "У объединяемых сделок разные клиенты. Укажите итогового клиента."
+            )
+        if not self.target_deal.drive_folder_id:
+            warnings.append(
+                "У целевой сделки нет папки Drive. Она будет создана при merge."
+            )
+
+        drive_plan = [
+            {
+                "source_deal_id": str(deal.id),
+                "source_folder_id": deal.drive_folder_id,
+                "target_folder_id": self.target_deal.drive_folder_id,
+                "will_move": bool(deal.drive_folder_id),
+            }
+            for deal in self.source_deals
+        ]
+
+        return {
+            "target_deal_id": str(self.target_deal.id),
+            "source_deal_ids": [str(deal.id) for deal in self.source_deals],
+            "include_deleted": self.include_deleted,
+            "resulting_client_id": (
+                str(self.resulting_client.id)
+                if self.resulting_client
+                else (
+                    str(self.target_deal.client_id)
+                    if self.target_deal.client_id
+                    else None
+                )
+            ),
+            "moved_counts": moved_counts,
+            "items": items,
+            "warnings": warnings,
+            "drive_plan": drive_plan,
+        }
 
     def merge(self) -> dict:
         """Merge related objects from source deals into the target deal."""
@@ -89,17 +155,20 @@ class DealMergeService:
         target_client = self.resulting_client or getattr(
             self.target_deal, "client", None
         )
-        if target_client and self.target_deal.client_id != target_client.id:
-            self.target_deal.client = target_client
-            self.target_deal.save(update_fields=["client"])
+
+        # Drive-first: если упадем на Drive, транзакция БД не стартует.
+        self._prepare_drive_folders(target_client)
 
         with transaction.atomic():
+            if target_client and self.target_deal.client_id != target_client.id:
+                self.target_deal.client = target_client
+                self.target_deal.save(update_fields=["client"])
+
             for alias, model in self._RELATED_MODELS:
-                moved_counts[alias] = model.objects.filter(
+                manager = self._manager_for(model)
+                moved_counts[alias] = manager.filter(
                     deal_id__in=self._source_ids
                 ).update(deal=self.target_deal)
-
-            self._prepare_drive_folders(target_client)
 
             for deal in self.source_deals:
                 if self.actor:

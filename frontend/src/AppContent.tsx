@@ -24,6 +24,7 @@ import {
   updateClient,
   deleteClient,
   mergeClients,
+  previewClientMerge,
   createDeal,
   createQuote,
   updateQuote,
@@ -65,7 +66,17 @@ import {
   removeFinanceStatementRecords,
 } from './api';
 import type { FilterParams } from './api';
-import { Client, Deal, FinancialRecord, Payment, Policy, Quote, Statement, User } from './types';
+import {
+  Client,
+  ClientMergePreviewResponse,
+  Deal,
+  FinancialRecord,
+  Payment,
+  Policy,
+  Quote,
+  Statement,
+  User,
+} from './types';
 import { useAppData } from './hooks/useAppData';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
@@ -229,6 +240,23 @@ const AppContent: React.FC = () => {
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [isMergingClients, setIsMergingClients] = useState(false);
+  const [isClientMergePreviewLoading, setIsClientMergePreviewLoading] = useState(false);
+  const [clientMergePreview, setClientMergePreview] = useState<ClientMergePreviewResponse | null>(
+    null,
+  );
+  const [isClientMergePreviewConfirmed, setIsClientMergePreviewConfirmed] = useState(false);
+  const [clientMergeStep, setClientMergeStep] = useState<'select' | 'preview'>('select');
+  const [clientMergeFieldOverrides, setClientMergeFieldOverrides] = useState<{
+    name: string;
+    phone: string;
+    email: string;
+    notes: string;
+  }>({
+    name: '',
+    phone: '',
+    email: '',
+    notes: '',
+  });
   const {
     dataState,
     loadData,
@@ -805,6 +833,15 @@ const AppContent: React.FC = () => {
     setMergeSources([]);
     setMergeSearch('');
     setMergeError(null);
+    setClientMergePreview(null);
+    setIsClientMergePreviewConfirmed(false);
+    setClientMergeStep('select');
+    setClientMergeFieldOverrides({
+      name: client.name ?? '',
+      phone: client.phone ?? '',
+      email: client.email ?? '',
+      notes: client.notes ?? '',
+    });
   }, []);
 
   const toggleMergeSource = useCallback((clientId: string) => {
@@ -812,6 +849,9 @@ const AppContent: React.FC = () => {
       prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId],
     );
     setMergeError(null);
+    setClientMergePreview(null);
+    setIsClientMergePreviewConfirmed(false);
+    setClientMergeStep('select');
   }, []);
 
   const closeMergeModal = useCallback(() => {
@@ -819,7 +859,55 @@ const AppContent: React.FC = () => {
     setMergeSources([]);
     setMergeSearch('');
     setMergeError(null);
+    setClientMergePreview(null);
+    setIsClientMergePreviewConfirmed(false);
+    setClientMergeStep('select');
+    setClientMergeFieldOverrides({
+      name: '',
+      phone: '',
+      email: '',
+      notes: '',
+    });
   }, []);
+
+  const handleClientMergePreview = useCallback(async () => {
+    if (!mergeClientTargetId) {
+      return;
+    }
+    if (!mergeSources.length) {
+      setMergeError('Выберите клиентов для объединения.');
+      return;
+    }
+    setIsClientMergePreviewLoading(true);
+    setMergeError(null);
+    try {
+      const preview = await previewClientMerge({
+        targetClientId: mergeClientTargetId,
+        sourceClientIds: mergeSources,
+        includeDeleted: true,
+      });
+      setClientMergePreview(preview);
+      setClientMergeFieldOverrides((prev) => ({
+        name: prev.name || preview.canonicalProfile.name || '',
+        phone: prev.phone || preview.canonicalProfile.phone || '',
+        email: prev.email || preview.canonicalProfile.email || '',
+        notes: prev.notes || preview.canonicalProfile.notes || '',
+      }));
+      setIsClientMergePreviewConfirmed(true);
+      setClientMergeStep('preview');
+    } catch (err) {
+      const message =
+        err instanceof APIError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Не удалось получить предпросмотр объединения';
+      setMergeError(message);
+      setIsClientMergePreviewConfirmed(false);
+    } finally {
+      setIsClientMergePreviewLoading(false);
+    }
+  }, [mergeClientTargetId, mergeSources]);
 
   const handleMergeSubmit = useCallback(async () => {
     if (!mergeClientTargetId) {
@@ -829,12 +917,29 @@ const AppContent: React.FC = () => {
       setMergeError('Выберите клиентов для объединения.');
       return;
     }
+    if (!isClientMergePreviewConfirmed || !clientMergePreview) {
+      setMergeError('Сначала выполните предпросмотр объединения.');
+      return;
+    }
+    if (!clientMergeFieldOverrides.name.trim()) {
+      setMergeError('Укажите итоговое ФИО клиента.');
+      return;
+    }
     setIsSyncing(true);
     setIsMergingClients(true);
     try {
+      const previewSnapshotId = String(clientMergePreview.previewSnapshotId ?? '');
       const result = await mergeClients({
         targetClientId: mergeClientTargetId,
         sourceClientIds: mergeSources,
+        includeDeleted: true,
+        previewSnapshotId,
+        fieldOverrides: {
+          name: clientMergeFieldOverrides.name,
+          phone: clientMergeFieldOverrides.phone,
+          email: clientMergeFieldOverrides.email || null,
+          notes: clientMergeFieldOverrides.notes,
+        },
       });
       const mergedIds = new Set(result.mergedClientIds);
       updateAppData((prev) => ({
@@ -887,7 +992,13 @@ const AppContent: React.FC = () => {
     }
   }, [
     addNotification,
+    clientMergeFieldOverrides.email,
+    clientMergeFieldOverrides.name,
+    clientMergeFieldOverrides.notes,
+    clientMergeFieldOverrides.phone,
+    clientMergePreview,
     closeMergeModal,
+    isClientMergePreviewConfirmed,
     mergeClientTargetId,
     mergeSources,
     setIsMergingClients,
@@ -1204,11 +1315,22 @@ const AppContent: React.FC = () => {
   }, [handleRestoreDeal, isDealsRoute, selectedDeal]);
 
   const handleMergeDeals = useCallback(
-    async (targetDealId: string, sourceDealIds: string[], resultingClientId?: string) => {
+    async (
+      targetDealId: string,
+      sourceDealIds: string[],
+      resultingClientId?: string,
+      previewSnapshotId?: string,
+    ) => {
       invalidateDealsCache();
       setIsSyncing(true);
       try {
-        const result = await mergeDeals({ targetDealId, sourceDealIds, resultingClientId });
+        const result = await mergeDeals({
+          targetDealId,
+          sourceDealIds,
+          resultingClientId,
+          includeDeleted: true,
+          previewSnapshotId,
+        });
         updateAppData((prev) => {
           const mergedIds = new Set(result.mergedDealIds);
           const targetDealId = result.targetDeal.id;
@@ -3531,49 +3653,149 @@ const AppContent: React.FC = () => {
             <p className="text-sm text-slate-600">
               Выберите клиентов, которые будут объединены в «{mergeTargetClient.name}».
             </p>
-            <input
-              type="search"
-              value={mergeSearch}
-              onChange={(event) => setMergeSearch(event.target.value)}
-              placeholder="Поиск по имени клиента"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-            />
-            <div className="space-y-2 max-h-72 overflow-y-auto">
-              {mergeCandidates.length ? (
-                mergeCandidates.map((client) => (
-                  <label
-                    key={client.id}
-                    className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={mergeSources.includes(client.id)}
-                      onChange={() => toggleMergeSource(client.id)}
-                      className="check"
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{client.name}</p>
+            {clientMergeStep === 'select' && (
+              <>
+                <input
+                  type="search"
+                  value={mergeSearch}
+                  onChange={(event) => setMergeSearch(event.target.value)}
+                  placeholder="Поиск по имени клиента"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                />
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {mergeCandidates.length ? (
+                    mergeCandidates.map((client) => (
+                      <label
+                        key={client.id}
+                        className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={mergeSources.includes(client.id)}
+                          onChange={() => toggleMergeSource(client.id)}
+                          className="check"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{client.name}</p>
+                        </div>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      {!mergeSearch
+                        ? 'Нет доступных клиентов для объединения.'
+                        : `По запросу "${mergeSearch}" ничего не найдено.`}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+            {clientMergeStep === 'preview' && clientMergePreview && (
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Предпросмотр объединения</p>
+                <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 md:grid-cols-2">
+                  <p>Сделок к переносу: {String(clientMergePreview.movedCounts?.deals ?? 0)}</p>
+                  <p>
+                    Полисов к переносу:{' '}
+                    {String(clientMergePreview.movedCounts?.policies_unique ?? 0)}
+                  </p>
+                </div>
+                {Array.isArray(clientMergePreview.warnings) &&
+                  clientMergePreview.warnings.length > 0 && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                        Предупреждения
+                      </p>
+                      <ul className="mt-2 list-disc pl-5 text-xs text-amber-800">
+                        {clientMergePreview.warnings.map((warning) => (
+                          <li key={String(warning)}>{String(warning)}</li>
+                        ))}
+                      </ul>
                     </div>
+                  )}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <label className="text-sm text-slate-700">
+                    Итоговое ФИО
+                    <input
+                      type="text"
+                      value={clientMergeFieldOverrides.name}
+                      onChange={(event) =>
+                        setClientMergeFieldOverrides((prev) => ({
+                          ...prev,
+                          name: event.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                    />
                   </label>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">
-                  {!mergeSearch
-                    ? 'Нет доступных клиентов для объединения.'
-                    : `По запросу "${mergeSearch}" ничего не найдено.`}
-                </p>
-              )}
-            </div>
+                  <label className="text-sm text-slate-700">
+                    Итоговый телефон
+                    <input
+                      type="text"
+                      value={clientMergeFieldOverrides.phone}
+                      onChange={(event) =>
+                        setClientMergeFieldOverrides((prev) => ({
+                          ...prev,
+                          phone: event.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                    />
+                  </label>
+                  <label className="text-sm text-slate-700">
+                    Итоговый email
+                    <input
+                      type="email"
+                      value={clientMergeFieldOverrides.email}
+                      onChange={(event) =>
+                        setClientMergeFieldOverrides((prev) => ({
+                          ...prev,
+                          email: event.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                    />
+                  </label>
+                  <label className="text-sm text-slate-700 md:col-span-2">
+                    Итоговые заметки
+                    <textarea
+                      value={clientMergeFieldOverrides.notes}
+                      onChange={(event) =>
+                        setClientMergeFieldOverrides((prev) => ({
+                          ...prev,
+                          notes: event.target.value,
+                        }))
+                      }
+                      className="mt-1 min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
             {mergeError && <p className="text-sm text-rose-600">{mergeError}</p>}
             <FormActions
               onCancel={closeMergeModal}
               isSubmitting={isMergingClients}
-              isSubmitDisabled={!mergeSources.length}
+              isSubmitDisabled={!mergeSources.length || !isClientMergePreviewConfirmed}
               submitLabel="Объединить клиентов"
               submittingLabel="Объединяем..."
               submitClassName={`${BTN_PRIMARY} rounded-xl`}
               cancelClassName={`${BTN_SECONDARY} rounded-xl`}
             />
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleClientMergePreview();
+                }}
+                disabled={isClientMergePreviewLoading || !mergeSources.length}
+                className={`${BTN_SECONDARY} rounded-xl`}
+              >
+                {isClientMergePreviewLoading
+                  ? 'Готовим предпросмотр...'
+                  : 'Предпросмотр объединения'}
+              </button>
+            </div>
           </form>
         </FormModal>
       )}

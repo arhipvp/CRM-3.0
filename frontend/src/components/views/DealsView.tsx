@@ -84,6 +84,7 @@ interface DealsViewProps {
     targetDealId: string,
     sourceDealIds: string[],
     resultingClientId?: string,
+    previewSnapshotId?: string,
   ) => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;

@@ -5,6 +5,7 @@ import type {
   ActivityLog,
   Deal,
   DealMergeResponse,
+  DealMergePreviewResponse,
   DealTimeTrackingSummary,
   DealTimeTrackingTickResponse,
   DocumentRecognitionResult,
@@ -281,6 +282,8 @@ export async function mergeDeals(data: {
   targetDealId: string;
   sourceDealIds: string[];
   resultingClientId?: string;
+  includeDeleted?: boolean;
+  previewSnapshotId?: string;
 }): Promise<DealMergeResponse> {
   const payload = await request<Record<string, unknown>>('/deals/merge/', {
     method: 'POST',
@@ -288,6 +291,8 @@ export async function mergeDeals(data: {
       target_deal_id: data.targetDealId,
       source_deal_ids: data.sourceDealIds,
       ...(data.resultingClientId ? { resulting_client_id: data.resultingClientId } : {}),
+      include_deleted: data.includeDeleted ?? true,
+      ...(data.previewSnapshotId ? { preview_snapshot_id: data.previewSnapshotId } : {}),
     }),
   });
 
@@ -305,6 +310,50 @@ export async function mergeDeals(data: {
     targetDeal: mapDeal(targetPayload),
     mergedDealIds,
     movedCounts,
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
+    details:
+      payload.details && typeof payload.details === 'object'
+        ? (payload.details as Record<string, unknown>)
+        : {},
+  };
+}
+
+export async function previewDealMerge(data: {
+  targetDealId: string;
+  sourceDealIds: string[];
+  resultingClientId?: string;
+  includeDeleted?: boolean;
+}): Promise<DealMergePreviewResponse> {
+  const payload = await request<Record<string, unknown>>('/deals/merge/preview/', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_deal_id: data.targetDealId,
+      source_deal_ids: data.sourceDealIds,
+      ...(data.resultingClientId ? { resulting_client_id: data.resultingClientId } : {}),
+      include_deleted: data.includeDeleted ?? true,
+    }),
+  });
+
+  return {
+    targetDealId: String(payload.target_deal_id ?? ''),
+    sourceDealIds: Array.isArray(payload.source_deal_ids)
+      ? payload.source_deal_ids.map((value) => String(value))
+      : [],
+    includeDeleted: Boolean(payload.include_deleted ?? true),
+    resultingClientId:
+      payload.resulting_client_id == null ? null : String(payload.resulting_client_id),
+    movedCounts:
+      payload.moved_counts && typeof payload.moved_counts === 'object'
+        ? (payload.moved_counts as Record<string, number>)
+        : {},
+    items:
+      payload.items && typeof payload.items === 'object'
+        ? (payload.items as Record<string, Array<Record<string, unknown>>>)
+        : {},
+    drivePlan: Array.isArray(payload.drive_plan)
+      ? payload.drive_plan.map((value) => value as Record<string, unknown>)
+      : [],
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
   };
 }
 

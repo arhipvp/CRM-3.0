@@ -175,6 +175,13 @@ interface DealMergeModalProps {
   mergeSources: string[];
   toggleMergeSource: (dealId: string) => void;
   mergeError: string | null;
+  mergePreviewWarnings: string[];
+  mergeClientOptions: Array<{ id: string; name: string }>;
+  mergeResultingClientId?: string;
+  onResultingClientChange: (clientId: string) => void;
+  onPreview: () => void;
+  isPreviewLoading: boolean;
+  isPreviewConfirmed: boolean;
   isLoading: boolean;
   isActiveSearch: boolean;
   searchQuery: string;
@@ -192,6 +199,13 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
   mergeSources,
   toggleMergeSource,
   mergeError,
+  mergePreviewWarnings,
+  mergeClientOptions,
+  mergeResultingClientId,
+  onResultingClientChange,
+  onPreview,
+  isPreviewLoading,
+  isPreviewConfirmed,
   isLoading,
   isActiveSearch,
   searchQuery,
@@ -209,6 +223,22 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
 
       <div className="space-y-3">
         <p className="text-sm font-semibold text-slate-800">Выберите сделки для переноса</p>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Итоговый клиент
+          </p>
+          <select
+            value={mergeResultingClientId ?? ''}
+            onChange={(event) => onResultingClientChange(event.target.value)}
+            className="field field-input"
+          >
+            {mergeClientOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <input
           type="search"
           value={mergeSearch}
@@ -251,16 +281,36 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
 
         {isLoading && <p className="text-sm text-slate-600">Поиск...</p>}
         {mergeError && <p className="text-sm font-semibold text-rose-700">{mergeError}</p>}
+        {mergePreviewWarnings.length > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+              Предупреждения предпросмотра
+            </p>
+            <ul className="mt-2 list-disc pl-5 text-xs text-amber-800">
+              {mergePreviewWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        <button
+          type="button"
+          onClick={onPreview}
+          disabled={isPreviewLoading || mergeSources.length === 0}
+          className={`${BTN_SECONDARY} rounded-xl`}
+        >
+          {isPreviewLoading ? 'Готовим предпросмотр...' : 'Предпросмотр'}
+        </button>
         <button type="button" onClick={onClose} className={`${BTN_SECONDARY} rounded-xl`}>
           Отмена
         </button>
         <button
           type="button"
           onClick={onSubmit}
-          disabled={isMerging || mergeSources.length === 0}
+          disabled={isMerging || mergeSources.length === 0 || !isPreviewConfirmed}
           className={`${BTN_PRIMARY} rounded-xl`}
         >
           {isMerging ? 'Объединяем...' : 'Объединить сделки'}

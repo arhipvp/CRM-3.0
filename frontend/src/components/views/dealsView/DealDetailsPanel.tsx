@@ -89,6 +89,7 @@ interface DealDetailsPanelProps {
     targetDealId: string,
     sourceDealIds: string[],
     resultingClientId?: string,
+    previewSnapshotId?: string,
   ) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
   onRequestEditQuote: (quote: Quote) => void;
@@ -216,7 +217,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isMergeSearchActive,
     isMergeSearchLoading,
     isMerging,
+    isMergePreviewLoading,
+    mergePreviewWarnings,
+    isMergePreviewConfirmed,
+    mergeClientOptions,
+    mergeResultingClientId,
+    setMergeResultingClientId,
     toggleMergeSource,
+    requestMergePreview,
     handleMergeSubmit,
   } = useDealMerge({
     deals,
@@ -1248,6 +1256,15 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           mergeSources={mergeSources}
           toggleMergeSource={toggleMergeSource}
           mergeError={mergeError}
+          mergePreviewWarnings={mergePreviewWarnings}
+          mergeClientOptions={mergeClientOptions}
+          mergeResultingClientId={mergeResultingClientId}
+          onResultingClientChange={(clientId) => {
+            setMergeResultingClientId(clientId);
+          }}
+          onPreview={requestMergePreview}
+          isPreviewLoading={isMergePreviewLoading}
+          isPreviewConfirmed={isMergePreviewConfirmed}
           isLoading={isMergeSearchLoading}
           isActiveSearch={isMergeSearchActive}
           searchQuery={mergeQuery}

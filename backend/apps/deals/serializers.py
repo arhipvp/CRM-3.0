@@ -308,6 +308,50 @@ class DealMergeSerializer(serializers.Serializer):
         allow_null=True,
         help_text="ID of the client that will own the merged records.",
     )
+    include_deleted = serializers.BooleanField(
+        required=False,
+        default=True,
+        help_text="Учитывать soft-deleted связанные записи.",
+    )
+    preview_snapshot_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Идентификатор снапшота предпросмотра.",
+    )
+
+    def validate(self, attrs):
+        target_id = attrs["target_deal_id"]
+        source_ids = attrs["source_deal_ids"]
+        if target_id in source_ids:
+            raise serializers.ValidationError(
+                "Целевая сделка не может быть частью списка исходных."
+            )
+        if len(source_ids) != len(set(source_ids)):
+            raise serializers.ValidationError(
+                "Список исходных сделок содержит дубликаты."
+            )
+        return attrs
+
+
+class DealMergePreviewSerializer(serializers.Serializer):
+    target_deal_id = serializers.UUIDField(
+        help_text="ID сделки, в которую перенесутся все связанные записи."
+    )
+    source_deal_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        help_text="Список ID сделок, которые будут объединены в целевую.",
+    )
+    resulting_client_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="ID of the client that will own the merged records.",
+    )
+    include_deleted = serializers.BooleanField(
+        required=False,
+        default=True,
+        help_text="Учитывать soft-deleted связанные записи.",
+    )
 
     def validate(self, attrs):
         target_id = attrs["target_deal_id"]

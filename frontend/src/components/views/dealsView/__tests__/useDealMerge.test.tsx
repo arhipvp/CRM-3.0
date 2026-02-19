@@ -7,11 +7,13 @@ import type { Deal, Client, User } from '../../../../types';
 
 vi.mock('../../../../api', () => ({
   fetchDeals: vi.fn(),
+  previewDealMerge: vi.fn(),
 }));
 
-import { fetchDeals } from '../../../../api';
+import { fetchDeals, previewDealMerge } from '../../../../api';
 
 const fetchDealsMock = vi.mocked(fetchDeals);
+const previewDealMergeMock = vi.mocked(previewDealMerge);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -114,12 +116,32 @@ describe('useDealMerge', () => {
       resultRef.current?.openMergeModal();
     });
 
+    previewDealMergeMock.mockResolvedValueOnce({
+      targetDealId: selectedDeal.id,
+      sourceDealIds: [otherDeal.id],
+      includeDeleted: true,
+      resultingClientId: 'client-1',
+      movedCounts: { tasks: 1 },
+      items: {},
+      drivePlan: [],
+      warnings: [],
+    });
+
+    await act(async () => {
+      await resultRef.current?.requestMergePreview();
+    });
+
     await act(async () => {
       await resultRef.current?.handleMergeSubmit();
     });
 
     await waitFor(() =>
-      expect(onMergeDeals).toHaveBeenCalledWith(selectedDeal.id, [otherDeal.id], 'client-1'),
+      expect(onMergeDeals).toHaveBeenCalledWith(
+        selectedDeal.id,
+        [otherDeal.id],
+        'client-1',
+        expect.stringContaining('deal-merge-preview:'),
+      ),
     );
     expect(resultRef.current?.isMergeModalOpen).toBe(false);
   });

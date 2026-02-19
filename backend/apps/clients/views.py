@@ -13,7 +13,11 @@ from rest_framework.response import Response
 
 from .filters import ClientFilterSet
 from .models import Client
-from .serializers import ClientMergeSerializer, ClientSerializer
+from .serializers import (
+    ClientMergePreviewSerializer,
+    ClientMergeSerializer,
+    ClientSerializer,
+)
 
 
 class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -92,35 +96,9 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         serializer = ClientMergeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        target_id = str(serializer.validated_data["target_client_id"])
-        source_ids = [
-            str(value) for value in serializer.validated_data["source_client_ids"]
-        ]
-        combined_ids = {target_id, *source_ids}
-        clients_qs = Client.objects.with_deleted().filter(id__in=combined_ids)
-        clients = list(clients_qs)
-        if len(clients) != len(combined_ids):
-            found_ids = {str(client.id) for client in clients}
-            missing = sorted(combined_ids - found_ids)
-            raise ValidationError(
-                {"detail": f"Клиенты не найдены: {', '.join(missing)}"}
-            )
-
-        clients_by_id = {str(client.id): client for client in clients}
-        target_client = clients_by_id[target_id]
-        if target_client.deleted_at is not None:
-            raise ValidationError({"target_client_id": "Целевой клиент удалён."})
-
-        source_clients = []
-        for source_id in source_ids:
-            source_client = clients_by_id.get(source_id)
-            if not source_client:
-                continue
-            if source_client.deleted_at is not None:
-                raise ValidationError(
-                    {"source_client_ids": "Исходные клиенты не должны быть удалены."}
-                )
-            source_clients.append(source_client)
+        target_client, source_clients = self._resolve_merge_clients(
+            serializer.validated_data
+        )
 
         for client in (target_client, *source_clients):
             if not self._can_modify(request.user, client):
@@ -129,12 +107,19 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
 
         actor = request.user if request.user and request.user.is_authenticated else None
+        include_deleted = serializer.validated_data.get("include_deleted", True)
+        field_overrides = serializer.validated_data.get("field_overrides") or {}
+        preview_snapshot_id = serializer.validated_data.get("preview_snapshot_id", "")
         try:
             merge_result = ClientMergeService(
                 target_client=target_client,
                 source_clients=source_clients,
                 actor=actor,
+                include_deleted=include_deleted,
+                field_overrides=field_overrides,
             ).merge()
+        except ValueError as exc:
+            raise ValidationError({"field_overrides": str(exc)}) from exc
         except DriveError as exc:
             return Response(
                 {
@@ -161,6 +146,9 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             new_value={
                 "merged_clients": merge_result["merged_client_ids"],
                 "moved_counts": merge_result["moved_counts"],
+                "preview_snapshot_id": preview_snapshot_id or None,
+                "field_overrides": field_overrides,
+                "include_deleted": include_deleted,
             },
         )
 
@@ -171,5 +159,60 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "target_client": ClientSerializer(response_target).data,
                 "merged_client_ids": merge_result["merged_client_ids"],
                 "moved_counts": merge_result["moved_counts"],
+                "warnings": merge_result.get("warnings", []),
+                "details": merge_result.get("details", {}),
             }
         )
+
+    @action(detail=False, methods=["post"], url_path="merge/preview")
+    def merge_preview(self, request):
+        serializer = ClientMergePreviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target_client, source_clients = self._resolve_merge_clients(
+            serializer.validated_data
+        )
+
+        for client in (target_client, *source_clients):
+            if not self._can_modify(request.user, client):
+                raise PermissionDenied(
+                    "Только администратор или владелец может объединять клиентов."
+                )
+
+        include_deleted = serializer.validated_data.get("include_deleted", True)
+        preview = ClientMergeService(
+            target_client=target_client,
+            source_clients=source_clients,
+            include_deleted=include_deleted,
+        ).build_preview()
+        return Response(preview)
+
+    def _resolve_merge_clients(self, data):
+        target_id = str(data["target_client_id"])
+        source_ids = [str(value) for value in data["source_client_ids"]]
+        combined_ids = {target_id, *source_ids}
+        clients_qs = Client.objects.with_deleted().filter(id__in=combined_ids)
+        clients = list(clients_qs)
+        if len(clients) != len(combined_ids):
+            found_ids = {str(client.id) for client in clients}
+            missing = sorted(combined_ids - found_ids)
+            raise ValidationError(
+                {"detail": f"Клиенты не найдены: {', '.join(missing)}"}
+            )
+
+        clients_by_id = {str(client.id): client for client in clients}
+        target_client = clients_by_id[target_id]
+        if target_client.deleted_at is not None:
+            raise ValidationError({"target_client_id": "Целевой клиент удалён."})
+
+        source_clients = []
+        for source_id in source_ids:
+            source_client = clients_by_id.get(source_id)
+            if not source_client:
+                continue
+            if source_client.deleted_at is not None:
+                raise ValidationError(
+                    {"source_client_ids": "Исходные клиенты не должны быть удалены."}
+                )
+            source_clients.append(source_client)
+
+        return target_client, source_clients

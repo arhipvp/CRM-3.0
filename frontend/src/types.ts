@@ -256,12 +256,45 @@ export interface DealMergeResponse {
   targetDeal: Deal;
   mergedDealIds: string[];
   movedCounts: Record<string, number>;
+  warnings?: string[];
+  details?: Record<string, unknown>;
 }
 
 export interface ClientMergeResponse {
   targetClient: Client;
   mergedClientIds: string[];
   movedCounts: Record<string, number>;
+  warnings?: string[];
+  details?: Record<string, unknown>;
+}
+
+export interface ClientMergePreviewResponse {
+  targetClientId: string;
+  sourceClientIds: string[];
+  includeDeleted: boolean;
+  previewSnapshotId: string;
+  movedCounts: Record<string, number>;
+  items: Record<string, Array<Record<string, unknown>>>;
+  canonicalProfile: {
+    name: string;
+    phone: string;
+    email?: string | null;
+    notes: string;
+    candidates?: Record<string, string[]>;
+  };
+  drivePlan: Array<Record<string, unknown>>;
+  warnings: string[];
+}
+
+export interface DealMergePreviewResponse {
+  targetDealId: string;
+  sourceDealIds: string[];
+  includeDeleted: boolean;
+  resultingClientId?: string | null;
+  movedCounts: Record<string, number>;
+  items: Record<string, Array<Record<string, unknown>>>;
+  drivePlan: Array<Record<string, unknown>>;
+  warnings: string[];
 }
 
 export interface Policy {

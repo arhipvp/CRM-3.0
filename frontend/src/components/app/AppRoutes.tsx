@@ -111,6 +111,7 @@ export interface AppRoutesProps {
     targetDealId: string,
     sourceDealIds: string[],
     resultingClientId?: string | undefined,
+    previewSnapshotId?: string | undefined,
   ) => Promise<void>;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;

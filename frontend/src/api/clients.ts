@@ -1,7 +1,7 @@
 import { API_BASE, request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapClient, mapUser } from './mappers';
-import type { Client, ClientMergeResponse, User } from '../types';
+import type { Client, ClientMergePreviewResponse, ClientMergeResponse, User } from '../types';
 
 export async function fetchClientsWithPagination(
   filters?: FilterParams,
@@ -142,12 +142,23 @@ export async function deleteClient(id: string): Promise<void> {
 export async function mergeClients(data: {
   targetClientId: string;
   sourceClientIds: string[];
+  includeDeleted?: boolean;
+  previewSnapshotId?: string;
+  fieldOverrides?: {
+    name?: string;
+    phone?: string;
+    email?: string | null;
+    notes?: string;
+  };
 }): Promise<ClientMergeResponse> {
   const payload = await request<Record<string, unknown>>('/clients/merge/', {
     method: 'POST',
     body: JSON.stringify({
       target_client_id: data.targetClientId,
       source_client_ids: data.sourceClientIds,
+      include_deleted: data.includeDeleted ?? true,
+      ...(data.previewSnapshotId ? { preview_snapshot_id: data.previewSnapshotId } : {}),
+      ...(data.fieldOverrides ? { field_overrides: data.fieldOverrides } : {}),
     }),
   });
 
@@ -164,5 +175,69 @@ export async function mergeClients(data: {
       ? payload.merged_client_ids.map((value) => String(value))
       : [],
     movedCounts: movedCountsRaw ?? {},
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
+    details:
+      payload.details && typeof payload.details === 'object'
+        ? (payload.details as Record<string, unknown>)
+        : {},
+  };
+}
+
+export async function previewClientMerge(data: {
+  targetClientId: string;
+  sourceClientIds: string[];
+  includeDeleted?: boolean;
+}): Promise<ClientMergePreviewResponse> {
+  const payload = await request<Record<string, unknown>>('/clients/merge/preview/', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_client_id: data.targetClientId,
+      source_client_ids: data.sourceClientIds,
+      include_deleted: data.includeDeleted ?? true,
+    }),
+  });
+
+  const canonicalRaw =
+    payload.canonical_profile && typeof payload.canonical_profile === 'object'
+      ? (payload.canonical_profile as Record<string, unknown>)
+      : {};
+  const candidatesRaw =
+    canonicalRaw.candidates && typeof canonicalRaw.candidates === 'object'
+      ? (canonicalRaw.candidates as Record<string, unknown>)
+      : {};
+
+  const toStringList = (value: unknown): string[] =>
+    Array.isArray(value) ? value.map((item) => String(item)) : [];
+
+  return {
+    targetClientId: String(payload.target_client_id ?? ''),
+    sourceClientIds: Array.isArray(payload.source_client_ids)
+      ? payload.source_client_ids.map((value) => String(value))
+      : [],
+    includeDeleted: Boolean(payload.include_deleted ?? true),
+    previewSnapshotId: String(payload.preview_snapshot_id ?? ''),
+    movedCounts:
+      payload.moved_counts && typeof payload.moved_counts === 'object'
+        ? (payload.moved_counts as Record<string, number>)
+        : {},
+    items:
+      payload.items && typeof payload.items === 'object'
+        ? (payload.items as Record<string, Array<Record<string, unknown>>>)
+        : {},
+    canonicalProfile: {
+      name: String(canonicalRaw.name ?? ''),
+      phone: String(canonicalRaw.phone ?? ''),
+      email: canonicalRaw.email == null ? null : String(canonicalRaw.email),
+      notes: String(canonicalRaw.notes ?? ''),
+      candidates: {
+        names: toStringList(candidatesRaw.names),
+        phones: toStringList(candidatesRaw.phones),
+        emails: toStringList(candidatesRaw.emails),
+      },
+    },
+    drivePlan: Array.isArray(payload.drive_plan)
+      ? payload.drive_plan.map((value) => value as Record<string, unknown>)
+      : [],
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
   };
 }

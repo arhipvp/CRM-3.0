@@ -71,6 +71,8 @@ describe('DealDetailsModals', () => {
     const onMergeSearchChange = vi.fn();
     const toggleMergeSource = vi.fn();
     const onSubmit = vi.fn();
+    const onPreview = vi.fn();
+    const onResultingClientChange = vi.fn();
 
     const dealList: Deal[] = [
       {
@@ -105,6 +107,13 @@ describe('DealDetailsModals', () => {
         mergeSources={['deal-1']}
         toggleMergeSource={toggleMergeSource}
         mergeError={null}
+        mergePreviewWarnings={[]}
+        mergeClientOptions={[{ id: 'client-1', name: 'Client A' }]}
+        mergeResultingClientId="client-1"
+        onResultingClientChange={onResultingClientChange}
+        onPreview={onPreview}
+        isPreviewLoading={false}
+        isPreviewConfirmed
         isLoading={false}
         isActiveSearch={false}
         searchQuery=""
@@ -119,6 +128,12 @@ describe('DealDetailsModals', () => {
 
     fireEvent.click(screen.getByRole('checkbox', { name: /Deal 2/ }));
     expect(toggleMergeSource).toHaveBeenCalledWith('deal-2');
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'client-1' } });
+    expect(onResultingClientChange).toHaveBeenCalledWith('client-1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Предпросмотр' }));
+    expect(onPreview).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Объединить сделки' }));
     expect(onSubmit).toHaveBeenCalled();

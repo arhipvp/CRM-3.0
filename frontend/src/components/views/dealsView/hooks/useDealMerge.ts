@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Client, Deal, User } from '../../../../types';
-import { fetchDeals } from '../../../../api';
+import { fetchDeals, previewDealMerge } from '../../../../api';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 
 interface UseDealMergeParams {
@@ -13,6 +13,7 @@ interface UseDealMergeParams {
     targetDealId: string,
     sourceDealIds: string[],
     resultingClientId?: string,
+    previewSnapshotId?: string,
   ) => Promise<void>;
   debounceDelay?: number;
 }
@@ -29,6 +30,10 @@ export const useDealMerge = ({
   const [mergeSources, setMergeSources] = useState<string[]>([]);
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [isMerging, setIsMerging] = useState(false);
+  const [isMergePreviewLoading, setIsMergePreviewLoading] = useState(false);
+  const [mergePreviewWarnings, setMergePreviewWarnings] = useState<string[]>([]);
+  const [mergePreviewSnapshotId, setMergePreviewSnapshotId] = useState<string | null>(null);
+  const [isMergePreviewConfirmed, setIsMergePreviewConfirmed] = useState(false);
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
   const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
@@ -83,6 +88,15 @@ export const useDealMerge = ({
     });
   }, [isMergeModalOpen, mergeClientOptions]);
 
+  useEffect(() => {
+    if (!isMergeModalOpen) {
+      return;
+    }
+    setMergePreviewWarnings([]);
+    setMergePreviewSnapshotId(null);
+    setIsMergePreviewConfirmed(false);
+  }, [isMergeModalOpen, mergeResultingClientId]);
+
   const resetMergeForm = useCallback(() => {
     setMergeSources([]);
     setMergeError(null);
@@ -90,6 +104,9 @@ export const useDealMerge = ({
     setMergeSearchResults([]);
     setIsMergeSearchLoading(false);
     setMergeResultingClientId(undefined);
+    setMergePreviewWarnings([]);
+    setMergePreviewSnapshotId(null);
+    setIsMergePreviewConfirmed(false);
   }, []);
 
   useEffect(() => {
@@ -152,7 +169,43 @@ export const useDealMerge = ({
       prev.includes(dealId) ? prev.filter((id) => id !== dealId) : [...prev, dealId],
     );
     setMergeError(null);
+    setMergePreviewWarnings([]);
+    setMergePreviewSnapshotId(null);
+    setIsMergePreviewConfirmed(false);
   }, []);
+
+  const requestMergePreview = useCallback(async () => {
+    if (!selectedDeal) {
+      return;
+    }
+    if (!mergeSources.length) {
+      setMergeError('Выберите сделки для объединения.');
+      return;
+    }
+    if (mergeClientOptions.length > 1 && !mergeResultingClientId) {
+      setMergeError('Выберите итогового клиента для объединённой сделки.');
+      return;
+    }
+
+    setIsMergePreviewLoading(true);
+    setMergeError(null);
+    try {
+      const preview = await previewDealMerge({
+        targetDealId: selectedDeal.id,
+        sourceDealIds: mergeSources,
+        resultingClientId: mergeResultingClientId,
+        includeDeleted: true,
+      });
+      setMergePreviewWarnings(preview.warnings ?? []);
+      setMergePreviewSnapshotId(`deal-merge-preview:${selectedDeal.id}:${Date.now().toString(36)}`);
+      setIsMergePreviewConfirmed(true);
+    } catch (err) {
+      setMergeError(formatErrorMessage(err, 'Не удалось получить предпросмотр объединения.'));
+      setIsMergePreviewConfirmed(false);
+    } finally {
+      setIsMergePreviewLoading(false);
+    }
+  }, [mergeClientOptions.length, mergeResultingClientId, mergeSources, selectedDeal]);
 
   const handleMergeSubmit = useCallback(async () => {
     if (!selectedDeal) {
@@ -166,17 +219,34 @@ export const useDealMerge = ({
       setMergeError('Выберите клиента для объединённой сделки.');
       return;
     }
+    if (!isMergePreviewConfirmed) {
+      setMergeError('Сначала выполните предпросмотр объединения.');
+      return;
+    }
     setIsMerging(true);
     setMergeError(null);
     try {
-      await onMergeDeals(selectedDeal.id, mergeSources, mergeResultingClientId);
+      await onMergeDeals(
+        selectedDeal.id,
+        mergeSources,
+        mergeResultingClientId,
+        mergePreviewSnapshotId || undefined,
+      );
       setIsMergeModalOpen(false);
     } catch (err) {
       setMergeError(formatErrorMessage(err, 'Во время объединения произошла ошибка.'));
     } finally {
       setIsMerging(false);
     }
-  }, [mergeClientOptions.length, mergeResultingClientId, mergeSources, onMergeDeals, selectedDeal]);
+  }, [
+    isMergePreviewConfirmed,
+    mergeClientOptions.length,
+    mergePreviewSnapshotId,
+    mergeResultingClientId,
+    mergeSources,
+    onMergeDeals,
+    selectedDeal,
+  ]);
 
   const openMergeModal = useCallback(() => {
     setIsMergeModalOpen(true);
@@ -200,7 +270,14 @@ export const useDealMerge = ({
     mergeSearchResults,
     isMergeSearchLoading,
     isMerging,
+    isMergePreviewLoading,
+    mergePreviewWarnings,
+    isMergePreviewConfirmed,
+    mergeClientOptions,
+    mergeResultingClientId,
+    setMergeResultingClientId,
     toggleMergeSource,
+    requestMergePreview,
     handleMergeSubmit,
   };
 };

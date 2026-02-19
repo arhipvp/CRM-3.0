@@ -172,6 +172,36 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
             str(response.data["target_deal"]["client"]), str(other_client.id)
         )
 
+    def test_merge_requires_resulting_client_for_multi_client_merge(self):
+        other_client = Client.objects.create(name="Other")
+        other_source = Deal.objects.create(
+            title="Foreign",
+            client=other_client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/deals/merge/",
+            self._payload([self.source, other_source]),
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("resulting_client_id", response.data)
+
+    def test_merge_preview_returns_counts(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/deals/merge/preview/",
+            self._payload([self.source, self.source_extra]),
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["moved_counts"]["tasks"], 1)
+        self.assertEqual(response.data["moved_counts"]["payments"], 1)
+        self.assertIn("warnings", response.data)
+
     def test_merge_requires_owner(self):
         self.authenticate(self.other_user)
         response = self.api_client.post(
