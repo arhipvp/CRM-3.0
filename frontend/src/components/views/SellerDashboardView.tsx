@@ -68,6 +68,32 @@ type FinancialTypeColumn = {
   typeName: string;
 };
 
+type FinancialMaxExpensePair = {
+  companyName: string;
+  typeName: string;
+  expense: number;
+  net: number;
+  count: number;
+};
+
+type FinancialMatrixResult = {
+  rows: FinancialCompanyRow[];
+  types: FinancialTypeColumn[];
+  columnTotals: Map<string, FinancialCell>;
+  grandTotals: FinancialCell;
+  topCompanies: FinancialCompanyRow[];
+  topTypes: Array<{ typeName: string; totals: FinancialCell }>;
+  maxExpensePair: FinancialMaxExpensePair | null;
+};
+
+type FinancialSort =
+  | 'net_desc'
+  | 'net_asc'
+  | 'income_desc'
+  | 'expense_desc'
+  | 'count_desc'
+  | 'alpha';
+
 const parseNumber = (value: string | number) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -119,6 +145,9 @@ const appendFinancialCell = (target: FinancialCell, cell: FinancialCell) => {
   target.net += cell.net;
   target.count += cell.count;
 };
+
+const isFinancialCellEmpty = (cell?: FinancialCell | null) =>
+  !cell || (!cell.income && !cell.expense && !cell.net && !cell.count);
 
 const compareFinancialGroupLabels = (left: string, right: string) => {
   const leftUnknown = left === UNKNOWN_GROUP_LABEL;
@@ -489,20 +518,26 @@ const StackedBarChart: React.FC<{
   );
 };
 
-const FinancialCellView: React.FC<{ cell?: FinancialCell | null }> = ({ cell }) => {
-  if (!cell || (!cell.income && !cell.expense && !cell.net && !cell.count)) {
-    return <span className="text-xs text-slate-400">—</span>;
+const FinancialCellView: React.FC<{
+  cell?: FinancialCell | null;
+  showEmptyPlaceholder?: boolean;
+}> = ({ cell, showEmptyPlaceholder = true }) => {
+  if (isFinancialCellEmpty(cell)) {
+    return showEmptyPlaceholder ? <span className="text-xs text-slate-400">—</span> : null;
   }
+  const nextCell = cell as FinancialCell;
   return (
     <div className="space-y-1 text-xs">
-      <div className="text-emerald-700">+ {formatCurrencyRu(cell.income, '—')}</div>
-      <div className="text-rose-700">- {formatCurrencyRu(cell.expense, '—')}</div>
+      <div className="font-medium text-emerald-700">+ {formatCurrencyRu(nextCell.income, '—')}</div>
+      <div className="font-medium text-rose-700">- {formatCurrencyRu(nextCell.expense, '—')}</div>
       <div
-        className={cell.net < 0 ? 'font-semibold text-rose-700' : 'font-semibold text-slate-900'}
+        className={
+          nextCell.net < 0 ? 'font-semibold text-rose-700' : 'font-semibold text-slate-900'
+        }
       >
-        = {formatCurrencyRu(cell.net, '—')}
+        = {formatCurrencyRu(nextCell.net, '—')}
       </div>
-      <div className="text-[11px] text-slate-400">Записей: {cell.count}</div>
+      <div className="text-[11px] text-slate-400">Записей: {nextCell.count}</div>
     </div>
   );
 };
@@ -514,6 +549,10 @@ export const SellerDashboardView: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [calendarMode, setCalendarMode] = useState<'sum' | 'split'>('sum');
+  const [financialSearch, setFinancialSearch] = useState('');
+  const [financialSort, setFinancialSort] = useState<FinancialSort>('net_desc');
+  const [hideZeroRowsCols, setHideZeroRowsCols] = useState(true);
+  const [showOnlyWithData, setShowOnlyWithData] = useState(true);
 
   const loadDashboard = useCallback(async (override?: { startDate?: string; endDate?: string }) => {
     setIsLoading(true);
@@ -627,7 +666,7 @@ export const SellerDashboardView: React.FC = () => {
       },
     [dashboard?.financialTotals],
   );
-  const financialMatrix = useMemo(() => {
+  const financialMatrix = useMemo<FinancialMatrixResult>(() => {
     const companyNames = new Map<string, string>();
     const typeNames = new Map<string, string>();
     const rowsByCompany = new Map<string, FinancialCompanyRow>();
@@ -674,18 +713,207 @@ export const SellerDashboardView: React.FC = () => {
       .map(([typeKey, typeName]) => ({ typeKey, typeName }))
       .sort((left, right) => compareFinancialGroupLabels(left.typeName, right.typeName));
 
-    const rows: FinancialCompanyRow[] = Array.from(rowsByCompany.values()).sort((left, right) =>
-      compareFinancialGroupLabels(left.companyName, right.companyName),
-    );
+    const baseRows: FinancialCompanyRow[] = Array.from(rowsByCompany.values());
+    const baseColumnTotals = new Map<string, FinancialCell>();
+    types.forEach((typeColumn) => {
+      const cell = columnTotals.get(typeColumn.typeKey);
+      baseColumnTotals.set(typeColumn.typeKey, cell ?? createEmptyFinancialCell());
+    });
+
+    const normalizedSearch = financialSearch.trim().toLocaleLowerCase(RU_LOCALE);
+    const searchedTypeKeys = normalizedSearch
+      ? new Set(
+          types
+            .filter((typeColumn) =>
+              typeColumn.typeName.toLocaleLowerCase(RU_LOCALE).includes(normalizedSearch),
+            )
+            .map((typeColumn) => typeColumn.typeKey),
+        )
+      : null;
+
+    let nextRows = normalizedSearch
+      ? baseRows.filter((row) => {
+          const companyMatch = row.companyName
+            .toLocaleLowerCase(RU_LOCALE)
+            .includes(normalizedSearch);
+          if (companyMatch) {
+            return true;
+          }
+          if (!searchedTypeKeys?.size) {
+            return false;
+          }
+          return Array.from(row.cells.keys()).some((typeKey) => searchedTypeKeys.has(typeKey));
+        })
+      : baseRows;
+
+    let visibleTypes = normalizedSearch
+      ? types.filter((typeColumn) => {
+          if (!searchedTypeKeys?.size) {
+            return true;
+          }
+          return searchedTypeKeys.has(typeColumn.typeKey);
+        })
+      : types;
+
+    if (hideZeroRowsCols) {
+      nextRows = nextRows.filter((row) => !isFinancialCellEmpty(row.totals));
+      visibleTypes = visibleTypes.filter(
+        (typeColumn) => !isFinancialCellEmpty(baseColumnTotals.get(typeColumn.typeKey)),
+      );
+    }
+
+    const visibleTypeKeys = new Set(visibleTypes.map((typeColumn) => typeColumn.typeKey));
+    const rowValue = (row: FinancialCompanyRow, sort: FinancialSort) => {
+      if (sort === 'alpha') {
+        return 0;
+      }
+      if (sort === 'net_desc' || sort === 'net_asc') {
+        return row.totals.net;
+      }
+      if (sort === 'income_desc') {
+        return row.totals.income;
+      }
+      if (sort === 'expense_desc') {
+        return row.totals.expense;
+      }
+      return row.totals.count;
+    };
+
+    const rows = [...nextRows].sort((left, right) => {
+      if (financialSort === 'alpha') {
+        return compareFinancialGroupLabels(left.companyName, right.companyName);
+      }
+      if (financialSort === 'net_asc') {
+        const diff = rowValue(left, 'net_asc') - rowValue(right, 'net_asc');
+        if (diff !== 0) {
+          return diff;
+        }
+      } else {
+        const diff = rowValue(right, financialSort) - rowValue(left, financialSort);
+        if (diff !== 0) {
+          return diff;
+        }
+      }
+      return compareFinancialGroupLabels(left.companyName, right.companyName);
+    });
+
+    const visibleRowsForTotals = showOnlyWithData
+      ? rows.filter((row) =>
+          visibleTypes.some(
+            (typeColumn) => !isFinancialCellEmpty(row.cells.get(typeColumn.typeKey)),
+          ),
+        )
+      : rows;
+    const finalTypes = showOnlyWithData
+      ? visibleTypes.filter((typeColumn) => {
+          if (!visibleTypeKeys.has(typeColumn.typeKey)) {
+            return false;
+          }
+          const total = createEmptyFinancialCell();
+          visibleRowsForTotals.forEach((row) => {
+            const cell = row.cells.get(typeColumn.typeKey);
+            if (cell) {
+              appendFinancialCell(total, cell);
+            }
+          });
+          return !isFinancialCellEmpty(total);
+        })
+      : visibleTypes;
+    const finalRows = showOnlyWithData
+      ? visibleRowsForTotals.filter((row) =>
+          finalTypes.some((typeColumn) => !isFinancialCellEmpty(row.cells.get(typeColumn.typeKey))),
+        )
+      : rows;
+    const finalizedRows = finalRows.map((row) => {
+      const totals = createEmptyFinancialCell();
+      finalTypes.forEach((typeColumn) => {
+        const cell = row.cells.get(typeColumn.typeKey);
+        if (cell) {
+          appendFinancialCell(totals, cell);
+        }
+      });
+      return {
+        ...row,
+        totals,
+      };
+    });
+    const finalizedColumnTotals = new Map<string, FinancialCell>();
+    finalTypes.forEach((typeColumn) => {
+      const totals = createEmptyFinancialCell();
+      finalizedRows.forEach((row) => {
+        const cell = row.cells.get(typeColumn.typeKey);
+        if (cell) {
+          appendFinancialCell(totals, cell);
+        }
+      });
+      finalizedColumnTotals.set(typeColumn.typeKey, totals);
+    });
+    const finalizedGrandTotals = createEmptyFinancialCell();
+    finalizedRows.forEach((row) => appendFinancialCell(finalizedGrandTotals, row.totals));
+
+    const topCompanies = [...baseRows]
+      .filter((row) => !isFinancialCellEmpty(row.totals))
+      .sort((left, right) => {
+        const diff = right.totals.net - left.totals.net;
+        if (diff !== 0) {
+          return diff;
+        }
+        return compareFinancialGroupLabels(left.companyName, right.companyName);
+      })
+      .slice(0, 3);
+    const topTypes = [...types]
+      .map((typeColumn) => ({
+        typeName: typeColumn.typeName,
+        totals: baseColumnTotals.get(typeColumn.typeKey) ?? createEmptyFinancialCell(),
+      }))
+      .filter((item) => !isFinancialCellEmpty(item.totals))
+      .sort((left, right) => {
+        const diff = right.totals.net - left.totals.net;
+        if (diff !== 0) {
+          return diff;
+        }
+        return compareFinancialGroupLabels(left.typeName, right.typeName);
+      })
+      .slice(0, 3);
+
+    let maxExpensePair: FinancialMaxExpensePair | null = null;
+    baseRows.forEach((row) => {
+      row.cells.forEach((cell, typeKey) => {
+        if (!cell.expense) {
+          return;
+        }
+        if (!maxExpensePair || cell.expense > maxExpensePair.expense) {
+          maxExpensePair = {
+            companyName: row.companyName,
+            typeName: typeNames.get(typeKey) ?? UNKNOWN_GROUP_LABEL,
+            expense: cell.expense,
+            net: cell.net,
+            count: cell.count,
+          };
+        }
+      });
+    });
 
     return {
-      rows,
-      types,
-      columnTotals,
-      grandTotals,
+      rows: finalizedRows,
+      types: finalTypes,
+      columnTotals: finalizedColumnTotals,
+      grandTotals: finalizedGrandTotals,
+      topCompanies,
+      topTypes,
+      maxExpensePair,
     };
-  }, [financialRows]);
+  }, [financialRows, financialSearch, hideZeroRowsCols, showOnlyWithData, financialSort]);
   const hasFinancialRows = financialRows.length > 0;
+  const hasFilteredFinancialRows =
+    financialMatrix.rows.length > 0 && (financialMatrix.types.length > 0 || !showOnlyWithData);
+
+  const resetFinancialControls = useCallback(() => {
+    setFinancialSearch('');
+    setFinancialSort('net_desc');
+    setHideZeroRowsCols(true);
+    setShowOnlyWithData(true);
+  }, []);
 
   const handleApply = useCallback(() => {
     void loadDashboard({
@@ -856,6 +1084,150 @@ export const SellerDashboardView: React.FC = () => {
           </div>
         </div>
 
+        <div className="app-panel-muted p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_220px_auto_auto_auto]">
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="financialMatrixSearch"
+                className="text-xs font-semibold text-slate-500"
+              >
+                Поиск по СК и виду
+              </label>
+              <input
+                id="financialMatrixSearch"
+                type="search"
+                value={financialSearch}
+                onChange={(event) => setFinancialSearch(event.target.value)}
+                placeholder="Например: РЕСО, КАСКО"
+                className="field field-input"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="financialMatrixSort" className="text-xs font-semibold text-slate-500">
+                Сортировка
+              </label>
+              <select
+                id="financialMatrixSort"
+                className="field field-select"
+                value={financialSort}
+                onChange={(event) => setFinancialSort(event.target.value as FinancialSort)}
+              >
+                <option value="net_desc">Чистая (убыв.)</option>
+                <option value="net_asc">Чистая (возр.)</option>
+                <option value="income_desc">Доход (убыв.)</option>
+                <option value="expense_desc">Расход (убыв.)</option>
+                <option value="count_desc">Записей (убыв.)</option>
+                <option value="alpha">Алфавит</option>
+              </select>
+            </div>
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={hideZeroRowsCols}
+                onChange={(event) => setHideZeroRowsCols(event.target.checked)}
+                className="check"
+              />
+              Скрыть пустые строки и колонки
+            </label>
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={showOnlyWithData}
+                onChange={(event) => setShowOnlyWithData(event.target.checked)}
+                className="check"
+              />
+              Только ячейки с данными
+            </label>
+            <button
+              type="button"
+              className="field field-input text-sm font-medium"
+              onClick={resetFinancialControls}
+            >
+              Сбросить фильтры
+            </button>
+          </div>
+        </div>
+
+        {!isLoading && hasFinancialRows && (
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Топ-3 СК по чистой
+              </p>
+              <div className="mt-2 space-y-1 text-sm">
+                {financialMatrix.topCompanies.length ? (
+                  financialMatrix.topCompanies.map((company, index) => (
+                    <div
+                      key={company.companyKey}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="text-slate-600">
+                        {index + 1}. {company.companyName}
+                      </span>
+                      <span
+                        className={
+                          company.totals.net < 0
+                            ? 'font-semibold text-rose-700'
+                            : 'font-semibold text-slate-900'
+                        }
+                      >
+                        {formatCurrencyRu(company.totals.net, '—')}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400">Нет данных</p>
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Топ-3 видов по чистой
+              </p>
+              <div className="mt-2 space-y-1 text-sm">
+                {financialMatrix.topTypes.length ? (
+                  financialMatrix.topTypes.map((typeRow, index) => (
+                    <div key={typeRow.typeName} className="flex items-center justify-between gap-2">
+                      <span className="text-slate-600">
+                        {index + 1}. {typeRow.typeName}
+                      </span>
+                      <span
+                        className={
+                          typeRow.totals.net < 0
+                            ? 'font-semibold text-rose-700'
+                            : 'font-semibold text-slate-900'
+                        }
+                      >
+                        {formatCurrencyRu(typeRow.totals.net, '—')}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400">Нет данных</p>
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Наибольший расход
+              </p>
+              {financialMatrix.maxExpensePair ? (
+                <div className="mt-2 space-y-1 text-sm">
+                  <p className="font-semibold text-slate-900">
+                    {financialMatrix.maxExpensePair.companyName}
+                  </p>
+                  <p className="text-slate-600">{financialMatrix.maxExpensePair.typeName}</p>
+                  <p className="font-semibold text-rose-700">
+                    {formatCurrencyRu(financialMatrix.maxExpensePair.expense, '—')}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-slate-400">Нет данных</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="app-panel-muted flex h-[240px] items-center justify-center text-sm text-slate-500">
             Загрузка данных...
@@ -864,31 +1236,42 @@ export const SellerDashboardView: React.FC = () => {
           <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
             Нет проведенных финансовых записей за выбранный период.
           </div>
+        ) : !hasFilteredFinancialRows ? (
+          <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
+            По текущим фильтрам данных нет. Сбросьте фильтры.
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 border-b border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="sticky left-0 top-0 z-20 border-b border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Страховая компания
                   </th>
                   {financialMatrix.types.map((typeColumn) => (
                     <th
                       key={typeColumn.typeKey}
-                      className="border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      className="sticky top-0 z-10 border-b border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
                     >
                       {typeColumn.typeName}
                     </th>
                   ))}
-                  <th className="border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="sticky top-0 z-10 border-b border-slate-300 bg-slate-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Итого по СК
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {financialMatrix.rows.map((companyRow) => (
-                  <tr key={companyRow.companyKey} className="align-top">
-                    <td className="sticky left-0 z-10 border-b border-slate-100 bg-white px-3 py-3 text-sm font-semibold text-slate-700">
+                {financialMatrix.rows.map((companyRow, index) => (
+                  <tr
+                    key={companyRow.companyKey}
+                    className={`align-top ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}`}
+                  >
+                    <td
+                      className={`sticky left-0 z-10 border-b border-slate-100 px-3 py-3 text-sm font-semibold text-slate-700 ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
+                      }`}
+                    >
                       {companyRow.companyName}
                     </td>
                     {financialMatrix.types.map((typeColumn) => (
@@ -896,29 +1279,32 @@ export const SellerDashboardView: React.FC = () => {
                         key={`${companyRow.companyKey}-${typeColumn.typeKey}`}
                         className="border-b border-slate-100 px-3 py-3"
                       >
-                        <FinancialCellView cell={companyRow.cells.get(typeColumn.typeKey)} />
+                        <FinancialCellView
+                          cell={companyRow.cells.get(typeColumn.typeKey)}
+                          showEmptyPlaceholder={!showOnlyWithData}
+                        />
                       </td>
                     ))}
-                    <td className="border-b border-slate-100 bg-slate-50 px-3 py-3">
+                    <td className="border-b border-slate-200 bg-slate-100 px-3 py-3">
                       <FinancialCellView cell={companyRow.totals} />
                     </td>
                   </tr>
                 ))}
                 <tr className="align-top">
-                  <td className="sticky left-0 z-10 border-t border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-900">
+                  <td className="sticky left-0 z-10 border-t border-slate-400 bg-slate-100 px-3 py-3 text-sm font-semibold text-slate-900">
                     Итого по видам
                   </td>
                   {financialMatrix.types.map((typeColumn) => (
                     <td
                       key={`totals-${typeColumn.typeKey}`}
-                      className="border-t border-slate-300 bg-slate-50 px-3 py-3"
+                      className="border-t border-slate-400 bg-slate-100 px-3 py-3"
                     >
                       <FinancialCellView
                         cell={financialMatrix.columnTotals.get(typeColumn.typeKey)}
                       />
                     </td>
                   ))}
-                  <td className="border-t border-slate-300 bg-slate-100 px-3 py-3">
+                  <td className="border-t border-slate-400 bg-slate-200 px-3 py-3">
                     <FinancialCellView cell={financialMatrix.grandTotals} />
                   </td>
                 </tr>
