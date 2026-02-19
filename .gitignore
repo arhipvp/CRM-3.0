@@ -167,3 +167,10 @@ docker-compose.prod.yml
 OPEN_NOTEBOOK_PLAN.md
 AGENTS.md
 AGENTS.md
+
+# Local-only legacy migration tooling (never commit)
+backend/apps/clients/management/commands/local_migrate_legacy_deals.py
+tools/local_migration/
+*.migration-state.jsonl
+*.migration-review.json
+*.migration-errors.log
