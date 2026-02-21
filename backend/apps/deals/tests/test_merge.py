@@ -367,5 +367,7 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
 
         self.assertEqual(response_all_empty.status_code, status.HTTP_200_OK)
         draft_all_empty = response_all_empty.data["final_deal_draft"]
-        self.assertEqual(draft_all_empty["next_contact_date"], datetime.date(2027, 2, 10))
+        self.assertEqual(
+            draft_all_empty["next_contact_date"], datetime.date(2027, 2, 10)
+        )
         self.assertIsNone(draft_all_empty["expected_close"])
