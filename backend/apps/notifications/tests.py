@@ -341,6 +341,22 @@ class TelegramIntakeServiceTests(TestCase):
         self.assertEqual(len(self.fake_tg.sent_messages), 1)
         self.assertEqual(len(self.fake_tg.edited_messages), 1)
 
+    def test_collecting_status_contains_send_now_button(self):
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 941,
+                "text": "первый файл",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+        self.assertTrue(self.fake_tg.sent_messages)
+        markup = self.fake_tg.sent_messages[-1]["reply_markup"] or {}
+        markup_text = str(markup)
+        self.assertIn("Отправить немедленно", markup_text)
+
     def test_ready_prefers_forward_name_match_in_candidates(self):
         forward_client = Client.objects.create(
             name="Петр Петров",

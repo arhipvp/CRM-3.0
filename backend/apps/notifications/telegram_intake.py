@@ -349,19 +349,26 @@ class TelegramIntakeService:
             chat_id=chat_id,
             session=session,
             text=status_text,
+            reply_markup=self._build_collecting_keyboard(session),
         )
         return IntakeResult(status_text, already_sent=True)
 
-    def process_send_now(self, *, user) -> IntakeResult:
+    def process_send_now(
+        self, *, user, session: TelegramDealRoutingSession | None = None
+    ) -> IntakeResult:
         self.expire_stale_sessions(user=user)
 
-        ready = self._get_ready_session(user)
+        ready = (
+            session
+            if session and session.state == TelegramDealRoutingSession.State.READY
+            else self._get_ready_session(user)
+        )
         if ready:
             return IntakeResult(
                 "Пакет уже готов. Используйте /pick, /find, /create или /cancel."
             )
 
-        session = self._get_collecting_session(user)
+        session = session or self._get_collecting_session(user)
         if not session:
             if self._get_latest_expired_session(user):
                 return IntakeResult(
@@ -630,6 +637,8 @@ class TelegramIntakeService:
             return self.process_pick(user=user, pick_index=pick_index, session=session)
         if action == "search":
             return self.process_request_find(user=user, session=session)
+        if action == "send_now":
+            return self.process_send_now(user=user, session=session)
         if action == "create":
             return self.process_create(user=user, session=session)
         if action == "cancel":
@@ -906,6 +915,22 @@ class TelegramIntakeService:
             ]
         )
         return {"inline_keyboard": rows}
+
+    def _build_collecting_keyboard(self, session):
+        return {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "Отправить немедленно",
+                        "callback_data": f"{CALLBACK_PREFIX}:send_now:{session.id}",
+                    },
+                    {
+                        "text": "Отмена",
+                        "callback_data": f"{CALLBACK_PREFIX}:cancel:{session.id}",
+                    },
+                ]
+            ]
+        }
 
     def _build_create_only_keyboard(self, session):
         return {
