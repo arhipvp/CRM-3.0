@@ -1,8 +1,11 @@
+import json
+
 from apps.common.drive import DriveError
 from apps.deals.models import Deal
 from apps.deals.serializers import DealMergePreviewSerializer, DealMergeSerializer
 from apps.deals.services import DealMergeService
 from apps.users.models import AuditLog
+from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -75,6 +78,18 @@ class DealMergeMixin:
 
         source_titles = sorted({deal.title for deal in source_deals})
         result_deal = merge_result["result_deal"]
+        audit_new_value_raw = {
+            "merged_deals": merge_result["merged_deal_ids"],
+            "moved_counts": merge_result["moved_counts"],
+            "preview_snapshot_id": preview_snapshot_id or None,
+            "include_deleted": include_deleted,
+            "new_deal_id": str(result_deal.id),
+            "same_client_enforced": True,
+            "final_deal": final_deal_data,
+        }
+        audit_new_value = json.loads(
+            json.dumps(audit_new_value_raw, cls=DjangoJSONEncoder)
+        )
         AuditLog.objects.create(
             actor=actor,
             object_type="deal",
@@ -84,15 +99,7 @@ class DealMergeMixin:
             description=(
                 f"Merged deals ({', '.join(source_titles)}, {target_deal.title}) into '{result_deal.title}'"
             ),
-            new_value={
-                "merged_deals": merge_result["merged_deal_ids"],
-                "moved_counts": merge_result["moved_counts"],
-                "preview_snapshot_id": preview_snapshot_id or None,
-                "include_deleted": include_deleted,
-                "new_deal_id": str(result_deal.id),
-                "same_client_enforced": True,
-                "final_deal": final_deal_data,
-            },
+            new_value=audit_new_value,
         )
 
         refreshed_result = self._base_queryset().filter(pk=result_deal.pk).first()
@@ -174,7 +181,7 @@ class DealMergeMixin:
         return {
             "title": title,
             "description": str(final_deal.get("description") or "").strip(),
-            "client_id": target_deal.client_id,
+            "client_id": str(target_deal.client_id),
             "expected_close": (final_deal.get("expected_close") or None),
             "executor_id": (final_deal.get("executor_id") or None),
             "seller_id": (final_deal.get("seller_id") or target_deal.seller_id),

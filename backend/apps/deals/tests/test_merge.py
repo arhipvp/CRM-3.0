@@ -13,6 +13,7 @@ from apps.finances.models import Payment
 from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
+from apps.users.models import AuditLog
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -251,3 +252,18 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_merge_audit_final_deal_client_id_is_string(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/deals/merge/",
+            self._payload([self.source, self.source_extra]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        audit = AuditLog.objects.filter(action="merge").latest("created_at")
+        self.assertEqual(
+            audit.new_value["final_deal"]["client_id"], str(self.client_obj.id)
+        )
+        self.assertIsInstance(audit.new_value["final_deal"]["client_id"], str)
