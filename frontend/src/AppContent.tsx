@@ -451,10 +451,7 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    if (
-      deepLinkedDealLoadedRef.current === dealId ||
-      deepLinkedDealLoadingRef.current === dealId
-    ) {
+    if (deepLinkedDealLoadedRef.current === dealId || deepLinkedDealLoadingRef.current === dealId) {
       return;
     }
 
