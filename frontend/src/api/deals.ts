@@ -202,7 +202,9 @@ export async function createQuote(data: {
 }
 
 export async function fetchDeal(id: string): Promise<Deal> {
-  const payload = await request<Record<string, unknown>>(`/deals/${id}/`);
+  const payload = await request<Record<string, unknown>>(
+    `/deals/${id}/?show_closed=1&show_deleted=1`,
+  );
   return mapDeal(payload);
 }
 

@@ -325,6 +325,13 @@ const AppContent: React.FC = () => {
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
   const location = useLocation();
+  const isDealsRoute = location.pathname.startsWith('/deals');
+  const deepLinkedDealId = useMemo(() => {
+    if (!isDealsRoute) {
+      return null;
+    }
+    return new URLSearchParams(location.search).get('dealId');
+  }, [isDealsRoute, location.search]);
   const {
     dealSearch,
     setDealSearch,
@@ -340,12 +347,11 @@ const AppContent: React.FC = () => {
   } = useDealFilters();
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const dealId = params.get('dealId');
-    if (dealId) {
-      selectDealById(dealId);
+    if (!isAuthenticated || !deepLinkedDealId) {
+      return;
     }
-  }, [location.search, selectDealById]);
+    selectDealById(deepLinkedDealId);
+  }, [deepLinkedDealId, isAuthenticated, selectDealById]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -400,6 +406,9 @@ const AppContent: React.FC = () => {
         return dealsData;
       }
       if (selectedDealId && !dealsData.some((deal) => deal.id === selectedDealId)) {
+        if (deepLinkedDealId === selectedDealId) {
+          return dealsData;
+        }
         if (skipNextMissingSelectedDealClearRef.current === selectedDealId) {
           skipNextMissingSelectedDealClearRef.current = null;
           return dealsData;
@@ -408,7 +417,7 @@ const AppContent: React.FC = () => {
       }
       return dealsData;
     },
-    [clearSelectedDealFocus, refreshDeals, selectedDealId],
+    [clearSelectedDealFocus, deepLinkedDealId, refreshDeals, selectedDealId],
   );
 
   const syncDealsByIds = useCallback(
@@ -431,53 +440,58 @@ const AppContent: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!location.pathname.startsWith('/deals')) {
+    if (!isDealsRoute) {
       deepLinkedDealLoadedRef.current = null;
       deepLinkedDealLoadingRef.current = null;
       return;
     }
 
-    const params = new URLSearchParams(location.search);
-    const dealId = params.get('dealId');
-    if (!dealId) {
+    if (!deepLinkedDealId) {
       deepLinkedDealLoadedRef.current = null;
       deepLinkedDealLoadingRef.current = null;
       return;
     }
 
-    if (dealsById.has(dealId)) {
-      deepLinkedDealLoadedRef.current = dealId;
+    if (!isAuthenticated) {
+      return;
+    }
+
+    if (dealsById.has(deepLinkedDealId)) {
+      deepLinkedDealLoadedRef.current = deepLinkedDealId;
       deepLinkedDealLoadingRef.current = null;
       return;
     }
 
-    if (deepLinkedDealLoadedRef.current === dealId || deepLinkedDealLoadingRef.current === dealId) {
+    if (
+      deepLinkedDealLoadedRef.current === deepLinkedDealId ||
+      deepLinkedDealLoadingRef.current === deepLinkedDealId
+    ) {
       return;
     }
 
-    deepLinkedDealLoadingRef.current = dealId;
-    syncDealsByIds([dealId])
+    deepLinkedDealLoadingRef.current = deepLinkedDealId;
+    syncDealsByIds([deepLinkedDealId])
       .then(() => {
-        deepLinkedDealLoadedRef.current = dealId;
+        deepLinkedDealLoadedRef.current = deepLinkedDealId;
       })
       .catch((err) => {
         deepLinkedDealLoadedRef.current = null;
-        clearSelectedDealFocus();
-        setError(formatErrorMessage(err, 'Сделка не найдена или недоступна.'));
+        if (err instanceof APIError && err.status === 403) {
+          setError('Нет доступа к сделке по ссылке.');
+          return;
+        }
+        if (err instanceof APIError && err.status === 404) {
+          setError('Сделка по ссылке не найдена.');
+          return;
+        }
+        setError(formatErrorMessage(err, 'Не удалось открыть сделку по ссылке.'));
       })
       .finally(() => {
-        if (deepLinkedDealLoadingRef.current === dealId) {
+        if (deepLinkedDealLoadingRef.current === deepLinkedDealId) {
           deepLinkedDealLoadingRef.current = null;
         }
       });
-  }, [
-    clearSelectedDealFocus,
-    dealsById,
-    location.pathname,
-    location.search,
-    setError,
-    syncDealsByIds,
-  ]);
+  }, [deepLinkedDealId, dealsById, isAuthenticated, isDealsRoute, setError, syncDealsByIds]);
 
   const handleSelectDeal = useCallback(
     (dealId: string) => {
@@ -517,7 +531,6 @@ const AppContent: React.FC = () => {
   const previewExecutorUser = previewDeal ? usersById.get(previewDeal.executor ?? '') : undefined;
   const quickTaskDeal = quickTaskDealId ? (dealsById.get(quickTaskDealId) ?? null) : null;
   const selectedDeal = selectedDealId ? (dealsById.get(selectedDealId) ?? null) : null;
-  const isDealsRoute = location.pathname.startsWith('/deals');
   const isClientsRoute = location.pathname.startsWith('/clients');
   const isPoliciesRoute = location.pathname.startsWith('/policies');
   const isTasksRoute = location.pathname.startsWith('/tasks');

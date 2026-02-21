@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppContent from '../AppContent';
-import { updateDeal, updateTask } from '../api';
+import { APIError, updateDeal, updateTask } from '../api';
 
 vi.mock('../contexts/NotificationContext', () => ({
   useNotification: () => ({
@@ -21,12 +21,18 @@ vi.mock('../hooks/useConfirm', () => ({
   }),
 }));
 
+const authStateMock = vi.hoisted(() => ({
+  authLoading: false,
+  currentUser: { id: 'user-1', username: 'Tester', roles: ['Admin'] },
+  isAuthenticated: true,
+}));
+
 vi.mock('../hooks/useAuthBootstrap', () => ({
   useAuthBootstrap: () => ({
-    authLoading: false,
-    currentUser: { id: 'user-1', username: 'Tester', roles: ['Admin'] },
+    authLoading: authStateMock.authLoading,
+    currentUser: authStateMock.currentUser,
     handleLoginSuccess: vi.fn(),
-    isAuthenticated: true,
+    isAuthenticated: authStateMock.isAuthenticated,
     setCurrentUser: vi.fn(),
     setIsAuthenticated: vi.fn(),
   }),
@@ -75,6 +81,8 @@ const appDataMock = vi.hoisted(() => ({
 const updateAppDataMock = vi.hoisted(() => vi.fn());
 const refreshDealsMock = vi.hoisted(() => vi.fn());
 const updateDealMock = vi.hoisted(() => vi.fn());
+const setErrorMock = vi.hoisted(() => vi.fn());
+const fetchDealMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../hooks/useAppData', () => ({
   useAppData: () => ({
@@ -111,7 +119,7 @@ vi.mock('../hooks/useAppData', () => ({
     isSyncing: false,
     setIsSyncing: vi.fn(),
     error: null,
-    setError: vi.fn(),
+    setError: setErrorMock,
   }),
 }));
 
@@ -217,6 +225,7 @@ vi.mock('../api', async (importOriginal) => {
         createdAt: '2026-01-01T00:00:00Z',
       })),
     updateDeal: updateDealMock,
+    fetchDeal: fetchDealMock,
   };
 });
 
@@ -230,15 +239,30 @@ const renderAppContent = (path: string) =>
 describe('AppContent hotkeys integration', () => {
   beforeEach(() => {
     vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('Win32');
+    authStateMock.authLoading = false;
+    authStateMock.currentUser = { id: 'user-1', username: 'Tester', roles: ['Admin'] };
+    authStateMock.isAuthenticated = true;
     appDataMock.clients = [];
     appDataMock.deals = [];
     appDataMock.tasks = [];
     appDataMock.policiesList = [];
     updateAppDataMock.mockReset();
+    setErrorMock.mockReset();
     vi.mocked(updateTask).mockClear();
     vi.mocked(updateDeal).mockClear();
     refreshDealsMock.mockReset();
     refreshDealsMock.mockImplementation(async () => appDataMock.deals);
+    fetchDealMock.mockReset();
+    fetchDealMock.mockImplementation(async (dealId: string) => ({
+      id: dealId,
+      title: `Сделка ${dealId}`,
+      clientId: 'client-1',
+      status: 'won' as const,
+      createdAt: '2026-01-01T00:00:00Z',
+      quotes: [],
+      documents: [],
+      clientName: 'Клиент 1',
+    }));
     updateDealMock.mockReset();
     updateDealMock.mockResolvedValue({
       id: 'deal-1',
@@ -301,6 +325,83 @@ describe('AppContent hotkeys integration', () => {
       expect(screen.getByText(/Сделка: Сделка вторая/i)).toBeInTheDocument();
       expect(screen.getByTestId('deal-preview-panel')).toHaveTextContent('Сделка вторая');
     });
+  });
+
+  it('keeps deep-link selection when deal is loaded outside current deals list', async () => {
+    appDataMock.deals = [];
+    refreshDealsMock.mockResolvedValue([]);
+    fetchDealMock.mockResolvedValue({
+      id: 'deal-remote',
+      title: 'Сделка удаленная',
+      clientId: 'client-1',
+      status: 'lost',
+      createdAt: '2026-01-01T00:00:00Z',
+      quotes: [],
+      documents: [],
+      clientName: 'Клиент 1',
+    });
+
+    renderAppContent('/deals?dealId=deal-remote');
+
+    await waitFor(() => {
+      expect(fetchDealMock).toHaveBeenCalledWith('deal-remote');
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-remote');
+    });
+  });
+
+  it('opens deep-linked deal after authentication on the same URL', async () => {
+    authStateMock.isAuthenticated = false;
+    appDataMock.deals = [];
+    fetchDealMock.mockResolvedValue({
+      id: 'deal-auth',
+      title: 'Сделка после входа',
+      clientId: 'client-1',
+      status: 'won',
+      createdAt: '2026-01-01T00:00:00Z',
+      quotes: [],
+      documents: [],
+      clientName: 'Клиент 1',
+    });
+
+    const view = renderAppContent('/deals?dealId=deal-auth');
+
+    expect(fetchDealMock).not.toHaveBeenCalled();
+
+    authStateMock.isAuthenticated = true;
+    view.rerender(
+      <MemoryRouter initialEntries={['/deals?dealId=deal-auth']}>
+        <AppContent />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchDealMock).toHaveBeenCalledWith('deal-auth');
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-auth');
+    });
+  });
+
+  it('shows dedicated 403 deep-link error and keeps selected deal id', async () => {
+    appDataMock.deals = [];
+    fetchDealMock.mockRejectedValue(new APIError('Forbidden', 403, '/deals/deal-no-access/'));
+
+    renderAppContent('/deals?dealId=deal-no-access');
+
+    await waitFor(() => {
+      expect(setErrorMock).toHaveBeenCalledWith('Нет доступа к сделке по ссылке.');
+    });
+    expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-no-access');
+  });
+
+  it('shows dedicated 404 deep-link error and keeps selected deal id', async () => {
+    appDataMock.deals = [];
+    fetchDealMock.mockRejectedValue(new APIError('Not found', 404, '/deals/deal-missing/'));
+
+    renderAppContent('/deals?dealId=deal-missing');
+
+    await waitFor(() => {
+      expect(setErrorMock).toHaveBeenCalledWith('Сделка по ссылке не найдена.');
+    });
+    expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-missing');
   });
 
   it('always clears deal focus after successful postpone', async () => {
