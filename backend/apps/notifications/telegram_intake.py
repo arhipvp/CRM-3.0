@@ -3,8 +3,10 @@ import mimetypes
 import re
 from dataclasses import dataclass
 from datetime import timedelta
+from io import BytesIO
 
 from apps.clients.models import Client
+from apps.common.drive import DriveError, ensure_deal_folder, upload_file_to_drive
 from apps.deals.models import Deal
 from apps.deals.permissions import is_admin_user
 from apps.documents.models import Document
@@ -1178,7 +1180,16 @@ class TelegramIntakeService:
                 )
                 document.file.save(file_name, ContentFile(content), save=False)
                 document.save()
-                saved += 1
+                drive_uploaded = self._upload_attachment_to_drive(
+                    deal=deal,
+                    file_name=file_name,
+                    mime_type=mime_type,
+                    content=content,
+                )
+                if drive_uploaded:
+                    saved += 1
+                else:
+                    failed += 1
             except Exception as exc:  # noqa: BLE001
                 failed += 1
                 logger.warning(
@@ -1193,3 +1204,31 @@ class TelegramIntakeService:
             status=final_status,
         )
         return saved, failed
+
+    def _upload_attachment_to_drive(
+        self,
+        *,
+        deal: Deal,
+        file_name: str,
+        mime_type: str,
+        content: bytes,
+    ) -> bool:
+        try:
+            folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
+            if not folder_id:
+                return False
+            upload_file_to_drive(
+                folder_id=folder_id,
+                file_obj=BytesIO(content),
+                file_name=file_name,
+                mime_type=mime_type or "application/octet-stream",
+            )
+            return True
+        except DriveError as exc:
+            logger.warning(
+                "Telegram attachment Drive upload failed for deal=%s file=%s: %s",
+                deal.id,
+                file_name,
+                exc,
+            )
+            return False

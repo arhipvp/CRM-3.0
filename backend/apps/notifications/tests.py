@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 from datetime import timedelta
+from unittest.mock import patch
 
 from apps.clients.models import Client
 from apps.deals.models import Deal
@@ -234,6 +235,66 @@ class TelegramIntakeServiceTests(TestCase):
             self.assertIn("Пакет привязан", result.text)
             self.assertEqual(Document.objects.filter(deal=self.deal).count(), 2)
             self.assertEqual(Note.objects.filter(deal=self.deal).count(), 1)
+        finally:
+            shutil.rmtree(media_root, ignore_errors=True)
+
+    def test_pick_uploads_telegram_attachments_to_drive(self):
+        media_root = tempfile.mkdtemp(prefix="tg-intake-test-")
+        try:
+            self.fake_tg = FakeTelegramClient(
+                file_payloads={"doc_ok_1": b"1", "doc_ok_2": b"2"}
+            )
+            self.service = TelegramIntakeService(self.fake_tg)
+            self.service.process_message(
+                user=self.user,
+                update_id=1,
+                chat_id=1001,
+                message={
+                    "message_id": 811,
+                    "text": "Документы по сделке",
+                    "chat": {"id": 1001, "type": "private"},
+                    "document": {
+                        "file_id": "doc_ok_1",
+                        "file_name": "a.pdf",
+                        "mime_type": "application/pdf",
+                    },
+                },
+            )
+            self.service.process_message(
+                user=self.user,
+                update_id=2,
+                chat_id=1001,
+                message={
+                    "message_id": 812,
+                    "text": "",
+                    "chat": {"id": 1001, "type": "private"},
+                    "document": {
+                        "file_id": "doc_ok_2",
+                        "file_name": "b.pdf",
+                        "mime_type": "application/pdf",
+                    },
+                },
+            )
+
+            session = TelegramDealRoutingSession.objects.get(user=self.user)
+            session.last_message_at = timezone.now() - timedelta(seconds=61)
+            session.save(update_fields=["last_message_at"])
+            self.service.finalize_ready_batches()
+
+            with (
+                override_settings(MEDIA_ROOT=media_root),
+                patch(
+                    "apps.notifications.telegram_intake.ensure_deal_folder",
+                    return_value="deal-folder-1",
+                ),
+                patch(
+                    "apps.notifications.telegram_intake.upload_file_to_drive"
+                ) as upload_mock,
+            ):
+                result = self.service.process_pick(user=self.user, pick_index=1)
+
+            self.assertIn("Сохранено файлов: 2.", result.text)
+            self.assertEqual(upload_mock.call_count, 2)
         finally:
             shutil.rmtree(media_root, ignore_errors=True)
 
