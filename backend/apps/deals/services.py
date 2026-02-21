@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import date, datetime
 from typing import Sequence
 
 from apps.chat.models import ChatMessage
@@ -84,6 +85,29 @@ class DealMergeService:
         self.include_deleted = include_deleted
         self._source_ids = [deal.pk for deal in self.source_deals]
         self._all_merge_ids = [self.target_deal.pk, *self._source_ids]
+        self._all_deals = [self.target_deal, *self.source_deals]
+
+    def _get_earliest_date(self, field_name: str) -> date | None:
+        values: list[date] = []
+        for deal in self._all_deals:
+            value = getattr(deal, field_name, None)
+            if not value:
+                continue
+            if isinstance(value, datetime):
+                values.append(value.date())
+            elif isinstance(value, date):
+                values.append(value)
+        if not values:
+            return None
+        return min(values)
+
+    def _get_combined_description(self) -> str:
+        parts: list[str] = []
+        for deal in self._all_deals:
+            text = (deal.description or "").strip()
+            if text:
+                parts.append(text)
+        return "\n".join(parts)
 
     def _manager_for(self, model):
         base_manager = getattr(model, "objects", None)
@@ -150,9 +174,9 @@ class DealMergeService:
             "drive_plan": drive_plan,
             "final_deal_draft": {
                 "title": self.target_deal.title,
-                "description": self.target_deal.description or "",
+                "description": self._get_combined_description(),
                 "client_id": str(self.target_deal.client_id),
-                "expected_close": self.target_deal.expected_close,
+                "expected_close": self._get_earliest_date("expected_close"),
                 "executor_id": (
                     str(self.target_deal.executor_id)
                     if self.target_deal.executor_id
@@ -164,7 +188,7 @@ class DealMergeService:
                     else None
                 ),
                 "source": self.target_deal.source or "",
-                "next_contact_date": self.target_deal.next_contact_date,
+                "next_contact_date": self._get_earliest_date("next_contact_date"),
                 "visible_user_ids": [
                     str(value)
                     for value in self.target_deal.visible_users.values_list(
@@ -190,9 +214,7 @@ class DealMergeService:
         with transaction.atomic():
             result_deal = Deal.objects.create(
                 title=self.final_deal_data.get("title") or self.target_deal.title,
-                description=self.final_deal_data.get("description")
-                or self.target_deal.description
-                or "",
+                description=self.final_deal_data.get("description", ""),
                 client_id=self.target_deal.client_id,
                 seller_id=(
                     self.final_deal_data.get("seller_id") or self.target_deal.seller_id
@@ -201,10 +223,7 @@ class DealMergeService:
                 status=Deal.DealStatus.OPEN,
                 stage_name=self.target_deal.stage_name or "",
                 expected_close=self.final_deal_data.get("expected_close"),
-                next_contact_date=(
-                    self.final_deal_data.get("next_contact_date")
-                    or self.target_deal.next_contact_date
-                ),
+                next_contact_date=self.final_deal_data.get("next_contact_date"),
                 next_review_date=self.target_deal.next_review_date,
                 source=self.final_deal_data.get("source") or "",
                 loss_reason="",

@@ -149,5 +149,13 @@ describe('DealDetailsModals', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Предпросмотр' }));
     expect(onPreview).toHaveBeenCalled();
+
+    const layout = screen.getByTestId('deal-merge-modal-layout');
+    const scroll = screen.getByTestId('deal-merge-modal-scroll');
+    const actions = screen.getByTestId('deal-merge-modal-actions');
+
+    expect(layout.className).toContain('max-h-[85vh]');
+    expect(scroll.className).toContain('overflow-y-auto');
+    expect(actions.className).toContain('sticky');
   });
 });

@@ -222,96 +222,102 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
   onRequestAddClient,
 }) => (
   <Modal title="Объединить сделки" onClose={onClose} size="xl" zIndex={50}>
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-        <p className="app-label">Целевая сделка</p>
-        <p className="mt-1 text-sm font-semibold text-slate-900">{targetDeal.title}</p>
-        <p className="mt-1 text-xs text-slate-600">Клиент: {selectedClientName}</p>
-      </div>
+    <div className="flex max-h-[85vh] flex-col" data-testid="deal-merge-modal-layout">
+      <div className="min-h-0 space-y-4 overflow-y-auto pr-1" data-testid="deal-merge-modal-scroll">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+          <p className="app-label">Целевая сделка</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{targetDeal.title}</p>
+          <p className="mt-1 text-xs text-slate-600">Клиент: {selectedClientName}</p>
+        </div>
 
-      <div className="space-y-3">
-        {mergeStep === 'select' ? (
-          <>
-            <p className="text-sm font-semibold text-slate-800">Выберите сделки для переноса</p>
-            <input
-              type="search"
-              value={mergeSearch}
-              onChange={(event) => onMergeSearchChange(event.target.value)}
-              placeholder="Поиск по названию сделки"
-              className="field field-input"
-            />
-
-            {mergeList.length ? (
-              <div className="space-y-2">
-                {mergeList.map((deal) => (
-                  <label
-                    key={deal.id}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 transition hover:border-slate-300"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={mergeSources.includes(deal.id)}
-                      onChange={() => toggleMergeSource(deal.id)}
-                      className="check"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
-                      <p className="mt-1 text-[11px] text-slate-600">
-                        Статус: {statusLabels[deal.status]}
-                      </p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              !isLoading && (
-                <p className="text-sm text-slate-600">
-                  {isActiveSearch
-                    ? `По запросу "${searchQuery}" ничего не найдено.`
-                    : 'Нет подходящих сделок у клиента.'}
-                </p>
-              )
-            )}
-            {isLoading && <p className="text-sm text-slate-600">Поиск...</p>}
-          </>
-        ) : (
-          <div className="space-y-3">
-            <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800">
-              Будет создана новая объединённая сделка, выбранные исходные сделки будут архивированы.
-            </div>
-            {mergeFinalDraft && (
-              <DealForm
-                clients={clients}
-                users={users}
-                mode="edit"
-                showSellerField
-                showNextContactField
-                showAddClientButton={false}
-                initialValues={mergeFinalDraft}
-                onRequestAddClient={onRequestAddClient}
-                submitLabel={isMerging ? 'Объединяем...' : 'Объединить сделки'}
-                submittingLabel="Объединяем..."
-                onSubmit={onSubmit}
+        <div className="space-y-3">
+          {mergeStep === 'select' ? (
+            <>
+              <p className="text-sm font-semibold text-slate-800">Выберите сделки для переноса</p>
+              <input
+                type="search"
+                value={mergeSearch}
+                onChange={(event) => onMergeSearchChange(event.target.value)}
+                placeholder="Поиск по названию сделки"
+                className="field field-input"
               />
-            )}
-          </div>
-        )}
-        {mergeError && <p className="text-sm font-semibold text-rose-700">{mergeError}</p>}
-        {mergePreviewWarnings.length > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-              Предупреждения предпросмотра
-            </p>
-            <ul className="mt-2 list-disc pl-5 text-xs text-amber-800">
-              {mergePreviewWarnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+
+              {mergeList.length ? (
+                <div className="space-y-2">
+                  {mergeList.map((deal) => (
+                    <label
+                      key={deal.id}
+                      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 transition hover:border-slate-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={mergeSources.includes(deal.id)}
+                        onChange={() => toggleMergeSource(deal.id)}
+                        className="check"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900">{deal.title}</p>
+                        <p className="mt-1 text-[11px] text-slate-600">
+                          Статус: {statusLabels[deal.status]}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                !isLoading && (
+                  <p className="text-sm text-slate-600">
+                    {isActiveSearch
+                      ? `По запросу "${searchQuery}" ничего не найдено.`
+                      : 'Нет подходящих сделок у клиента.'}
+                  </p>
+                )
+              )}
+              {isLoading && <p className="text-sm text-slate-600">Поиск...</p>}
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800">
+                Будет создана новая объединённая сделка, выбранные исходные сделки будут
+                архивированы.
+              </div>
+              {mergeFinalDraft && (
+                <DealForm
+                  clients={clients}
+                  users={users}
+                  mode="edit"
+                  showSellerField
+                  showNextContactField
+                  showAddClientButton={false}
+                  initialValues={mergeFinalDraft}
+                  onRequestAddClient={onRequestAddClient}
+                  submitLabel={isMerging ? 'Объединяем...' : 'Объединить сделки'}
+                  submittingLabel="Объединяем..."
+                  onSubmit={onSubmit}
+                />
+              )}
+            </div>
+          )}
+          {mergeError && <p className="text-sm font-semibold text-rose-700">{mergeError}</p>}
+          {mergePreviewWarnings.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                Предупреждения предпросмотра
+              </p>
+              <ul className="mt-2 list-disc pl-5 text-xs text-amber-800">
+                {mergePreviewWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+      <div
+        className="sticky bottom-0 mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-white pb-1 pt-4"
+        data-testid="deal-merge-modal-actions"
+      >
         {mergeStep === 'select' && (
           <button
             type="button"

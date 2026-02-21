@@ -171,6 +171,14 @@ class TelegramInboundMessage(models.Model):
         on_delete=models.CASCADE,
         help_text="CRM user",
     )
+    routing_session = models.ForeignKey(
+        "notifications.TelegramDealRoutingSession",
+        related_name="inbound_messages",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Batch routing session",
+    )
     linked_deal = models.ForeignKey(
         "deals.Deal",
         related_name="telegram_inbound_messages",
@@ -220,7 +228,9 @@ class TelegramInboundMessage(models.Model):
 
 class TelegramDealRoutingSession(models.Model):
     class State(models.TextChoices):
-        PENDING = "pending", "Pending"
+        PENDING = "pending", "Pending (legacy)"
+        COLLECTING = "collecting", "Collecting"
+        READY = "ready", "Ready"
         LINKED_EXISTING = "linked_existing", "Linked existing deal"
         CREATED_NEW_DEAL = "created_new_deal", "Created new deal"
         CANCELED = "canceled", "Canceled"
@@ -233,19 +243,42 @@ class TelegramDealRoutingSession(models.Model):
         on_delete=models.CASCADE,
         help_text="CRM user",
     )
-    inbound_message = models.OneToOneField(
-        TelegramInboundMessage,
-        related_name="routing_session",
-        on_delete=models.CASCADE,
-        help_text="Inbound message being routed",
-    )
     state = models.CharField(
         max_length=32,
         choices=State.choices,
-        default=State.PENDING,
+        default=State.COLLECTING,
         help_text="Session state",
     )
     expires_at = models.DateTimeField(help_text="Session expiration timestamp")
+    last_message_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last message timestamp in batch",
+    )
+    batch_timeout_seconds = models.PositiveSmallIntegerField(
+        default=60,
+        help_text="Batch finalize timeout in seconds",
+    )
+    batch_message_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Telegram message ids in this batch",
+    )
+    batch_payloads = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Batch source payloads",
+    )
+    aggregated_text = models.TextField(
+        blank=True,
+        default="",
+        help_text="Merged text/caption from batch",
+    )
+    aggregated_attachments = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Merged attachments from batch",
+    )
     extracted_data = models.JSONField(
         default=dict,
         blank=True,
@@ -279,6 +312,11 @@ class TelegramDealRoutingSession(models.Model):
         null=True,
         blank=True,
         help_text="Deal created during routing",
+    )
+    decision_prompt_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When decision prompt was sent",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -126,13 +126,18 @@ class TelegramDealRoutingSessionAdmin(admin.ModelAdmin):
         "id",
         "user",
         "state",
-        "inbound_message",
+        "batch_size",
         "selected_deal",
         "created_deal",
         "expires_at",
         "updated_at",
     )
     list_filter = ("state", "expires_at", "updated_at")
-    search_fields = ("user__username", "inbound_message__chat_id")
+    search_fields = ("user__username",)
     readonly_fields = ("created_at", "updated_at")
     ordering = ("-created_at",)
+
+    def batch_size(self, obj):
+        return len(obj.batch_message_ids or [])
+
+    batch_size.short_description = "Batch messages"

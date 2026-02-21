@@ -40,6 +40,11 @@ class Command(BaseCommand):
                     offset = update.get("update_id", 0) + 1
                     self._handle_update(client=client, intake=intake, update=update)
 
+                try:
+                    intake.finalize_ready_batches()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Telegram intake batch finalization failed: %s", exc)
+
                 now = time.monotonic()
                 if now - last_reminder_run >= reminder_interval:
                     intake.expire_stale_sessions()

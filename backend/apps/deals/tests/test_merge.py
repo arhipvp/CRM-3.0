@@ -1,3 +1,5 @@
+import datetime
+
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
@@ -267,3 +269,104 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
             audit.new_value["final_deal"]["client_id"], str(self.client_obj.id)
         )
         self.assertIsInstance(audit.new_value["final_deal"]["client_id"], str)
+
+    def test_merge_preview_uses_earliest_dates_and_combined_description(self):
+        self.target.description = "Target description"
+        self.target.next_contact_date = datetime.date(2027, 2, 14)
+        self.target.expected_close = datetime.date(2027, 4, 15)
+        self.target.save(
+            update_fields=["description", "next_contact_date", "expected_close"]
+        )
+
+        self.source.description = "Source A description"
+        self.source.next_contact_date = datetime.date(2027, 2, 10)
+        self.source.expected_close = datetime.date(2027, 4, 20)
+        self.source.save(
+            update_fields=["description", "next_contact_date", "expected_close"]
+        )
+
+        self.source_extra.description = "Source B description"
+        self.source_extra.next_contact_date = datetime.date(2027, 2, 12)
+        self.source_extra.expected_close = datetime.date(2027, 4, 10)
+        self.source_extra.save(
+            update_fields=["description", "next_contact_date", "expected_close"]
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/deals/merge/preview/",
+            self._payload([self.source, self.source_extra], include_final_deal=False),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        draft = response.data["final_deal_draft"]
+        self.assertEqual(draft["next_contact_date"], "2027-02-10")
+        self.assertEqual(draft["expected_close"], "2027-04-10")
+        self.assertEqual(
+            draft["description"],
+            "Target description\nSource A description\nSource B description",
+        )
+
+    def test_merge_allows_clearing_next_contact_and_description(self):
+        self.target.description = "Will be cleared"
+        self.target.next_contact_date = datetime.date(2027, 2, 14)
+        self.target.save(update_fields=["description", "next_contact_date"])
+
+        payload = self._payload([self.source, self.source_extra])
+        payload["final_deal"]["description"] = ""
+        payload["final_deal"]["next_contact_date"] = None
+
+        self.authenticate(self.seller)
+        response = self.api_client.post("/api/v1/deals/merge/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result_deal = Deal.objects.get(pk=response.data["result_deal"]["id"])
+        self.assertEqual(result_deal.description, "")
+        self.assertIsNone(result_deal.next_contact_date)
+
+    def test_merge_preview_ignores_empty_dates_for_earliest(self):
+        self.target.expected_close = datetime.date(2027, 4, 15)
+        self.target.next_contact_date = None
+        self.target.save(update_fields=["expected_close", "next_contact_date"])
+
+        self.source.expected_close = None
+        self.source.next_contact_date = datetime.date(2027, 2, 10)
+        self.source.save(update_fields=["expected_close", "next_contact_date"])
+
+        self.source_extra.expected_close = datetime.date(2027, 4, 10)
+        self.source_extra.next_contact_date = None
+        self.source_extra.save(update_fields=["expected_close", "next_contact_date"])
+
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/deals/merge/preview/",
+            self._payload([self.source, self.source_extra], include_final_deal=False),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        draft = response.data["final_deal_draft"]
+        self.assertEqual(draft["next_contact_date"], "2027-02-10")
+        self.assertEqual(draft["expected_close"], "2027-04-10")
+
+        self.target.next_contact_date = None
+        self.target.expected_close = None
+        self.target.save(update_fields=["next_contact_date", "expected_close"])
+        self.source.next_contact_date = None
+        self.source.expected_close = None
+        self.source.save(update_fields=["next_contact_date", "expected_close"])
+        self.source_extra.next_contact_date = None
+        self.source_extra.expected_close = None
+        self.source_extra.save(update_fields=["next_contact_date", "expected_close"])
+
+        response_all_empty = self.api_client.post(
+            "/api/v1/deals/merge/preview/",
+            self._payload([self.source, self.source_extra], include_final_deal=False),
+            format="json",
+        )
+
+        self.assertEqual(response_all_empty.status_code, status.HTTP_200_OK)
+        draft_all_empty = response_all_empty.data["final_deal_draft"]
+        self.assertIsNone(draft_all_empty["next_contact_date"])
+        self.assertIsNone(draft_all_empty["expected_close"])
