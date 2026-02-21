@@ -20,7 +20,7 @@ from apps.tasks.models import Task
 from apps.users.models import User
 from django.db import transaction
 
-from .models import Deal, Quote
+from .models import Deal, DealPin, DealTimeTick, DealViewer, Quote
 
 logger = logging.getLogger(__name__)
 _DRIVE_RETRY_ATTEMPTS = 3
@@ -71,7 +71,7 @@ class DealMergeService:
         *,
         target_deal: Deal,
         source_deals: Sequence[Deal],
-        resulting_client: Client | None = None,
+        final_deal_data: dict | None = None,
         actor: User | None = None,
         include_deleted: bool = True,
     ) -> None:
@@ -80,9 +80,10 @@ class DealMergeService:
         self.target_deal = target_deal
         self.source_deals = list(source_deals)
         self.actor = actor
-        self.resulting_client = resulting_client
+        self.final_deal_data = final_deal_data or {}
         self.include_deleted = include_deleted
         self._source_ids = [deal.pk for deal in self.source_deals]
+        self._all_merge_ids = [self.target_deal.pk, *self._source_ids]
 
     def _manager_for(self, model):
         base_manager = getattr(model, "objects", None)
@@ -96,7 +97,7 @@ class DealMergeService:
         items: dict[str, list[dict]] = {}
         for alias, model in self._RELATED_MODELS:
             manager = self._manager_for(model)
-            queryset = manager.filter(deal_id__in=self._source_ids)
+            queryset = manager.filter(deal_id__in=self._all_merge_ids)
             moved_counts[alias] = queryset.count()
             items[alias] = [
                 {
@@ -106,14 +107,23 @@ class DealMergeService:
                 for record in queryset.values("id", "deleted_at")[:200]
             ]
 
-        client_ids = {
-            str(deal.client_id) for deal in [self.target_deal, *self.source_deals]
-        }
-        warnings: list[str] = []
-        if len(client_ids) > 1 and not self.resulting_client:
-            warnings.append(
-                "У объединяемых сделок разные клиенты. Укажите итогового клиента."
+        merged_pinned_user_ids = set(
+            DealPin.objects.filter(deal_id__in=self._all_merge_ids).values_list(
+                "user_id", flat=True
             )
+        )
+        merged_viewer_ids = set(
+            DealViewer.objects.filter(deal_id__in=self._all_merge_ids).values_list(
+                "user_id", flat=True
+            )
+        )
+        merged_time_seconds = (
+            DealTimeTick.objects.filter(deal_id__in=self._all_merge_ids)
+            .values_list("seconds", flat=True)
+            .iterator()
+        )
+
+        warnings: list[str] = []
         if not self.target_deal.drive_folder_id:
             warnings.append(
                 "У целевой сделки нет папки Drive. Она будет создана при merge."
@@ -133,36 +143,74 @@ class DealMergeService:
             "target_deal_id": str(self.target_deal.id),
             "source_deal_ids": [str(deal.id) for deal in self.source_deals],
             "include_deleted": self.include_deleted,
-            "resulting_client_id": (
-                str(self.resulting_client.id)
-                if self.resulting_client
-                else (
-                    str(self.target_deal.client_id)
-                    if self.target_deal.client_id
-                    else None
-                )
-            ),
+            "resulting_client_id": str(self.target_deal.client_id),
             "moved_counts": moved_counts,
             "items": items,
             "warnings": warnings,
             "drive_plan": drive_plan,
+            "final_deal_draft": {
+                "title": self.target_deal.title,
+                "description": self.target_deal.description or "",
+                "client_id": str(self.target_deal.client_id),
+                "expected_close": self.target_deal.expected_close,
+                "executor_id": (
+                    str(self.target_deal.executor_id)
+                    if self.target_deal.executor_id
+                    else None
+                ),
+                "seller_id": (
+                    str(self.target_deal.seller_id)
+                    if self.target_deal.seller_id
+                    else None
+                ),
+                "source": self.target_deal.source or "",
+                "next_contact_date": self.target_deal.next_contact_date,
+                "visible_user_ids": [
+                    str(value)
+                    for value in self.target_deal.visible_users.values_list(
+                        "id", flat=True
+                    )
+                ],
+            },
+            "service_rules_preview": {
+                "pin_will_be_set": bool(merged_pinned_user_ids),
+                "visible_users_count_after": len(merged_viewer_ids),
+                "time_ticks_seconds_after": sum(merged_time_seconds),
+            },
         }
 
     def merge(self) -> dict:
-        """Merge related objects from source deals into the target deal."""
+        """Merge related objects from target+source deals into a new deal."""
 
         moved_counts: dict[str, int] = {}
-        target_client = self.resulting_client or getattr(
-            self.target_deal, "client", None
-        )
 
         # Drive-first: если упадем на Drive, транзакция БД не стартует.
-        self._prepare_drive_folders(target_client)
+        self._prepare_drive_folders(self.target_deal.client)
 
         with transaction.atomic():
-            if target_client and self.target_deal.client_id != target_client.id:
-                self.target_deal.client = target_client
-                self.target_deal.save(update_fields=["client"])
+            result_deal = Deal.objects.create(
+                title=self.final_deal_data.get("title") or self.target_deal.title,
+                description=self.final_deal_data.get("description")
+                or self.target_deal.description
+                or "",
+                client_id=self.target_deal.client_id,
+                seller_id=(
+                    self.final_deal_data.get("seller_id") or self.target_deal.seller_id
+                ),
+                executor_id=self.final_deal_data.get("executor_id"),
+                status=Deal.DealStatus.OPEN,
+                stage_name=self.target_deal.stage_name or "",
+                expected_close=self.final_deal_data.get("expected_close"),
+                next_contact_date=(
+                    self.final_deal_data.get("next_contact_date")
+                    or self.target_deal.next_contact_date
+                ),
+                next_review_date=self.target_deal.next_review_date,
+                source=self.final_deal_data.get("source") or "",
+                loss_reason="",
+                closing_reason="",
+                drive_folder_id=self.target_deal.drive_folder_id,
+            )
 
             for alias, model in self._RELATED_MODELS:
                 manager = self._manager_for(model)
@@ -170,16 +218,62 @@ class DealMergeService:
                 # Поля Policy.client / Policy.insured_client не изменяем,
                 # т.к. страхователь полиса может отличаться от контактного лица сделки.
                 moved_counts[alias] = manager.filter(
-                    deal_id__in=self._source_ids
-                ).update(deal=self.target_deal)
+                    deal_id__in=self._all_merge_ids
+                ).update(deal=result_deal)
 
-            for deal in self.source_deals:
+            pinned_user_ids = set(
+                DealPin.objects.filter(deal_id__in=self._all_merge_ids).values_list(
+                    "user_id", flat=True
+                )
+            )
+            DealPin.objects.filter(deal_id__in=self._all_merge_ids).delete()
+            DealPin.objects.bulk_create(
+                [
+                    DealPin(user_id=user_id, deal=result_deal)
+                    for user_id in pinned_user_ids
+                ],
+                ignore_conflicts=True,
+            )
+            moved_counts["deal_pins"] = len(pinned_user_ids)
+
+            viewer_user_ids = set(
+                DealViewer.objects.filter(deal_id__in=self._all_merge_ids).values_list(
+                    "user_id", flat=True
+                )
+            )
+            for raw_user_id in self.final_deal_data.get("visible_user_ids") or []:
+                try:
+                    viewer_user_ids.add(int(raw_user_id))
+                except (TypeError, ValueError):
+                    continue
+            normalized_viewer_ids = [value for value in viewer_user_ids if value]
+            DealViewer.objects.bulk_create(
+                [
+                    DealViewer(
+                        deal=result_deal,
+                        user_id=user_id,
+                        added_by=self.actor,
+                    )
+                    for user_id in normalized_viewer_ids
+                ],
+                ignore_conflicts=True,
+            )
+            moved_counts["deal_viewers"] = len(normalized_viewer_ids)
+
+            moved_counts["time_ticks"] = DealTimeTick.objects.filter(
+                deal_id__in=self._all_merge_ids
+            ).update(deal=result_deal)
+
+            for deal in [self.target_deal, *self.source_deals]:
                 if self.actor:
                     deal._audit_actor = self.actor
                 deal.delete()
 
         return {
-            "merged_deal_ids": [str(deal.id) for deal in self.source_deals],
+            "result_deal": result_deal,
+            "merged_deal_ids": [
+                str(deal.id) for deal in [self.target_deal, *self.source_deals]
+            ],
             "moved_counts": moved_counts,
         }
 

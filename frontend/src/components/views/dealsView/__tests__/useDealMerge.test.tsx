@@ -3,7 +3,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { useDealMerge } from '../hooks/useDealMerge';
-import type { Deal, Client, User } from '../../../../types';
+import type { Deal, User } from '../../../../types';
 
 vi.mock('../../../../api', () => ({
   fetchDeals: vi.fn(),
@@ -24,14 +24,6 @@ const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   createdAt: '2025-01-01T00:00:00Z',
   quotes: [],
   documents: [],
-  ...overrides,
-});
-
-const createClient = (overrides: Partial<Client> = {}): Client => ({
-  id: 'client-1',
-  name: 'Client A',
-  createdAt: '2025-01-01T00:00:00Z',
-  updatedAt: '2025-01-01T00:00:00Z',
   ...overrides,
 });
 
@@ -73,7 +65,6 @@ describe('useDealMerge', () => {
 
     const resultRef = renderDealMergeHook({
       deals: [selectedDeal, otherDeal],
-      clients: [createClient()],
       selectedDeal,
       currentUser: createUser({ id: 'user-123' }),
       onMergeDeals,
@@ -104,7 +95,6 @@ describe('useDealMerge', () => {
 
     const resultRef = renderDealMergeHook({
       deals: [selectedDeal, otherDeal],
-      clients: [createClient()],
       selectedDeal,
       currentUser: null,
       onMergeDeals,
@@ -120,11 +110,15 @@ describe('useDealMerge', () => {
       targetDealId: selectedDeal.id,
       sourceDealIds: [otherDeal.id],
       includeDeleted: true,
-      resultingClientId: 'client-1',
       movedCounts: { tasks: 1 },
       items: {},
       drivePlan: [],
       warnings: [],
+      finalDealDraft: {
+        title: selectedDeal.title,
+        clientId: selectedDeal.clientId,
+        description: '',
+      },
     });
 
     await act(async () => {
@@ -132,14 +126,21 @@ describe('useDealMerge', () => {
     });
 
     await act(async () => {
-      await resultRef.current?.handleMergeSubmit();
+      await resultRef.current?.handleMergeSubmit({
+        title: 'Merged',
+        clientId: selectedDeal.clientId,
+        description: '',
+      });
     });
 
     await waitFor(() =>
       expect(onMergeDeals).toHaveBeenCalledWith(
         selectedDeal.id,
         [otherDeal.id],
-        'client-1',
+        expect.objectContaining({
+          title: 'Merged',
+          clientId: selectedDeal.clientId,
+        }),
         expect.stringContaining('deal-merge-preview:'),
       ),
     );

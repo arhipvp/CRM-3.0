@@ -111,7 +111,7 @@ export interface AppRoutesProps {
   onMergeDeals: (
     targetDealId: string,
     sourceDealIds: string[],
-    resultingClientId?: string | undefined,
+    finalDeal: DealFormValues,
     previewSnapshotId?: string | undefined,
   ) => Promise<void>;
   dealSearch: string;

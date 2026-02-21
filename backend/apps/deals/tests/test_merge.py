@@ -65,19 +65,27 @@ class DealMergeServiceTestCase(TestCase):
         result = DealMergeService(
             target_deal=self.target,
             source_deals=[self.source],
-            resulting_client=self.client_obj,
+            final_deal_data={
+                "title": "Merged Deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+            },
             actor=self.user,
         ).merge()
 
-        self.assertEqual(Task.objects.filter(deal=self.target).count(), 1)
-        self.assertEqual(Payment.objects.filter(deal=self.target).count(), 1)
-        self.assertEqual(ChatMessage.objects.filter(deal=self.target).count(), 1)
-        self.assertEqual(Note.objects.filter(deal=self.target).count(), 1)
-        self.assertEqual(Policy.objects.filter(deal=self.target).count(), 1)
-        self.assertEqual(Quote.objects.filter(deal=self.target).count(), 1)
-        self.assertEqual(Document.objects.filter(deal=self.target).count(), 1)
+        result_deal = result["result_deal"]
+        self.assertEqual(Task.objects.filter(deal=result_deal).count(), 1)
+        self.assertEqual(Payment.objects.filter(deal=result_deal).count(), 1)
+        self.assertEqual(ChatMessage.objects.filter(deal=result_deal).count(), 1)
+        self.assertEqual(Note.objects.filter(deal=result_deal).count(), 1)
+        self.assertEqual(Policy.objects.filter(deal=result_deal).count(), 1)
+        self.assertEqual(Quote.objects.filter(deal=result_deal).count(), 1)
+        self.assertEqual(Document.objects.filter(deal=result_deal).count(), 1)
+        self.assertTrue(Deal.objects.with_deleted().get(pk=self.target.pk).is_deleted())
         self.assertTrue(Deal.objects.with_deleted().get(pk=self.source.pk).is_deleted())
-        self.assertEqual(result["merged_deal_ids"], [str(self.source.id)])
+        self.assertEqual(
+            result["merged_deal_ids"], [str(self.target.id), str(self.source.id)]
+        )
         self.assertEqual(
             result["moved_counts"],
             {
@@ -88,6 +96,9 @@ class DealMergeServiceTestCase(TestCase):
                 "payments": 1,
                 "quotes": 1,
                 "chat_messages": 1,
+                "deal_pins": 0,
+                "deal_viewers": 0,
+                "time_ticks": 0,
             },
         )
 
@@ -105,7 +116,11 @@ class DealMergeServiceTestCase(TestCase):
         DealMergeService(
             target_deal=self.target,
             source_deals=[self.source],
-            resulting_client=self.client_obj,
+            final_deal_data={
+                "title": "Merged Client Lock",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+            },
             actor=self.user,
         ).merge()
 
@@ -148,13 +163,23 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
         self.token_for(self.seller)
         self.token_for(self.other_user)
 
-    def _payload(self, sources, resulting_client_id=None):
+    def _payload(self, sources, include_final_deal=True):
         payload = {
             "target_deal_id": str(self.target.id),
             "source_deal_ids": [str(deal.id) for deal in sources],
         }
-        if resulting_client_id:
-            payload["resulting_client_id"] = resulting_client_id
+        if include_final_deal:
+            payload["final_deal"] = {
+                "title": "Merged deal",
+                "client_id": str(self.target.client_id),
+                "seller_id": str(self.seller.id),
+                "executor_id": None,
+                "description": "",
+                "source": "",
+                "expected_close": None,
+                "next_contact_date": None,
+                "visible_user_ids": [],
+            }
         return payload
 
     def test_merge_success(self):
@@ -166,36 +191,27 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["target_deal"]["id"], str(self.target.id))
-        self.assertEqual(len(response.data["merged_deal_ids"]), 2)
-        self.assertEqual(Task.objects.filter(deal=self.target).count(), 1)
-        self.assertEqual(Payment.objects.filter(deal=self.target).count(), 1)
-        self.assertFalse(Deal.objects.filter(id=self.source.id).exists())
-        self.assertFalse(Deal.objects.filter(id=self.source_extra.id).exists())
+        result_deal_id = response.data["result_deal"]["id"]
+        self.assertEqual(len(response.data["merged_deal_ids"]), 3)
+        self.assertEqual(Task.objects.filter(deal_id=result_deal_id).count(), 1)
+        self.assertEqual(Payment.objects.filter(deal_id=result_deal_id).count(), 1)
+        self.assertFalse(Deal.objects.alive().filter(id=self.target.id).exists())
+        self.assertFalse(Deal.objects.alive().filter(id=self.source.id).exists())
+        self.assertFalse(Deal.objects.alive().filter(id=self.source_extra.id).exists())
 
     def test_merge_allows_specifying_client(self):
-        other_client = Client.objects.create(name="Other")
-        other_source = Deal.objects.create(
-            title="Foreign",
-            client=other_client,
-            seller=self.seller,
-            status="open",
-            stage_name="initial",
-        )
         self.authenticate(self.seller)
         response = self.api_client.post(
             "/api/v1/deals/merge/",
-            self._payload(
-                [self.source, other_source], resulting_client_id=str(other_client.id)
-            ),
+            self._payload([self.source, self.source_extra]),
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            str(response.data["target_deal"]["client"]), str(other_client.id)
+            str(response.data["result_deal"]["client"]), str(self.client_obj.id)
         )
 
-    def test_merge_requires_resulting_client_for_multi_client_merge(self):
+    def test_merge_requires_same_client(self):
         other_client = Client.objects.create(name="Other")
         other_source = Deal.objects.create(
             title="Foreign",
@@ -211,18 +227,19 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("resulting_client_id", response.data)
+        self.assertIn("source_deal_ids", response.data)
 
     def test_merge_preview_returns_counts(self):
         self.authenticate(self.seller)
         response = self.api_client.post(
             "/api/v1/deals/merge/preview/",
-            self._payload([self.source, self.source_extra]),
+            self._payload([self.source, self.source_extra], include_final_deal=False),
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["moved_counts"]["tasks"], 1)
         self.assertEqual(response.data["moved_counts"]["payments"], 1)
+        self.assertIn("final_deal_draft", response.data)
         self.assertIn("warnings", response.data)
 
     def test_merge_requires_owner(self):

@@ -253,7 +253,7 @@ export interface DealTimeTrackingTickResponse {
 }
 
 export interface DealMergeResponse {
-  targetDeal: Deal;
+  resultDeal: Deal;
   mergedDealIds: string[];
   movedCounts: Record<string, number>;
   warnings?: string[];
@@ -308,11 +308,21 @@ export interface DealMergePreviewResponse {
   targetDealId: string;
   sourceDealIds: string[];
   includeDeleted: boolean;
-  resultingClientId?: string | null;
   movedCounts: Record<string, number>;
   items: Record<string, Array<Record<string, unknown>>>;
   drivePlan: Array<Record<string, unknown>>;
   warnings: string[];
+  finalDealDraft?: {
+    title: string;
+    description?: string;
+    clientId: string;
+    expectedClose?: string | null;
+    executorId?: string | null;
+    sellerId?: string | null;
+    source?: string;
+    nextContactDate?: string | null;
+    visibleUserIds?: string[];
+  };
 }
 
 export interface Policy {

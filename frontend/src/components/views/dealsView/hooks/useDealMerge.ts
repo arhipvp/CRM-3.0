@@ -1,32 +1,44 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { Client, Deal, User } from '../../../../types';
+import type { Deal, User } from '../../../../types';
+import type { DealFormValues } from '../../../forms/DealForm';
 import { fetchDeals, previewDealMerge } from '../../../../api';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 
 interface UseDealMergeParams {
   deals: Deal[];
-  clients: Client[];
   selectedDeal: Deal | null;
   currentUser: User | null;
   onMergeDeals: (
     targetDealId: string,
     sourceDealIds: string[],
-    resultingClientId?: string,
+    finalDeal: DealFormValues,
     previewSnapshotId?: string,
   ) => Promise<void>;
   debounceDelay?: number;
 }
 
+const buildDraftFromDeal = (deal: Deal): DealFormValues => ({
+  title: deal.title,
+  clientId: deal.clientId,
+  description: deal.description ?? '',
+  expectedClose: deal.expectedClose ?? null,
+  executorId: deal.executor ?? null,
+  source: deal.source ?? '',
+  sellerId: deal.seller ?? null,
+  nextContactDate: deal.nextContactDate ?? null,
+  visibleUserIds: deal.visibleUsers ?? [],
+});
+
 export const useDealMerge = ({
   deals,
-  clients,
   selectedDeal,
   currentUser,
   onMergeDeals,
   debounceDelay = 300,
 }: UseDealMergeParams) => {
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [mergeStep, setMergeStep] = useState<'select' | 'preview'>('select');
   const [mergeSources, setMergeSources] = useState<string[]>([]);
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [isMerging, setIsMerging] = useState(false);
@@ -37,65 +49,25 @@ export const useDealMerge = ({
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeSearchResults, setMergeSearchResults] = useState<Deal[]>([]);
   const [isMergeSearchLoading, setIsMergeSearchLoading] = useState(false);
-  const [mergeResultingClientId, setMergeResultingClientId] = useState<string | undefined>(
-    undefined,
-  );
+  const [mergeFinalDraft, setMergeFinalDraft] = useState<DealFormValues | null>(null);
 
   const mergeCandidates = useMemo(() => {
     if (!selectedDeal) {
       return [];
     }
-    return deals.filter((deal: Deal) => deal.id !== selectedDeal.id && !deal.deletedAt);
+    return deals.filter(
+      (deal: Deal) =>
+        deal.id !== selectedDeal.id && !deal.deletedAt && deal.clientId === selectedDeal.clientId,
+    );
   }, [deals, selectedDeal]);
 
-  const mergeClientOptions = useMemo(() => {
-    if (!selectedDeal) {
-      return [];
-    }
-    const ids = new Set<string>();
-    if (selectedDeal.clientId) {
-      ids.add(selectedDeal.clientId);
-    }
-    mergeCandidates.forEach((deal: Deal) => {
-      if (deal.clientId) {
-        ids.add(deal.clientId);
-      }
-    });
-    return Array.from(ids).map((clientId) => {
-      const client = clients.find((entity) => entity.id === clientId);
-      const fallbackName =
-        mergeCandidates.find((deal: Deal) => deal.clientId === clientId)?.clientName ||
-        selectedDeal.clientName;
-      const name = client?.name || fallbackName || '—';
-      return { id: clientId, name };
-    });
-  }, [clients, mergeCandidates, selectedDeal]);
-
-  useEffect(() => {
-    if (!isMergeModalOpen) {
-      setMergeResultingClientId(undefined);
-      return;
-    }
-    if (!mergeClientOptions.length) {
-      setMergeResultingClientId(undefined);
-      return;
-    }
-    setMergeResultingClientId((prev) => {
-      if (prev && mergeClientOptions.some((option) => option.id === prev)) {
-        return prev;
-      }
-      return mergeClientOptions[0].id;
-    });
-  }, [isMergeModalOpen, mergeClientOptions]);
-
-  useEffect(() => {
-    if (!isMergeModalOpen) {
-      return;
-    }
+  const resetPreviewState = useCallback(() => {
     setMergePreviewWarnings([]);
     setMergePreviewSnapshotId(null);
     setIsMergePreviewConfirmed(false);
-  }, [isMergeModalOpen, mergeResultingClientId]);
+    setMergeFinalDraft(null);
+    setMergeStep('select');
+  }, []);
 
   const resetMergeForm = useCallback(() => {
     setMergeSources([]);
@@ -103,11 +75,8 @@ export const useDealMerge = ({
     setMergeSearch('');
     setMergeSearchResults([]);
     setIsMergeSearchLoading(false);
-    setMergeResultingClientId(undefined);
-    setMergePreviewWarnings([]);
-    setMergePreviewSnapshotId(null);
-    setIsMergePreviewConfirmed(false);
-  }, []);
+    resetPreviewState();
+  }, [resetPreviewState]);
 
   useEffect(() => {
     resetMergeForm();
@@ -142,7 +111,10 @@ export const useDealMerge = ({
             return;
           }
           const filtered = results.filter(
-            (deal) => deal.id !== selectedDeal?.id && !deal.deletedAt,
+            (deal) =>
+              deal.id !== selectedDeal?.id &&
+              !deal.deletedAt &&
+              deal.clientId === selectedDeal?.clientId,
           );
           setMergeSearchResults(filtered);
         } catch (err) {
@@ -162,17 +134,18 @@ export const useDealMerge = ({
       isCancelled = true;
       clearTimeout(handler);
     };
-  }, [currentUser?.id, mergeQuery, selectedDeal?.id, debounceDelay]);
+  }, [currentUser?.id, mergeQuery, selectedDeal?.id, selectedDeal?.clientId, debounceDelay]);
 
-  const toggleMergeSource = useCallback((dealId: string) => {
-    setMergeSources((prev) =>
-      prev.includes(dealId) ? prev.filter((id) => id !== dealId) : [...prev, dealId],
-    );
-    setMergeError(null);
-    setMergePreviewWarnings([]);
-    setMergePreviewSnapshotId(null);
-    setIsMergePreviewConfirmed(false);
-  }, []);
+  const toggleMergeSource = useCallback(
+    (dealId: string) => {
+      setMergeSources((prev) =>
+        prev.includes(dealId) ? prev.filter((id) => id !== dealId) : [...prev, dealId],
+      );
+      setMergeError(null);
+      resetPreviewState();
+    },
+    [resetPreviewState],
+  );
 
   const requestMergePreview = useCallback(async () => {
     if (!selectedDeal) {
@@ -182,10 +155,6 @@ export const useDealMerge = ({
       setMergeError('Выберите сделки для объединения.');
       return;
     }
-    if (mergeClientOptions.length > 1 && !mergeResultingClientId) {
-      setMergeError('Выберите итогового клиента для объединённой сделки.');
-      return;
-    }
 
     setIsMergePreviewLoading(true);
     setMergeError(null);
@@ -193,60 +162,66 @@ export const useDealMerge = ({
       const preview = await previewDealMerge({
         targetDealId: selectedDeal.id,
         sourceDealIds: mergeSources,
-        resultingClientId: mergeResultingClientId,
         includeDeleted: true,
       });
       setMergePreviewWarnings(preview.warnings ?? []);
       setMergePreviewSnapshotId(`deal-merge-preview:${selectedDeal.id}:${Date.now().toString(36)}`);
       setIsMergePreviewConfirmed(true);
+      const draft = preview.finalDealDraft
+        ? {
+            title: preview.finalDealDraft.title,
+            clientId: preview.finalDealDraft.clientId || selectedDeal.clientId,
+            description: preview.finalDealDraft.description ?? '',
+            expectedClose: preview.finalDealDraft.expectedClose ?? null,
+            executorId: preview.finalDealDraft.executorId ?? null,
+            source: preview.finalDealDraft.source ?? '',
+            sellerId: preview.finalDealDraft.sellerId ?? null,
+            nextContactDate: preview.finalDealDraft.nextContactDate ?? null,
+            visibleUserIds: preview.finalDealDraft.visibleUserIds ?? [],
+          }
+        : buildDraftFromDeal(selectedDeal);
+      setMergeFinalDraft(draft);
+      setMergeStep('preview');
     } catch (err) {
       setMergeError(formatErrorMessage(err, 'Не удалось получить предпросмотр объединения.'));
       setIsMergePreviewConfirmed(false);
+      setMergeStep('select');
     } finally {
       setIsMergePreviewLoading(false);
     }
-  }, [mergeClientOptions.length, mergeResultingClientId, mergeSources, selectedDeal]);
+  }, [mergeSources, selectedDeal]);
 
-  const handleMergeSubmit = useCallback(async () => {
-    if (!selectedDeal) {
-      return;
-    }
-    if (!mergeSources.length) {
-      setMergeError('Выберите сделки для объединения.');
-      return;
-    }
-    if (mergeClientOptions.length && !mergeResultingClientId) {
-      setMergeError('Выберите клиента для объединённой сделки.');
-      return;
-    }
-    if (!isMergePreviewConfirmed) {
-      setMergeError('Сначала выполните предпросмотр объединения.');
-      return;
-    }
-    setIsMerging(true);
-    setMergeError(null);
-    try {
-      await onMergeDeals(
-        selectedDeal.id,
-        mergeSources,
-        mergeResultingClientId,
-        mergePreviewSnapshotId || undefined,
-      );
-      setIsMergeModalOpen(false);
-    } catch (err) {
-      setMergeError(formatErrorMessage(err, 'Во время объединения произошла ошибка.'));
-    } finally {
-      setIsMerging(false);
-    }
-  }, [
-    isMergePreviewConfirmed,
-    mergeClientOptions.length,
-    mergePreviewSnapshotId,
-    mergeResultingClientId,
-    mergeSources,
-    onMergeDeals,
-    selectedDeal,
-  ]);
+  const handleMergeSubmit = useCallback(
+    async (finalDeal: DealFormValues) => {
+      if (!selectedDeal) {
+        return;
+      }
+      if (!mergeSources.length) {
+        setMergeError('Выберите сделки для объединения.');
+        return;
+      }
+      if (!isMergePreviewConfirmed) {
+        setMergeError('Сначала выполните предпросмотр объединения.');
+        return;
+      }
+      setIsMerging(true);
+      setMergeError(null);
+      try {
+        await onMergeDeals(
+          selectedDeal.id,
+          mergeSources,
+          finalDeal,
+          mergePreviewSnapshotId || undefined,
+        );
+        setIsMergeModalOpen(false);
+      } catch (err) {
+        setMergeError(formatErrorMessage(err, 'Во время объединения произошла ошибка.'));
+      } finally {
+        setIsMerging(false);
+      }
+    },
+    [isMergePreviewConfirmed, mergePreviewSnapshotId, mergeSources, onMergeDeals, selectedDeal],
+  );
 
   const openMergeModal = useCallback(() => {
     setIsMergeModalOpen(true);
@@ -254,12 +229,15 @@ export const useDealMerge = ({
 
   const closeMergeModal = useCallback(() => {
     setIsMergeModalOpen(false);
-  }, []);
+    resetMergeForm();
+  }, [resetMergeForm]);
 
   return {
     isMergeModalOpen,
     openMergeModal,
     closeMergeModal,
+    mergeStep,
+    setMergeStep,
     mergeSources,
     mergeError,
     mergeSearch,
@@ -267,15 +245,12 @@ export const useDealMerge = ({
     mergeList,
     mergeQuery,
     isMergeSearchActive,
-    mergeSearchResults,
     isMergeSearchLoading,
     isMerging,
     isMergePreviewLoading,
     mergePreviewWarnings,
     isMergePreviewConfirmed,
-    mergeClientOptions,
-    mergeResultingClientId,
-    setMergeResultingClientId,
+    mergeFinalDraft,
     toggleMergeSource,
     requestMergePreview,
     handleMergeSubmit,

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Deal } from '../../../../types';
+import type { Deal, User } from '../../../../types';
 import { DealDelayModal, DealMergeModal } from '../DealDetailsModals';
 import type { DealEvent } from '../eventUtils';
 
@@ -30,6 +30,14 @@ const pastEvent: DealEvent = {
   date: '2023-12-01',
   title: 'Прошлый платёж',
 };
+
+const users: User[] = [
+  {
+    id: 'user-1',
+    username: 'seller',
+    roles: ['Admin'],
+  },
+];
 
 describe('DealDetailsModals', () => {
   it('renders delay modal and wires events', () => {
@@ -72,7 +80,7 @@ describe('DealDetailsModals', () => {
     const toggleMergeSource = vi.fn();
     const onSubmit = vi.fn();
     const onPreview = vi.fn();
-    const onResultingClientChange = vi.fn();
+    const onBackToSelection = vi.fn();
 
     const dealList: Deal[] = [
       {
@@ -101,6 +109,15 @@ describe('DealDetailsModals', () => {
       <DealMergeModal
         targetDeal={deal}
         selectedClientName="Client A"
+        clients={[
+          {
+            id: 'client-1',
+            name: 'Client A',
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ]}
+        users={users}
         mergeSearch=""
         onMergeSearchChange={onMergeSearchChange}
         mergeList={dealList}
@@ -108,18 +125,19 @@ describe('DealDetailsModals', () => {
         toggleMergeSource={toggleMergeSource}
         mergeError={null}
         mergePreviewWarnings={[]}
-        mergeClientOptions={[{ id: 'client-1', name: 'Client A' }]}
-        mergeResultingClientId="client-1"
-        onResultingClientChange={onResultingClientChange}
+        mergeStep="select"
+        onBackToSelection={onBackToSelection}
+        mergeFinalDraft={null}
         onPreview={onPreview}
         isPreviewLoading={false}
-        isPreviewConfirmed
+        isPreviewConfirmed={false}
         isLoading={false}
         isActiveSearch={false}
         searchQuery=""
         isMerging={false}
         onClose={() => undefined}
         onSubmit={onSubmit}
+        onRequestAddClient={() => undefined}
       />,
     );
 
@@ -129,13 +147,7 @@ describe('DealDetailsModals', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Deal 2/ }));
     expect(toggleMergeSource).toHaveBeenCalledWith('deal-2');
 
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'client-1' } });
-    expect(onResultingClientChange).toHaveBeenCalledWith('client-1');
-
     fireEvent.click(screen.getByRole('button', { name: 'Предпросмотр' }));
     expect(onPreview).toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Объединить сделки' }));
-    expect(onSubmit).toHaveBeenCalled();
   });
 });

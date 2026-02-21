@@ -303,10 +303,10 @@ class DealMergeSerializer(serializers.Serializer):
         help_text="Список ID сделок, которые будут объединены в целевую.",
     )
 
-    resulting_client_id = serializers.UUIDField(
-        required=False,
-        allow_null=True,
-        help_text="ID of the client that will own the merged records.",
+    final_deal = serializers.DictField(
+        child=serializers.JSONField(),
+        required=True,
+        help_text="Итоговые поля новой объединенной сделки.",
     )
     include_deleted = serializers.BooleanField(
         required=False,
@@ -341,11 +341,6 @@ class DealMergePreviewSerializer(serializers.Serializer):
         child=serializers.UUIDField(),
         allow_empty=False,
         help_text="Список ID сделок, которые будут объединены в целевую.",
-    )
-    resulting_client_id = serializers.UUIDField(
-        required=False,
-        allow_null=True,
-        help_text="ID of the client that will own the merged records.",
     )
     include_deleted = serializers.BooleanField(
         required=False,

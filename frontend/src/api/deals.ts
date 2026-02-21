@@ -281,7 +281,17 @@ export async function deleteQuote(id: string): Promise<void> {
 export async function mergeDeals(data: {
   targetDealId: string;
   sourceDealIds: string[];
-  resultingClientId?: string;
+  finalDeal: {
+    title: string;
+    description?: string;
+    clientId: string;
+    expectedClose?: string | null;
+    executorId?: string | null;
+    sellerId?: string | null;
+    source?: string | null;
+    nextContactDate?: string | null;
+    visibleUserIds?: string[];
+  };
   includeDeleted?: boolean;
   previewSnapshotId?: string;
 }): Promise<DealMergeResponse> {
@@ -290,15 +300,25 @@ export async function mergeDeals(data: {
     body: JSON.stringify({
       target_deal_id: data.targetDealId,
       source_deal_ids: data.sourceDealIds,
-      ...(data.resultingClientId ? { resulting_client_id: data.resultingClientId } : {}),
+      final_deal: {
+        title: data.finalDeal.title,
+        description: data.finalDeal.description ?? '',
+        client_id: data.finalDeal.clientId,
+        expected_close: data.finalDeal.expectedClose || null,
+        executor_id: data.finalDeal.executorId || null,
+        seller_id: data.finalDeal.sellerId || null,
+        source: data.finalDeal.source ?? '',
+        next_contact_date: data.finalDeal.nextContactDate || null,
+        visible_user_ids: data.finalDeal.visibleUserIds ?? [],
+      },
       include_deleted: data.includeDeleted ?? true,
       ...(data.previewSnapshotId ? { preview_snapshot_id: data.previewSnapshotId } : {}),
     }),
   });
 
-  const targetPayload = payload.target_deal as Record<string, unknown>;
-  if (!targetPayload) {
-    throw new Error('Ответ API не содержит данные целевой сделки');
+  const resultPayload = payload.result_deal as Record<string, unknown>;
+  if (!resultPayload) {
+    throw new Error('Ответ API не содержит данные итоговой сделки');
   }
 
   const mergedDealIds = Array.isArray(payload.merged_deal_ids)
@@ -307,7 +327,7 @@ export async function mergeDeals(data: {
   const movedCounts = (payload.moved_counts ?? {}) as Record<string, number>;
 
   return {
-    targetDeal: mapDeal(targetPayload),
+    resultDeal: mapDeal(resultPayload),
     mergedDealIds,
     movedCounts,
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
@@ -321,7 +341,6 @@ export async function mergeDeals(data: {
 export async function previewDealMerge(data: {
   targetDealId: string;
   sourceDealIds: string[];
-  resultingClientId?: string;
   includeDeleted?: boolean;
 }): Promise<DealMergePreviewResponse> {
   const payload = await request<Record<string, unknown>>('/deals/merge/preview/', {
@@ -329,7 +348,6 @@ export async function previewDealMerge(data: {
     body: JSON.stringify({
       target_deal_id: data.targetDealId,
       source_deal_ids: data.sourceDealIds,
-      ...(data.resultingClientId ? { resulting_client_id: data.resultingClientId } : {}),
       include_deleted: data.includeDeleted ?? true,
     }),
   });
@@ -340,8 +358,6 @@ export async function previewDealMerge(data: {
       ? payload.source_deal_ids.map((value) => String(value))
       : [],
     includeDeleted: Boolean(payload.include_deleted ?? true),
-    resultingClientId:
-      payload.resulting_client_id == null ? null : String(payload.resulting_client_id),
     movedCounts:
       payload.moved_counts && typeof payload.moved_counts === 'object'
         ? (payload.moved_counts as Record<string, number>)
@@ -354,6 +370,41 @@ export async function previewDealMerge(data: {
       ? payload.drive_plan.map((value) => value as Record<string, unknown>)
       : [],
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
+    finalDealDraft:
+      payload.final_deal_draft && typeof payload.final_deal_draft === 'object'
+        ? {
+            title: String((payload.final_deal_draft as Record<string, unknown>).title ?? ''),
+            description: String(
+              (payload.final_deal_draft as Record<string, unknown>).description ?? '',
+            ),
+            clientId: String((payload.final_deal_draft as Record<string, unknown>).client_id ?? ''),
+            expectedClose:
+              (payload.final_deal_draft as Record<string, unknown>).expected_close == null
+                ? null
+                : String((payload.final_deal_draft as Record<string, unknown>).expected_close),
+            executorId:
+              (payload.final_deal_draft as Record<string, unknown>).executor_id == null
+                ? null
+                : String((payload.final_deal_draft as Record<string, unknown>).executor_id),
+            sellerId:
+              (payload.final_deal_draft as Record<string, unknown>).seller_id == null
+                ? null
+                : String((payload.final_deal_draft as Record<string, unknown>).seller_id),
+            source: String((payload.final_deal_draft as Record<string, unknown>).source ?? ''),
+            nextContactDate:
+              (payload.final_deal_draft as Record<string, unknown>).next_contact_date == null
+                ? null
+                : String((payload.final_deal_draft as Record<string, unknown>).next_contact_date),
+            visibleUserIds: Array.isArray(
+              (payload.final_deal_draft as Record<string, unknown>).visible_user_ids,
+            )
+              ? (
+                  (payload.final_deal_draft as Record<string, unknown>)
+                    .visible_user_ids as unknown[]
+                ).map((value) => String(value))
+              : [],
+          }
+        : undefined,
   };
 }
 

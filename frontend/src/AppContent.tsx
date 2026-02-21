@@ -1370,7 +1370,7 @@ const AppContent: React.FC = () => {
     async (
       targetDealId: string,
       sourceDealIds: string[],
-      resultingClientId?: string,
+      finalDeal: DealFormValues,
       previewSnapshotId?: string,
     ) => {
       invalidateDealsCache();
@@ -1379,26 +1379,24 @@ const AppContent: React.FC = () => {
         const result = await mergeDeals({
           targetDealId,
           sourceDealIds,
-          resultingClientId,
+          finalDeal,
           includeDeleted: true,
           previewSnapshotId,
         });
         updateAppData((prev) => {
           const mergedIds = new Set(result.mergedDealIds);
-          const targetDealId = result.targetDeal.id;
-          const targetDealTitle = result.targetDeal.title;
-          const targetClientName = result.targetDeal.clientName;
+          const resultDealId = result.resultDeal.id;
+          const resultDealTitle = result.resultDeal.title;
+          const resultClientName = result.resultDeal.clientName;
 
           return {
-            deals: prev.deals
-              .filter((deal) => !mergedIds.has(deal.id))
-              .map((deal) => (deal.id === targetDealId ? result.targetDeal : deal)),
+            deals: [...prev.deals.filter((deal) => !mergedIds.has(deal.id)), result.resultDeal],
             policies: prev.policies.map((policy) =>
               mergedIds.has(policy.dealId)
                 ? {
                     ...policy,
-                    dealId: targetDealId,
-                    dealTitle: targetDealTitle,
+                    dealId: resultDealId,
+                    dealTitle: resultDealTitle,
                   }
                 : policy,
             ),
@@ -1406,9 +1404,9 @@ const AppContent: React.FC = () => {
               payment.dealId && mergedIds.has(payment.dealId)
                 ? {
                     ...payment,
-                    dealId: targetDealId,
-                    dealTitle: targetDealTitle,
-                    dealClientName: targetClientName ?? payment.dealClientName,
+                    dealId: resultDealId,
+                    dealTitle: resultDealTitle,
+                    dealClientName: resultClientName ?? payment.dealClientName,
                   }
                 : payment,
             ),
@@ -1416,15 +1414,15 @@ const AppContent: React.FC = () => {
               task.dealId && mergedIds.has(task.dealId)
                 ? {
                     ...task,
-                    dealId: targetDealId,
-                    dealTitle: targetDealTitle,
-                    clientName: targetClientName ?? task.clientName,
+                    dealId: resultDealId,
+                    dealTitle: resultDealTitle,
+                    clientName: resultClientName ?? task.clientName,
                   }
                 : task,
             ),
           };
         });
-        selectDealById(result.targetDeal.id);
+        selectDealById(result.resultDeal.id);
         setError(null);
         addNotification('Сделки объединены', 'success', 4000);
       } catch (err) {

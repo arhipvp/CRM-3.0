@@ -64,6 +64,43 @@ python manage.py runserver
 - `isort .` (конфиг в `.isort.cfg`) и `black .` (через `pyproject.toml`) применяются к Python-коду; миграции исключены в black.
 - `python manage.py test` или `pytest` (есть `pytest.ini`) запускает тесты `tests/`.
 
+## Runbook: миграция `policies.0015`
+Цель миграции `0015_sync_client_from_insured_legacy`: выровнять исторические данные и перенести страхователя из legacy-поля `insured_client` в `client` там, где значения различаются.
+
+Миграция запускается автоматически в deploy-пайплайне, так как backend стартует с `RUN_MIGRATIONS=true`.
+
+### Pre-check (до deploy)
+```sql
+SELECT
+  COUNT(*) AS total_policies,
+  COUNT(*) FILTER (WHERE client_id IS NULL) AS client_null,
+  COUNT(*) FILTER (WHERE insured_client_id IS NULL) AS insured_null,
+  COUNT(*) FILTER (
+    WHERE client_id IS NOT NULL
+      AND insured_client_id IS NOT NULL
+      AND client_id != insured_client_id
+  ) AS conflicts
+FROM policies_policy;
+```
+
+### Post-check (после deploy)
+```sql
+SELECT
+  COUNT(*) FILTER (
+    WHERE client_id IS NOT NULL
+      AND insured_client_id IS NOT NULL
+      AND client_id != insured_client_id
+  ) AS conflicts_after
+FROM policies_policy;
+```
+
+Ожидаемое значение: `conflicts_after = 0`.
+
+### Дополнительно
+- Убедиться, что backend-контейнер применил миграции (`python manage.py showmigrations policies`).
+- Проверить выборочно 5-10 полисов в UI/API: страхователь отображается через `client`.
+- Поле `insured_client` остаётся в схеме как legacy для обратной совместимости до отдельного этапа удаления.
+
 ## Docker и интеграция
 - `backend/Dockerfile` создаёт образ на Python 3.12, копирует зависимости и код.
 - В `docker-compose.yml` сервис монтирует `backend/.env`, `credentials.json`, тома `backend_static`, `backend_media`.

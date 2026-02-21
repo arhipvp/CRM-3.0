@@ -1,4 +1,3 @@
-from apps.clients.models import Client
 from apps.common.drive import DriveError
 from apps.deals.models import Deal
 from apps.deals.serializers import DealMergePreviewSerializer, DealMergeSerializer
@@ -19,11 +18,6 @@ class DealMergeMixin:
         target_deal, source_deals = self._resolve_deals_for_merge(
             serializer.validated_data
         )
-        resulting_client = self._resolve_resulting_client(
-            target_deal=target_deal,
-            source_deals=source_deals,
-            resulting_client_id=serializer.validated_data.get("resulting_client_id"),
-        )
         include_deleted = serializer.validated_data.get("include_deleted", True)
 
         for deal in (target_deal, *source_deals):
@@ -35,7 +29,6 @@ class DealMergeMixin:
         preview = DealMergeService(
             target_deal=target_deal,
             source_deals=source_deals,
-            resulting_client=resulting_client,
             include_deleted=include_deleted,
         ).build_preview()
         return Response(preview)
@@ -48,10 +41,9 @@ class DealMergeMixin:
         target_deal, source_deals = self._resolve_deals_for_merge(
             serializer.validated_data
         )
-        resulting_client = self._resolve_resulting_client(
+        final_deal_data = self._validate_final_deal_payload(
+            serializer.validated_data.get("final_deal") or {},
             target_deal=target_deal,
-            source_deals=source_deals,
-            resulting_client_id=serializer.validated_data.get("resulting_client_id"),
         )
         include_deleted = serializer.validated_data.get("include_deleted", True)
         preview_snapshot_id = serializer.validated_data.get("preview_snapshot_id", "")
@@ -66,7 +58,7 @@ class DealMergeMixin:
             merge_result = DealMergeService(
                 target_deal=target_deal,
                 source_deals=source_deals,
-                resulting_client=resulting_client,
+                final_deal_data=final_deal_data,
                 actor=actor,
                 include_deleted=include_deleted,
             ).merge()
@@ -82,39 +74,39 @@ class DealMergeMixin:
             )
 
         source_titles = sorted({deal.title for deal in source_deals})
+        result_deal = merge_result["result_deal"]
         AuditLog.objects.create(
             actor=actor,
             object_type="deal",
-            object_id=str(target_deal.id),
-            object_name=target_deal.title,
+            object_id=str(result_deal.id),
+            object_name=result_deal.title,
             action="merge",
             description=(
-                f"Merged deals ({', '.join(source_titles)}) into '{target_deal.title}'"
+                f"Merged deals ({', '.join(source_titles)}, {target_deal.title}) into '{result_deal.title}'"
             ),
             new_value={
                 "merged_deals": merge_result["merged_deal_ids"],
                 "moved_counts": merge_result["moved_counts"],
                 "preview_snapshot_id": preview_snapshot_id or None,
                 "include_deleted": include_deleted,
-                "resulting_client_id": (
-                    str(resulting_client.id) if resulting_client else None
-                ),
+                "new_deal_id": str(result_deal.id),
+                "same_client_enforced": True,
+                "final_deal": final_deal_data,
             },
         )
 
-        refreshed_target = self._base_queryset().filter(pk=target_deal.pk).first()
-        target_instance = refreshed_target or target_deal
+        refreshed_result = self._base_queryset().filter(pk=result_deal.pk).first()
+        result_instance = refreshed_result or result_deal
         return Response(
             {
-                "target_deal": self.get_serializer(target_instance).data,
+                "result_deal": self.get_serializer(result_instance).data,
                 "merged_deal_ids": merge_result["merged_deal_ids"],
                 "moved_counts": merge_result["moved_counts"],
                 "warnings": merge_result.get("warnings", []),
                 "details": {
                     "include_deleted": include_deleted,
-                    "resulting_client_id": (
-                        str(resulting_client.id) if resulting_client else None
-                    ),
+                    "new_deal_id": str(result_deal.id),
+                    "same_client_enforced": True,
                 },
             }
         )
@@ -150,29 +142,47 @@ class DealMergeMixin:
                 raise ValidationError(
                     {"source_deal_ids": "Source deals must not be deleted."}
                 )
+            if deal.client_id != target_deal.client_id:
+                raise ValidationError(
+                    {
+                        "source_deal_ids": (
+                            "Можно объединять только сделки одного клиента."
+                        )
+                    }
+                )
         return target_deal, source_deals
 
-    def _resolve_resulting_client(
-        self, *, target_deal, source_deals, resulting_client_id
-    ) -> Client | None:
-        involved_client_ids = {
-            str(deal.client_id)
-            for deal in (target_deal, *source_deals)
-            if deal.client_id is not None
-        }
-        resulting_client = None
-        if resulting_client_id:
-            resulting_client = Client.objects.filter(id=resulting_client_id).first()
-            if not resulting_client:
-                raise ValidationError({"resulting_client_id": "Client not found."})
-        elif len(involved_client_ids) > 1:
+    def _validate_final_deal_payload(self, final_deal, *, target_deal):
+        title = str(final_deal.get("title") or "").strip()
+        if not title:
+            raise ValidationError(
+                {"final_deal": {"title": "Название итоговой сделки обязательно."}}
+            )
+
+        client_id = str(final_deal.get("client_id") or "").strip()
+        if client_id and client_id != str(target_deal.client_id):
             raise ValidationError(
                 {
-                    "resulting_client_id": (
-                        "resulting_client_id is required when merging deals from different clients."
-                    )
+                    "final_deal": {
+                        "client_id": (
+                            "Итоговая сделка должна сохранять исходного клиента."
+                        )
+                    }
                 }
             )
-        elif target_deal.client:
-            resulting_client = target_deal.client
-        return resulting_client
+
+        return {
+            "title": title,
+            "description": str(final_deal.get("description") or "").strip(),
+            "client_id": target_deal.client_id,
+            "expected_close": (final_deal.get("expected_close") or None),
+            "executor_id": (final_deal.get("executor_id") or None),
+            "seller_id": (final_deal.get("seller_id") or target_deal.seller_id),
+            "source": str(final_deal.get("source") or "").strip(),
+            "next_contact_date": (final_deal.get("next_contact_date") or None),
+            "visible_user_ids": [
+                str(user_id)
+                for user_id in (final_deal.get("visible_user_ids") or [])
+                if str(user_id).strip()
+            ],
+        }

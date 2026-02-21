@@ -88,7 +88,7 @@ interface DealDetailsPanelProps {
   onMergeDeals: (
     targetDealId: string,
     sourceDealIds: string[],
-    resultingClientId?: string,
+    finalDeal: DealFormValues,
     previewSnapshotId?: string,
   ) => Promise<void>;
   onRequestAddQuote: (dealId: string) => void;
@@ -220,15 +220,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isMergePreviewLoading,
     mergePreviewWarnings,
     isMergePreviewConfirmed,
-    mergeClientOptions,
-    mergeResultingClientId,
-    setMergeResultingClientId,
+    mergeStep,
+    setMergeStep,
+    mergeFinalDraft,
     toggleMergeSource,
     requestMergePreview,
     handleMergeSubmit,
   } = useDealMerge({
     deals,
-    clients,
     selectedDeal,
     currentUser,
     onMergeDeals,
@@ -1250,6 +1249,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         <DealMergeModal
           targetDeal={selectedDeal}
           selectedClientName={selectedClientDisplayName}
+          clients={clients}
+          users={users}
           mergeSearch={mergeSearch}
           onMergeSearchChange={setMergeSearch}
           mergeList={mergeList}
@@ -1257,11 +1258,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           toggleMergeSource={toggleMergeSource}
           mergeError={mergeError}
           mergePreviewWarnings={mergePreviewWarnings}
-          mergeClientOptions={mergeClientOptions}
-          mergeResultingClientId={mergeResultingClientId}
-          onResultingClientChange={(clientId) => {
-            setMergeResultingClientId(clientId);
-          }}
+          mergeStep={mergeStep}
+          onBackToSelection={() => setMergeStep('select')}
+          mergeFinalDraft={mergeFinalDraft}
           onPreview={requestMergePreview}
           isPreviewLoading={isMergePreviewLoading}
           isPreviewConfirmed={isMergePreviewConfirmed}
@@ -1271,6 +1270,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           isMerging={isMerging}
           onClose={closeMergeModal}
           onSubmit={handleMergeSubmit}
+          onRequestAddClient={onRequestAddClient}
         />
       )}
       <PromptDialog

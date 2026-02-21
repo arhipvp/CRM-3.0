@@ -83,7 +83,7 @@ interface DealsViewProps {
   onMergeDeals: (
     targetDealId: string,
     sourceDealIds: string[],
-    resultingClientId?: string,
+    finalDeal: DealFormValues,
     previewSnapshotId?: string,
   ) => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
