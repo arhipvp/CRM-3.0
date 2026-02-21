@@ -288,6 +288,10 @@ class TelegramIntakeService:
         self.expire_stale_sessions(user=user)
         session = session or self._get_active_session(user)
         if not session:
+            if self._has_recent_expired_session(user):
+                return IntakeResult(
+                    "Сессия выбора истекла. Перешлите сообщение заново."
+                )
             return IntakeResult("Нет активного выбора. Перешлите сообщение заново.")
         if session.is_expired:
             self._expire_session(session)
@@ -336,6 +340,10 @@ class TelegramIntakeService:
         self.expire_stale_sessions(user=user)
         session = session or self._get_active_session(user)
         if not session:
+            if self._has_recent_expired_session(user):
+                return IntakeResult(
+                    "Сессия выбора истекла. Перешлите сообщение заново."
+                )
             return IntakeResult("Нет активного выбора. Перешлите сообщение заново.")
         if session.is_expired:
             self._expire_session(session)
@@ -611,6 +619,12 @@ class TelegramIntakeService:
             .order_by("-created_at")
             .first()
         )
+
+    def _has_recent_expired_session(self, user) -> bool:
+        return TelegramDealRoutingSession.objects.filter(
+            user=user,
+            state=TelegramDealRoutingSession.State.EXPIRED,
+        ).exists()
 
     def _expire_session(self, session: TelegramDealRoutingSession) -> None:
         if session.state != TelegramDealRoutingSession.State.PENDING:
