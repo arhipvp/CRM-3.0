@@ -9,18 +9,20 @@
 
 ## Main flow
 1. Bot receives Telegram update (`message` or `callback_query`).
-2. Bot resolves linked user by `TelegramProfile.chat_id`.
-3. For a new message:
+2. On startup bot synchronizes slash commands with Telegram API `setMyCommands`:
+- `/help`, `/pick`, `/create`, `/cancel`.
+3. Bot resolves linked user by `TelegramProfile.chat_id`.
+4. For a new message:
 - Upsert `TelegramInboundMessage`.
 - If already processed: return idempotent response.
 - Extract `phones`, `emails`, `client_name`, `title`.
 - Find candidate deals only in current user access scope (`seller/executor/visible_users`).
 - Create/update `TelegramDealRoutingSession` in `pending` state with TTL 30 minutes.
-4. User decision:
+5. User decision:
 - `pick`: link to existing deal.
 - `create`: create client/deal and then link.
 - `cancel`: stop session.
-5. Linking side effects:
+6. Linking side effects:
 - Create `Note` with source metadata.
 - Download Telegram files and save as `Document` records.
 - Update inbound/session final statuses.

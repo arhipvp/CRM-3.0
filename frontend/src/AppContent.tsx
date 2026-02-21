@@ -387,6 +387,8 @@ const AppContent: React.FC = () => {
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const searchInitialized = useRef(false);
   const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
+  const deepLinkedDealLoadedRef = useRef<string | null>(null);
+  const deepLinkedDealLoadingRef = useRef<string | null>(null);
 
   const refreshDealsWithSelection = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
@@ -427,6 +429,58 @@ const AppContent: React.FC = () => {
     },
     [invalidateDealsCache, updateAppData],
   );
+
+  useEffect(() => {
+    if (!location.pathname.startsWith('/deals')) {
+      deepLinkedDealLoadedRef.current = null;
+      deepLinkedDealLoadingRef.current = null;
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const dealId = params.get('dealId');
+    if (!dealId) {
+      deepLinkedDealLoadedRef.current = null;
+      deepLinkedDealLoadingRef.current = null;
+      return;
+    }
+
+    if (dealsById.has(dealId)) {
+      deepLinkedDealLoadedRef.current = dealId;
+      deepLinkedDealLoadingRef.current = null;
+      return;
+    }
+
+    if (
+      deepLinkedDealLoadedRef.current === dealId ||
+      deepLinkedDealLoadingRef.current === dealId
+    ) {
+      return;
+    }
+
+    deepLinkedDealLoadingRef.current = dealId;
+    syncDealsByIds([dealId])
+      .then(() => {
+        deepLinkedDealLoadedRef.current = dealId;
+      })
+      .catch((err) => {
+        deepLinkedDealLoadedRef.current = null;
+        clearSelectedDealFocus();
+        setError(formatErrorMessage(err, 'Сделка не найдена или недоступна.'));
+      })
+      .finally(() => {
+        if (deepLinkedDealLoadingRef.current === dealId) {
+          deepLinkedDealLoadingRef.current = null;
+        }
+      });
+  }, [
+    clearSelectedDealFocus,
+    dealsById,
+    location.pathname,
+    location.search,
+    setError,
+    syncDealsByIds,
+  ]);
 
   const handleSelectDeal = useCallback(
     (dealId: string) => {

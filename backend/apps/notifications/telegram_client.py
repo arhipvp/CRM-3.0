@@ -70,6 +70,16 @@ class TelegramClient:
             return result
         return None
 
+    def set_my_commands(self, commands: list[dict[str, str]]) -> bool:
+        payload = {"commands": commands}
+        response = self._post("setMyCommands", payload)
+        if not response:
+            return False
+        if not response.get("ok"):
+            logger.warning("Telegram setMyCommands failed: %s", response)
+            return False
+        return True
+
     def download_file(self, file_path: str) -> bytes | None:
         if not file_path:
             return None

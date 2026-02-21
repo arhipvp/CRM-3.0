@@ -27,6 +27,7 @@ class Command(BaseCommand):
             return
 
         intake = TelegramIntakeService(client)
+        self._sync_bot_commands(client)
         reminder_interval = getattr(settings, "TELEGRAM_REMINDER_INTERVAL", 300)
         last_reminder_run = 0.0
         offset = None
@@ -229,3 +230,15 @@ class Command(BaseCommand):
             "Telegram привязан. Включите уведомления в CRM.\n"
             "Для работы с сообщениями используйте /help.",
         )
+
+    def _sync_bot_commands(self, client) -> None:
+        commands = [
+            {"command": "help", "description": "Справка по командам"},
+            {"command": "pick", "description": "Выбрать сделку из списка"},
+            {"command": "create", "description": "Создать новую сделку"},
+            {"command": "cancel", "description": "Отменить текущий выбор"},
+        ]
+        if not client.set_my_commands(commands):
+            logger.warning(
+                "Telegram commands sync failed; bot will continue without stop."
+            )
