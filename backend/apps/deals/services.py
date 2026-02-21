@@ -223,7 +223,10 @@ class DealMergeService:
                 status=Deal.DealStatus.OPEN,
                 stage_name=self.target_deal.stage_name or "",
                 expected_close=self.final_deal_data.get("expected_close"),
-                next_contact_date=self.final_deal_data.get("next_contact_date"),
+                next_contact_date=(
+                    self.final_deal_data.get("next_contact_date")
+                    or self.target_deal.next_contact_date
+                ),
                 next_review_date=self.target_deal.next_review_date,
                 source=self.final_deal_data.get("source") or "",
                 loss_reason="",

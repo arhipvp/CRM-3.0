@@ -116,8 +116,6 @@ class Deal(SoftDeleteModel):
         null=True, blank=True, help_text="Плановая дата закрытия"
     )
     next_contact_date = models.DateField(
-        null=True,
-        blank=True,
         default=timezone.now,
         help_text="Дата следующего контакта (по-умолчанию - текущая дата)",
     )
