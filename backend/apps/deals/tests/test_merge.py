@@ -301,8 +301,8 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         draft = response.data["final_deal_draft"]
-        self.assertEqual(draft["next_contact_date"], "2027-02-10")
-        self.assertEqual(draft["expected_close"], "2027-04-10")
+        self.assertEqual(draft["next_contact_date"], datetime.date(2027, 2, 10))
+        self.assertEqual(draft["expected_close"], datetime.date(2027, 4, 10))
         self.assertEqual(
             draft["description"],
             "Target description\nSource A description\nSource B description",
@@ -349,8 +349,8 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         draft = response.data["final_deal_draft"]
-        self.assertEqual(draft["next_contact_date"], "2027-02-10")
-        self.assertEqual(draft["expected_close"], "2027-04-10")
+        self.assertEqual(draft["next_contact_date"], datetime.date(2027, 2, 10))
+        self.assertEqual(draft["expected_close"], datetime.date(2027, 4, 10))
 
         self.target.expected_close = None
         self.target.save(update_fields=["expected_close"])
@@ -367,5 +367,5 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
 
         self.assertEqual(response_all_empty.status_code, status.HTTP_200_OK)
         draft_all_empty = response_all_empty.data["final_deal_draft"]
-        self.assertEqual(draft_all_empty["next_contact_date"], "2027-02-10")
+        self.assertEqual(draft_all_empty["next_contact_date"], datetime.date(2027, 2, 10))
         self.assertIsNone(draft_all_empty["expected_close"])
