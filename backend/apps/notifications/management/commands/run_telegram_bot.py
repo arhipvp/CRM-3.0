@@ -153,7 +153,10 @@ class Command(BaseCommand):
             return
         if command == "/find":
             if not args_text:
-                client.send_message(chat_id, "Используйте формат: /find <текст>")
+                result = intake.process_request_find(user=user)
+                client.send_message(
+                    chat_id, result.text, reply_markup=result.reply_markup
+                )
                 return
             result = intake.process_find(user=user, query=args_text)
             client.send_message(chat_id, result.text, reply_markup=result.reply_markup)

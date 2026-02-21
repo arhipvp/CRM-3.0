@@ -250,6 +250,19 @@ class TelegramIntakeService:
         forward_sender_name = _extract_forward_sender_name(message)
         attachments = _collect_attachments(message)
 
+        active_session = self._get_latest_non_final_session(user)
+        if (
+            active_session
+            and self._is_search_mode(active_session)
+            and source_text
+            and not attachments
+        ):
+            return self._process_find_for_session(
+                user=user,
+                query=source_text,
+                session=active_session,
+            )
+
         inbound, created = TelegramInboundMessage.objects.get_or_create(
             chat_id=chat_id,
             message_id=message_id,
@@ -380,6 +393,15 @@ class TelegramIntakeService:
             return IntakeResult("Используйте формат: /find <текст>")
 
         session = self._get_latest_non_final_session(user)
+        return self._process_find_for_session(
+            user=user, query=normalized_query, session=session
+        )
+
+    def process_request_find(
+        self, *, user, session: TelegramDealRoutingSession | None = None
+    ) -> IntakeResult:
+        self.expire_stale_sessions(user=user)
+        session = session or self._get_latest_non_final_session(user)
         if not session:
             if self._get_latest_expired_session(user):
                 return IntakeResult(
@@ -388,6 +410,28 @@ class TelegramIntakeService:
             return IntakeResult("Нет активного выбора. Перешлите сообщение заново.")
         if not session.batch_message_ids:
             return IntakeResult("Текущий пакет пуст. Отправьте хотя бы одно сообщение.")
+        self._set_search_mode(session, enabled=True)
+        return IntakeResult(
+            "Введите текст для поиска сделки (например, ФИО клиента или название).\n"
+            "Я покажу подходящие сделки кнопками.",
+            reply_markup=self._build_search_keyboard(session),
+        )
+
+    def _process_find_for_session(
+        self, *, user, query: str, session: TelegramDealRoutingSession | None
+    ) -> IntakeResult:
+        normalized_query = str(query or "").strip()
+        if not normalized_query:
+            return IntakeResult("Используйте формат: /find <текст>")
+        if not session:
+            if self._get_latest_expired_session(user):
+                return IntakeResult(
+                    "Сессия выбора истекла. Перешлите сообщение заново."
+                )
+            return IntakeResult("Нет активного выбора. Перешлите сообщение заново.")
+        if not session.batch_message_ids:
+            return IntakeResult("Текущий пакет пуст. Отправьте хотя бы одно сообщение.")
+        self._set_search_mode(session, enabled=False)
 
         results = self._search_deals_by_query(user=user, query=normalized_query)
         session.candidate_deal_ids = [str(item.id) for item in results]
@@ -410,12 +454,13 @@ class TelegramIntakeService:
         if not results:
             return IntakeResult(
                 f"По запросу «{normalized_query}» ничего не найдено.\n"
-                "Команды: /find <текст>, /create, /cancel"
+                "Нажмите «Поиск сделки», чтобы попробовать другой запрос, или создайте новую сделку.",
+                reply_markup=self._build_search_empty_keyboard(session),
             )
 
         lines = [
             f"Результаты поиска по запросу «{normalized_query}»:",
-            "Выберите номер сделки:",
+            "Выберите сделку кнопкой ниже:",
         ]
         for idx, deal in enumerate(results, start=1):
             client_name = getattr(getattr(deal, "client", None), "name", "")
@@ -423,7 +468,9 @@ class TelegramIntakeService:
                 f"{idx}. {deal.title} (клиент: {client_name}, статус: {deal.status})"
             )
         lines.append("")
-        lines.append("Команды: /pick <номер>, /find <текст>, /create, /cancel")
+        lines.append(
+            "Если не нашли нужное, нажмите «Поиск сделки» или «Создать новую сделку»."
+        )
         return IntakeResult(
             "\n".join(lines),
             reply_markup=self._build_candidates_keyboard(session, results),
@@ -546,7 +593,7 @@ class TelegramIntakeService:
         )
         return IntakeResult("Текущий пакет отменён. Можете отправить новые документы.")
 
-    def parse_callback(self, data: str) -> tuple[str, int | None, int | None] | None:
+    def parse_callback(self, data: str) -> dict | None:
         if not data or not data.startswith(f"{CALLBACK_PREFIX}:"):
             return None
         parts = data.split(":")
@@ -557,26 +604,32 @@ class TelegramIntakeService:
             sid = int(parts[2])
         except (TypeError, ValueError):
             return None
-        idx = None
-        if action == "pick":
-            if len(parts) < 4:
-                return None
-            try:
-                idx = int(parts[3])
-            except (TypeError, ValueError):
-                return None
-        return action, sid, idx
+        value = parts[3] if len(parts) > 3 else None
+        return {"action": action, "session_id": sid, "value": value}
 
     def process_callback(self, *, user, callback_data: str) -> IntakeResult:
         parsed = self.parse_callback(callback_data)
         if not parsed:
             return IntakeResult("Неизвестная команда кнопки.")
-        action, sid, idx = parsed
+        action = parsed["action"]
+        sid = parsed["session_id"]
+        value = parsed.get("value")
         session = TelegramDealRoutingSession.objects.filter(id=sid, user=user).first()
         if not session:
             return IntakeResult("Сессия не найдена.")
-        if action == "pick" and idx is not None:
-            return self.process_pick(user=user, pick_index=idx, session=session)
+        if action == "pick":
+            if not value:
+                return IntakeResult("Сделка для выбора не указана.")
+            deal_id = str(value)
+            candidate_ids = [str(item) for item in (session.candidate_deal_ids or [])]
+            if deal_id not in candidate_ids:
+                return IntakeResult(
+                    "Список сделок устарел. Выполните поиск заново или нажмите «Поиск сделки»."
+                )
+            pick_index = candidate_ids.index(deal_id) + 1
+            return self.process_pick(user=user, pick_index=pick_index, session=session)
+        if action == "search":
+            return self.process_request_find(user=user, session=session)
         if action == "create":
             return self.process_create(user=user, session=session)
         if action == "cancel":
@@ -702,6 +755,10 @@ class TelegramIntakeService:
             "emails": emails,
             "client_name": name[:255],
             "forward_sender_name": forward_sender_name[:255],
+            "awaiting_search_query": bool(
+                current.get("awaiting_search_query")
+                or incoming.get("awaiting_search_query")
+            ),
             "title": title[:255],
         }
 
@@ -809,21 +866,35 @@ class TelegramIntakeService:
                 f"{idx}. {deal.title} (клиент: {cname}, статус: {deal.status})"
             )
         lines.append("")
-        lines.append("Команды: /pick <номер>, /find <текст>, /create, /cancel")
+        lines.append(
+            "Выберите нужную сделку кнопкой ниже. Для другого запроса нажмите «Поиск сделки»."
+        )
         return "\n".join(lines)
 
     def _build_candidates_keyboard(self, session, candidates):
-        rows = [
-            [
-                {
-                    "text": f"Выбрать #{idx}",
-                    "callback_data": f"{CALLBACK_PREFIX}:pick:{session.id}:{idx}",
-                }
-            ]
-            for idx, _ in enumerate(candidates, start=1)
-        ]
+        rows = []
+        for deal in candidates:
+            client_name = str(
+                getattr(getattr(deal, "client", None), "name", "")
+            ).strip()
+            deal_title = str(deal.title or "").strip()
+            button_text = deal_title[:48] if deal_title else "Сделка"
+            if client_name:
+                button_text = f"{button_text} ({client_name[:24]})"
+            rows.append(
+                [
+                    {
+                        "text": button_text,
+                        "callback_data": f"{CALLBACK_PREFIX}:pick:{session.id}:{deal.id}",
+                    }
+                ]
+            )
         rows.append(
             [
+                {
+                    "text": "Поиск сделки",
+                    "callback_data": f"{CALLBACK_PREFIX}:search:{session.id}",
+                },
                 {
                     "text": "Создать новую сделку",
                     "callback_data": f"{CALLBACK_PREFIX}:create:{session.id}",
@@ -841,6 +912,10 @@ class TelegramIntakeService:
             "inline_keyboard": [
                 [
                     {
+                        "text": "Поиск сделки",
+                        "callback_data": f"{CALLBACK_PREFIX}:search:{session.id}",
+                    },
+                    {
                         "text": "Создать сделку",
                         "callback_data": f"{CALLBACK_PREFIX}:create:{session.id}",
                     },
@@ -849,6 +924,40 @@ class TelegramIntakeService:
                         "callback_data": f"{CALLBACK_PREFIX}:cancel:{session.id}",
                     },
                 ]
+            ]
+        }
+
+    def _build_search_keyboard(self, session):
+        return {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "Отмена",
+                        "callback_data": f"{CALLBACK_PREFIX}:cancel:{session.id}",
+                    }
+                ]
+            ]
+        }
+
+    def _build_search_empty_keyboard(self, session):
+        return {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "Поиск сделки",
+                        "callback_data": f"{CALLBACK_PREFIX}:search:{session.id}",
+                    },
+                    {
+                        "text": "Создать новую сделку",
+                        "callback_data": f"{CALLBACK_PREFIX}:create:{session.id}",
+                    },
+                ],
+                [
+                    {
+                        "text": "Отмена",
+                        "callback_data": f"{CALLBACK_PREFIX}:cancel:{session.id}",
+                    }
+                ],
             ]
         }
 
@@ -885,6 +994,7 @@ class TelegramIntakeService:
             ]
         )
         if candidates:
+            self._set_search_mode(session, enabled=False)
             text = self._build_candidates_message(
                 candidates,
                 session,
@@ -894,11 +1004,20 @@ class TelegramIntakeService:
             return text, markup
         text = (
             "Подходящих сделок не найдено.\n"
-            "Можно создать новую сделку из этого пакета.\n"
-            "Команды: /find <текст>, /create, /cancel"
+            "Нажмите «Поиск сделки», чтобы ввести текст запроса, или создайте новую сделку."
         )
         markup = self._build_create_only_keyboard(session)
         return text, markup
+
+    def _is_search_mode(self, session) -> bool:
+        extracted = dict(session.extracted_data or {})
+        return bool(extracted.get("awaiting_search_query"))
+
+    def _set_search_mode(self, session, *, enabled: bool) -> None:
+        extracted = dict(session.extracted_data or {})
+        extracted["awaiting_search_query"] = bool(enabled)
+        session.extracted_data = extracted
+        session.save(update_fields=["extracted_data", "updated_at"])
 
     def _get_collecting_session(self, user):
         return (

@@ -411,6 +411,33 @@ class TelegramIntakeServiceTests(TestCase):
         result = self.service.process_find(user=self.user, query="   ")
         self.assertEqual(result.text, "Используйте формат: /find <текст>")
 
+    def test_request_find_enables_plain_text_search_mode(self):
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 965,
+                "text": "пакет",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+
+        prompt = self.service.process_request_find(user=self.user)
+        self.assertIn("Введите текст для поиска сделки", prompt.text)
+
+        result = self.service.process_message(
+            user=self.user,
+            update_id=2,
+            chat_id=1001,
+            message={
+                "message_id": 966,
+                "text": "Иванов",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+        self.assertIn("Результаты поиска", result.text)
+
     def test_pick_works_after_find_results_replaced(self):
         query_client = Client.objects.create(
             name="Нужный клиент",
@@ -442,6 +469,43 @@ class TelegramIntakeServiceTests(TestCase):
         session = TelegramDealRoutingSession.objects.get(user=self.user)
         self.assertEqual(str(session.selected_deal_id), str(target_deal.id))
 
+    def test_pick_callback_uses_explicit_deal_id(self):
+        first_client = Client.objects.create(name="Клиент 1", created_by=self.user)
+        second_client = Client.objects.create(name="Клиент 2", created_by=self.user)
+        first_deal = Deal.objects.create(
+            title="Сделка первая",
+            client=first_client,
+            seller=self.user,
+            status=Deal.DealStatus.OPEN,
+        )
+        second_deal = Deal.objects.create(
+            title="Сделка вторая",
+            client=second_client,
+            seller=self.user,
+            status=Deal.DealStatus.OPEN,
+        )
+
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 975,
+                "text": "документы",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+        session = TelegramDealRoutingSession.objects.get(user=self.user)
+        session.state = TelegramDealRoutingSession.State.READY
+        session.candidate_deal_ids = [str(first_deal.id), str(second_deal.id)]
+        session.save(update_fields=["state", "candidate_deal_ids", "updated_at"])
+
+        result = self.service.process_callback(
+            user=self.user,
+            callback_data=f"tgintake:pick:{session.id}:{second_deal.id}",
+        )
+        self.assertIn("Пакет привязан к сделке 'Сделка вторая'", result.text)
+
     def test_ready_message_contains_find_command_hint(self):
         self.service.process_message(
             user=self.user,
@@ -459,4 +523,6 @@ class TelegramIntakeServiceTests(TestCase):
 
         self.service.finalize_ready_batches()
         self.assertTrue(self.fake_tg.edited_messages)
-        self.assertIn("/find <текст>", self.fake_tg.edited_messages[-1]["text"])
+        self.assertIn(
+            "Поиск сделки", str(self.fake_tg.edited_messages[-1]["reply_markup"])
+        )
