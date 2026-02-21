@@ -23,10 +23,31 @@ class FakeTelegramClient:
     def __init__(self, file_payloads=None):
         self.file_payloads = file_payloads or {}
         self.sent_messages = []
+        self.edited_messages = []
+        self._next_message_id = 10_000
 
     def send_message(self, chat_id: int, text: str, reply_markup=None):
+        self._next_message_id += 1
         self.sent_messages.append(
-            {"chat_id": chat_id, "text": text, "reply_markup": reply_markup}
+            {
+                "chat_id": chat_id,
+                "text": text,
+                "reply_markup": reply_markup,
+                "message_id": self._next_message_id,
+            }
+        )
+        return self._next_message_id
+
+    def edit_message_text(
+        self, chat_id: int, message_id: int, text: str, reply_markup=None
+    ):
+        self.edited_messages.append(
+            {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "text": text,
+                "reply_markup": reply_markup,
+            }
         )
         return True
 
@@ -79,11 +100,15 @@ class TelegramIntakeServiceTests(TestCase):
                 },
             )
             self.assertIn("Добавлено в пакет", result.text)
+            self.assertTrue(result.already_sent)
 
         session = TelegramDealRoutingSession.objects.get(user=self.user)
         self.assertEqual(session.state, TelegramDealRoutingSession.State.COLLECTING)
         self.assertEqual(len(session.batch_message_ids), 4)
         self.assertEqual(len(session.aggregated_attachments), 4)
+        self.assertIsNotNone(session.status_message_id)
+        self.assertEqual(len(self.fake_tg.sent_messages), 1)
+        self.assertEqual(len(self.fake_tg.edited_messages), 3)
         self.assertEqual(
             TelegramInboundMessage.objects.filter(routing_session=session).count(), 4
         )
@@ -293,3 +318,145 @@ class TelegramIntakeServiceTests(TestCase):
         session = TelegramDealRoutingSession.objects.get(user=self.user)
         self.assertEqual(len(session.batch_message_ids), 1)
         self.assertEqual(len(session.aggregated_attachments), 1)
+
+    def test_send_now_finishes_collecting_batch_without_waiting_timeout(self):
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 940,
+                "text": "Клиент: Иван Иванов\nТелефон: +7 (999) 111-22-33",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+        result = self.service.process_send_now(user=self.user)
+        self.assertIn("Пакет готов", result.text)
+        self.assertIsNotNone(result.reply_markup)
+        self.assertTrue(result.already_sent)
+
+        session = TelegramDealRoutingSession.objects.get(user=self.user)
+        self.assertEqual(session.state, TelegramDealRoutingSession.State.READY)
+        self.assertIsNotNone(session.decision_prompt_sent_at)
+        self.assertEqual(len(self.fake_tg.sent_messages), 1)
+        self.assertEqual(len(self.fake_tg.edited_messages), 1)
+
+    def test_ready_prefers_forward_name_match_in_candidates(self):
+        forward_client = Client.objects.create(
+            name="Петр Петров",
+            phone="+7 (901) 000-00-00",
+            email="petr@example.com",
+            created_by=self.user,
+        )
+        forward_deal = Deal.objects.create(
+            title="Сделка Петра",
+            client=forward_client,
+            seller=self.user,
+            status=Deal.DealStatus.OPEN,
+        )
+
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 950,
+                "text": "пакет документов",
+                "chat": {"id": 1001, "type": "private"},
+                "forward_sender_name": "Петр Петров",
+            },
+        )
+        session = TelegramDealRoutingSession.objects.get(user=self.user)
+        session.last_message_at = timezone.now() - timedelta(seconds=61)
+        session.save(update_fields=["last_message_at"])
+
+        self.service.finalize_ready_batches()
+        session.refresh_from_db()
+
+        self.assertGreaterEqual(len(session.candidate_deal_ids), 1)
+        self.assertEqual(session.candidate_deal_ids[0], str(forward_deal.id))
+
+    def test_find_returns_top5_and_updates_pick_list(self):
+        for idx in range(6):
+            client = Client.objects.create(
+                name=f"Клиент КАСКО {idx}",
+                created_by=self.user,
+            )
+            Deal.objects.create(
+                title=f"КАСКО договор {idx}",
+                client=client,
+                seller=self.user,
+                status=Deal.DealStatus.OPEN,
+            )
+
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 960,
+                "text": "документы",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+
+        result = self.service.process_find(user=self.user, query="каско")
+        session = TelegramDealRoutingSession.objects.get(user=self.user)
+
+        self.assertIn("Результаты поиска", result.text)
+        self.assertEqual(session.state, TelegramDealRoutingSession.State.READY)
+        self.assertEqual(len(session.candidate_deal_ids), 5)
+
+    def test_find_empty_query_returns_usage_hint(self):
+        result = self.service.process_find(user=self.user, query="   ")
+        self.assertEqual(result.text, "Используйте формат: /find <текст>")
+
+    def test_pick_works_after_find_results_replaced(self):
+        query_client = Client.objects.create(
+            name="Нужный клиент",
+            created_by=self.user,
+        )
+        target_deal = Deal.objects.create(
+            title="спец каско сделка",
+            client=query_client,
+            seller=self.user,
+            status=Deal.DealStatus.OPEN,
+        )
+
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 970,
+                "text": "Клиент: Иван Иванов",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+        find_result = self.service.process_find(user=self.user, query="спец каско")
+        self.assertIn("Результаты поиска", find_result.text)
+
+        pick_result = self.service.process_pick(user=self.user, pick_index=1)
+        self.assertIn("Пакет привязан", pick_result.text)
+
+        session = TelegramDealRoutingSession.objects.get(user=self.user)
+        self.assertEqual(str(session.selected_deal_id), str(target_deal.id))
+
+    def test_ready_message_contains_find_command_hint(self):
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 980,
+                "text": "документы",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+        session = TelegramDealRoutingSession.objects.get(user=self.user)
+        session.last_message_at = timezone.now() - timedelta(seconds=61)
+        session.save(update_fields=["last_message_at"])
+
+        self.service.finalize_ready_batches()
+        self.assertTrue(self.fake_tg.edited_messages)
+        self.assertIn("/find <текст>", self.fake_tg.edited_messages[-1]["text"])

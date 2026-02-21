@@ -117,7 +117,10 @@ class Command(BaseCommand):
             chat_id=int(chat_id),
             message=message,
         )
-        client.send_message(int(chat_id), result.text, reply_markup=result.reply_markup)
+        if not result.already_sent:
+            client.send_message(
+                int(chat_id), result.text, reply_markup=result.reply_markup
+            )
 
     def _handle_command(
         self,
@@ -147,6 +150,20 @@ class Command(BaseCommand):
         if command == "/create":
             result = intake.process_create(user=user)
             client.send_message(chat_id, result.text, reply_markup=result.reply_markup)
+            return
+        if command == "/find":
+            if not args_text:
+                client.send_message(chat_id, "Используйте формат: /find <текст>")
+                return
+            result = intake.process_find(user=user, query=args_text)
+            client.send_message(chat_id, result.text, reply_markup=result.reply_markup)
+            return
+        if command in {"/send_now", "/force_send"}:
+            result = intake.process_send_now(user=user)
+            if not result.already_sent:
+                client.send_message(
+                    chat_id, result.text, reply_markup=result.reply_markup
+                )
             return
         if command == "/cancel":
             result = intake.process_cancel(user=user)
@@ -240,7 +257,9 @@ class Command(BaseCommand):
         commands = [
             {"command": "help", "description": "Справка по командам"},
             {"command": "pick", "description": "Выбрать сделку из списка"},
+            {"command": "find", "description": "Поиск сделки по тексту"},
             {"command": "create", "description": "Создать новую сделку"},
+            {"command": "send_now", "description": "Завершить пакет и показать выбор"},
             {"command": "cancel", "description": "Отменить текущий выбор"},
         ]
         if not client.set_my_commands(commands):

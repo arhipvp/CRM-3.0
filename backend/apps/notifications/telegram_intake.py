@@ -27,6 +27,7 @@ CLIENT_RE = re.compile(
 NAME_LINE_RE = re.compile(
     r"\b([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){1,2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b"
 )
+NAME_TOKEN_RE = re.compile(r"[A-Za-zА-Яа-яЁё]+")
 CALLBACK_PREFIX = "tgintake"
 SESSION_TTL_MINUTES = 30
 BATCH_TIMEOUT_SECONDS = 60
@@ -36,6 +37,7 @@ BATCH_TIMEOUT_SECONDS = 60
 class IntakeResult:
     text: str
     reply_markup: dict | None = None
+    already_sent: bool = False
 
 
 def _build_deal_link(deal_id: str | int | None) -> str:
@@ -57,9 +59,9 @@ def _normalize_phone(value: str) -> str:
 def _extract_source_text(message: dict) -> str:
     text = str(message.get("text") or message.get("caption") or "").strip()
     forward_parts: list[str] = []
+    sender_name = _extract_forward_sender_name(message)
     forward_from = message.get("forward_from") or {}
     forward_chat = message.get("forward_from_chat") or {}
-    sender_name = str(message.get("forward_sender_name") or "").strip()
     if sender_name:
         forward_parts.append(sender_name)
     if forward_from:
@@ -84,7 +86,27 @@ def _extract_source_text(message: dict) -> str:
     return text
 
 
-def _extract_data(source_text: str) -> dict:
+def _extract_forward_sender_name(message: dict) -> str:
+    sender_name = str(message.get("forward_sender_name") or "").strip()
+    if sender_name:
+        return sender_name[:255]
+    forward_from = message.get("forward_from") or {}
+    full_name = " ".join(
+        part
+        for part in [
+            str(forward_from.get("first_name") or "").strip(),
+            str(forward_from.get("last_name") or "").strip(),
+        ]
+        if part
+    ).strip()
+    if full_name:
+        return full_name[:255]
+    forward_chat = message.get("forward_from_chat") or {}
+    title = str(forward_chat.get("title") or "").strip()
+    return title[:255]
+
+
+def _extract_data(source_text: str, *, forward_sender_name: str = "") -> dict:
     lines = [line.strip() for line in source_text.splitlines() if line.strip()]
     phones = sorted(
         {
@@ -114,6 +136,7 @@ def _extract_data(source_text: str) -> dict:
         "phones": phones,
         "emails": emails,
         "client_name": client_name[:255],
+        "forward_sender_name": forward_sender_name[:255],
         "title": (title or "Сделка из Telegram")[:255],
     }
 
@@ -154,7 +177,10 @@ class TelegramIntakeService:
             "Команды Telegram intake:\n"
             "/help - справка\n"
             "/pick <номер> - выбрать сделку\n"
+            "/find <текст> - найти сделку по названию/клиенту\n"
             "/create - создать сделку\n"
+            "/send_now - завершить сбор пакета сейчас\n"
+            "/force_send - алиас для /send_now\n"
             "/cancel - отменить пакет\n\n"
             "Отправьте документы подряд: бот объединит их в пакет и через 60 секунд предложит действие."
         )
@@ -201,37 +227,18 @@ class TelegramIntakeService:
             )
             if now < session.last_message_at + timedelta(seconds=timeout):
                 continue
-            extracted = session.extracted_data or {}
-            candidates = self._find_candidate_deals(
-                user=session.user, extracted_data=extracted
-            )
-            session.candidate_deal_ids = [str(item.id) for item in candidates]
-            session.state = TelegramDealRoutingSession.State.READY
-            session.decision_prompt_sent_at = now
-            session.save(
-                update_fields=[
-                    "candidate_deal_ids",
-                    "state",
-                    "decision_prompt_sent_at",
-                    "updated_at",
-                ]
-            )
+            text, markup = self._prepare_ready_prompt(session=session, now=now)
             count += 1
             profile = getattr(session.user, "telegram_profile", None)
             chat_id = getattr(profile, "chat_id", None)
             if not chat_id:
                 continue
-            if candidates:
-                text = self._build_candidates_message(candidates, session)
-                markup = self._build_candidates_keyboard(session, candidates)
-            else:
-                text = (
-                    "Подходящих сделок не найдено.\n"
-                    "Можно создать новую сделку из этого пакета.\n"
-                    "Команды: /create или /cancel"
-                )
-                markup = self._build_create_only_keyboard(session)
-            self.client.send_message(chat_id, text, reply_markup=markup)
+            self._send_or_update_session_message(
+                chat_id=int(chat_id),
+                session=session,
+                text=text,
+                reply_markup=markup,
+            )
         return count
 
     def process_message(
@@ -240,6 +247,7 @@ class TelegramIntakeService:
         self.expire_stale_sessions(user=user)
         message_id = int(message.get("message_id") or 0)
         source_text = _extract_source_text(message)
+        forward_sender_name = _extract_forward_sender_name(message)
         attachments = _collect_attachments(message)
 
         inbound, created = TelegramInboundMessage.objects.get_or_create(
@@ -295,7 +303,13 @@ class TelegramIntakeService:
                 candidate_deal_ids=[],
             )
         self._append_to_batch(
-            session, inbound, source_text, attachments, message, update_id
+            session,
+            inbound,
+            source_text,
+            attachments,
+            message,
+            update_id,
+            forward_sender_name=forward_sender_name,
         )
         inbound.user = user
         inbound.status = TelegramInboundMessage.Status.WAITING_DECISION
@@ -314,9 +328,105 @@ class TelegramIntakeService:
                 "updated_at",
             ]
         )
-        return IntakeResult(
+        status_text = (
             f"Добавлено в пакет: сообщений {len(session.batch_message_ids or [])}, файлов {len(session.aggregated_attachments or [])}.\n"
             "Отправьте ещё или подождите 60 сек для предложения выбора сделки."
+        )
+        self._send_or_update_session_message(
+            chat_id=chat_id,
+            session=session,
+            text=status_text,
+        )
+        return IntakeResult(status_text, already_sent=True)
+
+    def process_send_now(self, *, user) -> IntakeResult:
+        self.expire_stale_sessions(user=user)
+
+        ready = self._get_ready_session(user)
+        if ready:
+            return IntakeResult(
+                "Пакет уже готов. Используйте /pick, /find, /create или /cancel."
+            )
+
+        session = self._get_collecting_session(user)
+        if not session:
+            if self._get_latest_expired_session(user):
+                return IntakeResult(
+                    "Сессия выбора истекла. Перешлите сообщение заново."
+                )
+            return IntakeResult("Нет активного пакета для отправки.")
+
+        if not session.batch_message_ids:
+            return IntakeResult("Текущий пакет пуст. Отправьте хотя бы одно сообщение.")
+
+        profile = getattr(user, "telegram_profile", None)
+        chat_id = getattr(profile, "chat_id", None)
+        if not chat_id:
+            return IntakeResult("Telegram не привязан. Выполните /start <код>.")
+
+        text, markup = self._prepare_ready_prompt(session=session, now=timezone.now())
+        self._send_or_update_session_message(
+            chat_id=int(chat_id),
+            session=session,
+            text=text,
+            reply_markup=markup,
+        )
+        return IntakeResult(text, reply_markup=markup, already_sent=True)
+
+    def process_find(self, *, user, query: str) -> IntakeResult:
+        self.expire_stale_sessions(user=user)
+        normalized_query = str(query or "").strip()
+        if not normalized_query:
+            return IntakeResult("Используйте формат: /find <текст>")
+
+        session = self._get_latest_non_final_session(user)
+        if not session:
+            if self._get_latest_expired_session(user):
+                return IntakeResult(
+                    "Сессия выбора истекла. Перешлите сообщение заново."
+                )
+            return IntakeResult("Нет активного выбора. Перешлите сообщение заново.")
+        if not session.batch_message_ids:
+            return IntakeResult("Текущий пакет пуст. Отправьте хотя бы одно сообщение.")
+
+        results = self._search_deals_by_query(user=user, query=normalized_query)
+        session.candidate_deal_ids = [str(item.id) for item in results]
+        if session.state in {
+            TelegramDealRoutingSession.State.COLLECTING,
+            TelegramDealRoutingSession.State.PENDING,
+        }:
+            session.state = TelegramDealRoutingSession.State.READY
+        if session.decision_prompt_sent_at is None:
+            session.decision_prompt_sent_at = timezone.now()
+        session.save(
+            update_fields=[
+                "candidate_deal_ids",
+                "state",
+                "decision_prompt_sent_at",
+                "updated_at",
+            ]
+        )
+
+        if not results:
+            return IntakeResult(
+                f"По запросу «{normalized_query}» ничего не найдено.\n"
+                "Команды: /find <текст>, /create, /cancel"
+            )
+
+        lines = [
+            f"Результаты поиска по запросу «{normalized_query}»:",
+            "Выберите номер сделки:",
+        ]
+        for idx, deal in enumerate(results, start=1):
+            client_name = getattr(getattr(deal, "client", None), "name", "")
+            lines.append(
+                f"{idx}. {deal.title} (клиент: {client_name}, статус: {deal.status})"
+            )
+        lines.append("")
+        lines.append("Команды: /pick <номер>, /find <текст>, /create, /cancel")
+        return IntakeResult(
+            "\n".join(lines),
+            reply_markup=self._build_candidates_keyboard(session, results),
         )
 
     def process_pick(
@@ -474,7 +584,15 @@ class TelegramIntakeService:
         return IntakeResult("Неизвестное действие.")
 
     def _append_to_batch(
-        self, session, inbound, source_text, attachments, message, update_id
+        self,
+        session,
+        inbound,
+        source_text,
+        attachments,
+        message,
+        update_id,
+        *,
+        forward_sender_name: str = "",
     ):
         now = timezone.now()
         ids = list(session.batch_message_ids or [])
@@ -482,7 +600,8 @@ class TelegramIntakeService:
         merged_attachments = list(session.aggregated_attachments or [])
         text = str(session.aggregated_text or "")
         extracted = self._merge_extracted_data(
-            dict(session.extracted_data or {}), _extract_data(source_text)
+            dict(session.extracted_data or {}),
+            _extract_data(source_text, forward_sender_name=forward_sender_name),
         )
         if inbound.message_id not in ids:
             ids.append(inbound.message_id)
@@ -533,6 +652,33 @@ class TelegramIntakeService:
             ]
         )
 
+    def _send_or_update_session_message(
+        self,
+        *,
+        chat_id: int,
+        session,
+        text: str,
+        reply_markup: dict | None = None,
+    ) -> None:
+        status_message_id = session.status_message_id
+        if status_message_id:
+            edited = self.client.edit_message_text(
+                chat_id=chat_id,
+                message_id=int(status_message_id),
+                text=text,
+                reply_markup=reply_markup,
+            )
+            if edited:
+                return
+        sent_message_id = self.client.send_message(
+            chat_id,
+            text,
+            reply_markup=reply_markup,
+        )
+        if sent_message_id:
+            session.status_message_id = int(sent_message_id)
+            session.save(update_fields=["status_message_id", "updated_at"])
+
     def _merge_extracted_data(self, current: dict, incoming: dict) -> dict:
         phones = sorted(
             set((current.get("phones") or []) + (incoming.get("phones") or []))
@@ -544,6 +690,10 @@ class TelegramIntakeService:
             str(current.get("client_name") or "").strip()
             or str(incoming.get("client_name") or "").strip()
         )
+        forward_sender_name = (
+            str(current.get("forward_sender_name") or "").strip()
+            or str(incoming.get("forward_sender_name") or "").strip()
+        )
         title = str(current.get("title") or "").strip()
         if not title or title == "Сделка из Telegram":
             title = str(incoming.get("title") or "").strip() or "Сделка из Telegram"
@@ -551,6 +701,7 @@ class TelegramIntakeService:
             "phones": phones,
             "emails": emails,
             "client_name": name[:255],
+            "forward_sender_name": forward_sender_name[:255],
             "title": title[:255],
         }
 
@@ -605,18 +756,60 @@ class TelegramIntakeService:
         )
         return [deal for _, deal in scored[:5]]
 
-    def _build_candidates_message(self, candidates, session):
+    def _search_deals_by_query(self, *, user, query: str) -> list[Deal]:
+        normalized_query = str(query or "").strip()
+        if not normalized_query:
+            return []
+        return list(
+            self._deal_queryset_for_user(user)
+            .filter(
+                Q(title__icontains=normalized_query)
+                | Q(client__name__icontains=normalized_query)
+            )
+            .order_by("-created_at")[:5]
+        )
+
+    def _find_forward_name_deals(self, *, user, forward_sender_name: str) -> list[Deal]:
+        raw_name = str(forward_sender_name or "").strip().lower()
+        tokens = [token for token in NAME_TOKEN_RE.findall(raw_name) if len(token) >= 2]
+        unique_tokens: list[str] = []
+        for token in tokens:
+            if token not in unique_tokens:
+                unique_tokens.append(token)
+        if len(unique_tokens) < 2:
+            return []
+        matches: list[Deal] = []
+        for deal in self._deal_queryset_for_user(user):
+            client_name = str(
+                getattr(getattr(deal, "client", None), "name", "")
+            ).lower()
+            if client_name and all(token in client_name for token in unique_tokens):
+                matches.append(deal)
+        matches.sort(
+            key=lambda item: (
+                item.status != Deal.DealStatus.OPEN,
+                -int(item.created_at.timestamp()),
+            )
+        )
+        return matches[:5]
+
+    def _build_candidates_message(
+        self, candidates, session, *, forward_match_count: int = 0
+    ):
         lines = [
             f"Пакет готов: сообщений {len(session.batch_message_ids or [])}, файлов {len(session.aggregated_attachments or [])}.",
-            "Найдены подходящие сделки. Выберите номер:",
         ]
+        if forward_match_count > 0:
+            lines.append("Найдено по ФИО из переслано от… Выберите номер сделки:")
+        else:
+            lines.append("Найдены подходящие сделки. Выберите номер:")
         for idx, deal in enumerate(candidates, start=1):
             cname = getattr(getattr(deal, "client", None), "name", "")
             lines.append(
                 f"{idx}. {deal.title} (клиент: {cname}, статус: {deal.status})"
             )
         lines.append("")
-        lines.append("Команды: /pick <номер>, /create, /cancel")
+        lines.append("Команды: /pick <номер>, /find <текст>, /create, /cancel")
         return "\n".join(lines)
 
     def _build_candidates_keyboard(self, session, candidates):
@@ -658,6 +851,54 @@ class TelegramIntakeService:
                 ]
             ]
         }
+
+    def _prepare_ready_prompt(self, *, session, now):
+        extracted = session.extracted_data or {}
+        forward_sender_name = str(extracted.get("forward_sender_name") or "").strip()
+        forward_matches = self._find_forward_name_deals(
+            user=session.user,
+            forward_sender_name=forward_sender_name,
+        )
+        scored_candidates = self._find_candidate_deals(
+            user=session.user,
+            extracted_data=extracted,
+        )
+        candidates: list[Deal] = []
+        seen_ids: set[str] = set()
+        for deal in [*forward_matches, *scored_candidates]:
+            sid = str(deal.id)
+            if sid in seen_ids:
+                continue
+            seen_ids.add(sid)
+            candidates.append(deal)
+            if len(candidates) >= 5:
+                break
+        session.candidate_deal_ids = [str(item.id) for item in candidates]
+        session.state = TelegramDealRoutingSession.State.READY
+        session.decision_prompt_sent_at = now
+        session.save(
+            update_fields=[
+                "candidate_deal_ids",
+                "state",
+                "decision_prompt_sent_at",
+                "updated_at",
+            ]
+        )
+        if candidates:
+            text = self._build_candidates_message(
+                candidates,
+                session,
+                forward_match_count=len(forward_matches),
+            )
+            markup = self._build_candidates_keyboard(session, candidates)
+            return text, markup
+        text = (
+            "Подходящих сделок не найдено.\n"
+            "Можно создать новую сделку из этого пакета.\n"
+            "Команды: /find <текст>, /create, /cancel"
+        )
+        markup = self._build_create_only_keyboard(session)
+        return text, markup
 
     def _get_collecting_session(self, user):
         return (

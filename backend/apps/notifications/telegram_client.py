@@ -34,15 +34,42 @@ class TelegramClient:
 
     def send_message(
         self, chat_id: int, text: str, reply_markup: dict[str, Any] | None = None
-    ) -> bool:
+    ) -> int | None:
         payload: dict[str, Any] = {"chat_id": chat_id, "text": text}
         if reply_markup:
             payload["reply_markup"] = reply_markup
         response = self._post("sendMessage", payload)
         if not response:
-            return False
+            return None
         if not response.get("ok"):
             logger.warning("Telegram sendMessage failed: %s", response)
+            return None
+        result = response.get("result")
+        if isinstance(result, dict):
+            message_id = result.get("message_id")
+            if isinstance(message_id, int):
+                return message_id
+        return None
+
+    def edit_message_text(
+        self,
+        chat_id: int,
+        message_id: int,
+        text: str,
+        reply_markup: dict[str, Any] | None = None,
+    ) -> bool:
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        response = self._post("editMessageText", payload)
+        if not response:
+            return False
+        if not response.get("ok"):
+            logger.warning("Telegram editMessageText failed: %s", response)
             return False
         return True
 

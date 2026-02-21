@@ -318,6 +318,11 @@ class TelegramDealRoutingSession(models.Model):
         blank=True,
         help_text="When decision prompt was sent",
     )
+    status_message_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="Telegram message id for collecting status updates",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
