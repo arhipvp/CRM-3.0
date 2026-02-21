@@ -3,7 +3,11 @@ from django.contrib import admin
 from django.utils.html import format_html
 from import_export import resources
 
-from .models import Notification
+from .models import (
+    Notification,
+    TelegramDealRoutingSession,
+    TelegramInboundMessage,
+)
 
 # ============ IMPORT/EXPORT RESOURCES ============
 
@@ -93,3 +97,42 @@ class NotificationAdmin(SoftDeleteImportExportAdmin):
         self.message_user(request, f"Восстановлено {restored} уведомлений")
 
     restore_notifications.short_description = "✓ Восстановить выбранные уведомления"
+
+
+@admin.register(TelegramInboundMessage)
+class TelegramInboundMessageAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "chat_id",
+        "message_id",
+        "status",
+        "linked_deal",
+        "processed_at",
+        "created_at",
+    )
+    list_filter = ("status", "processed_at", "created_at")
+    search_fields = ("user__username", "chat_id", "message_id", "text")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+    ordering = ("-created_at",)
+
+
+@admin.register(TelegramDealRoutingSession)
+class TelegramDealRoutingSessionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "state",
+        "inbound_message",
+        "selected_deal",
+        "created_deal",
+        "expires_at",
+        "updated_at",
+    )
+    list_filter = ("state", "expires_at", "updated_at")
+    search_fields = ("user__username", "inbound_message__chat_id")
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("-created_at",)

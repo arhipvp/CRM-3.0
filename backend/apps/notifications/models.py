@@ -153,3 +153,149 @@ class NotificationDelivery(models.Model):
 
     def __str__(self) -> str:
         return f"{self.event_type} -> {self.user}"
+
+
+class TelegramInboundMessage(models.Model):
+    class Status(models.TextChoices):
+        RECEIVED = "received", "Received"
+        WAITING_DECISION = "waiting_decision", "Waiting decision"
+        LINKED_EXISTING = "linked_existing", "Linked existing deal"
+        CREATED_NEW_DEAL = "created_new_deal", "Created new deal"
+        CANCELED = "canceled", "Canceled"
+        EXPIRED = "expired", "Expired"
+        FAILED = "failed", "Failed"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="telegram_inbound_messages",
+        on_delete=models.CASCADE,
+        help_text="CRM user",
+    )
+    linked_deal = models.ForeignKey(
+        "deals.Deal",
+        related_name="telegram_inbound_messages",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Linked deal",
+    )
+    chat_id = models.BigIntegerField(help_text="Telegram chat id")
+    message_id = models.BigIntegerField(help_text="Telegram message id")
+    update_id = models.BigIntegerField(help_text="Telegram update id")
+    text = models.TextField(blank=True, help_text="Extracted source text")
+    payload = models.JSONField(
+        default=dict, blank=True, help_text="Raw Telegram payload"
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=Status.choices,
+        default=Status.RECEIVED,
+        help_text="Processing status",
+    )
+    processed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When message processing was completed",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Telegram inbound message"
+        verbose_name_plural = "Telegram inbound messages"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chat_id", "message_id"],
+                name="notifications_unique_tg_chat_message",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["user", "status"]),
+            models.Index(fields=["processed_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.chat_id}:{self.message_id} ({self.status})"
+
+
+class TelegramDealRoutingSession(models.Model):
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        LINKED_EXISTING = "linked_existing", "Linked existing deal"
+        CREATED_NEW_DEAL = "created_new_deal", "Created new deal"
+        CANCELED = "canceled", "Canceled"
+        EXPIRED = "expired", "Expired"
+        FAILED = "failed", "Failed"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="telegram_deal_routing_sessions",
+        on_delete=models.CASCADE,
+        help_text="CRM user",
+    )
+    inbound_message = models.OneToOneField(
+        TelegramInboundMessage,
+        related_name="routing_session",
+        on_delete=models.CASCADE,
+        help_text="Inbound message being routed",
+    )
+    state = models.CharField(
+        max_length=32,
+        choices=State.choices,
+        default=State.PENDING,
+        help_text="Session state",
+    )
+    expires_at = models.DateTimeField(help_text="Session expiration timestamp")
+    extracted_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Parsed data from telegram message",
+    )
+    candidate_deal_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Ordered candidate deals",
+    )
+    selected_deal = models.ForeignKey(
+        "deals.Deal",
+        related_name="telegram_routing_selected_sessions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Deal picked by user",
+    )
+    created_client = models.ForeignKey(
+        "clients.Client",
+        related_name="telegram_routing_created_sessions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Client created during routing",
+    )
+    created_deal = models.ForeignKey(
+        "deals.Deal",
+        related_name="telegram_routing_created_sessions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Deal created during routing",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Telegram deal routing session"
+        verbose_name_plural = "Telegram deal routing sessions"
+        indexes = [
+            models.Index(
+                fields=["user", "state", "expires_at"],
+                name="notif_tg_route_idx",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Session {self.id} ({self.state}) for {self.user}"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at

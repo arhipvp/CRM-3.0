@@ -50,6 +50,10 @@
 1. UI: `/settings` -> настройка уведомлений.
 2. API: `GET/PUT /api/v1/notifications/settings/`.
 3. Привязка Telegram: `POST /api/v1/notifications/telegram-link/`.
+4. Intake сообщений: пользователь пересылает сообщение в личный чат бота.
+5. Bot: извлекает контакты (телефон/email/имя), ищет доступные сделки, предлагает варианты.
+6. Пользователь выбирает `/pick <n>` / кнопку, либо `/create`, либо `/cancel`.
+7. Backend: текст сохраняется в `Note`, вложения (`photo`/`document`) в `Document`, результат дедуплицируется по `chat_id + message_id`.
 
 ## 10) Аутентификация
 1. UI: login.
