@@ -304,7 +304,7 @@ class DealMergeSerializer(serializers.Serializer):
     )
 
     final_deal = serializers.DictField(
-        child=serializers.JSONField(),
+        child=serializers.JSONField(allow_null=True),
         required=True,
         help_text="Итоговые поля новой объединенной сделки.",
     )

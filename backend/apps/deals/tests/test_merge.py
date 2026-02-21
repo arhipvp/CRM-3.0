@@ -113,7 +113,7 @@ class DealMergeServiceTestCase(TestCase):
             insured_client=external_client,
         )
 
-        DealMergeService(
+        result = DealMergeService(
             target_deal=self.target,
             source_deals=[self.source],
             final_deal_data={
@@ -125,7 +125,7 @@ class DealMergeServiceTestCase(TestCase):
         ).merge()
 
         policy.refresh_from_db()
-        self.assertEqual(policy.deal_id, self.target.id)
+        self.assertEqual(policy.deal_id, result["result_deal"].id)
         self.assertEqual(policy.client_id, external_client.id)
         self.assertEqual(policy.insured_client_id, external_client.id)
 
