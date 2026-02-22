@@ -273,6 +273,19 @@ class Command(BaseCommand):
             )
 
     def _preflight_drive_configuration(self) -> None:
+        internal_api_url = str(
+            getattr(settings, "TELEGRAM_INTERNAL_API_URL", "")
+        ).strip()
+        internal_api_token = str(
+            getattr(settings, "TELEGRAM_INTERNAL_API_TOKEN", "")
+        ).strip()
+        if internal_api_url:
+            if not internal_api_token:
+                logger.warning(
+                    "Telegram bot internal API mode enabled but TELEGRAM_INTERNAL_API_TOKEN is missing."
+                )
+            return
+
         mode = str(
             getattr(settings, "GOOGLE_DRIVE_AUTH_MODE", "auto") or "auto"
         ).strip()

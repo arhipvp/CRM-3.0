@@ -19,6 +19,7 @@ from apps.documents.views import DocumentRecognitionView
 from apps.finances.views import FinanceSummaryView
 from apps.notifications.views import (
     NotificationSettingsView,
+    TelegramIntakeDriveUploadView,
     TelegramLinkView,
     TelegramUnlinkView,
 )
@@ -57,6 +58,11 @@ urlpatterns = [
         "api/v1/notifications/telegram-unlink/",
         TelegramUnlinkView.as_view(),
         name="telegram-unlink",
+    ),
+    path(
+        "api/v1/notifications/telegram-intake/upload-drive/",
+        TelegramIntakeDriveUploadView.as_view(),
+        name="telegram-intake-upload-drive",
     ),
     path(
         "api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"

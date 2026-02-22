@@ -1,6 +1,11 @@
+import base64
+import json
 import logging
 import mimetypes
 import re
+import socket
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import timedelta
 from io import BytesIO
@@ -1207,6 +1212,7 @@ class TelegramIntakeService:
                 document.file.save(file_name, ContentFile(content), save=False)
                 document.save()
                 drive_uploaded, failure_code = self._upload_attachment_to_drive(
+                    user=user,
                     deal=deal,
                     file_name=file_name,
                     mime_type=mime_type,
@@ -1238,7 +1244,7 @@ class TelegramIntakeService:
         if not failure_codes:
             return ""
         if "config" in failure_codes:
-            return "Google Drive не настроен в окружении бота"
+            return "внутренняя интеграция Google Drive не настроена"
         if "folder" in failure_codes:
             return "Google Drive недоступен или нет доступа к папке сделки"
         if "upload" in failure_codes:
@@ -1248,11 +1254,22 @@ class TelegramIntakeService:
     def _upload_attachment_to_drive(
         self,
         *,
+        user,
         deal: Deal,
         file_name: str,
         mime_type: str,
         content: bytes,
     ) -> tuple[bool, str | None]:
+        api_mode_result = self._upload_attachment_via_backend_api(
+            user=user,
+            deal=deal,
+            file_name=file_name,
+            mime_type=mime_type,
+            content=content,
+        )
+        if api_mode_result is not None:
+            return api_mode_result
+
         try:
             folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
             if not folder_id:
@@ -1293,6 +1310,108 @@ class TelegramIntakeService:
         except DriveError as exc:
             logger.warning(
                 "Telegram attachment Drive upload failed for deal=%s file=%s: %s",
+                deal.id,
+                file_name,
+                exc,
+            )
+            return False, "upload"
+
+    def _upload_attachment_via_backend_api(
+        self,
+        *,
+        user,
+        deal: Deal,
+        file_name: str,
+        mime_type: str,
+        content: bytes,
+    ) -> tuple[bool, str | None] | None:
+        base_url = str(getattr(settings, "TELEGRAM_INTERNAL_API_URL", "")).strip()
+        if not base_url:
+            return None
+
+        token = str(getattr(settings, "TELEGRAM_INTERNAL_API_TOKEN", "")).strip()
+        if not token:
+            logger.warning(
+                "Telegram internal API upload disabled: TELEGRAM_INTERNAL_API_TOKEN is missing."
+            )
+            return False, "config"
+
+        timeout = float(
+            getattr(settings, "TELEGRAM_INTERNAL_API_TIMEOUT_SECONDS", 15) or 15
+        )
+        endpoint = (
+            f"{base_url.rstrip('/')}/api/v1/notifications/telegram-intake/upload-drive/"
+        )
+        payload = {
+            "user_id": str(user.id),
+            "deal_id": str(deal.id),
+            "file_name": file_name,
+            "mime_type": mime_type,
+            "content_base64": base64.b64encode(content).decode("ascii"),
+        }
+        body = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            endpoint,
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Telegram-Internal-Token": token,
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                response_body = response.read().decode("utf-8", errors="ignore")
+                parsed = json.loads(response_body) if response_body else {}
+                if int(getattr(response, "status", 0) or 0) >= 300:
+                    logger.warning(
+                        "Telegram internal API upload failed. deal=%s file=%s status=%s detail=%s",
+                        deal.id,
+                        file_name,
+                        getattr(response, "status", 0),
+                        parsed.get("detail"),
+                    )
+                    return False, "upload"
+                if parsed.get("ok"):
+                    return True, None
+                logger.warning(
+                    "Telegram internal API upload returned unexpected response. deal=%s file=%s payload=%s",
+                    deal.id,
+                    file_name,
+                    parsed,
+                )
+                return False, "upload"
+        except urllib.error.HTTPError as exc:
+            failure_code = "upload"
+            if exc.code == 403:
+                failure_code = "config"
+            elif exc.code in {400, 404}:
+                failure_code = "folder"
+            detail = ""
+            try:
+                detail = exc.read().decode("utf-8", errors="ignore")
+            except Exception:  # noqa: BLE001
+                detail = ""
+            logger.warning(
+                "Telegram internal API upload HTTP error. deal=%s file=%s status=%s code=%s detail=%s",
+                deal.id,
+                file_name,
+                exc.status if hasattr(exc, "status") else exc.code,
+                failure_code,
+                detail[:500],
+            )
+            return False, failure_code
+        except (socket.timeout, TimeoutError) as exc:
+            logger.warning(
+                "Telegram internal API upload timeout. deal=%s file=%s: %s",
+                deal.id,
+                file_name,
+                exc,
+            )
+            return False, "upload"
+        except (urllib.error.URLError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "Telegram internal API upload transport error. deal=%s file=%s: %s",
                 deal.id,
                 file_name,
                 exc,

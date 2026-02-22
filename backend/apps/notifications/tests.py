@@ -1,3 +1,4 @@
+import json
 import shutil
 import tempfile
 from datetime import timedelta
@@ -17,6 +18,7 @@ from apps.notifications.telegram_intake import TelegramIntakeService
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 User = get_user_model()
 
@@ -190,6 +192,63 @@ class TelegramIntakeServiceTests(TestCase):
         finally:
             shutil.rmtree(media_root, ignore_errors=True)
 
+
+class TelegramIntakeDriveUploadApiTests(TestCase):
+    def setUp(self):
+        self.api_client = APIClient()
+        self.user = User.objects.create_user(username="api_user", password="pass")
+        self.client_obj = Client.objects.create(name="API Client", created_by=self.user)
+        self.deal = Deal.objects.create(
+            title="API Deal",
+            client=self.client_obj,
+            seller=self.user,
+            status=Deal.DealStatus.OPEN,
+        )
+
+    def test_requires_internal_token(self):
+        response = self.api_client.post(
+            "/api/v1/notifications/telegram-intake/upload-drive/",
+            data={},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_uploads_file_with_valid_internal_token(self):
+        payload = {
+            "user_id": str(self.user.id),
+            "deal_id": str(self.deal.id),
+            "file_name": "api.pdf",
+            "mime_type": "application/pdf",
+            "content_base64": "MQ==",
+        }
+        with (
+            override_settings(TELEGRAM_INTERNAL_API_TOKEN="internal-token"),
+            patch(
+                "apps.notifications.views.ensure_deal_folder",
+                return_value="deal-folder",
+            ),
+            patch("apps.notifications.views.upload_file_to_drive") as upload_mock,
+        ):
+            upload_mock.return_value = {
+                "id": "file123",
+                "name": "api.pdf",
+                "mime_type": "application/pdf",
+                "size": 1,
+                "created_at": None,
+                "modified_at": None,
+                "web_view_link": None,
+                "is_folder": False,
+            }
+            response = self.api_client.post(
+                "/api/v1/notifications/telegram-intake/upload-drive/",
+                data=payload,
+                format="json",
+                HTTP_X_TELEGRAM_INTERNAL_TOKEN="internal-token",
+            )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data["ok"])
+        self.assertEqual(upload_mock.call_count, 1)
+
     def test_pick_from_ready_batch_links_all_documents_and_single_note(self):
         media_root = tempfile.mkdtemp(prefix="tg-intake-test-")
         try:
@@ -333,7 +392,9 @@ class TelegramIntakeServiceTests(TestCase):
                 result = self.service.process_pick(user=self.user, pick_index=1)
 
             self.assertIn("Ошибки файлов: 1", result.text)
-            self.assertIn("Google Drive не настроен", result.text)
+            self.assertIn(
+                "внутренняя интеграция Google Drive не настроена", result.text
+            )
         finally:
             shutil.rmtree(media_root, ignore_errors=True)
 
@@ -378,6 +439,70 @@ class TelegramIntakeServiceTests(TestCase):
 
             self.assertIn("Ошибки файлов: 1", result.text)
             self.assertIn("файл не удалось загрузить в Google Drive", result.text)
+        finally:
+            shutil.rmtree(media_root, ignore_errors=True)
+
+    def test_pick_uploads_via_backend_internal_api(self):
+        media_root = tempfile.mkdtemp(prefix="tg-intake-test-")
+        try:
+            self.fake_tg = FakeTelegramClient(file_payloads={"doc_api_1": b"1"})
+            self.service = TelegramIntakeService(self.fake_tg)
+            self.service.process_message(
+                user=self.user,
+                update_id=1,
+                chat_id=1001,
+                message={
+                    "message_id": 815,
+                    "chat": {"id": 1001, "type": "private"},
+                    "document": {
+                        "file_id": "doc_api_1",
+                        "file_name": "api.pdf",
+                        "mime_type": "application/pdf",
+                    },
+                },
+            )
+            session = TelegramDealRoutingSession.objects.get(user=self.user)
+            session.last_message_at = timezone.now() - timedelta(seconds=61)
+            session.save(update_fields=["last_message_at"])
+            self.service.finalize_ready_batches()
+
+            class FakeHttpResponse:
+                def __init__(self, payload: dict):
+                    self.status = 201
+                    self._payload = payload
+
+                def read(self):
+                    return json.dumps(self._payload).encode("utf-8")
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):
+                    return False
+
+            with (
+                override_settings(
+                    MEDIA_ROOT=media_root,
+                    TELEGRAM_INTERNAL_API_URL="http://backend:8000",
+                    TELEGRAM_INTERNAL_API_TOKEN="internal-token",
+                ),
+                patch(
+                    "apps.notifications.telegram_intake.urllib.request.urlopen",
+                    return_value=FakeHttpResponse({"ok": True}),
+                ) as urlopen_mock,
+                patch(
+                    "apps.notifications.telegram_intake.ensure_deal_folder"
+                ) as ensure_mock,
+                patch(
+                    "apps.notifications.telegram_intake.upload_file_to_drive"
+                ) as upload_mock,
+            ):
+                result = self.service.process_pick(user=self.user, pick_index=1)
+
+            self.assertIn("Сохранено файлов: 1.", result.text)
+            self.assertEqual(urlopen_mock.call_count, 1)
+            ensure_mock.assert_not_called()
+            upload_mock.assert_not_called()
         finally:
             shutil.rmtree(media_root, ignore_errors=True)
 
