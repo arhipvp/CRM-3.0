@@ -209,7 +209,10 @@ class Command(BaseCommand):
         result = intake.process_callback(user=profile.user, callback_data=data)
         if callback_id:
             client.answer_callback_query(callback_id, result.text[:180])
-        client.send_message(int(chat_id), result.text, reply_markup=result.reply_markup)
+        if not result.already_sent:
+            client.send_message(
+                int(chat_id), result.text, reply_markup=result.reply_markup
+            )
 
     def _get_profile_by_chat_id(self, chat_id: int) -> TelegramProfile | None:
         return (

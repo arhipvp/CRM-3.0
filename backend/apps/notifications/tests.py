@@ -9,12 +9,13 @@ from apps.common.drive import DriveConfigurationError, DriveOperationError
 from apps.deals.models import Deal
 from apps.documents.models import Document
 from apps.notes.models import Note
+from apps.notifications.management.commands.run_telegram_bot import Command
 from apps.notifications.models import (
     TelegramDealRoutingSession,
     TelegramInboundMessage,
     TelegramProfile,
 )
-from apps.notifications.telegram_intake import TelegramIntakeService
+from apps.notifications.telegram_intake import IntakeResult, TelegramIntakeService
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -63,6 +64,23 @@ class FakeTelegramClient:
     def download_file(self, file_path: str):
         file_id = file_path.split("/")[-1].split(".")[0]
         return self.file_payloads.get(file_id)
+
+
+class FakeCallbackClient:
+    def __init__(self):
+        self.sent_messages = []
+        self.answered_callbacks = []
+
+    def send_message(self, chat_id: int, text: str, reply_markup=None):
+        self.sent_messages.append(
+            {"chat_id": chat_id, "text": text, "reply_markup": reply_markup}
+        )
+
+    def answer_callback_query(self, callback_query_id: str, text: str = ""):
+        self.answered_callbacks.append(
+            {"callback_query_id": callback_query_id, "text": text}
+        )
+        return True
 
 
 class TelegramIntakeServiceTests(TestCase):
@@ -142,6 +160,37 @@ class TelegramIntakeServiceTests(TestCase):
         sent_count_again = self.service.finalize_ready_batches()
         self.assertEqual(sent_count_again, 0)
         self.assertEqual(len(self.fake_tg.sent_messages), 1)
+
+    def test_finalize_ready_batches_ignores_legacy_collecting_duplicates(self):
+        now = timezone.now()
+        first = TelegramDealRoutingSession.objects.create(
+            user=self.user,
+            state=TelegramDealRoutingSession.State.COLLECTING,
+            expires_at=now + timedelta(minutes=10),
+            last_message_at=now - timedelta(seconds=120),
+            batch_timeout_seconds=60,
+            batch_message_ids=[111],
+            aggregated_text="старый пакет",
+        )
+        second = TelegramDealRoutingSession.objects.create(
+            user=self.user,
+            state=TelegramDealRoutingSession.State.COLLECTING,
+            expires_at=now + timedelta(minutes=10),
+            last_message_at=now - timedelta(seconds=120),
+            batch_timeout_seconds=60,
+            batch_message_ids=[222],
+            aggregated_text="новый пакет",
+        )
+
+        sent_count = self.service.finalize_ready_batches()
+        self.assertEqual(sent_count, 1)
+        self.assertEqual(len(self.fake_tg.sent_messages), 1)
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        states = {first.state, second.state}
+        self.assertIn(TelegramDealRoutingSession.State.READY, states)
+        self.assertIn(TelegramDealRoutingSession.State.EXPIRED, states)
 
     def test_create_from_ready_batch_creates_single_note_and_all_documents(self):
         media_root = tempfile.mkdtemp(prefix="tg-intake-test-")
@@ -682,8 +731,61 @@ class TelegramIntakeDriveUploadApiTests(TelegramIntakeServiceTests):
         session = TelegramDealRoutingSession.objects.get(user=self.user)
 
         self.assertIn("Результаты поиска", result.text)
+        self.assertNotIn("Если не нашли нужное", result.text)
+        self.assertNotIn("1. ", result.text)
         self.assertEqual(session.state, TelegramDealRoutingSession.State.READY)
         self.assertEqual(len(session.candidate_deal_ids), 5)
+
+    def test_find_buttons_show_next_contact_date_and_sorted_ascending(self):
+        base_date = timezone.localdate()
+        for idx, shift in enumerate([5, 1, 3], start=1):
+            client = Client.objects.create(
+                name=f"Клиент сорт {idx}",
+                created_by=self.user,
+            )
+            Deal.objects.create(
+                title=f"СортировкаТГ {idx}",
+                client=client,
+                seller=self.user,
+                status=Deal.DealStatus.OPEN,
+                next_contact_date=base_date + timedelta(days=shift),
+            )
+
+        self.service.process_message(
+            user=self.user,
+            update_id=1,
+            chat_id=1001,
+            message={
+                "message_id": 961,
+                "text": "документы",
+                "chat": {"id": 1001, "type": "private"},
+            },
+        )
+        result = self.service.process_find(user=self.user, query="СортировкаТГ")
+        session = TelegramDealRoutingSession.objects.get(user=self.user)
+
+        self.assertEqual(
+            session.candidate_deal_ids[:3],
+            [
+                str(Deal.objects.get(title="СортировкаТГ 2", seller=self.user).id),
+                str(Deal.objects.get(title="СортировкаТГ 3", seller=self.user).id),
+                str(Deal.objects.get(title="СортировкаТГ 1", seller=self.user).id),
+            ],
+        )
+
+        keyboard = result.reply_markup or {}
+        candidate_rows = list((keyboard.get("inline_keyboard") or [])[:-1])
+        candidate_texts = [row[0]["text"] for row in candidate_rows]
+        self.assertEqual(len(candidate_texts), 3)
+        self.assertIn(
+            (base_date + timedelta(days=1)).strftime("%d.%m.%Y"), candidate_texts[0]
+        )
+        self.assertIn(
+            (base_date + timedelta(days=3)).strftime("%d.%m.%Y"), candidate_texts[1]
+        )
+        self.assertIn(
+            (base_date + timedelta(days=5)).strftime("%d.%m.%Y"), candidate_texts[2]
+        )
 
     def test_find_empty_query_returns_usage_hint(self):
         result = self.service.process_find(user=self.user, query="   ")
@@ -804,3 +906,30 @@ class TelegramIntakeDriveUploadApiTests(TelegramIntakeServiceTests):
         self.assertIn(
             "Поиск сделки", str(self.fake_tg.edited_messages[-1]["reply_markup"])
         )
+
+
+class TelegramBotCommandTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="callback-user", password="pass")
+        TelegramProfile.objects.create(user=self.user, chat_id=2001)
+
+    def test_callback_does_not_send_duplicate_when_result_already_sent(self):
+        command = Command()
+        fake_client = FakeCallbackClient()
+
+        class StubIntake:
+            def process_callback(self, *, user, callback_data: str):
+                return IntakeResult("ok", already_sent=True)
+
+        command._handle_callback_query(
+            client=fake_client,
+            intake=StubIntake(),
+            callback={
+                "id": "cb-1",
+                "data": "tgintake:send_now:1",
+                "message": {"chat": {"id": 2001}},
+            },
+        )
+
+        self.assertEqual(len(fake_client.answered_callbacks), 1)
+        self.assertEqual(len(fake_client.sent_messages), 0)

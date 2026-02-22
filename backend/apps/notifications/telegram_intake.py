@@ -24,7 +24,7 @@ from apps.documents.models import Document
 from apps.notes.models import Note
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 from .models import TelegramDealRoutingSession, TelegramInboundMessage
@@ -213,26 +213,30 @@ class TelegramIntakeService:
         if not ids:
             return 0
         for session in TelegramDealRoutingSession.objects.filter(id__in=ids):
-            session.state = TelegramDealRoutingSession.State.EXPIRED
-            session.save(update_fields=["state", "updated_at"])
-            TelegramInboundMessage.objects.filter(routing_session=session).update(
-                status=TelegramInboundMessage.Status.EXPIRED,
-                processed_at=timezone.now(),
-            )
+            self._expire_session(session)
         return len(ids)
 
     def finalize_ready_batches(self) -> int:
         self.expire_stale_sessions()
         now = timezone.now()
         count = 0
-        qs = TelegramDealRoutingSession.objects.filter(
-            state__in=[
-                TelegramDealRoutingSession.State.COLLECTING,
-                TelegramDealRoutingSession.State.PENDING,
-            ],
-            decision_prompt_sent_at__isnull=True,
-        ).select_related("user")
+        seen_user_ids: set[int] = set()
+        qs = (
+            TelegramDealRoutingSession.objects.filter(
+                state__in=[
+                    TelegramDealRoutingSession.State.COLLECTING,
+                    TelegramDealRoutingSession.State.PENDING,
+                ],
+                decision_prompt_sent_at__isnull=True,
+            )
+            .select_related("user")
+            .order_by("user_id", "-updated_at")
+        )
         for session in qs:
+            if session.user_id in seen_user_ids:
+                self._expire_session(session)
+                continue
+            seen_user_ids.add(session.user_id)
             if not session.last_message_at:
                 continue
             timeout = max(
@@ -312,6 +316,7 @@ class TelegramIntakeService:
 
         session = self._get_collecting_session(user)
         if session and session.is_expired:
+            self._expire_session(session)
             session = None
         now = timezone.now()
         if not session:
@@ -479,18 +484,9 @@ class TelegramIntakeService:
             )
 
         lines = [
-            f"Результаты поиска по запросу «{normalized_query}»:",
-            "Выберите сделку кнопкой ниже:",
+            "Результаты поиска:",
+            "Выберите сделку кнопкой ниже.",
         ]
-        for idx, deal in enumerate(results, start=1):
-            client_name = getattr(getattr(deal, "client", None), "name", "")
-            lines.append(
-                f"{idx}. {deal.title} (клиент: {client_name}, статус: {deal.status})"
-            )
-        lines.append("")
-        lines.append(
-            "Если не нашли нужное, нажмите «Поиск сделки» или «Создать новую сделку»."
-        )
         return IntakeResult(
             "\n".join(lines),
             reply_markup=self._build_candidates_keyboard(session, results),
@@ -811,6 +807,39 @@ class TelegramIntakeService:
             Q(seller=user) | Q(executor=user) | Q(visible_users=user)
         ).distinct()
 
+    def _expire_session(self, session: TelegramDealRoutingSession) -> None:
+        session.state = TelegramDealRoutingSession.State.EXPIRED
+        session.save(update_fields=["state", "updated_at"])
+        TelegramInboundMessage.objects.filter(
+            routing_session=session,
+            processed_at__isnull=True,
+        ).update(
+            status=TelegramInboundMessage.Status.EXPIRED,
+            processed_at=timezone.now(),
+        )
+
+    def _sort_deals_by_next_contact(self, deals: list[Deal]) -> list[Deal]:
+        return sorted(
+            deals,
+            key=lambda item: (
+                getattr(item, "next_contact_date", None) is None,
+                getattr(item, "next_contact_date", None) or timezone.localdate(),
+                -int(item.created_at.timestamp()),
+            ),
+        )
+
+    def _format_candidate_button_text(self, deal: Deal) -> str:
+        client_name = str(getattr(getattr(deal, "client", None), "name", "")).strip()
+        deal_title = str(deal.title or "").strip()
+        next_contact = getattr(deal, "next_contact_date", None)
+        next_contact_text = (
+            next_contact.strftime("%d.%m.%Y") if next_contact else "без даты"
+        )
+        button_text = deal_title[:36] if deal_title else "Сделка"
+        if client_name:
+            button_text = f"{button_text} ({client_name[:18]})"
+        return f"{button_text} · {next_contact_text}"[:64]
+
     def _find_candidate_deals(self, *, user, extracted_data: dict) -> list[Deal]:
         phones = extracted_data.get("phones") or []
         emails = extracted_data.get("emails") or []
@@ -852,7 +881,8 @@ class TelegramIntakeService:
                 -int(item[1].created_at.timestamp()),
             )
         )
-        return [deal for _, deal in scored[:5]]
+        top_scored = [deal for _, deal in scored[:25]]
+        return self._sort_deals_by_next_contact(top_scored)[:5]
 
     def _search_deals_by_query(self, *, user, query: str) -> list[Deal]:
         normalized_query = str(query or "").strip()
@@ -864,7 +894,10 @@ class TelegramIntakeService:
                 Q(title__icontains=normalized_query)
                 | Q(client__name__icontains=normalized_query)
             )
-            .order_by("-created_at")[:5]
+            .order_by(
+                F("next_contact_date").asc(nulls_last=True),
+                "-created_at",
+            )[:5]
         )
 
     def _find_forward_name_deals(self, *, user, forward_sender_name: str) -> list[Deal]:
@@ -889,7 +922,7 @@ class TelegramIntakeService:
                 -int(item.created_at.timestamp()),
             )
         )
-        return matches[:5]
+        return self._sort_deals_by_next_contact(matches)[:5]
 
     def _build_candidates_message(
         self, candidates, session, *, forward_match_count: int = 0
@@ -915,13 +948,7 @@ class TelegramIntakeService:
     def _build_candidates_keyboard(self, session, candidates):
         rows = []
         for deal in candidates:
-            client_name = str(
-                getattr(getattr(deal, "client", None), "name", "")
-            ).strip()
-            deal_title = str(deal.title or "").strip()
-            button_text = deal_title[:48] if deal_title else "Сделка"
-            if client_name:
-                button_text = f"{button_text} ({client_name[:24]})"
+            button_text = self._format_candidate_button_text(deal)
             rows.append(
                 [
                     {
@@ -1037,8 +1064,7 @@ class TelegramIntakeService:
                 continue
             seen_ids.add(sid)
             candidates.append(deal)
-            if len(candidates) >= 5:
-                break
+        candidates = self._sort_deals_by_next_contact(candidates)[:5]
         session.candidate_deal_ids = [str(item.id) for item in candidates]
         session.state = TelegramDealRoutingSession.State.READY
         session.decision_prompt_sent_at = now
