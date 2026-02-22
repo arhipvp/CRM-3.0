@@ -507,6 +507,15 @@ class TelegramIntakeService:
         if session.state != TelegramDealRoutingSession.State.READY:
             return IntakeResult("Этот пакет ещё не готов к выбору сделки.")
         candidate_ids = [str(item) for item in (session.candidate_deal_ids or [])]
+        if not candidate_ids:
+            # Backward-compatible fallback: allow /pick by index even when
+            # auto-matching produced no candidates in READY state.
+            fallback_candidates = list(
+                self._deal_queryset_for_user(user).order_by(
+                    "status", "-updated_at", "-created_at"
+                )[:5]
+            )
+            candidate_ids = [str(item.id) for item in fallback_candidates]
         if pick_index < 1 or pick_index > len(candidate_ids):
             return IntakeResult("Некорректный номер сделки. Используйте /pick <номер>.")
         deal = (
