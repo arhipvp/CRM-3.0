@@ -1,5 +1,6 @@
 import logging
 import time
+from pathlib import Path
 
 from apps.notifications.models import TelegramProfile
 from apps.notifications.telegram_intake import TelegramIntakeService
@@ -26,6 +27,7 @@ class Command(BaseCommand):
             self.stderr.write("TELEGRAM_BOT_TOKEN is not configured.")
             return
 
+        self._preflight_drive_configuration()
         intake = TelegramIntakeService(client)
         self._sync_bot_commands(client)
         reminder_interval = getattr(settings, "TELEGRAM_REMINDER_INTERVAL", 300)
@@ -268,4 +270,66 @@ class Command(BaseCommand):
         if not client.set_my_commands(commands):
             logger.warning(
                 "Telegram commands sync failed; bot will continue without stop."
+            )
+
+    def _preflight_drive_configuration(self) -> None:
+        mode = str(
+            getattr(settings, "GOOGLE_DRIVE_AUTH_MODE", "auto") or "auto"
+        ).strip()
+        mode = mode.lower()
+        root_folder_id = str(
+            getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "")
+        ).strip()
+        oauth_client_id = str(
+            getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "")
+        ).strip()
+        oauth_client_secret = str(
+            getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "")
+        ).strip()
+        oauth_refresh_token = str(
+            getattr(settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", "")
+        ).strip()
+        service_account_file = str(
+            getattr(settings, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "")
+        ).strip()
+
+        warnings: list[str] = []
+        if not root_folder_id:
+            warnings.append("GOOGLE_DRIVE_ROOT_FOLDER_ID is missing")
+
+        oauth_ready = bool(
+            oauth_client_id and oauth_client_secret and oauth_refresh_token
+        )
+        service_ready = bool(service_account_file)
+
+        if mode == "oauth":
+            if not oauth_ready:
+                warnings.append(
+                    "GOOGLE_DRIVE_AUTH_MODE=oauth requires GOOGLE_DRIVE_OAUTH_CLIENT_ID, "
+                    "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET and GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN"
+                )
+        elif mode == "service_account":
+            if not service_ready:
+                warnings.append(
+                    "GOOGLE_DRIVE_AUTH_MODE=service_account requires GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE"
+                )
+        elif mode == "auto":
+            if not oauth_ready and not service_ready:
+                warnings.append(
+                    "GOOGLE_DRIVE_AUTH_MODE=auto requires OAuth credentials or GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE"
+                )
+        else:
+            warnings.append(
+                "GOOGLE_DRIVE_AUTH_MODE must be one of: auto, oauth, service_account"
+            )
+
+        if service_account_file and not Path(service_account_file).exists():
+            warnings.append(
+                "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is set but file does not exist in container"
+            )
+
+        if warnings:
+            logger.warning(
+                "Telegram bot Drive preflight warning: %s",
+                "; ".join(warnings),
             )

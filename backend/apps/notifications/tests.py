@@ -4,6 +4,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from apps.clients.models import Client
+from apps.common.drive import DriveConfigurationError, DriveOperationError
 from apps.deals.models import Deal
 from apps.documents.models import Document
 from apps.notes.models import Note
@@ -295,6 +296,88 @@ class TelegramIntakeServiceTests(TestCase):
 
             self.assertIn("Сохранено файлов: 2.", result.text)
             self.assertEqual(upload_mock.call_count, 2)
+        finally:
+            shutil.rmtree(media_root, ignore_errors=True)
+
+    def test_pick_reports_drive_configuration_error_in_result_text(self):
+        media_root = tempfile.mkdtemp(prefix="tg-intake-test-")
+        try:
+            self.fake_tg = FakeTelegramClient(file_payloads={"doc_cfg_1": b"1"})
+            self.service = TelegramIntakeService(self.fake_tg)
+            self.service.process_message(
+                user=self.user,
+                update_id=1,
+                chat_id=1001,
+                message={
+                    "message_id": 813,
+                    "chat": {"id": 1001, "type": "private"},
+                    "document": {
+                        "file_id": "doc_cfg_1",
+                        "file_name": "cfg.pdf",
+                        "mime_type": "application/pdf",
+                    },
+                },
+            )
+            session = TelegramDealRoutingSession.objects.get(user=self.user)
+            session.last_message_at = timezone.now() - timedelta(seconds=61)
+            session.save(update_fields=["last_message_at"])
+            self.service.finalize_ready_batches()
+
+            with (
+                override_settings(MEDIA_ROOT=media_root),
+                patch(
+                    "apps.notifications.telegram_intake.ensure_deal_folder",
+                    side_effect=DriveConfigurationError("Drive is not configured"),
+                ),
+            ):
+                result = self.service.process_pick(user=self.user, pick_index=1)
+
+            self.assertIn("Ошибки файлов: 1", result.text)
+            self.assertIn("Google Drive не настроен", result.text)
+        finally:
+            shutil.rmtree(media_root, ignore_errors=True)
+
+    def test_pick_reports_drive_upload_error_in_result_text(self):
+        media_root = tempfile.mkdtemp(prefix="tg-intake-test-")
+        try:
+            self.fake_tg = FakeTelegramClient(file_payloads={"doc_op_1": b"1"})
+            self.service = TelegramIntakeService(self.fake_tg)
+            self.service.process_message(
+                user=self.user,
+                update_id=1,
+                chat_id=1001,
+                message={
+                    "message_id": 814,
+                    "chat": {"id": 1001, "type": "private"},
+                    "document": {
+                        "file_id": "doc_op_1",
+                        "file_name": "op.pdf",
+                        "mime_type": "application/pdf",
+                    },
+                },
+            )
+            session = TelegramDealRoutingSession.objects.get(user=self.user)
+            session.last_message_at = timezone.now() - timedelta(seconds=61)
+            session.save(update_fields=["last_message_at"])
+            self.service.finalize_ready_batches()
+
+            with (
+                override_settings(MEDIA_ROOT=media_root),
+                patch(
+                    "apps.notifications.telegram_intake.ensure_deal_folder",
+                    return_value="deal-folder-1",
+                ),
+                patch(
+                    "apps.notifications.telegram_intake.upload_file_to_drive",
+                    side_effect=DriveOperationError(
+                        "Unable to upload file to Google Drive."
+                    ),
+                ),
+            ):
+                result = self.service.process_pick(user=self.user, pick_index=1)
+
+            self.assertIn("Ошибки файлов: 1", result.text)
+            self.assertIn("файл не удалось загрузить в Google Drive", result.text)
         finally:
             shutil.rmtree(media_root, ignore_errors=True)
 

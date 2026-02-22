@@ -6,7 +6,13 @@ from datetime import timedelta
 from io import BytesIO
 
 from apps.clients.models import Client
-from apps.common.drive import DriveError, ensure_deal_folder, upload_file_to_drive
+from apps.common.drive import (
+    DriveConfigurationError,
+    DriveError,
+    DriveOperationError,
+    ensure_deal_folder,
+    upload_file_to_drive,
+)
 from apps.deals.models import Deal
 from apps.deals.permissions import is_admin_user
 from apps.documents.models import Document
@@ -525,7 +531,7 @@ class TelegramIntakeService:
         )
         if not deal:
             return IntakeResult("Сделка недоступна или не найдена.")
-        saved, failed = self._attach_batch_to_deal(
+        saved, failed, failure_hint = self._attach_batch_to_deal(
             user=user,
             session=session,
             deal=deal,
@@ -535,9 +541,14 @@ class TelegramIntakeService:
         session.selected_deal = deal
         session.save(update_fields=["state", "selected_deal", "updated_at"])
         link = _build_deal_link(deal.id)
+        failure_text = ""
+        if failed:
+            failure_text = f"\nОшибки файлов: {failed}"
+            if failure_hint:
+                failure_text += f" ({failure_hint})"
         return IntakeResult(
             f"Пакет привязан к сделке '{deal.title}'.\nСохранено файлов: {saved}."
-            + (f"\nОшибки файлов: {failed}" if failed else "")
+            + failure_text
             + (f"\nСделка: {link}" if link else "")
         )
 
@@ -570,7 +581,7 @@ class TelegramIntakeService:
             status=Deal.DealStatus.OPEN,
             source="telegram",
         )
-        saved, failed = self._attach_batch_to_deal(
+        saved, failed, failure_hint = self._attach_batch_to_deal(
             user=user,
             session=session,
             deal=deal,
@@ -590,9 +601,14 @@ class TelegramIntakeService:
             ]
         )
         link = _build_deal_link(deal.id)
+        failure_text = ""
+        if failed:
+            failure_text = f"\nОшибки файлов: {failed}"
+            if failure_hint:
+                failure_text += f" ({failure_hint})"
         return IntakeResult(
             f"Создана новая сделка '{deal.title}' для клиента '{client.name}'.\nСохранено файлов: {saved}."
-            + (f"\nОшибки файлов: {failed}" if failed else "")
+            + failure_text
             + (f"\nСделка: {link}" if link else "")
         )
 
@@ -1161,6 +1177,7 @@ class TelegramIntakeService:
             author_name="Telegram bot",
         )
         saved, failed = 0, 0
+        failure_codes: set[str] = set()
         for idx, item in enumerate(session.aggregated_attachments or [], start=1):
             file_id = str(item.get("file_id") or "").strip()
             if not file_id:
@@ -1189,7 +1206,7 @@ class TelegramIntakeService:
                 )
                 document.file.save(file_name, ContentFile(content), save=False)
                 document.save()
-                drive_uploaded = self._upload_attachment_to_drive(
+                drive_uploaded, failure_code = self._upload_attachment_to_drive(
                     deal=deal,
                     file_name=file_name,
                     mime_type=mime_type,
@@ -1199,8 +1216,11 @@ class TelegramIntakeService:
                     saved += 1
                 else:
                     failed += 1
+                    if failure_code:
+                        failure_codes.add(failure_code)
             except Exception as exc:  # noqa: BLE001
                 failed += 1
+                failure_codes.add("unexpected")
                 logger.warning(
                     "Telegram attachment save failed for session=%s file_id=%s: %s",
                     session.id,
@@ -1212,7 +1232,18 @@ class TelegramIntakeService:
             processed_at=timezone.now(),
             status=final_status,
         )
-        return saved, failed
+        return saved, failed, self._build_drive_failure_hint(failure_codes)
+
+    def _build_drive_failure_hint(self, failure_codes: set[str]) -> str:
+        if not failure_codes:
+            return ""
+        if "config" in failure_codes:
+            return "Google Drive не настроен в окружении бота"
+        if "folder" in failure_codes:
+            return "Google Drive недоступен или нет доступа к папке сделки"
+        if "upload" in failure_codes:
+            return "файл не удалось загрузить в Google Drive"
+        return "Google Drive недоступен или не принял файл"
 
     def _upload_attachment_to_drive(
         self,
@@ -1221,18 +1252,44 @@ class TelegramIntakeService:
         file_name: str,
         mime_type: str,
         content: bytes,
-    ) -> bool:
+    ) -> tuple[bool, str | None]:
         try:
             folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
             if not folder_id:
-                return False
+                logger.warning(
+                    "Telegram attachment Drive upload skipped for deal=%s file=%s: folder_id is empty",
+                    deal.id,
+                    file_name,
+                )
+                return False, "folder"
             upload_file_to_drive(
                 folder_id=folder_id,
                 file_obj=BytesIO(content),
                 file_name=file_name,
                 mime_type=mime_type or "application/octet-stream",
             )
-            return True
+            return True, None
+        except DriveConfigurationError as exc:
+            logger.warning(
+                "Telegram attachment Drive config error for deal=%s file=%s: %s",
+                deal.id,
+                file_name,
+                exc,
+            )
+            return False, "config"
+        except DriveOperationError as exc:
+            error_text = str(exc or "").lower()
+            failure_code = "upload"
+            if "folder" in error_text or "verify drive folder" in error_text:
+                failure_code = "folder"
+            logger.warning(
+                "Telegram attachment Drive operation failed for deal=%s file=%s code=%s: %s",
+                deal.id,
+                file_name,
+                failure_code,
+                exc,
+            )
+            return False, failure_code
         except DriveError as exc:
             logger.warning(
                 "Telegram attachment Drive upload failed for deal=%s file=%s: %s",
@@ -1240,4 +1297,4 @@ class TelegramIntakeService:
                 file_name,
                 exc,
             )
-            return False
+            return False, "upload"
