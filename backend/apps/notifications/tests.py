@@ -193,17 +193,10 @@ class TelegramIntakeServiceTests(TestCase):
             shutil.rmtree(media_root, ignore_errors=True)
 
 
-class TelegramIntakeDriveUploadApiTests(TestCase):
+class TelegramIntakeDriveUploadApiTests(TelegramIntakeServiceTests):
     def setUp(self):
+        super().setUp()
         self.api_client = APIClient()
-        self.user = User.objects.create_user(username="api_user", password="pass")
-        self.client_obj = Client.objects.create(name="API Client", created_by=self.user)
-        self.deal = Deal.objects.create(
-            title="API Deal",
-            client=self.client_obj,
-            seller=self.user,
-            status=Deal.DealStatus.OPEN,
-        )
 
     def test_requires_internal_token(self):
         response = self.api_client.post(
