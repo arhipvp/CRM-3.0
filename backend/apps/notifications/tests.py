@@ -241,6 +241,31 @@ class TelegramIntakeServiceTests(TestCase):
         finally:
             shutil.rmtree(media_root, ignore_errors=True)
 
+    def test_find_or_create_client_reuses_single_telegram_client(self):
+        first = self.service._find_or_create_client(
+            user=self.user,
+            extracted_data={
+                "client_name": "Иван Иванов",
+                "phones": ["+7 (900) 000-00-00"],
+                "emails": ["ivan-telegram@example.com"],
+            },
+        )
+        second = self.service._find_or_create_client(
+            user=self.user,
+            extracted_data={
+                "client_name": "Петр Петров",
+                "phones": ["+7 (901) 111-11-11"],
+                "emails": ["petr-telegram@example.com"],
+            },
+        )
+
+        self.assertEqual(first.id, second.id)
+        self.assertEqual(first.name, "Клиент из Telegram")
+        self.assertEqual(
+            Client.objects.alive().filter(name__iexact="Клиент из Telegram").count(),
+            1,
+        )
+
 
 class TelegramIntakeDriveUploadApiTests(TelegramIntakeServiceTests):
     def setUp(self):

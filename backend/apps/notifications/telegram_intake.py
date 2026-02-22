@@ -44,6 +44,7 @@ NAME_TOKEN_RE = re.compile(r"[A-Za-zА-Яа-яЁё]+")
 CALLBACK_PREFIX = "tgintake"
 SESSION_TTL_MINUTES = 30
 BATCH_TIMEOUT_SECONDS = 60
+DEFAULT_TELEGRAM_CLIENT_NAME = "Клиент из Telegram"
 
 
 @dataclass
@@ -1149,39 +1150,28 @@ class TelegramIntakeService:
         )
 
     def _find_or_create_client(self, *, user, extracted_data):
-        emails = [str(email).lower() for email in (extracted_data.get("emails") or [])]
-        phones = [str(phone) for phone in (extracted_data.get("phones") or [])]
-        name = str(extracted_data.get("client_name") or "").strip()
-        if emails:
-            existing = (
-                Client.objects.alive()
-                .filter(email__isnull=False, email__iexact=emails[0])
-                .order_by("-created_at")
-                .first()
+        default_name = str(
+            getattr(
+                settings,
+                "TELEGRAM_INTAKE_DEFAULT_CLIENT_NAME",
+                DEFAULT_TELEGRAM_CLIENT_NAME,
             )
-            if existing:
-                return existing
-        if phones:
-            normalized = _normalize_phone(phones[0])
-            for client in Client.objects.alive().exclude(phone="").only("id", "phone"):
-                cphone = _normalize_phone(client.phone)
-                if cphone == normalized or (
-                    len(normalized) >= 10 and cphone.endswith(normalized[-10:])
-                ):
-                    return client
-        if name:
-            existing = (
-                Client.objects.alive()
-                .filter(name__iexact=name)
-                .order_by("-created_at")
-                .first()
-            )
-            if existing:
-                return existing
+            or DEFAULT_TELEGRAM_CLIENT_NAME
+        ).strip()
+        if not default_name:
+            default_name = DEFAULT_TELEGRAM_CLIENT_NAME
+
+        existing = (
+            Client.objects.alive()
+            .filter(name__iexact=default_name)
+            .order_by("-created_at")
+            .first()
+        )
+        if existing:
+            return existing
+
         return Client.objects.create(
-            name=(name or "Клиент из Telegram")[:255],
-            phone=(phones[0] if phones else "")[:20],
-            email=(emails[0] if emails else None),
+            name=default_name[:255],
             created_by=user,
         )
 
