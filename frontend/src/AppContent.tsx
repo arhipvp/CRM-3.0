@@ -1,15 +1,16 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
 import { useNotification } from './contexts/NotificationContext';
-import { NotificationDisplay } from './components/NotificationDisplay';
 import { AppModals } from './components/app/AppModals';
 import { AppRoutes } from './components/app/AppRoutes';
+import { ClientMergeModal } from './components/app/ClientMergeModal';
+import { AppShell } from './components/app/AppShell';
+import { AppShortcutsController } from './components/app/AppShortcutsController';
 import { ClientForm } from './components/forms/ClientForm';
 import { AddTaskForm } from './components/forms/AddTaskForm';
 import { PanelMessage } from './components/PanelMessage';
-import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from './components/common/buttonStyles';
+import { BTN_DANGER, BTN_SECONDARY } from './components/common/buttonStyles';
 import { FormActions } from './components/common/forms/FormActions';
 import { FormModal } from './components/common/modal/FormModal';
 import { SimilarClientsModal } from './components/views/SimilarClientsModal';
@@ -101,7 +102,7 @@ import {
   resolveSalesChannelName,
   shouldAutofillCommissionNote,
 } from './utils/financialRecordNotes';
-import { CommandPalette, type CommandPaletteItem } from './components/common/modal/CommandPalette';
+import type { CommandPaletteItem } from './components/common/modal/CommandPalette';
 import { formatShortcut } from './hotkeys/formatShortcut';
 import { useGlobalHotkeys } from './hotkeys/useGlobalHotkeys';
 
@@ -3446,12 +3447,15 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <MainLayout
+    <AppShell
       onAddDeal={openDealCreateModal}
       onAddClient={openClientCreateModal}
       onOpenCommandPalette={openCommandsPalette}
-      currentUser={currentUser || undefined}
+      currentUser={currentUser}
       onLogout={handleLogout}
+      error={error}
+      onClearError={() => setError(null)}
+      isSyncing={isSyncing}
     >
       {activeShortcutContext && (
         <div className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
@@ -3560,26 +3564,11 @@ const AppContent: React.FC = () => {
         isLoadingMorePolicies={isLoadingMorePolicies}
         isPoliciesListLoading={isPoliciesListLoading}
       />
-      <CommandPalette
-        isOpen={paletteMode === 'commands'}
-        title="Командная палитра"
-        placeholder="Поиск по разделам и действиям..."
-        items={commandItems}
-        onClose={closePalette}
-      />
-      <CommandPalette
-        isOpen={paletteMode === 'help'}
-        title="Горячие клавиши"
-        placeholder="Поиск по сочетаниям..."
-        items={HOTKEY_HELP_ITEMS}
-        onClose={closePalette}
-      />
-      <CommandPalette
-        isOpen={paletteMode === 'taskDeal'}
-        title="Выберите сделку для задачи"
-        placeholder="Поиск сделки или клиента..."
-        emptyMessage="Не найдено подходящих сделок для создания задачи."
-        items={taskDealItems}
+      <AppShortcutsController
+        paletteMode={paletteMode}
+        commandItems={commandItems}
+        hotkeyHelpItems={HOTKEY_HELP_ITEMS}
+        taskDealItems={taskDealItems}
         onClose={closePalette}
       />
 
@@ -3760,202 +3749,28 @@ const AppContent: React.FC = () => {
         onMerge={handleMergeFromSimilar}
       />
       {mergeTargetClient && (
-        <FormModal
-          isOpen
-          title={`Объединить клиента ${mergeTargetClient.name}`}
+        <ClientMergeModal
+          targetClient={mergeTargetClient}
+          mergeCandidates={mergeCandidates}
+          mergeSearch={mergeSearch}
+          mergeSources={mergeSources}
+          mergeStep={clientMergeStep}
+          mergePreview={clientMergePreview}
+          mergeError={mergeError}
+          isMergingClients={isMergingClients}
+          isPreviewLoading={isClientMergePreviewLoading}
+          isPreviewConfirmed={isClientMergePreviewConfirmed}
+          fieldOverrides={clientMergeFieldOverrides}
           onClose={closeMergeModal}
-          size="lg"
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handleMergeSubmit();
-            }}
-            className="space-y-5"
-          >
-            <p className="text-sm text-slate-600">
-              Выберите клиентов, которые будут объединены в «{mergeTargetClient.name}».
-            </p>
-            {clientMergeStep === 'select' && (
-              <>
-                <input
-                  type="search"
-                  value={mergeSearch}
-                  onChange={(event) => setMergeSearch(event.target.value)}
-                  placeholder="Поиск по имени клиента"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                />
-                <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {mergeCandidates.length ? (
-                    mergeCandidates.map((client) => (
-                      <label
-                        key={client.id}
-                        className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 hover:border-slate-300 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={mergeSources.includes(client.id)}
-                          onChange={() => toggleMergeSource(client.id)}
-                          className="check"
-                        />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">{client.name}</p>
-                        </div>
-                      </label>
-                    ))
-                  ) : (
-                    <p className="text-sm text-slate-500">
-                      {!mergeSearch
-                        ? 'Нет доступных клиентов для объединения.'
-                        : `По запросу "${mergeSearch}" ничего не найдено.`}
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-            {clientMergeStep === 'preview' && clientMergePreview && (
-              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-900">Предпросмотр объединения</p>
-                <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 md:grid-cols-2">
-                  <p>Сделок к переносу: {String(clientMergePreview.movedCounts?.deals ?? 0)}</p>
-                  <p>
-                    Полисов к переносу:{' '}
-                    {String(clientMergePreview.movedCounts?.policies_unique ?? 0)}
-                  </p>
-                </div>
-                {Array.isArray(clientMergePreview.warnings) &&
-                  clientMergePreview.warnings.length > 0 && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                        Предупреждения
-                      </p>
-                      <ul className="mt-2 list-disc pl-5 text-xs text-amber-800">
-                        {clientMergePreview.warnings.map((warning) => (
-                          <li key={String(warning)}>{String(warning)}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <label className="text-sm text-slate-700">
-                    Итоговое ФИО
-                    <input
-                      type="text"
-                      value={clientMergeFieldOverrides.name}
-                      onChange={(event) =>
-                        setClientMergeFieldOverrides((prev) => ({
-                          ...prev,
-                          name: event.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                    />
-                  </label>
-                  <label className="text-sm text-slate-700">
-                    Итоговый телефон
-                    <input
-                      type="text"
-                      value={clientMergeFieldOverrides.phone}
-                      onChange={(event) =>
-                        setClientMergeFieldOverrides((prev) => ({
-                          ...prev,
-                          phone: event.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                    />
-                  </label>
-                  <label className="text-sm text-slate-700">
-                    Итоговый email
-                    <input
-                      type="email"
-                      value={clientMergeFieldOverrides.email}
-                      onChange={(event) =>
-                        setClientMergeFieldOverrides((prev) => ({
-                          ...prev,
-                          email: event.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                    />
-                  </label>
-                  <label className="text-sm text-slate-700 md:col-span-2">
-                    Итоговые заметки
-                    <textarea
-                      value={clientMergeFieldOverrides.notes}
-                      onChange={(event) =>
-                        setClientMergeFieldOverrides((prev) => ({
-                          ...prev,
-                          notes: event.target.value,
-                        }))
-                      }
-                      className="mt-1 min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100"
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
-            {mergeError && <p className="text-sm text-rose-600">{mergeError}</p>}
-            <FormActions
-              onCancel={closeMergeModal}
-              isSubmitting={isMergingClients}
-              isSubmitDisabled={!mergeSources.length || !isClientMergePreviewConfirmed}
-              submitLabel="Объединить клиентов"
-              submittingLabel="Объединяем..."
-              submitClassName={`${BTN_PRIMARY} rounded-xl`}
-              cancelClassName={`${BTN_SECONDARY} rounded-xl`}
-            />
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  void handleClientMergePreview();
-                }}
-                disabled={isClientMergePreviewLoading || !mergeSources.length}
-                className={`${BTN_SECONDARY} rounded-xl`}
-              >
-                {isClientMergePreviewLoading
-                  ? 'Готовим предпросмотр...'
-                  : 'Предпросмотр объединения'}
-              </button>
-            </div>
-          </form>
-        </FormModal>
+          onSubmit={handleMergeSubmit}
+          onPreview={handleClientMergePreview}
+          onToggleSource={toggleMergeSource}
+          onSearchChange={setMergeSearch}
+          onFieldOverridesChange={setClientMergeFieldOverrides}
+        />
       )}
       <ConfirmDialogRenderer />
-      <NotificationDisplay />
-
-      {error && (
-        <div className="fixed bottom-4 left-4 z-50 w-[min(420px,calc(100vw-2rem))]">
-          <div className="rounded-2xl border border-rose-200 border-l-4 border-l-rose-500 bg-rose-50 text-rose-900 shadow-md">
-            <div className="flex items-start justify-between gap-3 p-4">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold">Ошибка</p>
-                <p className="text-sm leading-relaxed">{error}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setError(null)}
-                className="icon-btn h-8 w-8 text-rose-700 hover:bg-rose-100"
-                aria-label="Скрыть ошибку"
-                title="Скрыть"
-              >
-                &times;
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isSyncing && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <div className="app-panel flex items-center gap-3 px-4 py-3 shadow-md">
-            <div className="animate-spin h-4 w-4 border-2 border-slate-300 border-t-sky-600 rounded-full" />
-            <span className="text-sm font-semibold text-slate-700">Синхронизация...</span>
-          </div>
-        </div>
-      )}
-    </MainLayout>
+    </AppShell>
   );
 };
 

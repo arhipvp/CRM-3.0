@@ -52,6 +52,7 @@ from .serializers import (
     PaymentSerializer,
     StatementSerializer,
 )
+from .services import build_finance_summary_payload
 
 
 class StatementDriveTrashSerializer(serializers.Serializer):
@@ -827,53 +828,5 @@ class FinanceSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-
-        # Если пользователь не аутентифицирован, показываем общую сводку
-        is_admin = is_admin_user(user)
-
-        # Базовый queryset для финансовых записей
-        records_queryset = FinancialRecord.objects.filter(deleted_at__isnull=True)
-        if not is_admin and user.is_authenticated:
-            # Остальные видят только записи для своих сделок (где user = seller или executor)
-            records_queryset = records_queryset.filter(
-                Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
-            )
-
-        # Считаем доходы (положительные суммы) и расходы (отрицательные суммы)
-        incomes_total = (
-            records_queryset.filter(amount__gt=0).aggregate(total=Sum("amount"))[
-                "total"
-            ]
-            or 0
-        )
-        expenses_total = abs(
-            records_queryset.filter(amount__lt=0).aggregate(total=Sum("amount"))[
-                "total"
-            ]
-            or 0
-        )
-        net_total = incomes_total - expenses_total
-
-        # Плановые платежи
-        payments_queryset = Payment.objects.filter(
-            actual_date__isnull=True, deleted_at__isnull=True
-        )
-        if not is_admin and user.is_authenticated:
-            payments_queryset = payments_queryset.filter(
-                Q(deal__seller=user) | Q(deal__executor=user)
-            )
-
-        planned_payments = payments_queryset.select_related("policy").order_by(
-            "scheduled_date"
-        )[:5]
-        serializer = PaymentSerializer(planned_payments, many=True)
-
-        return Response(
-            {
-                "incomes_total": float(incomes_total),
-                "expenses_total": float(expenses_total),
-                "net_total": float(net_total),
-                "planned_payments": serializer.data,
-            }
-        )
+        payload = build_finance_summary_payload(user=request.user)
+        return Response(payload)

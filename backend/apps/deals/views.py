@@ -62,6 +62,7 @@ from .serializers import (
     QuoteSerializer,
     SalesChannelSerializer,
 )
+from .services.lifecycle import close_deal, reopen_deal
 from .view_mixins import (
     DealDocumentRecognitionMixin,
     DealDriveMixin,
@@ -557,31 +558,13 @@ class DealViewSet(
                 {"detail": "Only the assigned seller can close this deal."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if deal.status in CLOSED_STATUSES:
-            return Response(
-                {"detail": "Deal is already closed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        status_value = str(request.data.get("status") or Deal.DealStatus.WON).lower()
-        if status_value not in CLOSED_STATUSES:
-            return Response(
-                {"status": "Status must be either 'won' or 'lost'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        reason = request.data.get("reason")
-        if reason is None:
-            reason = ""
-        if not isinstance(reason, str):
-            reason = str(reason)
-        closing_reason = reason.strip()
-        if not closing_reason:
-            return Response(
-                {"reason": "Reason is required when closing a deal."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        deal.status = status_value
-        deal.closing_reason = closing_reason
-        deal.save(update_fields=["status", "closing_reason"])
+        close_error = close_deal(
+            deal=deal,
+            reason=request.data.get("reason"),
+            status_value=request.data.get("status"),
+        )
+        if close_error:
+            return close_error
         serializer = self.get_serializer(deal)
         return Response(serializer.data)
 
@@ -703,19 +686,14 @@ class DealViewSet(
         response = self._reject_when_no_seller(request.user, deal)
         if response:
             return response
-        if deal.status not in CLOSED_STATUSES:
-            return Response(
-                {"detail": "Only closed deals can be reopened."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         if not can_modify_deal(request.user, deal):
             return Response(
                 {"detail": "Only administrators or the deal owner can reopen a deal."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        deal.status = Deal.DealStatus.OPEN
-        deal.closing_reason = ""
-        deal.save(update_fields=["status", "closing_reason"])
+        reopen_error = reopen_deal(deal=deal)
+        if reopen_error:
+            return reopen_error
         serializer = self.get_serializer(deal)
         return Response(serializer.data)
 
