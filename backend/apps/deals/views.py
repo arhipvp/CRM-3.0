@@ -37,6 +37,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from .filters import DealFilterSet
+from .lifecycle_service import close_deal, reopen_deal
 from .models import (
     Deal,
     DealPin,
@@ -62,7 +63,6 @@ from .serializers import (
     QuoteSerializer,
     SalesChannelSerializer,
 )
-from .services.lifecycle import close_deal, reopen_deal
 from .view_mixins import (
     DealDocumentRecognitionMixin,
     DealDriveMixin,
