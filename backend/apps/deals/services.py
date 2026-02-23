@@ -128,6 +128,10 @@ class DealSimilarityService:
     def _date_distance_days(left: date | None, right: date | None) -> int | None:
         if not left or not right:
             return None
+        if isinstance(left, datetime):
+            left = left.date()
+        if isinstance(right, datetime):
+            right = right.date()
         return abs((left - right).days)
 
     def _policy_numbers_map(self, deal_ids: Sequence) -> dict[str, set[str]]:
