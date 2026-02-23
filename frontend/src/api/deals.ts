@@ -489,8 +489,9 @@ export async function createDealMailbox(dealId: string): Promise<DealMailboxCrea
   });
 
   const mailboxInitialPassword =
-    // pragma: allowlist secret
-    typeof payload.mailbox_initial_password === 'string' ? payload.mailbox_initial_password : null;
+    typeof payload.mailbox_initial_password === 'string' // pragma: allowlist secret
+      ? payload.mailbox_initial_password
+      : null;
 
   return {
     deal: mapDeal(payload),
