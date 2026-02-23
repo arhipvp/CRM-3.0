@@ -146,7 +146,7 @@ jobs:
           DJANGO_DB_PORT: '5432'
           DJANGO_DB_NAME: crm3_test
           DJANGO_DB_USER: crm3
-          DJANGO_DB_PASSWORD: crm3
+          DJANGO_DB_PASSWORD: crm3 # pragma: allowlist secret
           DJANGO_SECRET_KEY: test-secret-key # pragma: allowlist secret
           ALLOWED_HOSTS: localhost,127.0.0.1
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
@@ -164,7 +164,7 @@ jobs:
           DJANGO_DB_PORT: '5432'
           DJANGO_DB_NAME: crm3_test
           DJANGO_DB_USER: crm3
-          DJANGO_DB_PASSWORD: crm3
+          DJANGO_DB_PASSWORD: crm3 # pragma: allowlist secret
           DJANGO_SECRET_KEY: test-secret-key # pragma: allowlist secret
           ALLOWED_HOSTS: localhost,127.0.0.1
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
