@@ -723,14 +723,16 @@ class TelegramIntakeService:
         file_name: str,
         mime_type: str,
         content: bytes,
+        logger: logging.Logger | None = None,
     ) -> tuple[bool, str | None]:
+        active_logger = logger or logging.getLogger(__name__)
         return upload_attachment_to_drive(
             user=user,
             deal=deal,
             file_name=file_name,
             mime_type=mime_type,
             content=content,
-            logger=logger,
+            logger=active_logger,
             api_uploader=self._upload_attachment_via_backend_api,
             ensure_deal_folder_fn=ensure_deal_folder,
             upload_file_to_drive_fn=upload_file_to_drive,
@@ -744,14 +746,16 @@ class TelegramIntakeService:
         file_name: str,
         mime_type: str,
         content: bytes,
+        logger: logging.Logger | None = None,
     ) -> tuple[bool, str | None] | None:
+        active_logger = logger or logging.getLogger(__name__)
         return upload_attachment_via_backend_api(
             user=user,
             deal=deal,
             file_name=file_name,
             mime_type=mime_type,
             content=content,
-            logger=logger,
+            logger=active_logger,
             urlopen=urllib.request.urlopen,
             request_factory=urllib.request.Request,
         )

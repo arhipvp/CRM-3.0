@@ -48,17 +48,18 @@ class DealSimilarityServiceTestCase(TestCase):
 
         insurer = InsuranceCompany.objects.create(name="Acme Similarity")
         ins_type = InsuranceType.objects.create(name="Mortgage Similarity")
+        deleted_candidate_policy = Policy.objects.create(
+            number="P-SAME-001",
+            insurance_company=insurer,
+            insurance_type=ins_type,
+            deal=self.strong_candidate,
+        )
+        deleted_candidate_policy.delete()
         Policy.objects.create(
             number="P-SAME-001",
             insurance_company=insurer,
             insurance_type=ins_type,
             deal=self.target,
-        )
-        Policy.objects.create(
-            number="P-SAME-001",
-            insurance_company=insurer,
-            insurance_type=ins_type,
-            deal=self.strong_candidate,
         )
         Payment.objects.create(
             deal=self.target,
