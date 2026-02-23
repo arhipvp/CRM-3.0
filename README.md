@@ -124,6 +124,13 @@ docker compose up --build
 - **Тесты**: `python manage.py test` проверяет DRF APIClient-слоты; `frontend/__tests__/` и `src/__tests__/` покрывают визуальные блоки и utils.
 - **Перед PR** убедитесь, что `python manage.py test`, `npm run lint`, `npm run test` и `npm run build` проходят. Docker-compose можно использовать для интеграции.
 
+## Безопасность секретов
+- Реальные секреты храните только в локальных `.env`/секретах CI. В репозитории оставляйте только шаблоны (`backend/.env.example`, `frontend/.env.example`, `.env.production.example`).
+- В `.gitignore` уже закрыты `.env` и локальные секретные файлы; перед добавлением новых env-файлов проверяйте, что они не попадают в индекс Git.
+- Перед каждым коммитом запускайте pre-commit: `pre-commit run --all-files`. Конфигурация включает `detect-secrets` и блокирует утечки в изменённых файлах.
+- В CI добавлен job `Secret Scan (changed files)`, который проверяет только изменённые файлы в push/PR, чтобы не требовать ретроспективной ротации текущих кредов.
+- Перед merge делайте ручную проверку diff на секреты: `git diff --cached`.
+
 ## Ресурсы и контакты
 - `AGENTS.md` — требования по кодировке, SSH-доступ, стандарты задавания секретов.
 - `backend/README.md` и `frontend/README.md` — подробные инструкции по каждому сервису.

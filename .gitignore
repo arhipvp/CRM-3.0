@@ -10,6 +10,9 @@ backend/media/
 .env
 backend/.env
 backend/.env.*
+!backend/.env.example
+!frontend/.env.example
+!.env.production.example
 
 # Sensitive overrides (should never be committed)
 .env.vps.secure

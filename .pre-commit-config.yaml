@@ -1,4 +1,11 @@
-﻿repos:
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --exclude-files
+          - ^(mailcow/|frontend/package-lock\.json)$
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:
