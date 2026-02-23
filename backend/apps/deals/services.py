@@ -23,7 +23,6 @@ from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import User
 from django.db import transaction
-from django.db.models import Q
 
 from .models import Deal, DealPin, DealTimeTick, DealViewer, Quote
 

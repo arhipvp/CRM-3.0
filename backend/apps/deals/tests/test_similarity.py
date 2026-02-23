@@ -13,9 +13,7 @@ from rest_framework import status
 
 class DealSimilarityServiceTestCase(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="similar-service", password="pass"
-        )
+        self.user = User.objects.create_user(username="similar-service")
         self.client_obj = Client.objects.create(name="Similarity Client")
         self.target = Deal.objects.create(
             title="Ипотека | 0009240-9071109/24И",
@@ -95,10 +93,8 @@ class DealSimilarityServiceTestCase(TestCase):
 class DealSimilarityAPITestCase(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
-        self.seller = User.objects.create_user(
-            username="seller-similar", password="pass"
-        )
-        self.other = User.objects.create_user(username="other-similar", password="pass")
+        self.seller = User.objects.create_user(username="seller-similar")
+        self.other = User.objects.create_user(username="other-similar")
         self.client_obj = Client.objects.create(name="API Similar Client")
         self.target = Deal.objects.create(
             title="Ипотека",

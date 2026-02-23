@@ -6,6 +6,7 @@ import type {
   Deal,
   DealMergeResponse,
   DealMergePreviewResponse,
+  DealSimilarityCandidate,
   DealSimilarityResponse,
   DealTimeTrackingSummary,
   DealTimeTrackingTickResponse,
@@ -448,8 +449,10 @@ export async function findSimilarDeals(data: {
       throw new Error('Ответ API содержит кандидата без сделки');
     }
     const confidenceValue = String(record.confidence ?? 'low').toLowerCase();
-    const confidence =
-      confidenceValue === 'high' || confidenceValue === 'medium' ? confidenceValue : 'low';
+    const confidence: DealSimilarityCandidate['confidence'] =
+      confidenceValue === 'high' || confidenceValue === 'medium' || confidenceValue === 'low'
+        ? confidenceValue
+        : 'low';
     return {
       deal: mapDeal(dealPayload),
       score: Number(record.score ?? 0),
@@ -486,6 +489,7 @@ export async function createDealMailbox(dealId: string): Promise<DealMailboxCrea
   });
 
   const mailboxInitialPassword =
+    // pragma: allowlist secret
     typeof payload.mailbox_initial_password === 'string' ? payload.mailbox_initial_password : null;
 
   return {
