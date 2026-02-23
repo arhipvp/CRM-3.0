@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Deal } from '../../../types';
-import type { Client, User } from '../../../types';
+import type { Client, DealSimilarityCandidate, User } from '../../../types';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
 import { Modal } from '../../Modal';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
@@ -347,6 +347,135 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
             {isPreviewConfirmed ? 'Предпросмотр подтвержден' : 'Сначала выполните предпросмотр'}
           </span>
         )}
+      </div>
+    </div>
+  </Modal>
+);
+
+interface DealSimilarModalProps {
+  targetDeal: Deal;
+  candidates: DealSimilarityCandidate[];
+  selectedIds: string[];
+  includeClosed: boolean;
+  isLoading: boolean;
+  error: string | null;
+  onToggleIncludeClosed: (value: boolean) => void;
+  onToggleCandidate: (dealId: string) => void;
+  onContinue: () => void;
+  onClose: () => void;
+}
+
+const confidenceStyles: Record<'high' | 'medium' | 'low', string> = {
+  high: 'bg-emerald-100 text-emerald-700',
+  medium: 'bg-amber-100 text-amber-700',
+  low: 'bg-slate-100 text-slate-600',
+};
+
+const similarityReasonLabels: Record<string, string> = {
+  same_norm_title: 'Одинаковое название',
+  similar_title: 'Похожее название',
+  shared_policy_number: 'Есть общий номер полиса',
+  shared_reference: 'Есть общий референс',
+  same_source: 'Одинаковый источник',
+  same_seller: 'Одинаковый продавец',
+  same_executor: 'Одинаковый исполнитель',
+  close_next_contact_date: 'Близкая дата следующего контакта',
+  similar_description: 'Похожее описание',
+};
+
+export const DealSimilarModal: React.FC<DealSimilarModalProps> = ({
+  targetDeal,
+  candidates,
+  selectedIds,
+  includeClosed,
+  isLoading,
+  error,
+  onToggleIncludeClosed,
+  onToggleCandidate,
+  onContinue,
+  onClose,
+}) => (
+  <Modal title="Похожие сделки" onClose={onClose} size="xl" zIndex={50}>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <p className="app-label">Текущая сделка</p>
+        <p className="mt-1 text-sm font-semibold text-slate-900">{targetDeal.title}</p>
+      </div>
+
+      <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={includeClosed}
+          onChange={(event) => onToggleIncludeClosed(event.target.checked)}
+          className="check"
+        />
+        Показывать закрытые сделки
+      </label>
+
+      {isLoading && <p className="text-sm text-slate-600">Ищем похожие сделки...</p>}
+
+      {!isLoading && candidates.length === 0 && (
+        <p className="text-sm text-slate-600">Похожие сделки не найдены.</p>
+      )}
+
+      {!isLoading && candidates.length > 0 && (
+        <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+          {candidates.map((candidate) => {
+            const isSelected = selectedIds.includes(candidate.deal.id);
+            return (
+              <label
+                key={candidate.deal.id}
+                className="block cursor-pointer rounded-2xl border border-slate-200 bg-white p-3 hover:border-slate-300"
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onToggleCandidate(candidate.deal.id)}
+                    className="check mt-1"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900">{candidate.deal.title}</p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${confidenceStyles[candidate.confidence]}`}
+                      >
+                        score {candidate.score}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-600">
+                      Статус: {statusLabels[candidate.deal.status]}
+                    </p>
+                    {candidate.reasons.length > 0 && (
+                      <p className="mt-1 text-xs text-slate-600">
+                        Причины:{' '}
+                        {candidate.reasons
+                          .map((reason) => similarityReasonLabels[reason] ?? reason)
+                          .join(', ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {error && <p className="text-sm font-semibold text-rose-700">{error}</p>}
+
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        <button type="button" onClick={onClose} className={`${BTN_SECONDARY} rounded-xl`}>
+          Отмена
+        </button>
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={selectedIds.length === 0 || isLoading}
+          className={`${BTN_PRIMARY} rounded-xl`}
+        >
+          Перейти к объединению
+        </button>
       </div>
     </div>
   </Modal>

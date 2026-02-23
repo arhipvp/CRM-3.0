@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
+from collections import defaultdict
 from datetime import date, datetime
+from difflib import SequenceMatcher
 from typing import Sequence
 
 from apps.chat.models import ChatMessage
@@ -20,12 +23,14 @@ from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import User
 from django.db import transaction
+from django.db.models import Q
 
 from .models import Deal, DealPin, DealTimeTick, DealViewer, Quote
 
 logger = logging.getLogger(__name__)
 _DRIVE_RETRY_ATTEMPTS = 3
 _DRIVE_RETRY_DELAY_SECONDS = 0.5
+_CLOSED_DEAL_STATUSES = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
 
 
 def _retry_drive_operation(action, *, description: str):
@@ -52,6 +57,283 @@ def _retry_drive_operation(action, *, description: str):
             raise
     if last_error:
         raise last_error
+
+
+class DealSimilarityService:
+    SCORE_VERSION = "deal-sim-v1"
+
+    TITLE_NORM_SCORE = 40
+    TITLE_FUZZY_MAX_SCORE = 20
+    TITLE_FUZZY_THRESHOLD = 0.88
+    POLICY_OVERLAP_SCORE = 20
+    REFERENCE_OVERLAP_SCORE = 10
+    SAME_SOURCE_SCORE = 4
+    SAME_SELLER_SCORE = 3
+    SAME_EXECUTOR_SCORE = 3
+    NEXT_CONTACT_CLOSE_SCORE = 3
+    DESCRIPTION_FUZZY_SCORE = 2
+
+    _ALNUM_RE = re.compile(r"[^a-zа-я0-9]+", flags=re.IGNORECASE)
+    _REFERENCE_RE = re.compile(r"[a-zа-я0-9][a-zа-я0-9/_-]{4,}", flags=re.IGNORECASE)
+
+    @classmethod
+    def _normalize_text(cls, value: str | None) -> str:
+        raw = (value or "").strip().lower().replace("ё", "е")
+        return cls._ALNUM_RE.sub("", raw)
+
+    @classmethod
+    def _normalize_simple(cls, value: str | None) -> str:
+        return " ".join((value or "").split()).strip().lower()
+
+    @classmethod
+    def _extract_references(cls, *values: str | None) -> set[str]:
+        refs: set[str] = set()
+        for value in values:
+            if not value:
+                continue
+            for match in cls._REFERENCE_RE.findall(value.lower().replace("ё", "е")):
+                normalized = re.sub(r"[^a-zа-я0-9]+", "", match, flags=re.IGNORECASE)
+                if len(normalized) < 6:
+                    continue
+                if not any(ch.isdigit() for ch in normalized):
+                    continue
+                refs.add(normalized)
+        return refs
+
+    @staticmethod
+    def _confidence(score: int) -> str:
+        if score >= 75:
+            return "high"
+        if score >= 50:
+            return "medium"
+        return "low"
+
+    @staticmethod
+    def _safe_ratio(left: str, right: str) -> float:
+        if not left or not right:
+            return 0.0
+        return SequenceMatcher(None, left, right).ratio()
+
+    @classmethod
+    def _fuzzy_score(cls, ratio: float) -> float:
+        if ratio < cls.TITLE_FUZZY_THRESHOLD:
+            return 0.0
+        if ratio >= 1:
+            return float(cls.TITLE_FUZZY_MAX_SCORE)
+        span = 1 - cls.TITLE_FUZZY_THRESHOLD
+        progress = (ratio - cls.TITLE_FUZZY_THRESHOLD) / span if span else 0.0
+        progress = max(0.0, min(progress, 1.0))
+        return cls.TITLE_FUZZY_MAX_SCORE * progress
+
+    @staticmethod
+    def _date_distance_days(left: date | None, right: date | None) -> int | None:
+        if not left or not right:
+            return None
+        return abs((left - right).days)
+
+    def _policy_numbers_map(self, deal_ids: Sequence) -> dict[str, set[str]]:
+        if not deal_ids:
+            return {}
+        result: dict[str, set[str]] = defaultdict(set)
+        queryset = (
+            Policy.objects.with_deleted()
+            .filter(deal_id__in=deal_ids)
+            .values("deal_id", "number")
+        )
+        for row in queryset:
+            number = self._normalize_text(row.get("number"))
+            if number:
+                result[str(row["deal_id"])].add(number)
+        return result
+
+    def _payment_references_map(self, deal_ids: Sequence) -> dict[str, set[str]]:
+        if not deal_ids:
+            return {}
+        result: dict[str, set[str]] = defaultdict(set)
+        queryset = (
+            Payment.objects.with_deleted()
+            .filter(deal_id__in=deal_ids)
+            .values("deal_id", "description")
+        )
+        for row in queryset:
+            refs = self._extract_references(row.get("description"))
+            if refs:
+                result[str(row["deal_id"])].update(refs)
+        return result
+
+    def _score_pair(
+        self,
+        *,
+        target_deal: Deal,
+        candidate: Deal,
+        target_policy_numbers: set[str],
+        candidate_policy_numbers: set[str],
+        target_payment_refs: set[str],
+        candidate_payment_refs: set[str],
+    ) -> dict:
+        score = 0.0
+        reasons: list[str] = []
+        matched_fields: dict[str, object] = {
+            "title_norm_exact": False,
+            "title_fuzzy": 0.0,
+            "policy_number_overlap": False,
+            "payment_reference_overlap": False,
+            "same_source": False,
+            "same_seller": False,
+            "same_executor": False,
+            "next_contact_close_days": None,
+            "description_fuzzy": 0.0,
+        }
+
+        target_norm_title = self._normalize_text(target_deal.title)
+        candidate_norm_title = self._normalize_text(candidate.title)
+        title_ratio = self._safe_ratio(target_norm_title, candidate_norm_title)
+        matched_fields["title_fuzzy"] = round(title_ratio, 4)
+        if target_norm_title and target_norm_title == candidate_norm_title:
+            score += self.TITLE_NORM_SCORE
+            matched_fields["title_norm_exact"] = True
+            reasons.append("same_norm_title")
+        fuzzy_score = self._fuzzy_score(title_ratio)
+        if fuzzy_score > 0:
+            score += fuzzy_score
+            reasons.append("similar_title")
+
+        shared_policy_numbers = target_policy_numbers & candidate_policy_numbers
+        if shared_policy_numbers:
+            score += self.POLICY_OVERLAP_SCORE
+            matched_fields["policy_number_overlap"] = True
+            reasons.append("shared_policy_number")
+
+        target_refs = (
+            self._extract_references(target_deal.title, target_deal.description)
+            | target_payment_refs
+        )
+        candidate_refs = (
+            self._extract_references(candidate.title, candidate.description)
+            | candidate_payment_refs
+        )
+        shared_refs = target_refs & candidate_refs
+        if shared_refs:
+            score += self.REFERENCE_OVERLAP_SCORE
+            reasons.append("shared_reference")
+        if target_payment_refs & candidate_payment_refs:
+            matched_fields["payment_reference_overlap"] = True
+
+        target_source = self._normalize_simple(target_deal.source)
+        candidate_source = self._normalize_simple(candidate.source)
+        if target_source and target_source == candidate_source:
+            score += self.SAME_SOURCE_SCORE
+            matched_fields["same_source"] = True
+            reasons.append("same_source")
+
+        if target_deal.seller_id and target_deal.seller_id == candidate.seller_id:
+            score += self.SAME_SELLER_SCORE
+            matched_fields["same_seller"] = True
+            reasons.append("same_seller")
+
+        if target_deal.executor_id and target_deal.executor_id == candidate.executor_id:
+            score += self.SAME_EXECUTOR_SCORE
+            matched_fields["same_executor"] = True
+            reasons.append("same_executor")
+
+        next_contact_days = self._date_distance_days(
+            target_deal.next_contact_date,
+            candidate.next_contact_date,
+        )
+        matched_fields["next_contact_close_days"] = next_contact_days
+        if next_contact_days is not None and next_contact_days <= 3:
+            score += self.NEXT_CONTACT_CLOSE_SCORE
+            reasons.append("close_next_contact_date")
+
+        description_ratio = self._safe_ratio(
+            self._normalize_simple(target_deal.description),
+            self._normalize_simple(candidate.description),
+        )
+        matched_fields["description_fuzzy"] = round(description_ratio, 4)
+        if description_ratio >= 0.9:
+            score += self.DESCRIPTION_FUZZY_SCORE
+            reasons.append("similar_description")
+
+        clamped_score = int(max(0, min(round(score), 100)))
+        merge_blockers: list[str] = []
+        if candidate.deleted_at is not None:
+            merge_blockers.append("deleted_candidate")
+        if candidate.client_id != target_deal.client_id:
+            merge_blockers.append("different_client")
+
+        return {
+            "score": clamped_score,
+            "confidence": self._confidence(clamped_score),
+            "reasons": reasons,
+            "matched_fields": matched_fields,
+            "merge_blockers": merge_blockers,
+        }
+
+    def find_similar(
+        self,
+        *,
+        target_deal: Deal,
+        queryset,
+        limit: int = 30,
+        include_self: bool = False,
+        include_closed: bool = False,
+    ) -> dict:
+        candidates_qs = queryset.filter(client_id=target_deal.client_id)
+        if not include_self:
+            candidates_qs = candidates_qs.exclude(pk=target_deal.pk)
+        if not include_closed:
+            candidates_qs = candidates_qs.exclude(status__in=_CLOSED_DEAL_STATUSES)
+
+        candidates_qs = candidates_qs.select_related(
+            "client", "seller", "executor", "mailbox"
+        ).prefetch_related("quotes", "documents")
+        candidates = list(candidates_qs)
+        if not candidates:
+            return {
+                "candidates": [],
+                "meta": {
+                    "total_checked": 0,
+                    "returned": 0,
+                    "scoring_version": self.SCORE_VERSION,
+                },
+            }
+
+        all_ids = [target_deal.id, *[deal.id for deal in candidates]]
+        policy_map = self._policy_numbers_map(all_ids)
+        payment_ref_map = self._payment_references_map(all_ids)
+        target_policy_numbers = policy_map.get(str(target_deal.id), set())
+        target_payment_refs = payment_ref_map.get(str(target_deal.id), set())
+
+        scored: list[dict] = []
+        for candidate in candidates:
+            score_result = self._score_pair(
+                target_deal=target_deal,
+                candidate=candidate,
+                target_policy_numbers=target_policy_numbers,
+                candidate_policy_numbers=policy_map.get(str(candidate.id), set()),
+                target_payment_refs=target_payment_refs,
+                candidate_payment_refs=payment_ref_map.get(str(candidate.id), set()),
+            )
+            if score_result["score"] <= 0:
+                continue
+            scored.append({"deal": candidate, **score_result})
+
+        scored.sort(
+            key=lambda item: (
+                int(item["score"]),
+                getattr(item["deal"], "updated_at", datetime.min),
+            ),
+            reverse=True,
+        )
+        limited = scored[:limit]
+        return {
+            "candidates": limited,
+            "meta": {
+                "total_checked": len(candidates),
+                "returned": len(limited),
+                "scoring_version": self.SCORE_VERSION,
+            },
+        }
 
 
 class DealMergeService:

@@ -69,6 +69,7 @@ from .view_mixins import (
     DealHistoryMixin,
     DealMergeMixin,
     DealRestoreMixin,
+    DealSimilarityMixin,
 )
 
 CLOSED_STATUSES = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
@@ -78,6 +79,7 @@ class DealViewSet(
     DealDocumentRecognitionMixin,
     DealHistoryMixin,
     DealDriveMixin,
+    DealSimilarityMixin,
     DealMergeMixin,
     DealRestoreMixin,
     EditProtectedMixin,

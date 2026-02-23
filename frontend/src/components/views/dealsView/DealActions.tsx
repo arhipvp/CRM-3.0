@@ -23,6 +23,7 @@ interface DealActionsProps {
   onClose: () => void;
   onReopen: () => void;
   onMerge: () => void;
+  onSimilar: () => void;
   onDelay: () => void;
   onDelayDisabled?: boolean;
   onRefresh: () => void;
@@ -45,6 +46,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
   onClose,
   onReopen,
   onMerge,
+  onSimilar,
   onDelay,
   onDelayDisabled,
   onRefresh,
@@ -75,7 +77,15 @@ export const DealActions: React.FC<DealActionsProps> = ({
         disabled={isSelectedDealDeleted}
         className={BTN_SECONDARY}
       >
-        Сцепить
+        Объединить
+      </button>
+      <button
+        type="button"
+        onClick={onSimilar}
+        disabled={isSelectedDealDeleted}
+        className={BTN_SECONDARY}
+      >
+        Похожие сделки
       </button>
       <button type="button" onClick={onRefresh} disabled={isRefreshing} className={BTN_SECONDARY}>
         {isRefreshing ? 'Обновляем...' : 'Обновить'}

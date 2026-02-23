@@ -41,7 +41,7 @@ import { QuotesTab } from './tabs/QuotesTab';
 import { FilesTab } from './tabs/FilesTab';
 import { ChatTab } from './tabs/ChatTab';
 import { Modal } from '../../Modal';
-import { DealDelayModal, DealMergeModal } from './DealDetailsModals';
+import { DealDelayModal, DealMergeModal, DealSimilarModal } from './DealDetailsModals';
 import { DealTabs } from './DealTabs';
 import { DealHeader } from './DealHeader';
 import { DealActions } from './DealActions';
@@ -226,6 +226,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     toggleMergeSource,
     requestMergePreview,
     handleMergeSubmit,
+    isSimilarModalOpen,
+    openSimilarModal,
+    closeSimilarModal,
+    similarError,
+    isSimilarLoading,
+    similarCandidates,
+    selectedSimilarIds,
+    toggleSimilarCandidate,
+    similarIncludeClosed,
+    setSimilarIncludeClosed,
+    continueFromSimilarToMerge,
   } = useDealMerge({
     deals,
     selectedDeal,
@@ -566,6 +577,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
     openMergeModal();
   }, [isSelectedDealDeleted, openMergeModal, selectedDeal]);
+
+  const handleSimilarClick = useCallback(() => {
+    if (!selectedDeal || isSelectedDealDeleted) {
+      return;
+    }
+    openSimilarModal();
+  }, [isSelectedDealDeleted, openSimilarModal, selectedDeal]);
 
   const handleMarkTaskDone = async (taskId: string) => {
     if (completingTaskIds.includes(taskId)) {
@@ -1047,6 +1065,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 onClose={handleCloseDealClick}
                 onReopen={handleReopenDealClick}
                 onMerge={handleMergeClick}
+                onSimilar={handleSimilarClick}
                 onDelay={() => setIsDelayModalOpen(true)}
                 onRefresh={handleRefreshDeal}
                 isRefreshing={isDealRefreshing}
@@ -1271,6 +1290,22 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
           onClose={closeMergeModal}
           onSubmit={handleMergeSubmit}
           onRequestAddClient={onRequestAddClient}
+        />
+      )}
+      {isSimilarModalOpen && selectedDeal && (
+        <DealSimilarModal
+          targetDeal={selectedDeal}
+          candidates={similarCandidates}
+          selectedIds={selectedSimilarIds}
+          includeClosed={similarIncludeClosed}
+          isLoading={isSimilarLoading}
+          error={similarError}
+          onToggleIncludeClosed={setSimilarIncludeClosed}
+          onToggleCandidate={toggleSimilarCandidate}
+          onContinue={() => {
+            void continueFromSimilarToMerge();
+          }}
+          onClose={closeSimilarModal}
         />
       )}
       <PromptDialog

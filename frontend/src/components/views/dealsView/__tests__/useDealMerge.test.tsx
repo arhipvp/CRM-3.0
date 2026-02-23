@@ -8,12 +8,14 @@ import type { Deal, User } from '../../../../types';
 vi.mock('../../../../api', () => ({
   fetchDeals: vi.fn(),
   previewDealMerge: vi.fn(),
+  findSimilarDeals: vi.fn(),
 }));
 
-import { fetchDeals, previewDealMerge } from '../../../../api';
+import { fetchDeals, findSimilarDeals, previewDealMerge } from '../../../../api';
 
 const fetchDealsMock = vi.mocked(fetchDeals);
 const previewDealMergeMock = vi.mocked(previewDealMerge);
+const findSimilarDealsMock = vi.mocked(findSimilarDeals);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -145,5 +147,60 @@ describe('useDealMerge', () => {
       ),
     );
     expect(resultRef.current?.isMergeModalOpen).toBe(false);
+  });
+
+  it('loads similar deals and applies include_closed filter', async () => {
+    const selectedDeal = createDeal();
+    const onMergeDeals = vi.fn().mockResolvedValue(undefined);
+    const similarDeal = createDeal({ id: 'deal-2', title: 'Ипотека' });
+
+    const resultRef = renderDealMergeHook({
+      deals: [selectedDeal, similarDeal],
+      selectedDeal,
+      currentUser: null,
+      onMergeDeals,
+      debounceDelay: 0,
+    });
+
+    findSimilarDealsMock.mockResolvedValue({
+      targetDeal: selectedDeal,
+      candidates: [
+        {
+          deal: similarDeal,
+          score: 82,
+          confidence: 'high',
+          reasons: ['same_norm_title'],
+          matchedFields: { title_norm_exact: true },
+          mergeBlockers: [],
+        },
+      ],
+      meta: { totalChecked: 1, returned: 1, scoringVersion: 'deal-sim-v1' },
+    });
+
+    act(() => {
+      resultRef.current?.openSimilarModal();
+    });
+
+    await waitFor(() => {
+      expect(findSimilarDealsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetDealId: selectedDeal.id,
+          includeClosed: false,
+        }),
+      );
+    });
+
+    act(() => {
+      resultRef.current?.setSimilarIncludeClosed(true);
+    });
+
+    await waitFor(() => {
+      expect(findSimilarDealsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetDealId: selectedDeal.id,
+          includeClosed: true,
+        }),
+      );
+    });
   });
 });

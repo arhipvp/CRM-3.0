@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Deal, User } from '../../../../types';
-import { DealDelayModal, DealMergeModal } from '../DealDetailsModals';
+import type { Deal, DealSimilarityCandidate, User } from '../../../../types';
+import { DealDelayModal, DealMergeModal, DealSimilarModal } from '../DealDetailsModals';
 import type { DealEvent } from '../eventUtils';
 
 const deal: Deal = {
@@ -157,5 +157,73 @@ describe('DealDetailsModals', () => {
     expect(layout.className).toContain('max-h-[85vh]');
     expect(scroll.className).toContain('overflow-y-auto');
     expect(actions.className).toContain('sticky');
+  });
+
+  it('renders similar modal and wires handlers', () => {
+    const onToggleIncludeClosed = vi.fn();
+    const onToggleCandidate = vi.fn();
+    const onContinue = vi.fn();
+    const onClose = vi.fn();
+    const candidates: DealSimilarityCandidate[] = [
+      {
+        deal: {
+          id: 'deal-2',
+          title: 'Ипотека',
+          clientId: 'client-1',
+          clientName: 'Client A',
+          status: 'open',
+          createdAt: '2024-01-01T00:00:00Z',
+          quotes: [],
+          documents: [],
+        },
+        score: 87,
+        confidence: 'high',
+        reasons: ['same_norm_title', 'shared_policy_number'],
+        matchedFields: { title_norm_exact: true },
+        mergeBlockers: [],
+      },
+    ];
+
+    const { rerender } = render(
+      <DealSimilarModal
+        targetDeal={deal}
+        candidates={candidates}
+        selectedIds={[]}
+        includeClosed={false}
+        isLoading={false}
+        error={null}
+        onToggleIncludeClosed={onToggleIncludeClosed}
+        onToggleCandidate={onToggleCandidate}
+        onContinue={onContinue}
+        onClose={onClose}
+      />,
+    );
+
+    expect(screen.getByText('Похожие сделки')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Показывать закрытые сделки/i }));
+    expect(onToggleIncludeClosed).toHaveBeenCalledWith(true);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Ипотека/ }));
+    expect(onToggleCandidate).toHaveBeenCalledWith('deal-2');
+
+    expect(screen.getByRole('button', { name: 'Перейти к объединению' })).toBeDisabled();
+
+    rerender(
+      <DealSimilarModal
+        targetDeal={deal}
+        candidates={candidates}
+        selectedIds={['deal-2']}
+        includeClosed={false}
+        isLoading={false}
+        error={null}
+        onToggleIncludeClosed={onToggleIncludeClosed}
+        onToggleCandidate={onToggleCandidate}
+        onContinue={onContinue}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Перейти к объединению' }));
+    expect(onContinue).toHaveBeenCalled();
   });
 });

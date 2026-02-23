@@ -6,6 +6,7 @@ import type {
   Deal,
   DealMergeResponse,
   DealMergePreviewResponse,
+  DealSimilarityResponse,
   DealTimeTrackingSummary,
   DealTimeTrackingTickResponse,
   DocumentRecognitionResult,
@@ -407,6 +408,74 @@ export async function previewDealMerge(data: {
               : [],
           }
         : undefined,
+  };
+}
+
+export async function findSimilarDeals(data: {
+  targetDealId: string;
+  limit?: number;
+  includeSelf?: boolean;
+  includeClosed?: boolean;
+  includeDeleted?: boolean;
+}): Promise<DealSimilarityResponse> {
+  const payload = await request<Record<string, unknown>>('/deals/similar/', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_deal_id: data.targetDealId,
+      limit: data.limit ?? 30,
+      include_self: data.includeSelf ?? false,
+      include_closed: data.includeClosed ?? false,
+      include_deleted: data.includeDeleted ?? false,
+    }),
+  });
+
+  const targetDealPayload =
+    payload.target_deal && typeof payload.target_deal === 'object'
+      ? (payload.target_deal as Record<string, unknown>)
+      : null;
+  if (!targetDealPayload) {
+    throw new Error('Ответ API не содержит целевую сделку');
+  }
+
+  const candidatesRaw = Array.isArray(payload.candidates) ? payload.candidates : [];
+  const candidates = candidatesRaw.map((value) => {
+    const record = value as Record<string, unknown>;
+    const dealPayload =
+      record.deal && typeof record.deal === 'object'
+        ? (record.deal as Record<string, unknown>)
+        : null;
+    if (!dealPayload) {
+      throw new Error('Ответ API содержит кандидата без сделки');
+    }
+    const confidenceValue = String(record.confidence ?? 'low').toLowerCase();
+    const confidence =
+      confidenceValue === 'high' || confidenceValue === 'medium' ? confidenceValue : 'low';
+    return {
+      deal: mapDeal(dealPayload),
+      score: Number(record.score ?? 0),
+      confidence,
+      reasons: Array.isArray(record.reasons) ? record.reasons.map((item) => String(item)) : [],
+      matchedFields:
+        record.matched_fields && typeof record.matched_fields === 'object'
+          ? (record.matched_fields as Record<string, unknown>)
+          : {},
+      mergeBlockers: Array.isArray(record.merge_blockers)
+        ? record.merge_blockers.map((item) => String(item))
+        : [],
+    };
+  });
+
+  const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+  const metaRecord = meta as Record<string, unknown>;
+
+  return {
+    targetDeal: mapDeal(targetDealPayload),
+    candidates,
+    meta: {
+      totalChecked: Number(metaRecord.total_checked ?? 0),
+      returned: Number(metaRecord.returned ?? candidates.length),
+      scoringVersion: String(metaRecord.scoring_version ?? 'deal-sim-v1'),
+    },
   };
 }
 

@@ -260,6 +260,25 @@ export interface DealMergeResponse {
   details?: Record<string, unknown>;
 }
 
+export interface DealSimilarityCandidate {
+  deal: Deal;
+  score: number;
+  confidence: 'high' | 'medium' | 'low';
+  reasons: string[];
+  matchedFields: Record<string, unknown>;
+  mergeBlockers: string[];
+}
+
+export interface DealSimilarityResponse {
+  targetDeal: Deal;
+  candidates: DealSimilarityCandidate[];
+  meta: {
+    totalChecked: number;
+    returned: number;
+    scoringVersion: string;
+  };
+}
+
 export interface ClientSimilarityCandidate {
   client: Client;
   score: number;

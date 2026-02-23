@@ -1,7 +1,10 @@
 import logging
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import timedelta
 
+from apps.common.drive import ensure_deal_folder, upload_file_to_drive
 from apps.deals.models import Deal
 from django.conf import settings
 from django.utils import timezone
@@ -706,6 +709,7 @@ class TelegramIntakeService:
             deal=deal,
             final_status=final_status,
             logger=logger,
+            drive_uploader=self._upload_attachment_to_drive,
         )
 
     def _build_drive_failure_hint(self, failure_codes: set[str]) -> str:
@@ -727,6 +731,9 @@ class TelegramIntakeService:
             mime_type=mime_type,
             content=content,
             logger=logger,
+            api_uploader=self._upload_attachment_via_backend_api,
+            ensure_deal_folder_fn=ensure_deal_folder,
+            upload_file_to_drive_fn=upload_file_to_drive,
         )
 
     def _upload_attachment_via_backend_api(
@@ -745,4 +752,6 @@ class TelegramIntakeService:
             mime_type=mime_type,
             content=content,
             logger=logger,
+            urlopen=urllib.request.urlopen,
+            request_factory=urllib.request.Request,
         )

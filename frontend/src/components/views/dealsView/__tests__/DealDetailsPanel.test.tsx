@@ -88,6 +88,17 @@ vi.mock('../hooks/useDealMerge', () => ({
     toggleMergeSource: vi.fn(),
     requestMergePreview: vi.fn(),
     handleMergeSubmit: vi.fn(),
+    isSimilarModalOpen: false,
+    openSimilarModal: vi.fn(),
+    closeSimilarModal: vi.fn(),
+    similarError: null,
+    isSimilarLoading: false,
+    similarCandidates: [],
+    selectedSimilarIds: [],
+    toggleSimilarCandidate: vi.fn(),
+    similarIncludeClosed: false,
+    setSimilarIncludeClosed: vi.fn(),
+    continueFromSimilarToMerge: vi.fn(),
   }),
 }));
 
@@ -230,6 +241,7 @@ vi.mock('../tabs/ChatTab', () => ({
 vi.mock('../DealDetailsModals', () => ({
   DealDelayModal: () => null,
   DealMergeModal: () => null,
+  DealSimilarModal: () => null,
 }));
 
 vi.mock('../../ActivityTimeline', () => ({

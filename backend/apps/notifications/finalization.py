@@ -72,6 +72,8 @@ def upload_attachment_via_backend_api(
     mime_type: str,
     content: bytes,
     logger: logging.Logger,
+    urlopen=None,
+    request_factory=None,
 ) -> tuple[bool, str | None] | None:
     base_url = str(getattr(settings, "TELEGRAM_INTERNAL_API_URL", "")).strip()
     if not base_url:
@@ -98,7 +100,12 @@ def upload_attachment_via_backend_api(
         "content_base64": base64.b64encode(content).decode("ascii"),
     }
     body = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(
+    if urlopen is None:
+        urlopen = urllib.request.urlopen
+    if request_factory is None:
+        request_factory = urllib.request.Request
+
+    request = request_factory(
         endpoint,
         data=body,
         headers={
@@ -108,7 +115,7 @@ def upload_attachment_via_backend_api(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urlopen(request, timeout=timeout) as response:
             response_body = response.read().decode("utf-8", errors="ignore")
             parsed = json.loads(response_body) if response_body else {}
             if int(getattr(response, "status", 0) or 0) >= 300:
@@ -175,8 +182,11 @@ def upload_attachment_to_drive(
     mime_type: str,
     content: bytes,
     logger: logging.Logger,
+    api_uploader=upload_attachment_via_backend_api,
+    ensure_deal_folder_fn=ensure_deal_folder,
+    upload_file_to_drive_fn=upload_file_to_drive,
 ) -> tuple[bool, str | None]:
-    api_mode_result = upload_attachment_via_backend_api(
+    api_mode_result = api_uploader(
         user=user,
         deal=deal,
         file_name=file_name,
@@ -188,7 +198,7 @@ def upload_attachment_to_drive(
         return api_mode_result
 
     try:
-        folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
+        folder_id = ensure_deal_folder_fn(deal) or deal.drive_folder_id
         if not folder_id:
             logger.warning(
                 "Telegram attachment Drive upload skipped for deal=%s file=%s: folder_id is empty",
@@ -196,7 +206,7 @@ def upload_attachment_to_drive(
                 file_name,
             )
             return False, "folder"
-        upload_file_to_drive(
+        upload_file_to_drive_fn(
             folder_id=folder_id,
             file_obj=BytesIO(content),
             file_name=file_name,
@@ -235,7 +245,14 @@ def upload_attachment_to_drive(
 
 
 def attach_batch_to_deal(
-    *, tg_client, user, session, deal, final_status, logger: logging.Logger
+    *,
+    tg_client,
+    user,
+    session,
+    deal,
+    final_status,
+    logger: logging.Logger,
+    drive_uploader=upload_attachment_to_drive,
 ):
     message_ids = list(session.batch_message_ids or [])
     first = (
@@ -286,7 +303,7 @@ def attach_batch_to_deal(
             )
             document.file.save(file_name, ContentFile(content), save=False)
             document.save()
-            drive_uploaded, failure_code = upload_attachment_to_drive(
+            drive_uploaded, failure_code = drive_uploader(
                 user=user,
                 deal=deal,
                 file_name=file_name,

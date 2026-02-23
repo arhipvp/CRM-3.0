@@ -360,3 +360,31 @@ class DealMergePreviewSerializer(serializers.Serializer):
                 "Список исходных сделок содержит дубликаты."
             )
         return attrs
+
+
+class DealSimilarSerializer(serializers.Serializer):
+    target_deal_id = serializers.UUIDField(
+        help_text="ID сделки, для которой ищутся похожие."
+    )
+    limit = serializers.IntegerField(
+        required=False,
+        default=30,
+        min_value=1,
+        max_value=100,
+        help_text="Максимальное количество кандидатов в выдаче.",
+    )
+    include_self = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Включать ли целевую сделку в список кандидатов.",
+    )
+    include_closed = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Включать ли закрытые сделки (won/lost).",
+    )
+    include_deleted = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Включать ли soft-deleted сделки.",
+    )

@@ -19,6 +19,7 @@ const baseProps = {
   onClose: vi.fn(),
   onReopen: vi.fn(),
   onMerge: vi.fn(),
+  onSimilar: vi.fn(),
   onDelay: vi.fn(),
   onRefresh: vi.fn(),
 };
@@ -40,8 +41,11 @@ describe('DealActions', () => {
     fireEvent.click(screen.getByText('Закрыть'));
     expect(baseProps.onClose).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Сцепить'));
+    fireEvent.click(screen.getByText('Объединить'));
     expect(baseProps.onMerge).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Похожие сделки'));
+    expect(baseProps.onSimilar).toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('Отложить'));
     expect(baseProps.onDelay).toHaveBeenCalled();
