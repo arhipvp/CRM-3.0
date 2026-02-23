@@ -107,7 +107,7 @@ jobs:
         env:
           POSTGRES_DB: crm3_test
           POSTGRES_USER: crm3
-          POSTGRES_PASSWORD: crm3
+          POSTGRES_PASSWORD: crm3 # pragma: allowlist secret
         options: >-
           --health-cmd "pg_isready -U crm3 -d crm3_test"
           --health-interval 10s
@@ -147,7 +147,7 @@ jobs:
           DJANGO_DB_NAME: crm3_test
           DJANGO_DB_USER: crm3
           DJANGO_DB_PASSWORD: crm3
-          DJANGO_SECRET_KEY: test-secret-key
+          DJANGO_SECRET_KEY: test-secret-key # pragma: allowlist secret
           ALLOWED_HOSTS: localhost,127.0.0.1
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
           GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
@@ -165,7 +165,7 @@ jobs:
           DJANGO_DB_NAME: crm3_test
           DJANGO_DB_USER: crm3
           DJANGO_DB_PASSWORD: crm3
-          DJANGO_SECRET_KEY: test-secret-key
+          DJANGO_SECRET_KEY: test-secret-key # pragma: allowlist secret
           ALLOWED_HOSTS: localhost,127.0.0.1
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
           GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
