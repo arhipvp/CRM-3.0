@@ -1,5 +1,7 @@
 import { ColoredLabel } from '../../common/ColoredLabel';
+import { useNotification } from '../../../contexts/NotificationContext';
 import type { Client, Deal } from '../../../types';
+import { copyToClipboard } from '../../../utils/clipboard';
 import { buildTelegramLink, buildWhatsAppLink } from '../../../utils/links';
 
 interface DealHeaderProps {
@@ -23,16 +25,38 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
   myTrackedTimeLabel,
   onClientEdit,
 }) => {
+  const { addNotification } = useNotification();
   const whatsAppLink = buildWhatsAppLink(clientPhone);
   const telegramLink = buildTelegramLink(clientPhone);
   const clientNote = client?.notes?.trim();
+  const shortDealId = deal.id.slice(0, 8);
+
+  const handleCopyDealId = async () => {
+    const copied = await copyToClipboard(shortDealId);
+    if (copied) {
+      addNotification('ID сделки скопирован', 'success', 1600);
+      return;
+    }
+    addNotification('Не удалось скопировать ID сделки', 'error', 2000);
+  };
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="space-y-2">
         <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-            Сделка
+          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <span>Сделка</span>
+            <button
+              type="button"
+              onClick={() => {
+                void handleCopyDealId();
+              }}
+              className="cursor-pointer font-medium tracking-[0.18em] text-slate-400 transition hover:text-slate-600 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
+              title={deal.id}
+              aria-label={`ID сделки ${deal.id}`}
+            >
+              #{shortDealId}
+            </button>
           </p>
           <h2 className="text-xl font-semibold leading-tight text-slate-900">{deal.title}</h2>
         </div>

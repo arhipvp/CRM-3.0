@@ -132,6 +132,23 @@ class DealMergeServiceTestCase(TestCase):
         self.assertEqual(policy.client_id, external_client.id)
         self.assertEqual(policy.insured_client_id, external_client.id)
 
+    def test_merge_does_not_duplicate_ids_block_when_already_present(self):
+        ids_block = f"Предыдущие ID сделок: {self.target.id}, {self.source.id}"
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            final_deal_data={
+                "title": "Merged Deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+                "description": f"Описание сделки\n\n{ids_block}",
+            },
+            actor=self.user,
+        ).merge()
+
+        result_deal = result["result_deal"]
+        self.assertEqual(result_deal.description, f"Описание сделки\n\n{ids_block}")
+
 
 class DealMergeAPITestCase(AuthenticatedAPITestCase):
     def setUp(self):
@@ -184,6 +201,10 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
                 "visible_user_ids": [],
             }
         return payload
+
+    def _merged_ids_block(self, sources):
+        ids = [str(self.target.id), *[str(deal.id) for deal in sources]]
+        return f"Предыдущие ID сделок: {', '.join(ids)}"
 
     def test_merge_success(self):
         self.authenticate(self.seller)
@@ -303,12 +324,14 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
         draft = response.data["final_deal_draft"]
         self.assertEqual(draft["next_contact_date"], datetime.date(2027, 2, 10))
         self.assertEqual(draft["expected_close"], datetime.date(2027, 4, 10))
+        ids_block = self._merged_ids_block([self.source, self.source_extra])
         self.assertEqual(
             draft["description"],
-            "Target description\nSource A description\nSource B description",
+            "Target description\nSource A description\nSource B description"
+            f"\n\n{ids_block}",
         )
 
-    def test_merge_keeps_next_contact_when_payload_empty_and_allows_clearing_description(
+    def test_merge_keeps_next_contact_when_payload_empty_and_sets_ids_only_description(
         self,
     ):
         self.target.description = "Will be cleared"
@@ -324,8 +347,26 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         result_deal = Deal.objects.get(pk=response.data["result_deal"]["id"])
-        self.assertEqual(result_deal.description, "")
+        self.assertEqual(
+            result_deal.description,
+            self._merged_ids_block([self.source, self.source_extra]),
+        )
         self.assertEqual(result_deal.next_contact_date, datetime.date(2027, 2, 14))
+
+    def test_merge_appends_ids_block_in_target_then_source_order(self):
+        payload = self._payload([self.source, self.source_extra])
+        payload["final_deal"]["description"] = "Итоговое описание"
+
+        self.authenticate(self.seller)
+        response = self.api_client.post("/api/v1/deals/merge/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result_deal = Deal.objects.get(pk=response.data["result_deal"]["id"])
+        self.assertEqual(
+            result_deal.description,
+            "Итоговое описание\n\n"
+            + self._merged_ids_block([self.source, self.source_extra]),
+        )
 
     def test_merge_preview_ignores_empty_dates_for_earliest(self):
         self.target.expected_close = datetime.date(2027, 4, 15)

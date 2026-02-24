@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   Deal,
   DocumentRecognitionResult,
@@ -124,7 +124,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(null);
+  const [imagePreview, setImagePreview] = useState<{
+    fileId: string;
+    src: string;
+    name: string;
+  } | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -179,10 +183,26 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     setRenameError(null);
   };
 
-  const isImageFile = (file: DriveFile) =>
-    !file.isFolder && file.mimeType?.toLowerCase().startsWith('image/');
+  const isImageFile = useCallback(
+    (file: DriveFile) => !file.isFolder && file.mimeType?.toLowerCase().startsWith('image/'),
+    [],
+  );
 
-  const closeImagePreview = () => {
+  const previewableImages = useMemo(
+    () => sortedDriveFiles.filter((file) => isImageFile(file)),
+    [isImageFile, sortedDriveFiles],
+  );
+
+  const currentImageIndex = useMemo(() => {
+    if (!imagePreview) {
+      return -1;
+    }
+    return previewableImages.findIndex((file) => file.id === imagePreview.fileId);
+  }, [imagePreview, previewableImages]);
+  const canGoPrev = currentImageIndex > 0;
+  const canGoNext = currentImageIndex >= 0 && currentImageIndex < previewableImages.length - 1;
+
+  const closeImagePreview = useCallback(() => {
     setImagePreview((prev) => {
       if (prev?.src && typeof URL.revokeObjectURL === 'function') {
         URL.revokeObjectURL(prev.src);
@@ -191,33 +211,62 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     });
     setPreviewError(null);
     setIsPreviewLoading(false);
-  };
+  }, []);
+
+  const openImageByIndex = useCallback(
+    async (index: number) => {
+      if (index < 0 || index >= previewableImages.length) {
+        return;
+      }
+      const targetFile = previewableImages[index];
+      setIsPreviewLoading(true);
+      setPreviewError(null);
+      try {
+        const blob = await getDriveFileBlob(targetFile.id);
+        if (typeof URL.createObjectURL !== 'function') {
+          throw new Error('URL.createObjectURL is not available');
+        }
+        const nextSrc = URL.createObjectURL(blob);
+        setImagePreview((prev) => {
+          if (prev?.src && typeof URL.revokeObjectURL === 'function') {
+            URL.revokeObjectURL(prev.src);
+          }
+          return { fileId: targetFile.id, src: nextSrc, name: targetFile.name };
+        });
+      } catch (error) {
+        console.error('Ошибка предпросмотра изображения:', error);
+        setPreviewError('Не удалось загрузить изображение для просмотра.');
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    },
+    [getDriveFileBlob, previewableImages],
+  );
 
   const handlePreviewImage = async (file: DriveFile) => {
     if (!isImageFile(file)) {
       return;
     }
-    setIsPreviewLoading(true);
-    setPreviewError(null);
-    try {
-      const blob = await getDriveFileBlob(file.id);
-      if (typeof URL.createObjectURL !== 'function') {
-        throw new Error('URL.createObjectURL is not available');
-      }
-      const nextSrc = URL.createObjectURL(blob);
-      setImagePreview((prev) => {
-        if (prev?.src && typeof URL.revokeObjectURL === 'function') {
-          URL.revokeObjectURL(prev.src);
-        }
-        return { src: nextSrc, name: file.name };
-      });
-    } catch (error) {
-      console.error('Ошибка предпросмотра изображения:', error);
-      setPreviewError('Не удалось загрузить изображение для просмотра.');
-    } finally {
-      setIsPreviewLoading(false);
+    const targetIndex = previewableImages.findIndex((candidate) => candidate.id === file.id);
+    if (targetIndex === -1) {
+      return;
     }
+    await openImageByIndex(targetIndex);
   };
+
+  const goToPrevImage = useCallback(() => {
+    if (!canGoPrev || isPreviewLoading) {
+      return;
+    }
+    void openImageByIndex(currentImageIndex - 1);
+  }, [canGoPrev, currentImageIndex, isPreviewLoading, openImageByIndex]);
+
+  const goToNextImage = useCallback(() => {
+    if (!canGoNext || isPreviewLoading) {
+      return;
+    }
+    void openImageByIndex(currentImageIndex + 1);
+  }, [canGoNext, currentImageIndex, isPreviewLoading, openImageByIndex]);
 
   useEffect(
     () => () => {
@@ -227,6 +276,44 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     },
     [imagePreview],
   );
+
+  useEffect(() => {
+    if (!imagePreview) {
+      return;
+    }
+    const isCurrentPreviewInList = previewableImages.some(
+      (file) => file.id === imagePreview.fileId,
+    );
+    if (!isCurrentPreviewInList) {
+      closeImagePreview();
+    }
+  }, [closeImagePreview, imagePreview, previewableImages]);
+
+  useEffect(() => {
+    if (!imagePreview) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeImagePreview();
+        return;
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goToPrevImage();
+        return;
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goToNextImage();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeImagePreview, goToNextImage, goToPrevImage, imagePreview]);
 
   if (!selectedDeal) {
     return null;
@@ -609,12 +696,37 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       {previewError && <InlineAlert as="p">{previewError}</InlineAlert>}
       {imagePreview && (
         <Modal title={imagePreview.name} onClose={closeImagePreview} size="lg">
-          <div className="flex justify-center">
-            <img
-              src={imagePreview.src}
-              alt={imagePreview.name}
-              className="max-h-[80vh] max-w-full h-auto w-auto"
-            />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={goToPrevImage}
+                disabled={!canGoPrev || isPreviewLoading}
+                className={BTN_SM_SECONDARY}
+              >
+                Назад
+              </button>
+              <p className="text-xs font-semibold text-slate-500">
+                {currentImageIndex >= 0
+                  ? `${currentImageIndex + 1} / ${previewableImages.length}`
+                  : '—'}
+              </p>
+              <button
+                type="button"
+                onClick={goToNextImage}
+                disabled={!canGoNext || isPreviewLoading}
+                className={BTN_SM_SECONDARY}
+              >
+                Вперёд
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <img
+                src={imagePreview.src}
+                alt={imagePreview.name}
+                className="max-h-[80vh] max-w-full h-auto w-auto"
+              />
+            </div>
           </div>
         </Modal>
       )}

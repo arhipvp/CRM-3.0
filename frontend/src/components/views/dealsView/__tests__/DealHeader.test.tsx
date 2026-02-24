@@ -1,11 +1,26 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Deal } from '../../../../types';
 import { DealHeader } from '../DealHeader';
 
+const { addNotificationMock, copyToClipboardMock } = vi.hoisted(() => ({
+  addNotificationMock: vi.fn(),
+  copyToClipboardMock: vi.fn(),
+}));
+
+vi.mock('../../../../contexts/NotificationContext', () => ({
+  useNotification: () => ({
+    addNotification: addNotificationMock,
+  }),
+}));
+
+vi.mock('../../../../utils/clipboard', () => ({
+  copyToClipboard: copyToClipboardMock,
+}));
+
 const deal: Deal = {
-  id: 'deal-1',
+  id: '123e4567-e89b-12d3-a456-426614174000',
   title: 'Deal title',
   clientId: 'client-1',
   clientName: 'Client A',
@@ -16,6 +31,11 @@ const deal: Deal = {
 };
 
 describe('DealHeader', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    copyToClipboardMock.mockResolvedValue(true);
+  });
+
   it('renders deal info', () => {
     render(
       <DealHeader
@@ -28,6 +48,7 @@ describe('DealHeader', () => {
     );
 
     expect(screen.getByText('Deal title')).toBeInTheDocument();
+    expect(screen.getByText('#123e4567')).toHaveAttribute('title', deal.id);
     expect(screen.getByText('Test description')).toBeInTheDocument();
     expect(screen.getByText('Client A')).toBeInTheDocument();
     expect(screen.getByText('Seller')).toBeInTheDocument();
@@ -73,5 +94,45 @@ describe('DealHeader', () => {
 
     expect(screen.queryByRole('link', { name: 'Написать клиенту в WhatsApp' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Написать клиенту в Telegram' })).toBeNull();
+  });
+
+  it('copies short deal id and shows success notification', async () => {
+    render(
+      <DealHeader
+        deal={deal}
+        clientDisplayName="Client A"
+        sellerDisplayName="Seller"
+        executorDisplayName="Executor"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: `ID сделки ${deal.id}` }));
+
+    await waitFor(() => {
+      expect(copyToClipboardMock).toHaveBeenCalledWith('123e4567');
+      expect(addNotificationMock).toHaveBeenCalledWith('ID сделки скопирован', 'success', 1600);
+    });
+  });
+
+  it('shows error notification when copying fails', async () => {
+    copyToClipboardMock.mockResolvedValue(false);
+    render(
+      <DealHeader
+        deal={deal}
+        clientDisplayName="Client A"
+        sellerDisplayName="Seller"
+        executorDisplayName="Executor"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: `ID сделки ${deal.id}` }));
+
+    await waitFor(() => {
+      expect(addNotificationMock).toHaveBeenCalledWith(
+        'Не удалось скопировать ID сделки',
+        'error',
+        2000,
+      );
+    });
   });
 });

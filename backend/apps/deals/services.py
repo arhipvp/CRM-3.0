@@ -394,6 +394,22 @@ class DealMergeService:
                 parts.append(text)
         return "\n".join(parts)
 
+    def _merge_ids_in_order(self) -> list[str]:
+        return [str(deal.id) for deal in self._all_deals]
+
+    def _merge_ids_block(self) -> str:
+        ids_text = ", ".join(self._merge_ids_in_order())
+        return f"Предыдущие ID сделок: {ids_text}"
+
+    def _append_merge_ids_block(self, description: str | None) -> str:
+        base_description = (description or "").strip()
+        ids_block = self._merge_ids_block()
+        if base_description.endswith(ids_block):
+            return base_description
+        if not base_description:
+            return ids_block
+        return f"{base_description}\n\n{ids_block}"
+
     def _manager_for(self, model):
         base_manager = getattr(model, "objects", None)
         with_deleted = getattr(base_manager, "with_deleted", None)
@@ -459,7 +475,9 @@ class DealMergeService:
             "drive_plan": drive_plan,
             "final_deal_draft": {
                 "title": self.target_deal.title,
-                "description": self._get_combined_description(),
+                "description": self._append_merge_ids_block(
+                    self._get_combined_description()
+                ),
                 "client_id": str(self.target_deal.client_id),
                 "expected_close": self._get_earliest_date("expected_close"),
                 "executor_id": (
@@ -499,7 +517,9 @@ class DealMergeService:
         with transaction.atomic():
             result_deal = Deal.objects.create(
                 title=self.final_deal_data.get("title") or self.target_deal.title,
-                description=self.final_deal_data.get("description", ""),
+                description=self._append_merge_ids_block(
+                    self.final_deal_data.get("description", "")
+                ),
                 client_id=self.target_deal.client_id,
                 seller_id=(
                     self.final_deal_data.get("seller_id") or self.target_deal.seller_id

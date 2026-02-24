@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NotificationContext } from '../../../../contexts/NotificationContext';
@@ -171,6 +171,84 @@ describe('FilesTab document recognition transcript', () => {
     expect(getDriveFileBlob).toHaveBeenCalledWith('image-1');
     expect(await screen.findByRole('img', { name: 'photo.png' })).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'doc.pdf' })).not.toBeInTheDocument();
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: originalCreateObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: originalRevokeObjectURL,
+    });
+  });
+
+  it('navigates images with buttons and keyboard without looping', async () => {
+    const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    const objectUrls = ['blob:1', 'blob:2', 'blob:3'];
+    let objectUrlIndex = 0;
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: vi.fn(() => objectUrls[Math.min(objectUrlIndex++, objectUrls.length - 1)]),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: vi.fn(),
+    });
+
+    renderWithProviders({
+      getDriveFileBlob,
+      sortedDriveFiles: [
+        {
+          id: 'image-1',
+          name: 'photo-1.png',
+          mimeType: 'image/png',
+          isFolder: false,
+          size: 10,
+        },
+        {
+          id: 'image-2',
+          name: 'photo-2.png',
+          mimeType: 'image/png',
+          isFolder: false,
+          size: 10,
+        },
+        {
+          id: 'image-3',
+          name: 'photo-3.png',
+          mimeType: 'image/png',
+          isFolder: false,
+          size: 10,
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Просмотреть' })[0]);
+    expect(await screen.findByText('1 / 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Назад' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Вперёд' }));
+    expect(await screen.findByText('2 / 3')).toBeInTheDocument();
+    expect(getDriveFileBlob).toHaveBeenNthCalledWith(2, 'image-2');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Вперёд' })).toBeEnabled();
+    });
+    fireEvent.keyDown(window, { key: 'ArrowRight', code: 'ArrowRight' });
+    expect(await screen.findByText('3 / 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Вперёд' })).toBeDisabled();
+    expect(getDriveFileBlob).toHaveBeenNthCalledWith(3, 'image-3');
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(getDriveFileBlob).toHaveBeenCalledTimes(3);
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(await screen.findByText('2 / 3')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('img', { name: 'photo-2.png' })).not.toBeInTheDocument();
 
     Object.defineProperty(URL, 'createObjectURL', {
       writable: true,

@@ -17,6 +17,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import (
     BooleanField,
+    CharField,
     Count,
     DecimalField,
     Exists,
@@ -28,7 +29,7 @@ from django.db.models import (
     Sum,
     Value,
 )
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Cast, Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -88,6 +89,7 @@ class DealViewSet(
     serializer_class = DealSerializer
     filterset_class = DealFilterSet
     search_fields = [
+        "id_text",
         "title",
         "description",
         "client__name",
@@ -164,11 +166,12 @@ class DealViewSet(
 
     def _annotate_queryset(self, queryset, user=None):
         queryset = queryset.annotate(
+            id_text=Cast("id", output_field=CharField()),
             client_active_deals_count=Coalesce(
                 Subquery(self._active_deals_count_subquery(user)),
                 Value(0),
                 output_field=IntegerField(),
-            )
+            ),
         )
         queryset = queryset.annotate(
             payments_total=Coalesce(
