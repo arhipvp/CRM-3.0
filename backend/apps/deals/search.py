@@ -1,4 +1,5 @@
 import re
+from urllib.parse import unquote
 
 from django.db.models import Q
 
@@ -14,7 +15,7 @@ def build_phone_search_query(term: str) -> Q | None:
 def build_search_query(search_term: str, search_fields: list[str]) -> Q | None:
     terms = []
     for raw_term in search_term.strip().split():
-        normalized = raw_term.lstrip("#").strip()
+        normalized = unquote(raw_term).lstrip("#").strip()
         if normalized:
             terms.append(normalized)
     if not terms or not search_fields:
