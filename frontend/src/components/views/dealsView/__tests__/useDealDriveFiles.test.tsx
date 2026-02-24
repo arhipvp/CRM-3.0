@@ -17,13 +17,17 @@ vi.mock('../../../../api', () => ({
 }));
 
 import {
+  downloadDealDriveFiles,
   fetchDealDriveFiles,
   recognizeDealDocuments,
   recognizeDealPolicies,
+  trashDealDriveFiles,
 } from '../../../../api';
+const downloadDealDriveFilesMock = vi.mocked(downloadDealDriveFiles);
 const fetchDealDriveFilesMock = vi.mocked(fetchDealDriveFiles);
 const recognizeDealPoliciesMock = vi.mocked(recognizeDealPolicies);
 const recognizeDealDocumentsMock = vi.mocked(recognizeDealDocuments);
+const trashDealDriveFilesMock = vi.mocked(trashDealDriveFiles);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -43,6 +47,7 @@ const renderDriveHook = (
   deal: Deal | null,
   options?: {
     onDriveFolderCreated?: (dealId: string, folderId: string) => void;
+    onConfirmDeleteFile?: (fileName: string) => Promise<boolean>;
     onRefreshPolicies?: () => Promise<void>;
     onRefreshNotes?: () => Promise<void>;
     onPolicyDraftReady?: (
@@ -61,6 +66,7 @@ const renderDriveHook = (
     const state = useDealDriveFiles({
       selectedDeal: deal,
       onDriveFolderCreated: options?.onDriveFolderCreated ?? (() => {}),
+      onConfirmDeleteFile: options?.onConfirmDeleteFile,
       onRefreshPolicies: options?.onRefreshPolicies,
       onRefreshNotes: options?.onRefreshNotes,
       onPolicyDraftReady: options?.onPolicyDraftReady,
@@ -286,5 +292,77 @@ describe('useDealDriveFiles', () => {
       );
       expect(onRefreshNotes).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('trashes a single file when confirmed', async () => {
+    const deal = createDeal();
+    const file = {
+      id: 'file-1',
+      name: 'policy.pdf',
+      mimeType: 'application/pdf',
+      size: 1024,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/file',
+      isFolder: false,
+      parentId: null,
+    };
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [file], folderId: null });
+    trashDealDriveFilesMock.mockResolvedValue({
+      movedFileIds: [file.id],
+      trashFolderId: 'trash-1',
+    });
+    const onConfirmDeleteFile = vi.fn().mockResolvedValue(true);
+    const { resultRef } = renderDriveHook(deal, { onConfirmDeleteFile });
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+    await act(async () => {
+      await resultRef.current?.handleTrashDriveFile(file);
+    });
+
+    expect(onConfirmDeleteFile).toHaveBeenCalledWith(file.name);
+    expect(trashDealDriveFilesMock).toHaveBeenCalledWith(deal.id, [file.id], false);
+    expect(fetchDealDriveFilesMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not trash a single file when deletion is canceled', async () => {
+    const deal = createDeal();
+    const file = {
+      id: 'file-1',
+      name: 'policy.pdf',
+      mimeType: 'application/pdf',
+      size: 1024,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/file',
+      isFolder: false,
+      parentId: null,
+    };
+    const onConfirmDeleteFile = vi.fn().mockResolvedValue(false);
+    const { resultRef } = renderDriveHook(deal, { onConfirmDeleteFile });
+
+    await act(async () => {
+      await resultRef.current?.handleTrashDriveFile(file);
+    });
+
+    expect(onConfirmDeleteFile).toHaveBeenCalledWith(file.name);
+    expect(trashDealDriveFilesMock).not.toHaveBeenCalled();
+  });
+
+  it('returns blob for image preview request', async () => {
+    const deal = createDeal();
+    const blob = new Blob(['image-bytes'], { type: 'image/png' });
+    downloadDealDriveFilesMock.mockResolvedValue({ blob, filename: 'photo.png' });
+    const { resultRef } = renderDriveHook(deal);
+
+    let receivedBlob: Blob | null = null;
+    await act(async () => {
+      receivedBlob = await resultRef.current?.getDriveFileBlob('image-1')!;
+    });
+
+    expect(downloadDealDriveFilesMock).toHaveBeenCalledWith(deal.id, ['image-1'], false);
+    expect(receivedBlob).toBe(blob);
   });
 });

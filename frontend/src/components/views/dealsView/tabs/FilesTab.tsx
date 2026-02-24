@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type {
   Deal,
   DocumentRecognitionResult,
@@ -50,9 +50,11 @@ interface FilesTabProps {
   isTrashing: boolean;
   trashMessage: string | null;
   handleTrashSelectedFiles: () => Promise<void>;
+  handleTrashDriveFile: (file: DriveFile) => Promise<void>;
   isDownloading: boolean;
   downloadMessage: string | null;
   handleDownloadDriveFiles: (fileIds?: string[]) => Promise<void>;
+  getDriveFileBlob: (fileId: string) => Promise<Blob>;
   driveError: string | null;
   sortedDriveFiles: DriveFile[];
   expandedFolderIds: Set<string>;
@@ -93,9 +95,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   isTrashing,
   trashMessage,
   handleTrashSelectedFiles,
+  handleTrashDriveFile,
   isDownloading,
   downloadMessage,
   handleDownloadDriveFiles,
+  getDriveFileBlob,
   driveError,
   canRecognizeSelectedFiles,
   canRecognizeSelectedDocumentFiles,
@@ -120,6 +124,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const splitFileName = (name: string): { baseName: string; extension: string } => {
     const lastDotIndex = name.lastIndexOf('.');
@@ -175,6 +182,55 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     setRenameDraft('');
     setRenameError(null);
   };
+
+  const isImageFile = (file: DriveFile) =>
+    !file.isFolder && file.mimeType?.toLowerCase().startsWith('image/');
+
+  const closeImagePreview = () => {
+    setImagePreview((prev) => {
+      if (prev?.src && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(prev.src);
+      }
+      return null;
+    });
+    setPreviewError(null);
+    setIsPreviewLoading(false);
+  };
+
+  const handlePreviewImage = async (file: DriveFile) => {
+    if (!isImageFile(file)) {
+      return;
+    }
+    setIsPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const blob = await getDriveFileBlob(file.id);
+      if (typeof URL.createObjectURL !== 'function') {
+        throw new Error('URL.createObjectURL is not available');
+      }
+      const nextSrc = URL.createObjectURL(blob);
+      setImagePreview((prev) => {
+        if (prev?.src && typeof URL.revokeObjectURL === 'function') {
+          URL.revokeObjectURL(prev.src);
+        }
+        return { src: nextSrc, name: file.name };
+      });
+    } catch (error) {
+      console.error('Ошибка предпросмотра изображения:', error);
+      setPreviewError('Не удалось загрузить изображение для просмотра.');
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  useEffect(
+    () => () => {
+      if (imagePreview?.src && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(imagePreview.src);
+      }
+    },
+    [imagePreview],
+  );
 
   const handleRenameSubmit = async () => {
     if (!renamingFile) {
@@ -496,6 +552,24 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 ) : (
                   <span className="text-xs text-slate-400">—</span>
                 )}
+                {isImageFile(file) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handlePreviewImage(file);
+                    }}
+                    disabled={
+                      isPreviewLoading ||
+                      isDownloading ||
+                      isTrashing ||
+                      isDriveLoading ||
+                      !!driveError
+                    }
+                    className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+                  >
+                    Просмотреть
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleDownloadDriveFiles([file.id])}
@@ -514,12 +588,36 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                     Переименовать
                   </button>
                 )}
+                {!file.isFolder && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleTrashDriveFile(file);
+                    }}
+                    disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
+                    className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+                  >
+                    Удалить
+                  </button>
+                )}
               </div>
             )}
             emptyMessage="Папка пуста."
           />
         )}
       </div>
+      {previewError && <InlineAlert as="p">{previewError}</InlineAlert>}
+      {imagePreview && (
+        <Modal title={imagePreview.name} onClose={closeImagePreview} size="lg">
+          <div className="flex justify-center">
+            <img
+              src={imagePreview.src}
+              alt={imagePreview.name}
+              className="max-h-[80vh] max-w-full h-auto w-auto"
+            />
+          </div>
+        </Modal>
+      )}
       {renamingFile && (
         <Modal
           title="Переименовать файл"

@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -379,13 +379,16 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     handleRecognizePolicies,
     handleRecognizeDocuments,
     handleTrashSelectedFiles,
+    handleTrashDriveFile,
     handleDownloadDriveFiles,
+    getDriveFileBlob,
     handleRenameDriveFile,
     resetDriveState,
   } = useDealDriveFiles({
     selectedDeal,
     onDriveFolderCreated,
     onConfirmAction: async (message) => confirm(confirmTexts.deleteDriveFiles(message)),
+    onConfirmDeleteFile: async (name) => confirm(confirmTexts.deleteDriveFile(name)),
     onRefreshPolicies,
     onRefreshNotes: reloadNotes,
     onPolicyDraftReady,
@@ -840,7 +843,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       isRenaming={isRenaming}
       renameMessage={renameMessage}
       handleTrashSelectedFiles={handleTrashSelectedFiles}
+      handleTrashDriveFile={handleTrashDriveFile}
       handleDownloadDriveFiles={handleDownloadDriveFiles}
+      getDriveFileBlob={getDriveFileBlob}
       handleRenameDriveFile={handleRenameDriveFile}
       driveError={driveError}
       sortedDriveFiles={sortedDriveFiles}

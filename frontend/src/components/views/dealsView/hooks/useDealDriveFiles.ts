@@ -21,6 +21,7 @@ interface UseDealDriveFilesParams {
   selectedDeal: Deal | null;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onConfirmAction?: (message: string) => Promise<boolean>;
+  onConfirmDeleteFile?: (fileName: string) => Promise<boolean>;
   onRefreshPolicies?: () => Promise<void>;
   onRefreshNotes?: () => Promise<void>;
   onPolicyDraftReady?: (
@@ -59,6 +60,7 @@ export const useDealDriveFiles = ({
   selectedDeal,
   onDriveFolderCreated,
   onConfirmAction,
+  onConfirmDeleteFile,
   onRefreshPolicies,
   onRefreshNotes,
   onPolicyDraftReady,
@@ -519,6 +521,56 @@ export const useDealDriveFiles = ({
     }
   }, [loadDriveFiles, onConfirmAction, selectedDeal, selectedDriveFileIds]);
 
+  const handleTrashDriveFile = useCallback(
+    async (file: DriveFile) => {
+      const deal = selectedDeal;
+      if (!deal || file.isFolder) {
+        return;
+      }
+      const confirmed = onConfirmDeleteFile ? await onConfirmDeleteFile(file.name) : true;
+      if (!confirmed) {
+        return;
+      }
+
+      const currentDealId = deal.id;
+      latestDealIdRef.current = currentDealId;
+      setIsTrashing(true);
+      setTrashMessage(null);
+
+      try {
+        await trashDealDriveFiles(currentDealId, [file.id], Boolean(deal.deletedAt));
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        setSelectedDriveFileIds((prev) => prev.filter((id) => id !== file.id));
+        await loadDriveFiles();
+      } catch (error) {
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        console.error('Ошибка удаления файла:', error);
+        setTrashMessage(formatErrorMessage(error, 'Не удалось удалить файл.'));
+      } finally {
+        if (latestDealIdRef.current === currentDealId) {
+          setIsTrashing(false);
+        }
+      }
+    },
+    [loadDriveFiles, onConfirmDeleteFile, selectedDeal],
+  );
+
+  const getDriveFileBlob = useCallback(
+    async (fileId: string): Promise<Blob> => {
+      const deal = selectedDeal;
+      if (!deal) {
+        throw new Error('Сделка не выбрана.');
+      }
+      const { blob } = await downloadDealDriveFiles(deal.id, [fileId], Boolean(deal.deletedAt));
+      return blob;
+    },
+    [selectedDeal],
+  );
+
   const handleDownloadDriveFiles = useCallback(
     async (fileIds?: string[]) => {
       const deal = selectedDeal;
@@ -676,7 +728,9 @@ export const useDealDriveFiles = ({
     handleRecognizePolicies,
     handleRecognizeDocuments,
     handleTrashSelectedFiles,
+    handleTrashDriveFile,
     handleDownloadDriveFiles,
+    getDriveFileBlob,
     handleRenameDriveFile,
     resetDriveState,
   };

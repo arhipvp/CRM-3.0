@@ -38,6 +38,11 @@ export const confirmTexts = {
     title: 'Удалить файлы',
     message,
   }),
+  deleteDriveFile: (name: string): ConfirmDialogOptions => ({
+    ...DANGER_DELETE_DEFAULTS,
+    title: 'Удалить файл',
+    message: `Удалить файл "${name}"?`,
+  }),
   deleteNotebook: (name?: string): ConfirmDialogOptions => ({
     ...DANGER_DELETE_DEFAULTS,
     title: 'Удалить блокнот',

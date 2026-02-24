@@ -38,9 +38,11 @@ const baseProps: ComponentProps<typeof FilesTab> = {
   isTrashing: false,
   trashMessage: null,
   handleTrashSelectedFiles: vi.fn().mockResolvedValue(undefined),
+  handleTrashDriveFile: vi.fn().mockResolvedValue(undefined),
   isDownloading: false,
   downloadMessage: null,
   handleDownloadDriveFiles: vi.fn().mockResolvedValue(undefined),
+  getDriveFileBlob: vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' })),
   driveError: null,
   sortedDriveFiles: [],
   expandedFolderIds: new Set<string>(),
@@ -128,5 +130,77 @@ describe('FilesTab document recognition transcript', () => {
     });
 
     expect(screen.queryByText('Показать транскрипт')).not.toBeInTheDocument();
+  });
+
+  it('renders preview action only for image files and opens modal', async () => {
+    const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: vi.fn(() => 'blob:preview-photo'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: vi.fn(),
+    });
+    renderWithProviders({
+      getDriveFileBlob,
+      sortedDriveFiles: [
+        {
+          id: 'image-1',
+          name: 'photo.png',
+          mimeType: 'image/png',
+          isFolder: false,
+          size: 10,
+        },
+        {
+          id: 'pdf-1',
+          name: 'doc.pdf',
+          mimeType: 'application/pdf',
+          isFolder: false,
+          size: 20,
+        },
+      ],
+    });
+
+    const previewButtons = screen.getAllByRole('button', { name: 'Просмотреть' });
+    expect(previewButtons).toHaveLength(1);
+    fireEvent.click(previewButtons[0]);
+
+    expect(getDriveFileBlob).toHaveBeenCalledWith('image-1');
+    expect(await screen.findByRole('img', { name: 'photo.png' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'doc.pdf' })).not.toBeInTheDocument();
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: originalCreateObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: originalRevokeObjectURL,
+    });
+  });
+
+  it('calls per-file delete handler', () => {
+    const handleTrashDriveFile = vi.fn().mockResolvedValue(undefined);
+    renderWithProviders({
+      handleTrashDriveFile,
+      sortedDriveFiles: [
+        {
+          id: 'file-1',
+          name: 'doc.pdf',
+          mimeType: 'application/pdf',
+          isFolder: false,
+          size: 20,
+        },
+      ],
+    });
+
+    const deleteButtons = screen.getAllByRole('button', { name: 'Удалить' });
+    fireEvent.click(deleteButtons[1]);
+    expect(handleTrashDriveFile).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'file-1', name: 'doc.pdf' }),
+    );
   });
 });
