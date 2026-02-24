@@ -147,9 +147,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     return <div className={PANEL_MUTED_TEXT}>{message}</div>;
   };
 
-  const disableUpload = !selectedDeal.driveFolderId;
-  const driveFolderLink = buildDriveFolderLink(selectedDeal.driveFolderId);
-  const mailboxEmail = (selectedDeal.mailboxEmail ?? '').trim();
+  const disableUpload = !selectedDeal?.driveFolderId;
+  const driveFolderLink = buildDriveFolderLink(selectedDeal?.driveFolderId);
+  const mailboxEmail = (selectedDeal?.mailboxEmail ?? '').trim();
   const getSortIndicator = () => (driveSortDirection === 'asc' ? '↑' : '↓');
   const getSortLabel = () => (driveSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию');
   const getColumnTitleClass = () => {
@@ -164,7 +164,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     isTrashing ||
     isDownloading ||
     isSelectedDealDeleted ||
-    !selectedDeal.driveFolderId;
+    !selectedDeal?.driveFolderId;
 
   const openRenameModal = (file: DriveFile) => {
     const { baseName } = splitFileName(file.name);
