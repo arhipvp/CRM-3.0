@@ -357,9 +357,10 @@ describe('useDealDriveFiles', () => {
     downloadDealDriveFilesMock.mockResolvedValue({ blob, filename: 'photo.png' });
     const { resultRef } = renderDriveHook(deal);
 
+    expect(resultRef.current).not.toBeNull();
     let receivedBlob: Blob | null = null;
     await act(async () => {
-      receivedBlob = await resultRef.current?.getDriveFileBlob('image-1')!;
+      receivedBlob = await resultRef.current!.getDriveFileBlob('image-1');
     });
 
     expect(downloadDealDriveFilesMock).toHaveBeenCalledWith(deal.id, ['image-1'], false);

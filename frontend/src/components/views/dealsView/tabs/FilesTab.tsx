@@ -140,10 +140,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     };
   };
 
-  if (!selectedDeal) {
-    return null;
-  }
-
   const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
     if (tone === 'danger') {
       return <InlineAlert>{message}</InlineAlert>;
@@ -231,6 +227,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     },
     [imagePreview],
   );
+
+  if (!selectedDeal) {
+    return null;
+  }
 
   const handleRenameSubmit = async () => {
     if (!renamingFile) {
