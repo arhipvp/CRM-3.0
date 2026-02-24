@@ -9,7 +9,7 @@ class DealSearchByIdTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
         self.seller = User.objects.create_user(
-            username="seller-search", password="pass"
+            username="seller-search", password="pass"  # pragma: allowlist secret
         )
         self.client_obj = Client.objects.create(
             name="Иван Иванов",
