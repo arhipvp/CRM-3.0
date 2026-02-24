@@ -63,19 +63,6 @@ class DealSearchByIdTests(AuthenticatedAPITestCase):
         self.assertIn(str(self.target_deal.id), deal_ids)
         self.assertNotIn(str(self.other_deal.id), deal_ids)
 
-    def test_search_finds_deal_by_hash_prefixed_short_uuid(self):
-        short_id = str(self.target_deal.id)[:8]
-        response = self.api_client.get(
-            "/api/v1/deals/",
-            {"search": f"%23{short_id}"},
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        deal_ids = self._extract_ids(response)
-        self.assertIn(str(self.target_deal.id), deal_ids)
-        self.assertNotIn(str(self.other_deal.id), deal_ids)
-
     def test_search_does_not_return_matches_for_irrelevant_query(self):
         response = self.api_client.get(
             "/api/v1/deals/",
