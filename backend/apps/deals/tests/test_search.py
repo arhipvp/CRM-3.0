@@ -64,9 +64,9 @@ class DealSearchByIdTests(AuthenticatedAPITestCase):
         self.assertNotIn(str(self.other_deal.id), deal_ids)
 
     def test_search_finds_deal_by_hash_prefixed_short_uuid(self):
+        short_id = str(self.target_deal.id)[:8]
         response = self.api_client.get(
-            "/api/v1/deals/",
-            {"search": f"#{str(self.target_deal.id)[:8]}"},
+            f"/api/v1/deals/?search=%23{short_id}",
             format="json",
         )
 
