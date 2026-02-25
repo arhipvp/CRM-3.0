@@ -79,6 +79,7 @@ import {
   Policy,
   Quote,
   Statement,
+  Task,
   User,
 } from './types';
 import { useAppData } from './hooks/useAppData';

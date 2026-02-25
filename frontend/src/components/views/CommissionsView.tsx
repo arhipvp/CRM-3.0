@@ -378,7 +378,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         <h1 id="commissionsViewHeading" className="sr-only">
           Доходы и расходы
         </h1>
-        <PanelMessage title="Загрузка" message="Загружаем финансовые данные..." />
+        <PanelMessage>Загружаем финансовые данные...</PanelMessage>
       </section>
     );
   }

@@ -48,9 +48,11 @@ beforeEach(() => {
       {
         id: 'deal-1',
         title: 'Deal',
-        client: 'client-1',
+        clientId: 'client-1',
         status: 'open',
-        created_at: '2026-01-01T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
       },
     ],
   });
