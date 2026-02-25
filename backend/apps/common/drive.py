@@ -898,6 +898,7 @@ def delete_drive_folder(folder_id: str) -> None:
             lambda service: service.files()
             .delete(fileId=folder_id, supportsAllDrives=True)
             .execute(),
+            return_none_on_statuses=(404, 410),
         )
     except Exception as exc:
         raise DriveOperationError("Unable to delete Drive folder.") from exc
