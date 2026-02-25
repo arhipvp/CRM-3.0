@@ -16,6 +16,7 @@ type DealsSortDirection = 'asc' | 'desc' | null;
 interface DealsListProps {
   sortedDeals: Deal[];
   selectedDeal: Deal | null;
+  dealRowFocusRequest?: { dealId: string; nonce: number } | null;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   dealExecutorFilter: string;
@@ -41,6 +42,7 @@ interface DealsListProps {
 export const DealsList: React.FC<DealsListProps> = ({
   sortedDeals,
   selectedDeal,
+  dealRowFocusRequest,
   dealSearch,
   onDealSearchChange,
   dealExecutorFilter,
@@ -63,6 +65,7 @@ export const DealsList: React.FC<DealsListProps> = ({
   isDealSelectionBlocked = false,
 }) => {
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
+  const lastHandledFocusNonceRef = useRef<number | null>(null);
 
   const selectedDealId = selectedDeal?.id ?? null;
 
@@ -72,6 +75,23 @@ export const DealsList: React.FC<DealsListProps> = ({
     }
     selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [selectedDealId]);
+
+  useEffect(() => {
+    if (!dealRowFocusRequest) {
+      return;
+    }
+    if (lastHandledFocusNonceRef.current === dealRowFocusRequest.nonce) {
+      return;
+    }
+    if (dealRowFocusRequest.dealId !== selectedDealId) {
+      return;
+    }
+    lastHandledFocusNonceRef.current = dealRowFocusRequest.nonce;
+    if (!selectedRowRef.current || !selectedRowRef.current.isConnected) {
+      return;
+    }
+    selectedRowRef.current.focus({ preventScroll: true });
+  }, [dealRowFocusRequest, selectedDealId]);
 
   const getOrderingField = (key: DealsSortKey) =>
     key === 'deadline' ? 'expected_close' : 'next_contact_date';

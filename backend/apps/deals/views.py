@@ -118,6 +118,7 @@ class DealViewSet(
     owner_field = "seller"
     pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
+    _allowed_embed_fields = {"quotes", "documents", "policies"}
 
     @staticmethod
     def _time_tracking_tick_seconds() -> int:
@@ -214,17 +215,32 @@ class DealViewSet(
     def _can_merge(self, user, deal) -> bool:
         return can_merge_deals(user, deal)
 
-    def _base_queryset(self, include_deleted=False, user=None):
+    def _requested_deal_embeds(self):
+        raw_value = self.request.query_params.get("embed")
+        if raw_value is None:
+            return None
+        tokens = {
+            item.strip().lower() for item in str(raw_value).split(",") if item.strip()
+        }
+        if not tokens or "none" in tokens:
+            return set()
+        return tokens & self._allowed_embed_fields
+
+    def _base_queryset(self, include_deleted=False, user=None, embeds=None):
         manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
-        queryset = (
-            manager.select_related("client", "seller", "executor", "mailbox")
-            .prefetch_related("quotes", "documents")
-            .all()
-            .order_by(
-                F("next_contact_date").asc(nulls_last=True),
-                F("next_review_date").desc(nulls_last=True),
-                "-created_at",
-            )
+        queryset = manager.select_related(
+            "client", "seller", "executor", "mailbox"
+        ).all()
+        requested_embeds = {"quotes", "documents"} if embeds is None else embeds
+        prefetch_fields = [
+            field for field in ("quotes", "documents") if field in requested_embeds
+        ]
+        if prefetch_fields:
+            queryset = queryset.prefetch_related(*prefetch_fields)
+        queryset = queryset.order_by(
+            F("next_contact_date").asc(nulls_last=True),
+            F("next_review_date").desc(nulls_last=True),
+            "-created_at",
         )
         return self._annotate_queryset(queryset, user=user)
 
@@ -244,9 +260,11 @@ class DealViewSet(
         Сортировка: по дате следующего контакта (ближайшие сверху), затем по дате следующего обзора, затем по дате создания.
         """
         user = self.request.user
+        embeds = self._requested_deal_embeds()
         queryset = self._base_queryset(
             include_deleted=self._include_deleted_flag(),
             user=user,
+            embeds=embeds,
         )
 
         if self.action in {"close", "reopen"}:
@@ -368,9 +386,11 @@ class DealViewSet(
     def _pinned_queryset(self, user, pinned_ids):
         if not pinned_ids:
             return Deal.objects.none()
+        embeds = self._requested_deal_embeds()
         queryset = self._base_queryset(
             include_deleted=True,
             user=user,
+            embeds=embeds,
         ).filter(id__in=pinned_ids)
         ordering_param = self.request.query_params.get("ordering")
         if ordering_param:
@@ -504,7 +524,12 @@ class DealViewSet(
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["include_policies"] = self.action == "retrieve"
+        embeds = self._requested_deal_embeds()
+        context["deal_embed"] = embeds
+        if embeds is None:
+            context["include_policies"] = self.action == "retrieve"
+        else:
+            context["include_policies"] = "policies" in embeds
         return context
 
     def _reject_viewer_update(self, request, instance):

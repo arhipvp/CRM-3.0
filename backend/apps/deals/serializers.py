@@ -162,6 +162,7 @@ class DealSerializer(serializers.ModelSerializer):
         queryset=User.objects.all(),
         required=False,
     )
+    _embed_sensitive_fields = {"quotes", "documents", "policies"}
 
     class Meta:
         model = Deal
@@ -175,6 +176,14 @@ class DealSerializer(serializers.ModelSerializer):
             "payments_paid",
         )
         extra_kwargs = {}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        embed_fields = self.context.get("deal_embed")
+        if embed_fields is None:
+            return
+        for field_name in self._embed_sensitive_fields - set(embed_fields):
+            self.fields.pop(field_name, None)
 
     def get_seller_name(self, obj: Deal) -> str | None:
         return self._get_user_display(obj.seller)

@@ -48,6 +48,7 @@ const getTaskSortValue = (task: Task, key: TaskSortKey): number => {
 interface TasksViewProps {
   tasks: Task[];
   currentUser: User | null;
+  isLoading?: boolean;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
 }
@@ -55,6 +56,7 @@ interface TasksViewProps {
 export const TasksView: React.FC<TasksViewProps> = ({
   tasks,
   currentUser,
+  isLoading = false,
   onDealSelect,
   onDealPreview,
 }) => {
@@ -188,7 +190,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
           },
         ]}
       />
-      {filteredTasks.length ? (
+      {isLoading ? (
+        <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
+          Загружаем задачи...
+        </div>
+      ) : filteredTasks.length ? (
         <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
       ) : (
         <div className="space-y-4">

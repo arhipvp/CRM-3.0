@@ -27,6 +27,7 @@ interface CommissionsViewProps {
   financialRecords?: FinancialRecord[];
   policies: Policy[];
   statements: Statement[];
+  isLoading?: boolean;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
@@ -78,6 +79,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
   policies,
   statements,
+  isLoading = false,
   onDealSelect,
   onDealPreview,
   onUpdateFinancialRecord,
@@ -370,6 +372,16 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       }}
     />
   );
+  if (isLoading) {
+    return (
+      <section aria-labelledby="commissionsViewHeading" className="app-panel p-6 shadow-none">
+        <h1 id="commissionsViewHeading" className="sr-only">
+          Доходы и расходы
+        </h1>
+        <PanelMessage title="Загрузка" message="Загружаем финансовые данные..." />
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="commissionsViewHeading" className="flex h-full flex-col gap-6">

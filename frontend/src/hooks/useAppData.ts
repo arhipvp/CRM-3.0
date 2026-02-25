@@ -74,6 +74,8 @@ export const useAppData = () => {
   const [dataState, dispatch] = useReducer(dataReducer, INITIAL_APP_DATA_STATE);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isFinanceDataLoading, setIsFinanceDataLoading] = useState(false);
+  const [isTasksLoading, setIsTasksLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [policiesLoaded, setPoliciesLoaded] = useState(false);
   const [isPoliciesLoading, setIsPoliciesLoading] = useState(false);
@@ -88,6 +90,8 @@ export const useAppData = () => {
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
   const [dealsTotalCount, setDealsTotalCount] = useState(0);
   const dealsRequestRef = useRef(0);
+  const financeDataLoadedRef = useRef(false);
+  const tasksLoadedRef = useRef(false);
   const dealsCacheRef = useRef(
     new Map<string, { results: Deal[]; nextPage: number | null; totalCount: number }>(),
   );
@@ -140,11 +144,14 @@ export const useAppData = () => {
           return cached.results;
         }
       }
-      const payload = await fetchDealsWithPagination({
-        ...resolvedFilters,
-        page: 1,
-        page_size: DEALS_PAGE_SIZE,
-      });
+      const payload = await fetchDealsWithPagination(
+        {
+          ...resolvedFilters,
+          page: 1,
+          page_size: DEALS_PAGE_SIZE,
+        },
+        { embed: 'none' },
+      );
       if (dealsRequestRef.current !== requestId) {
         return payload.results;
       }
@@ -172,11 +179,14 @@ export const useAppData = () => {
     const requestId = dealsRequestRef.current;
     const cacheKey = buildDealsCacheKey(dealsFilters);
     try {
-      const payload = await fetchDealsWithPagination({
-        ...dealsFilters,
-        page: dealsNextPage,
-        page_size: DEALS_PAGE_SIZE,
-      });
+      const payload = await fetchDealsWithPagination(
+        {
+          ...dealsFilters,
+          page: dealsNextPage,
+          page_size: DEALS_PAGE_SIZE,
+        },
+        { embed: 'none' },
+      );
       if (dealsRequestRef.current !== requestId) {
         return;
       }
@@ -336,34 +346,24 @@ export const useAppData = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    financeDataLoadedRef.current = false;
+    tasksLoadedRef.current = false;
     try {
       const dealsPromise = refreshDeals();
-      const [
-        clientsData,
-        paymentsData,
-        tasksData,
-        financialRecordsData,
-        usersData,
-        salesChannelsData,
-        statementsData,
-      ] = await Promise.all([
+      const [clientsData, usersData, salesChannelsData] = await Promise.all([
         fetchClients(),
-        fetchAllPayments(),
-        fetchTasks({ show_deleted: true }),
-        fetchFinancialRecords(),
         fetchUsers(),
         fetchSalesChannels(),
-        fetchFinanceStatements(),
       ]);
       await dealsPromise;
       setAppData({
         clients: clientsData,
-        payments: paymentsData,
-        tasks: tasksData,
-        financialRecords: financialRecordsData,
-        statements: statementsData,
         users: usersData,
         salesChannels: salesChannelsData,
+        payments: [],
+        financialRecords: [],
+        statements: [],
+        tasks: [],
       });
     } catch (err) {
       setError(formatErrorMessage(err, 'Ошибка при загрузке данных с backend'));
@@ -371,7 +371,63 @@ export const useAppData = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchAllPayments, refreshDeals, setAppData]);
+  }, [refreshDeals, setAppData]);
+
+  const ensureFinanceDataLoaded = useCallback(
+    async (options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+      if (financeDataLoadedRef.current && !force) {
+        return;
+      }
+      if (isFinanceDataLoading) {
+        return;
+      }
+      setIsFinanceDataLoading(true);
+      try {
+        const [paymentsData, financialRecordsData, statementsData] = await Promise.all([
+          fetchAllPayments(),
+          fetchFinancialRecords(),
+          fetchFinanceStatements(),
+        ]);
+        setAppData({
+          payments: paymentsData,
+          financialRecords: financialRecordsData,
+          statements: statementsData,
+        });
+        financeDataLoadedRef.current = true;
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
+        throw err;
+      } finally {
+        setIsFinanceDataLoading(false);
+      }
+    },
+    [fetchAllPayments, isFinanceDataLoading, setAppData, setError],
+  );
+
+  const ensureTasksLoaded = useCallback(
+    async (options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+      if (tasksLoadedRef.current && !force) {
+        return;
+      }
+      if (isTasksLoading) {
+        return;
+      }
+      setIsTasksLoading(true);
+      try {
+        const tasksData = await fetchTasks({ show_deleted: true });
+        setAppData({ tasks: tasksData });
+        tasksLoadedRef.current = true;
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке задач'));
+        throw err;
+      } finally {
+        setIsTasksLoading(false);
+      }
+    },
+    [isTasksLoading, setAppData, setError],
+  );
 
   const dealsHasMore = Boolean(dealsNextPage);
   const policiesHasMore = Boolean(policiesListNextPage);
@@ -379,6 +435,8 @@ export const useAppData = () => {
   return {
     dataState,
     loadData,
+    ensureFinanceDataLoaded,
+    ensureTasksLoaded,
     refreshDeals,
     invalidateDealsCache,
     refreshPolicies,
@@ -397,6 +455,8 @@ export const useAppData = () => {
     isLoadingMorePolicies,
     isPoliciesLoading,
     isLoading,
+    isFinanceDataLoading,
+    isTasksLoading,
     isSyncing,
     setIsSyncing,
     error,

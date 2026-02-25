@@ -268,6 +268,8 @@ const AppContent: React.FC = () => {
   const {
     dataState,
     loadData,
+    ensureFinanceDataLoaded,
+    ensureTasksLoaded,
     refreshDeals,
     invalidateDealsCache,
     refreshPolicies,
@@ -286,6 +288,8 @@ const AppContent: React.FC = () => {
     isLoadingMorePolicies,
     isLoadingMoreDeals,
     isLoading,
+    isFinanceDataLoading,
+    isTasksLoading,
     isSyncing,
     setIsSyncing,
     error,
@@ -313,6 +317,10 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [isDealFocusCleared, setIsDealFocusCleared] = useState(false);
+  const [dealRowFocusRequest, setDealRowFocusRequest] = useState<{
+    dealId: string;
+    nonce: number;
+  } | null>(null);
   const clearSelectedDealFocus = useCallback(() => {
     setSelectedDealId(null);
     setIsDealFocusCleared(true);
@@ -327,6 +335,7 @@ const AppContent: React.FC = () => {
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
   const location = useLocation();
   const isDealsRoute = location.pathname.startsWith('/deals');
+  const isCommissionsRoute = location.pathname.startsWith('/commissions');
   const deepLinkedDealId = useMemo(() => {
     if (!isDealsRoute) {
       return null;
@@ -358,12 +367,12 @@ const AppContent: React.FC = () => {
     if (!isAuthenticated) {
       return;
     }
-    if (location.pathname.startsWith('/commissions')) {
-      refreshPolicies().catch((err) => {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+    if (isCommissionsRoute) {
+      Promise.all([refreshPolicies(), ensureFinanceDataLoaded()]).catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке данных для раздела комиссий'));
       });
     }
-  }, [isAuthenticated, location.pathname, refreshPolicies, setError]);
+  }, [ensureFinanceDataLoaded, isAuthenticated, isCommissionsRoute, refreshPolicies, setError]);
 
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
@@ -393,9 +402,40 @@ const AppContent: React.FC = () => {
   const policyDealExecutorName = getDealExecutorName(policyDealId);
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const searchInitialized = useRef(false);
+  const dealRowFocusNonceRef = useRef(0);
   const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
   const deepLinkedDealLoadingRef = useRef<string | null>(null);
+  const DEAL_DETAILS_CACHE_TTL_MS = 60_000;
+  const dealTasksCacheRef = useRef(new Map<string, { loadedAt: number; data: Task[] }>());
+  const dealQuotesCacheRef = useRef(new Map<string, { loadedAt: number; data: Quote[] }>());
+  const dealTasksInFlightRef = useRef(new Map<string, Promise<Task[]>>());
+  const dealQuotesInFlightRef = useRef(new Map<string, Promise<Quote[]>>());
+
+  const isCacheFresh = useCallback(
+    (loadedAt: number) => Date.now() - loadedAt < DEAL_DETAILS_CACHE_TTL_MS,
+    [],
+  );
+
+  const invalidateDealTasksCache = useCallback((dealId?: string | null) => {
+    if (dealId) {
+      dealTasksCacheRef.current.delete(dealId);
+      dealTasksInFlightRef.current.delete(dealId);
+      return;
+    }
+    dealTasksCacheRef.current.clear();
+    dealTasksInFlightRef.current.clear();
+  }, []);
+
+  const invalidateDealQuotesCache = useCallback((dealId?: string | null) => {
+    if (dealId) {
+      dealQuotesCacheRef.current.delete(dealId);
+      dealQuotesInFlightRef.current.delete(dealId);
+      return;
+    }
+    dealQuotesCacheRef.current.clear();
+    dealQuotesInFlightRef.current.clear();
+  }, []);
 
   const refreshDealsWithSelection = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
@@ -535,6 +575,15 @@ const AppContent: React.FC = () => {
   const isClientsRoute = location.pathname.startsWith('/clients');
   const isPoliciesRoute = location.pathname.startsWith('/policies');
   const isTasksRoute = location.pathname.startsWith('/tasks');
+
+  useEffect(() => {
+    if (!isAuthenticated || !isTasksRoute) {
+      return;
+    }
+    ensureTasksLoaded().catch((err) => {
+      setError(formatErrorMessage(err, 'Ошибка при загрузке задач'));
+    });
+  }, [ensureTasksLoaded, isAuthenticated, isTasksRoute, setError]);
   const [selectedClientShortcutId, setSelectedClientShortcutId] = useState<string | null>(null);
   const [selectedPolicyShortcutId, setSelectedPolicyShortcutId] = useState<string | null>(null);
   const [selectedTaskShortcutId, setSelectedTaskShortcutId] = useState<string | null>(null);
@@ -1159,6 +1208,10 @@ const AppContent: React.FC = () => {
       updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
       skipNextMissingSelectedDealClearRef.current = created.id;
       selectDealById(created.id);
+      setDealRowFocusRequest({
+        dealId: created.id,
+        nonce: (dealRowFocusNonceRef.current += 1),
+      });
       setModal(null);
     },
     [invalidateDealsCache, selectDealById, setModal, updateAppData],
@@ -1503,6 +1556,7 @@ const AppContent: React.FC = () => {
   const handleAddQuote = useCallback(
     async (dealId: string, values: QuoteFormValues) => {
       invalidateDealsCache();
+      invalidateDealQuotesCache(dealId);
       try {
         const created = await createQuote({ dealId, ...values });
         updateAppData((prev) => ({
@@ -1516,7 +1570,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [invalidateDealsCache, setError, setQuoteDealId, updateAppData],
+    [invalidateDealQuotesCache, invalidateDealsCache, setError, setQuoteDealId, updateAppData],
   );
 
   const handleUpdateQuote = useCallback(
@@ -1526,6 +1580,7 @@ const AppContent: React.FC = () => {
       }
       invalidateDealsCache();
       const { id, dealId } = editingQuote;
+      invalidateDealQuotesCache(dealId);
       try {
         const updated = await updateQuote(id, values);
         updateAppData((prev) => ({
@@ -1546,7 +1601,14 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [editingQuote, invalidateDealsCache, setEditingQuote, setError, updateAppData],
+    [
+      editingQuote,
+      invalidateDealQuotesCache,
+      invalidateDealsCache,
+      setEditingQuote,
+      setError,
+      updateAppData,
+    ],
   );
 
   const handleRequestEditQuote = useCallback((quote: Quote) => {
@@ -1556,6 +1618,7 @@ const AppContent: React.FC = () => {
   const handleDeleteQuote = useCallback(
     async (dealId: string, quoteId: string) => {
       invalidateDealsCache();
+      invalidateDealQuotesCache(dealId);
       try {
         await deleteQuote(quoteId);
         updateAppData((prev) => ({
@@ -1570,7 +1633,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [invalidateDealsCache, setError, updateAppData],
+    [invalidateDealQuotesCache, invalidateDealsCache, setError, updateAppData],
   );
 
   const handleAddPolicy = useCallback(
@@ -2368,6 +2431,7 @@ const AppContent: React.FC = () => {
   const handleCreateTask = useCallback(
     async (dealId: string, data: AddTaskFormValues) => {
       setIsSyncing(true);
+      invalidateDealTasksCache(dealId);
       try {
         const created = await createTask({ dealId, ...data });
         updateAppData((prev) => ({ tasks: [created, ...prev.tasks] }));
@@ -2378,12 +2442,13 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [setError, setIsSyncing, updateAppData],
+    [invalidateDealTasksCache, setError, setIsSyncing, updateAppData],
   );
 
   const handleUpdateTask = useCallback(
     async (taskId: string, data: Partial<AddTaskFormValues>) => {
       setIsSyncing(true);
+      invalidateDealTasksCache();
       try {
         const updated = await updateTask(taskId, data);
         updateAppData((prev) => ({
@@ -2400,11 +2465,12 @@ const AppContent: React.FC = () => {
         setIsSyncing(false);
       }
     },
-    [addNotification, setError, setIsSyncing, updateAppData],
+    [addNotification, invalidateDealTasksCache, setError, setIsSyncing, updateAppData],
   );
 
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
+      invalidateDealTasksCache();
       try {
         await deleteTask(taskId);
         updateAppData((prev) => ({ tasks: markTaskAsDeleted(prev.tasks, taskId) }));
@@ -2413,7 +2479,7 @@ const AppContent: React.FC = () => {
         throw err;
       }
     },
-    [setError, updateAppData],
+    [invalidateDealTasksCache, setError, updateAppData],
   );
 
   const cycleSelectedClient = useCallback(
@@ -2592,8 +2658,39 @@ const AppContent: React.FC = () => {
 
   const loadDealTasks = useCallback(
     async (dealId: string) => {
+      const cached = dealTasksCacheRef.current.get(dealId);
+      if (cached && isCacheFresh(cached.loadedAt)) {
+        updateAppData((prev) => ({
+          tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...cached.data],
+        }));
+        return;
+      }
+
+      const existingPromise = dealTasksInFlightRef.current.get(dealId);
+      if (existingPromise) {
+        try {
+          const dealTasks = await existingPromise;
+          updateAppData((prev) => ({
+            tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...dealTasks],
+          }));
+        } catch (err) {
+          setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
+        }
+        return;
+      }
+
+      const request = fetchTasksByDeal(dealId, { showDeleted: true })
+        .then((dealTasks) => {
+          dealTasksCacheRef.current.set(dealId, { loadedAt: Date.now(), data: dealTasks });
+          return dealTasks;
+        })
+        .finally(() => {
+          dealTasksInFlightRef.current.delete(dealId);
+        });
+      dealTasksInFlightRef.current.set(dealId, request);
+
       try {
-        const dealTasks = await fetchTasksByDeal(dealId, { showDeleted: true });
+        const dealTasks = await request;
         updateAppData((prev) => ({
           tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...dealTasks],
         }));
@@ -2601,13 +2698,48 @@ const AppContent: React.FC = () => {
         setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
       }
     },
-    [setError, updateAppData],
+    [isCacheFresh, setError, updateAppData],
   );
 
   const loadDealQuotes = useCallback(
     async (dealId: string) => {
+      const cached = dealQuotesCacheRef.current.get(dealId);
+      if (cached && isCacheFresh(cached.loadedAt)) {
+        updateAppData((prev) => ({
+          deals: prev.deals.map((deal) =>
+            deal.id === dealId ? { ...deal, quotes: cached.data } : deal,
+          ),
+        }));
+        return;
+      }
+
+      const existingPromise = dealQuotesInFlightRef.current.get(dealId);
+      if (existingPromise) {
+        try {
+          const dealQuotes = await existingPromise;
+          updateAppData((prev) => ({
+            deals: prev.deals.map((deal) =>
+              deal.id === dealId ? { ...deal, quotes: dealQuotes } : deal,
+            ),
+          }));
+        } catch (err) {
+          setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
+        }
+        return;
+      }
+
+      const request = fetchQuotesByDeal(dealId, { showDeleted: true })
+        .then((dealQuotes) => {
+          dealQuotesCacheRef.current.set(dealId, { loadedAt: Date.now(), data: dealQuotes });
+          return dealQuotes;
+        })
+        .finally(() => {
+          dealQuotesInFlightRef.current.delete(dealId);
+        });
+      dealQuotesInFlightRef.current.set(dealId, request);
+
       try {
-        const dealQuotes = await fetchQuotesByDeal(dealId, { showDeleted: true });
+        const dealQuotes = await request;
         updateAppData((prev) => ({
           deals: prev.deals.map((deal) =>
             deal.id === dealId ? { ...deal, quotes: dealQuotes } : deal,
@@ -2617,7 +2749,7 @@ const AppContent: React.FC = () => {
         setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
       }
     },
-    [setError, updateAppData],
+    [isCacheFresh, setError, updateAppData],
   );
 
   useEffect(() => {
@@ -3501,6 +3633,7 @@ const AppContent: React.FC = () => {
         currentUser={currentUser}
         selectedDealId={selectedDealId}
         isDealFocusCleared={isDealFocusCleared}
+        dealRowFocusRequest={dealRowFocusRequest}
         onSelectDeal={handleSelectDeal}
         onClearDealFocus={clearSelectedDealFocus}
         onDealPreview={handleOpenDealPreview}
@@ -3563,6 +3696,8 @@ const AppContent: React.FC = () => {
         policiesHasMore={policiesHasMore}
         isLoadingMorePolicies={isLoadingMorePolicies}
         isPoliciesListLoading={isPoliciesListLoading}
+        isFinanceDataLoading={isFinanceDataLoading}
+        isTasksLoading={isTasksLoading}
       />
       <AppShortcutsController
         paletteMode={paletteMode}

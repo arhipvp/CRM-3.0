@@ -44,6 +44,7 @@ export interface AppRoutesProps {
   currentUser: User | null;
   selectedDealId: string | null;
   isDealFocusCleared?: boolean;
+  dealRowFocusRequest?: { dealId: string; nonce: number } | null;
   onSelectDeal: (dealId: string) => void;
   onClearDealFocus?: () => void;
   onDealPreview?: (dealId: string) => void;
@@ -139,6 +140,8 @@ export interface AppRoutesProps {
   policiesHasMore: boolean;
   isLoadingMorePolicies: boolean;
   isPoliciesListLoading: boolean;
+  isFinanceDataLoading: boolean;
+  isTasksLoading: boolean;
 }
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({
@@ -158,6 +161,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   currentUser,
   selectedDealId,
   isDealFocusCleared,
+  dealRowFocusRequest,
   onSelectDeal,
   onClearDealFocus,
   onDealPreview,
@@ -220,6 +224,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   policiesHasMore,
   isLoadingMorePolicies,
   isPoliciesListLoading,
+  isFinanceDataLoading,
+  isTasksLoading,
 }) => (
   <Routes>
     <Route path="/seller-dashboard" element={<SellerDashboardView />} />
@@ -238,6 +244,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           currentUser={currentUser}
           selectedDealId={selectedDealId}
           isDealFocusCleared={isDealFocusCleared}
+          dealRowFocusRequest={dealRowFocusRequest}
           onSelectDeal={onSelectDeal}
           onClearDealFocus={onClearDealFocus}
           onCloseDeal={onCloseDeal}
@@ -337,6 +344,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           financialRecords={financialRecords}
           policies={policies}
           statements={statements}
+          isLoading={isFinanceDataLoading}
           onDealSelect={onSelectDeal}
           onDealPreview={onDealPreview}
           onRequestEditPolicy={onRequestEditPolicy}
@@ -355,6 +363,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         <TasksView
           tasks={tasks}
           currentUser={currentUser}
+          isLoading={isTasksLoading}
           onDealSelect={onSelectDeal}
           onDealPreview={onDealPreview}
         />

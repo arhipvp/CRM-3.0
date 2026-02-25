@@ -14,6 +14,12 @@ import type {
   Quote,
 } from '../types';
 
+export type DealEmbedField = 'quotes' | 'documents' | 'policies';
+
+type DealsQueryOptions = {
+  embed?: DealEmbedField[] | 'none';
+};
+
 export interface DealMailboxCreateResult {
   deal: Deal;
   mailboxInitialPassword?: string | null;
@@ -29,16 +35,40 @@ export interface DealMailboxSyncResult {
   };
 }
 
-export async function fetchDeals(filters?: FilterParams): Promise<Deal[]> {
-  const qs = buildQueryString(filters);
+const resolveEmbedQueryValue = (embed?: DealEmbedField[] | 'none'): string | undefined => {
+  if (!embed) {
+    return undefined;
+  }
+  if (embed === 'none') {
+    return 'none';
+  }
+  const normalized = Array.from(new Set(embed));
+  if (!normalized.length) {
+    return 'none';
+  }
+  return normalized.join(',');
+};
+
+export async function fetchDeals(
+  filters?: FilterParams,
+  options?: DealsQueryOptions,
+): Promise<Deal[]> {
+  const qs = buildQueryString({
+    ...(filters ?? {}),
+    embed: resolveEmbedQueryValue(options?.embed),
+  });
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`);
   return unwrapList<Record<string, unknown>>(payload).map(mapDeal);
 }
 
 export async function fetchDealsWithPagination(
   filters?: FilterParams,
+  options?: DealsQueryOptions,
 ): Promise<PaginatedResponse<Deal>> {
-  const qs = buildQueryString(filters);
+  const qs = buildQueryString({
+    ...(filters ?? {}),
+    embed: resolveEmbedQueryValue(options?.embed),
+  });
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`);
   return {
     count: payload.count || 0,

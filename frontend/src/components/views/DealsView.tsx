@@ -33,6 +33,7 @@ interface DealsViewProps {
   currentUser: User | null;
   selectedDealId: string | null;
   isDealFocusCleared?: boolean;
+  dealRowFocusRequest?: { dealId: string; nonce: number } | null;
   onSelectDeal: (dealId: string) => void;
   onClearDealFocus?: () => void;
   onCloseDeal: (
@@ -115,6 +116,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   currentUser,
   selectedDealId,
   isDealFocusCleared = false,
+  dealRowFocusRequest,
   onSelectDeal,
   onClearDealFocus,
   onCloseDeal,
@@ -200,6 +202,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           <DealsList
             sortedDeals={sortedDeals}
             selectedDeal={selectedDeal}
+            dealRowFocusRequest={dealRowFocusRequest}
             dealSearch={dealSearch}
             onDealSearchChange={onDealSearchChange}
             dealExecutorFilter={dealExecutorFilter}

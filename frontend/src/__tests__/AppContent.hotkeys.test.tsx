@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppContent from '../AppContent';
-import { APIError, updateDeal, updateTask } from '../api';
+import { APIError, fetchQuotesByDeal, fetchTasksByDeal, updateDeal, updateTask } from '../api';
 
 vi.mock('../contexts/NotificationContext', () => ({
   useNotification: () => ({
@@ -83,6 +83,8 @@ const refreshDealsMock = vi.hoisted(() => vi.fn());
 const updateDealMock = vi.hoisted(() => vi.fn());
 const setErrorMock = vi.hoisted(() => vi.fn());
 const fetchDealMock = vi.hoisted(() => vi.fn());
+const fetchTasksByDealMock = vi.hoisted(() => vi.fn());
+const fetchQuotesByDealMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../hooks/useAppData', () => ({
   useAppData: () => ({
@@ -98,6 +100,8 @@ vi.mock('../hooks/useAppData', () => ({
       users: [],
     },
     loadData: vi.fn(),
+    ensureFinanceDataLoaded: vi.fn().mockResolvedValue(undefined),
+    ensureTasksLoaded: vi.fn().mockResolvedValue(undefined),
     refreshDeals: refreshDealsMock.mockImplementation(async () => appDataMock.deals),
     invalidateDealsCache: vi.fn(),
     refreshPolicies: vi.fn().mockResolvedValue([]),
@@ -116,6 +120,8 @@ vi.mock('../hooks/useAppData', () => ({
     isLoadingMorePolicies: false,
     isLoadingMoreDeals: false,
     isLoading: false,
+    isFinanceDataLoading: false,
+    isTasksLoading: false,
     isSyncing: false,
     setIsSyncing: vi.fn(),
     error: null,
@@ -132,10 +138,14 @@ vi.mock('../components/MainLayout', () => ({
 vi.mock('../components/app/AppRoutes', () => ({
   AppRoutes: ({
     onPostponeDeal,
+    onUpdateTask,
+    onSelectDeal,
     selectedDealId,
     isDealFocusCleared,
   }: {
     onPostponeDeal?: (dealId: string, data: Record<string, unknown>) => Promise<void>;
+    onUpdateTask?: (taskId: string, data: { status?: string }) => Promise<void>;
+    onSelectDeal?: (dealId: string) => void;
     selectedDealId?: string | null;
     isDealFocusCleared?: boolean;
   }) => (
@@ -156,6 +166,15 @@ vi.mock('../components/app/AppRoutes', () => ({
         }
       >
         Trigger postpone
+      </button>
+      <button type="button" onClick={() => void onUpdateTask?.('task-1', { status: 'done' })}>
+        Trigger task update
+      </button>
+      <button type="button" onClick={() => onSelectDeal?.('deal-2')}>
+        Select deal-2
+      </button>
+      <button type="button" onClick={() => onSelectDeal?.('deal-1')}>
+        Select deal-1
       </button>
     </div>
   ),
@@ -226,6 +245,8 @@ vi.mock('../api', async (importOriginal) => {
       })),
     updateDeal: updateDealMock,
     fetchDeal: fetchDealMock,
+    fetchTasksByDeal: fetchTasksByDealMock,
+    fetchQuotesByDeal: fetchQuotesByDealMock,
   };
 });
 
@@ -253,6 +274,8 @@ describe('AppContent hotkeys integration', () => {
     refreshDealsMock.mockReset();
     refreshDealsMock.mockImplementation(async () => appDataMock.deals);
     fetchDealMock.mockReset();
+    fetchTasksByDealMock.mockReset();
+    fetchQuotesByDealMock.mockReset();
     fetchDealMock.mockImplementation(async (dealId: string) => ({
       id: dealId,
       title: `Сделка ${dealId}`,
@@ -263,6 +286,8 @@ describe('AppContent hotkeys integration', () => {
       documents: [],
       clientName: 'Клиент 1',
     }));
+    fetchTasksByDealMock.mockResolvedValue([]);
+    fetchQuotesByDealMock.mockResolvedValue([]);
     updateDealMock.mockReset();
     updateDealMock.mockResolvedValue({
       id: 'deal-1',
@@ -324,6 +349,82 @@ describe('AppContent hotkeys integration', () => {
     await waitFor(() => {
       expect(screen.getByText(/Сделка: Сделка вторая/i)).toBeInTheDocument();
       expect(screen.getByTestId('deal-preview-panel')).toHaveTextContent('Сделка вторая');
+    });
+  });
+
+  it('deduplicates repeated tasks/quotes loading for the same selected deal within TTL', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+
+    renderAppContent('/deals?dealId=deal-1');
+
+    await waitFor(() => {
+      expect(fetchTasksByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+    });
+    expect(fetchTasksByDeal).toHaveBeenCalledTimes(1);
+    expect(fetchQuotesByDeal).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
+    fireEvent.keyDown(window, { key: 'ArrowUp', altKey: true });
+
+    await waitFor(() => {
+      expect(fetchTasksByDeal).toHaveBeenCalledTimes(1);
+      expect(fetchQuotesByDeal).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('invalidates cached deal tasks after task mutation and reloads data', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+      {
+        id: 'deal-2',
+        title: 'Сделка вторая',
+        clientId: 'client-2',
+        status: 'open',
+        createdAt: '2025-02-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 2',
+      },
+    ];
+
+    renderAppContent('/deals?dealId=deal-1');
+
+    await waitFor(() => {
+      expect(fetchTasksByDeal).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger task update' }));
+
+    await waitFor(() => {
+      expect(updateTask).toHaveBeenCalledWith('task-1', { status: 'done' });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select deal-2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select deal-1' }));
+
+    await waitFor(() => {
+      expect(fetchTasksByDeal).toHaveBeenCalledTimes(3);
     });
   });
 
