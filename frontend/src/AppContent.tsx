@@ -310,10 +310,12 @@ const AppContent: React.FC = () => {
     error,
     setError,
   } = useAppData();
-  const policiesFilters = policiesFiltersFromHook ?? { ordering: '-start_date' };
-  const runBackgroundRefresh =
-    runBackgroundRefreshFromHook ??
-    (async (
+  const policiesFilters = useMemo(
+    () => policiesFiltersFromHook ?? { ordering: '-start_date' },
+    [policiesFiltersFromHook],
+  );
+  const fallbackRunBackgroundRefresh = useCallback(
+    async (
       _resource: 'deals' | 'policies' | 'tasks' | 'finance',
       runner: () => Promise<unknown>,
     ) => {
@@ -323,7 +325,10 @@ const AppContent: React.FC = () => {
       } catch (err) {
         return { executed: true, errorMessage: formatErrorMessage(err) };
       }
-    });
+    },
+    [],
+  );
+  const runBackgroundRefresh = runBackgroundRefreshFromHook ?? fallbackRunBackgroundRefresh;
   const {
     authLoading,
     currentUser,
