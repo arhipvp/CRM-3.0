@@ -275,6 +275,8 @@ const AppContent: React.FC = () => {
     invalidateDealsCache,
     refreshPolicies,
     refreshPoliciesList,
+    policiesFilters,
+    runBackgroundRefresh,
     updateAppData,
     setAppData,
     resetPoliciesState,
@@ -293,6 +295,13 @@ const AppContent: React.FC = () => {
     isTasksLoading,
     isSyncing,
     setIsSyncing,
+    isBackgroundRefreshingDeals,
+    isBackgroundRefreshingPoliciesList,
+    isBackgroundRefreshingTasks,
+    isBackgroundRefreshingFinance,
+    isBackgroundRefreshingAny,
+    lastRefreshAtByResource,
+    lastRefreshErrorByResource,
     error,
     setError,
   } = useAppData();
@@ -585,6 +594,118 @@ const AppContent: React.FC = () => {
       setError(formatErrorMessage(err, 'Ошибка при загрузке задач'));
     });
   }, [ensureTasksLoaded, isAuthenticated, isTasksRoute, setError]);
+
+  const BACKGROUND_REFRESH_INTERVAL_MS = 30_000;
+  const dealFiltersRef = useRef<FilterParams>(dealFilters);
+  const policiesFiltersRef = useRef<FilterParams>(policiesFilters);
+  const backgroundRefreshCycleInFlightRef = useRef(false);
+  const backgroundRefreshTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    dealFiltersRef.current = dealFilters;
+  }, [dealFilters]);
+
+  useEffect(() => {
+    policiesFiltersRef.current = policiesFilters;
+  }, [policiesFilters]);
+
+  const runBackgroundRefreshCycle = useCallback(async () => {
+    if (!isAuthenticated || authLoading || isLoading || backgroundRefreshCycleInFlightRef.current) {
+      return;
+    }
+
+    backgroundRefreshCycleInFlightRef.current = true;
+    try {
+      const [dealsResult, policiesResult, tasksResult, financeResult] = await Promise.all([
+        runBackgroundRefresh('deals', () => refreshDeals(dealFiltersRef.current, { force: true })),
+        runBackgroundRefresh('policies', () => refreshPoliciesList(policiesFiltersRef.current)),
+        runBackgroundRefresh('tasks', () => ensureTasksLoaded({ force: true })),
+        runBackgroundRefresh('finance', async () => {
+          await Promise.all([
+            ensureFinanceDataLoaded({ force: true }),
+            refreshPolicies({ force: true }),
+          ]);
+        }),
+      ]);
+
+      const failedResources: Array<{ name: string; message: string }> = [];
+      if (dealsResult.errorMessage) {
+        failedResources.push({ name: 'Сделки', message: dealsResult.errorMessage });
+      }
+      if (policiesResult.errorMessage) {
+        failedResources.push({ name: 'Полисы', message: policiesResult.errorMessage });
+      }
+      if (tasksResult.errorMessage) {
+        failedResources.push({ name: 'Задачи', message: tasksResult.errorMessage });
+      }
+      if (financeResult.errorMessage) {
+        failedResources.push({ name: 'Финансы', message: financeResult.errorMessage });
+      }
+
+      failedResources.forEach(({ name, message }) => {
+        addNotification(`${name}: ошибка фонового обновления (${message})`, 'error', 5000);
+      });
+    } finally {
+      backgroundRefreshCycleInFlightRef.current = false;
+    }
+  }, [
+    addNotification,
+    authLoading,
+    ensureFinanceDataLoaded,
+    ensureTasksLoaded,
+    isAuthenticated,
+    isLoading,
+    refreshDeals,
+    refreshPolicies,
+    refreshPoliciesList,
+    runBackgroundRefresh,
+  ]);
+
+  useEffect(() => {
+    if (!isAuthenticated || authLoading || isLoading) {
+      if (backgroundRefreshTimerRef.current !== null) {
+        window.clearInterval(backgroundRefreshTimerRef.current);
+        backgroundRefreshTimerRef.current = null;
+      }
+      return;
+    }
+
+    const startTimer = () => {
+      if (backgroundRefreshTimerRef.current !== null) {
+        window.clearInterval(backgroundRefreshTimerRef.current);
+      }
+      backgroundRefreshTimerRef.current = window.setInterval(() => {
+        void runBackgroundRefreshCycle();
+      }, BACKGROUND_REFRESH_INTERVAL_MS);
+    };
+
+    const stopTimer = () => {
+      if (backgroundRefreshTimerRef.current === null) {
+        return;
+      }
+      window.clearInterval(backgroundRefreshTimerRef.current);
+      backgroundRefreshTimerRef.current = null;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        stopTimer();
+        return;
+      }
+      void runBackgroundRefreshCycle();
+      startTimer();
+    };
+
+    void runBackgroundRefreshCycle();
+    startTimer();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopTimer();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [authLoading, isAuthenticated, isLoading, runBackgroundRefreshCycle]);
+
   const [selectedClientShortcutId, setSelectedClientShortcutId] = useState<string | null>(null);
   const [selectedPolicyShortcutId, setSelectedPolicyShortcutId] = useState<string | null>(null);
   const [selectedTaskShortcutId, setSelectedTaskShortcutId] = useState<string | null>(null);
@@ -3589,6 +3710,9 @@ const AppContent: React.FC = () => {
       error={error}
       onClearError={() => setError(null)}
       isSyncing={isSyncing}
+      isBackgroundRefreshingAny={isBackgroundRefreshingAny}
+      lastRefreshAtByResource={lastRefreshAtByResource}
+      lastRefreshErrorByResource={lastRefreshErrorByResource}
     >
       {activeShortcutContext && (
         <div className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
@@ -3699,6 +3823,10 @@ const AppContent: React.FC = () => {
         isPoliciesListLoading={isPoliciesListLoading}
         isFinanceDataLoading={isFinanceDataLoading}
         isTasksLoading={isTasksLoading}
+        isBackgroundRefreshingDeals={isBackgroundRefreshingDeals}
+        isBackgroundRefreshingPoliciesList={isBackgroundRefreshingPoliciesList}
+        isBackgroundRefreshingTasks={isBackgroundRefreshingTasks}
+        isBackgroundRefreshingFinance={isBackgroundRefreshingFinance}
       />
       <AppShortcutsController
         paletteMode={paletteMode}

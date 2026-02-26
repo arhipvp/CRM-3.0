@@ -37,6 +37,11 @@ interface AppDataState {
   users: User[];
 }
 
+export type BackgroundRefreshResource = 'deals' | 'policies' | 'tasks' | 'finance';
+
+export type LastRefreshAtByResource = Record<BackgroundRefreshResource, number | null>;
+export type LastRefreshErrorByResource = Record<BackgroundRefreshResource, string | null>;
+
 const DEALS_PAGE_SIZE = 20;
 const POLICIES_PAGE_SIZE = 50;
 
@@ -50,6 +55,20 @@ const INITIAL_APP_DATA_STATE: AppDataState = {
   statements: [],
   tasks: [],
   users: [],
+};
+
+const INITIAL_LAST_REFRESH_AT: LastRefreshAtByResource = {
+  deals: null,
+  policies: null,
+  tasks: null,
+  finance: null,
+};
+
+const INITIAL_LAST_REFRESH_ERRORS: LastRefreshErrorByResource = {
+  deals: null,
+  policies: null,
+  tasks: null,
+  finance: null,
 };
 
 type AppDataAction =
@@ -89,9 +108,24 @@ export const useAppData = () => {
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
   const [dealsTotalCount, setDealsTotalCount] = useState(0);
+  const [isBackgroundRefreshingDeals, setIsBackgroundRefreshingDeals] = useState(false);
+  const [isBackgroundRefreshingPoliciesList, setIsBackgroundRefreshingPoliciesList] =
+    useState(false);
+  const [isBackgroundRefreshingTasks, setIsBackgroundRefreshingTasks] = useState(false);
+  const [isBackgroundRefreshingFinance, setIsBackgroundRefreshingFinance] = useState(false);
+  const [lastRefreshAtByResource, setLastRefreshAtByResource] =
+    useState<LastRefreshAtByResource>(INITIAL_LAST_REFRESH_AT);
+  const [lastRefreshErrorByResource, setLastRefreshErrorByResource] =
+    useState<LastRefreshErrorByResource>(INITIAL_LAST_REFRESH_ERRORS);
   const dealsRequestRef = useRef(0);
   const financeDataLoadedRef = useRef(false);
   const tasksLoadedRef = useRef(false);
+  const backgroundRefreshInFlightRef = useRef<Record<BackgroundRefreshResource, boolean>>({
+    deals: false,
+    policies: false,
+    tasks: false,
+    finance: false,
+  });
   const dealsCacheRef = useRef(
     new Map<string, { results: Deal[]; nextPage: number | null; totalCount: number }>(),
   );
@@ -123,6 +157,25 @@ export const useAppData = () => {
   const updateAppData = useCallback((updater: (prev: AppDataState) => Partial<AppDataState>) => {
     dispatch({ type: 'update', updater });
   }, []);
+
+  const setBackgroundRefreshingState = useCallback(
+    (resource: BackgroundRefreshResource, value: boolean) => {
+      if (resource === 'deals') {
+        setIsBackgroundRefreshingDeals(value);
+        return;
+      }
+      if (resource === 'policies') {
+        setIsBackgroundRefreshingPoliciesList(value);
+        return;
+      }
+      if (resource === 'tasks') {
+        setIsBackgroundRefreshingTasks(value);
+        return;
+      }
+      setIsBackgroundRefreshingFinance(value);
+    },
+    [],
+  );
 
   const refreshDeals = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
@@ -289,7 +342,12 @@ export const useAppData = () => {
         setPoliciesListNextPage(payload.next ? 2 : null);
         setPoliciesFilters(resolvedFilters);
       } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+        setError(
+          formatErrorMessage(
+            err,
+            '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u043f\u043e\u043b\u0438\u0441\u043e\u0432',
+          ),
+        );
         throw err;
       } finally {
         if (policiesListRequestRef.current === requestId) {
@@ -319,7 +377,12 @@ export const useAppData = () => {
       setPoliciesList((prev) => [...prev, ...payload.results]);
       setPoliciesListNextPage(payload.next ? policiesListNextPage + 1 : null);
     } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке полисов'));
+      setError(
+        formatErrorMessage(
+          err,
+          '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u043f\u043e\u043b\u0438\u0441\u043e\u0432',
+        ),
+      );
       throw err;
     } finally {
       setIsLoadingMorePolicies(false);
@@ -366,7 +429,12 @@ export const useAppData = () => {
         tasks: [],
       });
     } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке данных с backend'));
+      setError(
+        formatErrorMessage(
+          err,
+          '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u0434\u0430\u043d\u043d\u044b\u0445 \u0441 backend',
+        ),
+      );
       throw err;
     } finally {
       setIsLoading(false);
@@ -396,7 +464,12 @@ export const useAppData = () => {
         });
         financeDataLoadedRef.current = true;
       } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
+        setError(
+          formatErrorMessage(
+            err,
+            '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u0444\u0438\u043d\u0430\u043d\u0441\u043e\u0432\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445',
+          ),
+        );
         throw err;
       } finally {
         setIsFinanceDataLoading(false);
@@ -420,7 +493,12 @@ export const useAppData = () => {
         setAppData({ tasks: tasksData });
         tasksLoadedRef.current = true;
       } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке задач'));
+        setError(
+          formatErrorMessage(
+            err,
+            '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u0437\u0430\u0434\u0430\u0447',
+          ),
+        );
         throw err;
       } finally {
         setIsTasksLoading(false);
@@ -431,6 +509,41 @@ export const useAppData = () => {
 
   const dealsHasMore = Boolean(dealsNextPage);
   const policiesHasMore = Boolean(policiesListNextPage);
+  const isBackgroundRefreshingAny =
+    isBackgroundRefreshingDeals ||
+    isBackgroundRefreshingPoliciesList ||
+    isBackgroundRefreshingTasks ||
+    isBackgroundRefreshingFinance;
+
+  const runBackgroundRefresh = useCallback(
+    async (
+      resource: BackgroundRefreshResource,
+      runner: () => Promise<unknown>,
+    ): Promise<{ executed: boolean; errorMessage: string | null }> => {
+      if (backgroundRefreshInFlightRef.current[resource]) {
+        return { executed: false, errorMessage: null };
+      }
+
+      backgroundRefreshInFlightRef.current[resource] = true;
+      setBackgroundRefreshingState(resource, true);
+      setLastRefreshErrorByResource((prev) => ({ ...prev, [resource]: null }));
+
+      try {
+        await runner();
+        setLastRefreshAtByResource((prev) => ({ ...prev, [resource]: Date.now() }));
+        setLastRefreshErrorByResource((prev) => ({ ...prev, [resource]: null }));
+        return { executed: true, errorMessage: null };
+      } catch (err) {
+        const errorMessage = formatErrorMessage(err);
+        setLastRefreshErrorByResource((prev) => ({ ...prev, [resource]: errorMessage }));
+        return { executed: true, errorMessage };
+      } finally {
+        backgroundRefreshInFlightRef.current[resource] = false;
+        setBackgroundRefreshingState(resource, false);
+      }
+    },
+    [setBackgroundRefreshingState],
+  );
 
   return {
     dataState,
@@ -441,6 +554,8 @@ export const useAppData = () => {
     invalidateDealsCache,
     refreshPolicies,
     refreshPoliciesList,
+    policiesFilters,
+    runBackgroundRefresh,
     updateAppData,
     setAppData,
     resetPoliciesState,
@@ -459,6 +574,13 @@ export const useAppData = () => {
     isTasksLoading,
     isSyncing,
     setIsSyncing,
+    isBackgroundRefreshingDeals,
+    isBackgroundRefreshingPoliciesList,
+    isBackgroundRefreshingTasks,
+    isBackgroundRefreshingFinance,
+    isBackgroundRefreshingAny,
+    lastRefreshAtByResource,
+    lastRefreshErrorByResource,
     error,
     setError,
     isLoadingMoreDeals,
