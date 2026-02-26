@@ -59,3 +59,21 @@ export const matchSalesChannel = (
     return false;
   });
 };
+
+export type BackgroundRefreshResource = 'deals' | 'policies' | 'tasks' | 'finance';
+
+export const getBackgroundRefreshResources = (pathname: string): BackgroundRefreshResource[] => {
+  if (pathname.startsWith('/commissions')) {
+    return ['finance', 'policies'];
+  }
+  if (pathname.startsWith('/tasks')) {
+    return ['tasks', 'deals'];
+  }
+  if (pathname.startsWith('/policies')) {
+    return ['policies', 'deals'];
+  }
+  if (pathname.startsWith('/deals')) {
+    return ['deals'];
+  }
+  return ['deals'];
+};

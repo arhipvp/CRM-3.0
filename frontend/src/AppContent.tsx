@@ -96,7 +96,12 @@ import type { FinancialRecordModalState, PaymentModalState } from './types';
 import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
 import { markQuoteAsDeleted } from './utils/quotes';
 import { parseNumericAmount } from './utils/parseNumericAmount';
-import { formatAmountValue, matchSalesChannel, parseAmountValue } from './utils/appContent';
+import {
+  formatAmountValue,
+  getBackgroundRefreshResources,
+  matchSalesChannel,
+  parseAmountValue,
+} from './utils/appContent';
 import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
 import {
   buildCommissionIncomeNote,
@@ -436,6 +441,8 @@ const AppContent: React.FC = () => {
   const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
   const deepLinkedDealLoadingRef = useRef<string | null>(null);
+  const selectedDealIdRef = useRef<string | null>(null);
+  const previewDealIdRef = useRef<string | null>(null);
   const DEAL_DETAILS_CACHE_TTL_MS = 60_000;
   const dealTasksCacheRef = useRef(new Map<string, { loadedAt: number; data: Task[] }>());
   const dealQuotesCacheRef = useRef(new Map<string, { loadedAt: number; data: Quote[] }>());
@@ -634,6 +641,7 @@ const AppContent: React.FC = () => {
     async (dealId: string) => {
       await syncDealsByIds([dealId]);
       await refreshDealsWithSelection(dealFilters, { force: true });
+      await rehydrateDealDetailsRef.current(dealId);
     },
     [dealFilters, refreshDealsWithSelection, syncDealsByIds],
   );
@@ -657,6 +665,23 @@ const AppContent: React.FC = () => {
   const isClientsRoute = location.pathname.startsWith('/clients');
   const isPoliciesRoute = location.pathname.startsWith('/policies');
   const isTasksRoute = location.pathname.startsWith('/tasks');
+  const backgroundRefreshResources = useMemo(
+    () => getBackgroundRefreshResources(location.pathname),
+    [location.pathname],
+  );
+  const backgroundRefreshResourcesRef = useRef(backgroundRefreshResources);
+
+  useEffect(() => {
+    backgroundRefreshResourcesRef.current = backgroundRefreshResources;
+  }, [backgroundRefreshResources]);
+
+  useEffect(() => {
+    selectedDealIdRef.current = selectedDealId;
+  }, [selectedDealId]);
+
+  useEffect(() => {
+    previewDealIdRef.current = previewDealId;
+  }, [previewDealId]);
 
   useEffect(() => {
     if (!isAuthenticated || !isTasksRoute) {
@@ -672,6 +697,7 @@ const AppContent: React.FC = () => {
   const policiesFiltersRef = useRef<FilterParams>(policiesFilters);
   const backgroundRefreshCycleInFlightRef = useRef(false);
   const backgroundRefreshTimerRef = useRef<number | null>(null);
+  const rehydrateDealDetailsRef = useRef<(dealId: string) => Promise<void>>(async () => undefined);
 
   useEffect(() => {
     dealFiltersRef.current = dealFilters;
@@ -688,31 +714,59 @@ const AppContent: React.FC = () => {
 
     backgroundRefreshCycleInFlightRef.current = true;
     try {
-      const [dealsResult, policiesResult, tasksResult, financeResult] = await Promise.all([
-        runBackgroundRefresh('deals', () => refreshDeals(dealFiltersRef.current, { force: true })),
-        runBackgroundRefresh('policies', () => refreshPoliciesList(policiesFiltersRef.current)),
-        runBackgroundRefresh('tasks', () => ensureTasksLoaded({ force: true })),
-        runBackgroundRefresh('finance', async () => {
-          await Promise.all([
-            ensureFinanceDataLoaded({ force: true }),
-            refreshPolicies({ force: true }),
-          ]);
+      const results = await Promise.all(
+        backgroundRefreshResourcesRef.current.map(async (resource) => {
+          if (resource === 'deals') {
+            const result = await runBackgroundRefresh('deals', async () => {
+              await refreshDeals(dealFiltersRef.current, { force: true });
+              const selectedId = selectedDealIdRef.current;
+              const previewId = previewDealIdRef.current;
+              const dealIds = Array.from(
+                new Set([selectedId, previewId].filter((id): id is string => Boolean(id))),
+              );
+              if (dealIds.length > 0) {
+                await Promise.all(dealIds.map((dealId) => rehydrateDealDetailsRef.current(dealId)));
+              }
+            });
+            return { resource: 'deals' as const, result };
+          }
+          if (resource === 'policies') {
+            const result = await runBackgroundRefresh('policies', () =>
+              refreshPoliciesList(policiesFiltersRef.current),
+            );
+            return { resource: 'policies' as const, result };
+          }
+          if (resource === 'tasks') {
+            const result = await runBackgroundRefresh('tasks', () =>
+              ensureTasksLoaded({ force: true }),
+            );
+            return { resource: 'tasks' as const, result };
+          }
+          const result = await runBackgroundRefresh('finance', async () => {
+            await Promise.all([
+              ensureFinanceDataLoaded({ force: true }),
+              refreshPolicies({ force: true }),
+            ]);
+          });
+          return { resource: 'finance' as const, result };
         }),
-      ]);
+      );
 
       const failedResources: Array<{ name: string; message: string }> = [];
-      if (dealsResult.errorMessage) {
-        failedResources.push({ name: 'Сделки', message: dealsResult.errorMessage });
-      }
-      if (policiesResult.errorMessage) {
-        failedResources.push({ name: 'Полисы', message: policiesResult.errorMessage });
-      }
-      if (tasksResult.errorMessage) {
-        failedResources.push({ name: 'Задачи', message: tasksResult.errorMessage });
-      }
-      if (financeResult.errorMessage) {
-        failedResources.push({ name: 'Финансы', message: financeResult.errorMessage });
-      }
+      results.forEach(({ resource, result }) => {
+        if (!result.errorMessage) {
+          return;
+        }
+        const label =
+          resource === 'deals'
+            ? 'Сделки'
+            : resource === 'policies'
+              ? 'Полисы'
+              : resource === 'tasks'
+                ? 'Задачи'
+                : 'Финансы';
+        failedResources.push({ name: label, message: result.errorMessage });
+      });
 
       failedResources.forEach(({ name, message }) => {
         addNotification(`${name}: ошибка фонового обновления (${message})`, 'error', 5000);
@@ -764,11 +818,9 @@ const AppContent: React.FC = () => {
         stopTimer();
         return;
       }
-      void runBackgroundRefreshCycle();
       startTimer();
     };
 
-    void runBackgroundRefreshCycle();
     startTimer();
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -2957,6 +3009,12 @@ const AppContent: React.FC = () => {
     },
     [isCacheFresh, markDealQuotesLoading, setError, unmarkDealQuotesLoading, updateAppData],
   );
+
+  useEffect(() => {
+    rehydrateDealDetailsRef.current = async (dealId: string) => {
+      await Promise.all([loadDealTasks(dealId), loadDealQuotes(dealId)]);
+    };
+  }, [loadDealQuotes, loadDealTasks]);
 
   useEffect(() => {
     if (!selectedDealId || !isAuthenticated) {
