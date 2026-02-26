@@ -275,8 +275,8 @@ const AppContent: React.FC = () => {
     invalidateDealsCache,
     refreshPolicies,
     refreshPoliciesList,
-    policiesFilters,
-    runBackgroundRefresh,
+    policiesFilters: policiesFiltersFromHook,
+    runBackgroundRefresh: runBackgroundRefreshFromHook,
     updateAppData,
     setAppData,
     resetPoliciesState,
@@ -305,6 +305,20 @@ const AppContent: React.FC = () => {
     error,
     setError,
   } = useAppData();
+  const policiesFilters = policiesFiltersFromHook ?? { ordering: '-start_date' };
+  const runBackgroundRefresh =
+    runBackgroundRefreshFromHook ??
+    (async (
+      _resource: 'deals' | 'policies' | 'tasks' | 'finance',
+      runner: () => Promise<unknown>,
+    ) => {
+      try {
+        await runner();
+        return { executed: true, errorMessage: null };
+      } catch (err) {
+        return { executed: true, errorMessage: formatErrorMessage(err) };
+      }
+    });
   const {
     authLoading,
     currentUser,

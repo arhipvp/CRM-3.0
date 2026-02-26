@@ -16,9 +16,9 @@ type AppShellProps = {
   error: string | null;
   onClearError: () => void;
   isSyncing: boolean;
-  isBackgroundRefreshingAny: boolean;
-  lastRefreshAtByResource: LastRefreshAtByResource;
-  lastRefreshErrorByResource: LastRefreshErrorByResource;
+  isBackgroundRefreshingAny?: boolean;
+  lastRefreshAtByResource?: LastRefreshAtByResource;
+  lastRefreshErrorByResource?: LastRefreshErrorByResource;
 };
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -31,7 +31,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   error,
   onClearError,
   isSyncing,
-  isBackgroundRefreshingAny,
+  isBackgroundRefreshingAny = false,
   lastRefreshAtByResource,
   lastRefreshErrorByResource,
 }) => (

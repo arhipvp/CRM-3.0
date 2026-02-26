@@ -3,10 +3,10 @@ import React from 'react';
 import type { LastRefreshAtByResource, LastRefreshErrorByResource } from '../../hooks/useAppData';
 
 type AppDataSyncControllerProps = {
-  isMutationSyncing: boolean;
-  isBackgroundRefreshingAny: boolean;
-  lastRefreshAtByResource: LastRefreshAtByResource;
-  lastRefreshErrorByResource: LastRefreshErrorByResource;
+  isMutationSyncing?: boolean;
+  isBackgroundRefreshingAny?: boolean;
+  lastRefreshAtByResource?: LastRefreshAtByResource | null;
+  lastRefreshErrorByResource?: LastRefreshErrorByResource | null;
 };
 
 const RESOURCE_LABELS: Record<keyof LastRefreshErrorByResource, string> = {
@@ -16,8 +16,10 @@ const RESOURCE_LABELS: Record<keyof LastRefreshErrorByResource, string> = {
   finance: '\u0444\u0438\u043d\u0430\u043d\u0441\u044b',
 };
 
-const getFreshnessLabel = (lastRefreshAtByResource: LastRefreshAtByResource): string | null => {
-  const timestamps = Object.values(lastRefreshAtByResource).filter(
+const getFreshnessLabel = (
+  lastRefreshAtByResource?: LastRefreshAtByResource | null,
+): string | null => {
+  const timestamps = Object.values(lastRefreshAtByResource ?? {}).filter(
     (value): value is number => typeof value === 'number',
   );
   if (!timestamps.length) {
@@ -32,8 +34,10 @@ const getFreshnessLabel = (lastRefreshAtByResource: LastRefreshAtByResource): st
   return `\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u043e ${diffSeconds} \u0441\u0435\u043a \u043d\u0430\u0437\u0430\u0434`;
 };
 
-const getErrorLabel = (lastRefreshErrorByResource: LastRefreshErrorByResource): string | null => {
-  const failedResources = Object.entries(lastRefreshErrorByResource)
+const getErrorLabel = (
+  lastRefreshErrorByResource?: LastRefreshErrorByResource | null,
+): string | null => {
+  const failedResources = Object.entries(lastRefreshErrorByResource ?? {})
     .filter(([, error]) => Boolean(error))
     .map(([resource]) => RESOURCE_LABELS[resource as keyof LastRefreshErrorByResource]);
   if (!failedResources.length) {
@@ -43,8 +47,8 @@ const getErrorLabel = (lastRefreshErrorByResource: LastRefreshErrorByResource): 
 };
 
 export const AppDataSyncController: React.FC<AppDataSyncControllerProps> = ({
-  isMutationSyncing,
-  isBackgroundRefreshingAny,
+  isMutationSyncing = false,
+  isBackgroundRefreshingAny = false,
   lastRefreshAtByResource,
   lastRefreshErrorByResource,
 }) => {
