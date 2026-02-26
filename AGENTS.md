@@ -1,64 +1,95 @@
-﻿Внимательно следи за кодировкой при использовании русского языка!!!
+﻿# AGENTS.md — CRM-3.0
 
-Инструкция по правильной работе с консолью (чтобы не появлялись «кракозябры»):
-- Используй PowerShell/Windows Terminal в UTF-8.
-- Включай UTF-8 для Python: переменная окружения PYTHONUTF8=1 (или запуск `python -X utf8` при необходимости).
-- Всегда явно указывай encoding="utf-8" при чтении/записи файлов с русским текстом.
-- Убедись, что редактор сохраняет файлы в UTF-8 без BOM.
-- Для Git: i18n.commitEncoding=utf-8 и i18n.logOutputEncoding=utf-8.
+Ты работаешь в монорепозитории CRM 3.0: Django 5 + DRF (`backend/`) и React 19 + Vite + TypeScript (`frontend/`), плюс скрипты, docker-compose, systemd, Telegram-бот и mailcow. :contentReference[oaicite:1]{index=1}
 
-При работе с внешними библиотеками и фреймворками сначала используй Context7 для актуальной документации; если Context7 недоступен, явно сообщи об этом и опирайся на локальный код.
+## 0) Самое важное: кодировка (иначе будет “кракозябры”)
+- Всегда работай в UTF-8.
+- Для Python на Windows используй `PYTHONUTF8=1` или запуск `python -X utf8` при необходимости.
+- При чтении/записи файлов с русским текстом всегда указывай `encoding="utf-8"`.
+- Не сохраняй файлы в “UTF-8 with BOM”, если это ломает линтеры/сравнение.
+- После правок проверь, что русский текст не “побился” ДО запуска форматтеров/тестов. :contentReference[oaicite:2]{index=2}
 
-Я настроил подключение к моему серверу по ключу SSH root@173.249.7.183. Ключ C:\Users\Володенька/.ssh/id_ed25519. Ты можешь использовать это подключение для работы с сервером. Но сначала спроси у меня разрешение.
+## 1) Режим работы: “логические субагенты”
+Если задача не тривиальная, работай как supervisor и дели на роли:
 
-После написания кода проверяй через isort и black.
+### Architect
+- Быстро находит нужные файлы/модули, строит план.
+- Ничего не рефакторит “просто так”.
 
-При необходимости вности изменения в документацию (README.md)
-Переиспользуй стили и элементы во фронтенде, если видишь что есть несогласованность в стиле, то исправляй и объединяй в единые элементы. 
+### Backend Engineer
+- Меняет только `backend/` (Django/DRF), уважает миграции и существующий стиль.
 
-После любых правок обязательно проверяй изменённые файлы на отсутствие битой кодировки (кракозябр) в русском тексте. Если обнаружено — исправь кодировку перед запуском форматтеров/тестов.
+### Frontend Engineer
+- Меняет только `frontend/` (React/Vite/TS), переиспользует существующие компоненты/хуки.
 
+### Tester
+- Добавляет/чинит тесты (backend приоритет).
+- Обязательно прогоняет команды проверок для затронутой части.
 
-Проверяй код через команды python.exe" -m isort backend && python.exe" -m black backend 
-После любых правок во фронте запускать cd frontend && npm run format:check. Если падает — npm run format -- --write <файлы> и повторить проверку.
+### Reviewer/Security
+- Ищет риски: секреты, хардкод токенов, небезопасные эндпоинты, сломанные миграции/контракты API.
 
-Отвечай на русском языке.
+**Workflow (обязательный):**
+1) Architect: план + список файлов.
+2) Engineer: минимальные правки под план.
+3) Tester: тесты/проверки.
+4) Reviewer: чеклист рисков.
+5) Короткий итог: что изменено, как проверить.
 
-запускай PowerShell без -windowstyle hidden
+## 2) Структура проекта (куда смотреть)
+- `backend/` — Django 5 + DRF, доменные приложения в `backend/apps/*` (clients/deals/tasks/notes/finances/documents/chat/policies/notifications/users/common). :contentReference[oaicite:3]{index=3}
+- `frontend/` — React 19 + Vite + TS, код в `frontend/src/`, общие компоненты в `frontend/src/components/common/*`. :contentReference[oaicite:4]{index=4}
+- `scripts/` — импорт/трансформации/бэкапы, включая Google Drive backup. :contentReference[oaicite:5]{index=5}
+- `systemd/` — юниты для задач типа бэкапа. :contentReference[oaicite:6]{index=6}
+- `mailcow/` — подпапка/сабмодуль (не трогать без явной причины). :contentReference[oaicite:7]{index=7}
 
-ВАЖНО! При работе с миграциями используй средства Django.
+## 3) Правила изменений (чтобы не устроить пожар)
+- Не меняй миграции вручную. Только стандартные инструменты Django.
+- Не “косметически” рефактори: только то, что нужно для задачи.
+- Во фронте переиспользуй существующие элементы/стили; если видишь дублирование, объединяй аккуратно и локально (без переписывания всего UI). :contentReference[oaicite:8]{index=8}
+- Никогда не коммить секреты. Никаких реальных токенов, ключей, паролей в репо. :contentReference[oaicite:9]{index=9}
 
-# Repository Guidelines
+## 4) Команды разработки и проверки
 
-## Project Structure & Module Organization
-- `backend/` runs Django 5 + DRF; domain logic lives under `apps/*` (clients, deals, tasks, etc.), shared settings sit in `config/`, and generated media/static assets stay outside version control.
-- `frontend/` hosts the React 19 + Vite + TypeScript client; source files are in `src/`, static files in `public/`, and `.env.example` documents required env vars.
-- `frontend_example/` keeps throwaway UI experiments separate from the production bundle.
-- Root-level `docker-compose.yml` wires Postgres (port 5435), backend, and Vite services; `.claude/` keeps agent artifacts, so leave it untouched.
+### Backend (Windows-friendly)
+- Установка/запуск (локально):
+  - `cd backend`
+  - `python -m venv .venv`
+  - `.venv\Scripts\activate`
+  - `pip install -r requirements.txt`
+  - `cp .env.example .env`
+  - `python manage.py migrate`
+  - `python manage.py runserver`
+- Тесты: `python manage.py test`
+- Форматирование/импорты (обязательно после правок):
+  - `python -m isort backend`
+  - `python -m black backend` :contentReference[oaicite:10]{index=10}
 
-## Build, Test, and Development Commands
-- `cd backend && python -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt` installs backend dependencies.
-- `cd backend && python manage.py runserver` serves the API at `http://localhost:8000/api/v1/`.
-- `cd backend && python manage.py test` executes the Django test suite per app package.
-- `cd frontend && npm install` installs Node dependencies; `npm run dev` boots the Vite dev server proxied through `VITE_API_URL`.
-- `cd frontend && npm run build` emits the production bundle under `dist/`.
-- `docker compose up --build` orchestrates the full stack with Postgres, honoring overrides from `backend/.env` (for example `DJANGO_DB_PORT=5435`).
+### Frontend
+- `cd frontend`
+- `npm install`
+- `cp .env.example .env`
+- dev: `npm run dev`
+- build: `npm run build`
+- lint/формат:
+  - сначала `npm run format:check`
+  - если падает: `npm run format -- --write <файлы>` и снова `npm run format:check` :contentReference[oaicite:11]{index=11}
 
-## Coding Style & Naming Conventions
-- Python follows PEP 8 with 4-space indents; modules are snake_case, classes PascalCase (for example `DealViewSet`). Keep serializers, permissions, and routers scoped inside each `apps/<domain>/` package.
-- React and TypeScript code uses ESLint rules from `frontend/eslint.config.js`; components and hooks are PascalCase or `useCamelCase`, prefer function components, and keep module-relative imports tidy.
-- Maintain type-annotated Django code and prefer DRF viewsets or routers plus `apps.common` utilities for shared behavior.
+### Docker Compose
+- `docker compose up --build` (Postgres обычно на порту 5435) :contentReference[oaicite:12]{index=12}
 
-## Testing Guidelines
-- Backend tests live beside app code (`apps/<domain>/tests/`). Name files `test_<feature>.py`, rely on DRF APIClient, and gate merges on `python manage.py test` with >=80% coverage locally.
-- Frontend currently leans on linting plus manual Vite preview; when adding Vitest, colocate specs under `src/__tests__/` and snapshot complex flows. Include screenshots in PRs when UI changes.
+## 5) Интеграции и сервисы (не ломай контракт)
+- API базово `/api/v1`, есть health endpoint и OpenAPI docs. :contentReference[oaicite:13]{index=13}
+- Telegram-бот: запускается отдельным процессом/сервисом (`run_telegram_bot`), в prod выделен `telegram_bot`. :contentReference[oaicite:14]{index=14}
+- Google Drive backup: скрипты используют env-переменные Drive/DB; не хардкодить пути/токены. :contentReference[oaicite:15]{index=15}
+- Mailcow: используется через внешнюю сеть/прокси; не трогать, если задача не про почту. :contentReference[oaicite:16]{index=16}
 
-## Commit & Pull Request Guidelines
-- Follow Conventional Commits (`feat:`, `fix:`, `chore:`) as seen in `git log`; reference issues with `(#123)` when relevant.
-- PRs must describe scope, testing (`python manage.py test`, `npm run lint`), data migration steps, and any UI changes. Request reviews from both backend and frontend owners for cross-stack work.
+## 6) SSH/сервер
+В репо есть упоминание подключения к серверу по SSH. Никогда не подключайся и не выполняй команды на сервере без явного разрешения пользователя в текущем чате. :contentReference[oaicite:17]{index=17}
 
-## Security & Configuration Tips
-- Never commit secrets; copy `.env.example` for each service and set `DJANGO_SECRET_KEY`, `DATABASE_URL`, and `VITE_API_URL`. Use per-developer Postgres ports if multiple stacks run locally.
-- Run `python manage.py check --deploy` before tagging releases and keep Docker images parameterized through compose env vars rather than hardcoding credentials.
-
-
+## 7) Формат ответа
+- Пиши по-русски.
+- Для изменений всегда давай:
+  1) что и где поменял (файлы),
+  2) как проверить (команды),
+  3) риски/что могло сломаться.

@@ -356,6 +356,12 @@ const AppContent: React.FC = () => {
   const [isDealSelectionBlocked, setDealSelectionBlocked] = useState(false);
   const [previewDealId, setPreviewDealId] = useState<string | null>(null);
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
+  const [dealTasksLoadingIds, setDealTasksLoadingIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+  const [dealQuotesLoadingIds, setDealQuotesLoadingIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
   const location = useLocation();
   const isDealsRoute = location.pathname.startsWith('/deals');
@@ -459,6 +465,50 @@ const AppContent: React.FC = () => {
     }
     dealQuotesCacheRef.current.clear();
     dealQuotesInFlightRef.current.clear();
+  }, []);
+
+  const markDealTasksLoading = useCallback((dealId: string) => {
+    setDealTasksLoadingIds((prev) => {
+      if (prev.has(dealId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(dealId);
+      return next;
+    });
+  }, []);
+
+  const unmarkDealTasksLoading = useCallback((dealId: string) => {
+    setDealTasksLoadingIds((prev) => {
+      if (!prev.has(dealId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(dealId);
+      return next;
+    });
+  }, []);
+
+  const markDealQuotesLoading = useCallback((dealId: string) => {
+    setDealQuotesLoadingIds((prev) => {
+      if (prev.has(dealId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(dealId);
+      return next;
+    });
+  }, []);
+
+  const unmarkDealQuotesLoading = useCallback((dealId: string) => {
+    setDealQuotesLoadingIds((prev) => {
+      if (!prev.has(dealId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(dealId);
+      return next;
+    });
   }, []);
 
   const refreshDealsWithSelection = useCallback(
@@ -596,6 +646,14 @@ const AppContent: React.FC = () => {
   const previewExecutorUser = previewDeal ? usersById.get(previewDeal.executor ?? '') : undefined;
   const quickTaskDeal = quickTaskDealId ? (dealsById.get(quickTaskDealId) ?? null) : null;
   const selectedDeal = selectedDealId ? (dealsById.get(selectedDealId) ?? null) : null;
+  const isSelectedDealTasksLoading = selectedDeal
+    ? dealTasksLoadingIds.has(selectedDeal.id)
+    : false;
+  const isSelectedDealQuotesLoading = selectedDeal
+    ? dealQuotesLoadingIds.has(selectedDeal.id)
+    : false;
+  const isPreviewDealTasksLoading = previewDeal ? dealTasksLoadingIds.has(previewDeal.id) : false;
+  const isPreviewDealQuotesLoading = previewDeal ? dealQuotesLoadingIds.has(previewDeal.id) : false;
   const isClientsRoute = location.pathname.startsWith('/clients');
   const isPoliciesRoute = location.pathname.startsWith('/policies');
   const isTasksRoute = location.pathname.startsWith('/tasks');
@@ -2804,6 +2862,7 @@ const AppContent: React.FC = () => {
 
       const existingPromise = dealTasksInFlightRef.current.get(dealId);
       if (existingPromise) {
+        markDealTasksLoading(dealId);
         try {
           const dealTasks = await existingPromise;
           updateAppData((prev) => ({
@@ -2811,6 +2870,8 @@ const AppContent: React.FC = () => {
           }));
         } catch (err) {
           setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
+        } finally {
+          unmarkDealTasksLoading(dealId);
         }
         return;
       }
@@ -2825,6 +2886,7 @@ const AppContent: React.FC = () => {
         });
       dealTasksInFlightRef.current.set(dealId, request);
 
+      markDealTasksLoading(dealId);
       try {
         const dealTasks = await request;
         updateAppData((prev) => ({
@@ -2832,9 +2894,11 @@ const AppContent: React.FC = () => {
         }));
       } catch (err) {
         setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
+      } finally {
+        unmarkDealTasksLoading(dealId);
       }
     },
-    [isCacheFresh, setError, updateAppData],
+    [isCacheFresh, markDealTasksLoading, setError, unmarkDealTasksLoading, updateAppData],
   );
 
   const loadDealQuotes = useCallback(
@@ -2851,6 +2915,7 @@ const AppContent: React.FC = () => {
 
       const existingPromise = dealQuotesInFlightRef.current.get(dealId);
       if (existingPromise) {
+        markDealQuotesLoading(dealId);
         try {
           const dealQuotes = await existingPromise;
           updateAppData((prev) => ({
@@ -2860,6 +2925,8 @@ const AppContent: React.FC = () => {
           }));
         } catch (err) {
           setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
+        } finally {
+          unmarkDealQuotesLoading(dealId);
         }
         return;
       }
@@ -2874,6 +2941,7 @@ const AppContent: React.FC = () => {
         });
       dealQuotesInFlightRef.current.set(dealId, request);
 
+      markDealQuotesLoading(dealId);
       try {
         const dealQuotes = await request;
         updateAppData((prev) => ({
@@ -2883,9 +2951,11 @@ const AppContent: React.FC = () => {
         }));
       } catch (err) {
         setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
+      } finally {
+        unmarkDealQuotesLoading(dealId);
       }
     },
-    [isCacheFresh, setError, updateAppData],
+    [isCacheFresh, markDealQuotesLoading, setError, unmarkDealQuotesLoading, updateAppData],
   );
 
   useEffect(() => {
@@ -3837,6 +3907,8 @@ const AppContent: React.FC = () => {
         isPoliciesListLoading={isPoliciesListLoading}
         isFinanceDataLoading={isFinanceDataLoading}
         isTasksLoading={isTasksLoading}
+        isSelectedDealTasksLoading={isSelectedDealTasksLoading}
+        isSelectedDealQuotesLoading={isSelectedDealQuotesLoading}
         isBackgroundRefreshingDeals={isBackgroundRefreshingDeals}
         isBackgroundRefreshingPoliciesList={isBackgroundRefreshingPoliciesList}
         isBackgroundRefreshingTasks={isBackgroundRefreshingTasks}
@@ -3908,6 +3980,8 @@ const AppContent: React.FC = () => {
                 onDeleteDeal={handleDeleteDeal}
                 onRestoreDeal={handleRestoreDeal}
                 onDealSelectionBlockedChange={setDealSelectionBlocked}
+                isTasksLoading={isPreviewDealTasksLoading}
+                isQuotesLoading={isPreviewDealQuotesLoading}
               />
             ) : (
               <PanelMessage>Загрузка сделки...</PanelMessage>

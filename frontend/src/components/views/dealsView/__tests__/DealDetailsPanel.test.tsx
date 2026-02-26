@@ -278,13 +278,15 @@ vi.mock('../DealTabs', () => ({
     loadingByTab,
   }: {
     onChange: (tab: string) => void;
-    loadingByTab?: { files?: boolean };
+    loadingByTab?: { files?: boolean; tasks?: boolean; quotes?: boolean };
   }) => (
     <div>
       <button type="button" onClick={() => onChange('files')}>
         Open Files
       </button>
       {loadingByTab?.files && <span data-testid="files-tab-loading">Loading Files</span>}
+      {loadingByTab?.tasks && <span data-testid="tasks-tab-loading">Loading Tasks</span>}
+      {loadingByTab?.quotes && <span data-testid="quotes-tab-loading">Loading Quotes</span>}
     </div>
   ),
 }));
@@ -602,5 +604,58 @@ describe('DealDetailsPanel', () => {
       expect(reloadNotesMock).toHaveBeenCalled();
       expect(loadDriveFilesMock).toHaveBeenCalled();
     });
+  });
+
+  it('passes tasks and quotes loading flags to tab header', () => {
+    render(
+      <DealDetailsPanel
+        deals={[selectedDeal]}
+        clients={[]}
+        policies={[]}
+        payments={[]}
+        financialRecords={[]}
+        tasks={[]}
+        users={[currentUser]}
+        currentUser={currentUser}
+        sortedDeals={[selectedDeal]}
+        selectedDeal={selectedDeal}
+        selectedClient={null}
+        onSelectDeal={vi.fn()}
+        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
+        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
+        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
+        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onRequestAddPolicy={vi.fn()}
+        onRequestEditPolicy={vi.fn()}
+        onRequestAddClient={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onAddPayment={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDriveFolderCreated={vi.fn()}
+        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal })}
+        onCheckDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal, mailboxSync: {} })}
+        onFetchChatMessages={vi.fn().mockResolvedValue([])}
+        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
+        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
+        onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onCreateTask={vi.fn().mockResolvedValue(undefined)}
+        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
+        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
+        isTasksLoading
+        isQuotesLoading
+      />,
+    );
+
+    expect(screen.getByTestId('tasks-tab-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('quotes-tab-loading')).toBeInTheDocument();
   });
 });

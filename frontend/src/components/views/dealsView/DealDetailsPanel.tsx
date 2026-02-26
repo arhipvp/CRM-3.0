@@ -130,6 +130,8 @@ interface DealDetailsPanelProps {
   onDealSelectionBlockedChange?: (blocked: boolean) => void;
   onClearDealFocus?: () => void;
   onRefreshDeal?: (dealId: string) => Promise<void>;
+  isTasksLoading?: boolean;
+  isQuotesLoading?: boolean;
 }
 
 export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
@@ -183,6 +185,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onDealSelectionBlockedChange,
   onClearDealFocus,
   onRefreshDeal,
+  isTasksLoading = false,
+  isQuotesLoading = false,
 }) => {
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
@@ -1100,6 +1104,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   files: filesCount,
                 }}
                 loadingByTab={{
+                  tasks: isTasksLoading,
+                  quotes: isQuotesLoading,
                   policies: isPoliciesRefreshing,
                   chat: isChatLoading,
                   files: isDriveLoading,

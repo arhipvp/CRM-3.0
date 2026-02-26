@@ -142,6 +142,8 @@ export interface AppRoutesProps {
   isPoliciesListLoading: boolean;
   isFinanceDataLoading: boolean;
   isTasksLoading: boolean;
+  isSelectedDealTasksLoading?: boolean;
+  isSelectedDealQuotesLoading?: boolean;
   isBackgroundRefreshingDeals: boolean;
   isBackgroundRefreshingPoliciesList: boolean;
   isBackgroundRefreshingTasks: boolean;
@@ -230,6 +232,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   isPoliciesListLoading,
   isFinanceDataLoading,
   isTasksLoading,
+  isSelectedDealTasksLoading = false,
+  isSelectedDealQuotesLoading = false,
   isBackgroundRefreshingDeals,
   isBackgroundRefreshingPoliciesList,
   isBackgroundRefreshingTasks,
@@ -306,6 +310,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           dealsTotalCount={dealsTotalCount}
           isLoadingMoreDeals={isLoadingMoreDeals}
           isBackgroundRefreshingDeals={isBackgroundRefreshingDeals}
+          isSelectedDealTasksLoading={isSelectedDealTasksLoading}
+          isSelectedDealQuotesLoading={isSelectedDealQuotesLoading}
         />
       }
     />

@@ -20,4 +20,20 @@ describe('DealTabs', () => {
     fireEvent.click(tasksTab);
     expect(onChange).toHaveBeenCalledWith('tasks');
   });
+
+  it('shows spinner for tasks tab and hides its counter while loading', () => {
+    const { container } = render(
+      <DealTabs
+        activeTab="overview"
+        onChange={vi.fn()}
+        tabCounts={{ tasks: 6 }}
+        loadingByTab={{ tasks: true }}
+      />,
+    );
+
+    const tasksTab = container.querySelector('#deal-tab-tasks');
+    expect(tasksTab).toBeInTheDocument();
+    expect(tasksTab?.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(tasksTab?.querySelector('.app-counter')).not.toBeInTheDocument();
+  });
 });

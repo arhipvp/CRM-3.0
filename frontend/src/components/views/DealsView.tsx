@@ -92,6 +92,8 @@ interface DealsViewProps {
   dealsTotalCount: number;
   isLoadingMoreDeals: boolean;
   isBackgroundRefreshingDeals?: boolean;
+  isSelectedDealTasksLoading?: boolean;
+  isSelectedDealQuotesLoading?: boolean;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   dealExecutorFilter: string;
@@ -160,6 +162,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   dealsTotalCount,
   isLoadingMoreDeals,
   isBackgroundRefreshingDeals = false,
+  isSelectedDealTasksLoading = false,
+  isSelectedDealQuotesLoading = false,
   dealSearch,
   onDealSearchChange,
   dealExecutorFilter,
@@ -282,6 +286,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onRestoreDeal={onRestoreDeal}
             onDealSelectionBlockedChange={handleDealSelectionBlockedChange}
             onClearDealFocus={onClearDealFocus}
+            isTasksLoading={isSelectedDealTasksLoading}
+            isQuotesLoading={isSelectedDealQuotesLoading}
           />
         </div>
       </section>
