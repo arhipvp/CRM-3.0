@@ -4,7 +4,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppContent from '../AppContent';
-import { APIError, fetchQuotesByDeal, fetchTasksByDeal, updateDeal, updateTask } from '../api';
+import {
+  APIError,
+  createDeal,
+  fetchQuotesByDeal,
+  fetchTasksByDeal,
+  updateDeal,
+  updateTask,
+} from '../api';
 
 vi.mock('../contexts/NotificationContext', () => ({
   useNotification: () => ({
@@ -86,6 +93,7 @@ const setErrorMock = vi.hoisted(() => vi.fn());
 const fetchDealMock = vi.hoisted(() => vi.fn());
 const fetchTasksByDealMock = vi.hoisted(() => vi.fn());
 const fetchQuotesByDealMock = vi.hoisted(() => vi.fn());
+const createDealMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../hooks/useAppData', () => ({
   useAppData: () => ({
@@ -147,12 +155,14 @@ vi.mock('../components/app/AppRoutes', () => ({
     onPostponeDeal,
     onUpdateTask,
     onSelectDeal,
+    onDealSearchChange,
     selectedDealId,
     isDealFocusCleared,
   }: {
     onPostponeDeal?: (dealId: string, data: Record<string, unknown>) => Promise<void>;
     onUpdateTask?: (taskId: string, data: { status?: string }) => Promise<void>;
     onSelectDeal?: (dealId: string) => void;
+    onDealSearchChange?: (value: string) => void;
     selectedDealId?: string | null;
     isDealFocusCleared?: boolean;
   }) => (
@@ -183,6 +193,9 @@ vi.mock('../components/app/AppRoutes', () => ({
       <button type="button" onClick={() => onSelectDeal?.('deal-1')}>
         Select deal-1
       </button>
+      <button type="button" onClick={() => onDealSearchChange?.('refresh')}>
+        Trigger search refresh
+      </button>
     </div>
   ),
 }));
@@ -191,15 +204,41 @@ vi.mock('../components/app/AppModals', () => ({
   AppModals: ({
     modal,
     editingPolicy,
+    handleAddDeal,
   }: {
     modal: string | null;
     editingPolicy?: { number: string } | null;
+    handleAddDeal?: (data: {
+      title: string;
+      clientId: string;
+      description?: string;
+      expectedClose?: string | null;
+      executorId?: string | null;
+      source?: string | null;
+      visibleUserIds?: string[];
+    }) => Promise<void>;
   }) => (
     <div data-testid="app-modals">
       <span>{modal}</span>
       {editingPolicy && (
         <span data-testid="app-modals-editing-policy">editing-policy:{editingPolicy.number}</span>
       )}
+      <button
+        type="button"
+        onClick={() =>
+          void handleAddDeal?.({
+            title: 'Новая сделка',
+            clientId: 'client-1',
+            description: '',
+            expectedClose: null,
+            executorId: null,
+            source: null,
+            visibleUserIds: [],
+          })
+        }
+      >
+        Trigger create deal
+      </button>
     </div>
   ),
 }));
@@ -251,6 +290,7 @@ vi.mock('../api', async (importOriginal) => {
         createdAt: '2026-01-01T00:00:00Z',
       })),
     updateDeal: updateDealMock,
+    createDeal: createDealMock,
     fetchDeal: fetchDealMock,
     fetchTasksByDeal: fetchTasksByDealMock,
     fetchQuotesByDeal: fetchQuotesByDealMock,
@@ -290,6 +330,7 @@ describe('AppContent hotkeys integration', () => {
     fetchDealMock.mockReset();
     fetchTasksByDealMock.mockReset();
     fetchQuotesByDealMock.mockReset();
+    createDealMock.mockReset();
     fetchDealMock.mockImplementation(async (dealId: string) => ({
       id: dealId,
       title: `Сделка ${dealId}`,
@@ -302,6 +343,16 @@ describe('AppContent hotkeys integration', () => {
     }));
     fetchTasksByDealMock.mockResolvedValue([]);
     fetchQuotesByDealMock.mockResolvedValue([]);
+    createDealMock.mockImplementation(async () => ({
+      id: 'deal-created',
+      title: 'Новая сделка',
+      clientId: 'client-1',
+      status: 'open' as const,
+      createdAt: '2026-01-01T00:00:00Z',
+      quotes: [],
+      documents: [],
+      clientName: 'Клиент 1',
+    }));
     updateDealMock.mockReset();
     updateDealMock.mockResolvedValue({
       id: 'deal-1',
@@ -501,6 +552,44 @@ describe('AppContent hotkeys integration', () => {
       expect(fetchDealMock).toHaveBeenCalledWith('deal-auth');
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-auth');
     });
+  });
+
+  it('keeps selected created deal when refresh payload does not contain it', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+    refreshDealsMock.mockResolvedValue(appDataMock.deals);
+
+    renderAppContent('/deals?dealId=deal-1');
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger create deal' }));
+
+    await waitFor(() => {
+      expect(createDeal).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search refresh' }));
+
+    await waitFor(
+      () => {
+        expect(refreshDealsMock).toHaveBeenCalled();
+        expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('shows dedicated 403 deep-link error and keeps selected deal id', async () => {

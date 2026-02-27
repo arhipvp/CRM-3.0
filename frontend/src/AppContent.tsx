@@ -443,9 +443,11 @@ const AppContent: React.FC = () => {
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const searchInitialized = useRef(false);
   const dealRowFocusNonceRef = useRef(0);
+  const protectedCreatedDealRef = useRef<Deal | null>(null);
   const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
   const deepLinkedDealLoadingRef = useRef<string | null>(null);
+  const deepLinkedDealIdRef = useRef<string | null>(deepLinkedDealId);
   const selectedDealIdRef = useRef<string | null>(null);
   const previewDealIdRef = useRef<string | null>(null);
   const DEAL_DETAILS_CACHE_TTL_MS = 60_000;
@@ -526,25 +528,40 @@ const AppContent: React.FC = () => {
   const refreshDealsWithSelection = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
       const dealsData = await refreshDeals(filters, options);
-      if (selectedDealId && dealsData.some((deal) => deal.id === selectedDealId)) {
-        if (skipNextMissingSelectedDealClearRef.current === selectedDealId) {
+      const currentSelectedDealId = selectedDealIdRef.current;
+      if (!currentSelectedDealId) {
+        return dealsData;
+      }
+      if (dealsData.some((deal) => deal.id === currentSelectedDealId)) {
+        if (skipNextMissingSelectedDealClearRef.current === currentSelectedDealId) {
           skipNextMissingSelectedDealClearRef.current = null;
+        }
+        if (protectedCreatedDealRef.current?.id === currentSelectedDealId) {
+          protectedCreatedDealRef.current = null;
         }
         return dealsData;
       }
-      if (selectedDealId && !dealsData.some((deal) => deal.id === selectedDealId)) {
-        if (deepLinkedDealId === selectedDealId) {
-          return dealsData;
-        }
-        if (skipNextMissingSelectedDealClearRef.current === selectedDealId) {
-          skipNextMissingSelectedDealClearRef.current = null;
-          return dealsData;
-        }
-        clearSelectedDealFocus();
+      if (deepLinkedDealIdRef.current === currentSelectedDealId) {
+        return dealsData;
       }
+      if (skipNextMissingSelectedDealClearRef.current === currentSelectedDealId) {
+        skipNextMissingSelectedDealClearRef.current = null;
+        return dealsData;
+      }
+      const protectedCreatedDeal = protectedCreatedDealRef.current;
+      if (protectedCreatedDeal?.id === currentSelectedDealId) {
+        updateAppData((prev) => {
+          if (prev.deals.some((deal) => deal.id === protectedCreatedDeal.id)) {
+            return {};
+          }
+          return { deals: [protectedCreatedDeal, ...prev.deals] };
+        });
+        return dealsData;
+      }
+      clearSelectedDealFocus();
       return dealsData;
     },
-    [clearSelectedDealFocus, deepLinkedDealId, refreshDeals, selectedDealId],
+    [clearSelectedDealFocus, refreshDeals, updateAppData],
   );
 
   const syncDealsByIds = useCallback(
@@ -681,7 +698,15 @@ const AppContent: React.FC = () => {
   }, [backgroundRefreshResources]);
 
   useEffect(() => {
+    deepLinkedDealIdRef.current = deepLinkedDealId;
+  }, [deepLinkedDealId]);
+
+  useEffect(() => {
     selectedDealIdRef.current = selectedDealId;
+    const protectedCreatedDeal = protectedCreatedDealRef.current;
+    if (protectedCreatedDeal && selectedDealId && selectedDealId !== protectedCreatedDeal.id) {
+      protectedCreatedDealRef.current = null;
+    }
   }, [selectedDealId]);
 
   useEffect(() => {
@@ -1116,7 +1141,7 @@ const AppContent: React.FC = () => {
       console.error('Search deals error:', err);
       setError(formatErrorMessage(err, 'Ошибка при поиске сделок'));
     });
-  }, [debouncedDealFilters, refreshDealsWithSelection, isAuthenticated, setError]);
+  }, [debouncedDealFilters, isAuthenticated, refreshDealsWithSelection, setError]);
 
   const handleAddClient = useCallback(
     async (data: {
@@ -1457,6 +1482,7 @@ const AppContent: React.FC = () => {
         visibleUserIds: data.visibleUserIds,
       });
       updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
+      protectedCreatedDealRef.current = created;
       skipNextMissingSelectedDealClearRef.current = created.id;
       selectDealById(created.id);
       setDealRowFocusRequest({
