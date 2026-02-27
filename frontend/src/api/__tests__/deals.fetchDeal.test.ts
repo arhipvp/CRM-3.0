@@ -21,6 +21,6 @@ describe('fetchDeal', () => {
 
     await fetchDeal('deal-1');
 
-    expect(request).toHaveBeenCalledWith('/deals/deal-1/?show_closed=1&show_deleted=1');
+    expect(request).toHaveBeenCalledWith('/deals/deal-1/?show_closed=1&show_deleted=1&embed=none');
   });
 });

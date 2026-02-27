@@ -40,7 +40,7 @@ class PolicyFilterSet(django_filters.FilterSet):
         field_name="status", lookup_expr="icontains", label="Policy Status (contains)"
     )
 
-    deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
+    deal = django_filters.UUIDFilter(field_name="deal__id", label="Deal ID")
 
     unpaid = django_filters.BooleanFilter(
         method="filter_unpaid", label="Unpaid policies"

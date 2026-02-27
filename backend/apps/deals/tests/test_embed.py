@@ -79,4 +79,23 @@ class DealEmbedTests(AuthenticatedAPITestCase):
         row = self._first_result(response)
         self.assertIn("quotes", row)
         self.assertIn("documents", row)
-        self.assertIn("policies", row)
+        self.assertNotIn("policies", row)
+
+    def test_retrieve_excludes_policies_by_default(self):
+        response = self.api_client.get(
+            f"/api/v1/deals/{self.deal.id}/",
+            {"show_closed": "1"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("policies", response.data)
+
+    def test_retrieve_includes_policies_when_embed_requested(self):
+        response = self.api_client.get(
+            f"/api/v1/deals/{self.deal.id}/",
+            {"show_closed": "1", "embed": "policies"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("policies", response.data)
+        self.assertEqual(len(response.data["policies"]), 1)

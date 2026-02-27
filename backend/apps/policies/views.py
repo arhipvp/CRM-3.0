@@ -78,7 +78,14 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Policy.objects.alive()
+        queryset = Policy.objects.alive().select_related(
+            "deal",
+            "client",
+            "insured_client",
+            "insurance_company",
+            "insurance_type",
+            "sales_channel",
+        )
         decimal_field = DecimalField(max_digits=12, decimal_places=2)
         queryset = queryset.annotate(
             payments_total=Coalesce(

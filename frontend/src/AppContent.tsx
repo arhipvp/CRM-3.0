@@ -44,9 +44,10 @@ import {
   unpinDeal,
   mergeDeals,
   fetchDealHistory,
-  fetchTasksByDeal,
-  fetchQuotesByDeal,
-  createTask,
+   fetchTasksByDeal,
+   fetchQuotesByDeal,
+   fetchPoliciesWithPagination,
+   createTask,
   updateTask,
   deleteTask,
   clearTokens,
@@ -453,8 +454,10 @@ const AppContent: React.FC = () => {
   const DEAL_DETAILS_CACHE_TTL_MS = 60_000;
   const dealTasksCacheRef = useRef(new Map<string, { loadedAt: number; data: Task[] }>());
   const dealQuotesCacheRef = useRef(new Map<string, { loadedAt: number; data: Quote[] }>());
+  const dealPoliciesCacheRef = useRef(new Map<string, { loadedAt: number; data: Policy[] }>());
   const dealTasksInFlightRef = useRef(new Map<string, Promise<Task[]>>());
   const dealQuotesInFlightRef = useRef(new Map<string, Promise<Quote[]>>());
+  const dealPoliciesInFlightRef = useRef(new Map<string, Promise<Policy[]>>());
 
   const isCacheFresh = useCallback(
     (loadedAt: number) => Date.now() - loadedAt < DEAL_DETAILS_CACHE_TTL_MS,
@@ -480,6 +483,82 @@ const AppContent: React.FC = () => {
     dealQuotesCacheRef.current.clear();
     dealQuotesInFlightRef.current.clear();
   }, []);
+
+  const invalidateDealPoliciesCache = useCallback((dealId?: string | null) => {
+    if (dealId) {
+      dealPoliciesCacheRef.current.delete(dealId);
+      dealPoliciesInFlightRef.current.delete(dealId);
+      return;
+    }
+    dealPoliciesCacheRef.current.clear();
+    dealPoliciesInFlightRef.current.clear();
+  }, []);
+
+  const loadDealPolicies = useCallback(
+    async (dealId: string, options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+      const applyDealPolicies = (dealPolicies: Policy[]) => {
+        updateAppData((prev) => ({
+          policies: [
+            ...prev.policies.filter((policy) => policy.dealId !== dealId),
+            ...dealPolicies,
+          ],
+        }));
+      };
+
+      const cached = dealPoliciesCacheRef.current.get(dealId);
+      if (!force && cached && isCacheFresh(cached.loadedAt)) {
+        applyDealPolicies(cached.data);
+        return;
+      }
+
+      const existingPromise = dealPoliciesInFlightRef.current.get(dealId);
+      if (existingPromise) {
+        try {
+          const dealPolicies = await existingPromise;
+          applyDealPolicies(dealPolicies);
+        } catch (err) {
+          setError(formatErrorMessage(err, 'Error loading policies for the deal'));
+        }
+        return;
+      }
+
+      const request = (async () => {
+        const pageSize = 100;
+        const retrieved: Policy[] = [];
+        let page = 1;
+        while (true) {
+          const payload = await fetchPoliciesWithPagination({
+            deal: dealId,
+            page,
+            page_size: pageSize,
+          });
+          retrieved.push(...payload.results);
+          if (!payload.next) {
+            break;
+          }
+          page += 1;
+        }
+        dealPoliciesCacheRef.current.set(dealId, {
+          loadedAt: Date.now(),
+          data: retrieved,
+        });
+        return retrieved;
+      })().finally(() => {
+        dealPoliciesInFlightRef.current.delete(dealId);
+      });
+
+      dealPoliciesInFlightRef.current.set(dealId, request);
+
+      try {
+        const dealPolicies = await request;
+        applyDealPolicies(dealPolicies);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Error loading policies for the deal'));
+      }
+    },
+    [isCacheFresh, setError, updateAppData],
+  );
 
   const markDealTasksLoading = useCallback((dealId: string) => {
     setDealTasksLoadingIds((prev) => {
@@ -1916,6 +1995,7 @@ const AppContent: React.FC = () => {
   const handleAddPolicy = useCallback(
     async (dealId: string, values: PolicyFormValues) => {
       invalidateDealsCache();
+      invalidateDealPoliciesCache(dealId);
       setIsSyncing(true);
       const {
         number,
@@ -2147,7 +2227,7 @@ const AppContent: React.FC = () => {
         }
 
         try {
-          await refreshPolicies();
+          await loadDealPolicies(dealId, { force: true });
         } catch (refreshErr) {
           setError(
             refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить список полисов',
@@ -2180,9 +2260,10 @@ const AppContent: React.FC = () => {
       dealFilters,
       dealsById,
       invalidateDealsCache,
+      invalidateDealPoliciesCache,
+      loadDealPolicies,
       policySourceFileIds,
       refreshDealsWithSelection,
-      refreshPolicies,
       salesChannels,
       setError,
       setIsSyncing,
@@ -2224,6 +2305,7 @@ const AppContent: React.FC = () => {
         if (!currentPolicy) {
           throw new Error('Не удалось найти полис для обновления.');
         }
+        invalidateDealPoliciesCache(currentPolicy.dealId);
 
         const statementById = new Map(
           (statements ?? []).map((statement) => [statement.id, statement]),
@@ -2574,8 +2656,10 @@ const AppContent: React.FC = () => {
 
         if (affectedDealIds.size) {
           await syncDealsByIds(Array.from(affectedDealIds));
+          await Promise.all(
+            Array.from(affectedDealIds).map((dealId) => loadDealPolicies(dealId, { force: true })),
+          );
         }
-        await refreshPolicies();
         setEditingPolicy(null);
       } catch (err) {
         const message =
@@ -2594,9 +2678,10 @@ const AppContent: React.FC = () => {
       adjustPaymentsTotals,
       clients,
       invalidateDealsCache,
+      invalidateDealPoliciesCache,
+      loadDealPolicies,
       payments,
       policies,
-      refreshPolicies,
       setEditingPolicy,
       setError,
       setIsSyncing,
@@ -2607,6 +2692,10 @@ const AppContent: React.FC = () => {
   );
   const handleDeletePolicy = useCallback(
     async (policyId: string) => {
+      const targetPolicy = policies.find((policy) => policy.id === policyId);
+      const targetDealId = targetPolicy?.dealId ?? null;
+      invalidateDealsCache();
+      invalidateDealPoliciesCache(targetDealId);
       try {
         await deletePolicy(policyId);
         updateAppData((prev) => {
@@ -2626,12 +2715,24 @@ const AppContent: React.FC = () => {
             ),
           };
         });
+        if (targetDealId) {
+          await syncDealsByIds([targetDealId]);
+          await loadDealPolicies(targetDealId, { force: true });
+        }
       } catch (err) {
         setError(formatErrorMessage(err, 'Не удалось удалить полис'));
         throw err;
       }
     },
-    [setError, updateAppData],
+    [
+      invalidateDealPoliciesCache,
+      invalidateDealsCache,
+      loadDealPolicies,
+      policies,
+      setError,
+      syncDealsByIds,
+      updateAppData,
+    ],
   );
 
   const handleDriveFolderCreated = useCallback(
@@ -3054,6 +3155,28 @@ const AppContent: React.FC = () => {
     void loadDealTasks(selectedDealId);
     void loadDealQuotes(selectedDealId);
   }, [isAuthenticated, loadDealQuotes, loadDealTasks, selectedDealId]);
+
+  const handleRefreshSelectedDealPolicies = useCallback(
+    async (options?: { force?: boolean }) => {
+      const dealId = selectedDealIdRef.current;
+      if (!dealId) {
+        return;
+      }
+      await loadDealPolicies(dealId, options);
+    },
+    [loadDealPolicies],
+  );
+
+  const handleRefreshPreviewDealPolicies = useCallback(
+    async (options?: { force?: boolean }) => {
+      const dealId = previewDealIdRef.current;
+      if (!dealId) {
+        return;
+      }
+      await loadDealPolicies(dealId, options);
+    },
+    [loadDealPolicies],
+  );
 
   const handleAddPayment = useCallback(
     async (values: AddPaymentFormValues) => {
@@ -3968,7 +4091,7 @@ const AppContent: React.FC = () => {
         onFetchDealHistory={fetchDealHistory}
         onCreateTask={handleCreateTask}
         onUpdateTask={handleUpdateTask}
-        onRefreshPolicies={refreshPolicies}
+        onRefreshPolicies={handleRefreshSelectedDealPolicies}
         onDeleteTask={handleDeleteTask}
         onDeleteDeal={handleDeleteDeal}
         onRestoreDeal={handleRestoreDeal}
@@ -4048,7 +4171,7 @@ const AppContent: React.FC = () => {
                 onRequestAddClient={() => openClientModal('deal')}
                 onDeleteQuote={handleDeleteQuote}
                 onDeletePolicy={handleDeletePolicy}
-                onRefreshPolicies={refreshPolicies}
+                onRefreshPolicies={handleRefreshPreviewDealPolicies}
                 onPolicyDraftReady={handlePolicyDraftReady}
                 onAddPayment={handleAddPayment}
                 onUpdatePayment={handleUpdatePayment}

@@ -525,9 +525,9 @@ class DealViewSet(
     def get_serializer_context(self):
         context = super().get_serializer_context()
         embeds = self._requested_deal_embeds()
-        context["deal_embed"] = embeds
+        context["deal_embed"] = {"quotes", "documents"} if embeds is None else embeds
         if embeds is None:
-            context["include_policies"] = self.action == "retrieve"
+            context["include_policies"] = False
         else:
             context["include_policies"] = "policies" in embeds
         return context

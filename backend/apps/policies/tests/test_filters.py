@@ -75,3 +75,26 @@ class PolicyFilterTests(AuthenticatedAPITestCase):
         self.assertIn("POLICY-UNPAID", numbers)
         self.assertIn("POLICY-RECORD-UNPAID", numbers)
         self.assertNotIn("POLICY-PAID", numbers)
+
+    def test_deal_filter_works_with_uuid(self):
+        own_policy = self._create_policy("POLICY-OWN-DEAL")
+        other_client = Client.objects.create(name="Other Client")
+        other_deal = Deal.objects.create(
+            title="Other Deal",
+            client=other_client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        Policy.objects.create(
+            number="POLICY-OTHER-DEAL",
+            deal=other_deal,
+            insurance_company=self.company,
+            insurance_type=self.insurance_type,
+        )
+
+        response = self.api_client.get(f"/api/v1/policies/?deal={self.deal.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json().get("results", [])
+        policy_ids = {item["id"] for item in results}
+        self.assertEqual(policy_ids, {str(own_policy.id)})
