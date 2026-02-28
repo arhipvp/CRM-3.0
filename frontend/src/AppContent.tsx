@@ -4070,6 +4070,8 @@ const AppContent: React.FC = () => {
         onRequestAddPolicy={handleRequestAddPolicy}
         onRequestEditPolicy={handleRequestEditPolicy}
         onRequestAddClient={() => openClientModal('deal')}
+        pendingDealClientId={pendingDealClientId}
+        onPendingDealClientConsumed={handlePendingDealClientConsumed}
         onDeleteQuote={handleDeleteQuote}
         onDeletePolicy={handleDeletePolicy}
         onAddPayment={handleAddPayment}
@@ -4169,6 +4171,8 @@ const AppContent: React.FC = () => {
                 onRequestAddPolicy={handleRequestAddPolicy}
                 onRequestEditPolicy={handleRequestEditPolicy}
                 onRequestAddClient={() => openClientModal('deal')}
+                pendingDealClientId={pendingDealClientId}
+                onPendingDealClientConsumed={handlePendingDealClientConsumed}
                 onDeleteQuote={handleDeleteQuote}
                 onDeletePolicy={handleDeletePolicy}
                 onRefreshPolicies={handleRefreshPreviewDealPolicies}

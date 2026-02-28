@@ -51,6 +51,8 @@ interface DealsViewProps {
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
   onRequestAddClient: () => void;
+  pendingDealClientId: string | null;
+  onPendingDealClientConsumed: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
@@ -134,6 +136,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onRequestAddPolicy,
   onRequestEditPolicy,
   onRequestAddClient,
+  pendingDealClientId,
+  onPendingDealClientConsumed,
   onDeleteQuote,
   onDeletePolicy,
   onRefreshPolicies,
@@ -262,6 +266,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onRequestAddPolicy={onRequestAddPolicy}
             onRequestEditPolicy={onRequestEditPolicy}
             onRequestAddClient={onRequestAddClient}
+            pendingDealClientId={pendingDealClientId}
+            onPendingDealClientConsumed={onPendingDealClientConsumed}
             onDeleteQuote={onDeleteQuote}
             onDeletePolicy={onDeletePolicy}
             onRefreshPolicies={onRefreshPolicies}

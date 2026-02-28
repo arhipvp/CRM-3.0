@@ -63,6 +63,8 @@ export interface AppRoutesProps {
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
   onRequestAddClient: () => void;
+  pendingDealClientId: string | null;
+  onPendingDealClientConsumed: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onAddPayment: (values: AddPaymentFormValues) => Promise<void>;
@@ -183,6 +185,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   onRequestAddPolicy,
   onRequestEditPolicy,
   onRequestAddClient,
+  pendingDealClientId,
+  onPendingDealClientConsumed,
   onDeleteQuote,
   onDeletePolicy,
   onAddPayment,
@@ -270,6 +274,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           onRequestEditQuote={onRequestEditQuote}
           onRequestAddPolicy={onRequestAddPolicy}
           onRequestEditPolicy={onRequestEditPolicy}
+          pendingDealClientId={pendingDealClientId}
+          onPendingDealClientConsumed={onPendingDealClientConsumed}
           onDeleteQuote={onDeleteQuote}
           onDeletePolicy={onDeletePolicy}
           onAddPayment={onAddPayment}

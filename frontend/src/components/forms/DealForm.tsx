@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Client, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { getUserColor } from '../../utils/userColor';
@@ -139,6 +139,8 @@ export const DealForm: React.FC<DealFormProps> = ({
   const [isSubmitting, setSubmitting] = useState(false);
   const [isQuickSaving, setIsQuickSaving] = useState(false);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const lastInitialClientIdRef = useRef<string | undefined>(initialValues?.clientId);
+  const appliedPreselectedClientIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setTitle(initialTitle);
@@ -177,15 +179,38 @@ export const DealForm: React.FC<DealFormProps> = ({
   }, [initialVisibleUsers]);
 
   useEffect(() => {
-    if (!initialValues?.clientId) {
+    const nextInitialClientId = initialValues?.clientId;
+    const hasInitialClientChanged = lastInitialClientIdRef.current !== nextInitialClientId;
+
+    if (hasInitialClientChanged) {
+      lastInitialClientIdRef.current = nextInitialClientId;
+      if (!nextInitialClientId) {
+        return;
+      }
+      setClientId(nextInitialClientId);
+      setClientQuery(clientsById.get(nextInitialClientId)?.name ?? '');
       return;
     }
-    setClientId(initialValues.clientId);
-    setClientQuery(clientsById.get(initialValues.clientId)?.name ?? '');
-  }, [clientsById, initialValues?.clientId]);
+
+    if (!nextInitialClientId) {
+      return;
+    }
+    if (clientId !== nextInitialClientId || clientQuery) {
+      return;
+    }
+    const initialClient = clientsById.get(nextInitialClientId);
+    if (!initialClient) {
+      return;
+    }
+    setClientQuery(initialClient.name);
+  }, [clientId, clientQuery, clientsById, initialValues?.clientId]);
 
   useEffect(() => {
-    if (!preselectedClientId || initialValues?.clientId) {
+    if (!preselectedClientId) {
+      appliedPreselectedClientIdRef.current = null;
+      return;
+    }
+    if (appliedPreselectedClientIdRef.current === preselectedClientId) {
       return;
     }
     const preselected = clientsById.get(preselectedClientId);
@@ -194,8 +219,9 @@ export const DealForm: React.FC<DealFormProps> = ({
     }
     setClientId(preselected.id);
     setClientQuery(preselected.name);
+    appliedPreselectedClientIdRef.current = preselectedClientId;
     onPreselectedClientConsumed?.();
-  }, [clientsById, initialValues?.clientId, onPreselectedClientConsumed, preselectedClientId]);
+  }, [clientsById, onPreselectedClientConsumed, preselectedClientId]);
 
   useEffect(() => {
     if (!clients.length) {

@@ -96,6 +96,8 @@ interface DealDetailsPanelProps {
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
   onRequestAddClient: () => void;
+  pendingDealClientId?: string | null;
+  onPendingDealClientConsumed?: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
@@ -160,6 +162,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onRequestAddPolicy,
   onRequestEditPolicy,
   onRequestAddClient,
+  pendingDealClientId,
+  onPendingDealClientConsumed,
   onDeleteQuote,
   onDeletePolicy,
   onRefreshPolicies,
@@ -1159,6 +1163,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               quickNextContactOptions={quickInlineDateOptions}
               onQuickNextContactShift={handleQuickNextContactShift}
               onRequestAddClient={onRequestAddClient}
+              preselectedClientId={pendingDealClientId}
+              onPreselectedClientConsumed={onPendingDealClientConsumed}
               onSubmit={async (data) => {
                 await onUpdateDeal(selectedDeal.id, data);
                 setIsEditingDeal(false);
