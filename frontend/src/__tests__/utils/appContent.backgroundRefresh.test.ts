@@ -12,7 +12,7 @@ describe('getBackgroundRefreshResources', () => {
     expect(getBackgroundRefreshResources('/commissions')).toEqual(['finance', 'policies']);
   });
 
-  it('returns tasks + deals for tasks route', () => {
-    expect(getBackgroundRefreshResources('/tasks')).toEqual(['tasks', 'deals']);
+  it('returns deals-only refresh for tasks route', () => {
+    expect(getBackgroundRefreshResources('/tasks')).toEqual(['deals']);
   });
 });

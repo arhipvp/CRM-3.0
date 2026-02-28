@@ -67,7 +67,7 @@ export const getBackgroundRefreshResources = (pathname: string): BackgroundRefre
     return ['finance', 'policies'];
   }
   if (pathname.startsWith('/tasks')) {
-    return ['tasks', 'deals'];
+    return ['deals'];
   }
   if (pathname.startsWith('/policies')) {
     return ['policies', 'deals'];
