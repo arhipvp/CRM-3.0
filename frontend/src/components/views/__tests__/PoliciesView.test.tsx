@@ -70,12 +70,48 @@ describe('PoliciesView', () => {
     const longNote =
       'Длинное примечание к полису с уточнением по клиенту и деталями по продлению на следующий период.';
 
+    const financialRecords = [
+      {
+        id: 'record-paid',
+        paymentId: 'payment-1',
+        amount: '200',
+        recordType: 'Доход' as const,
+        note: 'Чаевые',
+        date: '2025-01-03',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'record-unpaid',
+        paymentId: 'payment-1',
+        amount: '-50',
+        recordType: 'Расход' as const,
+        note: '',
+        date: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
     render(
       <MemoryRouter>
         <NotificationProvider>
           <PoliciesView
             policies={[buildPolicy({ note: longNote, computedStatus: 'problem' })]}
-            payments={[buildPayment()]}
+            payments={[
+              buildPayment({
+                id: 'payment-1',
+                amount: '3000',
+                actualDate: '2025-01-02',
+                note: 'Оплата наличными',
+                financialRecords,
+              }),
+              buildPayment({
+                id: 'payment-2',
+                amount: '5000',
+                actualDate: null,
+              }),
+            ]}
             onRequestEditPolicy={vi.fn()}
           />
         </NotificationProvider>
@@ -84,6 +120,8 @@ describe('PoliciesView', () => {
 
     expect(screen.getByText('Статус')).toBeInTheDocument();
     expect(screen.getByText('Примечание')).toBeInTheDocument();
+    expect(screen.getByText('Платежи')).toBeInTheDocument();
+    expect(screen.getByText('Финзаписи')).toBeInTheDocument();
 
     const statusBadge = screen.getByTitle(
       'Есть финансовые записи без даты оплаты по платежам полиса',
@@ -93,6 +131,26 @@ describe('PoliciesView', () => {
     const notePreview = screen.getByText(longNote);
     expect(notePreview).toHaveAttribute('title', longNote);
     expect(notePreview.className).toContain('-webkit-line-clamp:2');
+
+    const paidPaymentRow = screen.getByTitle(
+      (title) => title.includes('02.01.2025') && title.includes('3'),
+    );
+    const unpaidPaymentRow = screen.getByTitle(
+      (title) => title.includes('без даты оплаты') && title.includes('₽'),
+    );
+    expect(paidPaymentRow.className).toContain('bg-emerald-50');
+    expect(unpaidPaymentRow.className).toContain('bg-rose-50');
+
+    const paidRecordRow = screen.getByTitle(
+      (title) => title.includes('03.01.2025') && title.includes('Чаевые'),
+    );
+    const unpaidRecordRow = screen.getByTitle(
+      (title) => title.includes('без даты выплаты') && title.includes('Оплата наличными'),
+    );
+    expect(paidRecordRow.className).toContain('bg-emerald-50');
+    expect(unpaidRecordRow.className).toContain('bg-rose-50');
+    expect(screen.getByText('Чаевые')).toBeInTheDocument();
+    expect(screen.getByText('Оплата наличными')).toBeInTheDocument();
 
     expect(screen.queryByText('Основное')).toBeNull();
     expect(screen.queryByText('Сроки')).toBeNull();

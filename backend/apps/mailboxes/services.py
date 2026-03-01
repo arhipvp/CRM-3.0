@@ -35,7 +35,11 @@ def generate_mailbox_password() -> str:
 
 
 def extract_quota_left(error_text: str) -> int | None:
-    if "mailbox_quota_left_exceeded" not in error_text:
+    lowered = (error_text or "").lower()
+    if (
+        "mailbox_quota_left_exceeded" not in lowered
+        and "mailbox_quota_exceeded" not in lowered
+    ):
         return None
     matches = re.findall(r"\d+", error_text)
     if not matches:

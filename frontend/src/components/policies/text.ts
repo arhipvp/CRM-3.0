@@ -14,6 +14,7 @@ export const POLICY_TEXT = {
     note: 'Примечание',
     computedStatus: 'Статус',
     payments: 'Платежи',
+    financialRecords: 'Финзаписи',
   },
   actions: {
     edit: 'Редактировать',
@@ -29,6 +30,7 @@ export const POLICY_TEXT = {
   messages: {
     noPayments: 'Платежей пока нет.',
     noRecords: 'Записей нет',
+    noComment: 'Без комментария',
   },
   badges: {
     unpaidPayments: 'Неоплаченные платежи',

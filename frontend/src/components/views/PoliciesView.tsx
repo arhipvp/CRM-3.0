@@ -13,9 +13,16 @@ import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
 import { getPolicyComputedStatusBadge, getPolicyExpiryBadge } from '../policies/policyIndicators';
 import {
+  formatPaymentLedgerLine,
+  formatRecordLedgerLine,
+  getPaymentLedgerState,
   getPolicyExpiryToneClass,
   getPolicyNotePreview,
+  getRecordLedgerState,
+  POLICY_LEDGER_STATE_CLASS,
   POLICY_STATUS_TONE_CLASS,
+  sortFinancialRecordsForLedger,
+  sortPaymentsForLedger,
 } from '../policies/policyTableHelpers';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
@@ -341,7 +348,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       {policies.length ? (
         <DataTableShell>
           <table
-            className="deals-table w-full table-fixed border-collapse text-left text-sm"
+            className="deals-table min-w-[2100px] w-full table-fixed border-collapse text-left text-sm"
             aria-label="Список полисов"
           >
             <thead className={TABLE_THEAD_CLASS}>
@@ -376,8 +383,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 <TableHeadCell padding="sm" align="right" className="w-[8%]">
                   Оплачено / План
                 </TableHeadCell>
-                <TableHeadCell padding="sm" align="right" className="w-[5%]">
-                  Платежей
+                <TableHeadCell padding="sm" className="w-[10%]">
+                  Платежи
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[14%]">
+                  Финзаписи
                 </TableHeadCell>
                 <TableHeadCell padding="sm" className="w-[8%]">
                   Действия
@@ -387,6 +397,20 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             <tbody className="bg-white">
               {policies.map((policy) => {
                 const paymentsForPolicy = paymentsByPolicyMap.get(policy.id) ?? [];
+                const sortedPayments = sortPaymentsForLedger(paymentsForPolicy);
+                const paymentFallbackCommentById = new Map(
+                  paymentsForPolicy.map((payment) => [
+                    payment.id,
+                    (payment.note ?? '').trim() ||
+                      (payment.description ?? '').trim() ||
+                      POLICY_TEXT.messages.noComment,
+                  ]),
+                );
+                const recordsForPolicy = paymentsForPolicy.flatMap(
+                  (payment) =>
+                    (payment.financialRecords ?? []).filter((record) => !record.deletedAt) ?? [],
+                );
+                const sortedRecords = sortFinancialRecordsForLedger(recordsForPolicy);
                 const model = buildPolicyCardModel(policy, paymentsForPolicy);
                 const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
                 const expiryBadge = getPolicyExpiryBadge(policy.endDate);
@@ -462,8 +486,60 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     <td className={`${TABLE_CELL_CLASS_COMPACT} text-right`}>
                       <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                     </td>
-                    <td className={`${TABLE_CELL_CLASS_COMPACT} text-right text-xs text-slate-700`}>
-                      {paymentsForPolicy.length}
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      {sortedPayments.length ? (
+                        <div className="space-y-1">
+                          {sortedPayments.map((payment) => {
+                            const paymentLine = formatPaymentLedgerLine(payment);
+                            const paymentState = getPaymentLedgerState(payment);
+                            return (
+                              <div
+                                key={payment.id}
+                                className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[paymentState]}`}
+                                title={paymentLine.text}
+                              >
+                                <span className="truncate">{paymentLine.dateText}</span>
+                                <span className="font-semibold whitespace-nowrap">
+                                  {paymentLine.amountText}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500">{POLICY_TEXT.messages.noPayments}</p>
+                      )}
+                    </td>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      {sortedRecords.length ? (
+                        <div className="space-y-1">
+                          {sortedRecords.map((record) => {
+                            const fallbackText =
+                              paymentFallbackCommentById.get(record.paymentId) ??
+                              POLICY_TEXT.messages.noComment;
+                            const recordLine = formatRecordLedgerLine(record, fallbackText);
+                            const recordState = getRecordLedgerState(record);
+
+                            return (
+                              <div
+                                key={record.id}
+                                className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordState]}`}
+                                title={recordLine.text}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="truncate">{recordLine.dateText}</span>
+                                  <span className="font-semibold whitespace-nowrap">
+                                    {recordLine.amountText}
+                                  </span>
+                                </div>
+                                <p className="truncate">{recordLine.comment}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500">{POLICY_TEXT.messages.noRecords}</p>
+                      )}
                     </td>
                     <td className={TABLE_CELL_CLASS_COMPACT}>
                       {onRequestEditPolicy && (

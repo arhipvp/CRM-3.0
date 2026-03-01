@@ -86,9 +86,43 @@ const setup = (overrides: Partial<React.ComponentProps<typeof PoliciesTab>> = {}
 
 describe('PoliciesTab', () => {
   it('renders compact table without summary blocks and with readable problem status', () => {
-    setup();
+    setup({
+      relatedPayments: [
+        buildPayment({
+          id: 'payment-1',
+          amount: '2100',
+          actualDate: '2025-01-02',
+          note: 'Оплата от клиента',
+          financialRecords: [
+            {
+              id: 'record-paid',
+              paymentId: 'payment-1',
+              amount: '100',
+              recordType: 'Доход',
+              note: 'Комиссия',
+              date: '2025-01-03',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            {
+              id: 'record-unpaid',
+              paymentId: 'payment-1',
+              amount: '-30',
+              recordType: 'Расход',
+              note: '',
+              date: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+        buildPayment({ id: 'payment-2', amount: '3500', actualDate: null }),
+      ],
+    });
 
     expect(screen.getByText('Примечание')).toBeInTheDocument();
+    expect(screen.getByText('Платежи')).toBeInTheDocument();
+    expect(screen.getByText('Финзаписи')).toBeInTheDocument();
 
     const statusBadge = screen.getByText('Есть неоплаченные записи');
     expect(statusBadge).toHaveAttribute(
@@ -98,6 +132,24 @@ describe('PoliciesTab', () => {
 
     const noteCell = screen.getByText('Тестовое примечание');
     expect(noteCell).toHaveAttribute('title', 'Тестовое примечание');
+
+    const paidPaymentRow = screen.getByTitle(
+      (title) => title.includes('02.01.2025') && title.includes('2'),
+    );
+    const unpaidPaymentRow = screen.getByTitle(
+      (title) => title.includes('без даты оплаты') && title.includes('₽'),
+    );
+    expect(paidPaymentRow.className).toContain('bg-emerald-50');
+    expect(unpaidPaymentRow.className).toContain('bg-rose-50');
+
+    const paidRecordRow = screen.getByTitle(
+      (title) => title.includes('03.01.2025') && title.includes('Комиссия'),
+    );
+    const unpaidRecordRow = screen.getByTitle(
+      (title) => title.includes('без даты выплаты') && title.includes('Оплата от клиента'),
+    );
+    expect(paidRecordRow.className).toContain('bg-emerald-50');
+    expect(unpaidRecordRow.className).toContain('bg-rose-50');
 
     expect(screen.queryByText('Основное')).toBeNull();
     expect(screen.queryByText('Сроки')).toBeNull();
