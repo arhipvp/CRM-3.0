@@ -14,9 +14,7 @@ from rest_framework import status
 class PolicyComputedStatusAndNoteTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
-        self.seller = User.objects.create_user(
-            username="policy-status-seller", password="pass"
-        )
+        self.seller = User.objects.create_user(username="policy-status-seller")
         self.client = Client.objects.create(name="Client")
         self.deal = Deal.objects.create(
             title="Deal",
