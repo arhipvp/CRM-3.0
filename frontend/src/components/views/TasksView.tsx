@@ -58,7 +58,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
   tasks,
   currentUser,
   isLoading = false,
-  isBackgroundRefreshing = false,
   onDealSelect,
   onDealPreview,
 }) => {
@@ -192,11 +191,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
           },
         ]}
       />
-      {isBackgroundRefreshing && !isLoading && (
-        <div className="app-panel-muted px-4 py-2 text-xs font-semibold text-sky-800">
-          Обновляем задачи...
-        </div>
-      )}
       {isLoading ? (
         <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
           Загружаем задачи...

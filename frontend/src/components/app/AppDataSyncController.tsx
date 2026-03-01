@@ -55,16 +55,15 @@ export const AppDataSyncController: React.FC<AppDataSyncControllerProps> = ({
   const freshnessLabel = getFreshnessLabel(lastRefreshAtByResource);
   const errorLabel = getErrorLabel(lastRefreshErrorByResource);
 
-  if (!isMutationSyncing && !isBackgroundRefreshingAny && !errorLabel) {
+  if (!isMutationSyncing && !errorLabel) {
     return null;
   }
 
   const title = isMutationSyncing
     ? '\u0421\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u043c \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f...'
-    : isBackgroundRefreshingAny
-      ? '\u041e\u0431\u043d\u043e\u0432\u043b\u044f\u0435\u043c \u0434\u0430\u043d\u043d\u044b\u0435...'
-      : '\u0415\u0441\u0442\u044c \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b \u0441 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435\u043c';
-  const subtitle = errorLabel ?? freshnessLabel ?? null;
+    : '\u0415\u0441\u0442\u044c \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u044b \u0441 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435\u043c';
+  const subtitle =
+    errorLabel ?? (isMutationSyncing || isBackgroundRefreshingAny ? freshnessLabel : null);
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
@@ -77,7 +76,7 @@ export const AppDataSyncController: React.FC<AppDataSyncControllerProps> = ({
         <div
           className={[
             'mt-0.5 h-4 w-4 rounded-full border-2',
-            isMutationSyncing || isBackgroundRefreshingAny
+            isMutationSyncing
               ? 'animate-spin border-slate-300 border-t-sky-600'
               : 'border-rose-300 bg-rose-100',
           ].join(' ')}

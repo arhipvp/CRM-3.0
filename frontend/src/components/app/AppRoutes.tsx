@@ -239,9 +239,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   isSelectedDealTasksLoading = false,
   isSelectedDealQuotesLoading = false,
   isBackgroundRefreshingDeals,
-  isBackgroundRefreshingPoliciesList,
-  isBackgroundRefreshingTasks,
-  isBackgroundRefreshingFinance,
 }) => (
   <Routes>
     <Route path="/seller-dashboard" element={<SellerDashboardView />} />
@@ -338,11 +335,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       path="/policies"
       element={
         <div className="space-y-3">
-          {isBackgroundRefreshingPoliciesList && (
-            <div className="app-panel-muted px-4 py-2 text-xs font-semibold text-sky-800">
-              Обновляем список полисов...
-            </div>
-          )}
           <PoliciesView
             policies={policiesList}
             clients={clients}
@@ -368,11 +360,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       path="/commissions"
       element={
         <div className="space-y-3">
-          {isBackgroundRefreshingFinance && (
-            <div className="app-panel-muted px-4 py-2 text-xs font-semibold text-sky-800">
-              Обновляем финансовые данные...
-            </div>
-          )}
           <CommissionsView
             payments={payments}
             financialRecords={financialRecords}
@@ -399,7 +386,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           tasks={tasks}
           currentUser={currentUser}
           isLoading={isTasksLoading}
-          isBackgroundRefreshing={isBackgroundRefreshingTasks}
           onDealSelect={onSelectDeal}
           onDealPreview={onDealPreview}
         />

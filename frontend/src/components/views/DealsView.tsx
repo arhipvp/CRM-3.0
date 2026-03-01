@@ -165,7 +165,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
   dealsHasMore,
   dealsTotalCount,
   isLoadingMoreDeals,
-  isBackgroundRefreshingDeals = false,
   isSelectedDealTasksLoading = false,
   isSelectedDealQuotesLoading = false,
   dealSearch,
@@ -207,11 +206,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
 
   return (
     <div className="flex h-full flex-col gap-6">
-      {isBackgroundRefreshingDeals && (
-        <div className="app-panel-muted px-4 py-2 text-xs font-semibold text-sky-800">
-          Обновляем список сделок...
-        </div>
-      )}
       <section className="app-panel overflow-hidden">
         <div className="divide-y divide-slate-200">
           <DealsList

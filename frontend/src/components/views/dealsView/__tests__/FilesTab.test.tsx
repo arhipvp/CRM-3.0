@@ -244,6 +244,9 @@ describe('FilesTab document recognition transcript', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(getDriveFileBlob).toHaveBeenCalledTimes(3);
 
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Назад' })).toBeEnabled();
+    });
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(await screen.findByText('2 / 3')).toBeInTheDocument();
 
