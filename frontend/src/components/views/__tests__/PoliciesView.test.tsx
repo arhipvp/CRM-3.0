@@ -1,10 +1,10 @@
-import type { ComponentProps } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+﻿import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import type { Payment, Policy } from '../../../types';
-import { PoliciesView } from '../PoliciesView';
-import { vi } from 'vitest';
 import { NotificationProvider } from '../../../contexts/NotificationProvider';
+import { PoliciesView } from '../PoliciesView';
 import { fetchPoliciesKPI } from '../../../api';
 
 vi.mock('../../../api', async () => {
@@ -12,33 +12,14 @@ vi.mock('../../../api', async () => {
   return {
     ...actual,
     fetchPoliciesKPI: vi.fn(async () => ({
-      total: 0,
-      problemCount: 0,
+      total: 1,
+      problemCount: 1,
       dueCount: 0,
       expiringSoonCount: 0,
       expiringDays: 30,
     })),
   };
 });
-
-type PaymentCardProps = ComponentProps<
-  (typeof import('../../policies/PaymentCard'))['PaymentCard']
->;
-
-const paymentCardMockProps: PaymentCardProps[] = [];
-vi.mock('../../policies/PaymentCard', () => ({
-  PaymentCard: (props: PaymentCardProps) => {
-    paymentCardMockProps.push(props);
-    return (
-      <tr
-        data-testid={`payment-card-${props.payment.id}`}
-        data-variant={props.variant ?? 'default'}
-      >
-        <td>{props.payment.id}</td>
-      </tr>
-    );
-  },
-}));
 
 const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   id: overrides.id ?? 'policy-1',
@@ -53,16 +34,18 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   model: overrides.model ?? 'Model',
   vin: overrides.vin ?? 'VIN1',
   status: overrides.status ?? 'active',
+  computedStatus: overrides.computedStatus ?? 'problem',
   startDate: overrides.startDate ?? '2025-01-01',
   endDate: overrides.endDate ?? '2025-12-31',
   createdAt: overrides.createdAt ?? new Date().toISOString(),
   updatedAt: overrides.updatedAt ?? new Date().toISOString(),
   paymentsPaid: overrides.paymentsPaid ?? '100',
-  paymentsTotal: overrides.paymentsTotal ?? '100',
+  paymentsTotal: overrides.paymentsTotal ?? '300',
   counterparty: overrides.counterparty ?? '',
   clientId: overrides.clientId ?? 'client-1',
   clientName: overrides.clientName ?? 'Client',
   driveFolderId: overrides.driveFolderId ?? null,
+  note: overrides.note ?? '',
 });
 
 const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
@@ -78,130 +61,92 @@ const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
   updatedAt: overrides.updatedAt ?? new Date().toISOString(),
 });
 
-const defaultProps = {
-  onRequestEditPolicy: vi.fn(),
-  onAddFinancialRecord: vi.fn(),
-  onUpdateFinancialRecord: vi.fn(),
-  onDeleteFinancialRecord: vi.fn(),
-  onDeletePayment: vi.fn(),
-};
-
 describe('PoliciesView', () => {
   beforeEach(() => {
-    paymentCardMockProps.length = 0;
-    defaultProps.onRequestEditPolicy.mockClear();
-    vi.mocked(fetchPoliciesKPI).mockResolvedValue({
-      total: 0,
-      problemCount: 0,
-      dueCount: 0,
-      expiringSoonCount: 0,
-      expiringDays: 30,
-    });
+    vi.mocked(fetchPoliciesKPI).mockClear();
   });
 
-  it('filters to only unpaid policies', async () => {
-    const policies = [
-      buildPolicy({ id: 'policy-one', number: 'POL-ONE' }),
-      buildPolicy({ id: 'policy-two', number: 'POL-TWO' }),
-    ];
-    const payments: Payment[] = [
-      buildPayment({ id: 'payment-1', policyId: 'policy-one', actualDate: '' }),
-      buildPayment({
-        id: 'payment-2',
-        policyId: 'policy-two',
-        actualDate: '2025-01-01',
-        financialRecords: [
-          {
-            id: 'r-1',
-            paymentId: 'payment-2',
-            amount: '100',
-            date: '2025-01-02',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ],
-      }),
-    ];
+  it('renders compact table row with note preview and readable problem status', async () => {
+    const longNote =
+      'Длинное примечание к полису с уточнением по клиенту и деталями по продлению на следующий период.';
 
     render(
       <MemoryRouter>
         <NotificationProvider>
-          <PoliciesView policies={policies} payments={payments} {...defaultProps} />
+          <PoliciesView
+            policies={[buildPolicy({ note: longNote, computedStatus: 'problem' })]}
+            payments={[buildPayment()]}
+            onRequestEditPolicy={vi.fn()}
+          />
         </NotificationProvider>
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByText('POL-ONE').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('POL-TWO').length).toBeGreaterThan(0);
+    expect(screen.getByText('Статус')).toBeInTheDocument();
+    expect(screen.getByText('Примечание')).toBeInTheDocument();
 
-    const checkbox = screen.getByLabelText('Только с неоплаченными платежами');
-    fireEvent.click(checkbox);
-
-    await waitFor(() => {
-      expect(screen.getAllByText('POL-ONE').length).toBeGreaterThan(0);
-      expect(screen.queryAllByText('POL-TWO').length).toBe(0);
-    });
-  });
-
-  it('renders payments expanded by default', async () => {
-    const policies = [buildPolicy({ id: 'policy-one', number: 'POL-ONE' })];
-    const payments: Payment[] = [
-      buildPayment({ id: 'payment-1', policyId: 'policy-one', actualDate: '' }),
-    ];
-
-    render(
-      <MemoryRouter>
-        <NotificationProvider>
-          <PoliciesView policies={policies} payments={payments} {...defaultProps} />
-        </NotificationProvider>
-      </MemoryRouter>,
+    const statusBadge = screen.getByTitle(
+      'Есть финансовые записи без даты оплаты по платежам полиса',
     );
+    expect(statusBadge).toHaveTextContent('Есть неоплаченные записи');
 
-    expect(screen.getAllByText('Сумма').length).toBeGreaterThan(1);
-    expect(screen.getByText('Начало')).toBeInTheDocument();
-    expect(screen.getByText('Окончание')).toBeInTheDocument();
-    expect(screen.getByText('Доходы')).toBeInTheDocument();
-    expect(screen.getByText('Расходы')).toBeInTheDocument();
+    const notePreview = screen.getByText(longNote);
+    expect(notePreview).toHaveAttribute('title', longNote);
+    expect(notePreview.className).toContain('-webkit-line-clamp:2');
+
+    expect(screen.queryByText('Основное')).toBeNull();
+    expect(screen.queryByText('Сроки')).toBeNull();
+    expect(screen.queryByText('Финансы')).toBeNull();
+
     await waitFor(() => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
     });
-    expect(screen.queryByText('Действия')).toBeNull();
-    const paymentCard = screen.getByTestId('payment-card-payment-1');
-    expect(paymentCard.dataset.variant).toBe('table-row');
-    expect(paymentCardMockProps[0]?.hideRowActions).toBe(true);
-    expect(screen.queryByText('Раскрыть все')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Платежи (1)' })).toBeNull();
   });
 
-  it('opens policy edit by explicit action button', () => {
-    const policy = buildPolicy({ id: 'policy-edit', number: 'POL-EDIT' });
-    const payments: Payment[] = [
-      buildPayment({ id: 'payment-edit', policyId: 'policy-edit', actualDate: '' }),
-    ];
+  it('keeps KPI refresh and filter wiring for computed status', async () => {
+    const onRefreshPoliciesList = vi.fn().mockResolvedValue(undefined);
 
     render(
       <MemoryRouter>
         <NotificationProvider>
-          <PoliciesView policies={[policy]} payments={payments} {...defaultProps} />
+          <PoliciesView
+            policies={[buildPolicy({ computedStatus: 'active' })]}
+            payments={[buildPayment({ actualDate: '2025-01-01' })]}
+            onRequestEditPolicy={vi.fn()}
+            onRefreshPoliciesList={onRefreshPoliciesList}
+          />
         </NotificationProvider>
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Редактировать полис POL-EDIT' }));
-    expect(defaultProps.onRequestEditPolicy).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'policy-edit' }),
-    );
+    await waitFor(() => {
+      expect(fetchPoliciesKPI).toHaveBeenCalled();
+      expect(onRefreshPoliciesList).toHaveBeenCalled();
+    });
+
+    fireEvent.change(screen.getByLabelText('Вычисляемый статус'), {
+      target: { value: 'problem' },
+    });
+
+    await waitFor(() => {
+      expect(onRefreshPoliciesList).toHaveBeenLastCalledWith(
+        expect.objectContaining({ computed_status: 'problem' }),
+      );
+    });
   });
 
-  it('shows empty state when no policies', () => {
+  it('shows empty state when no policies', async () => {
     render(
       <MemoryRouter>
         <NotificationProvider>
-          <PoliciesView policies={[]} payments={[]} {...defaultProps} />
+          <PoliciesView policies={[]} payments={[]} onRequestEditPolicy={vi.fn()} />
         </NotificationProvider>
       </MemoryRouter>,
     );
 
     expect(screen.getByText('Нет полисов для отображения')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(fetchPoliciesKPI).toHaveBeenCalled();
+    });
   });
 });

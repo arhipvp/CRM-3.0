@@ -7,6 +7,7 @@ export type PolicyComputedStatusValue = 'problem' | 'due' | 'expired' | 'active'
 export type PolicyComputedStatusBadge = {
   value: PolicyComputedStatusValue;
   label: string;
+  tooltip: string;
   tone: 'red' | 'orange' | 'green';
 };
 
@@ -24,32 +25,52 @@ export const getPolicyExpiryBadge = (endDate?: string | null): PolicyExpiryBadge
     return { label: 'Просрочен', tone: 'red' };
   }
   if (diffDays <= 3) {
-    return { label: 'Истекает ≤ 3 дн.', tone: 'orange' };
+    return { label: 'Истекает <= 3 дн.', tone: 'orange' };
   }
   if (diffDays <= 7) {
-    return { label: 'Истекает ≤ 7 дн.', tone: 'orange' };
+    return { label: 'Истекает <= 7 дн.', tone: 'orange' };
   }
   if (diffDays <= 15) {
-    return { label: 'Истекает ≤ 15 дн.', tone: 'orange' };
+    return { label: 'Истекает <= 15 дн.', tone: 'orange' };
   }
   if (diffDays <= 30) {
-    return { label: 'Истекает ≤ 30 дн.', tone: 'orange' };
+    return { label: 'Истекает <= 30 дн.', tone: 'orange' };
   }
   return null;
 };
 
 export const getPolicyComputedStatusBadge = (status?: string): PolicyComputedStatusBadge | null => {
   if (status === 'problem') {
-    return { value: 'problem', label: 'Проблема', tone: 'red' };
+    return {
+      value: 'problem',
+      label: 'Есть неоплаченные записи',
+      tooltip: 'Есть финансовые записи без даты оплаты по платежам полиса',
+      tone: 'red',
+    };
   }
   if (status === 'due') {
-    return { value: 'due', label: 'К оплате', tone: 'orange' };
+    return {
+      value: 'due',
+      label: 'К оплате',
+      tooltip: 'Есть платежи без фактической даты оплаты',
+      tone: 'orange',
+    };
   }
   if (status === 'expired') {
-    return { value: 'expired', label: 'Просрочен', tone: 'red' };
+    return {
+      value: 'expired',
+      label: 'Просрочен',
+      tooltip: 'Дата окончания полиса уже в прошлом',
+      tone: 'red',
+    };
   }
   if (status === 'active') {
-    return { value: 'active', label: 'Активен', tone: 'green' };
+    return {
+      value: 'active',
+      label: 'Активен',
+      tooltip: 'Полис действует и не содержит неоплаченных записей или платежей',
+      tone: 'green',
+    };
   }
   return null;
 };

@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type {
   Client,
   Deal,
@@ -6,27 +6,19 @@ import type {
   Payment,
   Policy,
 } from '../../../../types';
-import {
-  PolicySortKey,
-  formatDate,
-  getPaymentFinancialRecords,
-  hasUnpaidPayment,
-  hasUnpaidRecord,
-  policyHasUnpaidPayments,
-  policyHasUnpaidRecords,
-} from '../helpers';
-import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansionState';
-import { ColoredLabel } from '../../../common/ColoredLabel';
+import { PolicySortKey, policyHasUnpaidPayments, policyHasUnpaidRecords } from '../helpers';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
-import { buildPolicyNavigationActions } from '../../../policies/policyCardActions';
 import {
   getPolicyComputedStatusBadge,
   getPolicyExpiryBadge,
 } from '../../../policies/policyIndicators';
-import { PolicySummaryBlocks } from '../../../policies/PolicySummaryBlocks';
+import {
+  getPolicyExpiryToneClass,
+  getPolicyNotePreview,
+  POLICY_STATUS_TONE_CLASS,
+} from '../../../policies/policyTableHelpers';
 import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
-import { POLICY_TEXT } from '../../../policies/text';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -63,29 +55,21 @@ interface PoliciesTabProps {
   isLoading?: boolean;
 }
 
-const INCOME_RECORD_TYPE = 'Доход';
-
 export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   selectedDeal,
   sortedPolicies,
   relatedPayments,
-  clients,
-  onOpenClient,
   policySortKey,
   policySortOrder,
   setPolicySortKey,
   setPolicySortOrder,
   setEditingPaymentId,
   setCreatingPaymentPolicyId,
-  setCreatingFinancialRecordContext,
-  setEditingFinancialRecordId,
-  onDeletePayment,
   onRequestAddPolicy,
   onDeletePolicy,
   onRequestEditPolicy,
   isLoading = false,
 }) => {
-  const { paymentsExpanded, setPaymentsExpanded } = usePoliciesExpansionState();
   const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
   const [showUnpaidRecordsOnly, setShowUnpaidRecordsOnly] = useState(false);
 
@@ -138,15 +122,15 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
   if (isLoading && !sortedPolicies.length) {
     return (
-      <section className="app-panel p-6 shadow-none space-y-4">
+      <section className="app-panel p-4 shadow-none space-y-3">
         <div className="flex items-center justify-between">
           <p className="app-label">Полисы</p>
           <span className="text-xs text-slate-500">Загружаем...</span>
         </div>
-        <div className="space-y-3 animate-pulse">
-          <div className="h-10 rounded-xl bg-slate-200" />
-          <div className="h-10 rounded-xl bg-slate-200" />
-          <div className="h-10 rounded-xl bg-slate-200" />
+        <div className="space-y-2 animate-pulse">
+          <div className="h-9 rounded-lg bg-slate-200" />
+          <div className="h-9 rounded-lg bg-slate-200" />
+          <div className="h-9 rounded-lg bg-slate-200" />
         </div>
       </section>
     );
@@ -166,24 +150,10 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     setPolicySortKey(nextKey);
     setPolicySortOrder('asc');
   };
-  const renderSortableHeader = (label: string, key: PolicySortKey) => {
-    const isActive = policySortKey === key;
-    return (
-      <button
-        type="button"
-        onClick={() => handleSortChange(key)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:text-slate-700"
-        aria-pressed={isActive}
-      >
-        <span>{label}</span>
-        <span className="text-xs">{isActive ? sortOrderSymbol : '↕'}</span>
-      </button>
-    );
-  };
 
   if (!sortedPolicies.length) {
     return (
-      <section className="app-panel p-6 shadow-none space-y-4">
+      <section className="app-panel p-4 shadow-none space-y-3">
         {renderStatusMessage('Для сделки пока нет полисов.')}
         <button
           type="button"
@@ -196,67 +166,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     );
   }
 
-  const renderPaymentSummary = (payment: Payment) => {
-    const paid = Boolean((payment.actualDate ?? '').trim());
-    const records = getPaymentFinancialRecords(payment, allFinancialRecords).filter(
-      (record) => !record.deletedAt,
-    );
-    const hasIncome = records.some(
-      (record) => record.recordType === INCOME_RECORD_TYPE && Boolean((record.date ?? '').trim()),
-    );
-    const shouldShowIncomeStatus = paid && records.length > 0;
-
-    return (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-          План
-        </span>
-        <span className="text-xs font-semibold text-slate-800">
-          {formatDate(payment.scheduledDate)}
-        </span>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-          Факт
-        </span>
-        <span className={`text-xs font-semibold ${paid ? 'text-emerald-600' : 'text-rose-500'}`}>
-          {formatDate(payment.actualDate)}
-        </span>
-        {shouldShowIncomeStatus && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              hasIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-            }`}
-          >
-            {hasIncome ? 'Доход получен' : 'Доход не получен'}
-          </span>
-        )}
-      </div>
-    );
-  };
-
-  const resolveActionIcon = (actionKey: string, label: string) => {
-    if (actionKey === 'edit') {
-      return '✏️';
-    }
-    if (actionKey === 'delete') {
-      return '🗑️';
-    }
-    if (actionKey.startsWith('open-client')) {
-      return '👤';
-    }
-    if (actionKey.startsWith('open-deal')) {
-      return '📄';
-    }
-    if (label.toLowerCase().includes('показать')) {
-      return '👁️';
-    }
-    if (label.toLowerCase().includes('скрыть')) {
-      return '🙈';
-    }
-    return '⋯';
-  };
-
   return (
-    <section className="app-panel p-6 shadow-none space-y-5">
+    <section className="app-panel p-4 shadow-none space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <p className="app-label">Полисы</p>
@@ -273,7 +184,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               checked={showUnpaidPaymentsOnly}
               onChange={(event) => setShowUnpaidPaymentsOnly(event.target.checked)}
             />
-            {POLICY_TEXT.filters.unpaidPaymentsOnly}
+            Только с неоплаченными платежами
           </label>
           <label className="flex items-center gap-2 text-xs text-slate-600">
             <input
@@ -282,324 +193,169 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               checked={showUnpaidRecordsOnly}
               onChange={(event) => setShowUnpaidRecordsOnly(event.target.checked)}
             />
-            {POLICY_TEXT.filters.unpaidRecordsOnly}
+            Только с неоплаченными записями
           </label>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onRequestAddPolicy(selectedDeal.id)}
-            className={BTN_SM_SECONDARY}
-          >
-            + Создать полис
-          </button>
-          <button
-            type="button"
-            className={BTN_SM_QUIET}
-            onClick={() => {
-              setPaymentsExpanded((prev) => {
-                const next = { ...prev };
-                visiblePolicies.forEach((policy) => {
-                  next[policy.id] = true;
-                });
-                return next;
-              });
-            }}
-          >
-            Раскрыть все
-          </button>
-          <button
-            type="button"
-            className={BTN_SM_QUIET}
-            onClick={() => {
-              setPaymentsExpanded((prev) => {
-                const next = { ...prev };
-                visiblePolicies.forEach((policy) => {
-                  next[policy.id] = false;
-                });
-                return next;
-              });
-            }}
-          >
-            Скрыть все
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onRequestAddPolicy(selectedDeal.id)}
+          className={BTN_SM_SECONDARY}
+        >
+          + Создать полис
+        </button>
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[1220px] rounded-2xl border border-slate-300 bg-white shadow-sm">
-          <div className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-300 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-            <div className="px-4 py-3">Полис</div>
-            {renderSortableHeader('Начало', 'startDate')}
-            {renderSortableHeader('Окончание', 'endDate')}
-            <div className="px-4 py-3">Платежи</div>
-            <div className="px-4 py-3">Сумма</div>
-            <div className="px-4 py-3">Статус</div>
-            <div className="px-4 py-3">Действия</div>
-          </div>
-
-          <div className="divide-y divide-slate-300">
+        <table className="min-w-[1600px] w-full border-collapse text-left text-sm">
+          <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <tr>
+              <th className="px-3 py-2 border border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => handleSortChange('number')}
+                  className="w-full text-left"
+                >
+                  Номер
+                </button>
+              </th>
+              <th className="px-3 py-2 border border-slate-300">Статус</th>
+              <th className="px-3 py-2 border border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => handleSortChange('startDate')}
+                  className="w-full text-left"
+                >
+                  Начало
+                </button>
+              </th>
+              <th className="px-3 py-2 border border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => handleSortChange('endDate')}
+                  className="w-full text-left"
+                >
+                  Окончание
+                </button>
+              </th>
+              <th className="px-3 py-2 border border-slate-300">Клиент</th>
+              <th className="px-3 py-2 border border-slate-300">Компания</th>
+              <th className="px-3 py-2 border border-slate-300">Тип</th>
+              <th className="px-3 py-2 border border-slate-300">Канал</th>
+              <th className="px-3 py-2 border border-slate-300">Примечание</th>
+              <th className="px-3 py-2 border border-slate-300 text-right">Оплачено / План</th>
+              <th className="px-3 py-2 border border-slate-300 text-right">Платежей</th>
+              <th className="px-3 py-2 border border-slate-300">Действия</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white">
             {visiblePolicies.map((policy) => {
               const payments = paymentsByPolicyMap.get(policy.id) ?? [];
-              const expanded = paymentsExpanded[policy.id] ?? false;
               const model = buildPolicyCardModel(policy, payments);
-              const expiryBadge = getPolicyExpiryBadge(policy.endDate);
               const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
-              const hasUnpaidPayments = payments.some((payment) => hasUnpaidPayment(payment));
-              const hasUnpaidRecords = payments.some((payment) =>
-                hasUnpaidRecord(payment, allFinancialRecords),
-              );
-              const paymentItems = payments;
-
-              const actions = [
-                {
-                  key: 'edit',
-                  label: POLICY_TEXT.actions.edit,
-                  onClick: () => onRequestEditPolicy(policy),
-                  variant: 'secondary',
-                },
-                {
-                  key: 'delete',
-                  label: POLICY_TEXT.actions.delete,
-                  onClick: () => onDeletePolicy(policy.id).catch(() => undefined),
-                  variant: 'danger',
-                },
-                ...buildPolicyNavigationActions({
-                  model,
-                  clients,
-                  onOpenClient,
-                }),
-              ].filter((action) => !action.key.startsWith('open-client'));
-              const toggleLabel = expanded ? POLICY_TEXT.actions.hide : POLICY_TEXT.actions.show;
+              const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+              const notePreview = getPolicyNotePreview(policy.note);
 
               return (
-                <div
-                  key={policy.id}
-                  className="grid grid-cols-[minmax(220px,1.2fr)_minmax(140px,0.6fr)_minmax(140px,0.6fr)_minmax(360px,1.6fr)_minmax(140px,0.6fr)_minmax(160px,0.7fr)_minmax(180px,0.8fr)] divide-x divide-slate-300"
-                >
-                  <div className="min-w-0 space-y-1 px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-900 truncate">
-                        {model.number}
-                      </span>
+                <tr key={policy.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-3 py-2 border border-slate-300 align-top">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-slate-900">{model.number}</p>
                       {policy.isVehicle && (
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                           Авто
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate">{model.client}</div>
-                    <div className="text-[11px]">
-                      <ColoredLabel
-                        value={model.insuranceCompany}
-                        fallback="-"
-                        showDot
-                        className="max-w-full truncate text-slate-600"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="px-4 py-3 text-xs font-semibold text-slate-800">
-                    {model.startDate}
-                  </div>
-                  <div className="px-4 py-3 text-xs font-semibold text-slate-800">
-                    {model.endDate}
-                  </div>
-
-                  <div className="space-y-2 px-4 py-3">
-                    {paymentItems.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                        Платежей нет
-                      </div>
-                    ) : (
-                      <div className="space-y-2">{paymentItems.map(renderPaymentSummary)}</div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingPaymentId('new');
-                        setCreatingPaymentPolicyId(policy.id);
-                      }}
-                      className="link-action text-[11px] font-semibold"
-                    >
-                      Добавить платеж
-                    </button>
-                  </div>
-
-                  <div className="px-4 py-3 text-xs font-semibold text-slate-900">{model.sum}</div>
-
-                  <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-                    {hasUnpaidPayments && (
-                      <span
-                        className={[
-                          'rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                          expiryBadge?.tone === 'red'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-orange-100 text-orange-700',
-                        ].join(' ')}
-                      >
-                        {POLICY_TEXT.badges.unpaidPayments}
-                      </span>
-                    )}
-                    {computedStatusBadge && (
-                      <span
-                        className={[
-                          'rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                          computedStatusBadge.tone === 'red'
-                            ? 'bg-red-100 text-red-700'
-                            : computedStatusBadge.tone === 'orange'
-                              ? 'bg-orange-100 text-orange-700'
-                              : 'bg-emerald-100 text-emerald-700',
-                        ].join(' ')}
-                      >
-                        {computedStatusBadge.label}
-                      </span>
-                    )}
-                    {hasUnpaidRecords && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                        {POLICY_TEXT.badges.unpaidRecords}
-                      </span>
-                    )}
-                    {expiryBadge && (
-                      <span
-                        className={[
-                          'rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                          expiryBadge.tone === 'red'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-orange-100 text-orange-700',
-                        ].join(' ')}
-                      >
-                        {expiryBadge.label}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-                    {actions.map((action) => {
-                      const isDanger = action.variant === 'danger';
-                      return (
-                        <button
-                          key={action.key}
-                          type="button"
-                          className={`icon-btn h-10 w-10 ${
-                            isDanger
-                              ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
-                              : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700'
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 align-top">
+                    <div className="flex flex-wrap gap-1">
+                      {computedStatusBadge && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
                           }`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            action.onClick();
-                          }}
-                          aria-label={action.label}
-                          title={action.label}
+                          title={computedStatusBadge.tooltip}
                         >
-                          <span className="text-sm leading-none">
-                            {resolveActionIcon(action.key, action.label)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                    {payments.length > 0 && (
+                          {computedStatusBadge.label}
+                        </span>
+                      )}
+                      {expiryBadge && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
+                            expiryBadge.tone,
+                          )}`}
+                        >
+                          {expiryBadge.label}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top">
+                    {model.startDate}
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top">
+                    {model.endDate}
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-900 align-top">
+                    {model.client}
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-900 align-top">
+                    {model.insuranceCompany}
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-900 align-top">
+                    {model.insuranceType}
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-700 align-top">
+                    {model.salesChannel}
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 align-top">
+                    <p
+                      className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
+                      title={notePreview.fullText}
+                    >
+                      {notePreview.preview}
+                    </p>
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-right align-top">
+                    <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 text-right text-xs text-slate-700 align-top">
+                    {payments.length}
+                  </td>
+                  <td className="px-3 py-2 border border-slate-300 align-top">
+                    <div className="flex flex-wrap gap-1">
                       <button
                         type="button"
-                        onClick={() =>
-                          setPaymentsExpanded((prev) => ({
-                            ...prev,
-                            [policy.id]: !expanded,
-                          }))
-                        }
-                        className="icon-btn h-10 w-10 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
-                        aria-label={toggleLabel}
-                        title={toggleLabel}
+                        onClick={() => onRequestEditPolicy(policy)}
+                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
                       >
-                        <span className="text-sm leading-none">
-                          {resolveActionIcon(`toggle:${policy.id}`, toggleLabel)}
-                        </span>
+                        Редактировать
                       </button>
-                    )}
-                  </div>
-
-                  <div className="col-span-full border-t border-slate-200 bg-slate-50 px-4 py-3">
-                    <PolicySummaryBlocks policy={policy} model={model} />
-                  </div>
-
-                  {expanded && payments.length > 0 && (
-                    <div className="col-span-full border-t border-slate-200 bg-slate-50/60 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                          Платежи
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPaymentsExpanded((prev) => ({
-                              ...prev,
-                              [policy.id]: false,
-                            }));
-                          }}
-                          className="link-action text-[11px] font-semibold"
-                        >
-                          Скрыть
-                        </button>
-                      </div>
-                      <div className="mt-3 space-y-2">
-                        {payments.map((payment) => (
-                          <div
-                            key={payment.id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
-                          >
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-900">
-                                {formatDate(payment.scheduledDate)} →{' '}
-                                {formatDate(payment.actualDate)}
-                              </p>
-                              <p className="text-[11px] text-slate-500 truncate">
-                                {payment.note || payment.description || 'Без описания'}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCreatingPaymentPolicyId(null);
-                                  setEditingPaymentId(payment.id);
-                                }}
-                                className="link-action text-[11px] font-semibold"
-                              >
-                                Изменить
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onDeletePayment(payment.id)}
-                                className="link-danger text-[11px] font-semibold"
-                              >
-                                Удалить
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCreatingFinancialRecordContext({
-                                    paymentId: payment.id,
-                                    recordType: 'income',
-                                  });
-                                  setEditingFinancialRecordId(null);
-                                }}
-                                className="link-action text-[11px] font-semibold"
-                              >
-                                + Доход
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPaymentId('new');
+                          setCreatingPaymentPolicyId(policy.id);
+                        }}
+                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                      >
+                        + Платеж
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                        className="btn btn-danger btn-sm rounded-xl h-7 px-2 text-[11px]"
+                      >
+                        Удалить
+                      </button>
                     </div>
-                  )}
-                </div>
+                  </td>
+                </tr>
               );
             })}
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
     </section>
   );

@@ -1,42 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Client, Payment, Policy } from '../../types';
+import { fetchPoliciesKPI, FilterParams } from '../../api';
+import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { FilterBar } from '../FilterBar';
-import { PanelMessage } from '../PanelMessage';
-import { FilterParams } from '../../api';
-import {
-  getPolicyTransportSummary,
-  policyHasUnpaidPayments,
-  policyHasUnpaidRecords,
-} from './dealsView/helpers';
-import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
-import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
-  NESTED_TABLE_CELL_CLASS_COMPACT,
-  NESTED_TABLE_CLASS,
-  NESTED_TABLE_HEAD_CELL_CLASS_COMPACT,
-  NESTED_TABLE_HEAD_CLASS,
   TABLE_CELL_CLASS_COMPACT,
   TABLE_ROW_CLASS,
-  TABLE_ROW_CLASS_PLAIN,
   TABLE_THEAD_CLASS,
 } from '../common/tableStyles';
-import { PaymentCard } from '../policies/PaymentCard';
-import { PolicySummaryBlocks } from '../policies/PolicySummaryBlocks';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
 import { getPolicyComputedStatusBadge, getPolicyExpiryBadge } from '../policies/policyIndicators';
-import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
-import { useFinancialRecordModal } from '../../hooks/useFinancialRecordModal';
+import {
+  getPolicyExpiryToneClass,
+  getPolicyNotePreview,
+  POLICY_STATUS_TONE_CLASS,
+} from '../policies/policyTableHelpers';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET } from '../common/buttonStyles';
-import { fetchPoliciesKPI } from '../../api';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
-  { value: 'problem', label: 'Проблемные' },
+  { value: 'problem', label: 'Есть неоплаченные записи' },
   { value: 'due', label: 'К оплате' },
   { value: 'expired', label: 'Просроченные' },
   { value: 'active', label: 'Активные' },
@@ -55,10 +43,10 @@ const POLICY_SORT_OPTIONS = [
   { value: 'start_date', label: 'Начало (возрастание)' },
   { value: '-end_date', label: 'Окончание (убывание)' },
   { value: 'end_date', label: 'Окончание (возрастание)' },
-  { value: '-number', label: 'Номер (Z → A)' },
-  { value: 'number', label: 'Номер (A → Z)' },
-  { value: '-client', label: 'Клиент (Z → A)' },
-  { value: 'client', label: 'Клиент (A → Z)' },
+  { value: '-number', label: 'Номер (Z -> A)' },
+  { value: 'number', label: 'Номер (A -> Z)' },
+  { value: '-client', label: 'Клиент (Z -> A)' },
+  { value: 'client', label: 'Клиент (A -> Z)' },
 ];
 
 interface PoliciesViewProps {
@@ -74,13 +62,13 @@ interface PoliciesViewProps {
   isLoadingMorePolicies?: boolean;
   isPoliciesLoading?: boolean;
   onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
-  onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
-  onUpdateFinancialRecord: (
+  onAddFinancialRecord?: (values: AddFinancialRecordFormValues) => Promise<void>;
+  onUpdateFinancialRecord?: (
     recordId: string,
     values: AddFinancialRecordFormValues,
   ) => Promise<void>;
-  onDeleteFinancialRecord: (recordId: string) => Promise<void>;
-  onDeletePayment: (paymentId: string) => Promise<void>;
+  onDeleteFinancialRecord?: (recordId: string) => Promise<void>;
+  onDeletePayment?: (paymentId: string) => Promise<void>;
 }
 
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
@@ -92,10 +80,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   isPoliciesLoading = false,
   onRefreshPoliciesList,
   onRequestEditPolicy,
-  onAddFinancialRecord,
-  onUpdateFinancialRecord,
-  onDeleteFinancialRecord,
-  onDeletePayment,
 }) => {
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const [filterBarVersion, setFilterBarVersion] = useState(0);
@@ -108,6 +92,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     expiringSoonCount: 0,
     expiringDays: 30,
   });
+
   const rawSearch = (filters.search ?? '').trim();
   const debouncedSearch = useDebouncedValue(rawSearch, 450);
   const isDebouncePending = Boolean(onRefreshPoliciesList) && rawSearch !== debouncedSearch;
@@ -119,6 +104,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const startDateTo = (filters.start_date_to as string | undefined)?.trim();
   const endDateFrom = (filters.end_date_from as string | undefined)?.trim();
   const endDateTo = (filters.end_date_to as string | undefined)?.trim();
+
   const serverFilters = useMemo(
     () => ({
       ordering: filters.ordering,
@@ -145,6 +131,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       startDateTo,
     ],
   );
+
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();
     payments.forEach((payment) => {
@@ -158,53 +145,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     });
     return map;
   }, [payments]);
-
-  const allFinancialRecords = useMemo(
-    () => payments.flatMap((payment) => payment.financialRecords ?? []),
-    [payments],
-  );
-  const unpaidPaymentsPolicies = useMemo(() => {
-    const set = new Set<string>();
-    policies.forEach((policy) => {
-      if (policyHasUnpaidPayments(policy.id, paymentsByPolicyMap)) {
-        set.add(policy.id);
-      }
-    });
-    return set;
-  }, [paymentsByPolicyMap, policies]);
-  const unpaidRecordsPolicies = useMemo(() => {
-    const set = new Set<string>();
-    policies.forEach((policy) => {
-      if (policyHasUnpaidRecords(policy.id, paymentsByPolicyMap, allFinancialRecords)) {
-        set.add(policy.id);
-      }
-    });
-    return set;
-  }, [allFinancialRecords, paymentsByPolicyMap, policies]);
-
-  const filteredPolicies = useMemo(() => {
-    let result = [...policies];
-
-    const shouldFilterUnpaid = showUnpaidPaymentsOnly || showUnpaidRecordsOnly;
-    if (shouldFilterUnpaid) {
-      result = result.filter((policy) => {
-        const hasUnpaidPayments = unpaidPaymentsPolicies.has(policy.id);
-        const hasUnpaidRecords = unpaidRecordsPolicies.has(policy.id);
-        return (
-          (showUnpaidPaymentsOnly && hasUnpaidPayments) ||
-          (showUnpaidRecordsOnly && hasUnpaidRecords)
-        );
-      });
-    }
-
-    return result;
-  }, [
-    policies,
-    showUnpaidPaymentsOnly,
-    showUnpaidRecordsOnly,
-    unpaidPaymentsPolicies,
-    unpaidRecordsPolicies,
-  ]);
 
   useEffect(() => {
     if (!onRefreshPoliciesList) {
@@ -223,13 +163,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       })
       .catch(() => {
         if (isMounted) {
-          setKpi((prev) => ({ ...prev, total: filteredPolicies.length }));
+          setKpi((prev) => ({ ...prev, total: policies.length }));
         }
       });
     return () => {
       isMounted = false;
     };
-  }, [filteredPolicies.length, serverFilters]);
+  }, [policies.length, serverFilters]);
 
   useEffect(() => {
     try {
@@ -321,28 +261,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     },
   ];
 
-  const paymentsByPolicy = useMemo(
-    () =>
-      filteredPolicies.map((policy) => ({
-        policy,
-        payments: paymentsByPolicyMap.get(policy.id) ?? [],
-      })),
-    [filteredPolicies, paymentsByPolicyMap],
-  );
-
-  const {
-    isOpen: isFinancialRecordModalOpen,
-    paymentId: financialRecordPaymentId,
-    defaultRecordType: financialRecordDefaultRecordType,
-    editingFinancialRecord,
-    editingFinancialRecordId,
-    openCreateFinancialRecord,
-    openEditFinancialRecord,
-    closeFinancialRecordModal,
-  } = useFinancialRecordModal(allFinancialRecords);
-
   return (
-    <section aria-labelledby="policiesViewHeading" className="app-panel p-4 shadow-none space-y-3">
+    <section aria-labelledby="policiesViewHeading" className="app-panel p-3 shadow-none space-y-2">
       <h1 id="policiesViewHeading" className="sr-only">
         Полисы
       </h1>
@@ -353,7 +273,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             <p className="text-lg font-semibold text-slate-900">{kpi.total}</p>
           </div>
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-rose-600">Проблемные</p>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-rose-600">
+              Есть неоплаченные записи
+            </p>
             <p className="text-lg font-semibold text-rose-700">{kpi.problemCount}</p>
           </div>
           <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2">
@@ -367,12 +289,12 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             <p className="text-lg font-semibold text-sky-700">{kpi.expiringSoonCount}</p>
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-2">
           <p className="app-label mb-2">Пресеты фильтров</p>
           <div className="flex flex-wrap items-center gap-2">
             <input
               type="text"
-              className="field field-input h-9 w-64 text-xs"
+              className="field field-input h-8 w-56 text-xs"
               placeholder="Название пресета"
               value={presetName}
               onChange={(event) => setPresetName(event.target.value)}
@@ -416,7 +338,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         {isDebouncePending && <div className="text-xs text-slate-500">Применяю фильтр...</div>}
       </div>
 
-      {filteredPolicies.length ? (
+      {policies.length ? (
         <DataTableShell>
           <table
             className="deals-table w-full table-fixed border-collapse text-left text-sm"
@@ -424,210 +346,138 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           >
             <thead className={TABLE_THEAD_CLASS}>
               <tr>
-                <TableHeadCell padding="sm" className="w-[16%]">
-                  Полис
+                <TableHeadCell padding="sm" className="w-[11%]">
+                  Номер
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[8%]">
+                <TableHeadCell padding="sm" className="w-[12%]">
+                  Статус
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[7%]">
                   Начало
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[8%]">
+                <TableHeadCell padding="sm" className="w-[7%]">
                   Окончание
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[15%]">
+                <TableHeadCell padding="sm" className="w-[12%]">
                   Клиент
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[17%]">
+                <TableHeadCell padding="sm" className="w-[12%]">
                   Компания
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[16%]">
-                  Тип / ТС
-                </TableHeadCell>
                 <TableHeadCell padding="sm" className="w-[11%]">
+                  Тип
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[9%]">
                   Канал
                 </TableHeadCell>
-                <TableHeadCell padding="sm" align="right" className="w-[9%]">
-                  Сумма
+                <TableHeadCell padding="sm" className="w-[12%]">
+                  Примечание
+                </TableHeadCell>
+                <TableHeadCell padding="sm" align="right" className="w-[8%]">
+                  Оплачено / План
+                </TableHeadCell>
+                <TableHeadCell padding="sm" align="right" className="w-[5%]">
+                  Платежей
+                </TableHeadCell>
+                <TableHeadCell padding="sm" className="w-[8%]">
+                  Действия
                 </TableHeadCell>
               </tr>
             </thead>
             <tbody className="bg-white">
-              {paymentsByPolicy.map(({ policy, payments }) => {
-                const paymentsPanelId = `policy-${policy.id}-payments`;
-                const model = buildPolicyCardModel(policy, payments);
-                const hasUnpaidPayments = unpaidPaymentsPolicies.has(policy.id);
-                const hasUnpaidRecords = unpaidRecordsPolicies.has(policy.id);
-                const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+              {policies.map((policy) => {
+                const paymentsForPolicy = paymentsByPolicyMap.get(policy.id) ?? [];
+                const model = buildPolicyCardModel(policy, paymentsForPolicy);
                 const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
-                const transportSummary = policy.isVehicle ? getPolicyTransportSummary(policy) : '';
+                const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+                const notePreview = getPolicyNotePreview(policy.note);
 
                 return (
-                  <React.Fragment key={policy.id}>
-                    <tr className={`${TABLE_ROW_CLASS} border-t border-slate-300`}>
-                      <td className={TABLE_CELL_CLASS_COMPACT}>
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <PolicyNumberButton
-                              value={model.number}
-                              className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
-                            />
-                            {computedStatusBadge && (
-                              <span
-                                className={[
-                                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                                  computedStatusBadge.tone === 'red'
-                                    ? 'bg-red-100 text-red-700'
-                                    : computedStatusBadge.tone === 'orange'
-                                      ? 'bg-orange-100 text-orange-700'
-                                      : 'bg-emerald-100 text-emerald-700',
-                                ].join(' ')}
-                              >
-                                {computedStatusBadge.label}
-                              </span>
-                            )}
-                            {hasUnpaidPayments && (
-                              <span
-                                className={[
-                                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                                  expiryBadge?.tone === 'red'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-orange-100 text-orange-700',
-                                ].join(' ')}
-                              >
-                                {POLICY_TEXT.badges.unpaidPayments}
-                              </span>
-                            )}
-                            {hasUnpaidRecords && (
-                              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                                {POLICY_TEXT.badges.unpaidRecords}
-                              </span>
-                            )}
-                            {expiryBadge && (
-                              <span
-                                className={[
-                                  'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                                  expiryBadge.tone === 'red'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-orange-100 text-orange-700',
-                                ].join(' ')}
-                              >
-                                {expiryBadge.label}
-                              </span>
-                            )}
-                            {onRequestEditPolicy && (
-                              <button
-                                type="button"
-                                onClick={() => onRequestEditPolicy(policy)}
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                                aria-label={`Редактировать полис ${model.number}`}
-                              >
-                                Редактировать
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td
-                        className={`${TABLE_CELL_CLASS_COMPACT} text-xs font-semibold text-slate-700`}
-                      >
-                        {model.startDate}
-                      </td>
-                      <td
-                        className={`${TABLE_CELL_CLASS_COMPACT} text-xs font-semibold text-slate-700`}
-                      >
-                        {model.endDate}
-                      </td>
-                      <td className={TABLE_CELL_CLASS_COMPACT}>
-                        <p className="text-sm font-semibold text-slate-900 break-words">
-                          {model.client}
-                        </p>
-                      </td>
-                      <td className={TABLE_CELL_CLASS_COMPACT}>
-                        <div className="min-w-0">
-                          <ColoredLabel
-                            value={policy.insuranceCompany}
-                            showDot
-                            className="max-w-full truncate font-semibold text-slate-900"
-                          />
-                        </div>
-                      </td>
-                      <td className={TABLE_CELL_CLASS_COMPACT}>
-                        <p className="text-sm font-semibold text-slate-900 break-words">
-                          {model.insuranceType}
-                        </p>
-                        {transportSummary && (
-                          <p className="mt-1 text-xs text-slate-500">{transportSummary}</p>
+                  <tr key={policy.id} className={`${TABLE_ROW_CLASS} border-t border-slate-300`}>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      <PolicyNumberButton
+                        value={model.number}
+                        className="text-sm font-semibold text-slate-900 underline underline-offset-2 decoration-dotted decoration-slate-300 transition hover:decoration-slate-500"
+                      />
+                    </td>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      <div className="flex flex-wrap gap-1">
+                        {computedStatusBadge && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
+                            }`}
+                            title={computedStatusBadge.tooltip}
+                          >
+                            {computedStatusBadge.label}
+                          </span>
                         )}
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_COMPACT} text-slate-700 break-words`}>
-                        {model.salesChannel}
-                      </td>
-                      <td className={`${TABLE_CELL_CLASS_COMPACT} text-right`}>
-                        <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                      </td>
-                    </tr>
-                    <tr className={`${TABLE_ROW_CLASS_PLAIN} border-t border-slate-200`}>
-                      <td
-                        colSpan={8}
-                        className="border border-slate-200 border-b border-slate-300 bg-slate-50/70 px-2 py-2"
+                        {expiryBadge && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
+                              expiryBadge.tone,
+                            )}`}
+                          >
+                            {expiryBadge.label}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_COMPACT} text-xs font-semibold text-slate-700`}
+                    >
+                      {model.startDate}
+                    </td>
+                    <td
+                      className={`${TABLE_CELL_CLASS_COMPACT} text-xs font-semibold text-slate-700`}
+                    >
+                      {model.endDate}
+                    </td>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      <p className="text-sm font-semibold text-slate-900 break-words">
+                        {model.client}
+                      </p>
+                    </td>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      <p className="text-sm font-semibold text-slate-900 break-words">
+                        {model.insuranceCompany}
+                      </p>
+                    </td>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      <p className="text-sm font-semibold text-slate-900 break-words">
+                        {model.insuranceType}
+                      </p>
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_COMPACT} text-slate-700 break-words`}>
+                      {model.salesChannel}
+                    </td>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      <p
+                        className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
+                        title={notePreview.fullText}
                       >
-                        <div
-                          id={paymentsPanelId}
-                          className="rounded-lg border border-slate-200 bg-white"
+                        {notePreview.preview}
+                      </p>
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_COMPACT} text-right`}>
+                      <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
+                    </td>
+                    <td className={`${TABLE_CELL_CLASS_COMPACT} text-right text-xs text-slate-700`}>
+                      {paymentsForPolicy.length}
+                    </td>
+                    <td className={TABLE_CELL_CLASS_COMPACT}>
+                      {onRequestEditPolicy && (
+                        <button
+                          type="button"
+                          onClick={() => onRequestEditPolicy(policy)}
+                          className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                          aria-label={`Редактировать полис ${model.number}`}
                         >
-                          <div className="border-b border-slate-200 p-3">
-                            <PolicySummaryBlocks policy={policy} model={model} />
-                          </div>
-                          {payments.length ? (
-                            <table
-                              className={NESTED_TABLE_CLASS}
-                              aria-label={`Платежи полиса ${model.number}`}
-                            >
-                              <thead className={NESTED_TABLE_HEAD_CLASS}>
-                                <tr>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[12%]`}>
-                                    {POLICY_TEXT.paymentTable.amount}
-                                  </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[24%]`}>
-                                    {POLICY_TEXT.paymentTable.description}
-                                  </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[11%]`}>
-                                    {POLICY_TEXT.paymentTable.scheduledAt}
-                                  </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[11%]`}>
-                                    {POLICY_TEXT.paymentTable.actualAt}
-                                  </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[21%]`}>
-                                    {POLICY_TEXT.paymentTable.incomes}
-                                  </th>
-                                  <th className={`${NESTED_TABLE_HEAD_CELL_CLASS_COMPACT} w-[21%]`}>
-                                    {POLICY_TEXT.paymentTable.expenses}
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {payments.map((payment) => (
-                                  <PaymentCard
-                                    key={payment.id}
-                                    payment={payment}
-                                    onRequestAddRecord={openCreateFinancialRecord}
-                                    onEditFinancialRecord={openEditFinancialRecord}
-                                    onDeleteFinancialRecord={onDeleteFinancialRecord}
-                                    onDeletePayment={onDeletePayment}
-                                    variant="table-row"
-                                    hideRowActions
-                                  />
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <div className={`${NESTED_TABLE_CELL_CLASS_COMPACT} border-0`}>
-                              <PanelMessage>{POLICY_TEXT.messages.noPayments}</PanelMessage>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  </React.Fragment>
+                          Редактировать
+                        </button>
+                      )}
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -652,25 +502,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             {isLoadingMorePolicies ? 'Загрузка...' : 'Показать ещё'}
           </button>
         </div>
-      )}
-
-      {isFinancialRecordModalOpen && (
-        <FinancialRecordModal
-          isOpen
-          title={editingFinancialRecordId ? 'Изменить запись' : 'Добавить запись'}
-          onClose={closeFinancialRecordModal}
-          paymentId={financialRecordPaymentId}
-          defaultRecordType={financialRecordDefaultRecordType}
-          record={editingFinancialRecord}
-          onSubmit={async (values) => {
-            if (editingFinancialRecordId) {
-              await onUpdateFinancialRecord(editingFinancialRecordId, values);
-            } else {
-              await onAddFinancialRecord(values);
-            }
-            closeFinancialRecordModal();
-          }}
-        />
       )}
     </section>
   );
