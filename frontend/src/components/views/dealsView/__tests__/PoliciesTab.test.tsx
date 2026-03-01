@@ -85,7 +85,7 @@ const setup = (overrides: Partial<React.ComponentProps<typeof PoliciesTab>> = {}
 };
 
 describe('PoliciesTab', () => {
-  it('renders compact table without summary blocks and with readable problem status', () => {
+  it('renders hierarchical ledger layout and readable problem status', () => {
     setup({
       relatedPayments: [
         buildPayment({
@@ -104,9 +104,16 @@ describe('PoliciesTab', () => {
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             },
+          ],
+        }),
+        buildPayment({
+          id: 'payment-2',
+          amount: '3500',
+          actualDate: null,
+          financialRecords: [
             {
               id: 'record-unpaid',
-              paymentId: 'payment-1',
+              paymentId: 'payment-2',
               amount: '-30',
               recordType: 'Расход',
               note: '',
@@ -116,13 +123,14 @@ describe('PoliciesTab', () => {
             },
           ],
         }),
-        buildPayment({ id: 'payment-2', amount: '3500', actualDate: null }),
       ],
     });
 
-    expect(screen.getByText('Примечание')).toBeInTheDocument();
-    expect(screen.getByText('Платежи')).toBeInTheDocument();
-    expect(screen.getByText('Финзаписи')).toBeInTheDocument();
+    expect(screen.getByText('Номер полиса')).toBeInTheDocument();
+    expect(screen.getByText('Основные данные')).toBeInTheDocument();
+    expect(screen.getByText('Платеж')).toBeInTheDocument();
+    expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
+    expect(screen.queryByText('Оплачено / План')).toBeNull();
 
     const statusBadge = screen.getByText('Есть неоплаченные записи');
     expect(statusBadge).toHaveAttribute(
@@ -130,8 +138,8 @@ describe('PoliciesTab', () => {
       'Есть финансовые записи без даты оплаты по платежам полиса',
     );
 
-    const noteCell = screen.getByText('Тестовое примечание');
-    expect(noteCell).toHaveAttribute('title', 'Тестовое примечание');
+    const policyCell = screen.getByText('POL-1').closest('td');
+    expect(policyCell?.getAttribute('rowspan')).toBe('2');
 
     const paidPaymentRow = screen.getByTitle(
       (title) => title.includes('02.01.2025') && title.includes('2'),
@@ -146,14 +154,10 @@ describe('PoliciesTab', () => {
       (title) => title.includes('03.01.2025') && title.includes('Комиссия'),
     );
     const unpaidRecordRow = screen.getByTitle(
-      (title) => title.includes('без даты выплаты') && title.includes('Оплата от клиента'),
+      (title) => title.includes('без даты выплаты') && title.includes('Без комментария'),
     );
     expect(paidRecordRow.className).toContain('bg-emerald-50');
     expect(unpaidRecordRow.className).toContain('bg-rose-50');
-
-    expect(screen.queryByText('Основное')).toBeNull();
-    expect(screen.queryByText('Сроки')).toBeNull();
-    expect(screen.queryByText('Финансы')).toBeNull();
   });
 
   it('shows empty fallback when deal has no policies', () => {

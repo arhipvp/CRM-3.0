@@ -1,4 +1,4 @@
-export type PolicyExpiryBadge = {
+﻿export type PolicyExpiryBadge = {
   label: string;
   tone: 'red' | 'orange';
 };

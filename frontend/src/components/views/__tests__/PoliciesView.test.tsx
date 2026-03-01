@@ -66,50 +66,47 @@ describe('PoliciesView', () => {
     vi.mocked(fetchPoliciesKPI).mockClear();
   });
 
-  it('renders compact table row with note preview and readable problem status', async () => {
-    const longNote =
-      'Длинное примечание к полису с уточнением по клиенту и деталями по продлению на следующий период.';
-
-    const financialRecords = [
-      {
-        id: 'record-paid',
-        paymentId: 'payment-1',
-        amount: '200',
-        recordType: 'Доход' as const,
-        note: 'Чаевые',
-        date: '2025-01-03',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 'record-unpaid',
-        paymentId: 'payment-1',
-        amount: '-50',
-        recordType: 'Расход' as const,
-        note: '',
-        date: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-
+  it('renders hierarchical ledger rows with rowspan and payment-linked records', async () => {
     render(
       <MemoryRouter>
         <NotificationProvider>
           <PoliciesView
-            policies={[buildPolicy({ note: longNote, computedStatus: 'problem' })]}
+            policies={[buildPolicy({ note: 'Длинное примечание', computedStatus: 'problem' })]}
             payments={[
               buildPayment({
-                id: 'payment-1',
+                id: 'payment-paid',
                 amount: '3000',
                 actualDate: '2025-01-02',
                 note: 'Оплата наличными',
-                financialRecords,
+                financialRecords: [
+                  {
+                    id: 'record-paid',
+                    paymentId: 'payment-paid',
+                    amount: '200',
+                    recordType: 'Доход',
+                    note: 'Чаевые',
+                    date: '2025-01-03',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
               }),
               buildPayment({
-                id: 'payment-2',
+                id: 'payment-unpaid',
                 amount: '5000',
                 actualDate: null,
+                financialRecords: [
+                  {
+                    id: 'record-unpaid',
+                    paymentId: 'payment-unpaid',
+                    amount: '-50',
+                    recordType: 'Расход',
+                    note: '',
+                    date: null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  },
+                ],
               }),
             ]}
             onRequestEditPolicy={vi.fn()}
@@ -118,19 +115,20 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Статус')).toBeInTheDocument();
-    expect(screen.getByText('Примечание')).toBeInTheDocument();
-    expect(screen.getByText('Платежи')).toBeInTheDocument();
-    expect(screen.getByText('Финзаписи')).toBeInTheDocument();
+    expect(screen.getByText('Номер полиса')).toBeInTheDocument();
+    expect(screen.getByText('Основные данные')).toBeInTheDocument();
+    expect(screen.getByText('Платеж')).toBeInTheDocument();
+    expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
+    expect(screen.queryByText('Оплачено / План')).toBeNull();
 
     const statusBadge = screen.getByTitle(
       'Есть финансовые записи без даты оплаты по платежам полиса',
     );
     expect(statusBadge).toHaveTextContent('Есть неоплаченные записи');
 
-    const notePreview = screen.getByText(longNote);
-    expect(notePreview).toHaveAttribute('title', longNote);
-    expect(notePreview.className).toContain('-webkit-line-clamp:2');
+    const numberCell = screen.getByText('POL-1').closest('td');
+    expect(numberCell).not.toBeNull();
+    expect(numberCell?.getAttribute('rowspan')).toBe('2');
 
     const paidPaymentRow = screen.getByTitle(
       (title) => title.includes('02.01.2025') && title.includes('3'),
@@ -145,16 +143,10 @@ describe('PoliciesView', () => {
       (title) => title.includes('03.01.2025') && title.includes('Чаевые'),
     );
     const unpaidRecordRow = screen.getByTitle(
-      (title) => title.includes('без даты выплаты') && title.includes('Оплата наличными'),
+      (title) => title.includes('без даты выплаты') && title.includes('Без комментария'),
     );
     expect(paidRecordRow.className).toContain('bg-emerald-50');
     expect(unpaidRecordRow.className).toContain('bg-rose-50');
-    expect(screen.getByText('Чаевые')).toBeInTheDocument();
-    expect(screen.getByText('Оплата наличными')).toBeInTheDocument();
-
-    expect(screen.queryByText('Основное')).toBeNull();
-    expect(screen.queryByText('Сроки')).toBeNull();
-    expect(screen.queryByText('Финансы')).toBeNull();
 
     await waitFor(() => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();

@@ -1,4 +1,4 @@
-export const POLICY_PLACEHOLDER = '—';
+﻿export const POLICY_PLACEHOLDER = '—';
 
 export const POLICY_TEXT = {
   fields: {
@@ -53,5 +53,3 @@ export const POLICY_TEXT = {
     noDate: 'не оплачено',
   },
 } as const;
-
-// Возможные статусы полиса на будущее: действует / продлён / непродлён.

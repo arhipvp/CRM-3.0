@@ -336,6 +336,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       .finally(() => setIsPoliciesRefreshing(false));
   }, [activeTab, onRefreshPolicies]);
 
+  useEffect(() => {
+    hasRequestedPoliciesRef.current = false;
+  }, [selectedDeal?.id]);
+
   const {
     notes,
     notesLoading,
@@ -695,11 +699,18 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     return normalized;
   }, [policySortKey, policySortOrder, relatedPolicies]);
 
-  const relatedPayments = useMemo(
-    () => (selectedDeal ? payments.filter((p) => p.dealId === selectedDeal.id) : []),
+  const relatedPayments = useMemo(() => {
+    if (!selectedDeal) {
+      return [];
+    }
 
-    [payments, selectedDeal],
-  );
+    const relatedPolicyIds = new Set(relatedPolicies.map((policy) => policy.id));
+    return payments.filter(
+      (payment) =>
+        payment.dealId === selectedDeal.id ||
+        (payment.policyId ? relatedPolicyIds.has(payment.policyId) : false),
+    );
+  }, [payments, relatedPolicies, selectedDeal]);
 
   const relatedTasks = useMemo(
     () => (selectedDeal ? tasks.filter((t) => t.dealId === selectedDeal.id) : []),

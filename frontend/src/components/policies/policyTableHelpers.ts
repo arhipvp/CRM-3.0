@@ -1,4 +1,4 @@
-﻿import type { FinancialRecord, Payment } from '../../types';
+﻿import type { FinancialRecord, Payment, Policy } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 
 export const POLICY_STATUS_TONE_CLASS: Record<'red' | 'orange' | 'green', string> = {
@@ -86,4 +86,46 @@ export const formatRecordLedgerLine = (record: FinancialRecord, fallbackText: st
     comment,
     text: `${dateText} — ${amountText} (${comment})`,
   };
+};
+
+export type PolicyLedgerRecordRow = {
+  record: FinancialRecord;
+  state: 'paid' | 'unpaid';
+  line: ReturnType<typeof formatRecordLedgerLine>;
+};
+
+export type PolicyLedgerPaymentRow = {
+  payment: Payment;
+  state: 'paid' | 'unpaid';
+  line: ReturnType<typeof formatPaymentLedgerLine>;
+  records: PolicyLedgerRecordRow[];
+};
+
+export const buildPolicyLedgerRows = (
+  policy: Pick<Policy, 'id'>,
+  paymentsForPolicy: Payment[],
+  fallbackText = 'Без комментария',
+): PolicyLedgerPaymentRow[] => {
+  const rows = sortPaymentsForLedger(
+    paymentsForPolicy.filter((payment) => payment.policyId === policy.id),
+  );
+
+  return rows.map((payment) => {
+    const paymentFallbackText =
+      (payment.note ?? '').trim() || (payment.description ?? '').trim() || fallbackText;
+    const recordsForPayment = sortFinancialRecordsForLedger(
+      (payment.financialRecords ?? []).filter((record) => !record.deletedAt),
+    );
+
+    return {
+      payment,
+      state: getPaymentLedgerState(payment),
+      line: formatPaymentLedgerLine(payment),
+      records: recordsForPayment.map((record) => ({
+        record,
+        state: getRecordLedgerState(record),
+        line: formatRecordLedgerLine(record, paymentFallbackText),
+      })),
+    };
+  });
 };

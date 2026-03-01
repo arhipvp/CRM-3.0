@@ -412,8 +412,11 @@ const AppContent: React.FC = () => {
     if (!isAuthenticated) {
       return;
     }
+    ensureFinanceDataLoaded().catch((err) => {
+      setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
+    });
     if (isCommissionsRoute) {
-      Promise.all([refreshPolicies(), ensureFinanceDataLoaded()]).catch((err) => {
+      refreshPolicies().catch((err) => {
         setError(formatErrorMessage(err, 'Ошибка при загрузке данных для раздела комиссий'));
       });
     }

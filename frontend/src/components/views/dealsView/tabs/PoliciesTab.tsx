@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { Fragment, useMemo, useState } from 'react';
 import type {
   Client,
   Deal,
@@ -13,16 +13,11 @@ import {
   getPolicyExpiryBadge,
 } from '../../../policies/policyIndicators';
 import {
-  formatPaymentLedgerLine,
-  formatRecordLedgerLine,
-  getPaymentLedgerState,
+  buildPolicyLedgerRows,
   getPolicyExpiryToneClass,
   getPolicyNotePreview,
-  getRecordLedgerState,
   POLICY_LEDGER_STATE_CLASS,
   POLICY_STATUS_TONE_CLASS,
-  sortFinancialRecordsForLedger,
-  sortPaymentsForLedger,
 } from '../../../policies/policyTableHelpers';
 import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
@@ -214,7 +209,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-[2200px] w-full border-collapse text-left text-sm">
+        <table className="min-w-[1900px] w-full border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             <tr>
               <th className="px-3 py-2 border border-slate-300">
@@ -223,10 +218,10 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   onClick={() => handleSortChange('number')}
                   className="w-full text-left"
                 >
-                  Номер
+                  Номер полиса
                 </button>
               </th>
-              <th className="px-3 py-2 border border-slate-300">Статус</th>
+              <th className="px-3 py-2 border border-slate-300">Основные данные</th>
               <th className="px-3 py-2 border border-slate-300">
                 <button
                   type="button"
@@ -242,188 +237,181 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   onClick={() => handleSortChange('endDate')}
                   className="w-full text-left"
                 >
-                  Окончание
+                  Конец
                 </button>
               </th>
-              <th className="px-3 py-2 border border-slate-300">Клиент</th>
-              <th className="px-3 py-2 border border-slate-300">Компания</th>
-              <th className="px-3 py-2 border border-slate-300">Тип</th>
-              <th className="px-3 py-2 border border-slate-300">Канал</th>
-              <th className="px-3 py-2 border border-slate-300">Примечание</th>
-              <th className="px-3 py-2 border border-slate-300 text-right">Оплачено / План</th>
-              <th className="px-3 py-2 border border-slate-300">Платежи</th>
-              <th className="px-3 py-2 border border-slate-300">Финзаписи</th>
-              <th className="px-3 py-2 border border-slate-300">Действия</th>
+              <th className="px-3 py-2 border border-slate-300">Платеж</th>
+              <th className="px-3 py-2 border border-slate-300">Финансовые записи</th>
             </tr>
           </thead>
           <tbody className="bg-white">
             {visiblePolicies.map((policy) => {
               const payments = paymentsByPolicyMap.get(policy.id) ?? [];
-              const sortedPayments = sortPaymentsForLedger(payments);
-              const paymentFallbackCommentById = new Map(
-                payments.map((payment) => [
-                  payment.id,
-                  (payment.note ?? '').trim() ||
-                    (payment.description ?? '').trim() ||
-                    'Без комментария',
-                ]),
-              );
-              const recordsForPolicy = payments.flatMap((payment) =>
-                (payment.financialRecords ?? []).filter((record) => !record.deletedAt),
-              );
-              const sortedRecords = sortFinancialRecordsForLedger(recordsForPolicy);
+              const ledgerRows = buildPolicyLedgerRows(policy, payments, 'Без комментария');
               const model = buildPolicyCardModel(policy, payments);
               const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
               const expiryBadge = getPolicyExpiryBadge(policy.endDate);
               const notePreview = getPolicyNotePreview(policy.note);
+              const rowSpan = Math.max(ledgerRows.length, 1);
+              const firstLedgerRow = ledgerRows[0];
 
               return (
-                <tr key={policy.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-3 py-2 border border-slate-300 align-top">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-slate-900">{model.number}</p>
-                      {policy.isVehicle && (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                          Авто
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 align-top">
-                    <div className="flex flex-wrap gap-1">
-                      {computedStatusBadge && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
-                          }`}
-                          title={computedStatusBadge.tooltip}
+                <Fragment key={policy.id}>
+                  <tr key={`${policy.id}-head`} className="hover:bg-slate-50 transition-colors">
+                    <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
+                      <p className="text-xl font-bold text-slate-900 leading-tight">
+                        {model.number}
+                      </p>
+                    </td>
+                    <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
+                      <div className="space-y-1.5">
+                        <p className="text-sm font-semibold text-slate-900">{model.client}</p>
+                        <p className="text-sm text-slate-900">{model.insuranceCompany}</p>
+                        <p className="text-sm text-slate-900">{model.insuranceType}</p>
+                        <p className="text-sm text-slate-700">{model.salesChannel}</p>
+                        <p
+                          className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
+                          title={notePreview.fullText}
                         >
-                          {computedStatusBadge.label}
-                        </span>
-                      )}
-                      {expiryBadge && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
-                            expiryBadge.tone,
-                          )}`}
-                        >
-                          {expiryBadge.label}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top">
-                    {model.startDate}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top">
-                    {model.endDate}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-900 align-top">
-                    {model.client}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-900 align-top">
-                    {model.insuranceCompany}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-900 align-top">
-                    {model.insuranceType}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 text-sm text-slate-700 align-top">
-                    {model.salesChannel}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 align-top">
-                    <p
-                      className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
-                      title={notePreview.fullText}
-                    >
-                      {notePreview.preview}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 text-right align-top">
-                    <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 align-top">
-                    {sortedPayments.length ? (
-                      <div className="space-y-1">
-                        {sortedPayments.map((payment) => {
-                          const paymentLine = formatPaymentLedgerLine(payment);
-                          const paymentState = getPaymentLedgerState(payment);
-                          return (
-                            <div
-                              key={payment.id}
-                              className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[paymentState]}`}
-                              title={paymentLine.text}
+                          {notePreview.preview}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {computedStatusBadge && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
+                              }`}
+                              title={computedStatusBadge.tooltip}
                             >
-                              <span className="truncate">{paymentLine.dateText}</span>
-                              <span className="font-semibold whitespace-nowrap">
-                                {paymentLine.amountText}
-                              </span>
-                            </div>
-                          );
-                        })}
+                              {computedStatusBadge.label}
+                            </span>
+                          )}
+                          {expiryBadge && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
+                                expiryBadge.tone,
+                              )}`}
+                            >
+                              {expiryBadge.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => onRequestEditPolicy(policy)}
+                            className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                          >
+                            Редактировать
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPaymentId('new');
+                              setCreatingPaymentPolicyId(policy.id);
+                            }}
+                            className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                          >
+                            + Платеж
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                            className="btn btn-danger btn-sm rounded-xl h-7 px-2 text-[11px]"
+                          >
+                            Удалить
+                          </button>
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-xs text-slate-500">Платежей пока нет.</p>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 align-top">
-                    {sortedRecords.length ? (
-                      <div className="space-y-1">
-                        {sortedRecords.map((record) => {
-                          const fallbackText =
-                            paymentFallbackCommentById.get(record.paymentId) ?? 'Без комментария';
-                          const recordLine = formatRecordLedgerLine(record, fallbackText);
-                          const recordState = getRecordLedgerState(record);
-
-                          return (
+                    </td>
+                    <td
+                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top"
+                      rowSpan={rowSpan}
+                    >
+                      {model.startDate}
+                    </td>
+                    <td
+                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top"
+                      rowSpan={rowSpan}
+                    >
+                      {model.endDate}
+                    </td>
+                    <td className="px-3 py-2 border border-slate-300 align-top">
+                      {firstLedgerRow ? (
+                        <div
+                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
+                          title={firstLedgerRow.line.text}
+                        >
+                          <span className="truncate">{firstLedgerRow.line.dateText}</span>
+                          <span className="font-semibold whitespace-nowrap">
+                            {firstLedgerRow.line.amountText}
+                          </span>
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2 border border-slate-300 align-top">
+                      {firstLedgerRow?.records.length ? (
+                        <div className="space-y-1">
+                          {firstLedgerRow.records.map((recordRow) => (
                             <div
-                              key={record.id}
-                              className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordState]}`}
-                              title={recordLine.text}
+                              key={recordRow.record.id}
+                              className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordRow.state]}`}
+                              title={recordRow.line.text}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="truncate">{recordLine.dateText}</span>
+                                <span className="truncate">{recordRow.line.dateText}</span>
                                 <span className="font-semibold whitespace-nowrap">
-                                  {recordLine.amountText}
+                                  {recordRow.line.amountText}
                                 </span>
                               </div>
-                              <p className="truncate">{recordLine.comment}</p>
+                              <p className="truncate">{recordRow.line.comment}</p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500">Записей нет</p>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 border border-slate-300 align-top">
-                    <div className="flex flex-wrap gap-1">
-                      <button
-                        type="button"
-                        onClick={() => onRequestEditPolicy(policy)}
-                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingPaymentId('new');
-                          setCreatingPaymentPolicyId(policy.id);
-                        }}
-                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                      >
-                        + Платеж
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                        className="btn btn-danger btn-sm rounded-xl h-7 px-2 text-[11px]"
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                          ))}
+                        </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                  {ledgerRows.slice(1).map((ledgerRow) => (
+                    <tr
+                      key={`${policy.id}-${ledgerRow.payment.id}`}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-3 py-2 border border-slate-300 align-top">
+                        <div
+                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
+                          title={ledgerRow.line.text}
+                        >
+                          <span className="truncate">{ledgerRow.line.dateText}</span>
+                          <span className="font-semibold whitespace-nowrap">
+                            {ledgerRow.line.amountText}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 border border-slate-300 align-top">
+                        {ledgerRow.records.length ? (
+                          <div className="space-y-1">
+                            {ledgerRow.records.map((recordRow) => (
+                              <div
+                                key={recordRow.record.id}
+                                className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordRow.state]}`}
+                                title={recordRow.line.text}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="truncate">{recordRow.line.dateText}</span>
+                                  <span className="font-semibold whitespace-nowrap">
+                                    {recordRow.line.amountText}
+                                  </span>
+                                </div>
+                                <p className="truncate">{recordRow.line.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
               );
             })}
           </tbody>
