@@ -5,6 +5,13 @@ import { useNotification } from './contexts/NotificationContext';
 import { AppModals } from './components/app/AppModals';
 import { AppDealPreviewModal } from './components/app/AppDealPreviewModal';
 import { AppRoutes } from './components/app/AppRoutes';
+import type {
+  AppRouteDataBundle,
+  AppRouteDealsActions,
+  AppRouteFilterState,
+  AppRouteFinanceActions,
+  AppRouteLoadingState,
+} from './components/app/appRoutes.types';
 import { ClientMergeModal } from './components/app/ClientMergeModal';
 import { AppShell } from './components/app/AppShell';
 import { AppShortcutsController } from './components/app/AppShortcutsController';
@@ -3973,6 +3980,218 @@ const AppContent: React.FC = () => {
     },
   ]);
 
+  const routeData = useMemo<AppRouteDataBundle>(
+    () => ({
+      deals,
+      clients,
+      policies,
+      policiesList,
+      payments,
+      financialRecords,
+      statements,
+      tasks,
+      users,
+      currentUser,
+    }),
+    [
+      deals,
+      clients,
+      policies,
+      policiesList,
+      payments,
+      financialRecords,
+      statements,
+      tasks,
+      users,
+      currentUser,
+    ],
+  );
+
+  const routeDealsActions = useMemo<AppRouteDealsActions>(
+    () => ({
+      onClientEdit: handleClientEditRequest,
+      onClientDelete: handleClientDeleteRequest,
+      onClientMerge: handleClientMergeRequest,
+      onClientFindSimilar: handleClientFindSimilarRequest,
+      selectedDealId,
+      isDealFocusCleared,
+      dealRowFocusRequest,
+      onSelectDeal: handleSelectDeal,
+      onClearDealFocus: clearSelectedDealFocus,
+      onDealPreview: handleOpenDealPreview,
+      onCloseDeal: handleCloseDeal,
+      onReopenDeal: handleReopenDeal,
+      onUpdateDeal: handleUpdateDeal,
+      onRefreshDeal: handleRefreshSelectedDeal,
+      onPinDeal: handlePinDeal,
+      onUnpinDeal: handleUnpinDeal,
+      onPostponeDeal: handlePostponeDeal,
+      onRequestAddQuote: (dealId) => setQuoteDealId(dealId),
+      onRequestEditQuote: handleRequestEditQuote,
+      onRequestAddPolicy: handleRequestAddPolicy,
+      onRequestEditPolicy: handleRequestEditPolicy,
+      onRequestAddClient: () => openClientModal('deal'),
+      pendingDealClientId,
+      onPendingDealClientConsumed: handlePendingDealClientConsumed,
+      onDeleteQuote: handleDeleteQuote,
+      onDeletePolicy: handleDeletePolicy,
+      onDriveFolderCreated: handleDriveFolderCreated,
+      onCreateDealMailbox: handleCreateDealMailbox,
+      onCheckDealMailbox: handleCheckDealMailbox,
+      onFetchChatMessages: handleFetchChatMessages,
+      onSendChatMessage: handleSendChatMessage,
+      onDeleteChatMessage: handleDeleteChatMessage,
+      onFetchDealHistory: fetchDealHistory,
+      onCreateTask: handleCreateTask,
+      onUpdateTask: handleUpdateTask,
+      onRefreshPolicies: handleRefreshSelectedDealPolicies,
+      onDeleteTask: handleDeleteTask,
+      onRefreshPoliciesList: refreshPoliciesList,
+      onDeleteDeal: handleDeleteDeal,
+      onRestoreDeal: handleRestoreDeal,
+      onMergeDeals: handleMergeDeals,
+      onPolicyDraftReady: handlePolicyDraftReady,
+      onDealSelectionBlockedChange: setDealSelectionBlocked,
+    }),
+    [
+      clearSelectedDealFocus,
+      dealRowFocusRequest,
+      handleCheckDealMailbox,
+      handleClientDeleteRequest,
+      handleClientEditRequest,
+      handleClientFindSimilarRequest,
+      handleClientMergeRequest,
+      handleCloseDeal,
+      handleCreateDealMailbox,
+      handleCreateTask,
+      handleDeleteChatMessage,
+      handleDeleteDeal,
+      handleDeletePolicy,
+      handleDeleteQuote,
+      handleDeleteTask,
+      handleDriveFolderCreated,
+      handleFetchChatMessages,
+      handleMergeDeals,
+      handleOpenDealPreview,
+      handlePendingDealClientConsumed,
+      handlePinDeal,
+      handlePolicyDraftReady,
+      handlePostponeDeal,
+      handleRefreshSelectedDeal,
+      handleRefreshSelectedDealPolicies,
+      handleReopenDeal,
+      handleRequestAddPolicy,
+      handleRequestEditPolicy,
+      handleRequestEditQuote,
+      handleRestoreDeal,
+      handleSelectDeal,
+      handleSendChatMessage,
+      handleUnpinDeal,
+      handleUpdateDeal,
+      handleUpdateTask,
+      isDealFocusCleared,
+      openClientModal,
+      pendingDealClientId,
+      refreshPoliciesList,
+      selectedDealId,
+      setDealSelectionBlocked,
+      setQuoteDealId,
+    ],
+  );
+
+  const routeFinanceActions = useMemo<AppRouteFinanceActions>(
+    () => ({
+      onAddPayment: handleAddPayment,
+      onUpdatePayment: handleUpdatePayment,
+      onDeletePayment: handleDeletePayment,
+      onAddFinancialRecord: handleAddFinancialRecord,
+      onUpdateFinancialRecord: handleUpdateFinancialRecord,
+      onDeleteFinancialRecord: handleDeleteFinancialRecord,
+      onCreateFinanceStatement: handleCreateFinanceStatement,
+      onDeleteFinanceStatement: handleDeleteFinanceStatement,
+      onRemoveFinanceStatementRecords: handleRemoveFinanceStatementRecords,
+      onUpdateFinanceStatement: handleUpdateFinanceStatement,
+    }),
+    [
+      handleAddFinancialRecord,
+      handleAddPayment,
+      handleCreateFinanceStatement,
+      handleDeleteFinanceStatement,
+      handleDeleteFinancialRecord,
+      handleDeletePayment,
+      handleRemoveFinanceStatementRecords,
+      handleUpdateFinanceStatement,
+      handleUpdateFinancialRecord,
+      handleUpdatePayment,
+    ],
+  );
+
+  const routeFilters = useMemo<AppRouteFilterState>(
+    () => ({
+      dealSearch,
+      onDealSearchChange: setDealSearch,
+      dealExecutorFilter,
+      onDealExecutorFilterChange: setDealExecutorFilter,
+      dealShowDeleted,
+      onDealShowDeletedChange: setDealShowDeleted,
+      dealShowClosed,
+      onDealShowClosedChange: setDealShowClosed,
+      dealOrdering,
+      onDealOrderingChange: setDealOrdering,
+    }),
+    [
+      dealExecutorFilter,
+      dealOrdering,
+      dealSearch,
+      dealShowClosed,
+      dealShowDeleted,
+      setDealExecutorFilter,
+      setDealOrdering,
+      setDealSearch,
+      setDealShowClosed,
+      setDealShowDeleted,
+    ],
+  );
+
+  const routeLoading = useMemo<AppRouteLoadingState>(
+    () => ({
+      onLoadMoreDeals: loadMoreDeals,
+      dealsHasMore,
+      dealsTotalCount,
+      isLoadingMoreDeals,
+      onLoadMorePolicies: loadMorePolicies,
+      policiesHasMore,
+      isLoadingMorePolicies,
+      isPoliciesListLoading,
+      isFinanceDataLoading,
+      isTasksLoading,
+      isSelectedDealTasksLoading,
+      isSelectedDealQuotesLoading,
+      isBackgroundRefreshingDeals,
+      isBackgroundRefreshingPoliciesList,
+      isBackgroundRefreshingTasks,
+      isBackgroundRefreshingFinance,
+    }),
+    [
+      dealsHasMore,
+      dealsTotalCount,
+      isBackgroundRefreshingDeals,
+      isBackgroundRefreshingFinance,
+      isBackgroundRefreshingPoliciesList,
+      isBackgroundRefreshingTasks,
+      isFinanceDataLoading,
+      isLoadingMoreDeals,
+      isLoadingMorePolicies,
+      isPoliciesListLoading,
+      isSelectedDealQuotesLoading,
+      isSelectedDealTasksLoading,
+      isTasksLoading,
+      loadMoreDeals,
+      loadMorePolicies,
+      policiesHasMore,
+    ],
+  );
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
@@ -4027,95 +4246,11 @@ const AppContent: React.FC = () => {
         </div>
       )}
       <AppRoutes
-        deals={deals}
-        clients={clients}
-        onClientEdit={handleClientEditRequest}
-        onClientDelete={handleClientDeleteRequest}
-        onClientMerge={handleClientMergeRequest}
-        onClientFindSimilar={handleClientFindSimilarRequest}
-        policies={policies}
-        policiesList={policiesList}
-        payments={payments}
-        financialRecords={financialRecords}
-        statements={statements}
-        tasks={tasks}
-        users={users}
-        currentUser={currentUser}
-        selectedDealId={selectedDealId}
-        isDealFocusCleared={isDealFocusCleared}
-        dealRowFocusRequest={dealRowFocusRequest}
-        onSelectDeal={handleSelectDeal}
-        onClearDealFocus={clearSelectedDealFocus}
-        onDealPreview={handleOpenDealPreview}
-        onCloseDeal={handleCloseDeal}
-        onReopenDeal={handleReopenDeal}
-        onUpdateDeal={handleUpdateDeal}
-        onRefreshDeal={handleRefreshSelectedDeal}
-        onPinDeal={handlePinDeal}
-        onUnpinDeal={handleUnpinDeal}
-        onPostponeDeal={handlePostponeDeal}
-        onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
-        onRequestEditQuote={handleRequestEditQuote}
-        onRequestAddPolicy={handleRequestAddPolicy}
-        onRequestEditPolicy={handleRequestEditPolicy}
-        onRequestAddClient={() => openClientModal('deal')}
-        pendingDealClientId={pendingDealClientId}
-        onPendingDealClientConsumed={handlePendingDealClientConsumed}
-        onDeleteQuote={handleDeleteQuote}
-        onDeletePolicy={handleDeletePolicy}
-        onAddPayment={handleAddPayment}
-        onUpdatePayment={handleUpdatePayment}
-        onDeletePayment={handleDeletePayment}
-        onAddFinancialRecord={handleAddFinancialRecord}
-        onUpdateFinancialRecord={handleUpdateFinancialRecord}
-        onDeleteFinancialRecord={handleDeleteFinancialRecord}
-        onCreateFinanceStatement={handleCreateFinanceStatement}
-        onDeleteFinanceStatement={handleDeleteFinanceStatement}
-        onUpdateFinanceStatement={handleUpdateFinanceStatement}
-        onRemoveFinanceStatementRecords={handleRemoveFinanceStatementRecords}
-        onDriveFolderCreated={handleDriveFolderCreated}
-        onCreateDealMailbox={handleCreateDealMailbox}
-        onCheckDealMailbox={handleCheckDealMailbox}
-        onFetchChatMessages={handleFetchChatMessages}
-        onSendChatMessage={handleSendChatMessage}
-        onDeleteChatMessage={handleDeleteChatMessage}
-        onFetchDealHistory={fetchDealHistory}
-        onCreateTask={handleCreateTask}
-        onUpdateTask={handleUpdateTask}
-        onRefreshPolicies={handleRefreshSelectedDealPolicies}
-        onDeleteTask={handleDeleteTask}
-        onDeleteDeal={handleDeleteDeal}
-        onRestoreDeal={handleRestoreDeal}
-        onMergeDeals={handleMergeDeals}
-        dealSearch={dealSearch}
-        onDealSearchChange={setDealSearch}
-        dealExecutorFilter={dealExecutorFilter}
-        onDealExecutorFilterChange={setDealExecutorFilter}
-        dealShowDeleted={dealShowDeleted}
-        onDealShowDeletedChange={setDealShowDeleted}
-        dealShowClosed={dealShowClosed}
-        onDealShowClosedChange={setDealShowClosed}
-        dealOrdering={dealOrdering}
-        onDealOrderingChange={setDealOrdering}
-        onDealSelectionBlockedChange={setDealSelectionBlocked}
-        onPolicyDraftReady={handlePolicyDraftReady}
-        onLoadMoreDeals={loadMoreDeals}
-        dealsHasMore={dealsHasMore}
-        dealsTotalCount={dealsTotalCount}
-        isLoadingMoreDeals={isLoadingMoreDeals}
-        onRefreshPoliciesList={refreshPoliciesList}
-        onLoadMorePolicies={loadMorePolicies}
-        policiesHasMore={policiesHasMore}
-        isLoadingMorePolicies={isLoadingMorePolicies}
-        isPoliciesListLoading={isPoliciesListLoading}
-        isFinanceDataLoading={isFinanceDataLoading}
-        isTasksLoading={isTasksLoading}
-        isSelectedDealTasksLoading={isSelectedDealTasksLoading}
-        isSelectedDealQuotesLoading={isSelectedDealQuotesLoading}
-        isBackgroundRefreshingDeals={isBackgroundRefreshingDeals}
-        isBackgroundRefreshingPoliciesList={isBackgroundRefreshingPoliciesList}
-        isBackgroundRefreshingTasks={isBackgroundRefreshingTasks}
-        isBackgroundRefreshingFinance={isBackgroundRefreshingFinance}
+        data={routeData}
+        dealsActions={routeDealsActions}
+        financeActions={routeFinanceActions}
+        filters={routeFilters}
+        loading={routeLoading}
       />
       <AppShortcutsController
         paletteMode={paletteMode}

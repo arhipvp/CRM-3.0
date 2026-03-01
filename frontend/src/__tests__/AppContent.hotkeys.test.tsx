@@ -152,48 +152,53 @@ vi.mock('../components/MainLayout', () => ({
 
 vi.mock('../components/app/AppRoutes', () => ({
   AppRoutes: ({
-    onPostponeDeal,
-    onUpdateTask,
-    onSelectDeal,
-    onDealSearchChange,
-    selectedDealId,
-    isDealFocusCleared,
+    dealsActions,
+    filters,
   }: {
-    onPostponeDeal?: (dealId: string, data: Record<string, unknown>) => Promise<void>;
-    onUpdateTask?: (taskId: string, data: { status?: string }) => Promise<void>;
-    onSelectDeal?: (dealId: string) => void;
-    onDealSearchChange?: (value: string) => void;
-    selectedDealId?: string | null;
-    isDealFocusCleared?: boolean;
+    dealsActions?: {
+      onPostponeDeal?: (dealId: string, data: Record<string, unknown>) => Promise<void>;
+      onUpdateTask?: (taskId: string, data: { status?: string }) => Promise<void>;
+      onSelectDeal?: (dealId: string) => void;
+      selectedDealId?: string | null;
+      isDealFocusCleared?: boolean;
+    };
+    filters?: {
+      onDealSearchChange?: (value: string) => void;
+    };
   }) => (
     <div data-testid="app-routes">
-      <div data-testid="selected-deal">{selectedDealId ?? 'null'}</div>
-      <div data-testid="focus-cleared">{isDealFocusCleared ? 'true' : 'false'}</div>
+      <div data-testid="selected-deal">{dealsActions?.selectedDealId ?? 'null'}</div>
+      <div data-testid="focus-cleared">{dealsActions?.isDealFocusCleared ? 'true' : 'false'}</div>
       <button
         type="button"
         onClick={() =>
-          void onPostponeDeal?.('deal-1', {
-            title: 'Сделка первая',
-            description: '',
-            clientId: 'client-1',
-            source: null,
-            nextContactDate: '2026-12-31',
-            expectedClose: '2027-02-28',
-          }).catch(() => undefined)
+          void dealsActions
+            ?.onPostponeDeal?.('deal-1', {
+              title: 'Сделка первая',
+              description: '',
+              clientId: 'client-1',
+              source: null,
+              nextContactDate: '2026-12-31',
+              expectedClose: '2027-02-28',
+            })
+            .catch(() => undefined)
         }
       >
         Trigger postpone
       </button>
-      <button type="button" onClick={() => void onUpdateTask?.('task-1', { status: 'done' })}>
+      <button
+        type="button"
+        onClick={() => void dealsActions?.onUpdateTask?.('task-1', { status: 'done' })}
+      >
         Trigger task update
       </button>
-      <button type="button" onClick={() => onSelectDeal?.('deal-2')}>
+      <button type="button" onClick={() => dealsActions?.onSelectDeal?.('deal-2')}>
         Select deal-2
       </button>
-      <button type="button" onClick={() => onSelectDeal?.('deal-1')}>
+      <button type="button" onClick={() => dealsActions?.onSelectDeal?.('deal-1')}>
         Select deal-1
       </button>
-      <button type="button" onClick={() => onDealSearchChange?.('refresh')}>
+      <button type="button" onClick={() => filters?.onDealSearchChange?.('refresh')}>
         Trigger search refresh
       </button>
     </div>
