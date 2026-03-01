@@ -23,6 +23,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET } from '../common/buttonStyles';
+import { ColoredLabel } from '../common/ColoredLabel';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -76,6 +77,8 @@ interface PoliciesViewProps {
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policies,
   payments,
+  onDealSelect,
+  onDealPreview,
   onLoadMorePolicies,
   policiesHasMore = false,
   isLoadingMorePolicies = false,
@@ -263,6 +266,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     },
   ];
 
+  const handleOpenDeal = (dealId: string) => {
+    if (onDealPreview) {
+      onDealPreview(dealId);
+      return;
+    }
+    onDealSelect?.(dealId);
+  };
+
   return (
     <section aria-labelledby="policiesViewHeading" className="app-panel p-3 shadow-none space-y-2">
       <h1 id="policiesViewHeading" className="sr-only">
@@ -354,10 +365,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 <TableHeadCell padding="sm" className="w-[26%]">
                   Основные данные
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[8%]">
+                <TableHeadCell padding="sm" className="w-[6%]">
                   Начало
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[8%]">
+                <TableHeadCell padding="sm" className="w-[6%]">
                   Конец
                 </TableHeadCell>
                 <TableHeadCell padding="sm" className="w-[18%]">
@@ -382,6 +393,15 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 const notePreview = getPolicyNotePreview(policy.note);
                 const rowSpan = Math.max(ledgerRows.length, 1);
                 const firstLedgerRow = ledgerRows[0];
+                const insuranceCompany = (model.insuranceCompany ?? '').trim();
+                const insuranceType = (model.insuranceType ?? '').trim();
+                const salesChannel = (model.salesChannel ?? '').trim();
+                const metaTitle = [insuranceCompany, insuranceType, salesChannel]
+                  .filter(Boolean)
+                  .join(', ');
+                const hasMeta = Boolean(metaTitle);
+                const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
+                const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
 
                 return (
                   <React.Fragment key={policy.id}>
@@ -395,9 +415,38 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                       <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         <div className="space-y-1.5">
                           <p className="text-sm font-semibold text-slate-900">{model.client}</p>
-                          <p className="text-sm text-slate-800">{model.insuranceCompany}</p>
-                          <p className="text-sm text-slate-800">{model.insuranceType}</p>
-                          <p className="text-sm text-slate-700">{model.salesChannel}</p>
+                          {policy.dealId ? (
+                            canOpenDeal ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeal(policy.dealId)}
+                                className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
+                              >
+                                {dealTitle}
+                              </button>
+                            ) : (
+                              <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
+                            )
+                          ) : null}
+                          {hasMeta ? (
+                            <p className="text-sm text-slate-700 truncate" title={metaTitle}>
+                              {insuranceCompany ? (
+                                <>
+                                  <ColoredLabel
+                                    value={insuranceCompany}
+                                    showDot
+                                    className="text-sm"
+                                  />
+                                  {(insuranceType || salesChannel) && ', '}
+                                </>
+                              ) : null}
+                              {insuranceType}
+                              {insuranceType && salesChannel ? ', ' : null}
+                              {salesChannel}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-slate-700">—</p>
+                          )}
                           <p
                             className="text-xs text-slate-600 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
                             title={notePreview.fullText}
@@ -438,13 +487,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                       </td>
                       <td
                         rowSpan={rowSpan}
-                        className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700`}
+                        className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700 whitespace-nowrap`}
                       >
                         {model.startDate}
                       </td>
                       <td
                         rowSpan={rowSpan}
-                        className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700`}
+                        className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700 whitespace-nowrap`}
                       >
                         {model.endDate}
                       </td>

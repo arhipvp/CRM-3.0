@@ -1,5 +1,5 @@
 ﻿import type React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Client, Deal, Payment, Policy } from '../../../../types';
@@ -37,8 +37,10 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   paymentsPaid: overrides.paymentsPaid ?? '120',
   paymentsTotal: overrides.paymentsTotal ?? '300',
   counterparty: overrides.counterparty ?? '',
+  dealTitle: overrides.dealTitle ?? 'Сделка #1',
   clientId: overrides.clientId ?? 'client-1',
   clientName: overrides.clientName ?? 'Client',
+  salesChannel: overrides.salesChannel ?? '',
   driveFolderId: overrides.driveFolderId ?? null,
   note: overrides.note ?? '',
 });
@@ -86,11 +88,14 @@ const setup = (overrides: Partial<React.ComponentProps<typeof PoliciesTab>> = {}
 
 describe('PoliciesTab', () => {
   it('renders hierarchical ledger layout and readable problem status', () => {
+    const onDealSelect = vi.fn();
     setup({
+      onDealSelect,
       relatedPayments: [
         buildPayment({
           id: 'payment-1',
           amount: '2100',
+          scheduledDate: '2025-02-28',
           actualDate: '2025-01-02',
           note: 'Оплата от клиента',
           financialRecords: [
@@ -109,6 +114,7 @@ describe('PoliciesTab', () => {
         buildPayment({
           id: 'payment-2',
           amount: '3500',
+          scheduledDate: null,
           actualDate: null,
           financialRecords: [
             {
@@ -122,6 +128,13 @@ describe('PoliciesTab', () => {
               updatedAt: new Date().toISOString(),
             },
           ],
+        }),
+      ],
+      sortedPolicies: [
+        buildPolicy({
+          note: 'Тестовое примечание',
+          salesChannel: 'Марьинских',
+          dealTitle: 'Сделка #1',
         }),
       ],
     });
@@ -142,10 +155,10 @@ describe('PoliciesTab', () => {
     expect(policyCell?.getAttribute('rowspan')).toBe('2');
 
     const paidPaymentRow = screen.getByTitle(
-      (title) => title.includes('02.01.2025') && title.includes('2'),
+      (title) => title.includes('28.02.2025') && title.includes('2'),
     );
     const unpaidPaymentRow = screen.getByTitle(
-      (title) => title.includes('без даты оплаты') && title.includes('₽'),
+      (title) => title.includes('без плановой даты') && title.includes('₽'),
     );
     expect(paidPaymentRow.className).toContain('bg-emerald-50');
     expect(unpaidPaymentRow.className).toContain('bg-rose-50');
@@ -158,6 +171,21 @@ describe('PoliciesTab', () => {
     );
     expect(paidRecordRow.className).toContain('bg-emerald-50');
     expect(unpaidRecordRow.className).toContain('bg-rose-50');
+    expect(screen.getByTitle('Alpha, OSAGO, Марьинских')).toBeInTheDocument();
+    const companyMeta = screen.getByText('Alpha').closest('p');
+    expect(companyMeta?.querySelector('span.rounded-full')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сделка #1' }));
+    expect(onDealSelect).toHaveBeenCalledWith('deal-1');
+  });
+
+  it('renders deal title as plain text when no callbacks provided', () => {
+    setup({
+      sortedPolicies: [buildPolicy({ dealTitle: 'Сделка без клика' })],
+    });
+
+    expect(screen.getByText('Сделка без клика')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Сделка без клика' })).toBeNull();
   });
 
   it('shows empty fallback when deal has no policies', () => {

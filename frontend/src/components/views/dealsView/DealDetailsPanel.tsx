@@ -822,6 +822,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       setEditingFinancialRecordId={setEditingFinancialRecordId}
       onDeleteFinancialRecord={onDeleteFinancialRecord}
       onDeletePayment={onDeletePayment}
+      onDealSelect={onSelectDeal}
       isLoading={isPoliciesRefreshing}
     />
   );

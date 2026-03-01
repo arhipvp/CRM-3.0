@@ -40,8 +40,8 @@ const getDateSortWeight = (date?: string | null) => {
 
 export const sortPaymentsForLedger = (payments: Payment[]) =>
   [...payments].sort((left, right) => {
-    const leftWeight = getDateSortWeight(left.actualDate);
-    const rightWeight = getDateSortWeight(right.actualDate);
+    const leftWeight = getDateSortWeight(left.scheduledDate);
+    const rightWeight = getDateSortWeight(right.scheduledDate);
     if (leftWeight !== rightWeight) {
       return leftWeight - rightWeight;
     }
@@ -65,7 +65,7 @@ export const getRecordLedgerState = (record: FinancialRecord): 'paid' | 'unpaid'
   record.date ? 'paid' : 'unpaid';
 
 export const formatPaymentLedgerLine = (payment: Payment) => {
-  const dateText = payment.actualDate ? formatDate(payment.actualDate) : 'без даты оплаты';
+  const dateText = payment.scheduledDate ? formatDate(payment.scheduledDate) : 'без плановой даты';
   const amountText = formatCurrency(payment.amount);
   return {
     dateText,

@@ -21,6 +21,7 @@ import {
 } from '../../../policies/policyTableHelpers';
 import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
+import { ColoredLabel } from '../../../common/ColoredLabel';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -54,6 +55,8 @@ interface PoliciesTabProps {
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
+  onDealPreview?: (dealId: string) => void;
+  onDealSelect?: (dealId: string) => void;
   isLoading?: boolean;
 }
 
@@ -70,6 +73,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onRequestAddPolicy,
   onDeletePolicy,
   onRequestEditPolicy,
+  onDealPreview,
+  onDealSelect,
   isLoading = false,
 }) => {
   const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
@@ -153,6 +158,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     setPolicySortOrder('asc');
   };
 
+  const handleOpenDeal = (dealId: string) => {
+    if (onDealPreview) {
+      onDealPreview(dealId);
+      return;
+    }
+    onDealSelect?.(dealId);
+  };
+
   if (!sortedPolicies.length) {
     return (
       <section className="app-panel p-4 shadow-none space-y-3">
@@ -222,7 +235,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 </button>
               </th>
               <th className="px-3 py-2 border border-slate-300">Основные данные</th>
-              <th className="px-3 py-2 border border-slate-300">
+              <th className="px-3 py-2 border border-slate-300 w-[6%]">
                 <button
                   type="button"
                   onClick={() => handleSortChange('startDate')}
@@ -231,7 +244,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   Начало
                 </button>
               </th>
-              <th className="px-3 py-2 border border-slate-300">
+              <th className="px-3 py-2 border border-slate-300 w-[6%]">
                 <button
                   type="button"
                   onClick={() => handleSortChange('endDate')}
@@ -254,6 +267,15 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               const notePreview = getPolicyNotePreview(policy.note);
               const rowSpan = Math.max(ledgerRows.length, 1);
               const firstLedgerRow = ledgerRows[0];
+              const insuranceCompany = (model.insuranceCompany ?? '').trim();
+              const insuranceType = (model.insuranceType ?? '').trim();
+              const salesChannel = (model.salesChannel ?? '').trim();
+              const metaTitle = [insuranceCompany, insuranceType, salesChannel]
+                .filter(Boolean)
+                .join(', ');
+              const hasMeta = Boolean(metaTitle);
+              const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
+              const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
 
               return (
                 <Fragment key={policy.id}>
@@ -266,9 +288,38 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
                       <div className="space-y-1.5">
                         <p className="text-sm font-semibold text-slate-900">{model.client}</p>
-                        <p className="text-sm text-slate-900">{model.insuranceCompany}</p>
-                        <p className="text-sm text-slate-900">{model.insuranceType}</p>
-                        <p className="text-sm text-slate-700">{model.salesChannel}</p>
+                        {policy.dealId ? (
+                          canOpenDeal ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDeal(policy.dealId)}
+                              className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
+                            >
+                              {dealTitle}
+                            </button>
+                          ) : (
+                            <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
+                          )
+                        ) : null}
+                        {hasMeta ? (
+                          <p className="text-sm text-slate-700 truncate" title={metaTitle}>
+                            {insuranceCompany ? (
+                              <>
+                                <ColoredLabel
+                                  value={insuranceCompany}
+                                  showDot
+                                  className="text-sm"
+                                />
+                                {(insuranceType || salesChannel) && ', '}
+                              </>
+                            ) : null}
+                            {insuranceType}
+                            {insuranceType && salesChannel ? ', ' : null}
+                            {salesChannel}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-slate-700">—</p>
+                        )}
                         <p
                           className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
                           title={notePreview.fullText}
@@ -326,13 +377,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                       </div>
                     </td>
                     <td
-                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top"
+                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
                       rowSpan={rowSpan}
                     >
                       {model.startDate}
                     </td>
                     <td
-                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top"
+                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
                       rowSpan={rowSpan}
                     >
                       {model.endDate}

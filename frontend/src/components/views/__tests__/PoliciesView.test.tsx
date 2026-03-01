@@ -25,6 +25,7 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   id: overrides.id ?? 'policy-1',
   number: overrides.number ?? 'POL-1',
   dealId: overrides.dealId ?? 'deal-1',
+  dealTitle: overrides.dealTitle ?? 'Сделка #1',
   insuranceCompany: overrides.insuranceCompany ?? 'Alpha',
   insuranceCompanyId: overrides.insuranceCompanyId ?? 'company-1',
   insuranceType: overrides.insuranceType ?? 'OSAGO',
@@ -44,6 +45,7 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   counterparty: overrides.counterparty ?? '',
   clientId: overrides.clientId ?? 'client-1',
   clientName: overrides.clientName ?? 'Client',
+  salesChannel: overrides.salesChannel ?? '',
   driveFolderId: overrides.driveFolderId ?? null,
   note: overrides.note ?? '',
 });
@@ -66,16 +68,24 @@ describe('PoliciesView', () => {
     vi.mocked(fetchPoliciesKPI).mockClear();
   });
 
-  it('renders hierarchical ledger rows with rowspan and payment-linked records', async () => {
+  it('renders compact policy meta, scheduled payment date and deal preview link', async () => {
+    const onDealPreview = vi.fn();
     render(
       <MemoryRouter>
         <NotificationProvider>
           <PoliciesView
-            policies={[buildPolicy({ note: 'Длинное примечание', computedStatus: 'problem' })]}
+            policies={[
+              buildPolicy({
+                note: 'Длинное примечание',
+                computedStatus: 'problem',
+                salesChannel: 'Марьинских',
+              }),
+            ]}
             payments={[
               buildPayment({
                 id: 'payment-paid',
                 amount: '3000',
+                scheduledDate: '2025-02-25',
                 actualDate: '2025-01-02',
                 note: 'Оплата наличными',
                 financialRecords: [
@@ -94,6 +104,7 @@ describe('PoliciesView', () => {
               buildPayment({
                 id: 'payment-unpaid',
                 amount: '5000',
+                scheduledDate: null,
                 actualDate: null,
                 financialRecords: [
                   {
@@ -110,6 +121,7 @@ describe('PoliciesView', () => {
               }),
             ]}
             onRequestEditPolicy={vi.fn()}
+            onDealPreview={onDealPreview}
           />
         </NotificationProvider>
       </MemoryRouter>,
@@ -120,6 +132,8 @@ describe('PoliciesView', () => {
     expect(screen.getByText('Платеж')).toBeInTheDocument();
     expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
     expect(screen.queryByText('Оплачено / План')).toBeNull();
+    expect(screen.getByText('Начало').className).toContain('w-[6%]');
+    expect(screen.getByText('Конец').className).toContain('w-[6%]');
 
     const statusBadge = screen.getByTitle(
       'Есть финансовые записи без даты оплаты по платежам полиса',
@@ -131,10 +145,10 @@ describe('PoliciesView', () => {
     expect(numberCell?.getAttribute('rowspan')).toBe('2');
 
     const paidPaymentRow = screen.getByTitle(
-      (title) => title.includes('02.01.2025') && title.includes('3'),
+      (title) => title.includes('25.02.2025') && title.includes('3'),
     );
     const unpaidPaymentRow = screen.getByTitle(
-      (title) => title.includes('без даты оплаты') && title.includes('₽'),
+      (title) => title.includes('без плановой даты') && title.includes('₽'),
     );
     expect(paidPaymentRow.className).toContain('bg-emerald-50');
     expect(unpaidPaymentRow.className).toContain('bg-rose-50');
@@ -147,6 +161,12 @@ describe('PoliciesView', () => {
     );
     expect(paidRecordRow.className).toContain('bg-emerald-50');
     expect(unpaidRecordRow.className).toContain('bg-rose-50');
+    expect(screen.getByTitle('Alpha, OSAGO, Марьинских')).toBeInTheDocument();
+    const companyMeta = screen.getByText('Alpha').closest('p');
+    expect(companyMeta?.querySelector('span.rounded-full')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сделка #1' }));
+    expect(onDealPreview).toHaveBeenCalledWith('deal-1');
 
     await waitFor(() => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
