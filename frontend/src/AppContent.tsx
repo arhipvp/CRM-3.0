@@ -3,13 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { LoginPage } from './components/LoginPage';
 import { useNotification } from './contexts/NotificationContext';
 import { AppModals } from './components/app/AppModals';
+import { AppDealPreviewModal } from './components/app/AppDealPreviewModal';
 import { AppRoutes } from './components/app/AppRoutes';
 import { ClientMergeModal } from './components/app/ClientMergeModal';
 import { AppShell } from './components/app/AppShell';
 import { AppShortcutsController } from './components/app/AppShortcutsController';
 import { ClientForm } from './components/forms/ClientForm';
 import { AddTaskForm } from './components/forms/AddTaskForm';
-import { PanelMessage } from './components/PanelMessage';
 import { BTN_DANGER, BTN_SECONDARY } from './components/common/buttonStyles';
 import { FormActions } from './components/common/forms/FormActions';
 import { FormModal } from './components/common/modal/FormModal';
@@ -18,7 +18,6 @@ import type { AddTaskFormValues } from './components/forms/AddTaskForm';
 import type { DealFormValues } from './components/forms/DealForm';
 import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import { Modal } from './components/Modal';
-import { DealDetailsPanel } from './components/views/dealsView/DealDetailsPanel';
 import { formatErrorMessage } from './utils/formatErrorMessage';
 import { markTaskAsDeleted } from './utils/tasks';
 import {
@@ -112,6 +111,7 @@ import {
 import type { CommandPaletteItem } from './components/common/modal/CommandPalette';
 import { formatShortcut } from './hotkeys/formatShortcut';
 import { useGlobalHotkeys } from './hotkeys/useGlobalHotkeys';
+import { useDealPreviewController } from './hooks/appContent/useDealPreviewController';
 
 type PaletteMode = null | 'commands' | 'help' | 'taskDeal';
 
@@ -350,22 +350,19 @@ const AppContent: React.FC = () => {
     users,
   } = dataState;
   const navigate = useNavigate();
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
-  const [isDealFocusCleared, setIsDealFocusCleared] = useState(false);
-  const [dealRowFocusRequest, setDealRowFocusRequest] = useState<{
-    dealId: string;
-    nonce: number;
-  } | null>(null);
-  const clearSelectedDealFocus = useCallback(() => {
-    setSelectedDealId(null);
-    setIsDealFocusCleared(true);
-  }, []);
-  const selectDealById = useCallback((dealId: string) => {
-    setSelectedDealId(dealId);
-    setIsDealFocusCleared(false);
-  }, []);
+  const {
+    selectedDealId,
+    isDealFocusCleared,
+    dealRowFocusRequest,
+    previewDealId,
+    clearSelectedDealFocus,
+    resetDealSelection,
+    selectDealById,
+    handleOpenDealPreview: openDealPreviewById,
+    handleCloseDealPreview,
+    requestDealRowFocus,
+  } = useDealPreviewController();
   const [isDealSelectionBlocked, setDealSelectionBlocked] = useState(false);
-  const [previewDealId, setPreviewDealId] = useState<string | null>(null);
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
   const [dealTasksLoadingIds, setDealTasksLoadingIds] = useState<Set<string>>(
     () => new Set<string>(),
@@ -443,7 +440,6 @@ const AppContent: React.FC = () => {
   const policyDealExecutorName = getDealExecutorName(policyDealId);
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const searchInitialized = useRef(false);
-  const dealRowFocusNonceRef = useRef(0);
   const protectedCreatedDealRef = useRef<Deal | null>(null);
   const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
@@ -733,10 +729,10 @@ const AppContent: React.FC = () => {
   );
   const handleOpenDealPreview = useCallback(
     (dealId: string) => {
-      setPreviewDealId(dealId);
+      openDealPreviewById(dealId);
       handleSelectDeal(dealId);
     },
-    [handleSelectDeal],
+    [handleSelectDeal, openDealPreviewById],
   );
   const handleRefreshSelectedDeal = useCallback(
     async (dealId: string) => {
@@ -746,9 +742,6 @@ const AppContent: React.FC = () => {
     },
     [dealFilters, refreshDealsWithSelection, syncDealsByIds],
   );
-  const handleCloseDealPreview = useCallback(() => {
-    setPreviewDealId(null);
-  }, []);
   const previewDeal = previewDealId ? (dealsById.get(previewDealId) ?? null) : null;
   const previewClient = previewDeal ? (clientsById.get(previewDeal.clientId) ?? null) : null;
   const previewSellerUser = previewDeal ? usersById.get(previewDeal.seller ?? '') : undefined;
@@ -1564,13 +1557,10 @@ const AppContent: React.FC = () => {
       protectedCreatedDealRef.current = created;
       skipNextMissingSelectedDealClearRef.current = created.id;
       selectDealById(created.id);
-      setDealRowFocusRequest({
-        dealId: created.id,
-        nonce: (dealRowFocusNonceRef.current += 1),
-      });
+      requestDealRowFocus(created.id);
       setModal(null);
     },
-    [invalidateDealsCache, selectDealById, setModal, updateAppData],
+    [invalidateDealsCache, requestDealRowFocus, selectDealById, setModal, updateAppData],
   );
 
   const handleCloseDeal = useCallback(
@@ -1714,8 +1704,7 @@ const AppContent: React.FC = () => {
         } else if (previousFocusCleared) {
           clearSelectedDealFocus();
         } else {
-          setSelectedDealId(null);
-          setIsDealFocusCleared(false);
+          resetDealSelection();
         }
         if (err instanceof APIError && err.status === 403) {
           addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
@@ -1734,10 +1723,10 @@ const AppContent: React.FC = () => {
       invalidateDealsCache,
       isDealFocusCleared,
       refreshDeals,
+      resetDealSelection,
       selectedDealId,
       selectDealById,
       setError,
-      setIsDealFocusCleared,
       setIsSyncing,
     ],
   );
@@ -4136,75 +4125,64 @@ const AppContent: React.FC = () => {
         onClose={closePalette}
       />
 
-      {previewDealId && (
-        <Modal
-          title={previewDeal?.title ? `Сделка: ${previewDeal.title}` : 'Сделка'}
-          onClose={handleCloseDealPreview}
-          size="xl"
-          zIndex={60}
-        >
-          <div className="max-h-[75vh] overflow-y-auto">
-            {previewDeal ? (
-              <DealDetailsPanel
-                deals={deals}
-                clients={clients}
-                onClientEdit={handleClientEditRequest}
-                policies={policies}
-                payments={payments}
-                financialRecords={financialRecords}
-                tasks={tasks}
-                users={users}
-                currentUser={currentUser}
-                sortedDeals={deals}
-                selectedDeal={previewDeal}
-                selectedClient={previewClient}
-                sellerUser={previewSellerUser}
-                executorUser={previewExecutorUser}
-                onSelectDeal={handleSelectDeal}
-                onCloseDeal={handleCloseDeal}
-                onReopenDeal={handleReopenDeal}
-                onUpdateDeal={handleUpdateDeal}
-                onPostponeDeal={handlePostponeDeal}
-                onMergeDeals={handleMergeDeals}
-                onRequestAddQuote={(dealId) => setQuoteDealId(dealId)}
-                onRequestEditQuote={handleRequestEditQuote}
-                onRequestAddPolicy={handleRequestAddPolicy}
-                onRequestEditPolicy={handleRequestEditPolicy}
-                onRequestAddClient={() => openClientModal('deal')}
-                pendingDealClientId={pendingDealClientId}
-                onPendingDealClientConsumed={handlePendingDealClientConsumed}
-                onDeleteQuote={handleDeleteQuote}
-                onDeletePolicy={handleDeletePolicy}
-                onRefreshPolicies={handleRefreshPreviewDealPolicies}
-                onPolicyDraftReady={handlePolicyDraftReady}
-                onAddPayment={handleAddPayment}
-                onUpdatePayment={handleUpdatePayment}
-                onDeletePayment={handleDeletePayment}
-                onAddFinancialRecord={handleAddFinancialRecord}
-                onUpdateFinancialRecord={handleUpdateFinancialRecord}
-                onDeleteFinancialRecord={handleDeleteFinancialRecord}
-                onDriveFolderCreated={handleDriveFolderCreated}
-                onCreateDealMailbox={handleCreateDealMailbox}
-                onCheckDealMailbox={handleCheckDealMailbox}
-                onFetchChatMessages={handleFetchChatMessages}
-                onSendChatMessage={handleSendChatMessage}
-                onDeleteChatMessage={handleDeleteChatMessage}
-                onFetchDealHistory={fetchDealHistory}
-                onCreateTask={handleCreateTask}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onDeleteDeal={handleDeleteDeal}
-                onRestoreDeal={handleRestoreDeal}
-                onDealSelectionBlockedChange={setDealSelectionBlocked}
-                isTasksLoading={isPreviewDealTasksLoading}
-                isQuotesLoading={isPreviewDealQuotesLoading}
-              />
-            ) : (
-              <PanelMessage>Загрузка сделки...</PanelMessage>
-            )}
-          </div>
-        </Modal>
-      )}
+      <AppDealPreviewModal
+        isOpen={Boolean(previewDealId)}
+        previewDeal={previewDeal}
+        previewClient={previewClient}
+        previewSellerUser={previewSellerUser}
+        previewExecutorUser={previewExecutorUser}
+        onClose={handleCloseDealPreview}
+        panelProps={{
+          deals,
+          clients,
+          onClientEdit: handleClientEditRequest,
+          policies,
+          payments,
+          financialRecords,
+          tasks,
+          users,
+          currentUser,
+          sortedDeals: deals,
+          onSelectDeal: handleSelectDeal,
+          onCloseDeal: handleCloseDeal,
+          onReopenDeal: handleReopenDeal,
+          onUpdateDeal: handleUpdateDeal,
+          onPostponeDeal: handlePostponeDeal,
+          onMergeDeals: handleMergeDeals,
+          onRequestAddQuote: (dealId) => setQuoteDealId(dealId),
+          onRequestEditQuote: handleRequestEditQuote,
+          onRequestAddPolicy: handleRequestAddPolicy,
+          onRequestEditPolicy: handleRequestEditPolicy,
+          onRequestAddClient: () => openClientModal('deal'),
+          pendingDealClientId,
+          onPendingDealClientConsumed: handlePendingDealClientConsumed,
+          onDeleteQuote: handleDeleteQuote,
+          onDeletePolicy: handleDeletePolicy,
+          onRefreshPolicies: handleRefreshPreviewDealPolicies,
+          onPolicyDraftReady: handlePolicyDraftReady,
+          onAddPayment: handleAddPayment,
+          onUpdatePayment: handleUpdatePayment,
+          onDeletePayment: handleDeletePayment,
+          onAddFinancialRecord: handleAddFinancialRecord,
+          onUpdateFinancialRecord: handleUpdateFinancialRecord,
+          onDeleteFinancialRecord: handleDeleteFinancialRecord,
+          onDriveFolderCreated: handleDriveFolderCreated,
+          onCreateDealMailbox: handleCreateDealMailbox,
+          onCheckDealMailbox: handleCheckDealMailbox,
+          onFetchChatMessages: handleFetchChatMessages,
+          onSendChatMessage: handleSendChatMessage,
+          onDeleteChatMessage: handleDeleteChatMessage,
+          onFetchDealHistory: fetchDealHistory,
+          onCreateTask: handleCreateTask,
+          onUpdateTask: handleUpdateTask,
+          onDeleteTask: handleDeleteTask,
+          onDeleteDeal: handleDeleteDeal,
+          onRestoreDeal: handleRestoreDeal,
+          onDealSelectionBlockedChange: setDealSelectionBlocked,
+          isTasksLoading: isPreviewDealTasksLoading,
+          isQuotesLoading: isPreviewDealQuotesLoading,
+        }}
+      />
 
       <AppModals
         modal={modal}

@@ -62,7 +62,7 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { confirmTexts } from '../../../constants/confirmTexts';
 import { useDealTimeTracking } from './hooks/useDealTimeTracking';
 
-interface DealDetailsPanelProps {
+export interface DealDetailsPanelProps {
   deals: Deal[];
   clients: Client[];
   onClientEdit?: (client: Client) => void;
