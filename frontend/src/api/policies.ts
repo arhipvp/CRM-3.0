@@ -1,4 +1,9 @@
-﻿import type { Policy, PolicyRecognitionResult, SellerDashboardResponse } from '../types';
+﻿import type {
+  PoliciesKPI,
+  Policy,
+  PolicyRecognitionResult,
+  SellerDashboardResponse,
+} from '../types';
 import { request } from './request';
 import {
   buildQueryString,
@@ -41,6 +46,7 @@ export async function createPolicy(data: {
   model?: string;
   vin?: string;
   counterparty?: string;
+  note?: string;
   salesChannelId?: string;
   startDate?: string | null;
   endDate?: string | null;
@@ -57,6 +63,7 @@ export async function createPolicy(data: {
     model: data.model || '',
     vin: data.vin || '',
     counterparty: data.counterparty || '',
+    note: data.note || '',
     sales_channel: data.salesChannelId || null,
     start_date: data.startDate || null,
     end_date: data.endDate || null,
@@ -254,6 +261,7 @@ interface PolicyUpdatePayload {
   model?: string;
   vin?: string;
   counterparty?: string;
+  note?: string;
   salesChannelId?: string;
   startDate?: string | null;
   endDate?: string | null;
@@ -272,6 +280,7 @@ export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promi
       model: data.model || '',
       vin: data.vin || '',
       counterparty: data.counterparty || '',
+      note: data.note || '',
       sales_channel: data.salesChannelId || null,
       start_date: data.startDate || null,
       end_date: data.endDate || null,
@@ -279,4 +288,16 @@ export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promi
     }),
   });
   return mapPolicy(payload);
+}
+
+export async function fetchPoliciesKPI(filters?: FilterParams): Promise<PoliciesKPI> {
+  const qs = buildQueryString(filters);
+  const payload = await request<Record<string, unknown>>(`/policies/kpi/${qs}`);
+  return {
+    total: Number(payload.total ?? 0),
+    problemCount: Number(payload.problem_count ?? payload.problemCount ?? 0),
+    dueCount: Number(payload.due_count ?? payload.dueCount ?? 0),
+    expiringSoonCount: Number(payload.expiring_soon_count ?? payload.expiringSoonCount ?? 0),
+    expiringDays: Number(payload.expiring_days ?? payload.expiringDays ?? 30),
+  };
 }

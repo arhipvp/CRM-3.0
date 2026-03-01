@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 from typing import List
 
 from apps.common.drive import (
@@ -37,6 +38,7 @@ from .filters import PolicyFilterSet
 from .models import Policy
 from .permissions import user_can_modify_deal, user_is_admin
 from .serializers import PolicySerializer
+from .status import STATUS_VALUES, with_computed_status_flags
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     filterset_class = PolicyFilterSet
     search_fields = [
         "number",
+        "note",
         "deal__title",
         "client__name",
         "insured_client__name",
@@ -101,7 +104,8 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 Value(0),
                 output_field=decimal_field,
             ),
-        ).order_by("-created_at")
+        )
+        queryset = with_computed_status_flags(queryset).order_by("-created_at")
 
         if not user.is_authenticated:
             return queryset
@@ -117,6 +121,41 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
         return queryset
+
+    @action(detail=False, methods=["get"], url_path="kpi")
+    def kpi(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+        today = timezone.localdate()
+        expiring_days = request.query_params.get("expiring_days")
+        try:
+            expiring_days_int = int(expiring_days) if expiring_days is not None else 30
+        except (TypeError, ValueError):
+            expiring_days_int = 30
+        if expiring_days_int < 0:
+            expiring_days_int = 30
+        expiring_to = today + timedelta(days=expiring_days_int)
+        payload = {
+            "total": queryset.count(),
+            "problem_count": queryset.filter(has_unpaid_record=True).count(),
+            "due_count": queryset.filter(
+                has_unpaid_record=False, has_unpaid_payment=True
+            ).count(),
+            "expiring_soon_count": queryset.filter(
+                has_unpaid_record=False,
+                has_unpaid_payment=False,
+                end_date__isnull=False,
+                end_date__gte=today,
+                end_date__lte=expiring_to,
+            ).count(),
+            "expiring_days": expiring_days_int,
+            "status_values": {
+                "problem": STATUS_VALUES.PROBLEM,
+                "due": STATUS_VALUES.DUE,
+                "expired": STATUS_VALUES.EXPIRED,
+                "active": STATUS_VALUES.ACTIVE,
+            },
+        }
+        return Response(payload)
 
     @action(
         detail=True,

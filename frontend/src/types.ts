@@ -362,17 +362,27 @@ export interface Policy {
   model?: string;
   vin?: string;
   counterparty?: string;
+  note?: string;
   salesChannel?: string;
   salesChannelId?: string;
   salesChannelName?: string;
   startDate?: string | null;
   endDate?: string | null;
   status: PolicyStatus;
+  computedStatus?: 'problem' | 'due' | 'expired' | 'active';
   paymentsPaid?: string;
   paymentsTotal?: string;
   createdAt: string;
   updatedAt?: string;
   driveFolderId?: string | null;
+}
+
+export interface PoliciesKPI {
+  total: number;
+  problemCount: number;
+  dueCount: number;
+  expiringSoonCount: number;
+  expiringDays: number;
 }
 
 export interface FinancialRecord {

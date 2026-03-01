@@ -3,6 +3,7 @@ import re
 from rest_framework import serializers
 
 from .models import Policy
+from .status import resolve_computed_status
 
 VIN_PATTERN = re.compile(r"^[A-Za-z0-9]{17}$")
 
@@ -42,6 +43,7 @@ class PolicySerializer(serializers.ModelSerializer):
         required=False,
         allow_empty=True,
     )
+    computed_status = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Policy
@@ -64,10 +66,12 @@ class PolicySerializer(serializers.ModelSerializer):
             "model",
             "vin",
             "counterparty",
+            "note",
             "sales_channel",
             "start_date",
             "end_date",
             "status",
+            "computed_status",
             "payments_paid",
             "payments_total",
             "created_at",
@@ -87,6 +91,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "payments_paid",
             "payments_total",
             "deal_title",
+            "computed_status",
         )
         extra_kwargs = {
             "insured_client": {
@@ -128,6 +133,19 @@ class PolicySerializer(serializers.ModelSerializer):
                 f"Unsupported status '{value}'. Allowed: {', '.join(Policy.PolicyStatus.values)}."
             )
         return normalized
+
+    def validate_note(self, value: str) -> str:
+        if value is None:
+            return ""
+        normalized = str(value).strip()
+        if len(normalized) > 2000:
+            raise serializers.ValidationError(
+                "Policy note cannot be longer than 2000 characters."
+            )
+        return normalized
+
+    def get_computed_status(self, obj: Policy) -> str:
+        return resolve_computed_status(obj)
 
     def validate(self, attrs):
         client = attrs.get("client") if "client" in attrs else None

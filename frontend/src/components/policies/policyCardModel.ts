@@ -20,6 +20,7 @@ export interface PolicyCardModel {
   brand: string;
   model: string;
   vin: string;
+  note: string;
   paymentsCount: number;
   paymentsCountLabel: string;
   dealId: string;
@@ -40,6 +41,7 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     brand: fallback(policy.brand),
     model: fallback(policy.model),
     vin: fallback(policy.vin),
+    note: fallback(policy.note, 'Без примечания'),
     paymentsCount,
     paymentsCountLabel: describeCount(paymentsCount, 'запись', 'записей'),
     dealId: policy.dealId,

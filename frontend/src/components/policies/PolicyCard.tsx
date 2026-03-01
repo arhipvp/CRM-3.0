@@ -6,7 +6,7 @@ import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from './PaymentCard';
 import type { PolicyCardModel } from './policyCardModel';
 import { PolicyNumberButton } from './PolicyNumberButton';
-import { getPolicyExpiryBadge } from './policyIndicators';
+import { getPolicyComputedStatusBadge, getPolicyExpiryBadge } from './policyIndicators';
 import { POLICY_PLACEHOLDER, POLICY_TEXT } from './text';
 import {
   BTN_SM_DANGER,
@@ -108,6 +108,10 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
     [payments, allFinancialRecords],
   );
   const expiryBadge = React.useMemo(() => getPolicyExpiryBadge(policy.endDate), [policy.endDate]);
+  const computedStatusBadge = React.useMemo(
+    () => getPolicyComputedStatusBadge(policy.computedStatus),
+    [policy.computedStatus],
+  );
   const renderTruncatedText = (label: string, value: string) => (
     <LabelValuePair
       label={label}
@@ -181,6 +185,20 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                   {expiryBadge.label}
                 </span>
               )}
+              {computedStatusBadge && (
+                <span
+                  className={[
+                    'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                    computedStatusBadge.tone === 'red'
+                      ? 'bg-red-100 text-red-700'
+                      : computedStatusBadge.tone === 'orange'
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'bg-emerald-100 text-emerald-700',
+                  ].join(' ')}
+                >
+                  {computedStatusBadge.label}
+                </span>
+              )}
             </div>
             <p className="mt-1 text-xs text-slate-500">
               Начало: {model.startDate} · Окончание: {model.endDate}
@@ -219,6 +237,9 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
           {renderTruncatedText(POLICY_TEXT.fields.client, model.client)}
           {renderTruncatedCompany(POLICY_TEXT.fields.company, model.insuranceCompany)}
           {renderTruncatedText(POLICY_TEXT.fields.channel, model.salesChannel)}
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 whitespace-pre-wrap break-words">
+          {model.note}
         </div>
 
         {!policy.isVehicle && hasAutoDetails && (

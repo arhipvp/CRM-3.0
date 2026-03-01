@@ -68,6 +68,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [model, setModel] = useState('');
   const [vin, setVin] = useState('');
   const [counterparty, setCounterparty] = useState('');
+  const [note, setNote] = useState('');
   const [counterpartyTouched, setCounterpartyTouched] = useState(false);
   const [salesChannelId, setSalesChannelId] = useState('');
   const salesChannelName = useMemo(
@@ -174,6 +175,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setModel('');
       setVin('');
       setCounterparty('');
+      setNote('');
       setCounterpartyTouched(false);
       setSalesChannelId('');
       setStartDate('');
@@ -193,6 +195,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setModel(initialValues.model || '');
     setVin(initialValues.vin || '');
     setCounterparty(initialValues.counterparty || '');
+    setNote(initialValues.note || '');
     setSalesChannelId(initialValues.salesChannelId || '');
     setStartDate(initialValues.startDate || '');
     setEndDate(initialValues.endDate || '');
@@ -600,6 +603,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         model: isVehicle ? model.trim() || undefined : undefined,
         vin: isVehicle ? normalizedVin : undefined,
         counterparty: counterparty.trim() || undefined,
+        note: note.trim() || undefined,
         salesChannelId: salesChannelId || undefined,
         clientId: selectedClientId || undefined,
         clientName: selectedClientName,
@@ -638,54 +642,71 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       </div>
 
       {currentStep === 1 && (
-        <PolicyBasicsStep
-          number={number}
-          onNumberChange={setNumber}
-          insuranceCompanyId={insuranceCompanyId}
-          onInsuranceCompanyChange={setInsuranceCompanyId}
-          loadingOptions={loadingOptions}
-          companies={companies}
-          insuranceTypeId={insuranceTypeId}
-          onInsuranceTypeChange={setInsuranceTypeId}
-          types={types}
-          salesChannelId={salesChannelId}
-          onSalesChannelChange={setSalesChannelId}
-          salesChannels={salesChannels}
-          clientQuery={clientQuery}
-          onClientQueryChange={(value) => {
-            setClientQuery(value);
-            setShowClientSuggestions(true);
-            setPolicyClientId('');
-          }}
-          onClientQueryFocus={() => setShowClientSuggestions(true)}
-          onClientQueryBlur={() => {
-            setTimeout(() => setShowClientSuggestions(false), 120);
-          }}
-          showClientSuggestions={showClientSuggestions}
-          filteredClients={filteredClients}
-          onClientSelect={handleClientSelect}
-          onRequestAddClient={onRequestAddClient}
-          isVehicle={isVehicle}
-          onIsVehicleChange={(checked) => {
-            if (!checked) {
-              setBrand('');
+        <div className="space-y-4">
+          <PolicyBasicsStep
+            number={number}
+            onNumberChange={setNumber}
+            insuranceCompanyId={insuranceCompanyId}
+            onInsuranceCompanyChange={setInsuranceCompanyId}
+            loadingOptions={loadingOptions}
+            companies={companies}
+            insuranceTypeId={insuranceTypeId}
+            onInsuranceTypeChange={setInsuranceTypeId}
+            types={types}
+            salesChannelId={salesChannelId}
+            onSalesChannelChange={setSalesChannelId}
+            salesChannels={salesChannels}
+            clientQuery={clientQuery}
+            onClientQueryChange={(value) => {
+              setClientQuery(value);
+              setShowClientSuggestions(true);
+              setPolicyClientId('');
+            }}
+            onClientQueryFocus={() => setShowClientSuggestions(true)}
+            onClientQueryBlur={() => {
+              setTimeout(() => setShowClientSuggestions(false), 120);
+            }}
+            showClientSuggestions={showClientSuggestions}
+            filteredClients={filteredClients}
+            onClientSelect={handleClientSelect}
+            onRequestAddClient={onRequestAddClient}
+            isVehicle={isVehicle}
+            onIsVehicleChange={(checked) => {
+              if (!checked) {
+                setBrand('');
+                setModel('');
+                setVin('');
+              }
+              setIsVehicle(checked);
+            }}
+            brand={brand}
+            onBrandChange={(value) => {
+              setBrand(value);
               setModel('');
-              setVin('');
-            }
-            setIsVehicle(checked);
-          }}
-          brand={brand}
-          onBrandChange={(value) => {
-            setBrand(value);
-            setModel('');
-          }}
-          model={model}
-          onModelChange={setModel}
-          vin={vin}
-          onVinChange={setVin}
-          vehicleBrands={vehicleBrands}
-          vehicleModels={vehicleModels}
-        />
+            }}
+            model={model}
+            onModelChange={setModel}
+            vin={vin}
+            onVinChange={setVin}
+            vehicleBrands={vehicleBrands}
+            vehicleModels={vehicleModels}
+          />
+          <div className="space-y-2">
+            <label className="app-label" htmlFor="policy-note-input">
+              Примечание к полису
+            </label>
+            <textarea
+              id="policy-note-input"
+              rows={4}
+              maxLength={2000}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Комментарий, особенности, важные договоренности..."
+              className="field field-textarea min-h-28"
+            />
+            <p className="text-xs text-slate-500">{note.length}/2000</p>
+          </div>
+        </div>
       )}
 
       {currentStep === 2 && (

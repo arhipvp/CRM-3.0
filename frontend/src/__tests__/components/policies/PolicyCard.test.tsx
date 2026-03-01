@@ -33,6 +33,7 @@ const createModel = (): PolicyCardModel => ({
   brand: '—',
   model: '—',
   vin: '—',
+  note: 'Без примечания',
   paymentsCount: 0,
   paymentsCountLabel: '0 записей',
   dealId: 'd1',

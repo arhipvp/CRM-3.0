@@ -93,6 +93,7 @@ const buildPolicyFormValues = (
   model: policy.model,
   vin: policy.vin,
   counterparty: policy.counterparty,
+  note: policy.note,
   salesChannelId: policy.salesChannelId,
   startDate: policy.startDate,
   endDate: policy.endDate,

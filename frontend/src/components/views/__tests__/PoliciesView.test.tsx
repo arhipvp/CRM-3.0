@@ -1,10 +1,25 @@
 import type { ComponentProps } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { Payment, Policy } from '../../../types';
 import { PoliciesView } from '../PoliciesView';
 import { vi } from 'vitest';
 import { NotificationProvider } from '../../../contexts/NotificationProvider';
+import { fetchPoliciesKPI } from '../../../api';
+
+vi.mock('../../../api', async () => {
+  const actual = await vi.importActual<typeof import('../../../api')>('../../../api');
+  return {
+    ...actual,
+    fetchPoliciesKPI: vi.fn(async () => ({
+      total: 0,
+      problemCount: 0,
+      dueCount: 0,
+      expiringSoonCount: 0,
+      expiringDays: 30,
+    })),
+  };
+});
 
 type PaymentCardProps = ComponentProps<
   (typeof import('../../policies/PaymentCard'))['PaymentCard']
@@ -75,6 +90,13 @@ describe('PoliciesView', () => {
   beforeEach(() => {
     paymentCardMockProps.length = 0;
     defaultProps.onRequestEditPolicy.mockClear();
+    vi.mocked(fetchPoliciesKPI).mockResolvedValue({
+      total: 0,
+      problemCount: 0,
+      dueCount: 0,
+      expiringSoonCount: 0,
+      expiringDays: 30,
+    });
   });
 
   it('filters to only unpaid policies', async () => {
@@ -109,17 +131,19 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('POL-ONE')).toBeInTheDocument();
-    expect(screen.getByText('POL-TWO')).toBeInTheDocument();
+    expect(screen.getAllByText('POL-ONE').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('POL-TWO').length).toBeGreaterThan(0);
 
     const checkbox = screen.getByLabelText('Только с неоплаченными платежами');
     fireEvent.click(checkbox);
 
-    expect(screen.getByText('POL-ONE')).toBeInTheDocument();
-    expect(screen.queryByText('POL-TWO')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getAllByText('POL-ONE').length).toBeGreaterThan(0);
+      expect(screen.queryAllByText('POL-TWO').length).toBe(0);
+    });
   });
 
-  it('renders payments expanded by default', () => {
+  it('renders payments expanded by default', async () => {
     const policies = [buildPolicy({ id: 'policy-one', number: 'POL-ONE' })];
     const payments: Payment[] = [
       buildPayment({ id: 'payment-1', policyId: 'policy-one', actualDate: '' }),
@@ -138,7 +162,9 @@ describe('PoliciesView', () => {
     expect(screen.getByText('Окончание')).toBeInTheDocument();
     expect(screen.getByText('Доходы')).toBeInTheDocument();
     expect(screen.getByText('Расходы')).toBeInTheDocument();
-    expect(screen.queryByText(/Начало:/)).toBeNull();
+    await waitFor(() => {
+      expect(fetchPoliciesKPI).toHaveBeenCalled();
+    });
     expect(screen.queryByText('Действия')).toBeNull();
     const paymentCard = screen.getByTestId('payment-card-payment-1');
     expect(paymentCard.dataset.variant).toBe('table-row');

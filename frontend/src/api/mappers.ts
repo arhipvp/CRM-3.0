@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   ActivityActionType,
   ActivityLog,
   ChatMessage,
@@ -54,6 +54,7 @@ const ACTIVITY_ACTION_TYPES: ActivityActionType[] = [
   'custom',
 ];
 const FINANCIAL_RECORD_TYPES: FinancialRecordType[] = ['Доход', 'Расход'];
+const POLICY_COMPUTED_STATUSES = ['problem', 'due', 'expired', 'active'] as const;
 
 const resolveStringUnion = <T extends string>(
   value: unknown,
@@ -313,12 +314,14 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   model: toOptionalString(raw.model),
   vin: toOptionalString(raw.vin),
   counterparty: toOptionalString(raw.counterparty),
+  note: toOptionalString(raw.note),
   salesChannel: toOptionalString(raw.sales_channel_name ?? raw.sales_channel),
   salesChannelId: toOptionalString(raw.sales_channel),
   salesChannelName: toOptionalString(raw.sales_channel_name ?? raw.sales_channel),
   startDate: raw.start_date === undefined ? undefined : toNullableString(raw.start_date),
   endDate: raw.end_date === undefined ? undefined : toNullableString(raw.end_date),
   status: resolvePolicyStatus(raw.status),
+  computedStatus: resolveOptionalStringUnion(raw.computed_status, POLICY_COMPUTED_STATUSES),
   paymentsPaid: toStringValue(raw.payments_paid ?? raw.paymentsPaid ?? '0'),
   paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
   createdAt: toStringValue(raw.created_at),

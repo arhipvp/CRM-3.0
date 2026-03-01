@@ -1,6 +1,7 @@
 import datetime
 
 from apps.policies.serializers import PolicySerializer
+from apps.policies.status import with_computed_status_flags
 from django.contrib.auth import get_user_model
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
@@ -238,6 +239,7 @@ class DealSerializer(serializers.ModelSerializer):
             )
             .order_by("-created_at")
         )
+        policies = with_computed_status_flags(policies)
         return PolicySerializer(policies, many=True).data
 
     def _set_visible_users(self, deal: Deal, users):

@@ -26,6 +26,7 @@ export interface PolicyFormValues {
   model?: string;
   vin?: string;
   counterparty?: string;
+  note?: string;
   salesChannelId?: string;
   startDate?: string | null;
   endDate?: string | null;

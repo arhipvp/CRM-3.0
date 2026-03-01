@@ -2007,6 +2007,7 @@ const AppContent: React.FC = () => {
         clientId: selectedPolicyClientId,
         clientName: selectedPolicyClientName,
         counterparty,
+        note,
         payments: paymentDrafts = [],
       } = values;
       const sourceFileIds = policySourceFileIds;
@@ -2060,6 +2061,8 @@ const AppContent: React.FC = () => {
           brand,
           model,
           vin,
+          counterparty,
+          note,
           startDate,
           endDate,
           sourceFileId,
@@ -2289,6 +2292,7 @@ const AppContent: React.FC = () => {
           model,
           vin,
           counterparty,
+          note,
           salesChannelId,
           startDate,
           endDate,
@@ -2403,6 +2407,7 @@ const AppContent: React.FC = () => {
           model,
           vin,
           counterparty,
+          note,
           salesChannelId,
           startDate,
           endDate,

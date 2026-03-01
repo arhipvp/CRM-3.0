@@ -1,4 +1,4 @@
-from apps.common.models import SoftDeleteModel
+﻿from apps.common.models import SoftDeleteModel
 from django.db import models
 from django.db.models import Q
 
@@ -85,6 +85,7 @@ class Policy(SoftDeleteModel):
         blank=True,
         help_text="Контрагент полиса (физическое или юридическое лицо)",
     )
+    note = models.TextField(blank=True, default="", help_text="Policy note")
     sales_channel = models.ForeignKey(
         "deals.SalesChannel",
         related_name="policies",

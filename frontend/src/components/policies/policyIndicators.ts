@@ -3,6 +3,13 @@ export type PolicyExpiryBadge = {
   tone: 'red' | 'orange';
 };
 
+export type PolicyComputedStatusValue = 'problem' | 'due' | 'expired' | 'active';
+export type PolicyComputedStatusBadge = {
+  value: PolicyComputedStatusValue;
+  label: string;
+  tone: 'red' | 'orange' | 'green';
+};
+
 export const getPolicyExpiryBadge = (endDate?: string | null): PolicyExpiryBadge | null => {
   if (!endDate) {
     return null;
@@ -27,6 +34,22 @@ export const getPolicyExpiryBadge = (endDate?: string | null): PolicyExpiryBadge
   }
   if (diffDays <= 30) {
     return { label: 'Истекает ≤ 30 дн.', tone: 'orange' };
+  }
+  return null;
+};
+
+export const getPolicyComputedStatusBadge = (status?: string): PolicyComputedStatusBadge | null => {
+  if (status === 'problem') {
+    return { value: 'problem', label: 'Проблема', tone: 'red' };
+  }
+  if (status === 'due') {
+    return { value: 'due', label: 'К оплате', tone: 'orange' };
+  }
+  if (status === 'expired') {
+    return { value: 'expired', label: 'Просрочен', tone: 'red' };
+  }
+  if (status === 'active') {
+    return { value: 'active', label: 'Активен', tone: 'green' };
   }
   return null;
 };

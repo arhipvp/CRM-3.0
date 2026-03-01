@@ -19,7 +19,11 @@ import { usePoliciesExpansionState } from '../../../../hooks/usePoliciesExpansio
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
 import { buildPolicyNavigationActions } from '../../../policies/policyCardActions';
-import { getPolicyExpiryBadge } from '../../../policies/policyIndicators';
+import {
+  getPolicyComputedStatusBadge,
+  getPolicyExpiryBadge,
+} from '../../../policies/policyIndicators';
+import { PolicySummaryBlocks } from '../../../policies/PolicySummaryBlocks';
 import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { POLICY_TEXT } from '../../../policies/text';
@@ -341,6 +345,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               const expanded = paymentsExpanded[policy.id] ?? false;
               const model = buildPolicyCardModel(policy, payments);
               const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+              const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
               const hasUnpaidPayments = payments.some((payment) => hasUnpaidPayment(payment));
               const hasUnpaidRecords = payments.some((payment) =>
                 hasUnpaidRecord(payment, allFinancialRecords),
@@ -437,6 +442,20 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         {POLICY_TEXT.badges.unpaidPayments}
                       </span>
                     )}
+                    {computedStatusBadge && (
+                      <span
+                        className={[
+                          'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          computedStatusBadge.tone === 'red'
+                            ? 'bg-red-100 text-red-700'
+                            : computedStatusBadge.tone === 'orange'
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-emerald-100 text-emerald-700',
+                        ].join(' ')}
+                      >
+                        {computedStatusBadge.label}
+                      </span>
+                    )}
                     {hasUnpaidRecords && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
                         {POLICY_TEXT.badges.unpaidRecords}
@@ -499,6 +518,10 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         </span>
                       </button>
                     )}
+                  </div>
+
+                  <div className="col-span-full border-t border-slate-200 bg-slate-50 px-4 py-3">
+                    <PolicySummaryBlocks policy={policy} model={model} />
                   </div>
 
                   {expanded && payments.length > 0 && (

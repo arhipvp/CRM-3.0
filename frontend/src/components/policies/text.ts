@@ -11,6 +11,8 @@ export const POLICY_TEXT = {
     brand: 'Марка',
     model: 'Модель',
     vin: 'VIN',
+    note: 'Примечание',
+    computedStatus: 'Статус',
     payments: 'Платежи',
   },
   actions: {
