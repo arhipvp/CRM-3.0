@@ -125,16 +125,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   return (
     <div className="space-y-6">
       <h1 className="sr-only">Клиенты</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="app-panel p-5 shadow-none">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="app-panel border-none bg-gradient-to-r from-blue-50 to-white p-5 shadow-none">
           <p className="text-sm text-slate-500">Клиентов</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.clients}</p>
         </div>
-        <div className="app-panel p-5 shadow-none">
+        <div className="app-panel border-none p-5 shadow-none">
           <p className="text-sm text-slate-500">Активных сделок</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.active}</p>
         </div>
-        <div className="app-panel p-5 shadow-none">
+        <div className="app-panel border-none p-5 shadow-none">
           <p className="text-sm text-slate-500">Новых за 30 дней</p>
           <p className="text-3xl font-semibold text-slate-900">{newClientsCount}</p>
         </div>
@@ -178,7 +178,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               const clientDeals = deals.filter((deal) => deal.clientId === client.id);
               const whatsAppLink = buildWhatsAppLink(client.phone);
               return (
-                <tr key={client.id} className={TABLE_ROW_CLASS}>
+                <tr key={client.id} className={`${TABLE_ROW_CLASS} hover:bg-blue-50/60`}>
                   <td className={TABLE_CELL_CLASS_LG}>
                     <p className="text-base font-semibold text-slate-900">{client.name}</p>
                   </td>

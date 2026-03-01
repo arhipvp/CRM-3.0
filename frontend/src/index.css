@@ -1,16 +1,17 @@
 @import 'tailwindcss';
 
 :root {
-  --app-bg: #f5f7fb;
+  --app-bg: #edf1f8;
   --app-surface: #ffffff;
-  --app-surface-muted: rgba(248, 250, 252, 0.85);
-  --app-border: #e2e8f0;
+  --app-surface-muted: rgba(248, 251, 255, 0.88);
+  --app-border: #d6e1ef;
   --app-text: #0f172a;
   --app-text-muted: #64748b;
-  --app-primary: #0284c7;
+  --app-primary: #1872d9;
   --app-danger: #e11d48;
   --app-success: #059669;
-  --app-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 30px rgba(15, 23, 42, 0.08);
+  --app-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 18px 36px rgba(15, 23, 42, 0.08);
+  --app-sidebar-bg: #f8fbff;
 }
 
 :root {
@@ -23,7 +24,7 @@
     'Helvetica Neue',
     sans-serif;
   color: #0f172a;
-  background-color: #f5f7fb;
+  background-color: var(--app-bg);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -48,11 +49,14 @@ body {
 
 @layer components {
   .app-panel {
-    @apply rounded-2xl border border-slate-200 bg-white shadow-md;
+    @apply rounded-3xl border bg-white shadow-md;
+    border-color: var(--app-border);
+    box-shadow: var(--app-shadow);
   }
 
   .app-panel-muted {
-    @apply rounded-2xl border border-slate-200 bg-slate-50/70;
+    @apply rounded-2xl border bg-slate-50/80;
+    border-color: var(--app-border);
   }
 
   .app-label {
@@ -76,7 +80,12 @@ body {
   }
 
   .field {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:ring focus:ring-sky-100 focus:ring-offset-0;
+    @apply w-full rounded-xl border bg-white px-3 text-sm text-slate-700 shadow-sm focus:ring focus:ring-sky-100 focus:ring-offset-0;
+    border-color: var(--app-border);
+  }
+
+  .field:focus-visible {
+    border-color: color-mix(in srgb, var(--app-primary) 75%, white);
   }
 
   .field-input {
@@ -96,7 +105,8 @@ body {
   }
 
   .icon-btn {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500;
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-full border bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500;
+    border-color: var(--app-border);
   }
 
   .btn {
@@ -108,15 +118,22 @@ body {
   }
 
   .btn-primary {
-    @apply bg-sky-600 text-white shadow-sm hover:bg-sky-700 focus-visible:ring-sky-500;
+    @apply text-white shadow-sm focus-visible:ring-sky-500;
+    background-color: var(--app-primary);
+  }
+
+  .btn-primary:hover {
+    background-color: color-mix(in srgb, var(--app-primary) 88%, #0f172a);
   }
 
   .btn-secondary {
-    @apply border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:ring-sky-500;
+    @apply border bg-white text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:ring-sky-500;
+    border-color: var(--app-border);
   }
 
   .btn-danger {
-    @apply border border-rose-200 bg-white text-rose-700 shadow-sm hover:bg-rose-50 focus-visible:ring-rose-500;
+    @apply border bg-white text-rose-700 shadow-sm hover:bg-rose-50 focus-visible:ring-rose-500;
+    border-color: #fecdd3;
   }
 
   .btn-success {
@@ -124,7 +141,13 @@ body {
   }
 
   .btn-quiet {
-    @apply border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 focus-visible:ring-sky-500;
+    @apply border bg-slate-50 text-slate-700 hover:bg-slate-100 focus-visible:ring-sky-500;
+    border-color: var(--app-border);
+  }
+
+  .btn-outline {
+    @apply border border-dashed bg-transparent text-slate-700 hover:bg-white/70 focus-visible:ring-sky-500;
+    border-color: var(--app-border);
   }
 
   .link-action {

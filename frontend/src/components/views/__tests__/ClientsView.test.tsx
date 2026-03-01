@@ -24,6 +24,35 @@ const buildDeal = (overrides: Partial<Deal> = {}): Deal => ({
 });
 
 describe('ClientsView', () => {
+  it('renders KPI cards and list rows', () => {
+    const clients = [buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })];
+    const deals = [buildDeal(), buildDeal({ id: 'deal-2', clientId: 'client-2' })];
+
+    render(<ClientsView clients={clients} deals={deals} />);
+
+    expect(screen.getByText('Клиентов')).toBeInTheDocument();
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0);
+    expect(screen.getByText('Активных сделок')).toBeInTheDocument();
+    expect(screen.getByText('Иван Иванов')).toBeInTheDocument();
+    expect(screen.getByText('Петр Петров')).toBeInTheDocument();
+  });
+
+  it('filters clients by search', () => {
+    render(
+      <ClientsView
+        clients={[buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })]}
+        deals={[buildDeal()]}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Поиск по имени или телефону...'), {
+      target: { value: 'Петр' },
+    });
+
+    expect(screen.queryByText('Иван Иванов')).not.toBeInTheDocument();
+    expect(screen.getByText('Петр Петров')).toBeInTheDocument();
+  });
+
   it('renders "Объединить похожих" and triggers callback', () => {
     const onClientFindSimilar = vi.fn();
     const client = buildClient();

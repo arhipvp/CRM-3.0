@@ -923,8 +923,8 @@ export const SellerDashboardView: React.FC = () => {
   }, [endDate, loadDashboard, startDate]);
 
   return (
-    <section aria-labelledby="sellerDashboardHeading" className="space-y-6">
-      <div className="app-panel p-6 shadow-none space-y-4">
+    <section aria-labelledby="sellerDashboardHeading" className="space-y-6 pb-2">
+      <div className="app-panel space-y-4 border-none bg-gradient-to-r from-slate-50 via-white to-blue-50/60 p-6 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">Дашборд продавца</p>
@@ -934,7 +934,7 @@ export const SellerDashboardView: React.FC = () => {
             <p className="text-sm text-slate-600">{periodLabel}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-sky-50 px-4 py-3 text-right">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-right">
               <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
                 Сумма оплаченных платежей
               </p>
@@ -942,13 +942,13 @@ export const SellerDashboardView: React.FC = () => {
                 {formatCurrencyRu(totalPaid, '—')}
               </p>
             </div>
-            <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Текущие задачи
               </p>
               <p className="text-2xl font-semibold text-slate-900">{tasksCurrent}</p>
             </div>
-            <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Завершено задач
               </p>
@@ -997,8 +997,8 @@ export const SellerDashboardView: React.FC = () => {
         {error && <div className="app-panel-muted px-4 py-3 text-sm text-rose-700">{error}</div>}
       </div>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="app-panel p-6 shadow-none space-y-4">
+      <section className="grid gap-5 lg:grid-cols-2">
+        <div className="app-panel space-y-4 border-none p-6 shadow-none">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Оплаченные платежи по дням</h2>
             <p className="text-xs text-slate-500">Сумма оплат по фактической дате платежа</p>
@@ -1014,7 +1014,7 @@ export const SellerDashboardView: React.FC = () => {
             />
           )}
         </div>
-        <div className="app-panel p-6 shadow-none space-y-4">
+        <div className="app-panel space-y-4 border-none p-6 shadow-none">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Завершенные задачи по дням</h2>
             <p className="text-xs text-slate-500">Только задачи по сделкам, где вы продавец</p>
@@ -1045,7 +1045,7 @@ export const SellerDashboardView: React.FC = () => {
         </div>
       </section>
 
-      <section className="app-panel p-6 shadow-none space-y-4">
+      <section className="app-panel space-y-4 border-none p-6 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Финансовая аналитика</h2>
@@ -1314,7 +1314,7 @@ export const SellerDashboardView: React.FC = () => {
         )}
       </section>
 
-      <section className="app-panel p-6 shadow-none space-y-4">
+      <section className="app-panel space-y-4 border-none p-6 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Календарь нагрузки</h2>
@@ -1460,7 +1460,7 @@ export const SellerDashboardView: React.FC = () => {
         )}
       </section>
 
-      <section className="app-panel p-6 shadow-none space-y-4">
+      <section className="app-panel space-y-4 border-none p-6 shadow-none">
         <h2 className="text-sm font-semibold text-slate-700">Полисы выбранного периода</h2>
         {isLoading ? (
           <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">

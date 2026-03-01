@@ -166,7 +166,7 @@ export const DealsList: React.FC<DealsListProps> = ({
 
   return (
     <>
-      <div className="px-4 py-4 bg-white">
+      <div className="bg-gradient-to-r from-slate-50 via-white to-blue-50/70 px-4 py-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
@@ -174,7 +174,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               Сделок всего {dealsTotalCount}, показано {sortedDeals.length}
             </span>
           </div>
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-md">
             <label htmlFor="dealSearch" className="sr-only">
               Поиск по сделкам
             </label>
@@ -202,7 +202,7 @@ export const DealsList: React.FC<DealsListProps> = ({
         </div>
       </div>
 
-      <div className="px-4 py-4 border-b border-slate-200 bg-white">
+      <div className="border-b border-slate-200/80 bg-white px-4 py-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <input
@@ -261,9 +261,9 @@ export const DealsList: React.FC<DealsListProps> = ({
       </div>
 
       <DataTableShell>
-        <div className="max-h-[360px] overflow-y-auto bg-white">
+        <div className="max-h-[380px] overflow-y-auto bg-white/95">
           <table className="deals-table min-w-full border-collapse text-left text-sm">
-            <thead className={`sticky top-0 ${TABLE_THEAD_CLASS}`}>
+            <thead className={`sticky top-0 backdrop-blur ${TABLE_THEAD_CLASS}`}>
               <tr>
                 <TableHeadCell className="min-w-[260px]">Сделка</TableHeadCell>
                 <TableHeadCell className="min-w-[200px]">Клиент</TableHeadCell>
@@ -330,7 +330,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                     isDealSelectionBlocked ? 'cursor-not-allowed opacity-80' : '',
                     isSelected
-                      ? 'bg-sky-100/80 border-sky-600 shadow-sm ring-2 ring-sky-400/60 ring-inset'
+                      ? 'bg-blue-100/80 border-blue-600 shadow-sm ring-2 ring-blue-400/60 ring-inset'
                       : '',
                     isPinned ? 'border-rose-500 ring-2 ring-rose-500/40 ring-inset' : '',
                     isDeleted ? 'opacity-60' : '',

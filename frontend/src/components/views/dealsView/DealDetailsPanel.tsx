@@ -942,7 +942,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   );
 
   const renderActivityTab = () => (
-    <section className="app-panel p-6 shadow-none space-y-4">
+    <section className="app-panel space-y-4 border-none p-6 shadow-none">
       <div className="flex items-center justify-between">
         <p className="app-label">История</p>
       </div>
@@ -1045,13 +1045,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   return (
     <>
-      <div className="px-4 py-5 space-y-4">
+      <div className="space-y-4 px-4 py-5">
         {selectedDeal ? (
           <div
-            className={`relative rounded-2xl border bg-white shadow-md p-6 space-y-6 ${
+            className={`relative space-y-6 rounded-3xl border bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.09)] ${
               selectedDeal.isPinned
                 ? 'border-rose-500 ring-2 ring-rose-500/30'
-                : 'border-sky-500 ring-2 ring-sky-400/30'
+                : 'border-blue-500 ring-2 ring-blue-400/30'
             }`}
           >
             <button
@@ -1129,7 +1129,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 }}
               />
               <div
-                className="pt-6"
+                className="border-t border-slate-100 pt-6"
                 role="tabpanel"
                 id={`deal-tabpanel-${activeTab}`}
                 aria-labelledby={`deal-tab-${activeTab}`}
@@ -1140,7 +1140,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-6 text-sm text-slate-600">
             Выберите сделку, чтобы увидеть подробности.
           </div>
         )}
