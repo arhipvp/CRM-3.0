@@ -8,6 +8,7 @@ import { AppDataSyncController } from './AppDataSyncController';
 
 type AppShellProps = {
   children: React.ReactNode;
+  topSlot?: React.ReactNode;
   currentUser?: User | null;
   onAddDeal: () => void;
   onAddClient: () => void;
@@ -23,6 +24,7 @@ type AppShellProps = {
 
 export const AppShell: React.FC<AppShellProps> = ({
   children,
+  topSlot,
   currentUser,
   onAddDeal,
   onAddClient,
@@ -41,6 +43,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     onOpenCommandPalette={onOpenCommandPalette}
     currentUser={currentUser ?? undefined}
     onLogout={onLogout}
+    topSlot={topSlot}
   >
     {children}
     <NotificationDisplay />

@@ -4225,9 +4225,8 @@ const AppContent: React.FC = () => {
       isBackgroundRefreshingAny={isBackgroundRefreshingAny}
       lastRefreshAtByResource={lastRefreshAtByResource}
       lastRefreshErrorByResource={lastRefreshErrorByResource}
-    >
-      {activeShortcutContext && (
-        <div className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+      topSlot={
+        activeShortcutContext ? (
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <span className="font-semibold text-sky-900">
               {activeShortcutContext.title}: выбрано для хоткеев
@@ -4251,8 +4250,9 @@ const AppContent: React.FC = () => {
               </span>
             )}
           </div>
-        </div>
-      )}
+        ) : null
+      }
+    >
       <AppRoutes
         data={routeData}
         dealsActions={routeDealsActions}

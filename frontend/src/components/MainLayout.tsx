@@ -12,6 +12,7 @@ interface MainLayoutProps {
   onOpenCommandPalette: () => void;
   currentUser?: User;
   onLogout?: () => void;
+  topSlot?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -37,6 +38,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   onOpenCommandPalette,
   currentUser,
   onLogout,
+  topSlot,
   children,
 }) => {
   return (
@@ -139,7 +141,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       </aside>
 
       <main className="min-h-screen flex-1 px-3 py-4 sm:px-5 lg:ml-72 lg:px-7 lg:py-6">
-        <div className="mx-auto w-full max-w-[1540px]">{children}</div>
+        <div className="w-full space-y-4">
+          {topSlot && (
+            <section className="rounded-2xl border border-blue-200/90 bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-white px-4 py-3 shadow-sm">
+              {topSlot}
+            </section>
+          )}
+          <div className="w-full">{children}</div>
+        </div>
       </main>
     </div>
   );

@@ -146,8 +146,17 @@ vi.mock('../hooks/useAppData', () => ({
 }));
 
 vi.mock('../components/MainLayout', () => ({
-  MainLayout: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="main-layout">{children}</div>
+  MainLayout: ({
+    children,
+    topSlot,
+  }: {
+    children: React.ReactNode;
+    topSlot?: React.ReactNode;
+  }) => (
+    <div data-testid="main-layout">
+      {topSlot ? <div data-testid="top-slot">{topSlot}</div> : null}
+      {children}
+    </div>
   ),
 }));
 
