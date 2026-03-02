@@ -89,3 +89,24 @@ class DealSearchByIdTests(AuthenticatedAPITestCase):
         self.assertEqual(response_by_client.status_code, status.HTTP_200_OK)
         self.assertIn(str(self.target_deal.id), self._extract_ids(response_by_title))
         self.assertIn(str(self.target_deal.id), self._extract_ids(response_by_client))
+
+    def test_search_is_case_insensitive_for_title(self):
+        response_lower = self.api_client.get(
+            "/api/v1/deals/",
+            {"search": "ипотека"},
+            format="json",
+        )
+        response_upper = self.api_client.get(
+            "/api/v1/deals/",
+            {"search": "ИПОТЕКА"},
+            format="json",
+        )
+
+        self.assertEqual(response_lower.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_upper.status_code, status.HTTP_200_OK)
+        lower_ids = self._extract_ids(response_lower)
+        upper_ids = self._extract_ids(response_upper)
+        self.assertIn(str(self.target_deal.id), lower_ids)
+        self.assertIn(str(self.target_deal.id), upper_ids)
+        self.assertNotIn(str(self.other_deal.id), lower_ids)
+        self.assertNotIn(str(self.other_deal.id), upper_ids)

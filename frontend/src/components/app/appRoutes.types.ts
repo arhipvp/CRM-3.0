@@ -128,6 +128,8 @@ export interface AppRouteFinanceActions {
 export interface AppRouteFilterState {
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
+  onDealSearchSubmit: () => void;
+  onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
   dealShowDeleted: boolean;

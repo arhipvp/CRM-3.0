@@ -91,7 +91,6 @@ import {
 } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
-import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useDealFilters } from './hooks/useDealFilters';
 import { useConfirm } from './hooks/useConfirm';
 import { confirmTexts } from './constants/confirmTexts';
@@ -388,8 +387,10 @@ const AppContent: React.FC = () => {
     return new URLSearchParams(location.search).get('dealId');
   }, [isDealsRoute, location.search]);
   const {
-    dealSearch,
-    setDealSearch,
+    dealSearchInput,
+    setDealSearchInput,
+    applyDealSearch,
+    clearDealSearchAndApply,
     dealExecutorFilter,
     setDealExecutorFilter,
     dealShowDeleted,
@@ -449,7 +450,6 @@ const AppContent: React.FC = () => {
   );
   const policyDealExecutorName = getDealExecutorName(policyDealId);
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
-  const searchInitialized = useRef(false);
   const protectedCreatedDealRef = useRef<Deal | null>(null);
   const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
@@ -1205,25 +1205,16 @@ const AppContent: React.FC = () => {
     setPolicyDealId(dealId);
   }, []);
 
-  const debouncedDealFilters = useDebouncedValue(dealFilters, 300);
-
   useEffect(() => {
     if (!isAuthenticated) {
-      searchInitialized.current = false;
       return;
     }
-
-    if (!searchInitialized.current) {
-      searchInitialized.current = true;
-      return;
-    }
-
     setError(null);
-    refreshDealsWithSelection(debouncedDealFilters).catch((err) => {
+    refreshDealsWithSelection(dealFilters).catch((err) => {
       console.error('Search deals error:', err);
       setError(formatErrorMessage(err, 'Ошибка при поиске сделок'));
     });
-  }, [debouncedDealFilters, isAuthenticated, refreshDealsWithSelection, setError]);
+  }, [dealFilters, isAuthenticated, refreshDealsWithSelection, setError]);
 
   const handleAddClient = useCallback(
     async (data: {
@@ -4136,8 +4127,10 @@ const AppContent: React.FC = () => {
 
   const routeFilters = useMemo<AppRouteFilterState>(
     () => ({
-      dealSearch,
-      onDealSearchChange: setDealSearch,
+      dealSearch: dealSearchInput,
+      onDealSearchChange: setDealSearchInput,
+      onDealSearchSubmit: applyDealSearch,
+      onDealSearchClear: clearDealSearchAndApply,
       dealExecutorFilter,
       onDealExecutorFilterChange: setDealExecutorFilter,
       dealShowDeleted,
@@ -4148,14 +4141,16 @@ const AppContent: React.FC = () => {
       onDealOrderingChange: setDealOrdering,
     }),
     [
+      applyDealSearch,
+      clearDealSearchAndApply,
       dealExecutorFilter,
       dealOrdering,
-      dealSearch,
+      dealSearchInput,
       dealShowClosed,
       dealShowDeleted,
       setDealExecutorFilter,
       setDealOrdering,
-      setDealSearch,
+      setDealSearchInput,
       setDealShowClosed,
       setDealShowDeleted,
     ],

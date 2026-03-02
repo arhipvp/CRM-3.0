@@ -3,17 +3,26 @@ import { useMemo, useState } from 'react';
 import type { FilterParams } from '../api';
 
 export const useDealFilters = () => {
-  const [dealSearch, setDealSearch] = useState('');
+  const [dealSearchInput, setDealSearchInput] = useState('');
+  const [dealSearchApplied, setDealSearchApplied] = useState('');
   const [dealExecutorFilter, setDealExecutorFilter] = useState('');
   const [dealShowDeleted, setDealShowDeleted] = useState(false);
   const [dealShowClosed, setDealShowClosed] = useState(false);
   const [dealOrdering, setDealOrdering] = useState<string | undefined>(undefined);
 
+  const applyDealSearch = () => {
+    setDealSearchApplied(dealSearchInput.trim());
+  };
+
+  const clearDealSearchAndApply = () => {
+    setDealSearchInput('');
+    setDealSearchApplied('');
+  };
+
   const filters = useMemo<FilterParams>(() => {
     const result: FilterParams = {};
-    const trimmedSearch = dealSearch.trim();
-    if (trimmedSearch) {
-      result.search = trimmedSearch;
+    if (dealSearchApplied) {
+      result.search = dealSearchApplied;
     }
     if (dealExecutorFilter) {
       result.executor = dealExecutorFilter;
@@ -28,11 +37,13 @@ export const useDealFilters = () => {
       result.ordering = dealOrdering;
     }
     return result;
-  }, [dealSearch, dealExecutorFilter, dealShowDeleted, dealShowClosed, dealOrdering]);
+  }, [dealSearchApplied, dealExecutorFilter, dealShowDeleted, dealShowClosed, dealOrdering]);
 
   return {
-    dealSearch,
-    setDealSearch,
+    dealSearchInput,
+    setDealSearchInput,
+    applyDealSearch,
+    clearDealSearchAndApply,
     dealExecutorFilter,
     setDealExecutorFilter,
     dealShowDeleted,

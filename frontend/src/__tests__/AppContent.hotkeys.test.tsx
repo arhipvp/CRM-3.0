@@ -168,6 +168,8 @@ vi.mock('../components/app/AppRoutes', () => ({
     };
     filters?: {
       onDealSearchChange?: (value: string) => void;
+      onDealSearchSubmit?: () => void;
+      onDealSearchClear?: () => void;
     };
   }) => (
     <div data-testid="app-routes">
@@ -203,7 +205,13 @@ vi.mock('../components/app/AppRoutes', () => ({
         Select deal-1
       </button>
       <button type="button" onClick={() => filters?.onDealSearchChange?.('refresh')}>
-        Trigger search refresh
+        Trigger search change
+      </button>
+      <button type="button" onClick={() => filters?.onDealSearchSubmit?.()}>
+        Trigger search submit
+      </button>
+      <button type="button" onClick={() => filters?.onDealSearchClear?.()}>
+        Trigger search clear
       </button>
     </div>
   ),
@@ -600,15 +608,82 @@ describe('AppContent hotkeys integration', () => {
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trigger search refresh' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search change' }));
 
-    await waitFor(
-      () => {
-        expect(refreshDealsMock).toHaveBeenCalled();
-        expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
+    await waitFor(() => {
+      expect(refreshDealsMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search submit' }));
+
+    await waitFor(() => {
+      expect(refreshDealsMock).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
+    });
+  });
+
+  it('does not refresh deals on search input change without submit', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
       },
-      { timeout: 2000 },
-    );
+    ];
+    refreshDealsMock.mockResolvedValue(appDataMock.deals);
+
+    renderAppContent('/deals?dealId=deal-1');
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+    });
+
+    expect(refreshDealsMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search change' }));
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(refreshDealsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes deals on search clear action', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+    refreshDealsMock.mockResolvedValue(appDataMock.deals);
+
+    renderAppContent('/deals?dealId=deal-1');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+    });
+
+    expect(refreshDealsMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search change' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search submit' }));
+    await waitFor(() => {
+      expect(refreshDealsMock).toHaveBeenCalledTimes(2);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search clear' }));
+    await waitFor(() => {
+      expect(refreshDealsMock).toHaveBeenCalledTimes(3);
+    });
   });
 
   it('shows dedicated 403 deep-link error and keeps selected deal id', async () => {

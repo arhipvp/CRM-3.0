@@ -98,6 +98,8 @@ interface DealsViewProps {
   isSelectedDealQuotesLoading?: boolean;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
+  onDealSearchSubmit: () => void;
+  onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
   dealShowDeleted: boolean;
@@ -169,6 +171,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   isSelectedDealQuotesLoading = false,
   dealSearch,
   onDealSearchChange,
+  onDealSearchSubmit,
+  onDealSearchClear,
   dealExecutorFilter,
   onDealExecutorFilterChange,
   dealShowDeleted,
@@ -214,6 +218,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             dealRowFocusRequest={dealRowFocusRequest}
             dealSearch={dealSearch}
             onDealSearchChange={onDealSearchChange}
+            onDealSearchSubmit={onDealSearchSubmit}
+            onDealSearchClear={onDealSearchClear}
             dealExecutorFilter={dealExecutorFilter}
             onDealExecutorFilterChange={onDealExecutorFilterChange}
             dealShowDeleted={dealShowDeleted}

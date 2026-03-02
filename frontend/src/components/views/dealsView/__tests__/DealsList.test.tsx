@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Deal } from '../../../../types';
@@ -22,6 +22,9 @@ const renderDealsList = (params?: {
   selectedDeal?: Deal | null;
   sortedDeals?: Deal[];
   dealRowFocusRequest?: { dealId: string; nonce: number } | null;
+  dealSearch?: string;
+  onDealSearchSubmit?: () => void;
+  onDealSearchClear?: () => void;
 }) => {
   const selectedDeal = params?.selectedDeal ?? createDeal();
   const sortedDeals = params?.sortedDeals ?? [selectedDeal];
@@ -31,8 +34,10 @@ const renderDealsList = (params?: {
       sortedDeals={sortedDeals}
       selectedDeal={selectedDeal}
       dealRowFocusRequest={params?.dealRowFocusRequest ?? null}
-      dealSearch=""
+      dealSearch={params?.dealSearch ?? ''}
       onDealSearchChange={vi.fn()}
+      onDealSearchSubmit={params?.onDealSearchSubmit ?? vi.fn()}
+      onDealSearchClear={params?.onDealSearchClear ?? vi.fn()}
       dealExecutorFilter="all"
       onDealExecutorFilterChange={vi.fn()}
       dealShowDeleted={false}
@@ -114,6 +119,8 @@ describe('DealsList dealRowFocusRequest', () => {
         dealRowFocusRequest={{ dealId: 'deal-1', nonce: 7 }}
         dealSearch=""
         onDealSearchChange={vi.fn()}
+        onDealSearchSubmit={vi.fn()}
+        onDealSearchClear={vi.fn()}
         dealExecutorFilter="all"
         onDealExecutorFilterChange={vi.fn()}
         dealShowDeleted={false}
@@ -136,5 +143,26 @@ describe('DealsList dealRowFocusRequest', () => {
     );
 
     expect(focusMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('submits search on form submit', () => {
+    const onDealSearchSubmit = vi.fn();
+
+    renderDealsList({ onDealSearchSubmit });
+
+    const searchInput = screen.getByLabelText('Поиск по сделкам');
+    fireEvent.submit(searchInput.closest('form') as HTMLFormElement);
+
+    expect(onDealSearchSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears search via clear button', () => {
+    const onDealSearchClear = vi.fn();
+
+    renderDealsList({ dealSearch: 'ипотека', onDealSearchClear });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Очистить поиск сделок' }));
+
+    expect(onDealSearchClear).toHaveBeenCalledTimes(1);
   });
 });

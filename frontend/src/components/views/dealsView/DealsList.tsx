@@ -19,6 +19,8 @@ interface DealsListProps {
   dealRowFocusRequest?: { dealId: string; nonce: number } | null;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
+  onDealSearchSubmit: () => void;
+  onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
   dealShowDeleted: boolean;
@@ -45,6 +47,8 @@ export const DealsList: React.FC<DealsListProps> = ({
   dealRowFocusRequest,
   dealSearch,
   onDealSearchChange,
+  onDealSearchSubmit,
+  onDealSearchClear,
   dealExecutorFilter,
   onDealExecutorFilterChange,
   dealShowDeleted,
@@ -178,26 +182,37 @@ export const DealsList: React.FC<DealsListProps> = ({
             <label htmlFor="dealSearch" className="sr-only">
               Поиск по сделкам
             </label>
-            <div className="relative">
-              <input
-                id="dealSearch"
-                type="text"
-                value={dealSearch}
-                onChange={(event) => onDealSearchChange(event.target.value)}
-                placeholder="Поиск по сделкам"
-                className="field field-input pr-10"
-              />
-              {dealSearch && (
-                <button
-                  type="button"
-                  onClick={() => onDealSearchChange('')}
-                  aria-label="Очистить поиск сделок"
-                  className="search-clear-btn"
-                >
-                  ×
-                </button>
-              )}
-            </div>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                onDealSearchSubmit();
+              }}
+              className="flex items-center gap-2"
+            >
+              <div className="relative flex-1">
+                <input
+                  id="dealSearch"
+                  type="text"
+                  value={dealSearch}
+                  onChange={(event) => onDealSearchChange(event.target.value)}
+                  placeholder="Поиск по сделкам"
+                  className="field field-input pr-10"
+                />
+                {dealSearch && (
+                  <button
+                    type="button"
+                    onClick={onDealSearchClear}
+                    aria-label="Очистить поиск сделок"
+                    className="search-clear-btn"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <button type="submit" className={BTN_SM_QUIET}>
+                Найти
+              </button>
+            </form>
           </div>
         </div>
       </div>
