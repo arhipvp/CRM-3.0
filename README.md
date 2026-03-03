@@ -125,6 +125,15 @@ docker compose up --build
 - **Тесты**: `python manage.py test` проверяет DRF APIClient-слоты; `frontend/__tests__/` и `src/__tests__/` покрывают визуальные блоки и utils.
 - **Перед PR** убедитесь, что `python manage.py test`, `npm run lint`, `npm run test` и `npm run build` проходят. Docker-compose можно использовать для интеграции.
 
+## Admin Conventions
+- Используем единые базовые классы из `apps/common/admin.py`: `CRMAdminUXMixin` и `SoftDeleteAdmin`/`SoftDeleteImportExportAdmin`.
+- Для моделей с `SoftDeleteModel` не дублируем restore-action в доменных админках: применяется общий `restore_selected`.
+- Для тяжёлых списков (`Deal`, `Task`, `Policy`, `Notification`, `FinancialRecord`, `AuditLog`) обязательно задаём `list_select_related`, `list_per_page` и `show_full_result_count=False`.
+- Для больших внешних связей используем `autocomplete_fields` вместо стандартных select.
+- Пользовательские подписи и сообщения в админке держим на русском языке, без смешения RU/EN.
+- Read-only модели (например, журнал аудита и сервисные Telegram-сущности) должны явно запрещать add/change/delete.
+- Оперативные метрики и быстрые ссылки на главной `/admin/` добавляются через `config.admin.configure_admin_site()` и шаблон `apps/common/templates/admin/index.html`.
+
 ## Безопасность секретов
 - Реальные секреты храните только в локальных `.env`/секретах CI. В репозитории оставляйте только шаблоны (`backend/.env.example`, `frontend/.env.example`, `.env.production.example`).
 - В `.gitignore` уже закрыты `.env` и локальные секретные файлы; перед добавлением новых env-файлов проверяйте, что они не попадают в индекс Git.

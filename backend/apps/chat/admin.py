@@ -49,35 +49,35 @@ class ChatMessageAdmin(SoftDeleteImportExportAdmin):
     )
     list_filter = ("created_at", "deleted_at", "deal")
     search_fields = ("author_name", "author__username", "body", "deal__title")
+    list_select_related = ("deal", "author")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("-created_at",)
-    actions = ["restore_messages"]
+    date_hierarchy = "created_at"
 
     fieldsets = (
-        ("Message info", {"fields": ("id", "deal", "author_name", "author")}),
-        ("Content", {"fields": ("body",)}),
-        ("Deletion status", {"fields": ("deleted_at",)}),
+        ("Сообщение", {"fields": ("id", "deal", "author_name", "author")}),
+        ("Содержимое", {"fields": ("body",)}),
+        ("Статус удаления", {"fields": ("deleted_at",)}),
         (
-            "Timestamps",
+            "Временные метки",
             {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
 
+    @admin.display(description="Автор")
     def author_display(self, obj):
         if obj.author:
             return format_html("<strong>{}</strong>", obj.author.username)
-        return format_html("<em>{}</em>", obj.author_name or "Anonymous")
+        return format_html("<em>{}</em>", obj.author_name or "Неизвестно")
 
-    author_display.short_description = "Author"
-
+    @admin.display(description="Сообщение")
     def body_preview(self, obj):
         return (obj.body[:80] + "...") if len(obj.body) > 80 else obj.body
 
-    body_preview.short_description = "Message"
-
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         deleted = obj.deleted_at is not None
-        label = "Deleted" if deleted else "Active"
+        label = "Удалено" if deleted else "Активно"
         color = "#cc0000" if deleted else "#00cc00"
         background = "#ffcccc" if deleted else "#ccffcc"
         return format_html(
@@ -86,14 +86,3 @@ class ChatMessageAdmin(SoftDeleteImportExportAdmin):
             color,
             label,
         )
-
-    status_badge.short_description = "Status"
-
-    def restore_messages(self, request, queryset):
-        restored = 0
-        for msg in queryset.filter(deleted_at__isnull=False):
-            msg.restore()
-            restored += 1
-        self.message_user(request, f"Restored {restored} conversations")
-
-    restore_messages.short_description = "? Restore selected conversations"

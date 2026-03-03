@@ -133,9 +133,11 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
     )
     search_fields = ("description", "policy__number", "deal__title")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    list_select_related = ("policy", "deal")
+    autocomplete_fields = ("policy", "deal")
     ordering = ("-created_at",)
     date_hierarchy = "scheduled_date"
-    actions = ["mark_as_paid", "restore_payments"]
+    actions = ["mark_as_paid"]
 
     fieldsets = (
         (
@@ -149,11 +151,11 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
 
     inlines = [FinancialRecordInline]
 
+    @admin.display(description="Сумма")
     def amount_display(self, obj):
         return format_html("<strong>{} руб.</strong>", obj.amount)
 
-    amount_display.short_description = "Сумма"
-
+    @admin.display(description="Финансы")
     def total_financial(self, obj):
         """Показывает сумму по всем финансовым записям (доход - расход)."""
         total = (
@@ -164,7 +166,6 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
         )
         return f"{float(total):.2f} руб."
 
-    total_financial.short_description = "Финансы"
 
     def mark_as_paid(self, request, queryset):
         """Action для записи даты фактической оплаты."""
@@ -175,16 +176,7 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
             request, f"{updated} платежей получили актуальную дату оплаты"
         )
 
-    mark_as_paid.short_description = "✓ Отметить как оплачено"
-
-    def restore_payments(self, request, queryset):
-        restored = 0
-        for payment in queryset.filter(deleted_at__isnull=False):
-            payment.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} платежей")
-
-    restore_payments.short_description = "✓ Восстановить выбранные платежи"
+    mark_as_paid.short_description = "Отметить как оплачено"
 
 
 @admin.register(Statement)
@@ -203,6 +195,7 @@ class StatementAdmin(SoftDeleteImportExportAdmin):
     list_filter = ("statement_type", "status", "paid_at", "created_at", "deleted_at")
     search_fields = ("name", "counterparty", "comment")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at", "created_by")
+    list_select_related = ("created_by",)
     ordering = ("-created_at",)
 
     fieldsets = (
@@ -235,6 +228,8 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
     )
     search_fields = ("source", "description", "note", "payment__policy__number")
     list_filter = ("date", "created_at", "deleted_at")
+    list_select_related = ("payment", "statement")
+    autocomplete_fields = ("payment", "statement")
     readonly_fields = (
         "id",
         "created_at",
@@ -244,7 +239,8 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
     )
     ordering = ("-date", "-created_at")
     date_hierarchy = "date"
-    actions = ["restore_financial_records"]
+    list_per_page = 30
+    show_full_result_count = False
 
     fieldsets = (
         (
@@ -257,6 +253,7 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Сумма")
     def amount_display(self, obj):
         color = "#06ffa5" if obj.amount >= 0 else "#ff006e"
         return format_html(
@@ -265,8 +262,7 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
             obj.amount,
         )
 
-    amount_display.short_description = "Сумма"
-
+    @admin.display(description="Тип")
     def record_type_badge(self, obj):
         """Показывает тип записи: Доход или Расход."""
         if obj.amount >= 0:
@@ -277,8 +273,7 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
             '<span style="background-color: #ff006e; color: white; padding: 3px 8px; border-radius: 3px;">Расход</span>'
         )
 
-    record_type_badge.short_description = "Тип"
-
+    @admin.display(description="Описание")
     def description_preview(self, obj):
         if not obj.description:
             return "—"
@@ -288,13 +283,3 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
             else obj.description
         )
 
-    description_preview.short_description = "Описание"
-
-    def restore_financial_records(self, request, queryset):
-        restored = 0
-        for record in queryset.filter(deleted_at__isnull=False):
-            record.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} финансовых записей")
-
-    restore_financial_records.short_description = "✓ Восстановить выбранные записи"

@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib.admin.sites import NotRegistered
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import User
+from django.db.models import Count
 from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
@@ -115,39 +116,38 @@ class RoleAdmin(SoftDeleteImportExportAdmin):
 
     inlines = [RolePermissionInline]
 
-    actions = ["restore_roles"]
-
-    def permissions_count(self, obj):
-        count = obj.permissions.count()
-        return format_html("<strong>{}</strong>", count)
-
-    permissions_count.short_description = "Прав"
-
-    def users_count(self, obj):
-        count = obj.users.count()
-        return format_html("<strong>{}</strong>", count)
-
-    users_count.short_description = "Пользователей"
-
-    def status_badge(self, obj):
-        if obj.deleted_at:
-            return format_html(
-                '<span style="background-color: #ffcccc; padding: 3px 8px; border-radius: 3px; color: #cc0000;">Удалена</span>'
-            )
-        return format_html(
-            '<span style="background-color: #ccffcc; padding: 3px 8px; border-radius: 3px; color: #00cc00;">Активна</span>'
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            permissions_total=Count("permissions", distinct=True),
+            users_total=Count("users", distinct=True),
         )
 
-    status_badge.short_description = "Статус"
+    @admin.display(description="Прав")
+    def permissions_count(self, obj):
+        count = getattr(obj, "permissions_total", 0)
+        return format_html("<strong>{}</strong>", count)
 
-    def restore_roles(self, request, queryset):
-        restored = 0
-        for role in queryset.filter(deleted_at__isnull=False):
-            role.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} ролей")
+    @admin.display(description="Пользователей")
+    def users_count(self, obj):
+        count = getattr(obj, "users_total", 0)
+        return format_html("<strong>{}</strong>", count)
 
-    restore_roles.short_description = "✓ Восстановить выбранные роли"
+    @admin.display(description="Статус")
+    def status_badge(self, obj):
+        if obj.deleted_at:
+            return self.render_badge(
+                "Удалена",
+                bg_color="#fee2e2",
+                fg_color="#b91c1c",
+                bold=True,
+            )
+        return self.render_badge(
+            "Активна",
+            bg_color="#dcfce7",
+            fg_color="#166534",
+            bold=True,
+        )
 
 
 @admin.register(Permission)
@@ -171,43 +171,34 @@ class PermissionAdmin(SoftDeleteImportExportAdmin):
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
-    actions = ["restore_permissions"]
-
+    @admin.display(description="Ресурс")
     def resource_display(self, obj):
         return obj.get_resource_display()
 
-    resource_display.short_description = "Ресурс"
-
+    @admin.display(description="Действие")
     def action_display(self, obj):
         return obj.get_action_display()
 
-    action_display.short_description = "Действие"
-
+    @admin.display(description="Ролей")
     def roles_count(self, obj):
         count = obj.roles.count()
         return format_html("<strong>{}</strong>", count)
 
-    roles_count.short_description = "Ролей"
-
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         if obj.deleted_at:
-            return format_html(
-                '<span style="background-color: #ffcccc; padding: 3px 8px; border-radius: 3px; color: #cc0000;">Удалено</span>'
+            return self.render_badge(
+                "Удалено",
+                bg_color="#fee2e2",
+                fg_color="#b91c1c",
+                bold=True,
             )
-        return format_html(
-            '<span style="background-color: #ccffcc; padding: 3px 8px; border-radius: 3px; color: #00cc00;">Активно</span>'
+        return self.render_badge(
+            "Активно",
+            bg_color="#dcfce7",
+            fg_color="#166534",
+            bold=True,
         )
-
-    status_badge.short_description = "Статус"
-
-    def restore_permissions(self, request, queryset):
-        restored = 0
-        for perm in queryset.filter(deleted_at__isnull=False):
-            perm.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} прав")
-
-    restore_permissions.short_description = "✓ Восстановить выбранные права"
 
 
 @admin.register(UserRole)
@@ -218,6 +209,8 @@ class UserRoleAdmin(ImportExportModelAdmin):
     list_filter = ("role", "created_at")
     search_fields = ("user__username", "role__name")
     readonly_fields = ("created_at",)
+    list_select_related = ("user", "role")
+    autocomplete_fields = ("user", "role")
 
     fieldsets = (
         ("Назначение роли", {"fields": ("user", "role")}),
@@ -231,16 +224,17 @@ class RolePermissionAdmin(admin.ModelAdmin):
     list_filter = ("role", "permission__resource", "permission__action", "created_at")
     search_fields = ("role__name", "permission__resource", "permission__action")
     readonly_fields = ("created_at",)
+    list_select_related = ("role", "permission")
+    autocomplete_fields = ("role", "permission")
 
     fieldsets = (
         ("Связь", {"fields": ("role", "permission")}),
         ("Время", {"fields": ("created_at",)}),
     )
 
+    @admin.display(description="Право")
     def permission_display(self, obj):
         return str(obj.permission)
-
-    permission_display.short_description = "Право"
 
 
 @admin.register(AuditLog)
@@ -256,6 +250,10 @@ class AuditLogAdmin(admin.ModelAdmin):
     ]
     list_filter = ("object_type", "action", "created_at", "actor")
     search_fields = ("object_name", "description", "actor__username")
+    list_select_related = ("actor",)
+    date_hierarchy = "created_at"
+    list_per_page = 30
+    show_full_result_count = False
     readonly_fields = (
         "id",
         "actor",
@@ -285,6 +283,7 @@ class AuditLogAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         return False
 
+    @admin.display(description="Тип")
     def object_type_badge(self, obj):
         colors = {
             "role": "#667eea",
@@ -309,8 +308,7 @@ class AuditLogAdmin(admin.ModelAdmin):
             obj.get_object_type_display(),
         )
 
-    object_type_badge.short_description = "Тип"
-
+    @admin.display(description="Действие")
     def action_badge(self, obj):
         colors = {
             "create": "#ccffcc",
@@ -335,14 +333,11 @@ class AuditLogAdmin(admin.ModelAdmin):
             obj.get_action_display(),
         )
 
-    action_badge.short_description = "Действие"
-
+    @admin.display(description="Кто")
     def actor_display(self, obj):
         if obj.actor:
             return format_html("<strong>{}</strong>", obj.actor.username)
         return format_html("<em>Система</em>")
-
-    actor_display.short_description = "Кто"
 
 
 # ============ DJANGO USER ADMIN CUSTOMIZATION ============

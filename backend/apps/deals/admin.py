@@ -17,10 +17,6 @@ from import_export import resources
 
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 
-RESTORE_DEALS_LABEL = "Восстановить выбранные сделки"
-RESTORE_QUOTES_LABEL = "Восстановить выбранные расчёты"
-
-
 # ============ IMPORT/EXPORT RESOURCES ============
 
 
@@ -173,8 +169,12 @@ class DealAdmin(SoftDeleteImportExportAdmin):
     )
     search_fields = ("title", "client__name", "description")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    list_select_related = ("client", "seller", "executor")
+    autocomplete_fields = ("client", "seller", "executor")
     ordering = ("next_review_date", "-created_at")
     date_hierarchy = "next_review_date"
+    list_per_page = 30
+    show_full_result_count = False
 
     fieldsets = (
         (
@@ -225,8 +225,9 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         DocumentInline,
         NoteInline,
     ]
-    actions = ["mark_as_won", "mark_as_lost", "mark_as_on_hold", "restore_deals"]
+    actions = ["mark_as_won", "mark_as_lost", "mark_as_on_hold"]
 
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         colors = {
             "open": "#3a86ff",
@@ -240,8 +241,6 @@ class DealAdmin(SoftDeleteImportExportAdmin):
             color,
             obj.status,
         )
-
-    status_badge.short_description = "Статус"
 
     def mark_as_won(self, request, queryset):
         updated = queryset.update(status="won")
@@ -260,15 +259,6 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         self.message_user(request, f"{updated} сделок поставлено на паузу")
 
     mark_as_on_hold.short_description = "Перевести на паузу"
-
-    def restore_deals(self, request, queryset):
-        restored = 0
-        for deal in queryset.filter(deleted_at__isnull=False):
-            deal.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} сделок")
-
-    restore_deals.short_description = RESTORE_DEALS_LABEL
 
 
 @admin.register(SalesChannel)
@@ -308,8 +298,9 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
     list_filter = ("insurance_type", "insurance_company", "created_at", "deleted_at")
     search_fields = ("deal__title", "insurance_type", "insurance_company")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    list_select_related = ("deal", "insurance_type", "insurance_company")
     ordering = ("-created_at",)
-    actions = ["restore_quotes"]
+    autocomplete_fields = ("deal", "insurance_type", "insurance_company")
 
     fieldsets = (
         ("Основная информация", {"fields": ("id", "deal")}),
@@ -330,15 +321,6 @@ class QuoteAdmin(SoftDeleteImportExportAdmin):
         ("Статус", {"fields": ("deleted_at",)}),
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
-
-    def restore_quotes(self, request, queryset):
-        restored = 0
-        for quote in queryset.filter(deleted_at__isnull=False):
-            quote.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} расчётов")
-
-    restore_quotes.short_description = RESTORE_QUOTES_LABEL
 
 
 class InsuranceCompanyAdminForm(forms.ModelForm):
@@ -374,6 +356,7 @@ class InsuranceCompanyAdmin(SoftDeleteImportExportAdmin):
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("name",)
     list_filter = (ShowDeletedFilter,)
+    search_help_text = "Поиск по названию и описанию"
 
 
 @admin.register(InsuranceType)

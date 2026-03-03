@@ -1,6 +1,5 @@
 from apps.common.admin import SoftDeleteImportExportAdmin
 from django.contrib import admin
-from django.utils.html import format_html
 from import_export import resources
 
 from .models import Note
@@ -41,9 +40,10 @@ class NoteAdmin(SoftDeleteImportExportAdmin):
     list_display = ("deal", "author_name", "body_preview", "status_badge", "created_at")
     search_fields = ("deal__title", "author_name", "body")
     list_filter = ("created_at", "deleted_at")
+    list_select_related = ("deal",)
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("-created_at",)
-    actions = ["restore_notes"]
+    date_hierarchy = "created_at"
 
     fieldsets = (
         ("Основная информация", {"fields": ("id", "deal", "author_name")}),
@@ -52,28 +52,23 @@ class NoteAdmin(SoftDeleteImportExportAdmin):
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Содержание")
     def body_preview(self, obj):
         """Показывает сокращённый текст заметки."""
         return (obj.body[:80] + "...") if len(obj.body) > 80 else obj.body
 
-    body_preview.short_description = "Содержание"
-
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         if obj.deleted_at:
-            return format_html(
-                '<span style="background-color: #ffcccc; padding: 3px 8px; border-radius: 3px; color: #cc0000;">Удалена</span>'
+            return self.render_badge(
+                "Удалена",
+                bg_color="#fee2e2",
+                fg_color="#b91c1c",
+                bold=True,
             )
-        return format_html(
-            '<span style="background-color: #ccffcc; padding: 3px 8px; border-radius: 3px; color: #00cc00;">Активна</span>'
+        return self.render_badge(
+            "Активна",
+            bg_color="#dcfce7",
+            fg_color="#166534",
+            bold=True,
         )
-
-    status_badge.short_description = "Статус"
-
-    def restore_notes(self, request, queryset):
-        restored = 0
-        for note in queryset.filter(deleted_at__isnull=False):
-            note.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} заметок")
-
-    restore_notes.short_description = "✓ Восстановить выбранные заметки"

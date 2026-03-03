@@ -82,9 +82,13 @@ class TaskAdmin(SoftDeleteImportExportAdmin):
         "completed_by",
         "completed_at",
     )
+    list_select_related = ("deal", "assignee", "created_by", "completed_by")
+    autocomplete_fields = ("deal", "assignee", "created_by")
     ordering = ("due_at", "-created_at")
     date_hierarchy = "due_at"
-    actions = ["mark_as_done", "mark_as_in_progress", "mark_as_todo", "restore_tasks"]
+    actions = ["mark_as_done", "mark_as_in_progress", "mark_as_todo"]
+    list_per_page = 30
+    show_full_result_count = False
 
     fieldsets = (
         ("Основная информация", {"fields": ("id", "title", "deal", "description")}),
@@ -97,6 +101,7 @@ class TaskAdmin(SoftDeleteImportExportAdmin):
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         colors = {
             "todo": "#3a86ff",
@@ -112,8 +117,7 @@ class TaskAdmin(SoftDeleteImportExportAdmin):
             obj.get_status_display(),
         )
 
-    status_badge.short_description = "Статус"
-
+    @admin.display(description="Приоритет")
     def priority_badge(self, obj):
         colors = {
             "low": "#06ffa5",
@@ -128,34 +132,23 @@ class TaskAdmin(SoftDeleteImportExportAdmin):
             obj.get_priority_display(),
         )
 
-    priority_badge.short_description = "Приоритет"
-
     def mark_as_done(self, request, queryset):
         """Action для отметки задач как выполненные."""
         updated = queryset.update(status="done")
         self.message_user(request, f"{updated} задач отмечено как выполненные")
 
-    mark_as_done.short_description = "✓ Отметить как выполненные"
+    mark_as_done.short_description = "Отметить как выполненные"
 
     def mark_as_in_progress(self, request, queryset):
         """Action для отметки задач как в процессе."""
         updated = queryset.update(status="in_progress")
         self.message_user(request, f"{updated} задач отмечено как в процессе")
 
-    mark_as_in_progress.short_description = "⏳ Отметить как в процессе"
+    mark_as_in_progress.short_description = "Отметить как в процессе"
 
     def mark_as_todo(self, request, queryset):
         """Action для отметки задач как к выполнению."""
         updated = queryset.update(status="todo")
         self.message_user(request, f"{updated} задач отмечено как к выполнению")
 
-    mark_as_todo.short_description = "↻ Отметить как к выполнению"
-
-    def restore_tasks(self, request, queryset):
-        restored = 0
-        for task in queryset.filter(deleted_at__isnull=False):
-            task.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} задач")
-
-    restore_tasks.short_description = "✓ Восстановить выбранные задачи"
+    mark_as_todo.short_description = "Отметить как к выполнению"

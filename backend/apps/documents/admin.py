@@ -1,6 +1,5 @@
 from apps.common.admin import SoftDeleteImportExportAdmin
 from django.contrib import admin
-from django.utils.html import format_html
 from import_export import resources
 
 from .models import Document
@@ -61,6 +60,8 @@ class DocumentAdmin(SoftDeleteImportExportAdmin):
     )
     search_fields = ("title", "doc_type", "owner__username", "deal__title")
     list_filter = ("doc_type", "status", "created_at", "deleted_at", "mime_type")
+    list_select_related = ("owner", "deal")
+    autocomplete_fields = ("owner", "deal")
     readonly_fields = (
         "id",
         "created_at",
@@ -70,7 +71,7 @@ class DocumentAdmin(SoftDeleteImportExportAdmin):
         "file_size_display",
     )
     ordering = ("-created_at",)
-    actions = ["restore_documents"]
+    date_hierarchy = "created_at"
 
     fieldsets = (
         ("Основная информация", {"fields": ("id", "title", "deal")}),
@@ -81,6 +82,7 @@ class DocumentAdmin(SoftDeleteImportExportAdmin):
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Размер")
     def file_size_display(self, obj):
         if obj.file_size:
             kb = obj.file_size / 1024
@@ -89,8 +91,7 @@ class DocumentAdmin(SoftDeleteImportExportAdmin):
             return f"{kb:.2f} KB"
         return "—"
 
-    file_size_display.short_description = "Размер"
-
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         colors = {
             "pending": "#ffbe0b",
@@ -98,19 +99,9 @@ class DocumentAdmin(SoftDeleteImportExportAdmin):
             "error": "#ff006e",
         }
         color = colors.get(obj.status, "#999999")
-        return format_html(
-            '<span style="background-color: {}; color: white; padding: 3px 8px; border-radius: 3px;">{}</span>',
-            color,
+        return self.render_badge(
             obj.get_status_display(),
+            bg_color=color,
+            fg_color="#ffffff",
+            bold=True,
         )
-
-    status_badge.short_description = "Статус"
-
-    def restore_documents(self, request, queryset):
-        restored = 0
-        for doc in queryset.filter(deleted_at__isnull=False):
-            doc.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} документов")
-
-    restore_documents.short_description = "✓ Восстановить выбранные документы"

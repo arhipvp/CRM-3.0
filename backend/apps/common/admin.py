@@ -1,6 +1,53 @@
 from django.contrib import admin
-from django.utils.translation import gettext_lazy as _
+from django.utils.html import format_html
 from import_export.admin import ImportExportModelAdmin
+
+
+class CRMAdminUXMixin:
+    """Общие UX-настройки и утилиты для Django Admin."""
+
+    list_per_page = 50
+    save_on_top = True
+    preserve_filters = True
+
+    @staticmethod
+    def render_badge(
+        text: str,
+        *,
+        bg_color: str = "#eef2ff",
+        fg_color: str = "#1f2937",
+        bold: bool = False,
+    ) -> str:
+        weight = "700" if bold else "500"
+        return format_html(
+            '<span style="background-color: {}; color: {}; padding: 3px 8px; '
+            'border-radius: 999px; font-weight: {};">{}</span>',
+            bg_color,
+            fg_color,
+            weight,
+            text,
+        )
+
+    @admin.action(description="Восстановить выбранные записи")
+    def restore_selected(self, request, queryset):
+        restored = 0
+        for obj in queryset.filter(deleted_at__isnull=False):
+            obj.restore()
+            restored += 1
+        self.message_user(request, f"Восстановлено {restored} записей")
+
+    def _supports_soft_delete(self) -> bool:
+        return hasattr(self.model, "objects") and hasattr(self.model.objects, "dead")
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if self._supports_soft_delete() and self.model.objects.dead().exists():
+            actions["restore_selected"] = (
+                self.__class__.restore_selected,
+                "restore_selected",
+                "Восстановить выбранные записи",
+            )
+        return actions
 
 
 class ShowDeletedFilter(admin.SimpleListFilter):
@@ -17,7 +64,7 @@ class ShowDeletedFilter(admin.SimpleListFilter):
         return queryset
 
 
-class SoftDeleteAdmin(admin.ModelAdmin):
+class SoftDeleteAdmin(CRMAdminUXMixin, admin.ModelAdmin):
     """
     Базовый админ-класс для моделей с мягким удалением (SoftDeleteModel).
     Обеспечивает поддержку восстановления удалённых объектов и фильтрацию.
@@ -51,28 +98,6 @@ class SoftDeleteAdmin(admin.ModelAdmin):
         """Переопределяем групповое удаление на мягкое удаление."""
         for obj in queryset:
             obj.delete()
-
-    @admin.action(description=_("Восстановить удалённые объекты"))
-    def restore_deleted(self, request, queryset):
-        """Action для восстановления удалённых объектов."""
-        restored_count = 0
-        for obj in queryset:
-            obj.restore()
-            restored_count += 1
-        self.message_user(request, _(f"{restored_count} объектов восстановлено."))
-
-    def get_actions(self, request):
-        """Добавляем action для восстановления удалённых объектов."""
-        actions = super().get_actions(request)
-        # Добавляем восстановление только если есть удалённые объекты
-        if self.model.objects.dead().exists():
-            action = self.__class__.restore_deleted
-            actions["restore_deleted"] = (
-                action,
-                action.__name__,
-                getattr(action, "short_description", action.__doc__),
-            )
-        return actions
 
     def changelist_view(self, request, extra_context=None):
         """Передаём в шаблон метрики по удалённым объектам."""

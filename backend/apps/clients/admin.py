@@ -1,11 +1,10 @@
 ﻿from apps.common.admin import SoftDeleteImportExportAdmin
 from django.contrib import admin
+from django.db.models import Count, Q
 from django.utils.html import format_html
 from import_export import resources
 
 from .models import Client
-
-# ============ IMPORT/EXPORT RESOURCES ============
 
 
 class ClientResource(resources.ModelResource):
@@ -22,20 +21,7 @@ class ClientResource(resources.ModelResource):
             "updated_at",
             "deleted_at",
         )
-        export_order = (
-            "id",
-            "name",
-            "phone",
-            "email",
-            "birth_date",
-            "notes",
-            "created_at",
-            "updated_at",
-            "deleted_at",
-        )
-
-
-# ============ MODEL ADMINS ============
+        export_order = fields
 
 
 @admin.register(Client)
@@ -62,7 +48,7 @@ class ClientAdmin(SoftDeleteImportExportAdmin):
         "deals_count_display",
     )
     ordering = ("-created_at",)
-    actions = ["restore_clients"]
+    date_hierarchy = "created_at"
 
     fieldsets = (
         (
@@ -93,42 +79,45 @@ class ClientAdmin(SoftDeleteImportExportAdmin):
         ),
     )
 
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            active_deals_count=Count(
+                "deals",
+                filter=Q(deals__deleted_at__isnull=True),
+                distinct=True,
+            )
+        )
+
+    @admin.display(description="Сделки")
     def deals_count(self, obj):
-        count = obj.deals.filter(deleted_at__isnull=True).count()
+        count = getattr(obj, "active_deals_count", 0)
         url = f"/admin/deals/deal/?client__id__exact={obj.id}"
         return format_html('<a href="{}">{} сделок</a>', url, count)
 
-    deals_count.short_description = "Сделки"
-
+    @admin.display(description="Сделки")
     def deals_count_display(self, obj):
-        count = obj.deals.filter(deleted_at__isnull=True).count()
+        count = getattr(obj, "active_deals_count", 0)
         return f"{count} активных сделок"
 
-    deals_count_display.short_description = "Сделки"
-
+    @admin.display(description="Примечание")
     def short_notes(self, obj):
         if not obj.notes:
             return "—"
         return (obj.notes[:40] + "…") if len(obj.notes) > 40 else obj.notes
 
-    short_notes.short_description = "Примечание"
-
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         if obj.deleted_at:
-            return format_html(
-                '<span style="background-color: #ffcccc; padding: 3px 8px; border-radius: 3px; color: #cc0000;">Удалён</span>'
+            return self.render_badge(
+                "Удалён",
+                bg_color="#fee2e2",
+                fg_color="#b91c1c",
+                bold=True,
             )
-        return format_html(
-            '<span style="background-color: #ccffcc; padding: 3px 8px; border-radius: 3px; color: #00cc00;">Активен</span>'
+        return self.render_badge(
+            "Активен",
+            bg_color="#dcfce7",
+            fg_color="#166534",
+            bold=True,
         )
-
-    status_badge.short_description = "Статус"
-
-    def restore_clients(self, request, queryset):
-        restored = 0
-        for client in queryset.filter(deleted_at__isnull=False):
-            client.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} клиентов")
-
-    restore_clients.short_description = "✓ Восстановить выбранных клиентов"

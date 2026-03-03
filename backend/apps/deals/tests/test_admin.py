@@ -1,9 +1,4 @@
-from apps.deals.admin import (
-    RESTORE_DEALS_LABEL,
-    RESTORE_QUOTES_LABEL,
-    DealAdmin,
-    QuoteAdmin,
-)
+from apps.deals.admin import DealAdmin, QuoteAdmin
 from apps.deals.models import Deal, Quote
 from django.contrib import admin as django_admin
 from django.contrib.auth.models import AnonymousUser
@@ -11,20 +6,20 @@ from django.test import RequestFactory, SimpleTestCase
 
 
 class DealAdminLabelsTests(SimpleTestCase):
-    def test_restore_deals_action_description(self):
+    def test_restore_action_description_for_deals(self):
         site = django_admin.AdminSite()
         admin_instance = DealAdmin(Deal, site)
         self.assertEqual(
-            admin_instance.restore_deals.short_description,
-            RESTORE_DEALS_LABEL,
+            admin_instance.restore_selected.short_description,
+            "Восстановить выбранные записи",
         )
 
-    def test_restore_quotes_action_description(self):
+    def test_restore_action_description_for_quotes(self):
         site = django_admin.AdminSite()
         admin_instance = QuoteAdmin(Quote, site)
         self.assertEqual(
-            admin_instance.restore_quotes.short_description,
-            RESTORE_QUOTES_LABEL,
+            admin_instance.restore_selected.short_description,
+            "Восстановить выбранные записи",
         )
 
 

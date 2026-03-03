@@ -1,6 +1,5 @@
 from apps.common.admin import SoftDeleteImportExportAdmin
 from django.contrib import admin
-from django.utils.html import format_html
 from import_export import resources
 
 from .models import (
@@ -49,9 +48,13 @@ class NotificationAdmin(SoftDeleteImportExportAdmin):
     list_display = ("user", "type", "read_badge", "read_at", "created_at")
     search_fields = ("user__username", "type")
     list_filter = ("is_read", "type", "created_at", "read_at")
+    list_select_related = ("user",)
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("-created_at",)
-    actions = ["mark_as_read", "mark_as_unread", "restore_notifications"]
+    actions = ["mark_as_read", "mark_as_unread"]
+    date_hierarchy = "created_at"
+    list_per_page = 30
+    show_full_result_count = False
 
     fieldsets = (
         ("Основная информация", {"fields": ("id", "user", "type")}),
@@ -61,16 +64,21 @@ class NotificationAdmin(SoftDeleteImportExportAdmin):
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Статус")
     def read_badge(self, obj):
         if obj.is_read:
-            return format_html(
-                '<span style="background-color: #ccffcc; padding: 3px 8px; border-radius: 3px; color: #00cc00;">✓ Прочитано</span>'
+            return self.render_badge(
+                "Прочитано",
+                bg_color="#dcfce7",
+                fg_color="#166534",
+                bold=True,
             )
-        return format_html(
-            '<span style="background-color: #ffffcc; padding: 3px 8px; border-radius: 3px; color: #ccaa00;">⚫ Новое</span>'
+        return self.render_badge(
+            "Новое",
+            bg_color="#fef9c3",
+            fg_color="#854d0e",
+            bold=True,
         )
-
-    read_badge.short_description = "Статус"
 
     def mark_as_read(self, request, queryset):
         """Action для отметки уведомлений как прочитанные."""
@@ -80,23 +88,14 @@ class NotificationAdmin(SoftDeleteImportExportAdmin):
             updated += 1
         self.message_user(request, f"{updated} уведомлений отмечено как прочитанные")
 
-    mark_as_read.short_description = "✓ Отметить как прочитанные"
+    mark_as_read.short_description = "Отметить как прочитанные"
 
     def mark_as_unread(self, request, queryset):
         """Action для отметки уведомлений как непрочитанные."""
         updated = queryset.update(is_read=False, read_at=None)
         self.message_user(request, f"{updated} уведомлений отмечено как непрочитанные")
 
-    mark_as_unread.short_description = "⚫ Отметить как непрочитанные"
-
-    def restore_notifications(self, request, queryset):
-        restored = 0
-        for notif in queryset.filter(deleted_at__isnull=False):
-            notif.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} уведомлений")
-
-    restore_notifications.short_description = "✓ Восстановить выбранные уведомления"
+    mark_as_unread.short_description = "Отметить как непрочитанные"
 
 
 @admin.register(TelegramInboundMessage)
@@ -113,11 +112,21 @@ class TelegramInboundMessageAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "processed_at", "created_at")
     search_fields = ("user__username", "chat_id", "message_id", "text")
-    readonly_fields = (
-        "created_at",
-        "updated_at",
+    list_select_related = ("user", "linked_deal")
+    readonly_fields = tuple(
+        field.name for field in TelegramInboundMessage._meta.fields
     )
     ordering = ("-created_at",)
+    date_hierarchy = "created_at"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(TelegramDealRoutingSession)
@@ -134,10 +143,22 @@ class TelegramDealRoutingSessionAdmin(admin.ModelAdmin):
     )
     list_filter = ("state", "expires_at", "updated_at")
     search_fields = ("user__username",)
-    readonly_fields = ("created_at", "updated_at")
+    list_select_related = ("user", "selected_deal", "created_deal")
+    readonly_fields = tuple(
+        field.name for field in TelegramDealRoutingSession._meta.fields
+    )
     ordering = ("-created_at",)
+    date_hierarchy = "updated_at"
 
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="Размер батча")
     def batch_size(self, obj):
         return len(obj.batch_message_ids or [])
-
-    batch_size.short_description = "Batch messages"

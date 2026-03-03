@@ -81,14 +81,30 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         "deleted_at",
     )
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    list_select_related = (
+        "insurance_type",
+        "insurance_company",
+        "sales_channel",
+        "client",
+        "deal",
+    )
+    autocomplete_fields = (
+        "insurance_type",
+        "insurance_company",
+        "sales_channel",
+        "client",
+        "deal",
+    )
     ordering = ("-start_date",)
     date_hierarchy = "start_date"
-    actions = ["mark_as_active", "mark_as_inactive", "restore_policies"]
+    actions = ["mark_as_active", "mark_as_inactive"]
+    list_per_page = 30
+    show_full_result_count = False
 
     fieldsets = (
-        ("Main information", {"fields": ("id", "number", "deal", "client")}),
+        ("Основная информация", {"fields": ("id", "number", "deal", "client")}),
         (
-            "Insurance information",
+            "Страховая информация",
             {
                 "fields": (
                     "insurance_type",
@@ -100,14 +116,15 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
             },
         ),
         (
-            "Vehicle details",
+            "Детали транспорта",
             {"fields": ("is_vehicle", "brand", "model", "vin")},
         ),
-        ("Duration", {"fields": ("start_date", "end_date")}),
+        ("Срок действия", {"fields": ("start_date", "end_date")}),
         ("Статус удаления", {"fields": ("deleted_at",)}),
         ("Время", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
+    @admin.display(description="Статус")
     def status_badge(self, obj):
         # Determine status based on dates
         today = timezone.now().date()
@@ -127,32 +144,20 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
             text,
         )
 
-    status_badge.short_description = "Статус"
-
+    @admin.display(description="Период")
     def period_display(self, obj):
         if obj.start_date and obj.end_date:
             return f'{obj.start_date.strftime("%d.%m.%y")} - {obj.end_date.strftime("%d.%m.%y")}'
         return "—"
 
-    period_display.short_description = "Период"
-
     def mark_as_active(self, request, queryset):
         updated = queryset.update(status="active")
         self.message_user(request, f"{updated} полисов отмечено как активные")
 
-    mark_as_active.short_description = "✓ Отметить как активные"
+    mark_as_active.short_description = "Отметить как активные"
 
     def mark_as_inactive(self, request, queryset):
         updated = queryset.update(status="inactive")
         self.message_user(request, f"{updated} полисов отмечено как неактивные")
 
-    mark_as_inactive.short_description = "✗ Отметить как неактивные"
-
-    def restore_policies(self, request, queryset):
-        restored = 0
-        for policy in queryset.filter(deleted_at__isnull=False):
-            policy.restore()
-            restored += 1
-        self.message_user(request, f"Восстановлено {restored} полисов")
-
-    restore_policies.short_description = "✓ Восстановить выбранные полисы"
+    mark_as_inactive.short_description = "Отметить как неактивные"

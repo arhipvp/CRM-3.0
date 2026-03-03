@@ -1,0 +1,25 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+<div style="margin-bottom: 16px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+  <h2 style="margin-top: 0;">Оперативная сводка</h2>
+  <ul style="margin: 8px 0 0 18px;">
+    <li>Просроченные задачи: <strong>{{ overdue_tasks_count }}</strong></li>
+    <li>Сделки без следующего контакта: <strong>{{ deals_without_next_contact_count }}</strong></li>
+    <li>Истёкшие полисы: <strong>{{ policies_expired_count }}</strong></li>
+    <li>Полисы, истекающие в 14 дней: <strong>{{ policies_expiring_soon_count }}</strong></li>
+    <li>Непрочитанные уведомления: <strong>{{ unread_notifications_count }}</strong></li>
+  </ul>
+</div>
+
+<div style="margin-bottom: 18px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
+  <h2 style="margin-top: 0;">Быстрые фильтры</h2>
+  <ul style="margin: 8px 0 0 18px;">
+    {% for link in admin_quick_links %}
+      <li><a href="{{ link.url }}">{{ link.label }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+
+{{ block.super }}
+{% endblock %}
