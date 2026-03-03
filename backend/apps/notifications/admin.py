@@ -113,9 +113,7 @@ class TelegramInboundMessageAdmin(admin.ModelAdmin):
     list_filter = ("status", "processed_at", "created_at")
     search_fields = ("user__username", "chat_id", "message_id", "text")
     list_select_related = ("user", "linked_deal")
-    readonly_fields = tuple(
-        field.name for field in TelegramInboundMessage._meta.fields
-    )
+    readonly_fields = tuple(field.name for field in TelegramInboundMessage._meta.fields)
     ordering = ("-created_at",)
     date_hierarchy = "created_at"
 

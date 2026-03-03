@@ -2,6 +2,7 @@ import pytest
 from apps.users.models import Role
 from django.contrib.admin.sites import site
 from django.contrib.auth.models import User
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory
 from uuid import uuid4
 
@@ -11,11 +12,16 @@ pytestmark = [pytest.mark.admin, pytest.mark.django_db]
 def _admin_request():
     suffix = uuid4().hex[:8]
     request = RequestFactory().get("/admin/users/role/")
-    request.user = User.objects.create_superuser(
+    user = User.objects.create_superuser(
         username=f"actions_admin_{suffix}",
         email=f"actions_admin_{suffix}@example.com",
-        password="password123",
+        password=None,
     )
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    request.user = user
+    setattr(request, "session", {})
+    setattr(request, "_messages", FallbackStorage(request))
     return request
 
 

@@ -20,7 +20,9 @@ def _build_operations_metrics():
         "overdue_tasks_count": Task.objects.filter(
             deleted_at__isnull=True,
             due_at__date__lt=today,
-        ).exclude(status=Task.TaskStatus.DONE).count(),
+        )
+        .exclude(status=Task.TaskStatus.DONE)
+        .count(),
         "deals_without_next_contact_count": Deal.objects.filter(
             deleted_at__isnull=True,
             next_contact_date__isnull=True,
@@ -69,6 +71,7 @@ def _crm_each_context(request):
         },
     ]
     return context
+
 
 def configure_admin_site():
     global _is_configured

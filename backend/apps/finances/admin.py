@@ -166,7 +166,6 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
         )
         return f"{float(total):.2f} руб."
 
-
     def mark_as_paid(self, request, queryset):
         """Action для записи даты фактической оплаты."""
         from datetime import date
@@ -282,4 +281,3 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
             if len(obj.description) > 50
             else obj.description
         )
-
