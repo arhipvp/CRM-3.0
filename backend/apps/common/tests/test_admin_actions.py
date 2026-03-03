@@ -1,10 +1,11 @@
+from uuid import uuid4
+
 import pytest
 from apps.users.models import Role
 from django.contrib.admin.sites import site
 from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory
-from uuid import uuid4
 
 pytestmark = [pytest.mark.admin, pytest.mark.django_db]
 
