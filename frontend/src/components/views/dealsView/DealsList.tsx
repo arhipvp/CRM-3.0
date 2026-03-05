@@ -19,7 +19,7 @@ interface DealsListProps {
   dealRowFocusRequest?: { dealId: string; nonce: number } | null;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
-  onDealSearchSubmit: () => void;
+  onDealSearchSubmit: (value?: string) => void;
   onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
@@ -165,7 +165,7 @@ export const DealsList: React.FC<DealsListProps> = ({
     if (!clientName) {
       return;
     }
-    onDealSearchChange(clientName);
+    onDealSearchSubmit(clientName);
   };
 
   return (

@@ -128,7 +128,7 @@ export interface AppRouteFinanceActions {
 export interface AppRouteFilterState {
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
-  onDealSearchSubmit: () => void;
+  onDealSearchSubmit: (value?: string) => void;
   onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;

@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NotificationContext } from '../../../../contexts/NotificationContext';
@@ -283,5 +283,154 @@ describe('FilesTab document recognition transcript', () => {
     expect(handleTrashDriveFile).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'file-1', name: 'doc.pdf' }),
     );
+  });
+
+  it('renames preview image via input and keeps extension', async () => {
+    const handleRenameDriveFile = vi.fn().mockResolvedValue(undefined);
+    const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: vi.fn(() => 'blob:preview-rename'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: vi.fn(),
+    });
+
+    renderWithProviders({
+      handleRenameDriveFile,
+      getDriveFileBlob,
+      sortedDriveFiles: [
+        {
+          id: 'image-1',
+          name: 'photo.png',
+          mimeType: 'image/png',
+          isFolder: false,
+          size: 10,
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Просмотреть' }));
+    expect(await screen.findByRole('img', { name: 'photo.png' })).toBeInTheDocument();
+
+    const dialog = screen.getByRole('dialog');
+    const renameInput = within(dialog).getByLabelText('Имя файла') as HTMLInputElement;
+    await waitFor(() => {
+      expect(renameInput.value).toBe('photo');
+    });
+
+    fireEvent.change(renameInput, { target: { value: 'photo-renamed' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Переименовать' }));
+
+    await waitFor(() => {
+      expect(handleRenameDriveFile).toHaveBeenCalledWith('image-1', 'photo-renamed.png');
+    });
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: originalCreateObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: originalRevokeObjectURL,
+    });
+  });
+
+  it('shows validation error for empty preview rename and does not submit', async () => {
+    const handleRenameDriveFile = vi.fn().mockResolvedValue(undefined);
+    const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: vi.fn(() => 'blob:preview-rename-empty'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: vi.fn(),
+    });
+
+    renderWithProviders({
+      handleRenameDriveFile,
+      getDriveFileBlob,
+      sortedDriveFiles: [
+        {
+          id: 'image-1',
+          name: 'photo.png',
+          mimeType: 'image/png',
+          isFolder: false,
+          size: 10,
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Просмотреть' }));
+    expect(await screen.findByRole('img', { name: 'photo.png' })).toBeInTheDocument();
+
+    const dialog = screen.getByRole('dialog');
+    const renameInput = within(dialog).getByLabelText('Имя файла');
+    fireEvent.change(renameInput, { target: { value: '   ' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Переименовать' }));
+
+    expect(
+      await within(dialog).findByText('Название файла не должно быть пустым.'),
+    ).toBeInTheDocument();
+    expect(handleRenameDriveFile).not.toHaveBeenCalled();
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: originalCreateObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: originalRevokeObjectURL,
+    });
+  });
+
+  it('disables preview rename controls while renaming', async () => {
+    const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: vi.fn(() => 'blob:preview-rename-disabled'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: vi.fn(),
+    });
+
+    renderWithProviders({
+      isRenaming: true,
+      getDriveFileBlob,
+      sortedDriveFiles: [
+        {
+          id: 'image-1',
+          name: 'photo.png',
+          mimeType: 'image/png',
+          isFolder: false,
+          size: 10,
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Просмотреть' }));
+    expect(await screen.findByRole('img', { name: 'photo.png' })).toBeInTheDocument();
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Имя файла')).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Переименовать' })).toBeDisabled();
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      writable: true,
+      value: originalCreateObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      writable: true,
+      value: originalRevokeObjectURL,
+    });
   });
 });

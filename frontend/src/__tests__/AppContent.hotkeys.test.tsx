@@ -168,7 +168,7 @@ vi.mock('../components/app/AppRoutes', () => ({
     };
     filters?: {
       onDealSearchChange?: (value: string) => void;
-      onDealSearchSubmit?: () => void;
+      onDealSearchSubmit?: (value?: string) => void;
       onDealSearchClear?: () => void;
     };
   }) => (

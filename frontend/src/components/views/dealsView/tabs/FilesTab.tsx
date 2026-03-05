@@ -129,10 +129,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     src: string;
     name: string;
   } | null>(null);
+  const [previewRenameDraft, setPreviewRenameDraft] = useState('');
+  const [previewRenameError, setPreviewRenameError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  const splitFileName = (name: string): { baseName: string; extension: string } => {
+  const splitFileName = useCallback((name: string): { baseName: string; extension: string } => {
     const lastDotIndex = name.lastIndexOf('.');
     if (lastDotIndex <= 0 || lastDotIndex === name.length - 1) {
       return { baseName: name, extension: '' };
@@ -142,7 +144,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       baseName: name.slice(0, lastDotIndex),
       extension: name.slice(lastDotIndex),
     };
-  };
+  }, []);
 
   const renderStatusMessage = (message: string, tone: 'default' | 'danger' = 'default') => {
     if (tone === 'danger') {
@@ -201,6 +203,14 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   }, [imagePreview, previewableImages]);
   const canGoPrev = currentImageIndex > 0;
   const canGoNext = currentImageIndex >= 0 && currentImageIndex < previewableImages.length - 1;
+  const previewRenameExtension = imagePreview ? splitFileName(imagePreview.name).extension : '';
+  const isPreviewRenameDisabled =
+    isRenaming ||
+    isDriveLoading ||
+    isTrashing ||
+    isDownloading ||
+    isSelectedDealDeleted ||
+    !imagePreview;
 
   const closeImagePreview = useCallback(() => {
     setImagePreview((prev) => {
@@ -209,6 +219,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       }
       return null;
     });
+    setPreviewRenameDraft('');
+    setPreviewRenameError(null);
     setPreviewError(null);
     setIsPreviewLoading(false);
   }, []);
@@ -268,6 +280,24 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     void openImageByIndex(currentImageIndex + 1);
   }, [canGoNext, currentImageIndex, isPreviewLoading, openImageByIndex]);
 
+  const handlePreviewRenameSubmit = useCallback(async () => {
+    if (!imagePreview) {
+      return;
+    }
+
+    const trimmedBaseName = previewRenameDraft.trim();
+    if (!trimmedBaseName) {
+      setPreviewRenameError('Название файла не должно быть пустым.');
+      return;
+    }
+
+    setPreviewRenameError(null);
+    await handleRenameDriveFile(
+      imagePreview.fileId,
+      `${trimmedBaseName}${splitFileName(imagePreview.name).extension}`,
+    );
+  }, [handleRenameDriveFile, imagePreview, previewRenameDraft]);
+
   useEffect(
     () => () => {
       if (imagePreview?.src && typeof URL.revokeObjectURL === 'function') {
@@ -314,6 +344,30 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [closeImagePreview, goToNextImage, goToPrevImage, imagePreview]);
+
+  useEffect(() => {
+    if (!imagePreview) {
+      setPreviewRenameDraft('');
+      setPreviewRenameError(null);
+      return;
+    }
+    const { baseName } = splitFileName(imagePreview.name);
+    setPreviewRenameDraft(baseName);
+    setPreviewRenameError(null);
+  }, [imagePreview?.name]);
+
+  useEffect(() => {
+    if (!imagePreview) {
+      return;
+    }
+    const previewFile = sortedDriveFiles.find((file) => file.id === imagePreview.fileId);
+    if (!previewFile || previewFile.name === imagePreview.name) {
+      return;
+    }
+    setImagePreview((prev) =>
+      prev && prev.fileId === previewFile.id ? { ...prev, name: previewFile.name } : prev,
+    );
+  }, [imagePreview, sortedDriveFiles]);
 
   if (!selectedDeal) {
     return null;
@@ -695,8 +749,46 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       </div>
       {previewError && <InlineAlert as="p">{previewError}</InlineAlert>}
       {imagePreview && (
-        <Modal title={imagePreview.name} onClose={closeImagePreview} size="lg">
+        <Modal title="Просмотр изображения" onClose={closeImagePreview} size="lg">
           <div className="space-y-3">
+            <form
+              className="space-y-1"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (isPreviewRenameDisabled) {
+                  return;
+                }
+                void handlePreviewRenameSubmit();
+              }}
+            >
+              <label
+                htmlFor="deal-image-preview-rename"
+                className="block text-xs font-semibold uppercase tracking-wide text-slate-600"
+              >
+                Имя файла
+              </label>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                  <input
+                    id="deal-image-preview-rename"
+                    type="text"
+                    value={previewRenameDraft}
+                    onChange={(event) => setPreviewRenameDraft(event.target.value)}
+                    disabled={isPreviewRenameDisabled}
+                    className="min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
+                  />
+                  {previewRenameExtension && (
+                    <span className="shrink-0 text-sm font-medium text-slate-500">
+                      {previewRenameExtension}
+                    </span>
+                  )}
+                </div>
+                <button type="submit" disabled={isPreviewRenameDisabled} className={BTN_SM_PRIMARY}>
+                  Переименовать
+                </button>
+              </div>
+              {previewRenameError && <InlineAlert as="p">{previewRenameError}</InlineAlert>}
+            </form>
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"

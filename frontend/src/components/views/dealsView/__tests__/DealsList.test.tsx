@@ -23,7 +23,7 @@ const renderDealsList = (params?: {
   sortedDeals?: Deal[];
   dealRowFocusRequest?: { dealId: string; nonce: number } | null;
   dealSearch?: string;
-  onDealSearchSubmit?: () => void;
+  onDealSearchSubmit?: (value?: string) => void;
   onDealSearchClear?: () => void;
 }) => {
   const selectedDeal = params?.selectedDeal ?? createDeal();
@@ -154,6 +154,26 @@ describe('DealsList dealRowFocusRequest', () => {
     fireEvent.submit(searchInput.closest('form') as HTMLFormElement);
 
     expect(onDealSearchSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies client search immediately by deals count click', () => {
+    const onDealSearchSubmit = vi.fn();
+    const selectedDeal = createDeal({
+      id: 'deal-with-client',
+      clientName: 'Старостин Александр Викторович',
+      clientActiveDealsCount: 2,
+    });
+
+    renderDealsList({
+      selectedDeal,
+      sortedDeals: [selectedDeal],
+      onDealSearchSubmit,
+    });
+
+    fireEvent.click(screen.getByText('(2)'));
+
+    expect(onDealSearchSubmit).toHaveBeenCalledTimes(1);
+    expect(onDealSearchSubmit).toHaveBeenCalledWith('Старостин Александр Викторович');
   });
 
   it('clears search via clear button', () => {

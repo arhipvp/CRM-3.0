@@ -98,7 +98,7 @@ interface DealsViewProps {
   isSelectedDealQuotesLoading?: boolean;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
-  onDealSearchSubmit: () => void;
+  onDealSearchSubmit: (value?: string) => void;
   onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;

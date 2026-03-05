@@ -10,8 +10,12 @@ export const useDealFilters = () => {
   const [dealShowClosed, setDealShowClosed] = useState(false);
   const [dealOrdering, setDealOrdering] = useState<string | undefined>(undefined);
 
-  const applyDealSearch = () => {
-    setDealSearchApplied(dealSearchInput.trim());
+  const applyDealSearch = (nextSearch?: string) => {
+    const rawValue = nextSearch ?? dealSearchInput;
+    if (nextSearch !== undefined) {
+      setDealSearchInput(rawValue);
+    }
+    setDealSearchApplied(rawValue.trim());
   };
 
   const clearDealSearchAndApply = () => {
