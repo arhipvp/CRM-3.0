@@ -296,7 +296,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       imagePreview.fileId,
       `${trimmedBaseName}${splitFileName(imagePreview.name).extension}`,
     );
-  }, [handleRenameDriveFile, imagePreview, previewRenameDraft]);
+  }, [handleRenameDriveFile, imagePreview, previewRenameDraft, splitFileName]);
 
   useEffect(
     () => () => {
@@ -354,7 +354,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     const { baseName } = splitFileName(imagePreview.name);
     setPreviewRenameDraft(baseName);
     setPreviewRenameError(null);
-  }, [imagePreview?.name]);
+  }, [imagePreview, splitFileName]);
 
   useEffect(() => {
     if (!imagePreview) {
