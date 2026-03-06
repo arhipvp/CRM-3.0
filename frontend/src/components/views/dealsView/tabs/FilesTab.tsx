@@ -280,23 +280,26 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     void openImageByIndex(currentImageIndex + 1);
   }, [canGoNext, currentImageIndex, isPreviewLoading, openImageByIndex]);
 
-  const handlePreviewRenameSubmit = useCallback(async () => {
-    if (!imagePreview) {
-      return;
-    }
+  const handlePreviewRenameSubmit = useCallback(
+    async (draftOverride?: string) => {
+      if (!imagePreview) {
+        return;
+      }
 
-    const trimmedBaseName = previewRenameDraft.trim();
-    if (!trimmedBaseName) {
-      setPreviewRenameError('Название файла не должно быть пустым.');
-      return;
-    }
+      const trimmedBaseName = (draftOverride ?? previewRenameDraft).trim();
+      if (!trimmedBaseName) {
+        setPreviewRenameError('Название файла не должно быть пустым.');
+        return;
+      }
 
-    setPreviewRenameError(null);
-    await handleRenameDriveFile(
-      imagePreview.fileId,
-      `${trimmedBaseName}${splitFileName(imagePreview.name).extension}`,
-    );
-  }, [handleRenameDriveFile, imagePreview, previewRenameDraft, splitFileName]);
+      setPreviewRenameError(null);
+      await handleRenameDriveFile(
+        imagePreview.fileId,
+        `${trimmedBaseName}${splitFileName(imagePreview.name).extension}`,
+      );
+    },
+    [handleRenameDriveFile, imagePreview, previewRenameDraft, splitFileName],
+  );
 
   useEffect(
     () => () => {
@@ -758,7 +761,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 if (isPreviewRenameDisabled) {
                   return;
                 }
-                void handlePreviewRenameSubmit();
+                const formData = new FormData(event.currentTarget);
+                const submittedDraft = String(formData.get('previewRenameDraft') ?? '');
+                void handlePreviewRenameSubmit(submittedDraft);
               }}
             >
               <label
@@ -771,6 +776,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
                   <input
                     id="deal-image-preview-rename"
+                    name="previewRenameDraft"
                     type="text"
                     value={previewRenameDraft}
                     onChange={(event) => setPreviewRenameDraft(event.target.value)}
