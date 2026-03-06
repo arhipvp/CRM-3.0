@@ -11,6 +11,16 @@ interface UseCommissionsRowsArgs {
   viewMode: 'all' | 'statements';
 }
 
+const buildPaymentFallback = (record: FinancialRecord): Payment => ({
+  id: record.paymentId,
+  amount: record.paymentAmount ?? '0',
+  description: record.paymentDescription,
+  note: record.paymentDescription,
+  financialRecords: [],
+  createdAt: record.createdAt,
+  updatedAt: record.updatedAt,
+});
+
 export const useCommissionsRows = ({
   payments,
   allRecords,
@@ -62,10 +72,7 @@ export const useCommissionsRows = ({
   const allRows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
     allRecords.forEach((record) => {
-      const payment = paymentsById.get(record.paymentId);
-      if (!payment) {
-        return;
-      }
+      const payment = paymentsById.get(record.paymentId) ?? buildPaymentFallback(record);
       const amount = Number(record.amount);
       if (!Number.isFinite(amount) || amount === 0) {
         return;
