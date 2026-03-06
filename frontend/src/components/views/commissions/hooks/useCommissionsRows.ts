@@ -16,10 +16,53 @@ const buildPaymentFallback = (record: FinancialRecord): Payment => ({
   amount: record.paymentAmount ?? '0',
   description: record.paymentDescription,
   note: record.paymentDescription,
+  dealId: record.dealId ?? undefined,
+  dealTitle: record.dealTitle ?? undefined,
+  dealClientName: record.dealClientName ?? undefined,
+  policyId: record.policyId ?? undefined,
+  policyNumber: record.policyNumber ?? undefined,
+  policyInsuranceType: record.policyInsuranceType ?? undefined,
+  actualDate: record.paymentActualDate ?? undefined,
+  scheduledDate: record.paymentScheduledDate ?? undefined,
   financialRecords: [],
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
 });
+
+const buildAllModeRow = (record: FinancialRecord, payment: Payment): IncomeExpenseRow => {
+  const paidBalanceValue = record.paymentPaidBalance;
+  const paidBalance = paidBalanceValue ? Number(paidBalanceValue) : undefined;
+  const paidEntries =
+    record.paymentPaidEntries?.map((entry) => ({
+      amount: entry.amount,
+      date: entry.date,
+    })) ?? [];
+
+  return {
+    key: `${payment.id}-${record.id}`,
+    payment,
+    recordId: record.id,
+    statementId: record.statementId,
+    recordAmount: Number(record.amount),
+    paymentPaidBalance: Number.isFinite(paidBalance) ? paidBalance : undefined,
+    paymentPaidEntries: paidEntries,
+    recordDate: record.date ?? null,
+    recordDescription: record.description,
+    recordSource: record.source,
+    recordNote: record.note,
+    dealId: record.dealId,
+    dealTitle: record.dealTitle,
+    dealClientName: record.dealClientName,
+    policyId: record.policyId,
+    policyNumber: record.policyNumber,
+    policyInsuranceType: record.policyInsuranceType,
+    policyClientName: record.policyClientName,
+    policyInsuredClientName: record.policyInsuredClientName,
+    salesChannelName: record.salesChannelName,
+    paymentActualDate: record.paymentActualDate,
+    paymentScheduledDate: record.paymentScheduledDate,
+  };
+};
 
 export const useCommissionsRows = ({
   payments,
@@ -77,26 +120,7 @@ export const useCommissionsRows = ({
       if (!Number.isFinite(amount) || amount === 0) {
         return;
       }
-      const paidBalanceValue = record.paymentPaidBalance;
-      const paidBalance = paidBalanceValue ? Number(paidBalanceValue) : undefined;
-      const paidEntries =
-        record.paymentPaidEntries?.map((entry) => ({
-          amount: entry.amount,
-          date: entry.date,
-        })) ?? [];
-      result.push({
-        key: `${payment.id}-${record.id}`,
-        payment,
-        recordId: record.id,
-        statementId: record.statementId,
-        recordAmount: amount,
-        paymentPaidBalance: Number.isFinite(paidBalance) ? paidBalance : undefined,
-        paymentPaidEntries: paidEntries,
-        recordDate: record.date ?? null,
-        recordDescription: record.description,
-        recordSource: record.source,
-        recordNote: record.note,
-      });
+      result.push(buildAllModeRow(record, payment));
     });
     return result;
   }, [allRecords, paymentsById]);

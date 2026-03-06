@@ -28,6 +28,8 @@ interface CommissionsViewProps {
   policies: Policy[];
   statements: Statement[];
   isLoading?: boolean;
+  hasFinanceSnapshotLoaded?: boolean;
+  isBackgroundRefreshingFinance?: boolean;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
@@ -77,9 +79,12 @@ const normalizeText = (value?: string | null) => {
 
 export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
+  financialRecords = [],
   policies,
   statements,
   isLoading = false,
+  hasFinanceSnapshotLoaded = false,
+  isBackgroundRefreshingFinance = false,
   onDealSelect,
   onDealPreview,
   onUpdateFinancialRecord,
@@ -335,6 +340,12 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const visibleStatements = showPaidStatements
     ? statements
     : statements.filter((statement) => !statement.paidAt);
+  const hasAnyFinanceData =
+    payments.length > 0 || financialRecords.length > 0 || statements.length > 0;
+  const shouldShowStatementsPendingState =
+    viewMode === 'statements' &&
+    !hasFinanceSnapshotLoaded &&
+    (isLoading || isBackgroundRefreshingFinance || hasAnyFinanceData);
 
   const statementFilesTab = (
     <StatementFilesTab
@@ -472,7 +483,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             </div>
 
             <div className="max-h-[360px] overflow-y-auto bg-white border-t border-slate-200">
-              {visibleStatements.length ? (
+              {shouldShowStatementsPendingState ? (
+                <div className="px-6 py-10 text-center">
+                  <PanelMessage>Загружаем согласованное состояние ведомостей...</PanelMessage>
+                </div>
+              ) : visibleStatements.length ? (
                 <ul className="divide-y divide-slate-200">
                   {visibleStatements.map((statement) => {
                     const isActive = statement.id === selectedStatementId;
@@ -540,7 +555,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             </div>
 
             <div className="px-4 py-5 bg-white">
-              {selectedStatement ? (
+              {shouldShowStatementsPendingState ? (
+                <div className="bg-white px-6 py-10 text-center">
+                  <PanelMessage>Загружаем согласованное состояние ведомостей...</PanelMessage>
+                </div>
+              ) : selectedStatement ? (
                 <div className="rounded-2xl border bg-white shadow-md p-6 space-y-6 border-sky-500 ring-2 ring-sky-400/30">
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-start justify-between gap-4">

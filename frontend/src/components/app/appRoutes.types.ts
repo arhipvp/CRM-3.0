@@ -150,6 +150,7 @@ export interface AppRouteLoadingState {
   isLoadingMorePolicies: boolean;
   isPoliciesListLoading: boolean;
   isFinanceDataLoading: boolean;
+  hasFinanceSnapshotLoaded: boolean;
   isTasksLoading: boolean;
   isSelectedDealTasksLoading?: boolean;
   isSelectedDealQuotesLoading?: boolean;

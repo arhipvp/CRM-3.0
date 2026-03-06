@@ -391,6 +391,17 @@ export interface FinancialRecord {
   statementId?: string | null;
   paymentDescription?: string;
   paymentAmount?: string;
+  paymentActualDate?: string | null;
+  paymentScheduledDate?: string | null;
+  dealId?: string | null;
+  dealTitle?: string | null;
+  dealClientName?: string | null;
+  policyId?: string | null;
+  policyNumber?: string | null;
+  policyInsuranceType?: string | null;
+  policyClientName?: string | null;
+  policyInsuredClientName?: string | null;
+  salesChannelName?: string | null;
   paymentPaidBalance?: string;
   paymentPaidEntries?: Array<{
     amount: string;

@@ -334,6 +334,23 @@ export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecor
   statementId: toNullableString(raw.statement ?? raw.statement_id ?? raw.statementId),
   paymentDescription: toOptionalString(raw.payment_description),
   paymentAmount: toOptionalString(raw.payment_amount),
+  paymentActualDate:
+    raw.payment_actual_date === undefined ? undefined : toNullableString(raw.payment_actual_date),
+  paymentScheduledDate:
+    raw.payment_scheduled_date === undefined
+      ? undefined
+      : toNullableString(raw.payment_scheduled_date),
+  dealId: toNullableString(raw.deal_id ?? raw.dealId),
+  dealTitle: toOptionalString(raw.deal_title ?? raw.dealTitle),
+  dealClientName: toOptionalString(raw.deal_client_name ?? raw.dealClientName),
+  policyId: toNullableString(raw.policy_id ?? raw.policyId),
+  policyNumber: toOptionalString(raw.policy_number ?? raw.policyNumber),
+  policyInsuranceType: toOptionalString(raw.policy_insurance_type ?? raw.policyInsuranceType),
+  policyClientName: toOptionalString(raw.policy_client_name ?? raw.policyClientName),
+  policyInsuredClientName: toOptionalString(
+    raw.policy_insured_client_name ?? raw.policyInsuredClientName,
+  ),
+  salesChannelName: toOptionalString(raw.sales_channel_name ?? raw.salesChannelName),
   paymentPaidBalance: toOptionalString(raw.payment_paid_balance ?? raw.paymentPaidBalance),
   paymentPaidEntries: Array.isArray(raw.payment_paid_entries)
     ? (raw.payment_paid_entries as Record<string, unknown>[])

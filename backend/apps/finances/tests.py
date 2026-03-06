@@ -127,6 +127,56 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_financial_record_list_includes_enriched_payment_fields(self):
+        self.authenticate(self.seller)
+
+        client = self.deal.client
+        client.name = "Мария"
+        client.save(update_fields=["name"])
+        self.payment.description = "Комиссия"
+        self.payment.actual_date = timezone.now().date()
+        self.payment.scheduled_date = timezone.now().date()
+        self.payment.save(
+            update_fields=["description", "actual_date", "scheduled_date"]
+        )
+
+        response = self.api_client.get("/api/v1/financial_records/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        self.assertTrue(results)
+        record = results[0]
+        self.assertEqual(record["deal_id"], str(self.deal.id))
+        self.assertEqual(record["deal_title"], self.deal.title)
+        self.assertEqual(record["deal_client_name"], "Мария")
+        self.assertEqual(record["payment_description"], "Комиссия")
+        self.assertEqual(
+            record["payment_actual_date"], self.payment.actual_date.isoformat()
+        )
+        self.assertEqual(
+            record["payment_scheduled_date"], self.payment.scheduled_date.isoformat()
+        )
+        self.assertIsNone(record["policy_id"])
+        self.assertIsNone(record["policy_number"])
+        self.assertIsNone(record["sales_channel_name"])
+
+    def test_financial_record_search_still_works_with_enriched_fields(self):
+        self.authenticate(self.seller)
+        self.fin_record.note = "УникальныйПоиск123"
+        self.fin_record.save(update_fields=["note"])
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"search": "УникальныйПоиск123"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], str(self.fin_record.id))
+
     def test_executor_cannot_update_financial_record(self):
         self.authenticate(self.executor)
         response = self.api_client.patch(

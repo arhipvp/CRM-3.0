@@ -121,6 +121,39 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
     payment_amount = serializers.DecimalField(
         source="payment.amount", read_only=True, max_digits=12, decimal_places=2
     )
+    payment_actual_date = serializers.DateField(
+        source="payment.actual_date", read_only=True, allow_null=True
+    )
+    payment_scheduled_date = serializers.DateField(
+        source="payment.scheduled_date", read_only=True, allow_null=True
+    )
+    deal_id = serializers.CharField(
+        source="payment.deal_id", read_only=True, allow_null=True
+    )
+    deal_title = serializers.CharField(
+        source="payment.deal.title", read_only=True, allow_null=True
+    )
+    deal_client_name = serializers.CharField(
+        source="payment.deal.client.name", read_only=True, allow_null=True
+    )
+    policy_id = serializers.CharField(
+        source="payment.policy_id", read_only=True, allow_null=True
+    )
+    policy_number = serializers.CharField(
+        source="payment.policy.number", read_only=True, allow_null=True
+    )
+    policy_insurance_type = serializers.CharField(
+        source="payment.policy.insurance_type.name", read_only=True, allow_null=True
+    )
+    policy_client_name = serializers.CharField(
+        source="payment.policy.client.name", read_only=True, allow_null=True
+    )
+    policy_insured_client_name = serializers.CharField(
+        source="payment.policy.insured_client.name", read_only=True, allow_null=True
+    )
+    sales_channel_name = serializers.CharField(
+        source="payment.policy.sales_channel.name", read_only=True, allow_null=True
+    )
     payment_paid_balance = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )

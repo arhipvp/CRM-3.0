@@ -27,6 +27,17 @@ export type IncomeExpenseRow = {
   recordDescription?: string;
   recordSource?: string;
   recordNote?: string;
+  dealId?: string | null;
+  dealTitle?: string | null;
+  dealClientName?: string | null;
+  policyId?: string | null;
+  policyNumber?: string | null;
+  policyInsuranceType?: string | null;
+  policyClientName?: string | null;
+  policyInsuredClientName?: string | null;
+  salesChannelName?: string | null;
+  paymentActualDate?: string | null;
+  paymentScheduledDate?: string | null;
 };
 
 interface RecordsTableProps {
@@ -276,32 +287,46 @@ export const RecordsTable = ({
         <tbody className="bg-white">
           {filteredRows.map((row) => {
             const payment = row.payment;
-            const policy = payment.policyId ? policiesById.get(payment.policyId) : undefined;
+            const rowPolicyId = row.policyId ?? payment.policyId ?? null;
+            const policy = rowPolicyId ? policiesById.get(rowPolicyId) : undefined;
             const policyNumber =
+              normalizeText(row.policyNumber) ||
               normalizeText(payment.policyNumber) ||
-              normalizeText(policiesById.get(payment.policyId ?? '')?.number) ||
+              normalizeText(policy?.number) ||
               '-';
             const policyType =
+              normalizeText(row.policyInsuranceType) ||
               normalizeText(payment.policyInsuranceType) ||
-              normalizeText(policiesById.get(payment.policyId ?? '')?.insuranceType) ||
+              normalizeText(policy?.insuranceType) ||
               '-';
             const salesChannelLabel =
-              normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannelName) ||
-              normalizeText(policiesById.get(payment.policyId ?? '')?.salesChannel) ||
+              normalizeText(row.salesChannelName) ||
+              normalizeText(policy?.salesChannelName) ||
+              normalizeText(policy?.salesChannel) ||
               '-';
-            const dealClientName = normalizeText(payment.dealClientName) || '-';
+            const dealClientName =
+              normalizeText(row.dealClientName) || normalizeText(payment.dealClientName) || '-';
             const policyClientName =
+              normalizeText(row.policyClientName) ||
+              normalizeText(row.policyInsuredClientName) ||
               normalizeText(policy?.clientName) ||
               normalizeText(policy?.insuredClientName) ||
               dealClientName ||
               '-';
-            const dealTitle = normalizeText(payment.dealTitle) || '-';
-            const paymentActualDate = payment.actualDate ? formatDateRu(payment.actualDate) : null;
-            const paymentScheduledDate = payment.scheduledDate
-              ? formatDateRu(payment.scheduledDate)
-              : null;
-            const dealId = payment.dealId;
-            const isPaymentPaid = Boolean(payment.actualDate);
+            const dealTitle =
+              normalizeText(row.dealTitle) || normalizeText(payment.dealTitle) || '-';
+            const paymentActualDate = row.paymentActualDate
+              ? formatDateRu(row.paymentActualDate)
+              : payment.actualDate
+                ? formatDateRu(payment.actualDate)
+                : null;
+            const paymentScheduledDate = row.paymentScheduledDate
+              ? formatDateRu(row.paymentScheduledDate)
+              : payment.scheduledDate
+                ? formatDateRu(payment.scheduledDate)
+                : null;
+            const dealId = row.dealId ?? payment.dealId;
+            const isPaymentPaid = Boolean(row.paymentActualDate ?? payment.actualDate);
             const recordAmount = row.recordAmount;
             const isIncome = recordAmount > 0;
             const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';

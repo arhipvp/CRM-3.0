@@ -137,6 +137,7 @@ vi.mock('../hooks/useAppData', () => ({
     isLoadingMoreDeals: false,
     isLoading: false,
     isFinanceDataLoading: false,
+    hasFinanceSnapshotLoaded: true,
     isTasksLoading: false,
     isSyncing: false,
     setIsSyncing: vi.fn(),

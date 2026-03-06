@@ -99,6 +99,7 @@ export const useAppData = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isFinanceDataLoading, setIsFinanceDataLoading] = useState(false);
+  const [hasFinanceSnapshotLoaded, setHasFinanceSnapshotLoaded] = useState(false);
   const [isTasksLoading, setIsTasksLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [policiesLoaded, setPoliciesLoaded] = useState(false);
@@ -425,6 +426,7 @@ export const useAppData = () => {
     setIsLoading(true);
     setError(null);
     financeDataLoadedRef.current = false;
+    setHasFinanceSnapshotLoaded(false);
     tasksLoadedRef.current = false;
     try {
       const dealsPromise = refreshDeals();
@@ -488,6 +490,7 @@ export const useAppData = () => {
             statements: statementsData,
           });
           financeDataLoadedRef.current = true;
+          setHasFinanceSnapshotLoaded(true);
         } catch (err) {
           if (financeRequestRef.current === requestId) {
             setError(
@@ -604,6 +607,7 @@ export const useAppData = () => {
     isPoliciesLoading,
     isLoading,
     isFinanceDataLoading,
+    hasFinanceSnapshotLoaded,
     isTasksLoading,
     isSyncing,
     setIsSyncing,
