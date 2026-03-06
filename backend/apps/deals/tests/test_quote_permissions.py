@@ -12,15 +12,27 @@ class QuoteDeletionPermissionsTests(AuthenticatedAPITestCase):
 
     def setUp(self):
         super().setUp()
-        self.creator = User.objects.create_user(username="creator", password="pass")  # pragma: allowlist secret
-        self.deal_seller = User.objects.create_user(username="seller", password="pass")  # pragma: allowlist secret
-        self.executor = User.objects.create_user(username="executor", password="pass")  # pragma: allowlist secret
-        self.visible_user = User.objects.create_user(username="viewer", password="pass")  # pragma: allowlist secret
+        self.creator = User.objects.create_user(
+            username="creator", password="pass"
+        )  # pragma: allowlist secret
+        self.deal_seller = User.objects.create_user(
+            username="seller", password="pass"
+        )  # pragma: allowlist secret
+        self.executor = User.objects.create_user(
+            username="executor", password="pass"
+        )  # pragma: allowlist secret
+        self.visible_user = User.objects.create_user(
+            username="viewer", password="pass"
+        )  # pragma: allowlist secret
         self.task_assignee = User.objects.create_user(
             username="tasker", password="pass"  # pragma: allowlist secret
         )
-        self.other_user = User.objects.create_user(username="other", password="pass")  # pragma: allowlist secret
-        self.admin = User.objects.create_user(username="admin", password="pass")  # pragma: allowlist secret
+        self.other_user = User.objects.create_user(
+            username="other", password="pass"
+        )  # pragma: allowlist secret
+        self.admin = User.objects.create_user(
+            username="admin", password="pass"
+        )  # pragma: allowlist secret
 
         client = Client.objects.create(name="Quote Client")
         self.deal = Deal.objects.create(
