@@ -26,7 +26,7 @@ class PolicyIssuanceServiceTests(TestCase):
         NotificationSettings.objects.create(
             user=self.user,
             sber_login="seller-login",
-            sber_password="seller-password",
+            sber_password="seller-password",  # pragma: allowlist secret
         )
         self.client_obj = Client.objects.create(name="Иван Иванов")
         self.deal = Deal.objects.create(
@@ -145,7 +145,7 @@ class PolicyIssuanceAPITests(AuthenticatedAPITestCase):
         NotificationSettings.objects.create(
             user=self.seller,
             sber_login="seller-login",
-            sber_password="seller-password",
+            sber_password="seller-password",  # pragma: allowlist secret
         )
         self.client_obj = Client.objects.create(name="Иван Иванов")
         self.deal = Deal.objects.create(
