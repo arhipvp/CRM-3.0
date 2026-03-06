@@ -2161,7 +2161,10 @@ const AppContent: React.FC = () => {
 
         let refreshFailed = false;
         try {
-          const refreshedDeal = mergeDealWithHydratedQuotes(await fetchDeal(dealId), dealsById.get(dealId));
+          const refreshedDeal = mergeDealWithHydratedQuotes(
+            await fetchDeal(dealId),
+            dealsById.get(dealId),
+          );
           updateAppData((prev) => ({
             deals: prev.deals.some((deal) => deal.id === refreshedDeal.id)
               ? prev.deals.map((deal) => (deal.id === refreshedDeal.id ? refreshedDeal : deal))
@@ -3971,12 +3974,12 @@ const AppContent: React.FC = () => {
   );
 
   const routeDealsActions = useMemo<AppRouteDealsActions>(
-      () => ({
-        onClientEdit: handleClientEditRequest,
-        onClientDelete: handleClientDeleteRequest,
-        onClientMerge: handleClientMergeRequest,
-        onClientFindSimilar: handleClientFindSimilarRequest,
-        selectedDealId: effectiveSelectedDealId,
+    () => ({
+      onClientEdit: handleClientEditRequest,
+      onClientDelete: handleClientDeleteRequest,
+      onClientMerge: handleClientMergeRequest,
+      onClientFindSimilar: handleClientFindSimilarRequest,
+      selectedDealId: effectiveSelectedDealId,
       isDealFocusCleared,
       dealRowFocusRequest,
       onSelectDeal: handleSelectDeal,
@@ -4056,10 +4059,10 @@ const AppContent: React.FC = () => {
       openClientModal,
       pendingDealClientId,
       refreshPoliciesList,
-        effectiveSelectedDealId,
-        setDealSelectionBlocked,
-        setQuoteDealId,
-      ],
+      effectiveSelectedDealId,
+      setDealSelectionBlocked,
+      setQuoteDealId,
+    ],
   );
 
   const routeFinanceActions = useMemo<AppRouteFinanceActions>(
