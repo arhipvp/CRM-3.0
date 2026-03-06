@@ -17,9 +17,9 @@ class PaymentFilterSet(django_filters.FilterSet):
     Also supports ordering by scheduled_date and created_at.
     """
 
-    deal = django_filters.NumberFilter(field_name="deal__id", label="Deal ID")
+    deal = django_filters.UUIDFilter(field_name="deal__id", label="Deal ID")
 
-    policy = django_filters.NumberFilter(field_name="policy__id", label="Policy ID")
+    policy = django_filters.UUIDFilter(field_name="policy__id", label="Policy ID")
 
     paid = django_filters.BooleanFilter(
         method="filter_paid",
