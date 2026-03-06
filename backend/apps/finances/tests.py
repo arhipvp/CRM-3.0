@@ -30,8 +30,8 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             username="viewer", password="pass"
         )  # pragma: allowlist secret
         self.task_assignee = User.objects.create_user(
-            username="tasker", password="pass"  # pragma: allowlist secret
-        )
+            username="tasker", password="pass"
+        )  # pragma: allowlist secret
         self.other_user = User.objects.create_user(
             username="other", password="pass"
         )  # pragma: allowlist secret
