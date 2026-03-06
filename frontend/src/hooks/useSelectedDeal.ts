@@ -10,6 +10,20 @@ interface UseSelectedDealArgs {
   isDealFocusCleared?: boolean;
 }
 
+export const resolveEffectiveSelectedDealId = ({
+  deals,
+  selectedDealId,
+  isDealFocusCleared = false,
+}: Pick<UseSelectedDealArgs, 'deals' | 'selectedDealId' | 'isDealFocusCleared'>): string | null => {
+  if (selectedDealId) {
+    return selectedDealId;
+  }
+  if (isDealFocusCleared) {
+    return null;
+  }
+  return deals[0]?.id ?? null;
+};
+
 export interface SelectedDealResult {
   sortedDeals: Deal[];
   selectedDeal: Deal | null;
@@ -32,12 +46,15 @@ export const computeSelectedDeal = ({
   users.forEach((user) => usersById.set(user.id, user));
 
   const sortedDeals = deals;
+  const effectiveSelectedDealId = resolveEffectiveSelectedDealId({
+    deals: sortedDeals,
+    selectedDealId,
+    isDealFocusCleared,
+  });
 
-  const selectedDeal = selectedDealId
-    ? (sortedDeals.find((deal) => deal.id === selectedDealId) ?? null)
-    : isDealFocusCleared
-      ? null
-      : (sortedDeals[0] ?? null);
+  const selectedDeal = effectiveSelectedDealId
+    ? (sortedDeals.find((deal) => deal.id === effectiveSelectedDealId) ?? null)
+    : null;
 
   const selectedClient = selectedDeal ? (clientsById.get(selectedDeal.clientId) ?? null) : null;
   const sellerUser = selectedDeal ? usersById.get(selectedDeal.seller ?? '') : undefined;

@@ -392,6 +392,29 @@ describe('AppContent hotkeys integration', () => {
     });
   });
 
+  it('loads quotes for the first auto-selected deal without explicit selectedDealId', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+
+    renderAppContent('/deals');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+      expect(fetchTasksByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+    });
+  });
+
   it('switches selected deal and opens preview with Ctrl+O', async () => {
     appDataMock.deals = [
       {
@@ -464,6 +487,115 @@ describe('AppContent hotkeys integration', () => {
       expect(fetchTasksByDeal).toHaveBeenCalledTimes(1);
       expect(fetchQuotesByDeal).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('loads quotes for the second deal after manual selection from auto-selected first deal', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+      {
+        id: 'deal-2',
+        title: 'Сделка вторая',
+        clientId: 'client-2',
+        status: 'open',
+        createdAt: '2025-02-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 2',
+      },
+    ];
+
+    renderAppContent('/deals');
+
+    await waitFor(() => {
+      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select deal-2' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-2');
+      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-2', { showDeleted: true });
+      expect(fetchTasksByDeal).toHaveBeenCalledWith('deal-2', { showDeleted: true });
+    });
+  });
+
+  it('restores cached quotes after deals refresh with embed-none payload', async () => {
+    const cachedQuote = {
+      id: 'quote-1',
+      dealId: 'deal-1',
+      sellerId: 'user-1',
+      sellerName: 'Tester',
+      insuranceCompanyId: 'ins-1',
+      insuranceCompany: 'Компания',
+      insuranceTypeId: 'type-1',
+      insuranceType: 'Каско',
+      sumInsured: 1000000,
+      premium: 50000,
+      deductible: '',
+      officialDealer: false,
+      gap: false,
+      comments: 'Тест',
+      createdAt: '2026-01-01T00:00:00Z',
+      deletedAt: null,
+    };
+
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+    fetchQuotesByDealMock.mockResolvedValue([cachedQuote]);
+
+    renderAppContent('/deals');
+
+    await waitFor(() => {
+      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+    });
+
+    updateAppDataMock.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search change' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger search submit' }));
+
+    await waitFor(() => {
+      expect(refreshDealsMock).toHaveBeenCalled();
+      expect(updateAppDataMock).toHaveBeenCalled();
+    });
+
+    const baseState = {
+      deals: [
+        {
+          ...appDataMock.deals[0],
+          quotes: [],
+        },
+      ],
+    };
+    const restored = updateAppDataMock.mock.calls
+      .map(([updater]) => (typeof updater === 'function' ? updater(baseState) : updater))
+      .find(
+        (result) =>
+          result &&
+          'deals' in result &&
+          Array.isArray(result.deals) &&
+          result.deals[0]?.quotes?.[0]?.id === 'quote-1',
+      );
+
+    expect(restored).toBeTruthy();
   });
 
   it('invalidates cached deal tasks after task mutation and reloads data', async () => {

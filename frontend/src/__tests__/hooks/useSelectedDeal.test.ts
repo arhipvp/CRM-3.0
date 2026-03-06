@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeSelectedDeal } from '../../hooks/useSelectedDeal';
+import { computeSelectedDeal, resolveEffectiveSelectedDealId } from '../../hooks/useSelectedDeal';
 
 const createDeal = (id: string, nextContactDate: string | null, deletedAt?: string) => ({
   id,
@@ -28,6 +28,18 @@ const users = [
 ];
 
 describe('computeSelectedDeal', () => {
+  it('resolves effective selected deal id from the first deal by default', () => {
+    const deals = [createDeal('d1', '2025-12-01'), createDeal('d2', '2025-11-01')];
+
+    expect(
+      resolveEffectiveSelectedDealId({
+        deals,
+        selectedDealId: null,
+        isDealFocusCleared: false,
+      }),
+    ).toBe('d1');
+  });
+
   it('keeps deals order as provided', () => {
     const deals = [
       createDeal('d1', '2025-12-01'),
