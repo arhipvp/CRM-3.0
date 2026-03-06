@@ -217,10 +217,7 @@ export const SettingsView: React.FC = () => {
     }
     const nextLogin = sberLoginInput.trim();
     const nextPassword = sberPasswordInput;
-    if (
-      nextLogin === (telegramSettings.sber_login ?? '') &&
-      nextPassword.length === 0
-    ) {
+    if (nextLogin === (telegramSettings.sber_login ?? '') && nextPassword.length === 0) {
       setSberError('');
       setSberSuccess('');
       return;
@@ -558,8 +555,7 @@ export const SettingsView: React.FC = () => {
         <header className="space-y-1">
           <h3 className="text-lg font-semibold text-slate-900">Сбер Страхование</h3>
           <p className="text-sm text-slate-600">
-            Эти учётные данные используются для автооформления полисов в кабинете Сбер
-            Страхования.
+            Эти учётные данные используются для автооформления полисов в кабинете Сбер Страхования.
           </p>
         </header>
 
