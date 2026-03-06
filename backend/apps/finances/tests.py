@@ -23,7 +23,9 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.executor = User.objects.create_user(username="executor", password="pass")
         self.visible_user = User.objects.create_user(username="viewer", password="pass")
-        self.task_assignee = User.objects.create_user(username="tasker", password="pass")
+        self.task_assignee = User.objects.create_user(
+            username="tasker", password="pass"
+        )
         self.other_user = User.objects.create_user(username="other", password="pass")
         self.admin_user = User.objects.create_user(username="admin", password="pass")
 
