@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   downloadStatementDriveFiles,
@@ -39,6 +39,8 @@ export const useStatementDriveManager = ({
   const [statementDriveDownloadMessage, setStatementDriveDownloadMessage] = useState<string | null>(
     null,
   );
+  const driveFilesRequestRef = useRef(0);
+  const driveFilesAbortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setSelectedStatementDriveFileIds([]);
@@ -58,9 +60,19 @@ export const useStatementDriveManager = ({
   }, [selectedStatementDriveFileIds.length, statementDriveFiles]);
 
   const loadStatementDriveFiles = useCallback(async (statementId: string) => {
+    driveFilesRequestRef.current += 1;
+    const requestId = driveFilesRequestRef.current;
+    driveFilesAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    driveFilesAbortControllerRef.current = controller;
     setStatementDriveLoading(true);
     try {
-      const { files, folderId } = await fetchStatementDriveFiles(statementId);
+      const { files, folderId } = await fetchStatementDriveFiles(statementId, {
+        signal: controller.signal,
+      });
+      if (requestId !== driveFilesRequestRef.current) {
+        return;
+      }
       setStatementDriveFiles(files);
       setStatementDriveError(null);
       if (folderId !== undefined) {
@@ -70,15 +82,25 @@ export const useStatementDriveManager = ({
         }));
       }
     } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (requestId !== driveFilesRequestRef.current) {
+        return;
+      }
       setStatementDriveFiles([]);
       setStatementDriveError(formatErrorMessage(error, 'Не удалось загрузить файлы ведомости.'));
     } finally {
-      setStatementDriveLoading(false);
+      if (requestId === driveFilesRequestRef.current) {
+        driveFilesAbortControllerRef.current = null;
+        setStatementDriveLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (viewMode !== 'statements' || !selectedStatement) {
+      driveFilesAbortControllerRef.current?.abort();
       setStatementDriveFiles([]);
       setStatementDriveError(null);
       return;
@@ -88,6 +110,12 @@ export const useStatementDriveManager = ({
     }
     void loadStatementDriveFiles(selectedStatement.id);
   }, [loadStatementDriveFiles, selectedStatement, statementTab, viewMode]);
+
+  useEffect(() => {
+    return () => {
+      driveFilesAbortControllerRef.current?.abort();
+    };
+  }, []);
 
   const selectedStatementDriveFolderId = selectedStatement
     ? (statementDriveFolderIds[selectedStatement.id] ?? selectedStatement.driveFolderId ?? null)

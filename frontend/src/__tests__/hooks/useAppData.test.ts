@@ -33,6 +33,16 @@ const mockedFetchFinanceStatements = vi.mocked(fetchFinanceStatements);
 const mockedFetchPaymentsWithPagination = vi.mocked(fetchPaymentsWithPagination);
 const mockedFetchSalesChannels = vi.mocked(fetchSalesChannels);
 const mockedFetchTasks = vi.mocked(fetchTasks);
+
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
 const mockedFetchUsers = vi.mocked(fetchUsers);
 
 beforeEach(() => {
@@ -128,5 +138,105 @@ describe('useAppData loading strategy', () => {
       expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
       expect(mockedFetchTasks).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('reuses the same in-flight finance load promise', async () => {
+    const paymentsDeferred = deferred<{
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: never[];
+    }>();
+    const recordsDeferred = deferred<never[]>();
+    const statementsDeferred = deferred<never[]>();
+
+    mockedFetchPaymentsWithPagination.mockReturnValueOnce(paymentsDeferred.promise);
+    mockedFetchFinancialRecords.mockReturnValueOnce(recordsDeferred.promise);
+    mockedFetchFinanceStatements.mockReturnValueOnce(statementsDeferred.promise);
+
+    const { result } = renderHook(() => useAppData());
+
+    let firstPromise: Promise<void> | undefined;
+    let secondPromise: Promise<void> | undefined;
+
+    await act(async () => {
+      firstPromise = result.current.ensureFinanceDataLoaded();
+      secondPromise = result.current.ensureFinanceDataLoaded();
+    });
+
+    expect(mockedFetchPaymentsWithPagination).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      paymentsDeferred.resolve({
+        count: 0,
+        next: null,
+        previous: null,
+        results: [],
+      });
+      recordsDeferred.resolve([]);
+      statementsDeferred.resolve([]);
+      await Promise.all([firstPromise, secondPromise]);
+    });
+  });
+
+  it('does not overwrite local finance edits with a stale full reload response', async () => {
+    const paymentsDeferred = deferred<{
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: Array<{
+        id: string;
+        amount: string;
+        createdAt: string;
+        updatedAt: string;
+      }>;
+    }>();
+
+    mockedFetchPaymentsWithPagination.mockReturnValueOnce(paymentsDeferred.promise as never);
+    mockedFetchFinancialRecords.mockResolvedValueOnce([]);
+    mockedFetchFinanceStatements.mockResolvedValueOnce([]);
+
+    const { result } = renderHook(() => useAppData());
+
+    let financePromise: Promise<void> | undefined;
+    await act(async () => {
+      financePromise = result.current.ensureFinanceDataLoaded();
+    });
+
+    await act(async () => {
+      result.current.updateAppData(() => ({
+        payments: [
+          {
+            id: 'local-payment',
+            amount: '777',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          } as never,
+        ],
+      }));
+    });
+
+    await act(async () => {
+      paymentsDeferred.resolve({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 'server-payment',
+            amount: '100',
+            createdAt: '2026-01-02T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+          },
+        ],
+      });
+      await financePromise;
+    });
+
+    expect(result.current.dataState.payments.map((payment) => payment.id)).toEqual([
+      'local-payment',
+    ]);
   });
 });

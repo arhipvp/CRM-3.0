@@ -1,5 +1,6 @@
 ﻿import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { act } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Payment, Policy } from '../../../types';
@@ -62,6 +63,14 @@ const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
   createdAt: overrides.createdAt ?? new Date().toISOString(),
   updatedAt: overrides.updatedAt ?? new Date().toISOString(),
 });
+
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+};
 
 describe('PoliciesView', () => {
   beforeEach(() => {
@@ -218,5 +227,71 @@ describe('PoliciesView', () => {
     await waitFor(() => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
     });
+  });
+
+  it('ignores stale KPI responses after filters change', async () => {
+    const firstRequest = deferred<{
+      total: number;
+      problemCount: number;
+      dueCount: number;
+      expiringSoonCount: number;
+      expiringDays: number;
+    }>();
+    const secondRequest = deferred<{
+      total: number;
+      problemCount: number;
+      dueCount: number;
+      expiringSoonCount: number;
+      expiringDays: number;
+    }>();
+
+    vi.mocked(fetchPoliciesKPI)
+      .mockReturnValueOnce(firstRequest.promise as never)
+      .mockReturnValueOnce(secondRequest.promise as never);
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView
+            policies={[buildPolicy({ computedStatus: 'active' })]}
+            payments={[buildPayment({ actualDate: '2025-01-01' })]}
+            onRequestEditPolicy={vi.fn()}
+            onRefreshPoliciesList={vi.fn().mockResolvedValue(undefined)}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Вычисляемый статус'), {
+      target: { value: 'problem' },
+    });
+
+    await act(async () => {
+      secondRequest.resolve({
+        total: 20,
+        problemCount: 7,
+        dueCount: 3,
+        expiringSoonCount: 1,
+        expiringDays: 30,
+      });
+      await secondRequest.promise;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Всего').parentElement).toHaveTextContent('20');
+    });
+
+    await act(async () => {
+      firstRequest.resolve({
+        total: 5,
+        problemCount: 1,
+        dueCount: 0,
+        expiringSoonCount: 0,
+        expiringDays: 30,
+      });
+      await firstRequest.promise;
+    });
+
+    expect(screen.getByText('Всего').parentElement).toHaveTextContent('20');
   });
 });

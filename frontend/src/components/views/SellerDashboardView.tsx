@@ -553,26 +553,51 @@ export const SellerDashboardView: React.FC = () => {
   const [financialSort, setFinancialSort] = useState<FinancialSort>('net_desc');
   const [hideZeroRowsCols, setHideZeroRowsCols] = useState(true);
   const [showOnlyWithData, setShowOnlyWithData] = useState(true);
+  const dashboardRequestRef = useRef(0);
+  const dashboardAbortControllerRef = useRef<AbortController | null>(null);
 
   const loadDashboard = useCallback(async (override?: { startDate?: string; endDate?: string }) => {
+    dashboardRequestRef.current += 1;
+    const requestId = dashboardRequestRef.current;
+    dashboardAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    dashboardAbortControllerRef.current = controller;
     setIsLoading(true);
     try {
-      const payload = await fetchSellerDashboard(override);
+      const payload = await fetchSellerDashboard(override, { signal: controller.signal });
+      if (requestId !== dashboardRequestRef.current) {
+        return;
+      }
       setDashboard(payload);
       setError(null);
       setStartDate((prev) => prev || payload.rangeStart || '');
       setEndDate((prev) => prev || payload.rangeEnd || '');
     } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (requestId !== dashboardRequestRef.current) {
+        return;
+      }
       setDashboard(null);
       setError(formatErrorMessage(err, 'Ошибка загрузки дашборда.'));
     } finally {
-      setIsLoading(false);
+      if (requestId === dashboardRequestRef.current) {
+        dashboardAbortControllerRef.current = null;
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    return () => {
+      dashboardAbortControllerRef.current?.abort();
+    };
+  }, []);
 
   const periodLabel = useMemo(() => {
     if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {

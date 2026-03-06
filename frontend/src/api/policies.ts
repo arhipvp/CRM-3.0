@@ -127,10 +127,13 @@ export async function fetchVehicleModels(brand?: string): Promise<string[]> {
   return unwrapList<string>(payload);
 }
 
-export async function fetchSellerDashboard(params?: {
-  startDate?: string;
-  endDate?: string;
-}): Promise<SellerDashboardResponse> {
+export async function fetchSellerDashboard(
+  params?: {
+    startDate?: string;
+    endDate?: string;
+  },
+  options?: RequestInit,
+): Promise<SellerDashboardResponse> {
   const searchParams = new URLSearchParams();
   if (params?.startDate) {
     searchParams.set('start_date', params.startDate);
@@ -141,6 +144,7 @@ export async function fetchSellerDashboard(params?: {
   const query = searchParams.toString();
   const payload = await request<Record<string, unknown>>(
     `/dashboard/seller/${query ? `?${query}` : ''}`,
+    options,
   );
   const rawPolicies = Array.isArray(payload.policies) ? payload.policies : [];
   const rawPaymentsByDay = Array.isArray(payload.payments_by_day) ? payload.payments_by_day : [];
@@ -290,9 +294,12 @@ export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promi
   return mapPolicy(payload);
 }
 
-export async function fetchPoliciesKPI(filters?: FilterParams): Promise<PoliciesKPI> {
+export async function fetchPoliciesKPI(
+  filters?: FilterParams,
+  options?: RequestInit,
+): Promise<PoliciesKPI> {
   const qs = buildQueryString(filters);
-  const payload = await request<Record<string, unknown>>(`/policies/kpi/${qs}`);
+  const payload = await request<Record<string, unknown>>(`/policies/kpi/${qs}`, options);
   return {
     total: Number(payload.total ?? 0),
     problemCount: Number(payload.problem_count ?? payload.problemCount ?? 0),

@@ -80,10 +80,12 @@ export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
 
 export async function fetchFinancialRecordsWithPagination(
   filters?: FilterParams,
+  options?: RequestInit,
 ): Promise<PaginatedResponse<FinancialRecord>> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(
     `/financial_records/${qs}`,
+    options,
   );
   return {
     count: payload.count || 0,
@@ -142,10 +144,14 @@ export async function deleteFinancialRecord(id: string): Promise<void> {
   await request(`/financial_records/${id}/`, { method: 'DELETE' });
 }
 
-export async function fetchFinanceStatements(filters?: FilterParams): Promise<Statement[]> {
+export async function fetchFinanceStatements(
+  filters?: FilterParams,
+  options?: RequestInit,
+): Promise<Statement[]> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(
     `/finance_statements/${qs}`,
+    options,
   );
   return unwrapList<Record<string, unknown>>(payload).map(mapStatement);
 }

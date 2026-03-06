@@ -127,9 +127,13 @@ export async function fetchPolicyDriveFiles(policyId: string): Promise<DriveFile
   return normalizeDriveResponse(payload);
 }
 
-export async function fetchStatementDriveFiles(statementId: string): Promise<DriveFilesResponse> {
+export async function fetchStatementDriveFiles(
+  statementId: string,
+  options?: RequestInit,
+): Promise<DriveFilesResponse> {
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
     `/finance_statements/${statementId}/drive-files/`,
+    options,
   );
   return normalizeDriveResponse(payload);
 }

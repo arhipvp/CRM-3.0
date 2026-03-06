@@ -82,6 +82,9 @@ const dataReducer = (state: AppDataState, action: AppDataAction): AppDataState =
   return { ...state, ...action.updater(state) };
 };
 
+const hasFinancePayload = (payload: Partial<AppDataState>) =>
+  'payments' in payload || 'financialRecords' in payload || 'statements' in payload;
+
 export const buildDealsCacheKey = (filters: FilterParams): string => {
   const normalized = Object.entries(filters ?? {})
     .filter(([, value]) => value !== undefined)
@@ -91,6 +94,8 @@ export const buildDealsCacheKey = (filters: FilterParams): string => {
 
 export const useAppData = () => {
   const [dataState, dispatch] = useReducer(dataReducer, INITIAL_APP_DATA_STATE);
+  const dataStateRef = useRef(dataState);
+  dataStateRef.current = dataState;
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isFinanceDataLoading, setIsFinanceDataLoading] = useState(false);
@@ -118,6 +123,9 @@ export const useAppData = () => {
   const [lastRefreshErrorByResource, setLastRefreshErrorByResource] =
     useState<LastRefreshErrorByResource>(INITIAL_LAST_REFRESH_ERRORS);
   const dealsRequestRef = useRef(0);
+  const financeRequestRef = useRef(0);
+  const financeLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const financeRevisionRef = useRef(0);
   const financeDataLoadedRef = useRef(false);
   const tasksLoadedRef = useRef(false);
   const backgroundRefreshInFlightRef = useRef<Record<BackgroundRefreshResource, boolean>>({
@@ -138,6 +146,9 @@ export const useAppData = () => {
   }, []);
 
   const setAppData = useCallback((payload: Partial<AppDataState>) => {
+    if (hasFinancePayload(payload)) {
+      financeRevisionRef.current += 1;
+    }
     dispatch({ type: 'assign', payload });
   }, []);
 
@@ -155,6 +166,10 @@ export const useAppData = () => {
   }, []);
 
   const updateAppData = useCallback((updater: (prev: AppDataState) => Partial<AppDataState>) => {
+    const preview = updater(dataStateRef.current);
+    if (hasFinancePayload(preview)) {
+      financeRevisionRef.current += 1;
+    }
     dispatch({ type: 'update', updater });
   }, []);
 
@@ -447,35 +462,53 @@ export const useAppData = () => {
       if (financeDataLoadedRef.current && !force) {
         return;
       }
-      if (isFinanceDataLoading) {
-        return;
+      if (financeLoadPromiseRef.current) {
+        return financeLoadPromiseRef.current;
       }
+      financeRequestRef.current += 1;
+      const requestId = financeRequestRef.current;
+      const startedRevision = financeRevisionRef.current;
       setIsFinanceDataLoading(true);
-      try {
-        const [paymentsData, financialRecordsData, statementsData] = await Promise.all([
-          fetchAllPayments(),
-          fetchFinancialRecords(),
-          fetchFinanceStatements(),
-        ]);
-        setAppData({
-          payments: paymentsData,
-          financialRecords: financialRecordsData,
-          statements: statementsData,
-        });
-        financeDataLoadedRef.current = true;
-      } catch (err) {
-        setError(
-          formatErrorMessage(
-            err,
-            '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u0444\u0438\u043d\u0430\u043d\u0441\u043e\u0432\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445',
-          ),
-        );
-        throw err;
-      } finally {
-        setIsFinanceDataLoading(false);
-      }
+      const loadPromise = (async () => {
+        try {
+          const [paymentsData, financialRecordsData, statementsData] = await Promise.all([
+            fetchAllPayments(),
+            fetchFinancialRecords(),
+            fetchFinanceStatements(),
+          ]);
+          if (financeRequestRef.current !== requestId) {
+            return;
+          }
+          if (financeRevisionRef.current !== startedRevision) {
+            return;
+          }
+          setAppData({
+            payments: paymentsData,
+            financialRecords: financialRecordsData,
+            statements: statementsData,
+          });
+          financeDataLoadedRef.current = true;
+        } catch (err) {
+          if (financeRequestRef.current === requestId) {
+            setError(
+              formatErrorMessage(
+                err,
+                '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u0444\u0438\u043d\u0430\u043d\u0441\u043e\u0432\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445',
+              ),
+            );
+          }
+          throw err;
+        } finally {
+          if (financeRequestRef.current === requestId) {
+            financeLoadPromiseRef.current = null;
+            setIsFinanceDataLoading(false);
+          }
+        }
+      })();
+      financeLoadPromiseRef.current = loadPromise;
+      return loadPromise;
     },
-    [fetchAllPayments, isFinanceDataLoading, setAppData, setError],
+    [fetchAllPayments, setAppData, setError],
   );
 
   const ensureTasksLoaded = useCallback(

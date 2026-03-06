@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Client, Payment, Policy } from '../../types';
+import { useRef } from 'react';
 import { fetchPoliciesKPI, FilterParams } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { FilterBar } from '../FilterBar';
@@ -97,6 +98,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     expiringSoonCount: 0,
     expiringDays: 30,
   });
+  const kpiRequestRef = useRef(0);
+  const kpiAbortControllerRef = useRef<AbortController | null>(null);
 
   const rawSearch = (filters.search ?? '').trim();
   const debouncedSearch = useDebouncedValue(rawSearch, 450);
@@ -159,20 +162,28 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   }, [onRefreshPoliciesList, serverFilters]);
 
   useEffect(() => {
-    let isMounted = true;
-    fetchPoliciesKPI(serverFilters)
+    kpiRequestRef.current += 1;
+    const requestId = kpiRequestRef.current;
+    kpiAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    kpiAbortControllerRef.current = controller;
+
+    fetchPoliciesKPI(serverFilters, { signal: controller.signal })
       .then((payload) => {
-        if (isMounted) {
+        if (requestId === kpiRequestRef.current) {
           setKpi(payload);
         }
       })
       .catch(() => {
-        if (isMounted) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        if (requestId === kpiRequestRef.current) {
           setKpi((prev) => ({ ...prev, total: policies.length }));
         }
       });
     return () => {
-      isMounted = false;
+      controller.abort();
     };
   }, [policies.length, serverFilters]);
 

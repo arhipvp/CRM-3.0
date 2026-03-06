@@ -33,6 +33,7 @@ export const useAllRecordsController = ({
   const [allRecordsTotalCount, setAllRecordsTotalCount] = useState(0);
   const allRecordsPageRef = useRef(1);
   const allRecordsRequestRef = useRef(0);
+  const allRecordsAbortControllerRef = useRef<AbortController | null>(null);
 
   const debouncedSearch = useDebouncedValue(allRecordsSearch.trim(), 450);
   // Поиск должен фильтровать даже по коротким строкам; иначе при "не нашлось"
@@ -64,6 +65,9 @@ export const useAllRecordsController = ({
     async (mode: 'reset' | 'more') => {
       allRecordsRequestRef.current += 1;
       const requestId = allRecordsRequestRef.current;
+      allRecordsAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      allRecordsAbortControllerRef.current = controller;
       const filters: FilterParams = {};
       if (effectiveSearch) {
         filters.search = effectiveSearch;
@@ -104,10 +108,13 @@ export const useAllRecordsController = ({
       }
 
       try {
-        const payload = await fetchFinancialRecordsWithPagination({
-          ...filters,
-          page: nextPage,
-        });
+        const payload = await fetchFinancialRecordsWithPagination(
+          {
+            ...filters,
+            page: nextPage,
+          },
+          { signal: controller.signal },
+        );
         if (requestId !== allRecordsRequestRef.current) {
           return;
         }
@@ -118,6 +125,9 @@ export const useAllRecordsController = ({
           mode === 'more' ? [...prev, ...payload.results] : payload.results,
         );
       } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
         if (requestId !== allRecordsRequestRef.current) {
           return;
         }
@@ -128,6 +138,7 @@ export const useAllRecordsController = ({
         setAllRecordsError(formatErrorMessage(error, 'Не удалось загрузить финансовые записи.'));
       } finally {
         if (requestId === allRecordsRequestRef.current) {
+          allRecordsAbortControllerRef.current = null;
           setIsAllRecordsLoading(false);
           setIsAllRecordsLoadingMore(false);
         }
@@ -151,6 +162,12 @@ export const useAllRecordsController = ({
     }
     void loadAllRecords('reset');
   }, [loadAllRecords, viewMode]);
+
+  useEffect(() => {
+    return () => {
+      allRecordsAbortControllerRef.current?.abort();
+    };
+  }, []);
 
   const toggleAllRecordsSort = useCallback(
     (key: AllRecordsSortKey) => {
