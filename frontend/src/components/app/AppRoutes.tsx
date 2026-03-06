@@ -41,10 +41,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   const hasAnyFinanceData =
     data.payments.length > 0 || data.financialRecords.length > 0 || data.statements.length > 0;
   const shouldBlockCommissionsView =
-    !loading.hasCommissionsSnapshotLoaded &&
-    loading.isCommissionsDataLoading &&
-    !loading.isBackgroundRefreshingFinance &&
-    !hasAnyFinanceData;
+    !loading.hasCommissionsSnapshotLoaded && loading.isCommissionsDataLoading && !hasAnyFinanceData;
 
   return (
     <Routes>
@@ -128,7 +125,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
             dealsHasMore={loading.dealsHasMore}
             dealsTotalCount={loading.dealsTotalCount}
             isLoadingMoreDeals={loading.isLoadingMoreDeals}
-            isBackgroundRefreshingDeals={loading.isBackgroundRefreshingDeals}
             isSelectedDealTasksLoading={loading.isSelectedDealTasksLoading}
             isSelectedDealQuotesLoading={loading.isSelectedDealQuotesLoading}
           />
@@ -151,31 +147,24 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         path="/policies"
         element={
           <Suspense fallback={<RouteSkeleton />}>
-            <div className="space-y-3">
-              {loading.isBackgroundRefreshingPoliciesList && (
-                <div className="app-panel-muted px-4 py-2 text-xs font-semibold text-sky-800">
-                  Обновляем список полисов...
-                </div>
-              )}
-              <PoliciesView
-                policies={data.policiesList}
-                clients={data.clients}
-                payments={data.payments}
-                onDealSelect={dealsActions.onSelectDeal}
-                onDealPreview={dealsActions.onDealPreview}
-                onClientEdit={dealsActions.onClientEdit}
-                onRequestEditPolicy={dealsActions.onRequestEditPolicy}
-                onAddFinancialRecord={financeActions.onAddFinancialRecord}
-                onUpdateFinancialRecord={financeActions.onUpdateFinancialRecord}
-                onDeleteFinancialRecord={financeActions.onDeleteFinancialRecord}
-                onDeletePayment={financeActions.onDeletePayment}
-                onRefreshPoliciesList={dealsActions.onRefreshPoliciesList}
-                onLoadMorePolicies={loading.onLoadMorePolicies}
-                policiesHasMore={loading.policiesHasMore}
-                isLoadingMorePolicies={loading.isLoadingMorePolicies}
-                isPoliciesLoading={loading.isPoliciesListLoading}
-              />
-            </div>
+            <PoliciesView
+              policies={data.policiesList}
+              clients={data.clients}
+              payments={data.payments}
+              onDealSelect={dealsActions.onSelectDeal}
+              onDealPreview={dealsActions.onDealPreview}
+              onClientEdit={dealsActions.onClientEdit}
+              onRequestEditPolicy={dealsActions.onRequestEditPolicy}
+              onAddFinancialRecord={financeActions.onAddFinancialRecord}
+              onUpdateFinancialRecord={financeActions.onUpdateFinancialRecord}
+              onDeleteFinancialRecord={financeActions.onDeleteFinancialRecord}
+              onDeletePayment={financeActions.onDeletePayment}
+              onRefreshPoliciesList={dealsActions.onRefreshPoliciesList}
+              onLoadMorePolicies={loading.onLoadMorePolicies}
+              policiesHasMore={loading.policiesHasMore}
+              isLoadingMorePolicies={loading.isLoadingMorePolicies}
+              isPoliciesLoading={loading.isPoliciesListLoading}
+            />
           </Suspense>
         }
       />
@@ -183,30 +172,22 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         path="/commissions"
         element={
           <Suspense fallback={<RouteSkeleton />}>
-            <div className="space-y-3">
-              {loading.isBackgroundRefreshingFinance && (
-                <div className="app-panel-muted px-4 py-2 text-xs font-semibold text-sky-800">
-                  Обновляем финансовые данные...
-                </div>
-              )}
-              <CommissionsView
-                payments={data.payments}
-                financialRecords={data.financialRecords}
-                policies={data.policies}
-                statements={data.statements}
-                isLoading={shouldBlockCommissionsView}
-                hasCommissionsSnapshotLoaded={loading.hasCommissionsSnapshotLoaded}
-                isBackgroundRefreshingFinance={loading.isBackgroundRefreshingFinance}
-                onDealSelect={dealsActions.onSelectDeal}
-                onDealPreview={dealsActions.onDealPreview}
-                onRequestEditPolicy={dealsActions.onRequestEditPolicy}
-                onUpdateFinancialRecord={financeActions.onUpdateFinancialRecord}
-                onCreateStatement={financeActions.onCreateFinanceStatement}
-                onDeleteStatement={financeActions.onDeleteFinanceStatement}
-                onUpdateStatement={financeActions.onUpdateFinanceStatement}
-                onRemoveStatementRecords={financeActions.onRemoveFinanceStatementRecords}
-              />
-            </div>
+            <CommissionsView
+              payments={data.payments}
+              financialRecords={data.financialRecords}
+              policies={data.policies}
+              statements={data.statements}
+              isLoading={shouldBlockCommissionsView}
+              hasCommissionsSnapshotLoaded={loading.hasCommissionsSnapshotLoaded}
+              onDealSelect={dealsActions.onSelectDeal}
+              onDealPreview={dealsActions.onDealPreview}
+              onRequestEditPolicy={dealsActions.onRequestEditPolicy}
+              onUpdateFinancialRecord={financeActions.onUpdateFinancialRecord}
+              onCreateStatement={financeActions.onCreateFinanceStatement}
+              onDeleteStatement={financeActions.onDeleteFinanceStatement}
+              onUpdateStatement={financeActions.onUpdateFinanceStatement}
+              onRemoveStatementRecords={financeActions.onRemoveFinanceStatementRecords}
+            />
           </Suspense>
         }
       />
@@ -219,7 +200,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               tasks={data.tasks}
               currentUser={data.currentUser}
               isLoading={loading.isTasksLoading}
-              isBackgroundRefreshing={loading.isBackgroundRefreshingTasks}
               onDealSelect={dealsActions.onSelectDeal}
               onDealPreview={dealsActions.onDealPreview}
             />

@@ -87,7 +87,6 @@ const appDataMock = vi.hoisted(() => ({
 
 const updateAppDataMock = vi.hoisted(() => vi.fn());
 const refreshDealsMock = vi.hoisted(() => vi.fn());
-const runBackgroundRefreshMock = vi.hoisted(() => vi.fn());
 const updateDealMock = vi.hoisted(() => vi.fn());
 const setErrorMock = vi.hoisted(() => vi.fn());
 const fetchDealMock = vi.hoisted(() => vi.fn());
@@ -117,12 +116,6 @@ vi.mock('../hooks/useAppData', () => ({
     invalidateDealsCache: vi.fn(),
     refreshPolicies: vi.fn().mockResolvedValue([]),
     refreshPoliciesList: vi.fn().mockResolvedValue([]),
-    runBackgroundRefresh: runBackgroundRefreshMock.mockImplementation(
-      async (_resource: string, runner: () => Promise<unknown>) => {
-        await runner();
-        return { executed: true, errorMessage: null };
-      },
-    ),
     updateAppData: updateAppDataMock,
     setAppData: vi.fn(),
     resetPoliciesState: vi.fn(),
@@ -340,14 +333,7 @@ describe('AppContent hotkeys integration', () => {
     vi.mocked(updateTask).mockClear();
     vi.mocked(updateDeal).mockClear();
     refreshDealsMock.mockReset();
-    runBackgroundRefreshMock.mockReset();
     refreshDealsMock.mockImplementation(async () => appDataMock.deals);
-    runBackgroundRefreshMock.mockImplementation(
-      async (_resource: string, runner: () => Promise<unknown>) => {
-        await runner();
-        return { executed: true, errorMessage: null };
-      },
-    );
     fetchDealMock.mockReset();
     fetchTasksByDealMock.mockReset();
     fetchQuotesByDealMock.mockReset();
@@ -404,14 +390,6 @@ describe('AppContent hotkeys integration', () => {
     await waitFor(() => {
       expect(ensureFinanceDataLoadedMock).toHaveBeenCalledTimes(1);
     });
-  });
-
-  it('does not trigger background refresh immediately on mount', async () => {
-    renderAppContent('/deals');
-
-    await Promise.resolve();
-
-    expect(runBackgroundRefreshMock).not.toHaveBeenCalled();
   });
 
   it('switches selected deal and opens preview with Ctrl+O', async () => {

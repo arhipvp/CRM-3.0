@@ -1,10 +1,8 @@
 import React from 'react';
 
-import type { LastRefreshAtByResource, LastRefreshErrorByResource } from '../../hooks/useAppData';
 import type { User } from '../../types';
 import { MainLayout } from '../MainLayout';
 import { NotificationDisplay } from '../NotificationDisplay';
-import { AppDataSyncController } from './AppDataSyncController';
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -16,10 +14,6 @@ type AppShellProps = {
   onLogout: () => void;
   error: string | null;
   onClearError: () => void;
-  isSyncing: boolean;
-  isBackgroundRefreshingAny?: boolean;
-  lastRefreshAtByResource?: LastRefreshAtByResource;
-  lastRefreshErrorByResource?: LastRefreshErrorByResource;
 };
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -32,10 +26,6 @@ export const AppShell: React.FC<AppShellProps> = ({
   onLogout,
   error,
   onClearError,
-  isSyncing,
-  isBackgroundRefreshingAny = false,
-  lastRefreshAtByResource,
-  lastRefreshErrorByResource,
 }) => (
   <MainLayout
     onAddDeal={onAddDeal}
@@ -70,11 +60,5 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
       </div>
     )}
-    <AppDataSyncController
-      isMutationSyncing={isSyncing}
-      isBackgroundRefreshingAny={isBackgroundRefreshingAny}
-      lastRefreshAtByResource={lastRefreshAtByResource}
-      lastRefreshErrorByResource={lastRefreshErrorByResource}
-    />
   </MainLayout>
 );

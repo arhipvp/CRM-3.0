@@ -149,10 +149,6 @@ const createProps = (): AppRoutesProps => ({
     isFinanceDataLoading: false,
     hasFinanceSnapshotLoaded: false,
     isTasksLoading: false,
-    isBackgroundRefreshingDeals: false,
-    isBackgroundRefreshingPoliciesList: false,
-    isBackgroundRefreshingTasks: false,
-    isBackgroundRefreshingFinance: false,
   },
 });
 
@@ -171,7 +167,7 @@ describe('AppRoutes /commissions', () => {
     expect(await screen.findByText('blocking-loader')).toBeInTheDocument();
   });
 
-  it('keeps commissions content visible during background finance refresh', async () => {
+  it('keeps commissions content visible when data already exists', async () => {
     const props = createProps();
     props.data.financialRecords = [
       {
@@ -183,7 +179,6 @@ describe('AppRoutes /commissions', () => {
       },
     ];
     props.loading.isCommissionsDataLoading = true;
-    props.loading.isBackgroundRefreshingFinance = true;
     props.loading.hasCommissionsSnapshotLoaded = true;
 
     render(
@@ -193,6 +188,5 @@ describe('AppRoutes /commissions', () => {
     );
 
     expect(await screen.findByText('content-visible')).toBeInTheDocument();
-    expect(screen.getByText('Обновляем финансовые данные...')).toBeInTheDocument();
   });
 });

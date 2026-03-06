@@ -156,10 +156,6 @@ export interface AppRouteLoadingState {
   isTasksLoading: boolean;
   isSelectedDealTasksLoading?: boolean;
   isSelectedDealQuotesLoading?: boolean;
-  isBackgroundRefreshingDeals: boolean;
-  isBackgroundRefreshingPoliciesList: boolean;
-  isBackgroundRefreshingTasks: boolean;
-  isBackgroundRefreshingFinance: boolean;
 }
 
 export interface AppRoutesProps {

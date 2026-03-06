@@ -37,11 +37,6 @@ interface AppDataState {
   users: User[];
 }
 
-export type BackgroundRefreshResource = 'deals' | 'policies' | 'tasks' | 'finance';
-
-export type LastRefreshAtByResource = Record<BackgroundRefreshResource, number | null>;
-export type LastRefreshErrorByResource = Record<BackgroundRefreshResource, string | null>;
-
 const DEALS_PAGE_SIZE = 20;
 const POLICIES_PAGE_SIZE = 50;
 
@@ -55,20 +50,6 @@ const INITIAL_APP_DATA_STATE: AppDataState = {
   statements: [],
   tasks: [],
   users: [],
-};
-
-const INITIAL_LAST_REFRESH_AT: LastRefreshAtByResource = {
-  deals: null,
-  policies: null,
-  tasks: null,
-  finance: null,
-};
-
-const INITIAL_LAST_REFRESH_ERRORS: LastRefreshErrorByResource = {
-  deals: null,
-  policies: null,
-  tasks: null,
-  finance: null,
 };
 
 type AppDataAction =
@@ -116,15 +97,6 @@ export const useAppData = () => {
   const [dealsNextPage, setDealsNextPage] = useState<number | null>(null);
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
   const [dealsTotalCount, setDealsTotalCount] = useState(0);
-  const [isBackgroundRefreshingDeals, setIsBackgroundRefreshingDeals] = useState(false);
-  const [isBackgroundRefreshingPoliciesList, setIsBackgroundRefreshingPoliciesList] =
-    useState(false);
-  const [isBackgroundRefreshingTasks, setIsBackgroundRefreshingTasks] = useState(false);
-  const [isBackgroundRefreshingFinance, setIsBackgroundRefreshingFinance] = useState(false);
-  const [lastRefreshAtByResource, setLastRefreshAtByResource] =
-    useState<LastRefreshAtByResource>(INITIAL_LAST_REFRESH_AT);
-  const [lastRefreshErrorByResource, setLastRefreshErrorByResource] =
-    useState<LastRefreshErrorByResource>(INITIAL_LAST_REFRESH_ERRORS);
   const dealsRequestRef = useRef(0);
   const commissionsRequestRef = useRef(0);
   const financeRequestRef = useRef(0);
@@ -134,12 +106,6 @@ export const useAppData = () => {
   const commissionsDataLoadedRef = useRef(false);
   const financeDataLoadedRef = useRef(false);
   const tasksLoadedRef = useRef(false);
-  const backgroundRefreshInFlightRef = useRef<Record<BackgroundRefreshResource, boolean>>({
-    deals: false,
-    policies: false,
-    tasks: false,
-    finance: false,
-  });
   const dealsCacheRef = useRef(
     new Map<string, { results: Deal[]; nextPage: number | null; totalCount: number }>(),
   );
@@ -178,25 +144,6 @@ export const useAppData = () => {
     }
     dispatch({ type: 'update', updater });
   }, []);
-
-  const setBackgroundRefreshingState = useCallback(
-    (resource: BackgroundRefreshResource, value: boolean) => {
-      if (resource === 'deals') {
-        setIsBackgroundRefreshingDeals(value);
-        return;
-      }
-      if (resource === 'policies') {
-        setIsBackgroundRefreshingPoliciesList(value);
-        return;
-      }
-      if (resource === 'tasks') {
-        setIsBackgroundRefreshingTasks(value);
-        return;
-      }
-      setIsBackgroundRefreshingFinance(value);
-    },
-    [],
-  );
 
   const refreshDeals = useCallback(
     async (filters?: FilterParams, options?: { force?: boolean }) => {
@@ -604,41 +551,6 @@ export const useAppData = () => {
 
   const dealsHasMore = Boolean(dealsNextPage);
   const policiesHasMore = Boolean(policiesListNextPage);
-  const isBackgroundRefreshingAny =
-    isBackgroundRefreshingDeals ||
-    isBackgroundRefreshingPoliciesList ||
-    isBackgroundRefreshingTasks ||
-    isBackgroundRefreshingFinance;
-
-  const runBackgroundRefresh = useCallback(
-    async (
-      resource: BackgroundRefreshResource,
-      runner: () => Promise<unknown>,
-    ): Promise<{ executed: boolean; errorMessage: string | null }> => {
-      if (backgroundRefreshInFlightRef.current[resource]) {
-        return { executed: false, errorMessage: null };
-      }
-
-      backgroundRefreshInFlightRef.current[resource] = true;
-      setBackgroundRefreshingState(resource, true);
-      setLastRefreshErrorByResource((prev) => ({ ...prev, [resource]: null }));
-
-      try {
-        await runner();
-        setLastRefreshAtByResource((prev) => ({ ...prev, [resource]: Date.now() }));
-        setLastRefreshErrorByResource((prev) => ({ ...prev, [resource]: null }));
-        return { executed: true, errorMessage: null };
-      } catch (err) {
-        const errorMessage = formatErrorMessage(err);
-        setLastRefreshErrorByResource((prev) => ({ ...prev, [resource]: errorMessage }));
-        return { executed: true, errorMessage };
-      } finally {
-        backgroundRefreshInFlightRef.current[resource] = false;
-        setBackgroundRefreshingState(resource, false);
-      }
-    },
-    [setBackgroundRefreshingState],
-  );
 
   return {
     dataState,
@@ -651,7 +563,6 @@ export const useAppData = () => {
     refreshPolicies,
     refreshPoliciesList,
     policiesFilters,
-    runBackgroundRefresh,
     updateAppData,
     setAppData,
     resetPoliciesState,
@@ -673,13 +584,6 @@ export const useAppData = () => {
     isTasksLoading,
     isSyncing,
     setIsSyncing,
-    isBackgroundRefreshingDeals,
-    isBackgroundRefreshingPoliciesList,
-    isBackgroundRefreshingTasks,
-    isBackgroundRefreshingFinance,
-    isBackgroundRefreshingAny,
-    lastRefreshAtByResource,
-    lastRefreshErrorByResource,
     error,
     setError,
     isLoadingMoreDeals,

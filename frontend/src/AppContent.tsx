@@ -102,12 +102,7 @@ import type { FinancialRecordModalState, PaymentModalState } from './types';
 import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
 import { markQuoteAsDeleted } from './utils/quotes';
 import { parseNumericAmount } from './utils/parseNumericAmount';
-import {
-  formatAmountValue,
-  getBackgroundRefreshResources,
-  matchSalesChannel,
-  parseAmountValue,
-} from './utils/appContent';
+import { formatAmountValue, matchSalesChannel, parseAmountValue } from './utils/appContent';
 import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
 import {
   buildCommissionIncomeNote,
@@ -289,7 +284,6 @@ const AppContent: React.FC = () => {
     refreshPolicies,
     refreshPoliciesList,
     policiesFilters: policiesFiltersFromHook,
-    runBackgroundRefresh: runBackgroundRefreshFromHook,
     updateAppData,
     setAppData,
     resetPoliciesState,
@@ -311,13 +305,6 @@ const AppContent: React.FC = () => {
     isTasksLoading,
     isSyncing,
     setIsSyncing,
-    isBackgroundRefreshingDeals,
-    isBackgroundRefreshingPoliciesList,
-    isBackgroundRefreshingTasks,
-    isBackgroundRefreshingFinance,
-    isBackgroundRefreshingAny,
-    lastRefreshAtByResource,
-    lastRefreshErrorByResource,
     error,
     setError,
   } = useAppData();
@@ -325,21 +312,6 @@ const AppContent: React.FC = () => {
     () => policiesFiltersFromHook ?? { ordering: '-start_date' },
     [policiesFiltersFromHook],
   );
-  const fallbackRunBackgroundRefresh = useCallback(
-    async (
-      _resource: 'deals' | 'policies' | 'tasks' | 'finance',
-      runner: () => Promise<unknown>,
-    ) => {
-      try {
-        await runner();
-        return { executed: true, errorMessage: null };
-      } catch (err) {
-        return { executed: true, errorMessage: formatErrorMessage(err) };
-      }
-    },
-    [],
-  );
-  const runBackgroundRefresh = runBackgroundRefreshFromHook ?? fallbackRunBackgroundRefresh;
   const {
     authLoading,
     currentUser,
@@ -784,15 +756,6 @@ const AppContent: React.FC = () => {
   const isClientsRoute = location.pathname.startsWith('/clients');
   const isPoliciesRoute = location.pathname.startsWith('/policies');
   const isTasksRoute = location.pathname.startsWith('/tasks');
-  const backgroundRefreshResources = useMemo(
-    () => getBackgroundRefreshResources(location.pathname),
-    [location.pathname],
-  );
-  const backgroundRefreshResourcesRef = useRef(backgroundRefreshResources);
-
-  useEffect(() => {
-    backgroundRefreshResourcesRef.current = backgroundRefreshResources;
-  }, [backgroundRefreshResources]);
 
   useEffect(() => {
     deepLinkedDealIdRef.current = deepLinkedDealId;
@@ -818,12 +781,8 @@ const AppContent: React.FC = () => {
       setError(formatErrorMessage(err, 'Ошибка при загрузке задач'));
     });
   }, [ensureTasksLoaded, isAuthenticated, isTasksRoute, setError]);
-
-  const BACKGROUND_REFRESH_INTERVAL_MS = 30_000;
   const dealFiltersRef = useRef<FilterParams>(dealFilters);
   const policiesFiltersRef = useRef<FilterParams>(policiesFilters);
-  const backgroundRefreshCycleInFlightRef = useRef(false);
-  const backgroundRefreshTimerRef = useRef<number | null>(null);
   const rehydrateDealDetailsRef = useRef<(dealId: string) => Promise<void>>(async () => undefined);
 
   useEffect(() => {
@@ -833,138 +792,6 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     policiesFiltersRef.current = policiesFilters;
   }, [policiesFilters]);
-
-  const runBackgroundRefreshCycle = useCallback(async () => {
-    if (!isAuthenticated || authLoading || isLoading || backgroundRefreshCycleInFlightRef.current) {
-      return;
-    }
-
-    backgroundRefreshCycleInFlightRef.current = true;
-    try {
-      const results = await Promise.all(
-        backgroundRefreshResourcesRef.current.map(async (resource) => {
-          if (resource === 'deals') {
-            const result = await runBackgroundRefresh('deals', async () => {
-              await refreshDeals(dealFiltersRef.current, { force: true });
-              const selectedId = selectedDealIdRef.current;
-              const previewId = previewDealIdRef.current;
-              const dealIds = Array.from(
-                new Set([selectedId, previewId].filter((id): id is string => Boolean(id))),
-              );
-              if (dealIds.length > 0) {
-                await Promise.all(dealIds.map((dealId) => rehydrateDealDetailsRef.current(dealId)));
-              }
-            });
-            return { resource: 'deals' as const, result };
-          }
-          if (resource === 'policies') {
-            const result = await runBackgroundRefresh('policies', () =>
-              refreshPoliciesList(policiesFiltersRef.current),
-            );
-            return { resource: 'policies' as const, result };
-          }
-          if (resource === 'tasks') {
-            const result = await runBackgroundRefresh('tasks', () =>
-              ensureTasksLoaded({ force: true }),
-            );
-            return { resource: 'tasks' as const, result };
-          }
-          const result = await runBackgroundRefresh('finance', async () => {
-            if (isCommissionsRoute) {
-              await Promise.all([
-                ensureCommissionsDataLoaded({ force: true }),
-                refreshPolicies({ force: true }),
-              ]);
-              return;
-            }
-            await Promise.all([
-              ensureFinanceDataLoaded({ force: true }),
-              refreshPolicies({ force: true }),
-            ]);
-          });
-          return { resource: 'finance' as const, result };
-        }),
-      );
-
-      const failedResources: Array<{ name: string; message: string }> = [];
-      results.forEach(({ resource, result }) => {
-        if (!result.errorMessage) {
-          return;
-        }
-        const label =
-          resource === 'deals'
-            ? 'Сделки'
-            : resource === 'policies'
-              ? 'Полисы'
-              : resource === 'tasks'
-                ? 'Задачи'
-                : 'Финансы';
-        failedResources.push({ name: label, message: result.errorMessage });
-      });
-
-      failedResources.forEach(({ name, message }) => {
-        addNotification(`${name}: ошибка фонового обновления (${message})`, 'error', 5000);
-      });
-    } finally {
-      backgroundRefreshCycleInFlightRef.current = false;
-    }
-  }, [
-    addNotification,
-    authLoading,
-    ensureCommissionsDataLoaded,
-    ensureFinanceDataLoaded,
-    ensureTasksLoaded,
-    isAuthenticated,
-    isCommissionsRoute,
-    isLoading,
-    refreshDeals,
-    refreshPolicies,
-    refreshPoliciesList,
-    runBackgroundRefresh,
-  ]);
-
-  useEffect(() => {
-    if (!isAuthenticated || authLoading || isLoading) {
-      if (backgroundRefreshTimerRef.current !== null) {
-        window.clearInterval(backgroundRefreshTimerRef.current);
-        backgroundRefreshTimerRef.current = null;
-      }
-      return;
-    }
-
-    const startTimer = () => {
-      if (backgroundRefreshTimerRef.current !== null) {
-        window.clearInterval(backgroundRefreshTimerRef.current);
-      }
-      backgroundRefreshTimerRef.current = window.setInterval(() => {
-        void runBackgroundRefreshCycle();
-      }, BACKGROUND_REFRESH_INTERVAL_MS);
-    };
-
-    const stopTimer = () => {
-      if (backgroundRefreshTimerRef.current === null) {
-        return;
-      }
-      window.clearInterval(backgroundRefreshTimerRef.current);
-      backgroundRefreshTimerRef.current = null;
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        stopTimer();
-        return;
-      }
-      startTimer();
-    };
-
-    startTimer();
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      stopTimer();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [authLoading, isAuthenticated, isLoading, runBackgroundRefreshCycle]);
 
   const [selectedClientShortcutId, setSelectedClientShortcutId] = useState<string | null>(null);
   const [selectedPolicyShortcutId, setSelectedPolicyShortcutId] = useState<string | null>(null);
@@ -4197,19 +4024,11 @@ const AppContent: React.FC = () => {
       isTasksLoading,
       isSelectedDealTasksLoading,
       isSelectedDealQuotesLoading,
-      isBackgroundRefreshingDeals,
-      isBackgroundRefreshingPoliciesList,
-      isBackgroundRefreshingTasks,
-      isBackgroundRefreshingFinance,
     }),
     [
       dealsHasMore,
       dealsTotalCount,
       hasCommissionsSnapshotLoaded,
-      isBackgroundRefreshingDeals,
-      isBackgroundRefreshingFinance,
-      isBackgroundRefreshingPoliciesList,
-      isBackgroundRefreshingTasks,
       isCommissionsDataLoading,
       hasFinanceSnapshotLoaded,
       isFinanceDataLoading,
@@ -4246,10 +4065,6 @@ const AppContent: React.FC = () => {
       onLogout={handleLogout}
       error={error}
       onClearError={() => setError(null)}
-      isSyncing={isSyncing}
-      isBackgroundRefreshingAny={isBackgroundRefreshingAny}
-      lastRefreshAtByResource={lastRefreshAtByResource}
-      lastRefreshErrorByResource={lastRefreshErrorByResource}
       topSlot={
         activeShortcutContext ? (
           <div className="flex flex-wrap items-center gap-3 text-sm">
