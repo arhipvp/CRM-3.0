@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AppRoutes } from '../AppRoutes';
 import type { AppRoutesProps } from '../appRoutes.types';
+import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../../api/deals';
+import type { ChatMessage, Deal, Statement } from '../../../types';
 
 vi.mock('../../views/CommissionsView', () => ({
   CommissionsView: ({ isLoading }: { isLoading?: boolean }) => (
@@ -16,6 +18,49 @@ vi.mock('../../views/CommissionsView', () => ({
 
 const noop = vi.fn();
 const noopAsync = vi.fn(async () => undefined);
+
+const createDealStub = (): Deal => ({
+  id: 'deal-1',
+  title: 'Deal',
+  clientId: 'client-1',
+  status: 'open',
+  createdAt: '2026-03-06T10:00:00Z',
+  quotes: [],
+  documents: [],
+});
+
+const createStatementStub = (): Statement => ({
+  id: 'statement-1',
+  name: 'Statement',
+  statementType: 'income',
+  status: 'draft',
+  createdAt: '2026-03-06T10:00:00Z',
+  updatedAt: '2026-03-06T10:00:00Z',
+});
+
+const createMailboxCreateResultStub = (): DealMailboxCreateResult => ({
+  deal: createDealStub(),
+  mailboxInitialPassword: null,
+});
+
+const createMailboxSyncResultStub = (): DealMailboxSyncResult => ({
+  deal: createDealStub(),
+  mailboxSync: {
+    processed: 0,
+    skipped: 0,
+    failed: 0,
+    deleted: 0,
+  },
+});
+
+const createChatMessageStub = (): ChatMessage => ({
+  id: 'chat-1',
+  deal: 'deal-1',
+  author_name: 'Test User',
+  author_display_name: 'Test User',
+  body: 'test',
+  created_at: '2026-03-06T10:00:00Z',
+});
 
 const createProps = (): AppRoutesProps => ({
   data: {
@@ -52,17 +97,10 @@ const createProps = (): AppRoutesProps => ({
     onDeleteQuote: vi.fn(async () => undefined),
     onDeletePolicy: vi.fn(async () => undefined),
     onDriveFolderCreated: noop,
-    onCreateDealMailbox: vi.fn(async () => ({ mailbox: null, warning: null })),
-    onCheckDealMailbox: vi.fn(async () => ({ mailbox: null, sync: null, warnings: [] })),
+    onCreateDealMailbox: vi.fn(async () => createMailboxCreateResultStub()),
+    onCheckDealMailbox: vi.fn(async () => createMailboxSyncResultStub()),
     onFetchChatMessages: vi.fn(async () => []),
-    onSendChatMessage: vi.fn(async () => ({
-      id: 'chat-1',
-      dealId: 'deal-1',
-      body: 'test',
-      direction: 'outgoing',
-      createdAt: '2026-03-06T10:00:00Z',
-      updatedAt: '2026-03-06T10:00:00Z',
-    })),
+    onSendChatMessage: vi.fn(async () => createChatMessageStub()),
     onDeleteChatMessage: vi.fn(async () => undefined),
     onFetchDealHistory: vi.fn(async () => []),
     onCreateTask: vi.fn(async () => undefined),
@@ -79,24 +117,10 @@ const createProps = (): AppRoutesProps => ({
     onAddFinancialRecord: noopAsync,
     onUpdateFinancialRecord: noopAsync,
     onDeleteFinancialRecord: noopAsync,
-    onCreateFinanceStatement: vi.fn(async () => ({
-      id: 'statement-1',
-      name: 'Statement',
-      statementType: 'income',
-      status: 'draft',
-      createdAt: '2026-03-06T10:00:00Z',
-      updatedAt: '2026-03-06T10:00:00Z',
-    })),
+    onCreateFinanceStatement: vi.fn(async () => createStatementStub()),
     onDeleteFinanceStatement: noopAsync,
     onRemoveFinanceStatementRecords: noopAsync,
-    onUpdateFinanceStatement: vi.fn(async () => ({
-      id: 'statement-1',
-      name: 'Statement',
-      statementType: 'income',
-      status: 'draft',
-      createdAt: '2026-03-06T10:00:00Z',
-      updatedAt: '2026-03-06T10:00:00Z',
-    })),
+    onUpdateFinanceStatement: vi.fn(async () => createStatementStub()),
   },
   filters: {
     dealSearch: '',
