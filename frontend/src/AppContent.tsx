@@ -1895,6 +1895,8 @@ const AppContent: React.FC = () => {
       }
     },
     [
+      cacheDealQuotes,
+      dealsById,
       editingQuote,
       invalidateDealQuotesCache,
       invalidateDealsCache,
