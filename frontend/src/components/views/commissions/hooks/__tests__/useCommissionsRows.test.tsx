@@ -7,7 +7,7 @@ describe('useCommissionsRows', () => {
   it('builds all-record rows from enriched financial record payload even when payments are not loaded', () => {
     const { result } = renderHook(() =>
       useCommissionsRows({
-        payments: [],
+        financialRecords: [],
         allRecords: [
           {
             id: 'record-1',
@@ -52,5 +52,41 @@ describe('useCommissionsRows', () => {
     });
     expect(result.current.filteredRows[0].payment.id).toBe('payment-1');
     expect(result.current.filteredRows[0].payment.amount).toBe('15000');
+  });
+
+  it('builds statement rows from financialRecords even when payments are not loaded', () => {
+    const { result } = renderHook(() =>
+      useCommissionsRows({
+        financialRecords: [
+          {
+            id: 'record-2',
+            paymentId: 'payment-2',
+            statementId: 'statement-1',
+            paymentDescription: 'Выплата партнера',
+            paymentAmount: '8000',
+            dealTitle: 'Сделка №2',
+            dealClientName: 'Иван',
+            amount: '-1200',
+            createdAt: '2026-03-06T10:00:00Z',
+            updatedAt: '2026-03-06T10:00:00Z',
+          },
+        ],
+        allRecords: [],
+        paymentsById: new Map(),
+        selectedStatementId: 'statement-1',
+        viewMode: 'statements',
+      }),
+    );
+
+    expect(result.current.filteredRows).toHaveLength(1);
+    expect(result.current.filteredRows[0]).toMatchObject({
+      recordId: 'record-2',
+      statementId: 'statement-1',
+      dealTitle: 'Сделка №2',
+      dealClientName: 'Иван',
+      recordAmount: -1200,
+    });
+    expect(result.current.filteredRows[0].payment.id).toBe('payment-2');
+    expect(result.current.filteredRows[0].payment.amount).toBe('8000');
   });
 });

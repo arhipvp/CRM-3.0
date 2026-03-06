@@ -281,6 +281,7 @@ const AppContent: React.FC = () => {
   const {
     dataState,
     loadData,
+    ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureTasksLoaded,
     refreshDeals,
@@ -303,6 +304,8 @@ const AppContent: React.FC = () => {
     isLoadingMorePolicies,
     isLoadingMoreDeals,
     isLoading,
+    isCommissionsDataLoading,
+    hasCommissionsSnapshotLoaded,
     isFinanceDataLoading,
     hasFinanceSnapshotLoaded,
     isTasksLoading,
@@ -414,15 +417,26 @@ const AppContent: React.FC = () => {
     if (!isAuthenticated) {
       return;
     }
-    ensureFinanceDataLoaded().catch((err) => {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
-    });
     if (isCommissionsRoute) {
+      ensureCommissionsDataLoaded().catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке данных ведомостей'));
+      });
       refreshPolicies().catch((err) => {
         setError(formatErrorMessage(err, 'Ошибка при загрузке данных для раздела комиссий'));
       });
+      return;
     }
-  }, [ensureFinanceDataLoaded, isAuthenticated, isCommissionsRoute, refreshPolicies, setError]);
+    ensureFinanceDataLoaded().catch((err) => {
+      setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
+    });
+  }, [
+    ensureCommissionsDataLoaded,
+    ensureFinanceDataLoaded,
+    isAuthenticated,
+    isCommissionsRoute,
+    refreshPolicies,
+    setError,
+  ]);
 
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
@@ -856,6 +870,13 @@ const AppContent: React.FC = () => {
             return { resource: 'tasks' as const, result };
           }
           const result = await runBackgroundRefresh('finance', async () => {
+            if (isCommissionsRoute) {
+              await Promise.all([
+                ensureCommissionsDataLoaded({ force: true }),
+                refreshPolicies({ force: true }),
+              ]);
+              return;
+            }
             await Promise.all([
               ensureFinanceDataLoaded({ force: true }),
               refreshPolicies({ force: true }),
@@ -890,9 +911,11 @@ const AppContent: React.FC = () => {
   }, [
     addNotification,
     authLoading,
+    ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureTasksLoaded,
     isAuthenticated,
+    isCommissionsRoute,
     isLoading,
     refreshDeals,
     refreshPolicies,
@@ -4167,6 +4190,8 @@ const AppContent: React.FC = () => {
       policiesHasMore,
       isLoadingMorePolicies,
       isPoliciesListLoading,
+      isCommissionsDataLoading,
+      hasCommissionsSnapshotLoaded,
       isFinanceDataLoading,
       hasFinanceSnapshotLoaded,
       isTasksLoading,
@@ -4180,10 +4205,12 @@ const AppContent: React.FC = () => {
     [
       dealsHasMore,
       dealsTotalCount,
+      hasCommissionsSnapshotLoaded,
       isBackgroundRefreshingDeals,
       isBackgroundRefreshingFinance,
       isBackgroundRefreshingPoliciesList,
       isBackgroundRefreshingTasks,
+      isCommissionsDataLoading,
       hasFinanceSnapshotLoaded,
       isFinanceDataLoading,
       isLoadingMoreDeals,

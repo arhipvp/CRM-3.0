@@ -28,7 +28,7 @@ interface CommissionsViewProps {
   policies: Policy[];
   statements: Statement[];
   isLoading?: boolean;
-  hasFinanceSnapshotLoaded?: boolean;
+  hasCommissionsSnapshotLoaded?: boolean;
   isBackgroundRefreshingFinance?: boolean;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
@@ -83,7 +83,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   policies,
   statements,
   isLoading = false,
-  hasFinanceSnapshotLoaded = false,
+  hasCommissionsSnapshotLoaded = false,
   isBackgroundRefreshingFinance = false,
   onDealSelect,
   onDealPreview,
@@ -170,7 +170,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   });
   const { filteredRows, toggleAmountSort, getAmountSortIndicator, getAmountSortLabel } =
     useCommissionsRows({
-      payments,
+      financialRecords,
       allRecords,
       paymentsById,
       selectedStatementId,
@@ -344,7 +344,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     payments.length > 0 || financialRecords.length > 0 || statements.length > 0;
   const shouldShowStatementsPendingState =
     viewMode === 'statements' &&
-    !hasFinanceSnapshotLoaded &&
+    !hasCommissionsSnapshotLoaded &&
     (isLoading || isBackgroundRefreshingFinance || hasAnyFinanceData);
 
   const statementFilesTab = (

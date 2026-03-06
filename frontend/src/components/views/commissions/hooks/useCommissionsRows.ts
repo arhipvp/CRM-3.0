@@ -4,7 +4,7 @@ import type { FinancialRecord, Payment } from '../../../../types';
 import type { IncomeExpenseRow } from '../RecordsTable';
 
 interface UseCommissionsRowsArgs {
-  payments: Payment[];
+  financialRecords: FinancialRecord[];
   allRecords: FinancialRecord[];
   paymentsById: Map<string, Payment>;
   selectedStatementId: string | null;
@@ -65,7 +65,7 @@ const buildAllModeRow = (record: FinancialRecord, payment: Payment): IncomeExpen
 };
 
 export const useCommissionsRows = ({
-  payments,
+  financialRecords,
   allRecords,
   paymentsById,
   selectedStatementId,
@@ -74,43 +74,14 @@ export const useCommissionsRows = ({
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
 
   const statementRows = useMemo<IncomeExpenseRow[]>(() => {
-    const result: IncomeExpenseRow[] = [];
-    payments.forEach((payment) => {
-      const records = payment.financialRecords ?? [];
-      const paidEntries = records
-        .filter((record) => Boolean(record.date))
-        .map((record) => ({
-          amount: record.amount,
-          date: record.date as string,
-        }));
-      const paidBalance = paidEntries.reduce((sum, entry) => {
-        const value = Number(entry.amount);
-        return Number.isFinite(value) ? sum + value : sum;
-      }, 0);
-      const paymentPaidBalance = Number.isFinite(paidBalance) ? paidBalance : undefined;
-
-      records.forEach((record) => {
-        const amount = Number(record.amount);
-        if (!Number.isFinite(amount) || amount === 0) {
-          return;
-        }
-        result.push({
-          key: `${payment.id}-${record.id}`,
-          payment,
-          recordId: record.id,
-          statementId: record.statementId,
-          recordAmount: amount,
-          paymentPaidBalance,
-          paymentPaidEntries: paidEntries,
-          recordDate: record.date ?? null,
-          recordDescription: record.description,
-          recordSource: record.source,
-          recordNote: record.note,
-        });
-      });
-    });
-    return result;
-  }, [payments]);
+    return financialRecords
+      .filter((record) => Boolean(record.statementId))
+      .map((record) => {
+        const payment = paymentsById.get(record.paymentId) ?? buildPaymentFallback(record);
+        return buildAllModeRow(record, payment);
+      })
+      .filter((row) => Number.isFinite(row.recordAmount) && row.recordAmount !== 0);
+  }, [financialRecords, paymentsById]);
 
   const allRows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];

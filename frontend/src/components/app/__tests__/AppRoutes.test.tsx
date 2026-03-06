@@ -144,6 +144,8 @@ const createProps = (): AppRoutesProps => ({
     policiesHasMore: false,
     isLoadingMorePolicies: false,
     isPoliciesListLoading: false,
+    isCommissionsDataLoading: false,
+    hasCommissionsSnapshotLoaded: false,
     isFinanceDataLoading: false,
     hasFinanceSnapshotLoaded: false,
     isTasksLoading: false,
@@ -157,8 +159,8 @@ const createProps = (): AppRoutesProps => ({
 describe('AppRoutes /commissions', () => {
   it('shows blocking loader on initial finance load without existing data', async () => {
     const props = createProps();
-    props.loading.isFinanceDataLoading = true;
-    props.loading.hasFinanceSnapshotLoaded = false;
+    props.loading.isCommissionsDataLoading = true;
+    props.loading.hasCommissionsSnapshotLoaded = false;
 
     render(
       <MemoryRouter initialEntries={['/commissions']}>
@@ -180,9 +182,9 @@ describe('AppRoutes /commissions', () => {
         updatedAt: '2026-03-06T10:00:00Z',
       },
     ];
-    props.loading.isFinanceDataLoading = true;
+    props.loading.isCommissionsDataLoading = true;
     props.loading.isBackgroundRefreshingFinance = true;
-    props.loading.hasFinanceSnapshotLoaded = true;
+    props.loading.hasCommissionsSnapshotLoaded = true;
 
     render(
       <MemoryRouter initialEntries={['/commissions']}>

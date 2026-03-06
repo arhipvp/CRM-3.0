@@ -23,7 +23,7 @@ describe('CommissionsView', () => {
           ]}
           policies={[]}
           statements={[]}
-          hasFinanceSnapshotLoaded={false}
+          hasCommissionsSnapshotLoaded={false}
           isBackgroundRefreshingFinance
         />
       </MemoryRouter>,

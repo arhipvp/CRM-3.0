@@ -126,6 +126,9 @@ describe('useAppData loading strategy', () => {
     const { result } = renderHook(() => useAppData());
 
     await act(async () => {
+      await result.current.ensureCommissionsDataLoaded();
+    });
+    await act(async () => {
       await result.current.ensureFinanceDataLoaded();
     });
     await act(async () => {
@@ -138,6 +141,19 @@ describe('useAppData loading strategy', () => {
       expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
       expect(mockedFetchTasks).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('loads commissions snapshot without waiting for payments', async () => {
+    const { result } = renderHook(() => useAppData());
+
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded();
+    });
+
+    expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
+    expect(mockedFetchPaymentsWithPagination).not.toHaveBeenCalled();
+    expect(result.current.hasCommissionsSnapshotLoaded).toBe(true);
   });
 
   it('reuses the same in-flight finance load promise', async () => {
@@ -164,9 +180,18 @@ describe('useAppData loading strategy', () => {
       secondPromise = result.current.ensureFinanceDataLoaded();
     });
 
-    expect(mockedFetchPaymentsWithPagination).toHaveBeenCalledTimes(1);
     expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
     expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      recordsDeferred.resolve([]);
+      statementsDeferred.resolve([]);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(mockedFetchPaymentsWithPagination).toHaveBeenCalledTimes(1);
+    });
 
     await act(async () => {
       paymentsDeferred.resolve({
@@ -175,8 +200,6 @@ describe('useAppData loading strategy', () => {
         previous: null,
         results: [],
       });
-      recordsDeferred.resolve([]);
-      statementsDeferred.resolve([]);
       await Promise.all([firstPromise, secondPromise]);
     });
   });

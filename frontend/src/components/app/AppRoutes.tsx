@@ -41,8 +41,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
   const hasAnyFinanceData =
     data.payments.length > 0 || data.financialRecords.length > 0 || data.statements.length > 0;
   const shouldBlockCommissionsView =
-    !loading.hasFinanceSnapshotLoaded &&
-    loading.isFinanceDataLoading &&
+    !loading.hasCommissionsSnapshotLoaded &&
+    loading.isCommissionsDataLoading &&
     !loading.isBackgroundRefreshingFinance &&
     !hasAnyFinanceData;
 
@@ -195,7 +195,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
                 policies={data.policies}
                 statements={data.statements}
                 isLoading={shouldBlockCommissionsView}
-                hasFinanceSnapshotLoaded={loading.hasFinanceSnapshotLoaded}
+                hasCommissionsSnapshotLoaded={loading.hasCommissionsSnapshotLoaded}
                 isBackgroundRefreshingFinance={loading.isBackgroundRefreshingFinance}
                 onDealSelect={dealsActions.onSelectDeal}
                 onDealPreview={dealsActions.onDealPreview}
