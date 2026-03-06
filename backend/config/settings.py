@@ -250,6 +250,22 @@ MAILCOW_IMAP_MASTER_USER = config("MAILCOW_IMAP_MASTER_USER", default="")
 MAILCOW_IMAP_MASTER_PASS = config("MAILCOW_IMAP_MASTER_PASS", default="")
 MAILCOW_MAILBOX_QUOTA_MB = int(config("MAILCOW_MAILBOX_QUOTA_MB", default="3072"))
 
+SBER_ISSUANCE_LOGIN = config("SBER_ISSUANCE_LOGIN", default="")
+SBER_ISSUANCE_PASSWORD = config("SBER_ISSUANCE_PASSWORD", default="")
+SBER_ISSUANCE_BASE_URL = config(
+    "SBER_ISSUANCE_BASE_URL",
+    default="https://auto.sberbankins.ru/PO.Insurance/ru.lois.web.POInsurance/POInsurance.html",
+)
+SBER_ISSUANCE_PROFILE_DIR = config("SBER_ISSUANCE_PROFILE_DIR", default="")
+SBER_ISSUANCE_HEADLESS = _bool_env("SBER_ISSUANCE_HEADLESS", "false")
+SBER_ISSUANCE_MANUAL_TIMEOUT_SECONDS = int(
+    config("SBER_ISSUANCE_MANUAL_TIMEOUT_SECONDS", default="900")
+)
+SBER_ISSUANCE_VNC_HINT = config("SBER_ISSUANCE_VNC_HINT", default="")
+SBER_ISSUANCE_WORKDIR = config(
+    "SBER_ISSUANCE_WORKDIR", default=str(MEDIA_ROOT / "sber_issuance")
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",

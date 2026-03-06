@@ -15,7 +15,7 @@ from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.notes.models import Note
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models import DecimalField, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
@@ -35,9 +35,16 @@ from .ai_service import (
 from .dashboard import get_month_bounds, parse_date_value
 from .dashboard_service import build_seller_dashboard_payload
 from .filters import PolicyFilterSet
-from .models import Policy
+from .issuance import (
+    PolicyIssuanceError,
+    cancel_policy_issuance,
+    get_latest_execution,
+    resume_policy_issuance,
+    start_policy_issuance,
+)
+from .models import Policy, PolicyIssuanceExecution
 from .permissions import user_can_modify_deal, user_is_admin
-from .serializers import PolicySerializer
+from .serializers import PolicyIssuanceExecutionStatusSerializer, PolicySerializer
 from .status import STATUS_VALUES, with_computed_status_flags
 
 logger = logging.getLogger(__name__)
@@ -88,6 +95,12 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "insurance_company",
             "insurance_type",
             "sales_channel",
+        ).prefetch_related(
+            Prefetch(
+                "issuance_executions",
+                queryset=PolicyIssuanceExecution.objects.order_by("-created_at"),
+                to_attr="prefetched_issuance_executions",
+            )
         )
         decimal_field = DecimalField(max_digits=12, decimal_places=2)
         queryset = queryset.annotate(
@@ -356,6 +369,18 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         deal = getattr(instance, "deal", None)
         return user_can_modify_deal(user, deal)
 
+    def _serialize_latest_issuance(self, policy: Policy, request) -> Response:
+        execution = get_latest_execution(policy)
+        if execution is None:
+            return Response(
+                {"detail": "Оформление для полиса ещё не запускалось."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = PolicyIssuanceExecutionStatusSerializer(
+            execution, context={"request": request}
+        )
+        return Response(serializer.data)
+
     def _move_recognized_file_to_folder(self, policy: Policy, file_id: str) -> None:
         if not file_id:
             return
@@ -431,6 +456,62 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             instance.delete()
         except DjangoValidationError as exc:
             raise DRFValidationError(exc.messages) from exc
+
+
+    @action(detail=True, methods=["get"], url_path="sber-issuance")
+    def sber_issuance_status(self, request, pk=None):
+        policy = self.get_object()
+        return self._serialize_latest_issuance(policy, request)
+
+    @action(detail=True, methods=["post"], url_path="sber-issuance/start")
+    def sber_issuance_start(self, request, pk=None):
+        policy = self.get_object()
+        if not user_can_modify_deal(request.user, policy.deal):
+            raise PermissionDenied("Нет доступа к сделке.")
+        try:
+            execution = start_policy_issuance(policy, request.user)
+        except DjangoValidationError as exc:
+            raise DRFValidationError(exc.message_dict or exc.messages) from exc
+        except PolicyIssuanceError as exc:
+            raise DRFValidationError({"detail": str(exc)}) from exc
+        serializer = PolicyIssuanceExecutionStatusSerializer(
+            execution, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="sber-issuance/resume")
+    def sber_issuance_resume(self, request, pk=None):
+        policy = self.get_object()
+        if not user_can_modify_deal(request.user, policy.deal):
+            raise PermissionDenied("Нет доступа к сделке.")
+        execution = get_latest_execution(policy)
+        if execution is None:
+            raise DRFValidationError({"detail": "Оформление для полиса не найдено."})
+        try:
+            execution = resume_policy_issuance(execution)
+        except DjangoValidationError as exc:
+            raise DRFValidationError(exc.message_dict or exc.messages) from exc
+        serializer = PolicyIssuanceExecutionStatusSerializer(
+            execution, context={"request": request}
+        )
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="sber-issuance/cancel")
+    def sber_issuance_cancel(self, request, pk=None):
+        policy = self.get_object()
+        if not user_can_modify_deal(request.user, policy.deal):
+            raise PermissionDenied("Нет доступа к сделке.")
+        execution = get_latest_execution(policy)
+        if execution is None:
+            raise DRFValidationError({"detail": "Оформление для полиса не найдено."})
+        try:
+            execution = cancel_policy_issuance(execution)
+        except DjangoValidationError as exc:
+            raise DRFValidationError(exc.message_dict or exc.messages) from exc
+        serializer = PolicyIssuanceExecutionStatusSerializer(
+            execution, context={"request": request}
+        )
+        return Response(serializer.data)
 
 
 class SellerDashboardView(APIView):

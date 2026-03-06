@@ -168,6 +168,31 @@ export interface PolicyRecognitionResult {
   data?: Record<string, unknown>;
 }
 
+export interface PolicyIssuanceLogEntry {
+  timestamp: string;
+  level: string;
+  step?: string;
+  message: string;
+}
+
+export interface PolicyIssuanceStatus {
+  id: string;
+  provider: string;
+  product: string;
+  status: 'queued' | 'running' | 'waiting_manual' | 'succeeded' | 'failed' | 'canceled';
+  step: string;
+  manualStepReason?: string;
+  manualStepInstructions?: string;
+  externalPolicyNumber?: string;
+  lastError?: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  vncHint?: string;
+  log: PolicyIssuanceLogEntry[];
+}
+
 export interface DocumentRecognitionResult {
   fileId: string;
   fileName?: string | null;
@@ -375,6 +400,7 @@ export interface Policy {
   createdAt: string;
   updatedAt?: string;
   driveFolderId?: string | null;
+  sberIssuance?: PolicyIssuanceStatus | null;
 }
 
 export interface PoliciesKPI {

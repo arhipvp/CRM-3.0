@@ -1,0 +1,9 @@
+{
+  "name": "crm3-sber-issuance",
+  "private": true,
+  "version": "0.0.1",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.54.0"
+  }
+}

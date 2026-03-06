@@ -19,6 +19,7 @@
   Note,
   Payment,
   Policy,
+  PolicyIssuanceStatus,
   PolicyStatus,
   Quote,
   SalesChannel,
@@ -88,6 +89,37 @@ const resolveActivityActionType = (value: unknown): ActivityActionType =>
   resolveStringUnion(value, ACTIVITY_ACTION_TYPES, 'custom');
 const resolveFinancialRecordType = (value: unknown): FinancialRecordType | undefined =>
   resolveOptionalStringUnion(value, FINANCIAL_RECORD_TYPES);
+
+export const mapPolicyIssuanceStatus = (raw: Record<string, unknown>): PolicyIssuanceStatus => {
+  const rawLog = Array.isArray(raw.log) ? raw.log : [];
+  return {
+    id: toStringValue(raw.id),
+    provider: toStringValue(raw.provider ?? ''),
+    product: toStringValue(raw.product ?? ''),
+    status: toStringValue(raw.status ?? 'queued') as PolicyIssuanceStatus['status'],
+    step: toStringValue(raw.step ?? ''),
+    manualStepReason: toOptionalString(raw.manualStepReason ?? raw.manual_step_reason),
+    manualStepInstructions: toOptionalString(
+      raw.manualStepInstructions ?? raw.manual_step_instructions,
+    ),
+    externalPolicyNumber: toOptionalString(raw.externalPolicyNumber ?? raw.external_policy_number),
+    lastError: toOptionalString(raw.lastError ?? raw.last_error),
+    startedAt: toNullableString(raw.startedAt ?? raw.started_at),
+    finishedAt: toNullableString(raw.finishedAt ?? raw.finished_at),
+    updatedAt: toStringValue(raw.updatedAt ?? raw.updated_at ?? ''),
+    createdAt: toStringValue(raw.createdAt ?? raw.created_at ?? ''),
+    vncHint: toOptionalString(raw.vncHint ?? raw.vnc_hint),
+    log: rawLog.map((item) => {
+      const record = item as Record<string, unknown>;
+      return {
+        timestamp: toStringValue(record.timestamp),
+        level: toStringValue(record.level ?? 'info'),
+        step: toOptionalString(record.step),
+        message: toStringValue(record.message),
+      };
+    }),
+  };
+};
 
 export const mapClient = (raw: Record<string, unknown>): Client => ({
   id: toStringValue(raw.id),
@@ -326,6 +358,10 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
   createdAt: toStringValue(raw.created_at),
   driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
+  sberIssuance:
+    raw.sber_issuance && typeof raw.sber_issuance === 'object'
+      ? mapPolicyIssuanceStatus(raw.sber_issuance as Record<string, unknown>)
+      : null,
 });
 
 export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecord => ({

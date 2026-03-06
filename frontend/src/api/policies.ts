@@ -1,6 +1,7 @@
 ﻿import type {
   PoliciesKPI,
   Policy,
+  PolicyIssuanceStatus,
   PolicyRecognitionResult,
   SellerDashboardResponse,
 } from '../types';
@@ -14,7 +15,7 @@ import {
   toStringValue,
   unwrapList,
 } from './helpers';
-import { mapPolicy } from './mappers';
+import { mapPolicy, mapPolicyIssuanceStatus } from './mappers';
 
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
   const qs = buildQueryString(filters);
@@ -307,4 +308,39 @@ export async function fetchPoliciesKPI(
     expiringSoonCount: Number(payload.expiring_soon_count ?? payload.expiringSoonCount ?? 0),
     expiringDays: Number(payload.expiring_days ?? payload.expiringDays ?? 30),
   };
+}
+
+export async function fetchPolicyIssuanceStatus(policyId: string): Promise<PolicyIssuanceStatus> {
+  const payload = await request<Record<string, unknown>>(`/policies/${policyId}/sber-issuance/`);
+  return mapPolicyIssuanceStatus(payload);
+}
+
+export async function startPolicyIssuance(policyId: string): Promise<PolicyIssuanceStatus> {
+  const payload = await request<Record<string, unknown>>(
+    `/policies/${policyId}/sber-issuance/start/`,
+    {
+      method: 'POST',
+    },
+  );
+  return mapPolicyIssuanceStatus(payload);
+}
+
+export async function resumePolicyIssuance(policyId: string): Promise<PolicyIssuanceStatus> {
+  const payload = await request<Record<string, unknown>>(
+    `/policies/${policyId}/sber-issuance/resume/`,
+    {
+      method: 'POST',
+    },
+  );
+  return mapPolicyIssuanceStatus(payload);
+}
+
+export async function cancelPolicyIssuance(policyId: string): Promise<PolicyIssuanceStatus> {
+  const payload = await request<Record<string, unknown>>(
+    `/policies/${policyId}/sber-issuance/cancel/`,
+    {
+      method: 'POST',
+    },
+  );
+  return mapPolicyIssuanceStatus(payload);
 }

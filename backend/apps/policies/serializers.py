@@ -2,7 +2,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Policy
+from .models import Policy, PolicyIssuanceExecution
 from .status import resolve_computed_status
 
 VIN_PATTERN = re.compile(r"^[A-Za-z0-9]{17}$")
@@ -44,6 +44,7 @@ class PolicySerializer(serializers.ModelSerializer):
         allow_empty=True,
     )
     computed_status = serializers.SerializerMethodField(read_only=True)
+    sber_issuance = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Policy
@@ -79,6 +80,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "deleted_at",
             "source_file_id",
             "source_file_ids",
+            "sber_issuance",
         )
         read_only_fields = (
             "id",
@@ -147,6 +149,18 @@ class PolicySerializer(serializers.ModelSerializer):
     def get_computed_status(self, obj: Policy) -> str:
         return resolve_computed_status(obj)
 
+    def _get_latest_issuance(self, obj: Policy) -> PolicyIssuanceExecution | None:
+        prefetched = getattr(obj, "prefetched_issuance_executions", None)
+        if prefetched is not None:
+            return prefetched[0] if prefetched else None
+        return obj.issuance_executions.order_by("-created_at").first()
+
+    def get_sber_issuance(self, obj: Policy):
+        execution = self._get_latest_issuance(obj)
+        if execution is None:
+            return None
+        return PolicyIssuanceExecutionStatusSerializer(execution).data
+
     def validate(self, attrs):
         client = attrs.get("client") if "client" in attrs else None
         insured_client = (
@@ -189,3 +203,48 @@ class PolicySerializer(serializers.ModelSerializer):
         if errors:
             raise serializers.ValidationError(errors)
         return attrs
+
+
+class PolicyIssuanceExecutionLogEntrySerializer(serializers.Serializer):
+    timestamp = serializers.CharField()
+    level = serializers.CharField()
+    step = serializers.CharField(allow_blank=True, required=False)
+    message = serializers.CharField()
+
+
+class PolicyIssuanceExecutionStatusSerializer(serializers.ModelSerializer):
+    manualStepReason = serializers.CharField(source="manual_step_reason")
+    manualStepInstructions = serializers.CharField(source="manual_step_instructions")
+    externalPolicyNumber = serializers.CharField(source="external_policy_number")
+    lastError = serializers.CharField(source="last_error")
+    startedAt = serializers.DateTimeField(source="started_at", allow_null=True)
+    finishedAt = serializers.DateTimeField(source="finished_at", allow_null=True)
+    updatedAt = serializers.DateTimeField(source="updated_at")
+    createdAt = serializers.DateTimeField(source="created_at")
+    log = PolicyIssuanceExecutionLogEntrySerializer(many=True)
+    vncHint = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PolicyIssuanceExecution
+        fields = (
+            "id",
+            "provider",
+            "product",
+            "status",
+            "step",
+            "manualStepReason",
+            "manualStepInstructions",
+            "externalPolicyNumber",
+            "lastError",
+            "startedAt",
+            "finishedAt",
+            "updatedAt",
+            "createdAt",
+            "log",
+            "vncHint",
+        )
+
+    def get_vncHint(self, obj: PolicyIssuanceExecution) -> str:
+        from django.conf import settings
+
+        return getattr(settings, "SBER_ISSUANCE_VNC_HINT", "")

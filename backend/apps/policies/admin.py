@@ -4,9 +4,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from import_export import resources
 
-from .models import Policy
-
-# ============ IMPORT/EXPORT RESOURCES ============
+from .models import Policy, PolicyIssuanceExecution
 
 
 class PolicyResource(resources.ModelResource):
@@ -32,9 +30,6 @@ class PolicyResource(resources.ModelResource):
             "deleted_at",
         )
         export_order = fields
-
-
-# ============ MODEL ADMINS ============
 
 
 @admin.register(Policy)
@@ -126,7 +121,6 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
 
     @admin.display(description="Статус")
     def status_badge(self, obj):
-        # Determine status based on dates
         today = timezone.now().date()
         if obj.end_date and obj.end_date < today:
             color = "#ff006e"
@@ -161,3 +155,40 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         self.message_user(request, f"{updated} полисов отмечено как неактивные")
 
     mark_as_inactive.short_description = "Отметить как неактивные"
+
+
+@admin.register(PolicyIssuanceExecution)
+class PolicyIssuanceExecutionAdmin(admin.ModelAdmin):
+    list_display = (
+        "policy",
+        "provider",
+        "product",
+        "status",
+        "step",
+        "external_policy_number",
+        "requested_by",
+        "started_at",
+        "finished_at",
+        "updated_at",
+    )
+    search_fields = (
+        "policy__number",
+        "external_policy_number",
+        "manual_step_reason",
+        "last_error",
+    )
+    list_filter = ("provider", "product", "status", "started_at", "finished_at")
+    readonly_fields = (
+        "id",
+        "created_at",
+        "updated_at",
+        "started_at",
+        "finished_at",
+        "payload",
+        "runtime_state",
+        "log",
+    )
+    autocomplete_fields = ("policy", "requested_by")
+    list_select_related = ("policy", "requested_by")
+    list_per_page = 30
+    show_full_result_count = False

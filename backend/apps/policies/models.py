@@ -1,6 +1,9 @@
-﻿from apps.common.models import SoftDeleteModel
+import uuid
+
+from apps.common.models import SoftDeleteModel
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 
 class Policy(SoftDeleteModel):
@@ -175,3 +178,91 @@ class Policy(SoftDeleteModel):
         for payment in self.payments.all():
             payment.delete()
         super().delete(*args, **kwargs)
+
+
+class PolicyIssuanceExecution(models.Model):
+    class Provider(models.TextChoices):
+        SBER = "sber", "Sber"
+
+    class Product(models.TextChoices):
+        OSAGO_AUTO = "osago_auto", "OSAGO auto"
+
+    class Status(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        RUNNING = "running", "Running"
+        WAITING_MANUAL = "waiting_manual", "Waiting manual"
+        SUCCEEDED = "succeeded", "Succeeded"
+        FAILED = "failed", "Failed"
+        CANCELED = "canceled", "Canceled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    policy = models.ForeignKey(
+        "policies.Policy",
+        related_name="issuance_executions",
+        on_delete=models.CASCADE,
+    )
+    requested_by = models.ForeignKey(
+        "auth.User",
+        related_name="policy_issuance_executions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    provider = models.CharField(
+        max_length=32,
+        choices=Provider.choices,
+        default=Provider.SBER,
+    )
+    product = models.CharField(
+        max_length=32,
+        choices=Product.choices,
+        default=Product.OSAGO_AUTO,
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=Status.choices,
+        default=Status.QUEUED,
+    )
+    step = models.CharField(max_length=128, blank=True, default="")
+    manual_step_reason = models.TextField(blank=True, default="")
+    manual_step_instructions = models.TextField(blank=True, default="")
+    external_policy_number = models.CharField(max_length=128, blank=True, default="")
+    last_error = models.TextField(blank=True, default="")
+    log = models.JSONField(default=list, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    runtime_state = models.JSONField(default=dict, blank=True)
+    resume_token = models.CharField(max_length=64, db_index=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["policy", "-created_at"]),
+            models.Index(fields=["status", "-updated_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.policy.number} {self.provider}/{self.product} {self.status}"
+
+    @classmethod
+    def active_statuses(cls) -> tuple[str, ...]:
+        return (
+            cls.Status.QUEUED,
+            cls.Status.RUNNING,
+            cls.Status.WAITING_MANUAL,
+        )
+
+    def append_log(self, message: str, *, step: str = "", level: str = "info") -> None:
+        entries = list(self.log or [])
+        entries.append(
+            {
+                "timestamp": timezone.now().isoformat(),
+                "level": level,
+                "step": step or self.step,
+                "message": message,
+            }
+        )
+        self.log = entries
