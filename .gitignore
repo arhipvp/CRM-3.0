@@ -174,3 +174,4 @@ AGENTS.md
 # Local Sber issuance test harness
 tools/sber_issuance/local/
 tools/sber_issuance/.local_runs/
+tools/sber_issuance/runner.js
