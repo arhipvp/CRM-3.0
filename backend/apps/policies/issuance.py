@@ -68,12 +68,13 @@ def build_policy_issuance_payload(policy: Policy) -> dict[str, Any]:
         missing_fields.append("start_date")
     if not policy.end_date:
         missing_fields.append("end_date")
-    insurance_type_name = (
-        getattr(policy.insurance_type, "name", "") or ""
-    ).strip()
+    insurance_type_name = (getattr(policy.insurance_type, "name", "") or "").strip()
     if not insurance_type_name:
         missing_fields.append("insurance_type")
-    elif "осаго" not in insurance_type_name.lower() and "osago" not in insurance_type_name.lower():
+    elif (
+        "осаго" not in insurance_type_name.lower()
+        and "osago" not in insurance_type_name.lower()
+    ):
         missing_fields.append("insurance_type_osago")
 
     matching_quote = (
@@ -155,7 +156,9 @@ def _runner_env(paths: IssuancePaths) -> dict[str, str]:
     env["SBER_ISSUANCE_BASE_URL"] = getattr(settings, "SBER_ISSUANCE_BASE_URL", "")
     env["SBER_ISSUANCE_LOGIN"] = getattr(settings, "SBER_ISSUANCE_LOGIN", "")
     env["SBER_ISSUANCE_PASSWORD"] = getattr(settings, "SBER_ISSUANCE_PASSWORD", "")
-    env["SBER_ISSUANCE_PROFILE_DIR"] = getattr(settings, "SBER_ISSUANCE_PROFILE_DIR", "")
+    env["SBER_ISSUANCE_PROFILE_DIR"] = getattr(
+        settings, "SBER_ISSUANCE_PROFILE_DIR", ""
+    )
     env["SBER_ISSUANCE_HEADLESS"] = (
         "true" if getattr(settings, "SBER_ISSUANCE_HEADLESS", False) else "false"
     )
@@ -186,9 +189,11 @@ def _sync_execution_from_result(execution_id: str, paths: IssuancePaths) -> None
     if payload is None:
         return
 
-    execution = PolicyIssuanceExecution.objects.select_related("policy").filter(
-        pk=execution_id
-    ).first()
+    execution = (
+        PolicyIssuanceExecution.objects.select_related("policy")
+        .filter(pk=execution_id)
+        .first()
+    )
     if execution is None:
         return
 
@@ -229,14 +234,19 @@ def _sync_execution_from_result(execution_id: str, paths: IssuancePaths) -> None
             "updated_at",
         ]
     )
-    if execution.status == PolicyIssuanceExecution.Status.SUCCEEDED and execution.external_policy_number:
+    if (
+        execution.status == PolicyIssuanceExecution.Status.SUCCEEDED
+        and execution.external_policy_number
+    ):
         policy = execution.policy
         if policy.number != execution.external_policy_number:
             policy.number = execution.external_policy_number
             policy.save(update_fields=["number", "updated_at"])
 
 
-def _monitor_runner(execution_id: str, process: subprocess.Popen, paths: IssuancePaths) -> None:
+def _monitor_runner(
+    execution_id: str, process: subprocess.Popen, paths: IssuancePaths
+) -> None:
     try:
         last_mtime = None
         while True:
@@ -256,7 +266,9 @@ def _monitor_runner(execution_id: str, process: subprocess.Popen, paths: Issuanc
                 PolicyIssuanceExecution.Status.CANCELED,
             ):
                 execution.status = PolicyIssuanceExecution.Status.FAILED
-                execution.last_error = execution.last_error or "Runner завершился с ошибкой."
+                execution.last_error = (
+                    execution.last_error or "Runner завершился с ошибкой."
+                )
                 execution.finished_at = timezone.now()
                 execution.append_log(
                     "Runner завершился с ошибкой.",
@@ -347,9 +359,13 @@ def start_policy_issuance(policy: Policy, requested_by) -> PolicyIssuanceExecuti
     return execution
 
 
-def resume_policy_issuance(execution: PolicyIssuanceExecution) -> PolicyIssuanceExecution:
+def resume_policy_issuance(
+    execution: PolicyIssuanceExecution,
+) -> PolicyIssuanceExecution:
     if execution.status != PolicyIssuanceExecution.Status.WAITING_MANUAL:
-        raise ValidationError({"detail": "Resume доступен только из состояния waiting_manual."})
+        raise ValidationError(
+            {"detail": "Resume доступен только из состояния waiting_manual."}
+        )
     paths = get_execution_paths(str(execution.id))
     _write_json(
         paths.control_file,
@@ -364,7 +380,9 @@ def resume_policy_issuance(execution: PolicyIssuanceExecution) -> PolicyIssuance
     return execution
 
 
-def cancel_policy_issuance(execution: PolicyIssuanceExecution) -> PolicyIssuanceExecution:
+def cancel_policy_issuance(
+    execution: PolicyIssuanceExecution,
+) -> PolicyIssuanceExecution:
     if execution.status not in PolicyIssuanceExecution.active_statuses():
         raise ValidationError({"detail": "Активного оформления для отмены нет."})
     paths = get_execution_paths(str(execution.id))

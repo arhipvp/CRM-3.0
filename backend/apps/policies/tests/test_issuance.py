@@ -183,7 +183,9 @@ class PolicyIssuanceAPITests(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json()["status"], PolicyIssuanceExecution.Status.QUEUED)
+        self.assertEqual(
+            response.json()["status"], PolicyIssuanceExecution.Status.QUEUED
+        )
 
     def test_start_endpoint_rejects_user_without_access(self):
         self.authenticate(self.other)
@@ -195,7 +197,9 @@ class PolicyIssuanceAPITests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_status_endpoint_returns_404_without_execution(self):
-        response = self.api_client.get(f"/api/v1/policies/{self.policy.id}/sber-issuance/")
+        response = self.api_client.get(
+            f"/api/v1/policies/{self.policy.id}/sber-issuance/"
+        )
         self.assertEqual(response.status_code, 404)
 
     @patch("apps.policies.views.resume_policy_issuance")
@@ -204,11 +208,15 @@ class PolicyIssuanceAPITests(AuthenticatedAPITestCase):
         resume_mock.return_value = execution
 
         response = self.api_client.post(
-            f"/api/v1/policies/{self.policy.id}/sber-issuance/resume/", {}, format="json"
+            f"/api/v1/policies/{self.policy.id}/sber-issuance/resume/",
+            {},
+            format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], PolicyIssuanceExecution.Status.WAITING_MANUAL)
+        self.assertEqual(
+            response.json()["status"], PolicyIssuanceExecution.Status.WAITING_MANUAL
+        )
         resume_mock.assert_called_once()
 
     @patch("apps.policies.views.cancel_policy_issuance")
@@ -218,8 +226,12 @@ class PolicyIssuanceAPITests(AuthenticatedAPITestCase):
         cancel_mock.return_value = execution
 
         response = self.api_client.post(
-            f"/api/v1/policies/{self.policy.id}/sber-issuance/cancel/", {}, format="json"
+            f"/api/v1/policies/{self.policy.id}/sber-issuance/cancel/",
+            {},
+            format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], PolicyIssuanceExecution.Status.CANCELED)
+        self.assertEqual(
+            response.json()["status"], PolicyIssuanceExecution.Status.CANCELED
+        )

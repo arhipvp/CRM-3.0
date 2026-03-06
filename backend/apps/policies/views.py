@@ -88,18 +88,22 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Policy.objects.alive().select_related(
-            "deal",
-            "client",
-            "insured_client",
-            "insurance_company",
-            "insurance_type",
-            "sales_channel",
-        ).prefetch_related(
-            Prefetch(
-                "issuance_executions",
-                queryset=PolicyIssuanceExecution.objects.order_by("-created_at"),
-                to_attr="prefetched_issuance_executions",
+        queryset = (
+            Policy.objects.alive()
+            .select_related(
+                "deal",
+                "client",
+                "insured_client",
+                "insurance_company",
+                "insurance_type",
+                "sales_channel",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "issuance_executions",
+                    queryset=PolicyIssuanceExecution.objects.order_by("-created_at"),
+                    to_attr="prefetched_issuance_executions",
+                )
             )
         )
         decimal_field = DecimalField(max_digits=12, decimal_places=2)
@@ -456,7 +460,6 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             instance.delete()
         except DjangoValidationError as exc:
             raise DRFValidationError(exc.messages) from exc
-
 
     @action(detail=True, methods=["get"], url_path="sber-issuance")
     def sber_issuance_status(self, request, pk=None):
