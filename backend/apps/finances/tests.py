@@ -7,6 +7,7 @@ from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment, Statement
+from apps.tasks.models import Task
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -21,6 +22,8 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         super().setUp()
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.executor = User.objects.create_user(username="executor", password="pass")
+        self.visible_user = User.objects.create_user(username="viewer", password="pass")
+        self.task_assignee = User.objects.create_user(username="tasker", password="pass")
         self.other_user = User.objects.create_user(username="other", password="pass")
         self.admin_user = User.objects.create_user(username="admin", password="pass")
 
@@ -32,6 +35,12 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             executor=self.executor,
             status="open",
             stage_name="initial",
+        )
+        self.deal.visible_users.add(self.visible_user)
+        Task.objects.create(
+            title="Finance follow-up",
+            deal=self.deal,
+            assignee=self.task_assignee,
         )
 
         admin_role, _ = Role.objects.get_or_create(
@@ -45,6 +54,10 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         self.fin_record = FinancialRecord.objects.create(
             payment=self.payment, amount=Decimal("100"), description="Calc"
         )
+
+    def _extract_results(self, response):
+        payload = response.json()
+        return payload.get("results", payload)
 
     def test_seller_can_create_payment(self):
         self.authenticate(self.seller)
@@ -118,6 +131,48 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_visible_user_can_list_payments_for_visible_deal(self):
+        self.authenticate(self.visible_user)
+
+        response = self.api_client.get("/api/v1/payments/", {"deal": str(self.deal.id)})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.payment.id)])
+
+    def test_task_assignee_can_list_payments_for_related_deal(self):
+        self.authenticate(self.task_assignee)
+
+        response = self.api_client.get("/api/v1/payments/", {"deal": str(self.deal.id)})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.payment.id)])
+
+    def test_visible_user_can_list_financial_records_for_visible_deal(self):
+        self.authenticate(self.visible_user)
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"deal": str(self.deal.id)},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.fin_record.id)])
+
+    def test_task_assignee_can_list_financial_records_for_related_deal(self):
+        self.authenticate(self.task_assignee)
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"deal": str(self.deal.id)},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.fin_record.id)])
+
     def test_seller_can_update_financial_record(self):
         self.authenticate(self.seller)
         response = self.api_client.patch(
@@ -143,8 +198,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         response = self.api_client.get("/api/v1/financial_records/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
-        results = payload.get("results", payload)
+        results = self._extract_results(response)
         self.assertTrue(results)
         record = results[0]
         self.assertEqual(record["deal_id"], str(self.deal.id))
@@ -172,8 +226,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
-        results = payload.get("results", payload)
+        results = self._extract_results(response)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["id"], str(self.fin_record.id))
 

@@ -49,6 +49,7 @@ from .models import (
     SalesChannel,
 )
 from .permissions import (
+    build_deal_visibility_q,
     can_manage_deal_mailbox,
     can_merge_deals,
     can_modify_deal,
@@ -290,13 +291,7 @@ class DealViewSet(
         if is_admin:
             return queryset
 
-        access_filter = (
-            Q(seller=user)
-            | Q(executor=user)
-            | Q(tasks__assignee=user)
-            | Q(visible_users=user)
-        )
-        return queryset.filter(access_filter).distinct()
+        return queryset.filter(build_deal_visibility_q(user)).distinct()
 
     @action(detail=True, methods=["get"], url_path="time-track/summary")
     def time_track_summary(self, request, pk=None):
@@ -762,12 +757,12 @@ class QuoteViewSet(viewsets.ModelViewSet):
         if is_admin:
             return queryset
 
-        queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+        queryset = queryset.filter(build_deal_visibility_q(user, prefix="deal__"))
 
         deal_id = self.request.query_params.get("deal")
         if deal_id:
             queryset = queryset.filter(deal_id=deal_id)
-        return queryset
+        return queryset.distinct()
 
     def perform_create(self, serializer):
         defaults: dict[str, object] = {}

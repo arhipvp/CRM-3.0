@@ -14,6 +14,7 @@ from apps.common.drive import (
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
+from apps.deals.permissions import build_deal_visibility_q
 from django.db import transaction
 from django.db.models import (
     Case,
@@ -168,8 +169,9 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if not is_admin:
             # Остальные видят только записи для своих сделок (где user = seller или executor)
             queryset = queryset.filter(
-                Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
-            )
+                build_deal_visibility_q(user, prefix="payment__deal__")
+                | build_deal_visibility_q(user, prefix="payment__policy__deal__")
+            ).distinct()
 
         queryset = apply_financial_record_filters(queryset, self.request.query_params)
 
@@ -783,7 +785,10 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         if not is_admin:
             # Остальные видят только платежи для своих сделок (где user = seller или executor)
-            queryset = queryset.filter(Q(deal__seller=user) | Q(deal__executor=user))
+            queryset = queryset.filter(
+                build_deal_visibility_q(user, prefix="deal__")
+                | build_deal_visibility_q(user, prefix="policy__deal__")
+            ).distinct()
 
         return queryset
 
