@@ -11,6 +11,14 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):
+    has_sber_password = serializers.SerializerMethodField(read_only=True)
+    sber_password = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        write_only=True,
+    )
+
     class Meta:
         model = NotificationSettings
         fields = (
@@ -22,6 +30,9 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
             "notify_payment_due",
             "notify_policy_expiry",
             "remind_days",
+            "sber_login",
+            "sber_password",
+            "has_sber_password",
         )
 
     def validate_remind_days(self, value):
@@ -58,3 +69,14 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
                 "next_contact_lead_days must be at least 1."
             )
         return days
+
+    def get_has_sber_password(self, obj):
+        return bool(obj.sber_password)
+
+    def update(self, instance, validated_data):
+        sber_password = validated_data.pop("sber_password", serializers.empty)
+        instance = super().update(instance, validated_data)
+        if sber_password is not serializers.empty:
+            instance.sber_password = (sber_password or "").strip()
+            instance.save(update_fields=["sber_password"])
+        return instance

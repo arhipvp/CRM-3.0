@@ -102,6 +102,18 @@ class NotificationSettings(models.Model):
         default=_default_remind_days,
         help_text="Reminder days before deadline",
     )
+    sber_login = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Personal Sber Insurance login",
+    )
+    sber_password = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Personal Sber Insurance password",
+    )
 
     class Meta:
         verbose_name = "Notification settings"

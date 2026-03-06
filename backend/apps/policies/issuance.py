@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from apps.notifications.telegram_notifications import get_or_create_settings
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -162,11 +163,13 @@ def _read_json(path: Path) -> dict[str, Any] | None:
         return None
 
 
-def _runner_env(paths: IssuancePaths) -> dict[str, str]:
+def _runner_env(
+    paths: IssuancePaths, *, login: str = "", password: str = ""
+) -> dict[str, str]:
     env = os.environ.copy()
     env["SBER_ISSUANCE_BASE_URL"] = getattr(settings, "SBER_ISSUANCE_BASE_URL", "")
-    env["SBER_ISSUANCE_LOGIN"] = getattr(settings, "SBER_ISSUANCE_LOGIN", "")
-    env["SBER_ISSUANCE_PASSWORD"] = getattr(settings, "SBER_ISSUANCE_PASSWORD", "")
+    env["SBER_ISSUANCE_LOGIN"] = login
+    env["SBER_ISSUANCE_PASSWORD"] = password
     env["SBER_ISSUANCE_PROFILE_DIR"] = getattr(
         settings, "SBER_ISSUANCE_PROFILE_DIR", ""
     )
@@ -303,6 +306,11 @@ def _monitor_runner(
 def _start_runner(execution: PolicyIssuanceExecution) -> None:
     paths = get_execution_paths(str(execution.id))
     _write_json(paths.payload_file, execution.payload)
+    runtime_state = (
+        execution.runtime_state if isinstance(execution.runtime_state, dict) else {}
+    )
+    sber_login = str(runtime_state.get("sber_login") or "")
+    sber_password = str(runtime_state.get("sber_password") or "")
     _write_json(
         paths.control_file,
         {
@@ -315,7 +323,7 @@ def _start_runner(execution: PolicyIssuanceExecution) -> None:
     process = subprocess.Popen(
         command,
         cwd=str(Path(settings.BASE_DIR).parent),
-        env=_runner_env(paths),
+        env=_runner_env(paths, login=sber_login, password=sber_password),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -332,6 +340,25 @@ def _start_runner(execution: PolicyIssuanceExecution) -> None:
     monitor_thread.start()
 
 
+def _get_requested_by_sber_credentials(requested_by) -> tuple[str, str]:
+    settings_obj = get_or_create_settings(requested_by)
+    sber_login = str(settings_obj.sber_login or "").strip()
+    sber_password = str(settings_obj.sber_password or "").strip()
+    missing_fields: list[str] = []
+    if not sber_login:
+        missing_fields.append("sber_login")
+    if not sber_password:
+        missing_fields.append("sber_password")
+    if missing_fields:
+        raise ValidationError(
+            {
+                "detail": "Для запуска заполните логин и пароль Сбера в настройках пользователя.",
+                "missing_fields": missing_fields,
+            }
+        )
+    return sber_login, sber_password
+
+
 @transaction.atomic
 def start_policy_issuance(policy: Policy, requested_by) -> PolicyIssuanceExecution:
     active = (
@@ -343,6 +370,7 @@ def start_policy_issuance(policy: Policy, requested_by) -> PolicyIssuanceExecuti
         raise ValidationError({"detail": "Для полиса уже есть активное оформление."})
 
     payload = build_policy_issuance_payload(policy)
+    sber_login, sber_password = _get_requested_by_sber_credentials(requested_by)
     execution = PolicyIssuanceExecution.objects.create(
         policy=policy,
         requested_by=requested_by,
@@ -351,6 +379,10 @@ def start_policy_issuance(policy: Policy, requested_by) -> PolicyIssuanceExecuti
         status=PolicyIssuanceExecution.Status.QUEUED,
         step="queued",
         payload=payload,
+        runtime_state={
+            "sber_login": sber_login,
+            "sber_password": sber_password,
+        },
         resume_token=uuid_hex(),
         started_at=timezone.now(),
     )

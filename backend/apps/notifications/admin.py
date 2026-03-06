@@ -4,6 +4,7 @@ from import_export import resources
 
 from .models import (
     Notification,
+    NotificationSettings,
     TelegramDealRoutingSession,
     TelegramInboundMessage,
 )
@@ -96,6 +97,48 @@ class NotificationAdmin(SoftDeleteImportExportAdmin):
         self.message_user(request, f"{updated} уведомлений отмечено как непрочитанные")
 
     mark_as_unread.short_description = "Отметить как непрочитанные"
+
+
+@admin.register(NotificationSettings)
+class NotificationSettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "telegram_enabled",
+        "next_contact_lead_days",
+        "sber_login",
+        "sber_credentials_configured",
+    )
+    search_fields = ("user__username", "user__email", "sber_login")
+    list_filter = ("telegram_enabled",)
+    list_select_related = ("user",)
+    readonly_fields = ("sber_credentials_configured",)
+
+    fieldsets = (
+        (
+            "Основное",
+            {
+                "fields": (
+                    "user",
+                    "telegram_enabled",
+                    "next_contact_lead_days",
+                    "notify_tasks",
+                    "notify_deal_events",
+                    "notify_deal_expected_close",
+                    "notify_payment_due",
+                    "notify_policy_expiry",
+                    "remind_days",
+                )
+            },
+        ),
+        (
+            "Сбер Страхование",
+            {"fields": ("sber_login", "sber_credentials_configured")},
+        ),
+    )
+
+    @admin.display(boolean=True, description="Sber пароль задан")
+    def sber_credentials_configured(self, obj):
+        return bool(obj.sber_password)
 
 
 @admin.register(TelegramInboundMessage)

@@ -9,6 +9,8 @@ export interface NotificationSettings {
   notify_payment_due: boolean;
   notify_policy_expiry: boolean;
   remind_days: number[];
+  sber_login: string;
+  has_sber_password: boolean;
 }
 
 export interface TelegramStatus {
@@ -34,7 +36,7 @@ export async function fetchNotificationSettings(): Promise<NotificationSettingsR
 }
 
 export async function updateNotificationSettings(
-  payload: Partial<NotificationSettings>,
+  payload: Partial<NotificationSettings> & { sber_password?: string | null },
 ): Promise<NotificationSettingsResponse> {
   return request<NotificationSettingsResponse>('/notifications/settings/', {
     method: 'PATCH',

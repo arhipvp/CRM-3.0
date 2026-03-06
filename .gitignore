@@ -170,3 +170,6 @@ docker-compose.prod.yml
 OPEN_NOTEBOOK_PLAN.md
 AGENTS.md
 AGENTS.md
+
+# Local Sber issuance test harness
+tools/sber_issuance/local/
