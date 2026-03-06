@@ -5,6 +5,7 @@ import subprocess
 import threading
 import time
 import uuid
+from datetime import date, datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -49,6 +50,16 @@ def get_latest_execution(policy: Policy) -> PolicyIssuanceExecution | None:
     if prefetched is not None:
         return prefetched[0] if prefetched else None
     return policy.issuance_executions.order_by("-created_at").first()
+
+
+def _to_iso_date(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value).strip()
 
 
 def build_policy_issuance_payload(policy: Policy) -> dict[str, Any]:
@@ -105,8 +116,8 @@ def build_policy_issuance_payload(policy: Policy) -> dict[str, Any]:
         "brand": (policy.brand or "").strip(),
         "model": (policy.model or "").strip(),
         "vin": (policy.vin or "").strip(),
-        "startDate": policy.start_date.isoformat() if policy.start_date else "",
-        "endDate": policy.end_date.isoformat() if policy.end_date else "",
+        "startDate": _to_iso_date(policy.start_date),
+        "endDate": _to_iso_date(policy.end_date),
         "insuranceCompany": getattr(policy.insurance_company, "name", "") or "",
         "insuranceType": insurance_type_name,
         "premium": str(matching_quote.premium) if matching_quote else "",

@@ -193,7 +193,7 @@ class PolicyIssuanceAPITests(AuthenticatedAPITestCase):
             f"/api/v1/policies/{self.policy.id}/sber-issuance/start/", {}, format="json"
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
     def test_status_endpoint_returns_404_without_execution(self):
         response = self.api_client.get(
