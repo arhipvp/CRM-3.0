@@ -371,9 +371,14 @@ describe('FilesTab document recognition transcript', () => {
     expect(await screen.findByRole('img', { name: 'photo.png' })).toBeInTheDocument();
 
     const dialog = screen.getByRole('dialog');
-    const renameInput = within(dialog).getByLabelText('Имя файла');
+    const renameInput = within(dialog).getByLabelText('Имя файла') as HTMLInputElement;
+    const renameForm = renameInput.closest('form');
+    expect(renameForm).not.toBeNull();
     fireEvent.change(renameInput, { target: { value: '   ' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Переименовать' }));
+    await waitFor(() => {
+      expect(renameInput.value).toBe('   ');
+    });
+    fireEvent.submit(renameForm as HTMLFormElement);
 
     expect(
       await within(dialog).findByText('Название файла не должно быть пустым.'),
