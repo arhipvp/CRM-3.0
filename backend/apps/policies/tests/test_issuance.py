@@ -4,6 +4,7 @@ from unittest.mock import patch
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType, Quote
+from apps.notifications.models import NotificationSettings
 from apps.policies.issuance import (
     _sync_execution_from_result,
     build_policy_issuance_payload,
@@ -22,6 +23,11 @@ from django.utils import timezone
 class PolicyIssuanceServiceTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="seller", password="pass")
+        NotificationSettings.objects.create(
+            user=self.user,
+            sber_login="seller-login",
+            sber_password="seller-password",
+        )
         self.client_obj = Client.objects.create(name="Иван Иванов")
         self.deal = Deal.objects.create(
             title="Deal",
@@ -136,6 +142,11 @@ class PolicyIssuanceAPITests(AuthenticatedAPITestCase):
         super().setUp()
         self.seller = User.objects.create_user(username="seller", password="pass")
         self.other = User.objects.create_user(username="other", password="pass")
+        NotificationSettings.objects.create(
+            user=self.seller,
+            sber_login="seller-login",
+            sber_password="seller-password",
+        )
         self.client_obj = Client.objects.create(name="Иван Иванов")
         self.deal = Deal.objects.create(
             title="Deal",
