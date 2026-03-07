@@ -566,7 +566,9 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         results = response.json().get("results", response.json())
         by_id = {item["id"]: item for item in results}
         self.assertIn(str(statement.id), by_id)
-        self.assertEqual(by_id[str(statement.id)]["paid_at"], statement.paid_at.isoformat())
+        self.assertEqual(
+            by_id[str(statement.id)]["paid_at"], statement.paid_at.isoformat()
+        )
 
     def test_export_xlsx_creates_drive_file(self):
         self.authenticate(self.seller)
