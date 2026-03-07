@@ -93,6 +93,7 @@ const fetchDealMock = vi.hoisted(() => vi.fn());
 const fetchTasksByDealMock = vi.hoisted(() => vi.fn());
 const fetchQuotesByDealMock = vi.hoisted(() => vi.fn());
 const createDealMock = vi.hoisted(() => vi.fn());
+const ensureCommissionsDataLoadedMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const ensureFinanceDataLoadedMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock('../hooks/useAppData', () => ({
@@ -109,7 +110,7 @@ vi.mock('../hooks/useAppData', () => ({
       users: [],
     },
     loadData: vi.fn(),
-    ensureCommissionsDataLoaded: vi.fn().mockResolvedValue(undefined),
+    ensureCommissionsDataLoaded: ensureCommissionsDataLoadedMock,
     ensureFinanceDataLoaded: ensureFinanceDataLoadedMock,
     ensureTasksLoaded: vi.fn().mockResolvedValue(undefined),
     refreshDeals: refreshDealsMock.mockImplementation(async () => appDataMock.deals),
@@ -338,6 +339,8 @@ describe('AppContent hotkeys integration', () => {
     fetchTasksByDealMock.mockReset();
     fetchQuotesByDealMock.mockReset();
     createDealMock.mockReset();
+    ensureCommissionsDataLoadedMock.mockReset();
+    ensureCommissionsDataLoadedMock.mockResolvedValue(undefined);
     ensureFinanceDataLoadedMock.mockReset();
     ensureFinanceDataLoadedMock.mockResolvedValue(undefined);
     fetchDealMock.mockImplementation(async (dealId: string) => ({
@@ -390,6 +393,15 @@ describe('AppContent hotkeys integration', () => {
     await waitFor(() => {
       expect(ensureFinanceDataLoadedMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('loads full finance data on commissions route without lightweight commissions snapshot', async () => {
+    renderAppContent('/commissions');
+
+    await waitFor(() => {
+      expect(ensureFinanceDataLoadedMock).toHaveBeenCalledTimes(1);
+    });
+    expect(ensureCommissionsDataLoadedMock).not.toHaveBeenCalled();
   });
 
   it('loads quotes for the first auto-selected deal without explicit selectedDealId', async () => {

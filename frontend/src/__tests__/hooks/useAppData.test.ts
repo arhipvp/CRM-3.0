@@ -262,4 +262,114 @@ describe('useAppData loading strategy', () => {
       'local-payment',
     ]);
   });
+
+  it('preserves finance snapshot when startup load finishes after commissions finance load', async () => {
+    const dealsDeferred = deferred<{
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: Array<{
+        id: string;
+        title: string;
+        clientId: string;
+        status: 'open' | 'won' | 'lost' | 'on_hold';
+        createdAt: string;
+        quotes: [];
+        documents: [];
+      }>;
+    }>();
+    const clientsDeferred = deferred<never[]>();
+    const usersDeferred = deferred<never[]>();
+    const channelsDeferred = deferred<never[]>();
+
+    mockedFetchDealsWithPagination.mockReturnValueOnce(dealsDeferred.promise);
+    mockedFetchClients.mockReturnValueOnce(clientsDeferred.promise);
+    mockedFetchUsers.mockReturnValueOnce(usersDeferred.promise);
+    mockedFetchSalesChannels.mockReturnValueOnce(channelsDeferred.promise);
+    mockedFetchFinancialRecords.mockResolvedValueOnce([
+      {
+        id: 'record-1',
+        paymentId: 'payment-1',
+        amount: '120',
+        createdAt: '2026-01-02T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+      } as never,
+    ]);
+    mockedFetchFinanceStatements.mockResolvedValueOnce([
+      {
+        id: 'statement-1',
+        name: 'Ведомость 1',
+        statementType: 'income',
+        status: 'draft',
+        createdAt: '2026-01-02T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+      } as never,
+    ]);
+    mockedFetchPaymentsWithPagination.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'payment-1',
+          amount: '500',
+          createdAt: '2026-01-02T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+        } as never,
+      ],
+    });
+
+    const { result } = renderHook(() => useAppData());
+
+    let loadPromise: Promise<void> | undefined;
+    let financePromise: Promise<void> | undefined;
+
+    await act(async () => {
+      loadPromise = result.current.loadData();
+    });
+
+    await act(async () => {
+      financePromise = result.current.ensureFinanceDataLoaded();
+      await financePromise;
+    });
+
+    expect(result.current.dataState.statements.map((statement) => statement.id)).toEqual([
+      'statement-1',
+    ]);
+    expect(result.current.dataState.financialRecords.map((record) => record.id)).toEqual([
+      'record-1',
+    ]);
+    expect(result.current.dataState.payments.map((payment) => payment.id)).toEqual(['payment-1']);
+
+    await act(async () => {
+      dealsDeferred.resolve({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 'deal-1',
+            title: 'Deal',
+            clientId: 'client-1',
+            status: 'open',
+            createdAt: '2026-01-01T00:00:00Z',
+            quotes: [],
+            documents: [],
+          },
+        ],
+      });
+      clientsDeferred.resolve([]);
+      usersDeferred.resolve([]);
+      channelsDeferred.resolve([]);
+      await loadPromise;
+    });
+
+    expect(result.current.dataState.statements.map((statement) => statement.id)).toEqual([
+      'statement-1',
+    ]);
+    expect(result.current.dataState.financialRecords.map((record) => record.id)).toEqual([
+      'record-1',
+    ]);
+    expect(result.current.dataState.payments.map((payment) => payment.id)).toEqual(['payment-1']);
+  });
 });

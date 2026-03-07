@@ -277,7 +277,6 @@ const AppContent: React.FC = () => {
   const {
     dataState,
     loadData,
-    ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureTasksLoaded,
     refreshDeals,
@@ -391,8 +390,8 @@ const AppContent: React.FC = () => {
       return;
     }
     if (isCommissionsRoute) {
-      ensureCommissionsDataLoaded().catch((err) => {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке данных ведомостей'));
+      ensureFinanceDataLoaded().catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
       });
       refreshPolicies().catch((err) => {
         setError(formatErrorMessage(err, 'Ошибка при загрузке данных для раздела комиссий'));
@@ -402,14 +401,7 @@ const AppContent: React.FC = () => {
     ensureFinanceDataLoaded().catch((err) => {
       setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
     });
-  }, [
-    ensureCommissionsDataLoaded,
-    ensureFinanceDataLoaded,
-    isAuthenticated,
-    isCommissionsRoute,
-    refreshPolicies,
-    setError,
-  ]);
+  }, [ensureFinanceDataLoaded, isAuthenticated, isCommissionsRoute, refreshPolicies, setError]);
 
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();

@@ -395,10 +395,6 @@ export const useAppData = () => {
         clients: clientsData,
         users: usersData,
         salesChannels: salesChannelsData,
-        payments: [],
-        financialRecords: [],
-        statements: [],
-        tasks: [],
       });
     } catch (err) {
       setError(
