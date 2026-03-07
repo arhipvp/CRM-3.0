@@ -258,8 +258,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return queryset
         return queryset.filter(
             Q(created_by=user)
-            | Q(records__payment__deal__seller=user)
-            | Q(records__payment__deal__executor=user)
+            | build_deal_visibility_q(user, prefix="records__payment__deal__")
+            | build_deal_visibility_q(user, prefix="records__payment__policy__deal__")
         ).distinct()
 
     def perform_create(self, serializer):

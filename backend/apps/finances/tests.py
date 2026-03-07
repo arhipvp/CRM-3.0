@@ -7,6 +7,7 @@ from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment, Statement
+from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
@@ -476,6 +477,92 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.income_record.refresh_from_db()
         self.assertEqual(statement.paid_at, paid_at)
         self.assertEqual(self.income_record.date, paid_at)
+
+    def test_seller_sees_statement_listed_via_policy_deal_link(self):
+        self.authenticate(self.seller)
+        policy = Policy.objects.create(number="POLICY-LIST-SELLER", deal=self.deal)
+        payment = Payment.objects.create(
+            policy=policy,
+            amount=Decimal("900.00"),
+            description="Policy payment",
+        )
+        record = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("180.00"),
+            description="Policy income",
+        )
+        statement = Statement.objects.create(
+            name="Policy-linked sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        record.statement = statement
+        record.save(update_fields=["statement"])
+
+        response = self.api_client.get("/api/v1/finance_statements/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json().get("results", response.json())
+        statement_ids = {item["id"] for item in results}
+        self.assertIn(str(statement.id), statement_ids)
+
+    def test_executor_sees_statement_listed_via_policy_deal_link(self):
+        self.authenticate(self.executor)
+        policy = Policy.objects.create(number="POLICY-LIST-EXECUTOR", deal=self.deal)
+        payment = Payment.objects.create(
+            policy=policy,
+            amount=Decimal("950.00"),
+            description="Executor policy payment",
+        )
+        record = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("190.00"),
+            description="Executor policy income",
+        )
+        statement = Statement.objects.create(
+            name="Executor policy-linked sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        record.statement = statement
+        record.save(update_fields=["statement"])
+
+        response = self.api_client.get("/api/v1/finance_statements/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json().get("results", response.json())
+        statement_ids = {item["id"] for item in results}
+        self.assertIn(str(statement.id), statement_ids)
+
+    def test_paid_statement_via_policy_deal_is_returned_in_list(self):
+        self.authenticate(self.seller)
+        policy = Policy.objects.create(number="POLICY-LIST-PAID", deal=self.deal)
+        payment = Payment.objects.create(
+            policy=policy,
+            amount=Decimal("1000.00"),
+            description="Paid policy payment",
+        )
+        record = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("200.00"),
+            description="Paid policy income",
+        )
+        statement = Statement.objects.create(
+            name="Paid policy-linked sheet",
+            statement_type="income",
+            created_by=self.seller,
+            paid_at=timezone.now().date(),
+        )
+        record.statement = statement
+        record.save(update_fields=["statement"])
+
+        response = self.api_client.get("/api/v1/finance_statements/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json().get("results", response.json())
+        by_id = {item["id"]: item for item in results}
+        self.assertIn(str(statement.id), by_id)
+        self.assertEqual(by_id[str(statement.id)]["paid_at"], statement.paid_at.isoformat())
 
     def test_export_xlsx_creates_drive_file(self):
         self.authenticate(self.seller)
