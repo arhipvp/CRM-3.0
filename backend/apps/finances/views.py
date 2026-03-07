@@ -22,9 +22,11 @@ from django.db.models import (
     DecimalField,
     F,
     IntegerField,
+    OuterRef,
     Prefetch,
     Q,
     Sum,
+    Subquery,
     TextField,
     Value,
     When,
@@ -96,6 +98,17 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        paid_balance_subquery = (
+            FinancialRecord.objects.filter(
+                payment_id=OuterRef("payment_id"),
+                date__isnull=False,
+                deleted_at__isnull=True,
+            )
+            .order_by()
+            .values("payment_id")
+            .annotate(total=Sum("amount"))
+            .values("total")[:1]
+        )
         queryset = (
             FinancialRecord.objects.select_related(
                 "payment",
@@ -132,12 +145,9 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 output_field=DateField(),
             ),
             payment_paid_balance=Coalesce(
-                Sum(
-                    "payment__financial_records__amount",
-                    filter=Q(
-                        payment__financial_records__date__isnull=False,
-                        payment__financial_records__deleted_at__isnull=True,
-                    ),
+                Subquery(
+                    paid_balance_subquery,
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
                 ),
                 0,
                 output_field=DecimalField(max_digits=12, decimal_places=2),

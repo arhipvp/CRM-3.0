@@ -818,6 +818,105 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         )
 
 
+class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.seller = User.objects.create_user(  # pragma: allowlist secret
+            username="seller", password="pass"  # pragma: allowlist secret
+        )
+        self.viewer = User.objects.create_user(  # pragma: allowlist secret
+            username="viewer", password="pass"  # pragma: allowlist secret
+        )
+        client = Client.objects.create(name="Saldo Client")
+        self.deal = Deal.objects.create(
+            title="Saldo Deal",
+            client=client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        self.policy = Policy.objects.create(number="SALDO-POLICY", deal=self.deal)
+
+    def _extract_results(self, response):
+        payload = response.json()
+        return payload.get("results", payload)
+
+    def test_paid_balance_is_not_multiplied_by_visibility_joins(self):
+        self.deal.visible_users.add(self.viewer)
+        Task.objects.create(
+            title="Visibility task 1",
+            deal=self.deal,
+            assignee=self.seller,
+        )
+        Task.objects.create(
+            title="Visibility task 2",
+            deal=self.deal,
+            assignee=self.seller,
+        )
+        payment = Payment.objects.create(
+            deal=self.deal,
+            policy=self.policy,
+            amount=Decimal("200032.00"),
+            description="Tagiev payment",
+            actual_date=timezone.now().date(),
+        )
+        paid_expense = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-24000.00"),
+            date=timezone.now().date(),
+            note="Скидка",
+        )
+        unpaid_expense = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-1.00"),
+            note="Расход исполнителю",
+        )
+        income = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("1.00"),
+            note="Комиссия",
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/financial_records/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        by_id = {item["id"]: item for item in results}
+        expected_balance = "-24000.00"
+        for record in (paid_expense, unpaid_expense, income):
+            self.assertEqual(
+                by_id[str(record.id)]["payment_paid_balance"], expected_balance
+            )
+
+    def test_paid_balance_stays_correct_without_visibility_joins(self):
+        payment = Payment.objects.create(
+            deal=self.deal,
+            policy=self.policy,
+            amount=Decimal("5000.00"),
+            description="Simple payment",
+            actual_date=timezone.now().date(),
+        )
+        paid_income = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("150.00"),
+            date=timezone.now().date(),
+        )
+        unpaid_income = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("50.00"),
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/financial_records/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        by_id = {item["id"]: item for item in results}
+        self.assertEqual(by_id[str(paid_income.id)]["payment_paid_balance"], "150.00")
+        self.assertEqual(by_id[str(unpaid_income.id)]["payment_paid_balance"], "150.00")
+
+
 class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
