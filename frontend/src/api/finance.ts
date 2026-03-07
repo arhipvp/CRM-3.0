@@ -3,6 +3,37 @@ import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from '.
 import { mapFinancialRecord, mapPayment, mapStatement } from './mappers';
 import type { FinancialRecord, Payment, Statement } from '../types';
 
+const FINANCE_PAGE_SIZE = 200;
+
+async function fetchAllPages<T>(
+  path: string,
+  mapper: (item: Record<string, unknown>) => T,
+  filters?: FilterParams,
+  options?: RequestInit,
+): Promise<T[]> {
+  let page = 1;
+  const aggregated: T[] = [];
+
+  while (true) {
+    const qs = buildQueryString({
+      ...(filters ?? {}),
+      page,
+      page_size: FINANCE_PAGE_SIZE,
+    });
+    const payload = await request<PaginatedResponse<Record<string, unknown>>>(
+      `${path}${qs}`,
+      options,
+    );
+    aggregated.push(...unwrapList<Record<string, unknown>>(payload).map(mapper));
+    if (!payload.next) {
+      break;
+    }
+    page += 1;
+  }
+
+  return aggregated;
+}
+
 export async function fetchPayments(filters?: FilterParams): Promise<Payment[]> {
   const qs = buildQueryString(filters);
   const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/payments/${qs}`);
@@ -74,8 +105,7 @@ export async function updatePayment(
 }
 
 export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
-  const payload = await request<Record<string, unknown>>('/financial_records/');
-  return unwrapList<Record<string, unknown>>(payload).map(mapFinancialRecord);
+  return fetchAllPages('/financial_records/', mapFinancialRecord);
 }
 
 export async function fetchFinancialRecordsWithPagination(
@@ -148,12 +178,7 @@ export async function fetchFinanceStatements(
   filters?: FilterParams,
   options?: RequestInit,
 ): Promise<Statement[]> {
-  const qs = buildQueryString(filters);
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(
-    `/finance_statements/${qs}`,
-    options,
-  );
-  return unwrapList<Record<string, unknown>>(payload).map(mapStatement);
+  return fetchAllPages('/finance_statements/', mapStatement, filters, options);
 }
 
 export async function createFinanceStatement(data: {
