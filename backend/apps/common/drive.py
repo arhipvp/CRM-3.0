@@ -5,14 +5,17 @@ from __future__ import annotations
 import json
 import logging
 from io import BytesIO
+from pathlib import Path
 from typing import Any, BinaryIO, Callable, NotRequired, Optional, TypedDict, TypeVar
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 try:
+    from google.auth import exceptions as _google_auth_exceptions
     from google.oauth2 import credentials as _oauth_credentials
     from google.oauth2 import service_account as _service_account
     from googleapiclient.discovery import build as _gdrive_build
@@ -20,6 +23,7 @@ try:
     from googleapiclient.http import MediaIoBaseDownload as _MediaIoBaseDownload
     from googleapiclient.http import MediaIoBaseUpload as _MediaIoBaseUpload
 except ImportError as exc:  # pragma: no cover - requires optional dependency
+    _google_auth_exceptions = None
     _oauth_credentials = None
     _gdrive_build = None
     _GDriveHttpError = None
@@ -69,6 +73,17 @@ class DriveFileInfo(TypedDict):
     parent_id: NotRequired[Optional[str]]
 
 
+class DriveConnectionStatus(TypedDict):
+    status: str
+    auth_mode: str
+    using_fallback: bool
+    reconnect_available: bool
+    last_checked_at: str
+    last_error_code: str
+    last_error_message: str
+    active_auth_type: str
+
+
 def _ensure_drive_dependencies() -> None:
     if _drive_import_error:
         raise DriveConfigurationError(
@@ -95,14 +110,22 @@ def _get_drive_auth_mode() -> str:
 
 
 def _get_oauth_settings() -> dict[str, str]:
+    refresh_token = getattr(settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", "").strip()
+    refresh_token_file = str(
+        getattr(settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE", "") or ""
+    ).strip()
+    if refresh_token_file:
+        path = Path(refresh_token_file)
+        if path.exists():
+            file_token = path.read_text(encoding="utf-8").strip()
+            if file_token:
+                refresh_token = file_token
     return {
         "client_id": getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "").strip(),
         "client_secret": getattr(
             settings, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", ""
         ).strip(),
-        "refresh_token": getattr(
-            settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", ""
-        ).strip(),
+        "refresh_token": refresh_token,
         "token_uri": (
             getattr(settings, "GOOGLE_DRIVE_OAUTH_TOKEN_URI", "")
             or DEFAULT_GOOGLE_OAUTH_TOKEN_URI
@@ -207,32 +230,80 @@ def _extract_http_error_status_reason(exc: Exception) -> tuple[Optional[int], st
     return status, reason
 
 
-def _log_drive_api_failure(operation: str, auth_type: str, exc: Exception) -> None:
+def _is_refresh_error(exc: Exception) -> bool:
+    refresh_error_cls = (
+        getattr(_google_auth_exceptions, "RefreshError", None)
+        if _google_auth_exceptions
+        else None
+    )
+    return bool(refresh_error_cls and isinstance(exc, refresh_error_cls))
+
+
+def _extract_refresh_error_details(exc: Exception) -> tuple[str, str]:
+    raw_message = " ".join(str(part) for part in getattr(exc, "args", ()) if part).strip()
+    if not raw_message:
+        raw_message = str(exc).strip()
+    normalized = raw_message.lower()
+    if "invalid_grant" in normalized and (
+        "expired" in normalized or "revoked" in normalized
+    ):
+        return "oauth_refresh_revoked", raw_message
+    if "invalid_grant" in normalized:
+        return "oauth_invalid_grant", raw_message
+    if "invalid_client" in normalized:
+        return "oauth_invalid_client", raw_message
+    return "oauth_refresh_error", raw_message or "OAuth refresh failed."
+
+
+def _extract_drive_error_details(exc: Exception) -> tuple[Optional[int], str, str]:
+    if _is_refresh_error(exc):
+        code, message = _extract_refresh_error_details(exc)
+        return None, code, message
+
     status, reason = _extract_http_error_status_reason(exc)
+    if status is not None:
+        code = reason or f"http_{status}"
+        return status, code, reason or f"HTTP {status}"
+
+    return None, exc.__class__.__name__.lower(), str(exc).strip() or exc.__class__.__name__
+
+
+def _is_fallback_worthy(exc: Exception, status: Optional[int]) -> bool:
+    if _is_refresh_error(exc):
+        return True
+    return bool(status in DRIVE_FALLBACK_HTTP_STATUSES)
+
+
+def _log_drive_api_failure(operation: str, auth_type: str, exc: Exception) -> None:
+    status, code, message = _extract_drive_error_details(exc)
     if status is None:
         logger.error(
-            "Google Drive operation failed. operation=%s auth=%s",
+            "Google Drive operation failed. operation=%s auth=%s code=%s message=%s",
             operation,
             auth_type,
+            code or "unknown",
+            message or "unknown",
             exc_info=True,
         )
         return
 
     logger.error(
-        "Google Drive API error. operation=%s auth=%s status=%s reason=%s",
+        "Google Drive API error. operation=%s auth=%s status=%s code=%s reason=%s",
         operation,
         auth_type,
         status,
-        reason or "unknown",
+        code or "unknown",
+        message or "unknown",
         exc_info=True,
     )
     if status in (401, 403):
         logger.error(
-            "Google Drive alert. operation=%s auth=%s status=%s reason=%s",
+            "Google Drive alert. operation=%s auth=%s status=%s code=%s reason=%s",
             operation,
             auth_type,
             status,
-            reason or "unknown",
+            code or "unknown",
+            message or "unknown",
         )
 
 
@@ -273,39 +344,127 @@ def _run_with_drive_service(
     action: Callable[[Any], _T],
     *,
     return_none_on_statuses: tuple[int, ...] = (),
+    diagnostics: Optional[dict[str, Any]] = None,
 ) -> Optional[_T]:
     services = _get_drive_services()
     for index, (auth_type, service) in enumerate(services):
         has_fallback = index < len(services) - 1
+        if diagnostics is not None:
+            diagnostics.setdefault("attempts", []).append(auth_type)
         try:
-            return action(service)
+            result = action(service)
+            if diagnostics is not None:
+                diagnostics["active_auth_type"] = auth_type
+                diagnostics["using_fallback"] = index > 0
+                diagnostics.setdefault("last_error_code", "")
+                diagnostics.setdefault("last_error_message", "")
+            return result
         except Exception as exc:
-            status, reason = _extract_http_error_status_reason(exc)
+            status, code, message = _extract_drive_error_details(exc)
             _log_drive_api_failure(operation, auth_type, exc)
+            if diagnostics is not None:
+                diagnostics["last_error_code"] = code or ""
+                diagnostics["last_error_message"] = message or ""
             if (
                 status in return_none_on_statuses
                 and has_fallback
-                and status in DRIVE_FALLBACK_HTTP_STATUSES
+                and _is_fallback_worthy(exc, status)
             ):
                 logger.warning(
-                    "Retrying Drive operation with fallback auth. operation=%s status=%s reason=%s",
+                    "Retrying Drive operation with fallback auth. operation=%s status=%s code=%s reason=%s",
                     operation,
                     status,
-                    reason or "unknown",
+                    code or "unknown",
+                    message or "unknown",
                 )
                 continue
             if status in return_none_on_statuses:
                 return None
-            if has_fallback and status in DRIVE_FALLBACK_HTTP_STATUSES:
+            if has_fallback and _is_fallback_worthy(exc, status):
                 logger.warning(
-                    "Retrying Drive operation with fallback auth. operation=%s status=%s reason=%s",
+                    "Retrying Drive operation with fallback auth. operation=%s status=%s code=%s reason=%s",
                     operation,
                     status,
-                    reason or "unknown",
+                    code or "unknown",
+                    message or "unknown",
                 )
                 continue
             raise
     return None
+
+
+def get_drive_connection_status() -> DriveConnectionStatus:
+    auth_mode = _get_drive_auth_mode()
+    root_folder_id = getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "").strip()
+    timestamp = timezone.now().isoformat()
+    reconnect_available = bool(
+        getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "").strip()
+        and getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "").strip()
+        and getattr(settings, "GOOGLE_DRIVE_OAUTH_REDIRECT_URI", "").strip()
+        and root_folder_id
+    )
+
+    base_status: DriveConnectionStatus = {
+        "status": "error",
+        "auth_mode": auth_mode,
+        "using_fallback": False,
+        "reconnect_available": reconnect_available,
+        "last_checked_at": timestamp,
+        "last_error_code": "",
+        "last_error_message": "",
+        "active_auth_type": "",
+    }
+
+    if not root_folder_id:
+        base_status["status"] = "not_configured"
+        base_status["last_error_code"] = "missing_root_folder_id"
+        base_status["last_error_message"] = (
+            "GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured."
+        )
+        return base_status
+
+    diagnostics: dict[str, Any] = {}
+    try:
+        _run_with_drive_service(
+            "probe_drive_connection",
+            lambda service: service.files()
+            .get(
+                fileId=root_folder_id,
+                fields="id,name",
+                supportsAllDrives=True,
+            )
+            .execute(),
+            diagnostics=diagnostics,
+        )
+    except DriveConfigurationError as exc:
+        base_status["status"] = "error"
+        base_status["last_error_code"] = "drive_config_error"
+        base_status["last_error_message"] = str(exc)
+        return base_status
+    except Exception as exc:
+        _, code, message = _extract_drive_error_details(exc)
+        base_status["status"] = (
+            "needs_reconnect"
+            if code.startswith("oauth_") and "refresh" in code
+            else "error"
+        )
+        base_status["last_error_code"] = code
+        base_status["last_error_message"] = message
+        return base_status
+
+    base_status["active_auth_type"] = str(diagnostics.get("active_auth_type") or "")
+    base_status["using_fallback"] = bool(diagnostics.get("using_fallback"))
+    base_status["last_error_code"] = str(diagnostics.get("last_error_code") or "")
+    base_status["last_error_message"] = str(
+        diagnostics.get("last_error_message") or ""
+    )
+    if base_status["using_fallback"] and base_status["last_error_code"].startswith(
+        "oauth_"
+    ):
+        base_status["status"] = "needs_reconnect"
+    else:
+        base_status["status"] = "connected"
+    return base_status
 
 
 def _escape_name(value: str) -> str:

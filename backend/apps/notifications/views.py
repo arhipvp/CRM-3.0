@@ -8,10 +8,18 @@ from apps.deals.permissions import is_admin_user
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.http import HttpResponseRedirect
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .drive_oauth import (
+    DriveReconnectError,
+    build_callback_redirect_url,
+    build_reconnect_url,
+    complete_reconnect,
+    get_drive_status_for_user,
+)
 from .models import Notification
 from .serializers import NotificationSerializer, NotificationSettingsSerializer
 from .telegram_notifications import (
@@ -68,8 +76,51 @@ class NotificationSettingsView(APIView):
                     "linked_at": profile.linked_at,
                 },
                 "bot_username": bot_username,
+                "drive": get_drive_status_for_user(request.user),
             }
         )
+
+
+class DriveStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({"drive": get_drive_status_for_user(request.user)})
+
+
+class DriveReconnectView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            reconnect_url = build_reconnect_url(request=request, user=request.user)
+        except (DriveReconnectError, DriveError) as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({"auth_url": reconnect_url}, status=status.HTTP_200_OK)
+
+
+class DriveCallbackView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        try:
+            complete_reconnect(request=request)
+            redirect_url = build_callback_redirect_url(
+                request=request,
+                success=True,
+                message="Google Drive переподключён.",
+            )
+            return HttpResponseRedirect(redirect_url)
+        except (DriveReconnectError, DriveError) as exc:
+            redirect_url = build_callback_redirect_url(
+                request=request,
+                success=False,
+                message=str(exc),
+            )
+            return HttpResponseRedirect(redirect_url)
 
 
 class TelegramLinkView(APIView):

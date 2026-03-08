@@ -958,3 +958,58 @@ class TelegramBotCommandTests(TestCase):
 
         self.assertEqual(len(fake_client.answered_callbacks), 1)
         self.assertEqual(len(fake_client.sent_messages), 0)
+
+
+class DriveReconnectApiTests(TestCase):
+    def setUp(self):
+        self.vova = User.objects.create_user(username="Vova", password="pass")
+        self.other = User.objects.create_user(username="other-drive", password="pass")
+        self.api_client = APIClient()
+
+    def test_notification_settings_response_includes_drive_status(self):
+        self.api_client.force_authenticate(self.vova)
+        with patch(
+            "apps.notifications.views.get_drive_status_for_user",
+            return_value={
+                "status": "connected",
+                "auth_mode": "auto",
+                "using_fallback": False,
+                "reconnect_available": True,
+                "last_checked_at": "2026-03-08T12:00:00Z",
+                "last_error_code": "",
+                "last_error_message": "",
+                "active_auth_type": "oauth",
+            },
+        ):
+            response = self.api_client.get("/api/v1/notifications/settings/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("drive", response.data)
+        self.assertEqual(response.data["drive"]["status"], "connected")
+
+    def test_drive_reconnect_is_restricted_to_vova(self):
+        self.api_client.force_authenticate(self.other)
+
+        response = self.api_client.post(
+            "/api/v1/notifications/settings/drive-reconnect/",
+            data={},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Vova", response.data["detail"])
+
+    def test_drive_reconnect_returns_google_auth_url_for_vova(self):
+        self.api_client.force_authenticate(self.vova)
+        with patch(
+            "apps.notifications.views.build_reconnect_url",
+            return_value="https://accounts.google.com/o/oauth2/v2/auth?state=test",
+        ):
+            response = self.api_client.post(
+                "/api/v1/notifications/settings/drive-reconnect/",
+                data={},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("https://accounts.google.com", response.data["auth_url"])

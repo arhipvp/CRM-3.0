@@ -18,6 +18,9 @@ Including another URLconf
 from apps.documents.views import DocumentRecognitionView
 from apps.finances.views import FinanceSummaryView
 from apps.notifications.views import (
+    DriveCallbackView,
+    DriveReconnectView,
+    DriveStatusView,
     NotificationSettingsView,
     TelegramIntakeDriveUploadView,
     TelegramLinkView,
@@ -48,6 +51,21 @@ urlpatterns = [
         "api/v1/notifications/settings/",
         NotificationSettingsView.as_view(),
         name="notification-settings",
+    ),
+    path(
+        "api/v1/notifications/settings/drive-status/",
+        DriveStatusView.as_view(),
+        name="notification-drive-status",
+    ),
+    path(
+        "api/v1/notifications/settings/drive-reconnect/",
+        DriveReconnectView.as_view(),
+        name="notification-drive-reconnect",
+    ),
+    path(
+        "api/v1/notifications/settings/drive-callback/",
+        DriveCallbackView.as_view(),
+        name="notification-drive-callback",
     ),
     path(
         "api/v1/notifications/telegram-link/",

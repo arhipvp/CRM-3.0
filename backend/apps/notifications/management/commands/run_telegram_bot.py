@@ -2,6 +2,7 @@ import logging
 import time
 from pathlib import Path
 
+from apps.common.drive import _get_oauth_settings
 from apps.notifications.models import TelegramProfile
 from apps.notifications.telegram_intake import TelegramIntakeService
 from apps.notifications.telegram_notifications import (
@@ -302,9 +303,7 @@ class Command(BaseCommand):
         oauth_client_secret = str(
             getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "")
         ).strip()
-        oauth_refresh_token = str(
-            getattr(settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", "")
-        ).strip()
+        oauth_refresh_token = _get_oauth_settings().get("refresh_token", "").strip()
         service_account_file = str(
             getattr(settings, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", "")
         ).strip()

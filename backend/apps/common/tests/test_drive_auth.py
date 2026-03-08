@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 from apps.common import drive
 from apps.common.drive import DriveConfigurationError
 from django.test import SimpleTestCase, override_settings
+from google.auth.exceptions import RefreshError
 
 
 class _FakeHttpError(Exception):
@@ -60,6 +61,47 @@ class DriveAuthTests(SimpleTestCase):
         self.assertEqual(
             gdrive_build.call_args_list[1].kwargs["credentials"], "sa-creds"
         )
+
+    @override_settings(
+        GOOGLE_DRIVE_AUTH_MODE="auto",
+        GOOGLE_DRIVE_OAUTH_CLIENT_ID="client-id",
+        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",
+        GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="refresh-token",
+        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/tmp/service-account.json",
+    )
+    def test_auto_mode_retries_with_service_account_on_oauth_refresh_error(self):
+        gdrive_build = Mock(side_effect=["oauth-service", "sa-service"])
+        oauth_module = SimpleNamespace(Credentials=Mock(return_value="oauth-creds"))
+        service_account_module = SimpleNamespace(
+            Credentials=SimpleNamespace(
+                from_service_account_file=Mock(return_value="sa-creds")
+            )
+        )
+
+        with (
+            patch.object(drive, "_drive_import_error", None),
+            patch.object(drive, "_gdrive_build", gdrive_build),
+            patch.object(drive, "_oauth_credentials", oauth_module),
+            patch.object(drive, "_service_account", service_account_module),
+        ):
+
+            def _operation(service):
+                if service == "sa-service":
+                    return "fallback-result"
+                raise RefreshError(
+                    "invalid_grant: Token has been expired or revoked."
+                )
+
+            diagnostics = {}
+            result = drive._run_with_drive_service(
+                "test_operation",
+                _operation,
+                diagnostics=diagnostics,
+            )
+
+        self.assertEqual(result, "fallback-result")
+        self.assertTrue(diagnostics["using_fallback"])
+        self.assertEqual(diagnostics["last_error_code"], "oauth_refresh_revoked")
 
     @override_settings(
         GOOGLE_DRIVE_AUTH_MODE="auto",

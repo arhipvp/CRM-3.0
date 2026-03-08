@@ -58,6 +58,7 @@ env/
 *.env
 .env.*
 !env.example
+runtime-secrets/
 
 # Migrations auto-generated pycache
 **/migrations/__pycache__/

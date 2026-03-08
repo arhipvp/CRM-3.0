@@ -2,14 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import {
   changePassword,
+  createDriveReconnect,
   createMailbox,
   createTelegramLink,
   deleteMailbox,
+  fetchDriveStatus,
   fetchMailboxes,
   fetchMailboxMessages,
   fetchNotificationSettings,
+  getCurrentUser,
   unlinkTelegram,
   updateNotificationSettings,
+  type DriveStatus,
   type Mailbox,
   type MailboxMessage,
   type NotificationSettings,
@@ -34,6 +38,12 @@ export const SettingsView: React.FC = () => {
   const [telegramLoading, setTelegramLoading] = useState(true);
   const [telegramSaving, setTelegramSaving] = useState(false);
   const [telegramError, setTelegramError] = useState('');
+  const [driveStatus, setDriveStatus] = useState<DriveStatus | null>(null);
+  const [driveLoading, setDriveLoading] = useState(true);
+  const [driveError, setDriveError] = useState('');
+  const [driveReconnectBusy, setDriveReconnectBusy] = useState(false);
+  const [driveReconnectNotice, setDriveReconnectNotice] = useState('');
+  const [currentUsername, setCurrentUsername] = useState('');
   const [sberLoginInput, setSberLoginInput] = useState('');
   const [sberPasswordInput, setSberPasswordInput] = useState('');
   const [sberSaving, setSberSaving] = useState(false);
@@ -98,19 +108,28 @@ export const SettingsView: React.FC = () => {
     const loadSettings = async () => {
       setTelegramLoading(true);
       setTelegramError('');
+      setDriveLoading(true);
+      setDriveError('');
       try {
-        const response = await fetchNotificationSettings();
+        const [response, currentUser] = await Promise.all([
+          fetchNotificationSettings(),
+          getCurrentUser(),
+        ]);
         if (!mounted) {
           return;
         }
         applyTelegramSettings(response);
+        setDriveStatus(response.drive ?? null);
+        setCurrentUsername(currentUser.username ?? '');
       } catch (err) {
         if (mounted) {
           setTelegramError(formatErrorMessage(err, 'Не удалось загрузить Telegram-настройки.'));
+          setDriveError(formatErrorMessage(err, 'Не удалось загрузить статус Google Drive.'));
         }
       } finally {
         if (mounted) {
           setTelegramLoading(false);
+          setDriveLoading(false);
         }
       }
     };
@@ -119,6 +138,49 @@ export const SettingsView: React.FC = () => {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reconnectState = params.get('driveReconnect');
+    const reconnectMessage = params.get('driveReconnectMessage');
+    if (!reconnectState) {
+      return;
+    }
+
+    const message =
+      reconnectMessage && reconnectMessage.trim().length > 0
+        ? reconnectMessage
+        : reconnectState === 'success'
+          ? 'Google Drive переподключён.'
+          : 'Не удалось переподключить Google Drive.';
+    if (reconnectState === 'success') {
+      setDriveReconnectNotice(message);
+      setDriveError('');
+    } else {
+      setDriveError(message);
+      setDriveReconnectNotice('');
+    }
+
+    void (async () => {
+      try {
+        const response = await fetchDriveStatus();
+        setDriveStatus(response.drive);
+      } catch (err) {
+        setDriveError(formatErrorMessage(err, message));
+      } finally {
+        setDriveLoading(false);
+      }
+    })();
+
+    params.delete('driveReconnect');
+    params.delete('driveReconnectMessage');
+    const nextQuery = params.toString();
+    window.history.replaceState(
+      {},
+      document.title,
+      `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`,
+    );
   }, []);
 
   useEffect(() => {
@@ -151,17 +213,63 @@ export const SettingsView: React.FC = () => {
   const applyTelegramSettings = (response: {
     settings: NotificationSettings;
     telegram?: { linked?: boolean; linked_at?: string | null };
+    drive?: DriveStatus;
   }) => {
     setTelegramSettings(response.settings);
     setSberLoginInput(response.settings.sber_login ?? '');
     setSberPasswordInput('');
     setSberSuccess('');
     setNextContactLeadDaysInput(String(response.settings.next_contact_lead_days ?? 90));
+    if (response.drive) {
+      setDriveStatus(response.drive);
+    }
     if (response.telegram) {
       setTelegramLinked(response.telegram.linked ?? false);
       setTelegramLinkedAt(response.telegram.linked_at ?? null);
     }
   };
+
+  const handleDriveRefresh = async () => {
+    setDriveLoading(true);
+    setDriveError('');
+    try {
+      const response = await fetchDriveStatus();
+      setDriveStatus(response.drive);
+    } catch (err) {
+      setDriveError(formatErrorMessage(err, 'Не удалось обновить статус Google Drive.'));
+    } finally {
+      setDriveLoading(false);
+    }
+  };
+
+  const handleDriveReconnect = async () => {
+    setDriveReconnectBusy(true);
+    setDriveError('');
+    setDriveReconnectNotice('');
+    try {
+      const response = await createDriveReconnect();
+      window.location.assign(response.auth_url);
+    } catch (err) {
+      setDriveError(formatErrorMessage(err, 'Не удалось запустить перепривязку Google Drive.'));
+      setDriveReconnectBusy(false);
+    }
+  };
+
+  const isDriveReconnectUser = currentUsername === 'Vova';
+  const driveStatusLabel = (() => {
+    switch (driveStatus?.status) {
+      case 'connected':
+        return 'Подключено';
+      case 'needs_reconnect':
+        return driveStatus.using_fallback ? 'Работаем через резервный service account' : 'Нужна перепривязка';
+      case 'not_configured':
+        return 'Не настроено';
+      case 'error':
+        return 'Ошибка проверки';
+      default:
+        return 'Неизвестно';
+    }
+  })();
 
   const handleTelegramToggle = async (field: keyof NotificationSettings, value: boolean) => {
     if (!telegramSettings) {
@@ -547,6 +655,82 @@ export const SettingsView: React.FC = () => {
                 &lt;3 дней добавляется «❗».
               </p>
             </div>
+          </>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
+        <header className="space-y-1">
+          <h3 className="text-lg font-semibold text-slate-900">Google Drive</h3>
+          <p className="text-sm text-slate-600">
+            Контролируйте состояние интеграции Drive и перепривязывайте OAuth для пользователя
+            Vova без ручного SSH.
+          </p>
+        </header>
+
+        {driveError && <InlineAlert as="p">{driveError}</InlineAlert>}
+        {driveReconnectNotice && (
+          <InlineAlert as="p" tone="success">
+            {driveReconnectNotice}
+          </InlineAlert>
+        )}
+
+        {driveLoading ? (
+          <p className="text-sm text-slate-500">Проверяем Google Drive...</p>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-700">Статус: {driveStatusLabel}</p>
+                <p className="text-xs text-slate-500">
+                  Режим: {driveStatus?.auth_mode || 'неизвестно'}
+                  {driveStatus?.active_auth_type ? ` · активная авторизация: ${driveStatus.active_auth_type}` : ''}
+                </p>
+                {driveStatus?.last_checked_at && (
+                  <p className="text-xs text-slate-500">
+                    Последняя проверка:{' '}
+                    {new Date(driveStatus.last_checked_at).toLocaleString('ru-RU')}
+                  </p>
+                )}
+                {driveStatus?.last_error_message && (
+                  <p className="text-xs text-amber-700">
+                    Причина: {driveStatus.last_error_message}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className={BTN_OUTLINE}
+                  onClick={handleDriveRefresh}
+                  disabled={driveLoading || driveReconnectBusy}
+                >
+                  Обновить статус
+                </button>
+                {isDriveReconnectUser && driveStatus?.reconnect_available && (
+                  <button
+                    type="button"
+                    className={BTN_PRIMARY}
+                    onClick={handleDriveReconnect}
+                    disabled={driveReconnectBusy}
+                  >
+                    {driveReconnectBusy ? 'Переходим в Google...' : 'Переподключить Google Drive'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {!isDriveReconnectUser && (
+              <p className="text-xs text-slate-500">
+                Персональная перепривязка OAuth доступна только для пользователя Vova.
+              </p>
+            )}
+            {driveStatus?.using_fallback && (
+              <p className="text-xs text-slate-500">
+                Основные файловые сценарии продолжают работать через service account, пока OAuth не
+                будет перепривязан.
+              </p>
+            )}
           </>
         )}
       </section>
