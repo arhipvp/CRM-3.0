@@ -44,11 +44,6 @@ export const SettingsView: React.FC = () => {
   const [driveReconnectBusy, setDriveReconnectBusy] = useState(false);
   const [driveReconnectNotice, setDriveReconnectNotice] = useState('');
   const [currentUsername, setCurrentUsername] = useState('');
-  const [sberLoginInput, setSberLoginInput] = useState('');
-  const [sberPasswordInput, setSberPasswordInput] = useState('');
-  const [sberSaving, setSberSaving] = useState(false);
-  const [sberError, setSberError] = useState('');
-  const [sberSuccess, setSberSuccess] = useState('');
   const [nextContactLeadDaysInput, setNextContactLeadDaysInput] = useState('');
   const [nextContactLeadDaysError, setNextContactLeadDaysError] = useState('');
   const [nextContactLeadDaysSaving, setNextContactLeadDaysSaving] = useState(false);
@@ -216,9 +211,6 @@ export const SettingsView: React.FC = () => {
     drive?: DriveStatus;
   }) => {
     setTelegramSettings(response.settings);
-    setSberLoginInput(response.settings.sber_login ?? '');
-    setSberPasswordInput('');
-    setSberSuccess('');
     setNextContactLeadDaysInput(String(response.settings.next_contact_lead_days ?? 90));
     if (response.drive) {
       setDriveStatus(response.drive);
@@ -318,54 +310,6 @@ export const SettingsView: React.FC = () => {
       setNextContactLeadDaysError(formatErrorMessage(err, 'Не удалось сохранить настройки.'));
     } finally {
       setNextContactLeadDaysSaving(false);
-    }
-  };
-
-  const handleSberSettingsSave = async () => {
-    if (!telegramSettings) {
-      return;
-    }
-    const nextLogin = sberLoginInput.trim();
-    const nextPassword = sberPasswordInput;
-    if (nextLogin === (telegramSettings.sber_login ?? '') && nextPassword.length === 0) {
-      setSberError('');
-      setSberSuccess('');
-      return;
-    }
-
-    setSberSaving(true);
-    setSberError('');
-    setSberSuccess('');
-    try {
-      const response = await updateNotificationSettings({
-        sber_login: nextLogin,
-        ...(nextPassword.length > 0 ? { sber_password: nextPassword } : {}),
-      });
-      applyTelegramSettings(response);
-      setSberSuccess('Данные Сбера сохранены.');
-    } catch (err) {
-      setSberError(formatErrorMessage(err, 'Не удалось сохранить данные Сбера.'));
-    } finally {
-      setSberSaving(false);
-    }
-  };
-
-  const handleSberPasswordClear = async () => {
-    if (!telegramSettings?.has_sber_password) {
-      setSberPasswordInput('');
-      return;
-    }
-    setSberSaving(true);
-    setSberError('');
-    setSberSuccess('');
-    try {
-      const response = await updateNotificationSettings({ sber_password: null });
-      applyTelegramSettings(response);
-      setSberSuccess('Пароль Сбера удалён.');
-    } catch (err) {
-      setSberError(formatErrorMessage(err, 'Не удалось удалить пароль Сбера.'));
-    } finally {
-      setSberSaving(false);
     }
   };
 
@@ -737,89 +681,6 @@ export const SettingsView: React.FC = () => {
             )}
           </>
         )}
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
-        <header className="space-y-1">
-          <h3 className="text-lg font-semibold text-slate-900">Сбер Страхование</h3>
-          <p className="text-sm text-slate-600">
-            Эти учётные данные используются для автооформления полисов в кабинете Сбер Страхования.
-          </p>
-        </header>
-
-        {sberError && <InlineAlert as="p">{sberError}</InlineAlert>}
-        {sberSuccess && (
-          <InlineAlert as="p" tone="success">
-            {sberSuccess}
-          </InlineAlert>
-        )}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label htmlFor="sber-login" className="app-label">
-              Логин Сбер
-            </label>
-            <input
-              id="sber-login"
-              type="text"
-              value={sberLoginInput}
-              onChange={(event) => {
-                setSberLoginInput(event.target.value);
-                setSberError('');
-                setSberSuccess('');
-              }}
-              disabled={telegramLoading || sberSaving}
-              className={FORM_INPUT_DISABLED}
-              placeholder="Логин для auto.sberbankins.ru"
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="sber-password" className="app-label">
-              Пароль Сбер
-            </label>
-            <input
-              id="sber-password"
-              type="password"
-              value={sberPasswordInput}
-              onChange={(event) => {
-                setSberPasswordInput(event.target.value);
-                setSberError('');
-                setSberSuccess('');
-              }}
-              disabled={telegramLoading || sberSaving}
-              className={FORM_INPUT_DISABLED}
-              placeholder={
-                telegramSettings?.has_sber_password
-                  ? 'Введите новый пароль, чтобы заменить текущий'
-                  : 'Пароль для auto.sberbankins.ru'
-              }
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">
-            Статус пароля: {telegramSettings?.has_sber_password ? 'сохранён' : 'не задан'}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={BTN_OUTLINE}
-              onClick={handleSberPasswordClear}
-              disabled={telegramLoading || sberSaving || !telegramSettings?.has_sber_password}
-            >
-              Очистить пароль
-            </button>
-            <button
-              type="button"
-              className={BTN_PRIMARY}
-              onClick={handleSberSettingsSave}
-              disabled={telegramLoading || sberSaving}
-            >
-              {sberSaving ? 'Сохраняем...' : 'Сохранить'}
-            </button>
-          </div>
-        </div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 p-6 space-y-4">

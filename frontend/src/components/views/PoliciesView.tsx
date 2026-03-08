@@ -25,7 +25,6 @@ import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET } from '../common/buttonStyles';
 import { ColoredLabel } from '../common/ColoredLabel';
-import { PolicyIssuancePanel } from '../policies/PolicyIssuancePanel';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -485,7 +484,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             )}
                           </div>
                           <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                          <PolicyIssuancePanel policy={policy} />
                           {onRequestEditPolicy && (
                             <button
                               type="button"

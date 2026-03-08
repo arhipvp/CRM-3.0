@@ -358,10 +358,6 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   paymentsTotal: toStringValue(raw.payments_total ?? raw.paymentsTotal ?? '0'),
   createdAt: toStringValue(raw.created_at),
   driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
-  sberIssuance:
-    raw.sber_issuance && typeof raw.sber_issuance === 'object'
-      ? mapPolicyIssuanceStatus(raw.sber_issuance as Record<string, unknown>)
-      : null,
 });
 
 export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecord => ({

@@ -22,7 +22,6 @@ import {
 import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { ColoredLabel } from '../../../common/ColoredLabel';
-import { PolicyIssuancePanel } from '../../../policies/PolicyIssuancePanel';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -349,7 +348,6 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                           )}
                         </div>
                         <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                        <PolicyIssuancePanel policy={policy} />
                         <div className="flex flex-wrap gap-1 pt-1">
                           <button
                             type="button"

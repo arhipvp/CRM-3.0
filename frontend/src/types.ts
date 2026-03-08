@@ -400,7 +400,6 @@ export interface Policy {
   createdAt: string;
   updatedAt?: string;
   driveFolderId?: string | null;
-  sberIssuance?: PolicyIssuanceStatus | null;
 }
 
 export interface PoliciesKPI {

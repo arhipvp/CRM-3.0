@@ -16,7 +16,6 @@ import {
 } from '../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../common/uiClassNames';
 import { hasUnpaidPayment, hasUnpaidRecord } from '../views/dealsView/helpers';
-import { PolicyIssuancePanel } from './PolicyIssuancePanel';
 
 export type PolicyCardActionVariant = 'secondary' | 'quiet' | 'danger';
 
@@ -242,8 +241,6 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 whitespace-pre-wrap break-words">
           {model.note}
         </div>
-
-        <PolicyIssuancePanel policy={policy} />
 
         {!policy.isVehicle && hasAutoDetails && (
           <div className="text-right">
