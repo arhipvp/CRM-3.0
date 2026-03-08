@@ -96,9 +96,7 @@ def complete_reconnect(*, request: HttpRequest) -> dict[str, Any]:
         raise DriveReconnectError("Google OAuth callback is missing code or state.")
 
     try:
-        payload = signing.loads(
-            state, salt="google-drive-reconnect", max_age=900
-        )
+        payload = signing.loads(state, salt="google-drive-reconnect", max_age=900)
     except signing.BadSignature as exc:
         raise DriveReconnectError("Google OAuth callback state is invalid.") from exc
     except signing.SignatureExpired as exc:
@@ -111,7 +109,9 @@ def complete_reconnect(*, request: HttpRequest) -> dict[str, Any]:
     ):
         raise DriveReconnectError("Google OAuth callback user is not allowed.")
 
-    token_payload = _exchange_code_for_token(code=code, redirect_uri=_get_redirect_uri(request))
+    token_payload = _exchange_code_for_token(
+        code=code, redirect_uri=_get_redirect_uri(request)
+    )
     refresh_token = str(token_payload.get("refresh_token") or "").strip()
     if not refresh_token:
         raise DriveReconnectError(
@@ -129,7 +129,9 @@ def complete_reconnect(*, request: HttpRequest) -> dict[str, Any]:
     }
 
 
-def build_callback_redirect_url(*, request: HttpRequest, success: bool, message: str) -> str:
+def build_callback_redirect_url(
+    *, request: HttpRequest, success: bool, message: str
+) -> str:
     base_url = _get_settings_redirect_url(request)
     split = urlsplit(base_url)
     query_items = []
@@ -149,14 +151,18 @@ def build_callback_redirect_url(*, request: HttpRequest, success: bool, message:
 
 
 def _get_redirect_uri(request: HttpRequest) -> str:
-    configured = str(getattr(settings, "GOOGLE_DRIVE_OAUTH_REDIRECT_URI", "") or "").strip()
+    configured = str(
+        getattr(settings, "GOOGLE_DRIVE_OAUTH_REDIRECT_URI", "") or ""
+    ).strip()
     if configured:
         return configured
     return request.build_absolute_uri("/api/v1/notifications/settings/drive-callback/")
 
 
 def _get_settings_redirect_url(request: HttpRequest) -> str:
-    configured = str(getattr(settings, "GOOGLE_DRIVE_RECONNECT_SUCCESS_URL", "") or "").strip()
+    configured = str(
+        getattr(settings, "GOOGLE_DRIVE_RECONNECT_SUCCESS_URL", "") or ""
+    ).strip()
     if configured:
         return configured
     base_url = str(getattr(settings, "CRM_PUBLIC_URL", "") or "").strip().rstrip("/")
@@ -167,7 +173,9 @@ def _get_settings_redirect_url(request: HttpRequest) -> str:
 
 def _exchange_code_for_token(*, code: str, redirect_uri: str) -> dict[str, Any]:
     token_uri = str(
-        getattr(settings, "GOOGLE_DRIVE_OAUTH_TOKEN_URI", DEFAULT_GOOGLE_OAUTH_TOKEN_URI)
+        getattr(
+            settings, "GOOGLE_DRIVE_OAUTH_TOKEN_URI", DEFAULT_GOOGLE_OAUTH_TOKEN_URI
+        )
         or DEFAULT_GOOGLE_OAUTH_TOKEN_URI
     ).strip()
     payload = urlencode(
@@ -189,17 +197,23 @@ def _exchange_code_for_token(*, code: str, redirect_uri: str) -> dict[str, Any]:
         with urlopen(request, timeout=30) as response:
             data = response.read().decode("utf-8")
     except Exception as exc:
-        raise DriveReconnectError("Unable to exchange Google OAuth code for token.") from exc
+        raise DriveReconnectError(
+            "Unable to exchange Google OAuth code for token."
+        ) from exc
 
     try:
         return json.loads(data)
     except json.JSONDecodeError as exc:
-        raise DriveReconnectError("Google OAuth token response is invalid JSON.") from exc
+        raise DriveReconnectError(
+            "Google OAuth token response is invalid JSON."
+        ) from exc
 
 
 def _verify_refresh_token(refresh_token: str) -> None:
     if not drive._oauth_credentials:
-        raise DriveConfigurationError("google-auth OAuth credentials support is not available.")
+        raise DriveConfigurationError(
+            "google-auth OAuth credentials support is not available."
+        )
 
     credentials = drive._oauth_credentials.Credentials(
         token=None,
@@ -208,14 +222,20 @@ def _verify_refresh_token(refresh_token: str) -> None:
             getattr(settings, "GOOGLE_DRIVE_OAUTH_TOKEN_URI", "")
             or DEFAULT_GOOGLE_OAUTH_TOKEN_URI
         ).strip(),
-        client_id=str(getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "") or "").strip(),
+        client_id=str(
+            getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "") or ""
+        ).strip(),
         client_secret=str(
             getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "") or ""
         ).strip(),
         scopes=DRIVE_SCOPES,
     )
-    service = drive._build_drive_client(credentials, auth_type=drive.DRIVE_AUTH_MODE_OAUTH)
-    root_folder_id = str(getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "") or "").strip()
+    service = drive._build_drive_client(
+        credentials, auth_type=drive.DRIVE_AUTH_MODE_OAUTH
+    )
+    root_folder_id = str(
+        getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "") or ""
+    ).strip()
     if not root_folder_id:
         raise DriveConfigurationError("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured.")
     try:
@@ -225,11 +245,15 @@ def _verify_refresh_token(refresh_token: str) -> None:
             supportsAllDrives=True,
         ).execute()
     except Exception as exc:
-        raise DriveReconnectError("Unable to verify the new Google Drive refresh token.") from exc
+        raise DriveReconnectError(
+            "Unable to verify the new Google Drive refresh token."
+        ) from exc
 
 
 def _write_refresh_token(refresh_token: str) -> str:
-    token_file = str(getattr(settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE", "") or "").strip()
+    token_file = str(
+        getattr(settings, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE", "") or ""
+    ).strip()
     if not token_file:
         raise DriveConfigurationError(
             "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE is not configured."

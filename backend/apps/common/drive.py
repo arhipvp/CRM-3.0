@@ -240,7 +240,9 @@ def _is_refresh_error(exc: Exception) -> bool:
 
 
 def _extract_refresh_error_details(exc: Exception) -> tuple[str, str]:
-    raw_message = " ".join(str(part) for part in getattr(exc, "args", ()) if part).strip()
+    raw_message = " ".join(
+        str(part) for part in getattr(exc, "args", ()) if part
+    ).strip()
     if not raw_message:
         raw_message = str(exc).strip()
     normalized = raw_message.lower()
@@ -265,7 +267,11 @@ def _extract_drive_error_details(exc: Exception) -> tuple[Optional[int], str, st
         code = reason or f"http_{status}"
         return status, code, reason or f"HTTP {status}"
 
-    return None, exc.__class__.__name__.lower(), str(exc).strip() or exc.__class__.__name__
+    return (
+        None,
+        exc.__class__.__name__.lower(),
+        str(exc).strip() or exc.__class__.__name__,
+    )
 
 
 def _is_fallback_worthy(exc: Exception, status: Optional[int]) -> bool:
@@ -455,9 +461,7 @@ def get_drive_connection_status() -> DriveConnectionStatus:
     base_status["active_auth_type"] = str(diagnostics.get("active_auth_type") or "")
     base_status["using_fallback"] = bool(diagnostics.get("using_fallback"))
     base_status["last_error_code"] = str(diagnostics.get("last_error_code") or "")
-    base_status["last_error_message"] = str(
-        diagnostics.get("last_error_message") or ""
-    )
+    base_status["last_error_message"] = str(diagnostics.get("last_error_message") or "")
     if base_status["using_fallback"] and base_status["last_error_code"].startswith(
         "oauth_"
     ):

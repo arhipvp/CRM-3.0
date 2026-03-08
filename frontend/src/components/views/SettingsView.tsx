@@ -261,7 +261,9 @@ export const SettingsView: React.FC = () => {
       case 'connected':
         return 'Подключено';
       case 'needs_reconnect':
-        return driveStatus.using_fallback ? 'Работаем через резервный service account' : 'Нужна перепривязка';
+        return driveStatus.using_fallback
+          ? 'Работаем через резервный service account'
+          : 'Нужна перепривязка';
       case 'not_configured':
         return 'Не настроено';
       case 'error':
@@ -663,8 +665,8 @@ export const SettingsView: React.FC = () => {
         <header className="space-y-1">
           <h3 className="text-lg font-semibold text-slate-900">Google Drive</h3>
           <p className="text-sm text-slate-600">
-            Контролируйте состояние интеграции Drive и перепривязывайте OAuth для пользователя
-            Vova без ручного SSH.
+            Контролируйте состояние интеграции Drive и перепривязывайте OAuth для пользователя Vova
+            без ручного SSH.
           </p>
         </header>
 
@@ -684,7 +686,9 @@ export const SettingsView: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-700">Статус: {driveStatusLabel}</p>
                 <p className="text-xs text-slate-500">
                   Режим: {driveStatus?.auth_mode || 'неизвестно'}
-                  {driveStatus?.active_auth_type ? ` · активная авторизация: ${driveStatus.active_auth_type}` : ''}
+                  {driveStatus?.active_auth_type
+                    ? ` · активная авторизация: ${driveStatus.active_auth_type}`
+                    : ''}
                 </p>
                 {driveStatus?.last_checked_at && (
                   <p className="text-xs text-slate-500">

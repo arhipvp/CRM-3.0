@@ -28,7 +28,7 @@ importlib.import_module("config.admin")
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config("DJANGO_SECRET_KEY", default=None)
+SECRET_KEY = config("DJANGO_SECRET_KEY", default=None)  # pragma: allowlist secret
 if not SECRET_KEY:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set to a non-empty value.")
 if SECRET_KEY == "unsafe-dev-key":
@@ -203,9 +203,7 @@ GOOGLE_DRIVE_ROOT_FOLDER_ID = config("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
 GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID = config(
     "GOOGLE_DRIVE_DOCUMENT_LIBRARY_FOLDER_ID", default=""
 )
-GOOGLE_DRIVE_OAUTH_REDIRECT_URI = config(
-    "GOOGLE_DRIVE_OAUTH_REDIRECT_URI", default=""
-)
+GOOGLE_DRIVE_OAUTH_REDIRECT_URI = config("GOOGLE_DRIVE_OAUTH_REDIRECT_URI", default="")
 GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID = int(
     config("GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID", default="4")
 )

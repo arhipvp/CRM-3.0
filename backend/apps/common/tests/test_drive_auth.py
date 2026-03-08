@@ -21,7 +21,7 @@ class DriveAuthTests(SimpleTestCase):
     @override_settings(
         GOOGLE_DRIVE_AUTH_MODE="auto",
         GOOGLE_DRIVE_OAUTH_CLIENT_ID="client-id",
-        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",
+        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",  # pragma: allowlist secret
         GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="refresh-token",
         GOOGLE_DRIVE_OAUTH_TOKEN_URI="https://oauth2.googleapis.com/token",
         GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/tmp/service-account.json",
@@ -65,7 +65,7 @@ class DriveAuthTests(SimpleTestCase):
     @override_settings(
         GOOGLE_DRIVE_AUTH_MODE="auto",
         GOOGLE_DRIVE_OAUTH_CLIENT_ID="client-id",
-        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",
+        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",  # pragma: allowlist secret
         GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="refresh-token",
         GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/tmp/service-account.json",
     )
@@ -88,9 +88,7 @@ class DriveAuthTests(SimpleTestCase):
             def _operation(service):
                 if service == "sa-service":
                     return "fallback-result"
-                raise RefreshError(
-                    "invalid_grant: Token has been expired or revoked."
-                )
+                raise RefreshError("invalid_grant: Token has been expired or revoked.")
 
             diagnostics = {}
             result = drive._run_with_drive_service(
