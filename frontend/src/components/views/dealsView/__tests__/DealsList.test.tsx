@@ -24,7 +24,8 @@ const renderDealsList = (params?: {
   dealRowFocusRequest?: { dealId: string; nonce: number } | null;
   dealSearch?: string;
   onDealSearchSubmit?: (value?: string) => void;
-  onDealSearchClear?: () => void;
+  onRefreshDealsList?: () => Promise<void>;
+  isRefreshingDealsList?: boolean;
 }) => {
   const selectedDeal = params?.selectedDeal ?? createDeal();
   const sortedDeals = params?.sortedDeals ?? [selectedDeal];
@@ -37,7 +38,7 @@ const renderDealsList = (params?: {
       dealSearch={params?.dealSearch ?? ''}
       onDealSearchChange={vi.fn()}
       onDealSearchSubmit={params?.onDealSearchSubmit ?? vi.fn()}
-      onDealSearchClear={params?.onDealSearchClear ?? vi.fn()}
+      onRefreshDealsList={params?.onRefreshDealsList}
       dealExecutorFilter="all"
       onDealExecutorFilterChange={vi.fn()}
       dealShowDeleted={false}
@@ -50,6 +51,7 @@ const renderDealsList = (params?: {
       dealsHasMore={false}
       dealsTotalCount={sortedDeals.length}
       isLoadingMoreDeals={false}
+      isRefreshingDealsList={params?.isRefreshingDealsList ?? false}
       onLoadMoreDeals={vi.fn().mockResolvedValue(undefined)}
       onSelectDeal={vi.fn()}
       onPinDeal={vi.fn().mockResolvedValue(undefined)}
@@ -120,7 +122,6 @@ describe('DealsList dealRowFocusRequest', () => {
         dealSearch=""
         onDealSearchChange={vi.fn()}
         onDealSearchSubmit={vi.fn()}
-        onDealSearchClear={vi.fn()}
         dealExecutorFilter="all"
         onDealExecutorFilterChange={vi.fn()}
         dealShowDeleted={false}
@@ -133,6 +134,7 @@ describe('DealsList dealRowFocusRequest', () => {
         dealsHasMore={false}
         dealsTotalCount={1}
         isLoadingMoreDeals={false}
+        isRefreshingDealsList={false}
         onLoadMoreDeals={vi.fn().mockResolvedValue(undefined)}
         onSelectDeal={vi.fn()}
         onPinDeal={vi.fn().mockResolvedValue(undefined)}
@@ -177,12 +179,32 @@ describe('DealsList dealRowFocusRequest', () => {
   });
 
   it('clears search via clear button', () => {
-    const onDealSearchClear = vi.fn();
+    const onDealSearchSubmit = vi.fn();
 
-    renderDealsList({ dealSearch: 'ипотека', onDealSearchClear });
+    renderDealsList({ dealSearch: 'ипотека', onDealSearchSubmit });
 
     fireEvent.click(screen.getByRole('button', { name: 'Очистить поиск сделок' }));
 
-    expect(onDealSearchClear).toHaveBeenCalledTimes(1);
+    expect(onDealSearchSubmit).toHaveBeenCalledTimes(1);
+    expect(onDealSearchSubmit).toHaveBeenCalledWith('');
+  });
+
+  it('refreshes deals list via refresh button', () => {
+    const onRefreshDealsList = vi.fn().mockResolvedValue(undefined);
+
+    renderDealsList({ onRefreshDealsList });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить' }));
+
+    expect(onRefreshDealsList).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables refresh button and shows loading label while refresh is in progress', () => {
+    renderDealsList({
+      onRefreshDealsList: vi.fn().mockResolvedValue(undefined),
+      isRefreshingDealsList: true,
+    });
+
+    expect(screen.getByRole('button', { name: 'Обновляем...' })).toBeDisabled();
   });
 });

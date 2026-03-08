@@ -18,11 +18,6 @@ export const useDealFilters = () => {
     setDealSearchApplied(rawValue.trim());
   };
 
-  const clearDealSearchAndApply = () => {
-    setDealSearchInput('');
-    setDealSearchApplied('');
-  };
-
   const filters = useMemo<FilterParams>(() => {
     const result: FilterParams = {};
     if (dealSearchApplied) {
@@ -47,7 +42,6 @@ export const useDealFilters = () => {
     dealSearchInput,
     setDealSearchInput,
     applyDealSearch,
-    clearDealSearchAndApply,
     dealExecutorFilter,
     setDealExecutorFilter,
     dealShowDeleted,

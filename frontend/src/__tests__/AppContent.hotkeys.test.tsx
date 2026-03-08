@@ -87,6 +87,7 @@ const appDataMock = vi.hoisted(() => ({
 
 const updateAppDataMock = vi.hoisted(() => vi.fn());
 const refreshDealsMock = vi.hoisted(() => vi.fn());
+const invalidateDealsCacheMock = vi.hoisted(() => vi.fn());
 const updateDealMock = vi.hoisted(() => vi.fn());
 const setErrorMock = vi.hoisted(() => vi.fn());
 const fetchDealMock = vi.hoisted(() => vi.fn());
@@ -114,7 +115,7 @@ vi.mock('../hooks/useAppData', () => ({
     ensureFinanceDataLoaded: ensureFinanceDataLoadedMock,
     ensureTasksLoaded: vi.fn().mockResolvedValue(undefined),
     refreshDeals: refreshDealsMock.mockImplementation(async () => appDataMock.deals),
-    invalidateDealsCache: vi.fn(),
+    invalidateDealsCache: invalidateDealsCacheMock,
     refreshPolicies: vi.fn().mockResolvedValue([]),
     refreshPoliciesList: vi.fn().mockResolvedValue([]),
     updateAppData: updateAppDataMock,
@@ -161,13 +162,13 @@ vi.mock('../components/app/AppRoutes', () => ({
       onPostponeDeal?: (dealId: string, data: Record<string, unknown>) => Promise<void>;
       onUpdateTask?: (taskId: string, data: { status?: string }) => Promise<void>;
       onSelectDeal?: (dealId: string) => void;
+      onRefreshDealsList?: () => Promise<void>;
       selectedDealId?: string | null;
       isDealFocusCleared?: boolean;
     };
     filters?: {
       onDealSearchChange?: (value: string) => void;
       onDealSearchSubmit?: (value?: string) => void;
-      onDealSearchClear?: () => void;
     };
   }) => (
     <div data-testid="app-routes">
@@ -208,8 +209,11 @@ vi.mock('../components/app/AppRoutes', () => ({
       <button type="button" onClick={() => filters?.onDealSearchSubmit?.()}>
         Trigger search submit
       </button>
-      <button type="button" onClick={() => filters?.onDealSearchClear?.()}>
+      <button type="button" onClick={() => filters?.onDealSearchSubmit?.('')}>
         Trigger search clear
+      </button>
+      <button type="button" onClick={() => void dealsActions?.onRefreshDealsList?.()}>
+        Trigger deals refresh
       </button>
     </div>
   ),
@@ -335,6 +339,7 @@ describe('AppContent hotkeys integration', () => {
     vi.mocked(updateDeal).mockClear();
     refreshDealsMock.mockReset();
     refreshDealsMock.mockImplementation(async () => appDataMock.deals);
+    invalidateDealsCacheMock.mockReset();
     fetchDealMock.mockReset();
     fetchTasksByDealMock.mockReset();
     fetchQuotesByDealMock.mockReset();
@@ -809,6 +814,36 @@ describe('AppContent hotkeys integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Trigger search clear' }));
     await waitFor(() => {
       expect(refreshDealsMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  it('forces deals list refresh without losing selected deal', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка первая',
+        clientId: 'client-1',
+        status: 'open',
+        createdAt: '2025-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+        clientName: 'Клиент 1',
+      },
+    ];
+    refreshDealsMock.mockResolvedValue(appDataMock.deals);
+
+    renderAppContent('/deals?dealId=deal-1');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger deals refresh' }));
+
+    await waitFor(() => {
+      expect(invalidateDealsCacheMock).toHaveBeenCalledTimes(1);
+      expect(refreshDealsMock).toHaveBeenLastCalledWith({}, { force: true });
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
     });
   });
 

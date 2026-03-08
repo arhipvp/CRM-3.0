@@ -353,6 +353,7 @@ const AppContent: React.FC = () => {
     () => new Set<string>(),
   );
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
+  const [isRefreshingDealsList, setIsRefreshingDealsList] = useState(false);
   const location = useLocation();
   const isDealsRoute = location.pathname.startsWith('/deals');
   const isCommissionsRoute = location.pathname.startsWith('/commissions');
@@ -366,7 +367,6 @@ const AppContent: React.FC = () => {
     dealSearchInput,
     setDealSearchInput,
     applyDealSearch,
-    clearDealSearchAndApply,
     dealExecutorFilter,
     setDealExecutorFilter,
     dealShowDeleted,
@@ -807,6 +807,19 @@ const AppContent: React.FC = () => {
     },
     [dealFilters, refreshDealsWithSelection, syncDealsByIds],
   );
+  const handleRefreshDealsList = useCallback(async () => {
+    setIsRefreshingDealsList(true);
+    setError(null);
+    invalidateDealsCache();
+    try {
+      await refreshDealsWithSelection(dealFilters, { force: true });
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Ошибка при обновлении списка сделок'));
+      throw err;
+    } finally {
+      setIsRefreshingDealsList(false);
+    }
+  }, [dealFilters, invalidateDealsCache, refreshDealsWithSelection, setError]);
   const previewDeal = previewDealId ? (dealsById.get(previewDealId) ?? null) : null;
   const previewClient = previewDeal ? (clientsById.get(previewDeal.clientId) ?? null) : null;
   const previewSellerUser = previewDeal ? usersById.get(previewDeal.seller ?? '') : undefined;
@@ -3983,6 +3996,7 @@ const AppContent: React.FC = () => {
       onReopenDeal: handleReopenDeal,
       onUpdateDeal: handleUpdateDeal,
       onRefreshDeal: handleRefreshSelectedDeal,
+      onRefreshDealsList: handleRefreshDealsList,
       onPinDeal: handlePinDeal,
       onUnpinDeal: handleUnpinDeal,
       onPostponeDeal: handlePostponeDeal,
@@ -4038,6 +4052,7 @@ const AppContent: React.FC = () => {
       handlePolicyDraftReady,
       handlePostponeDeal,
       handleRefreshSelectedDeal,
+      handleRefreshDealsList,
       handleRefreshSelectedDealPolicies,
       handleReopenDeal,
       handleRequestAddPolicy,
@@ -4091,7 +4106,6 @@ const AppContent: React.FC = () => {
       dealSearch: dealSearchInput,
       onDealSearchChange: setDealSearchInput,
       onDealSearchSubmit: applyDealSearch,
-      onDealSearchClear: clearDealSearchAndApply,
       dealExecutorFilter,
       onDealExecutorFilterChange: setDealExecutorFilter,
       dealShowDeleted,
@@ -4103,7 +4117,6 @@ const AppContent: React.FC = () => {
     }),
     [
       applyDealSearch,
-      clearDealSearchAndApply,
       dealExecutorFilter,
       dealOrdering,
       dealSearchInput,
@@ -4123,6 +4136,7 @@ const AppContent: React.FC = () => {
       dealsHasMore,
       dealsTotalCount,
       isLoadingMoreDeals,
+      isRefreshingDealsList,
       onLoadMorePolicies: loadMorePolicies,
       policiesHasMore,
       isLoadingMorePolicies,
@@ -4143,6 +4157,7 @@ const AppContent: React.FC = () => {
       hasFinanceSnapshotLoaded,
       isFinanceDataLoading,
       isLoadingMoreDeals,
+      isRefreshingDealsList,
       isLoadingMorePolicies,
       isPoliciesListLoading,
       isSelectedDealQuotesLoading,

@@ -126,7 +126,6 @@ const createProps = (): AppRoutesProps => ({
     dealSearch: '',
     onDealSearchChange: noop,
     onDealSearchSubmit: noop,
-    onDealSearchClear: noop,
     dealExecutorFilter: '',
     onDealExecutorFilterChange: noop,
     dealShowDeleted: false,

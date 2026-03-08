@@ -51,6 +51,7 @@ export interface AppRouteDealsActions {
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onRefreshDeal?: (dealId: string) => Promise<void>;
+  onRefreshDealsList?: () => Promise<void>;
   onPinDeal: (dealId: string) => Promise<void>;
   onUnpinDeal: (dealId: string) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -129,7 +130,6 @@ export interface AppRouteFilterState {
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   onDealSearchSubmit: (value?: string) => void;
-  onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
   dealShowDeleted: boolean;
@@ -145,6 +145,7 @@ export interface AppRouteLoadingState {
   dealsHasMore: boolean;
   dealsTotalCount: number;
   isLoadingMoreDeals: boolean;
+  isRefreshingDealsList?: boolean;
   onLoadMorePolicies: () => Promise<void>;
   policiesHasMore: boolean;
   isLoadingMorePolicies: boolean;

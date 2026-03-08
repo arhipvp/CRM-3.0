@@ -20,7 +20,7 @@ interface DealsListProps {
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   onDealSearchSubmit: (value?: string) => void;
-  onDealSearchClear: () => void;
+  onRefreshDealsList?: () => Promise<void>;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
   dealShowDeleted: boolean;
@@ -33,6 +33,7 @@ interface DealsListProps {
   dealsHasMore: boolean;
   dealsTotalCount: number;
   isLoadingMoreDeals: boolean;
+  isRefreshingDealsList?: boolean;
   onLoadMoreDeals: () => Promise<void>;
   onSelectDeal: (dealId: string) => void;
   onPinDeal: (dealId: string) => Promise<void>;
@@ -48,7 +49,7 @@ export const DealsList: React.FC<DealsListProps> = ({
   dealSearch,
   onDealSearchChange,
   onDealSearchSubmit,
-  onDealSearchClear,
+  onRefreshDealsList,
   dealExecutorFilter,
   onDealExecutorFilterChange,
   dealShowDeleted,
@@ -61,6 +62,7 @@ export const DealsList: React.FC<DealsListProps> = ({
   dealsHasMore,
   dealsTotalCount,
   isLoadingMoreDeals,
+  isRefreshingDealsList = false,
   onLoadMoreDeals,
   onSelectDeal,
   onPinDeal,
@@ -201,7 +203,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                 {dealSearch && (
                   <button
                     type="button"
-                    onClick={onDealSearchClear}
+                    onClick={() => onDealSearchSubmit('')}
                     aria-label="Очистить поиск сделок"
                     className="search-clear-btn"
                   >
@@ -211,6 +213,16 @@ export const DealsList: React.FC<DealsListProps> = ({
               </div>
               <button type="submit" className={BTN_SM_QUIET}>
                 Найти
+              </button>
+              <button
+                type="button"
+                className={BTN_SM_QUIET}
+                onClick={() => {
+                  void onRefreshDealsList?.();
+                }}
+                disabled={!onRefreshDealsList || isRefreshingDealsList}
+              >
+                {isRefreshingDealsList ? 'Обновляем...' : 'Обновить'}
               </button>
             </form>
           </div>

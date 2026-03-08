@@ -43,6 +43,7 @@ interface DealsViewProps {
   onReopenDeal: (dealId: string) => Promise<void>;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
   onRefreshDeal?: (dealId: string) => Promise<void>;
+  onRefreshDealsList?: () => Promise<void>;
   onPinDeal: (dealId: string) => Promise<void>;
   onUnpinDeal: (dealId: string) => Promise<void>;
   onPostponeDeal?: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -93,13 +94,12 @@ interface DealsViewProps {
   dealsHasMore: boolean;
   dealsTotalCount: number;
   isLoadingMoreDeals: boolean;
-  isBackgroundRefreshingDeals?: boolean;
+  isRefreshingDealsList?: boolean;
   isSelectedDealTasksLoading?: boolean;
   isSelectedDealQuotesLoading?: boolean;
   dealSearch: string;
   onDealSearchChange: (value: string) => void;
   onDealSearchSubmit: (value?: string) => void;
-  onDealSearchClear: () => void;
   dealExecutorFilter: string;
   onDealExecutorFilterChange: (value: string) => void;
   dealShowDeleted: boolean;
@@ -130,6 +130,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onReopenDeal,
   onUpdateDeal,
   onRefreshDeal,
+  onRefreshDealsList,
   onPinDeal,
   onUnpinDeal,
   onPostponeDeal,
@@ -167,12 +168,12 @@ export const DealsView: React.FC<DealsViewProps> = ({
   dealsHasMore,
   dealsTotalCount,
   isLoadingMoreDeals,
+  isRefreshingDealsList = false,
   isSelectedDealTasksLoading = false,
   isSelectedDealQuotesLoading = false,
   dealSearch,
   onDealSearchChange,
   onDealSearchSubmit,
-  onDealSearchClear,
   dealExecutorFilter,
   onDealExecutorFilterChange,
   dealShowDeleted,
@@ -219,7 +220,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             dealSearch={dealSearch}
             onDealSearchChange={onDealSearchChange}
             onDealSearchSubmit={onDealSearchSubmit}
-            onDealSearchClear={onDealSearchClear}
+            onRefreshDealsList={onRefreshDealsList}
             dealExecutorFilter={dealExecutorFilter}
             onDealExecutorFilterChange={onDealExecutorFilterChange}
             dealShowDeleted={dealShowDeleted}
@@ -232,6 +233,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             dealsHasMore={dealsHasMore}
             dealsTotalCount={dealsTotalCount}
             isLoadingMoreDeals={isLoadingMoreDeals}
+            isRefreshingDealsList={isRefreshingDealsList}
             onLoadMoreDeals={onLoadMoreDeals}
             onSelectDeal={handleSelectDeal}
             onPinDeal={onPinDeal}
