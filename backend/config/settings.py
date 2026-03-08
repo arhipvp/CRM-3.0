@@ -31,7 +31,7 @@ importlib.import_module("config.admin")
 SECRET_KEY = config("DJANGO_SECRET_KEY", default=None)  # pragma: allowlist secret
 if not SECRET_KEY:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set to a non-empty value.")
-if SECRET_KEY == "unsafe-dev-key":
+if SECRET_KEY == "unsafe-dev-key":  # pragma: allowlist secret
     raise ImproperlyConfigured(
         "The unsafe-dev-key placeholder must be replaced in production."
     )

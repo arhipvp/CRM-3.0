@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsView } from '../SettingsView';
@@ -23,6 +23,13 @@ vi.mock('../../../api', () => ({
   unlinkTelegram: vi.fn(),
   updateNotificationSettings: vi.fn(),
 }));
+
+const hasOwnText = (value: string) => (_content: string, element: Element | null) => {
+  if (!element || !element.textContent?.includes(value)) {
+    return false;
+  }
+  return Array.from(element.children).every((child) => !child.textContent?.includes(value));
+};
 
 describe('SettingsView', () => {
   beforeEach(() => {
@@ -60,13 +67,12 @@ describe('SettingsView', () => {
 
     render(<SettingsView />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Google Drive')).toBeInTheDocument();
-    });
     expect(
-      screen.getByText(/Статус:\s*Работаем через резервный service account/i),
+      await screen.findByText(hasOwnText('Статус: Работаем через резервный service account')),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Переподключить Google Drive' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Переподключить Google Drive' }),
+    ).toBeInTheDocument();
   });
 
   it('hides drive reconnect button for non-vova users', async () => {
@@ -74,11 +80,10 @@ describe('SettingsView', () => {
 
     render(<SettingsView />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Google Drive')).toBeInTheDocument();
-    });
     expect(
-      screen.getByText('Персональная перепривязка OAuth доступна только для пользователя Vova.'),
+      await screen.findByText(
+        hasOwnText('Персональная перепривязка OAuth доступна только для пользователя Vova.'),
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Переподключить Google Drive' }),
