@@ -10,6 +10,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:ci": "vitest run --reporter=verbose",
     "preview": "vite preview"
   },
   "dependencies": {
