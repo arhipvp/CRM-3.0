@@ -460,6 +460,7 @@ const AppContent: React.FC = () => {
   const policyDealExecutorName = getDealExecutorName(policyDealId);
   const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
   const protectedCreatedDealRef = useRef<Deal | null>(null);
+  const preservedDeepLinkedDealRef = useRef<Deal | null>(null);
   const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
   const deepLinkedDealLoadingRef = useRef<string | null>(null);
@@ -694,6 +695,15 @@ const AppContent: React.FC = () => {
         return dealsData;
       }
       if (deepLinkedDealIdRef.current === currentSelectedDealId) {
+        const preservedDeepLinkedDeal = preservedDeepLinkedDealRef.current;
+        if (preservedDeepLinkedDeal?.id === currentSelectedDealId) {
+          updateAppData((prev) => {
+            if (prev.deals.some((deal) => deal.id === preservedDeepLinkedDeal.id)) {
+              return {};
+            }
+            return { deals: [preservedDeepLinkedDeal, ...prev.deals] };
+          });
+        }
         return dealsData;
       }
       if (skipNextMissingSelectedDealClearRef.current === currentSelectedDealId) {
@@ -736,6 +746,13 @@ const AppContent: React.FC = () => {
         const missingDeals = fetchedDeals
           .filter((deal) => !existingIds.has(deal.id))
           .map((deal) => dealMap.get(deal.id) ?? deal);
+        const preservedDeepLinkedDeal = deepLinkedDealIdRef.current
+          ? (dealMap.get(deepLinkedDealIdRef.current) ??
+            existingDealsById.get(deepLinkedDealIdRef.current) ??
+            fetchedDeals.find((deal) => deal.id === deepLinkedDealIdRef.current) ??
+            null)
+          : null;
+        preservedDeepLinkedDealRef.current = preservedDeepLinkedDeal;
         return { deals: [...updatedDeals, ...missingDeals] };
       });
       invalidateDealsCache();
@@ -862,7 +879,21 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     deepLinkedDealIdRef.current = deepLinkedDealId;
-  }, [deepLinkedDealId]);
+    if (!deepLinkedDealId) {
+      preservedDeepLinkedDealRef.current = null;
+      return;
+    }
+
+    if (preservedDeepLinkedDealRef.current?.id !== deepLinkedDealId) {
+      preservedDeepLinkedDealRef.current = dealsById.get(deepLinkedDealId) ?? null;
+      return;
+    }
+
+    const currentDeepLinkedDeal = dealsById.get(deepLinkedDealId);
+    if (currentDeepLinkedDeal) {
+      preservedDeepLinkedDealRef.current = currentDeepLinkedDeal;
+    }
+  }, [dealsById, deepLinkedDealId]);
 
   useEffect(() => {
     selectedDealIdRef.current = effectiveSelectedDealId;

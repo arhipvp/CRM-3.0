@@ -155,9 +155,13 @@ vi.mock('../components/MainLayout', () => ({
 
 vi.mock('../components/app/AppRoutes', () => ({
   AppRoutes: ({
+    data,
     dealsActions,
     filters,
   }: {
+    data?: {
+      deals?: Array<{ id: string; title: string }>;
+    };
     dealsActions?: {
       onPostponeDeal?: (dealId: string, data: Record<string, unknown>) => Promise<void>;
       onUpdateTask?: (taskId: string, data: { status?: string }) => Promise<void>;
@@ -170,53 +174,59 @@ vi.mock('../components/app/AppRoutes', () => ({
       onDealSearchChange?: (value: string) => void;
       onDealSearchSubmit?: (value?: string) => void;
     };
-  }) => (
-    <div data-testid="app-routes">
-      <div data-testid="selected-deal">{dealsActions?.selectedDealId ?? 'null'}</div>
-      <div data-testid="focus-cleared">{dealsActions?.isDealFocusCleared ? 'true' : 'false'}</div>
-      <button
-        type="button"
-        onClick={() =>
-          void dealsActions
-            ?.onPostponeDeal?.('deal-1', {
-              title: 'Сделка первая',
-              description: '',
-              clientId: 'client-1',
-              source: null,
-              nextContactDate: '2026-12-31',
-              expectedClose: '2027-02-28',
-            })
-            .catch(() => undefined)
-        }
-      >
-        Trigger postpone
-      </button>
-      <button
-        type="button"
-        onClick={() => void dealsActions?.onUpdateTask?.('task-1', { status: 'done' })}
-      >
-        Trigger task update
-      </button>
-      <button type="button" onClick={() => dealsActions?.onSelectDeal?.('deal-2')}>
-        Select deal-2
-      </button>
-      <button type="button" onClick={() => dealsActions?.onSelectDeal?.('deal-1')}>
-        Select deal-1
-      </button>
-      <button type="button" onClick={() => filters?.onDealSearchChange?.('refresh')}>
-        Trigger search change
-      </button>
-      <button type="button" onClick={() => filters?.onDealSearchSubmit?.()}>
-        Trigger search submit
-      </button>
-      <button type="button" onClick={() => filters?.onDealSearchSubmit?.('')}>
-        Trigger search clear
-      </button>
-      <button type="button" onClick={() => void dealsActions?.onRefreshDealsList?.()}>
-        Trigger deals refresh
-      </button>
-    </div>
-  ),
+  }) => {
+    const selectedDealTitle =
+      data?.deals?.find((deal) => deal.id === dealsActions?.selectedDealId)?.title ?? 'null';
+
+    return (
+      <div data-testid="app-routes">
+        <div data-testid="selected-deal">{dealsActions?.selectedDealId ?? 'null'}</div>
+        <div data-testid="selected-deal-title">{selectedDealTitle}</div>
+        <div data-testid="focus-cleared">{dealsActions?.isDealFocusCleared ? 'true' : 'false'}</div>
+        <button
+          type="button"
+          onClick={() =>
+            void dealsActions
+              ?.onPostponeDeal?.('deal-1', {
+                title: 'Сделка первая',
+                description: '',
+                clientId: 'client-1',
+                source: null,
+                nextContactDate: '2026-12-31',
+                expectedClose: '2027-02-28',
+              })
+              .catch(() => undefined)
+          }
+        >
+          Trigger postpone
+        </button>
+        <button
+          type="button"
+          onClick={() => void dealsActions?.onUpdateTask?.('task-1', { status: 'done' })}
+        >
+          Trigger task update
+        </button>
+        <button type="button" onClick={() => dealsActions?.onSelectDeal?.('deal-2')}>
+          Select deal-2
+        </button>
+        <button type="button" onClick={() => dealsActions?.onSelectDeal?.('deal-1')}>
+          Select deal-1
+        </button>
+        <button type="button" onClick={() => filters?.onDealSearchChange?.('refresh')}>
+          Trigger search change
+        </button>
+        <button type="button" onClick={() => filters?.onDealSearchSubmit?.()}>
+          Trigger search submit
+        </button>
+        <button type="button" onClick={() => filters?.onDealSearchSubmit?.('')}>
+          Trigger search clear
+        </button>
+        <button type="button" onClick={() => void dealsActions?.onRefreshDealsList?.()}>
+          Trigger deals refresh
+        </button>
+      </div>
+    );
+  },
 }));
 
 vi.mock('../components/app/AppModals', () => ({
@@ -459,12 +469,12 @@ describe('AppContent hotkeys integration', () => {
 
     renderAppContent('/deals?dealId=deal-1');
 
-    expect(screen.getByText('Сделка первая')).toBeInTheDocument();
+    expect(screen.getByTestId('selected-deal-title')).toHaveTextContent('Сделка первая');
 
     fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
 
     await waitFor(() => {
-      expect(screen.getByText('Сделка вторая')).toBeInTheDocument();
+      expect(screen.getByTestId('selected-deal-title')).toHaveTextContent('Сделка вторая');
     });
 
     fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
@@ -679,6 +689,54 @@ describe('AppContent hotkeys integration', () => {
     await waitFor(() => {
       expect(fetchDealMock).toHaveBeenCalledWith('deal-remote');
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-remote');
+    });
+  });
+
+  it('keeps deep-linked deal object after deals list refresh drops it', async () => {
+    appDataMock.deals = [];
+    refreshDealsMock.mockResolvedValueOnce([]).mockImplementation(async () => {
+      appDataMock.deals = [];
+      return [];
+    });
+    fetchDealMock.mockResolvedValue({
+      id: 'deal-remote',
+      title: 'Сделка удаленная',
+      clientId: 'client-1',
+      status: 'lost',
+      createdAt: '2026-01-01T00:00:00Z',
+      quotes: [],
+      documents: [],
+      clientName: 'Клиент 1',
+    });
+    updateAppDataMock.mockImplementation((updater) => {
+      const patch = updater({
+        clients: appDataMock.clients,
+        deals: appDataMock.deals,
+        policies: appDataMock.policiesList,
+        salesChannels: [],
+        payments: [],
+        financialRecords: [],
+        statements: [],
+        tasks: appDataMock.tasks,
+        users: [],
+      });
+      if (patch.deals) {
+        appDataMock.deals = patch.deals;
+      }
+    });
+
+    renderAppContent('/deals?dealId=deal-remote');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal-title')).toHaveTextContent('Сделка удаленная');
+    });
+
+    appDataMock.deals = [];
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger deals refresh' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-remote');
+      expect(screen.getByTestId('selected-deal-title')).toHaveTextContent('Сделка удаленная');
     });
   });
 
