@@ -197,7 +197,7 @@ jobs:
           COVERAGE_FILE: .coverage.core
         run: |
           cd backend
-          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= backend/tests backend/apps/users/tests.py backend/apps/common/tests backend/apps/clients/tests.py
+          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= tests apps/users/tests.py apps/common/tests apps/clients/tests.py
 
       - name: Upload core coverage data
         uses: actions/upload-artifact@v4
@@ -263,7 +263,7 @@ jobs:
           COVERAGE_FILE: .coverage.domain
         run: |
           cd backend
-          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= backend/apps/deals/tests backend/apps/chat/tests backend/apps/notes/tests.py backend/apps/tasks/tests.py backend/apps/mailboxes/tests.py backend/apps/documents/tests.py
+          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/deals/tests apps/chat/tests apps/notes/tests.py apps/tasks/tests.py apps/mailboxes/tests.py apps/documents/tests.py
 
       - name: Upload domain coverage data
         uses: actions/upload-artifact@v4
@@ -329,7 +329,7 @@ jobs:
           COVERAGE_FILE: .coverage.finance
         run: |
           cd backend
-          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= backend/apps/policies/tests backend/apps/finances/tests.py backend/apps/notifications/tests.py
+          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/policies/tests apps/finances/tests.py apps/notifications/tests.py
 
       - name: Upload finance coverage data
         uses: actions/upload-artifact@v4
