@@ -4,6 +4,8 @@ export const API_BASE = (envBase && envBase.trim() !== '' ? envBase : '/api/v1')
 const TOKEN_KEY = 'jwt_access_token';
 const REFRESH_TOKEN_KEY = 'jwt_refresh_token';
 const REFRESH_ENDPOINT = '/auth/refresh/';
+const LOGIN_PATH = '/login';
+const POST_LOGIN_REDIRECT_KEY = 'crm_post_login_redirect';
 
 export function getAccessToken(): string | null {
   return typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
@@ -80,13 +82,103 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-function redirectToLogin(): void {
+const normalizePostLoginRedirect = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return null;
+  }
+
+  if (
+    value === LOGIN_PATH ||
+    value.startsWith(`${LOGIN_PATH}?`) ||
+    value.startsWith(`${LOGIN_PATH}#`)
+  ) {
+    return null;
+  }
+
+  return value;
+};
+
+const getLoginRedirectUrl = (): URL | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return new URL(window.location.href);
+  } catch {
+    return null;
+  }
+};
+
+const persistPostLoginRedirect = (value: string | null): void => {
   if (typeof window === 'undefined') {
     return;
   }
-  const loginPath = '/login';
-  if (window.location.pathname !== loginPath) {
-    window.location.replace(loginPath);
+
+  if (!value) {
+    window.sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+    return;
+  }
+
+  window.sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, value);
+};
+
+const getRedirectFromSearch = (search?: string): string | null => {
+  if (!search) {
+    return null;
+  }
+
+  const query = search.startsWith('?') ? search.slice(1) : search;
+  const nextFromQuery = normalizePostLoginRedirect(new URLSearchParams(query).get('next'));
+  if (nextFromQuery) {
+    return nextFromQuery;
+  }
+  return null;
+};
+
+export function getPostLoginRedirect(search?: string): string | null {
+  const nextFromQuery = getRedirectFromSearch(search);
+  if (nextFromQuery) {
+    return nextFromQuery;
+  }
+
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return normalizePostLoginRedirect(window.sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY));
+}
+
+export function consumePostLoginRedirect(search?: string): string | null {
+  const nextPath = getPostLoginRedirect(search);
+  persistPostLoginRedirect(null);
+  return nextPath;
+}
+
+export function buildLoginRedirectPath(currentPath?: string | null): string {
+  const normalizedTarget = normalizePostLoginRedirect(currentPath);
+  if (!normalizedTarget) {
+    return LOGIN_PATH;
+  }
+
+  return `${LOGIN_PATH}?next=${encodeURIComponent(normalizedTarget)}`;
+}
+
+export function redirectToLogin(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (window.location.pathname !== LOGIN_PATH) {
+    const currentPath = normalizePostLoginRedirect(
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    );
+    persistPostLoginRedirect(currentPath);
+    window.location.replace(buildLoginRedirectPath(currentPath));
   } else {
     window.location.reload();
   }

@@ -326,6 +326,7 @@ const renderAppContent = (path: string) =>
 describe('AppContent hotkeys integration', () => {
   beforeEach(() => {
     vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('Win32');
+    window.sessionStorage.clear();
     authStateMock.authLoading = false;
     authStateMock.currentUser = { id: 'user-1', username: 'Tester', roles: ['Admin'] };
     authStateMock.isAuthenticated = true;
@@ -710,6 +711,38 @@ describe('AppContent hotkeys integration', () => {
       expect(fetchDealMock).toHaveBeenCalledWith('deal-auth');
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-auth');
     });
+  });
+
+  it('restores deep-linked deal after forced login redirect with next param', async () => {
+    authStateMock.isAuthenticated = false;
+    appDataMock.deals = [];
+    fetchDealMock.mockResolvedValue({
+      id: 'deal-after-login',
+      title: 'Сделка после forced-login',
+      clientId: 'client-1',
+      status: 'open',
+      createdAt: '2026-01-01T00:00:00Z',
+      quotes: [],
+      documents: [],
+      clientName: 'Клиент 1',
+    });
+
+    const view = renderAppContent('/login?next=%2Fdeals%3FdealId%3Ddeal-after-login');
+
+    expect(fetchDealMock).not.toHaveBeenCalled();
+
+    authStateMock.isAuthenticated = true;
+    view.rerender(
+      <MemoryRouter initialEntries={['/login?next=%2Fdeals%3FdealId%3Ddeal-after-login']}>
+        <AppContent />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchDealMock).toHaveBeenCalledWith('deal-after-login');
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-after-login');
+    });
+    expect(window.sessionStorage.getItem('crm_post_login_redirect')).toBeNull();
   });
 
   it('keeps selected created deal when refresh payload does not contain it', async () => {

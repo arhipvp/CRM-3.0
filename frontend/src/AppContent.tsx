@@ -58,6 +58,8 @@ import {
   deleteTask,
   clearTokens,
   APIError,
+  consumePostLoginRedirect,
+  getPostLoginRedirect,
   fetchDeal,
   createDealMailbox,
   checkDealMailbox,
@@ -357,6 +359,11 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const isDealsRoute = location.pathname.startsWith('/deals');
   const isCommissionsRoute = location.pathname.startsWith('/commissions');
+  const isLoginRoute = location.pathname === '/login';
+  const pendingPostLoginRedirect = useMemo(
+    () => (isAuthenticated && isLoginRoute ? getPostLoginRedirect(location.search) : null),
+    [isAuthenticated, isLoginRoute, location.search],
+  );
   const deepLinkedDealId = useMemo(() => {
     if (!isDealsRoute) {
       return null;
@@ -377,6 +384,19 @@ const AppContent: React.FC = () => {
     setDealOrdering,
     filters: dealFilters,
   } = useDealFilters();
+
+  useEffect(() => {
+    if (!pendingPostLoginRedirect) {
+      return;
+    }
+
+    const nextPath = consumePostLoginRedirect(location.search);
+    if (!nextPath) {
+      return;
+    }
+
+    navigate(nextPath, { replace: true });
+  }, [location.search, navigate, pendingPostLoginRedirect]);
 
   useEffect(() => {
     if (!isAuthenticated || !deepLinkedDealId) {
@@ -4179,6 +4199,14 @@ const AppContent: React.FC = () => {
 
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  if (pendingPostLoginRedirect) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="text-slate-500">Переход...</div>
+      </div>
+    );
   }
 
   return (
