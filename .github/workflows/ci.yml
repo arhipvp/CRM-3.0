@@ -194,7 +194,7 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
           GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
           GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/drive-sa.json
-          COVERAGE_FILE: .coverage.core
+          COVERAGE_FILE: coverage.core
         run: |
           cd backend
           pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= tests apps/users/tests.py apps/common/tests apps/clients/tests.py
@@ -203,7 +203,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage-core
-          path: backend/.coverage.core
+          path: backend/coverage.core
 
   backend-tests-domain:
     name: Backend Tests (Domain)
@@ -260,7 +260,7 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
           GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
           GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/drive-sa.json
-          COVERAGE_FILE: .coverage.domain
+          COVERAGE_FILE: coverage.domain
         run: |
           cd backend
           pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/deals/tests apps/chat/tests apps/notes/tests.py apps/tasks/tests.py apps/mailboxes/tests.py apps/documents/tests.py
@@ -269,7 +269,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage-domain
-          path: backend/.coverage.domain
+          path: backend/coverage.domain
 
   backend-tests-finance:
     name: Backend Tests (Finance)
@@ -326,7 +326,7 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
           GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
           GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/drive-sa.json
-          COVERAGE_FILE: .coverage.finance
+          COVERAGE_FILE: coverage.finance
         run: |
           cd backend
           pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/policies/tests apps/finances/tests.py apps/notifications/tests.py
@@ -335,7 +335,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage-finance
-          path: backend/.coverage.finance
+          path: backend/coverage.finance
 
   backend-coverage-merge:
     name: Backend Coverage Merge
@@ -363,7 +363,7 @@ jobs:
 
       - name: Combine backend coverage and export XML
         run: |
-          python -m coverage combine coverage-artifacts/backend-coverage-core/.coverage.core coverage-artifacts/backend-coverage-domain/.coverage.domain coverage-artifacts/backend-coverage-finance/.coverage.finance
+          python -m coverage combine coverage-artifacts/backend-coverage-core/coverage.core coverage-artifacts/backend-coverage-domain/coverage.domain coverage-artifacts/backend-coverage-finance/coverage.finance
           python -m coverage xml -o backend/coverage.xml
 
       - name: Upload combined backend coverage artifact
