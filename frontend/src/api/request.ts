@@ -102,18 +102,6 @@ const normalizePostLoginRedirect = (value: string | null | undefined): string | 
   return value;
 };
 
-const getLoginRedirectUrl = (): URL | null => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  try {
-    return new URL(window.location.href);
-  } catch {
-    return null;
-  }
-};
-
 const persistPostLoginRedirect = (value: string | null): void => {
   if (typeof window === 'undefined') {
     return;
