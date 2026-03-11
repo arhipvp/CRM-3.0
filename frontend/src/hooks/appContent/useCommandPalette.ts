@@ -283,8 +283,6 @@ export const useCommandPalette = ({
       selectedDeal,
       selectedPolicyShortcut,
       selectedTaskShortcut,
-      selectedDealId,
-      selectedDealExists,
     ],
   );
 
