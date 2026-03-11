@@ -128,7 +128,7 @@ jobs:
         env:
           VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_PATH: ${{ secrets.VPS_PATH }}
-        run: |
+        run: | # pragma: allowlist secret
           BRANCH="${BRANCH:-master}"
           COMMIT_SHA="${COMMIT_SHA:-$(git rev-parse HEAD)}"
           VPS_PORT="${VPS_PORT:-22}"
