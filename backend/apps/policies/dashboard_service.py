@@ -29,7 +29,12 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
             paid_amount=Coalesce(
                 Sum(
                     "payments__amount",
-                    filter=Q(payments__actual_date__isnull=False),
+                    filter=Q(
+                        payments__actual_date__isnull=False,
+                        payments__scheduled_date__isnull=False,
+                        payments__scheduled_date__gte=start_date,
+                        payments__scheduled_date__lte=end_date,
+                    ),
                 ),
                 Value(0),
                 output_field=decimal_field,
@@ -43,7 +48,12 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
             total=Coalesce(
                 Sum(
                     "payments__amount",
-                    filter=Q(payments__actual_date__isnull=False),
+                    filter=Q(
+                        payments__actual_date__isnull=False,
+                        payments__scheduled_date__isnull=False,
+                        payments__scheduled_date__gte=start_date,
+                        payments__scheduled_date__lte=end_date,
+                    ),
                 ),
                 Value(0),
                 output_field=decimal_field,
@@ -88,11 +98,12 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
             policy__start_date__isnull=False,
             policy__start_date__gte=start_date,
             policy__start_date__lte=end_date,
+            scheduled_date__isnull=False,
+            scheduled_date__gte=start_date,
+            scheduled_date__lte=end_date,
             actual_date__isnull=False,
-            actual_date__gte=start_date,
-            actual_date__lte=end_date,
         )
-        .values("actual_date")
+        .values("scheduled_date")
         .annotate(
             total=Coalesce(
                 Sum("amount"),
@@ -100,10 +111,10 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
                 output_field=decimal_field,
             )
         )
-        .order_by("actual_date")
+        .order_by("scheduled_date")
     )
     payments_series = [
-        {"date": item["actual_date"], "total": format_amount(item["total"])}
+        {"date": item["scheduled_date"], "total": format_amount(item["total"])}
         for item in payments_by_day
     ]
 
@@ -192,12 +203,14 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
 
     records_queryset = FinancialRecord.objects.filter(
         deleted_at__isnull=True,
-        date__isnull=False,
         payment__policy__isnull=False,
         payment__policy__deal__seller=user,
         payment__policy__start_date__isnull=False,
         payment__policy__start_date__gte=start_date,
         payment__policy__start_date__lte=end_date,
+        payment__scheduled_date__isnull=False,
+        payment__scheduled_date__gte=start_date,
+        payment__scheduled_date__lte=end_date,
     )
 
     records_totals = records_queryset.aggregate(

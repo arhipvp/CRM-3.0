@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from apps.clients.models import Client
@@ -90,36 +90,42 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
             policy=current_policy,
             deal=self.deal,
             amount=Decimal("100.00"),
+            scheduled_date=today,
             actual_date=today,
         )
         Payment.objects.create(
             policy=current_policy,
             deal=self.deal,
             amount=Decimal("50.00"),
+            scheduled_date=today,
             actual_date=None,
         )
         previous_payment = Payment.objects.create(
             policy=previous_policy,
             deal=self.deal,
             amount=Decimal("200.00"),
+            scheduled_date=previous_month,
             actual_date=today,
         )
         other_payment = Payment.objects.create(
             policy=other_policy,
             deal=self.other_deal,
             amount=Decimal("300.00"),
+            scheduled_date=today,
             actual_date=today,
         )
         unknown_payment = Payment.objects.create(
             policy=unknown_policy,
             deal=self.deal,
             amount=Decimal("10.00"),
+            scheduled_date=today,
             actual_date=today,
         )
         payment_without_policy = Payment.objects.create(
             policy=None,
             deal=self.deal,
             amount=Decimal("20.00"),
+            scheduled_date=today,
             actual_date=today,
         )
 
@@ -186,7 +192,10 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         self.assertEqual(payload.get("total_paid"), "110.00")
         self.assertEqual(payload.get("tasks_current"), 1)
         self.assertEqual(payload.get("tasks_completed"), 1)
-        self.assertTrue(payload.get("payments_by_day"))
+        self.assertEqual(
+            payload.get("payments_by_day"),
+            [{"date": today.isoformat(), "total": "110.00"}],
+        )
         self.assertTrue(payload.get("tasks_completed_by_day"))
         self.assertTrue(payload.get("tasks_completed_by_executor"))
         policy_numbers = {item["number"] for item in payload.get("policies", [])}
@@ -231,12 +240,14 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
             policy=current_policy,
             deal=self.deal,
             amount=Decimal("120.00"),
+            scheduled_date=today,
             actual_date=today,
         )
         yesterday_payment = Payment.objects.create(
             policy=yesterday_policy,
             deal=self.deal,
             amount=Decimal("80.00"),
+            scheduled_date=yesterday,
             actual_date=today,
         )
         FinancialRecord.objects.create(
@@ -265,6 +276,10 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         self.assertEqual(financial_totals.get("expense_total"), "0.00")
         self.assertEqual(financial_totals.get("net_total"), "120.00")
         self.assertEqual(financial_totals.get("records_count"), 1)
+        self.assertEqual(
+            payload.get("payments_by_day"),
+            [{"date": today.isoformat(), "total": "120.00"}],
+        )
 
     def test_dashboard_requires_both_dates(self):
         today = timezone.localdate()
@@ -273,3 +288,137 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
             {"start_date": today.isoformat()},
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_dashboard_uses_payment_scheduled_date_for_paid_and_financial_totals(self):
+        january_day = date(2026, 1, 15)
+        january_end = date(2026, 1, 31)
+        march_day = date(2026, 3, 10)
+        june_day = date(2026, 6, 1)
+
+        january_policy = self._create_policy(
+            self.deal,
+            "POLICY-JAN",
+            january_day,
+            company=self.company,
+            insurance_type=self.insurance_type,
+        )
+
+        january_payment = Payment.objects.create(
+            policy=january_policy,
+            deal=self.deal,
+            amount=Decimal("120.00"),
+            scheduled_date=january_day,
+            actual_date=march_day,
+        )
+
+        FinancialRecord.objects.create(
+            payment=january_payment,
+            amount=Decimal("80.00"),
+            date=march_day,
+        )
+        FinancialRecord.objects.create(
+            payment=january_payment,
+            amount=Decimal("-30.00"),
+            date=june_day,
+        )
+
+        january_response = self.api_client.get(
+            "/api/v1/dashboard/seller/",
+            {
+                "start_date": date(2026, 1, 1).isoformat(),
+                "end_date": january_end.isoformat(),
+            },
+        )
+        self.assertEqual(january_response.status_code, status.HTTP_200_OK)
+        january_payload = january_response.json()
+        self.assertEqual(january_payload.get("total_paid"), "120.00")
+        self.assertEqual(
+            january_payload.get("payments_by_day"),
+            [{"date": january_day.isoformat(), "total": "120.00"}],
+        )
+        january_financial_totals = january_payload.get("financial_totals", {})
+        self.assertEqual(january_financial_totals.get("income_total"), "80.00")
+        self.assertEqual(january_financial_totals.get("expense_total"), "30.00")
+        self.assertEqual(january_financial_totals.get("net_total"), "50.00")
+        self.assertEqual(january_financial_totals.get("records_count"), 2)
+
+        january_rows = january_payload.get("financial_by_company_type", [])
+        self.assertEqual(len(january_rows), 1)
+        self.assertEqual(january_rows[0]["insurance_company_name"], "Company")
+        self.assertEqual(january_rows[0]["insurance_type_name"], "Type")
+        self.assertEqual(january_rows[0]["income_total"], "80.00")
+        self.assertEqual(january_rows[0]["expense_total"], "30.00")
+        self.assertEqual(january_rows[0]["net_total"], "50.00")
+        self.assertEqual(january_rows[0]["records_count"], 2)
+
+        march_response = self.api_client.get(
+            "/api/v1/dashboard/seller/",
+            {
+                "start_date": date(2026, 3, 1).isoformat(),
+                "end_date": date(2026, 3, 31).isoformat(),
+            },
+        )
+        self.assertEqual(march_response.status_code, status.HTTP_200_OK)
+        march_payload = march_response.json()
+        self.assertEqual(march_payload.get("total_paid"), "0.00")
+        self.assertEqual(march_payload.get("payments_by_day"), [])
+        march_financial_totals = march_payload.get("financial_totals", {})
+        self.assertEqual(march_financial_totals.get("income_total"), "0.00")
+        self.assertEqual(march_financial_totals.get("expense_total"), "0.00")
+        self.assertEqual(march_financial_totals.get("net_total"), "0.00")
+        self.assertEqual(march_financial_totals.get("records_count"), 0)
+
+        june_response = self.api_client.get(
+            "/api/v1/dashboard/seller/",
+            {
+                "start_date": date(2026, 6, 1).isoformat(),
+                "end_date": date(2026, 6, 30).isoformat(),
+            },
+        )
+        self.assertEqual(june_response.status_code, status.HTTP_200_OK)
+        june_payload = june_response.json()
+        self.assertEqual(june_payload.get("total_paid"), "0.00")
+        self.assertEqual(june_payload.get("payments_by_day"), [])
+        june_financial_totals = june_payload.get("financial_totals", {})
+        self.assertEqual(june_financial_totals.get("income_total"), "0.00")
+        self.assertEqual(june_financial_totals.get("expense_total"), "0.00")
+        self.assertEqual(june_financial_totals.get("net_total"), "0.00")
+        self.assertEqual(june_financial_totals.get("records_count"), 0)
+
+    def test_dashboard_excludes_payments_without_scheduled_date(self):
+        january_day = date(2026, 1, 20)
+        policy = self._create_policy(self.deal, "POLICY-NO-SCHEDULE", january_day)
+        payment = Payment.objects.create(
+            policy=policy,
+            deal=self.deal,
+            amount=Decimal("150.00"),
+            scheduled_date=None,
+            actual_date=january_day,
+        )
+        FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("90.00"),
+            date=january_day,
+        )
+        FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-20.00"),
+            date=january_day,
+        )
+
+        response = self.api_client.get(
+            "/api/v1/dashboard/seller/",
+            {
+                "start_date": date(2026, 1, 1).isoformat(),
+                "end_date": date(2026, 1, 31).isoformat(),
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload.get("total_paid"), "0.00")
+        self.assertEqual(payload.get("payments_by_day"), [])
+        financial_totals = payload.get("financial_totals", {})
+        self.assertEqual(financial_totals.get("income_total"), "0.00")
+        self.assertEqual(financial_totals.get("expense_total"), "0.00")
+        self.assertEqual(financial_totals.get("net_total"), "0.00")
+        self.assertEqual(financial_totals.get("records_count"), 0)
