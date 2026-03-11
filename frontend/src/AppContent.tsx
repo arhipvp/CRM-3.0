@@ -29,11 +29,6 @@ import { formatErrorMessage } from './utils/formatErrorMessage';
 import { markTaskAsDeleted } from './utils/tasks';
 import {
   createClient,
-  updateClient,
-  deleteClient,
-  fetchSimilarClients,
-  mergeClients,
-  previewClientMerge,
   createDeal,
   createQuote,
   updateQuote,
@@ -72,32 +67,14 @@ import {
   createFinancialRecord,
   updateFinancialRecord,
   deleteFinancialRecord,
-  createFinanceStatement,
-  updateFinanceStatement,
-  deleteFinanceStatement,
-  removeFinanceStatementRecords,
 } from './api';
 import type { FilterParams } from './api';
-import {
-  Client,
-  ClientMergePreviewResponse,
-  ClientSimilarityCandidate,
-  Deal,
-  FinancialRecord,
-  Payment,
-  Policy,
-  Quote,
-  Statement,
-  Task,
-  User,
-} from './types';
+import { Client, Deal, FinancialRecord, Payment, Policy, Quote, Task, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDealFilters } from './hooks/useDealFilters';
 import { useConfirm } from './hooks/useConfirm';
 import { confirmTexts } from './constants/confirmTexts';
-import type { AddPaymentFormValues } from './components/forms/AddPaymentForm';
-import type { AddFinancialRecordFormValues } from './components/forms/AddFinancialRecordForm';
 import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { ModalType } from './components/app/types';
 import type { FinancialRecordModalState, PaymentModalState } from './types';
@@ -111,23 +88,13 @@ import {
   resolveSalesChannelName,
   shouldAutofillCommissionNote,
 } from './utils/financialRecordNotes';
-import type { CommandPaletteItem } from './components/common/modal/CommandPalette';
 import { formatShortcut } from './hotkeys/formatShortcut';
-import { useGlobalHotkeys } from './hotkeys/useGlobalHotkeys';
+import { useClientActions } from './hooks/appContent/useClientActions';
+import { useCommandPalette } from './hooks/appContent/useCommandPalette';
+import { useFinanceActions } from './hooks/appContent/useFinanceActions';
 import { useDealPreviewController } from './hooks/appContent/useDealPreviewController';
 import { resolveEffectiveSelectedDealId } from './hooks/useSelectedDeal';
-
-type PaletteMode = null | 'commands' | 'help' | 'taskDeal';
-
-const NAVIGATION_COMMANDS: Array<{ path: string; label: string }> = [
-  { path: '/seller-dashboard', label: 'Дашборд продавца' },
-  { path: '/deals', label: 'Сделки' },
-  { path: '/clients', label: 'Клиенты' },
-  { path: '/policies', label: 'Полисы' },
-  { path: '/commissions', label: 'Доходы и расходы' },
-  { path: '/tasks', label: 'Задачи' },
-  { path: '/settings', label: 'Настройки' },
-];
+import type { CommandPaletteItem } from './components/common/modal/CommandPalette';
 
 const HOTKEY_HELP_ITEMS: CommandPaletteItem[] = [
   {
@@ -198,33 +165,10 @@ const HOTKEY_HELP_ITEMS: CommandPaletteItem[] = [
   },
 ];
 
-const PALETTE_HINT_SESSION_KEY = 'crm_hotkeys_palette_hint_seen';
-
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
   const [modal, setModal] = useState<ModalType>(null);
-  const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
-  const [clientModalReturnTo, setClientModalReturnTo] = useState<ModalType | null>(null);
-  const [pendingDealClientId, setPendingDealClientId] = useState<string | null>(null);
-  const openClientModal = useCallback((afterModal: ModalType | null = null) => {
-    if (afterModal) {
-      setClientModalOverlayOpen(true);
-      setClientModalReturnTo(afterModal);
-      return;
-    }
-    setClientModalReturnTo(null);
-    setModal('client');
-  }, []);
-
-  const closeClientModal = useCallback(() => {
-    if (isClientModalOverlayOpen) {
-      setClientModalOverlayOpen(false);
-      setClientModalReturnTo(null);
-      return;
-    }
-    setModal(null);
-  }, [isClientModalOverlayOpen, setModal, setClientModalReturnTo]);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
@@ -248,34 +192,6 @@ const AppContent: React.FC = () => {
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
     useState<FinancialRecordModalState | null>(null);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [clientDeleteTarget, setClientDeleteTarget] = useState<Client | null>(null);
-  const [similarClientTargetId, setSimilarClientTargetId] = useState<string | null>(null);
-  const [similarCandidates, setSimilarCandidates] = useState<ClientSimilarityCandidate[]>([]);
-  const [isSimilarClientsLoading, setIsSimilarClientsLoading] = useState(false);
-  const [similarClientsError, setSimilarClientsError] = useState<string | null>(null);
-  const [mergeClientTargetId, setMergeClientTargetId] = useState<string | null>(null);
-  const [mergeSources, setMergeSources] = useState<string[]>([]);
-  const [mergeSearch, setMergeSearch] = useState('');
-  const [mergeError, setMergeError] = useState<string | null>(null);
-  const [isMergingClients, setIsMergingClients] = useState(false);
-  const [isClientMergePreviewLoading, setIsClientMergePreviewLoading] = useState(false);
-  const [clientMergePreview, setClientMergePreview] = useState<ClientMergePreviewResponse | null>(
-    null,
-  );
-  const [isClientMergePreviewConfirmed, setIsClientMergePreviewConfirmed] = useState(false);
-  const [clientMergeStep, setClientMergeStep] = useState<'select' | 'preview'>('select');
-  const [clientMergeFieldOverrides, setClientMergeFieldOverrides] = useState<{
-    name: string;
-    phone: string;
-    email: string;
-    notes: string;
-  }>({
-    name: '',
-    phone: '',
-    email: '',
-    notes: '',
-  });
   const {
     dataState,
     loadData,
@@ -333,6 +249,55 @@ const AppContent: React.FC = () => {
     tasks,
     users,
   } = dataState;
+  const {
+    isClientModalOverlayOpen,
+    pendingDealClientId,
+    editingClient,
+    setEditingClient,
+    clientDeleteTarget,
+    setClientDeleteTarget,
+    similarClientTargetId,
+    similarCandidates,
+    isSimilarClientsLoading,
+    similarClientsError,
+    mergeTargetClient,
+    mergeCandidates,
+    mergeSearch,
+    setMergeSearch,
+    mergeSources,
+    mergeError,
+    isMergingClients,
+    isClientMergePreviewLoading,
+    clientMergePreview,
+    isClientMergePreviewConfirmed,
+    clientMergeStep,
+    clientMergeFieldOverrides,
+    setClientMergeFieldOverrides,
+    similarTargetClient,
+    openClientModal,
+    closeClientModal,
+    handleAddClient,
+    handlePendingDealClientConsumed,
+    handleClientEditRequest,
+    handleUpdateClient,
+    handleClientDeleteRequest,
+    handleDeleteClient,
+    handleClientMergeRequest,
+    handleClientFindSimilarRequest,
+    closeSimilarClientsModal,
+    toggleMergeSource,
+    closeMergeModal,
+    handleClientMergePreview,
+    handleMergeSubmit,
+    handleMergeFromSimilar,
+  } = useClientActions({
+    clients,
+    setModal,
+    setIsSyncing,
+    setError,
+    updateAppData,
+    addNotification,
+  });
   const navigate = useNavigate();
   const {
     selectedDealId,
@@ -354,7 +319,6 @@ const AppContent: React.FC = () => {
   const [dealQuotesLoadingIds, setDealQuotesLoadingIds] = useState<Set<string>>(
     () => new Set<string>(),
   );
-  const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
   const [isRefreshingDealsList, setIsRefreshingDealsList] = useState(false);
   const location = useLocation();
   const isDealsRoute = location.pathname.startsWith('/deals');
@@ -1075,14 +1039,6 @@ const AppContent: React.FC = () => {
     openClientModal();
   }, [openClientModal]);
 
-  const openTaskCreateFlow = useCallback(() => {
-    if (selectedDealId && dealsById.has(selectedDealId)) {
-      setQuickTaskDealId(selectedDealId);
-      return;
-    }
-    setPaletteMode('taskDeal');
-  }, [dealsById, selectedDealId]);
-
   const adjustPaymentsTotals = useCallback(
     <T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }>(
       items: T[],
@@ -1113,6 +1069,31 @@ const AppContent: React.FC = () => {
     },
     [],
   );
+
+  const {
+    handleAddPayment,
+    handleUpdatePayment,
+    handleDeletePayment,
+    handleAddFinancialRecord,
+    handleUpdateFinancialRecord,
+    handleDeleteFinancialRecord,
+    handleCreateFinanceStatement,
+    handleUpdateFinanceStatement,
+    handleDeleteFinanceStatement,
+    handleRemoveFinanceStatementRecords,
+  } = useFinanceActions({
+    payments,
+    financialRecordModal,
+    updateAppData,
+    setError,
+    confirm,
+    addNotification,
+    invalidateDealsCache,
+    syncDealsByIds,
+    adjustPaymentsTotals,
+    setPaymentModal,
+    setFinancialRecordModal,
+  });
 
   const handlePolicyDraftReady = useCallback(
     (
@@ -1204,332 +1185,6 @@ const AppContent: React.FC = () => {
       setError(formatErrorMessage(err, 'Ошибка при поиске сделок'));
     });
   }, [dealFilters, isAuthenticated, refreshDealsWithSelection, setError]);
-
-  const handleAddClient = useCallback(
-    async (data: {
-      name: string;
-      phone?: string;
-      birthDate?: string | null;
-      notes?: string | null;
-      email?: string | null;
-    }) => {
-      const created = await createClient(data);
-      updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
-      if (clientModalReturnTo === 'deal') {
-        setPendingDealClientId(created.id);
-      }
-      closeClientModal();
-    },
-    [closeClientModal, updateAppData, clientModalReturnTo],
-  );
-
-  const handlePendingDealClientConsumed = useCallback(() => {
-    setPendingDealClientId(null);
-  }, []);
-
-  const handleClientEditRequest = useCallback((client: Client) => {
-    setEditingClient(client);
-  }, []);
-
-  const handleUpdateClient = useCallback(
-    async (data: {
-      name: string;
-      phone?: string;
-      email?: string | null;
-      birthDate?: string | null;
-      notes?: string | null;
-    }) => {
-      if (!editingClient) {
-        return;
-      }
-      try {
-        const updated = await updateClient(editingClient.id, data);
-        updateAppData((prev) => ({
-          clients: prev.clients.map((client) => (client.id === updated.id ? updated : client)),
-        }));
-        addNotification('Клиент обновлён', 'success', 4000);
-        setEditingClient(null);
-        setError(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при обновлении клиента'));
-        throw err;
-      }
-    },
-    [addNotification, editingClient, setError, updateAppData],
-  );
-
-  const handleClientDeleteRequest = useCallback((client: Client) => {
-    setClientDeleteTarget(client);
-  }, []);
-
-  const handleDeleteClient = useCallback(async () => {
-    if (!clientDeleteTarget) {
-      return;
-    }
-    setIsSyncing(true);
-    try {
-      await deleteClient(clientDeleteTarget.id);
-      updateAppData((prev) => ({
-        clients: prev.clients.filter((client) => client.id !== clientDeleteTarget.id),
-      }));
-      addNotification('Клиент удалён', 'success', 4000);
-      setClientDeleteTarget(null);
-      setError(null);
-    } catch (err) {
-      if (err instanceof APIError && err.status === 403) {
-        addNotification('Ошибка доступа при удалении клиента', 'error', 4000);
-      } else {
-        setError(formatErrorMessage(err, 'Ошибка при удалении клиента'));
-      }
-      throw err;
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [addNotification, clientDeleteTarget, setError, setIsSyncing, updateAppData]);
-
-  const handleClientMergeRequest = useCallback(
-    (client: Client, preselectedSources: string[] = []) => {
-      setMergeClientTargetId(client.id);
-      setMergeSources(preselectedSources);
-      setMergeSearch('');
-      setMergeError(null);
-      setClientMergePreview(null);
-      setIsClientMergePreviewConfirmed(false);
-      setClientMergeStep('select');
-      setClientMergeFieldOverrides({
-        name: client.name ?? '',
-        phone: client.phone ?? '',
-        email: client.email ?? '',
-        notes: client.notes ?? '',
-      });
-    },
-    [],
-  );
-
-  const handleClientFindSimilarRequest = useCallback(async (client: Client) => {
-    setSimilarClientTargetId(client.id);
-    setSimilarCandidates([]);
-    setSimilarClientsError(null);
-    setIsSimilarClientsLoading(true);
-    try {
-      const result = await fetchSimilarClients({
-        targetClientId: client.id,
-        limit: 50,
-      });
-      const sortedCandidates = [...result.candidates].sort(
-        (left, right) => right.score - left.score,
-      );
-      setSimilarCandidates(sortedCandidates);
-    } catch (err) {
-      setSimilarClientsError(formatErrorMessage(err, 'Не удалось найти похожих клиентов.'));
-    } finally {
-      setIsSimilarClientsLoading(false);
-    }
-  }, []);
-
-  const closeSimilarClientsModal = useCallback(() => {
-    setSimilarClientTargetId(null);
-    setSimilarCandidates([]);
-    setSimilarClientsError(null);
-    setIsSimilarClientsLoading(false);
-  }, []);
-
-  const toggleMergeSource = useCallback((clientId: string) => {
-    setMergeSources((prev) =>
-      prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId],
-    );
-    setMergeError(null);
-    setClientMergePreview(null);
-    setIsClientMergePreviewConfirmed(false);
-    setClientMergeStep('select');
-  }, []);
-
-  const closeMergeModal = useCallback(() => {
-    setMergeClientTargetId(null);
-    setMergeSources([]);
-    setMergeSearch('');
-    setMergeError(null);
-    setClientMergePreview(null);
-    setIsClientMergePreviewConfirmed(false);
-    setClientMergeStep('select');
-    setClientMergeFieldOverrides({
-      name: '',
-      phone: '',
-      email: '',
-      notes: '',
-    });
-  }, []);
-
-  const handleClientMergePreview = useCallback(async () => {
-    if (!mergeClientTargetId) {
-      return;
-    }
-    if (!mergeSources.length) {
-      setMergeError('Выберите клиентов для объединения.');
-      return;
-    }
-    setIsClientMergePreviewLoading(true);
-    setMergeError(null);
-    try {
-      const preview = await previewClientMerge({
-        targetClientId: mergeClientTargetId,
-        sourceClientIds: mergeSources,
-        includeDeleted: true,
-      });
-      setClientMergePreview(preview);
-      setClientMergeFieldOverrides((prev) => ({
-        name: prev.name || preview.canonicalProfile.name || '',
-        phone: prev.phone || preview.canonicalProfile.phone || '',
-        email: prev.email || preview.canonicalProfile.email || '',
-        notes: prev.notes || preview.canonicalProfile.notes || '',
-      }));
-      setIsClientMergePreviewConfirmed(true);
-      setClientMergeStep('preview');
-    } catch (err) {
-      const message =
-        err instanceof APIError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Не удалось получить предпросмотр объединения';
-      setMergeError(message);
-      setIsClientMergePreviewConfirmed(false);
-    } finally {
-      setIsClientMergePreviewLoading(false);
-    }
-  }, [mergeClientTargetId, mergeSources]);
-
-  const handleMergeSubmit = useCallback(async () => {
-    if (!mergeClientTargetId) {
-      return;
-    }
-    if (!mergeSources.length) {
-      setMergeError('Выберите клиентов для объединения.');
-      return;
-    }
-    if (!isClientMergePreviewConfirmed || !clientMergePreview) {
-      setMergeError('Сначала выполните предпросмотр объединения.');
-      return;
-    }
-    if (!clientMergeFieldOverrides.name.trim()) {
-      setMergeError('Укажите итоговое ФИО клиента.');
-      return;
-    }
-    setIsSyncing(true);
-    setIsMergingClients(true);
-    try {
-      const previewSnapshotId = String(clientMergePreview.previewSnapshotId ?? '');
-      const result = await mergeClients({
-        targetClientId: mergeClientTargetId,
-        sourceClientIds: mergeSources,
-        includeDeleted: true,
-        previewSnapshotId,
-        fieldOverrides: {
-          name: clientMergeFieldOverrides.name,
-          phone: clientMergeFieldOverrides.phone,
-          email: clientMergeFieldOverrides.email || null,
-          notes: clientMergeFieldOverrides.notes,
-        },
-      });
-      const mergedIds = new Set(result.mergedClientIds);
-      updateAppData((prev) => ({
-        clients: prev.clients
-          .filter((client) => !mergedIds.has(client.id))
-          .map((client) => (client.id === result.targetClient.id ? result.targetClient : client)),
-        deals: prev.deals.map((deal) =>
-          mergedIds.has(deal.clientId)
-            ? {
-                ...deal,
-                clientId: result.targetClient.id,
-                clientName: result.targetClient.name,
-              }
-            : deal,
-        ),
-        policies: prev.policies.map((policy) => {
-          const policyClientId = policy.clientId ?? '';
-          const insuredClientId = policy.insuredClientId ?? '';
-          const shouldUpdatePrimary = Boolean(policyClientId && mergedIds.has(policyClientId));
-          const shouldUpdateInsured = Boolean(insuredClientId && mergedIds.has(insuredClientId));
-          if (!shouldUpdatePrimary && !shouldUpdateInsured) {
-            return policy;
-          }
-          return {
-            ...policy,
-            clientId: shouldUpdatePrimary ? result.targetClient.id : policy.clientId,
-            clientName: shouldUpdatePrimary ? result.targetClient.name : policy.clientName,
-            insuredClientId: shouldUpdateInsured ? result.targetClient.id : policy.insuredClientId,
-            insuredClientName: shouldUpdateInsured
-              ? result.targetClient.name
-              : policy.insuredClientName,
-          };
-        }),
-      }));
-      addNotification('Клиенты объединены', 'success', 4000);
-      closeMergeModal();
-      setError(null);
-    } catch (err) {
-      const message =
-        err instanceof APIError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Ошибка при объединении клиентов';
-      setMergeError(message);
-      throw err;
-    } finally {
-      setIsSyncing(false);
-      setIsMergingClients(false);
-    }
-  }, [
-    addNotification,
-    clientMergeFieldOverrides.email,
-    clientMergeFieldOverrides.name,
-    clientMergeFieldOverrides.notes,
-    clientMergeFieldOverrides.phone,
-    clientMergePreview,
-    closeMergeModal,
-    isClientMergePreviewConfirmed,
-    mergeClientTargetId,
-    mergeSources,
-    setIsMergingClients,
-    setIsSyncing,
-    setError,
-    updateAppData,
-  ]);
-
-  const mergeCandidates = useMemo(() => {
-    if (!mergeClientTargetId) {
-      return [];
-    }
-    const normalized = mergeSearch.trim().toLowerCase();
-    return clients.filter((client) => {
-      if (client.id === mergeClientTargetId) {
-        return false;
-      }
-      if (!normalized) {
-        return true;
-      }
-      return client.name.toLowerCase().includes(normalized);
-    });
-  }, [clients, mergeClientTargetId, mergeSearch]);
-
-  const mergeTargetClient = mergeClientTargetId
-    ? (clients.find((client) => client.id === mergeClientTargetId) ?? null)
-    : null;
-  const similarTargetClient = similarClientTargetId
-    ? (clients.find((client) => client.id === similarClientTargetId) ?? null)
-    : null;
-
-  const handleMergeFromSimilar = useCallback(
-    (candidateClientId: string) => {
-      if (!similarTargetClient) {
-        return;
-      }
-      closeSimilarClientsModal();
-      handleClientMergeRequest(similarTargetClient, [candidateClientId]);
-    },
-    [closeSimilarClientsModal, handleClientMergeRequest, similarTargetClient],
-  );
 
   const handleAddDeal = useCallback(
     async (data: DealFormValues) => {
@@ -3047,6 +2702,42 @@ const AppContent: React.FC = () => {
     }
   }, [deleteSelectedClient, deleteSelectedDeal, isClientsRoute, isDealsRoute]);
 
+  const { paletteMode, openCommandsPalette, closePalette, commandItems, taskDealItems } =
+    useCommandPalette({
+      isAuthenticated,
+      deals,
+      selectedDeal,
+      selectedClientShortcut,
+      selectedPolicyShortcut,
+      selectedTaskShortcut,
+      isDealsRoute,
+      isClientsRoute,
+      isPoliciesRoute,
+      isTasksRoute,
+      sortedClientsCount: sortedClientsForShortcuts.length,
+      sortedPoliciesCount: sortedPoliciesForShortcuts.length,
+      sortedTasksCount: sortedTasksForShortcuts.length,
+      selectedDealId,
+      selectedDealExists: Boolean(selectedDealId && dealsById.has(selectedDealId)),
+      navigate: (path) => navigate(path),
+      addNotification,
+      selectDealById,
+      setQuickTaskDealId,
+      openDealCreateModal,
+      openClientCreateModal,
+      openSelectedDealPreview,
+      deleteSelectedDeal,
+      restoreSelectedDeal,
+      openSelectedClient,
+      deleteSelectedClient,
+      openSelectedPolicy,
+      openSelectedTaskDealPreview,
+      markSelectedTaskDone,
+      cycleActiveContextSelection,
+      openPrimaryContextAction,
+      deletePrimaryContextAction,
+    });
+
   const loadDealTasks = useCallback(
     async (dealId: string) => {
       const cached = dealTasksCacheRef.current.get(dealId);
@@ -3198,473 +2889,6 @@ const AppContent: React.FC = () => {
     [loadDealPolicies],
   );
 
-  const handleAddPayment = useCallback(
-    async (values: AddPaymentFormValues) => {
-      invalidateDealsCache();
-      try {
-        const created = await createPayment({
-          policyId: values.policyId,
-          dealId: values.dealId ?? undefined,
-          amount: parseFloat(values.amount),
-          description: values.description,
-          scheduledDate: values.scheduledDate || null,
-          actualDate: values.actualDate || null,
-        });
-
-        const zeroIncome = await createFinancialRecord({
-          paymentId: created.id,
-          amount: 0,
-          date: new Date().toISOString().split('T')[0],
-          description: 'Счёт: автоматически создан для учета',
-          source: 'Система',
-        });
-
-        const paymentAmount = parseAmountValue(created.amount);
-        const paymentPaidAmount = created.actualDate ? paymentAmount : 0;
-        updateAppData((prev) => ({
-          payments: [created, ...prev.payments],
-          financialRecords: [zeroIncome, ...prev.financialRecords],
-          policies: adjustPaymentsTotals(
-            prev.policies,
-            created.policyId,
-            paymentAmount,
-            paymentPaidAmount,
-          ),
-          deals: adjustPaymentsTotals(prev.deals, created.dealId, paymentAmount, paymentPaidAmount),
-        }));
-        try {
-          await syncDealsByIds([created.dealId]);
-        } catch (syncErr) {
-          const baseMessage = 'Не удалось обновить данные сделки после создания платежа';
-          const detail = formatErrorMessage(syncErr);
-          const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
-          throw new Error(message);
-        }
-        setPaymentModal(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при создании платежа'));
-        throw err;
-      }
-    },
-    [
-      adjustPaymentsTotals,
-      invalidateDealsCache,
-      setError,
-      setPaymentModal,
-      syncDealsByIds,
-      updateAppData,
-    ],
-  );
-
-  const handleUpdatePayment = useCallback(
-    async (paymentId: string, values: AddPaymentFormValues) => {
-      invalidateDealsCache();
-      try {
-        const previousPayment = payments.find((payment) => payment.id === paymentId);
-        const previousAmount = parseAmountValue(previousPayment?.amount);
-        const previousPaid = previousPayment?.actualDate ? previousAmount : 0;
-        const previousPolicyId = previousPayment?.policyId;
-        const previousDealId = previousPayment?.dealId;
-
-        const updated = await updatePayment(paymentId, {
-          policyId: values.policyId,
-          dealId: values.dealId ?? undefined,
-          amount: parseFloat(values.amount),
-          description: values.description,
-          scheduledDate: values.scheduledDate || null,
-          actualDate: values.actualDate || null,
-        });
-        const updatedAmount = parseAmountValue(updated.amount);
-        const updatedPaid = updated.actualDate ? updatedAmount : 0;
-        updateAppData((prev) => {
-          let policies = prev.policies;
-          if (previousPolicyId && previousPolicyId === updated.policyId) {
-            policies = adjustPaymentsTotals(
-              policies,
-              previousPolicyId,
-              updatedAmount - previousAmount,
-              updatedPaid - previousPaid,
-            );
-          } else {
-            if (previousPolicyId) {
-              policies = adjustPaymentsTotals(
-                policies,
-                previousPolicyId,
-                -previousAmount,
-                -previousPaid,
-              );
-            }
-            if (updated.policyId) {
-              policies = adjustPaymentsTotals(
-                policies,
-                updated.policyId,
-                updatedAmount,
-                updatedPaid,
-              );
-            }
-          }
-
-          let deals = prev.deals;
-          if (previousDealId && previousDealId === updated.dealId) {
-            deals = adjustPaymentsTotals(
-              deals,
-              previousDealId,
-              updatedAmount - previousAmount,
-              updatedPaid - previousPaid,
-            );
-          } else {
-            if (previousDealId) {
-              deals = adjustPaymentsTotals(deals, previousDealId, -previousAmount, -previousPaid);
-            }
-            if (updated.dealId) {
-              deals = adjustPaymentsTotals(deals, updated.dealId, updatedAmount, updatedPaid);
-            }
-          }
-
-          return {
-            payments: prev.payments.map((payment) =>
-              payment.id === updated.id ? updated : payment,
-            ),
-            policies,
-            deals,
-          };
-        });
-        try {
-          await syncDealsByIds([updated.dealId, previousDealId]);
-        } catch (syncErr) {
-          const baseMessage = 'Не удалось обновить данные сделки после изменения платежа';
-          const detail = formatErrorMessage(syncErr);
-          const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
-          throw new Error(message);
-        }
-        setPaymentModal(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при обновлении платежа'));
-        throw err;
-      }
-    },
-    [
-      adjustPaymentsTotals,
-      invalidateDealsCache,
-      payments,
-      setError,
-      setPaymentModal,
-      syncDealsByIds,
-      updateAppData,
-    ],
-  );
-
-  const handleDeletePayment = useCallback(
-    async (paymentId: string) => {
-      const payment = payments.find((item) => item.id === paymentId);
-      if (!payment) {
-        return;
-      }
-      const confirmed = await confirm(confirmTexts.deletePayment());
-      if (!confirmed) {
-        return;
-      }
-      try {
-        await deletePayment(paymentId);
-        const paymentAmount = parseAmountValue(payment.amount);
-        const paymentPaid = payment.actualDate ? paymentAmount : 0;
-        updateAppData((prev) => ({
-          payments: prev.payments.filter((item) => item.id !== paymentId),
-          financialRecords: prev.financialRecords.filter(
-            (record) => record.paymentId !== paymentId,
-          ),
-          policies: adjustPaymentsTotals(
-            prev.policies,
-            payment.policyId,
-            -paymentAmount,
-            -paymentPaid,
-          ),
-          deals: adjustPaymentsTotals(prev.deals, payment.dealId, -paymentAmount, -paymentPaid),
-        }));
-        await syncDealsByIds([payment.dealId]);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при удалении платежа'));
-        throw err;
-      }
-    },
-    [adjustPaymentsTotals, confirm, payments, setError, syncDealsByIds, updateAppData],
-  );
-
-  const normalizeFinancialRecordAmount = (values: AddFinancialRecordFormValues) => {
-    const parsedAmount = parseFloat(values.amount);
-    if (!Number.isFinite(parsedAmount)) {
-      return parsedAmount;
-    }
-    return values.recordType === 'expense' ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
-  };
-
-  const applyStatementAggregates = (items: Statement[], records: FinancialRecord[]) => {
-    const aggregates = new Map<string, { count: number; total: number }>();
-
-    for (const record of records) {
-      if (record.deletedAt) {
-        continue;
-      }
-      const statementId = record.statementId ?? null;
-      if (!statementId) {
-        continue;
-      }
-      const amount = parseAmountValue(record.amount);
-      const current = aggregates.get(statementId) ?? { count: 0, total: 0 };
-      current.count += 1;
-      current.total += Number.isFinite(amount) ? amount : 0;
-      aggregates.set(statementId, current);
-    }
-
-    return items.map((statement) => {
-      const aggregate = aggregates.get(statement.id) ?? { count: 0, total: 0 };
-      return {
-        ...statement,
-        recordsCount: aggregate.count,
-        totalAmount: aggregate.total.toFixed(2),
-      };
-    });
-  };
-
-  const handleAddFinancialRecord = useCallback(
-    async (values: AddFinancialRecordFormValues) => {
-      const paymentId = values.paymentId || financialRecordModal?.paymentId;
-      if (!paymentId) {
-        return;
-      }
-      try {
-        const created = await createFinancialRecord({
-          paymentId: paymentId,
-          amount: normalizeFinancialRecordAmount(values),
-          date: values.date || null,
-          description: values.description,
-          source: values.source,
-          note: values.note,
-        });
-        updateAppData((prev) => {
-          const financialRecords = [created, ...prev.financialRecords];
-          const payments = prev.payments.map((payment) =>
-            payment.id === created.paymentId
-              ? {
-                  ...payment,
-                  financialRecords: [...(payment.financialRecords ?? []), created],
-                }
-              : payment,
-          );
-          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
-          return { financialRecords, payments, statements };
-        });
-        setFinancialRecordModal(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при создании записи'));
-        throw err;
-      }
-    },
-    [financialRecordModal, setError, setFinancialRecordModal, updateAppData],
-  );
-
-  const handleUpdateFinancialRecord = useCallback(
-    async (recordId: string, values: AddFinancialRecordFormValues) => {
-      try {
-        const updated = await updateFinancialRecord(recordId, {
-          amount: normalizeFinancialRecordAmount(values),
-          date: values.date || null,
-          description: values.description,
-          source: values.source,
-          note: values.note,
-        });
-        updateAppData((prev) => {
-          const financialRecords = prev.financialRecords.map((record) =>
-            record.id === updated.id ? updated : record,
-          );
-          const payments = prev.payments.map((payment) =>
-            payment.id === updated.paymentId
-              ? {
-                  ...payment,
-                  financialRecords: (payment.financialRecords ?? []).map((record) =>
-                    record.id === updated.id ? updated : record,
-                  ),
-                }
-              : payment,
-          );
-          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
-          return { financialRecords, payments, statements };
-        });
-        setFinancialRecordModal(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при обновлении записи'));
-        throw err;
-      }
-    },
-    [setError, setFinancialRecordModal, updateAppData],
-  );
-
-  const handleDeleteFinancialRecord = useCallback(
-    async (recordId: string) => {
-      try {
-        await deleteFinancialRecord(recordId);
-        updateAppData((prev) => {
-          const existing = prev.financialRecords.find((record) => record.id === recordId);
-          const financialRecords = prev.financialRecords.filter((record) => record.id !== recordId);
-          const payments = existing
-            ? prev.payments.map((payment) =>
-                payment.id === existing.paymentId
-                  ? {
-                      ...payment,
-                      financialRecords: (payment.financialRecords ?? []).filter(
-                        (record) => record.id !== recordId,
-                      ),
-                    }
-                  : payment,
-              )
-            : prev.payments;
-          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
-          return { financialRecords, payments, statements };
-        });
-        setFinancialRecordModal(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при удалении записи'));
-        throw err;
-      }
-    },
-    [setError, setFinancialRecordModal, updateAppData],
-  );
-
-  const handleCreateFinanceStatement = useCallback(
-    async (values: {
-      name: string;
-      statementType: Statement['statementType'];
-      counterparty?: string;
-      comment?: string;
-      recordIds?: string[];
-    }) => {
-      const created = await createFinanceStatement({
-        name: values.name,
-        statementType: values.statementType,
-        counterparty: values.counterparty,
-        comment: values.comment,
-        recordIds: values.recordIds,
-      });
-      updateAppData((prev) => {
-        const recordIds = values.recordIds ?? [];
-        if (!recordIds.length) {
-          return {
-            statements: [created, ...(prev.statements ?? [])],
-          };
-        }
-
-        const recordIdSet = new Set(recordIds);
-        const financialRecords = prev.financialRecords.map((record) =>
-          recordIdSet.has(record.id) ? { ...record, statementId: created.id } : record,
-        );
-        const payments = prev.payments.map((payment) => ({
-          ...payment,
-          financialRecords: (payment.financialRecords ?? []).map((record) =>
-            recordIdSet.has(record.id) ? { ...record, statementId: created.id } : record,
-          ),
-        }));
-        const statements = applyStatementAggregates(
-          [created, ...(prev.statements ?? [])],
-          financialRecords,
-        );
-        return { statements, financialRecords, payments };
-      });
-      return created;
-    },
-    [updateAppData],
-  );
-
-  const handleUpdateFinanceStatement = useCallback(
-    async (
-      statementId: string,
-      values: Partial<{
-        name: string;
-        statementType: Statement['statementType'];
-        status: Statement['status'];
-        counterparty: string;
-        comment: string;
-        paidAt: string | null;
-        recordIds: string[];
-      }>,
-    ) => {
-      const updated = await updateFinanceStatement(statementId, values);
-      updateAppData((prev) => {
-        let statements = (prev.statements ?? []).map((statement) =>
-          statement.id === updated.id ? updated : statement,
-        );
-        const updatedRecordIds = values.recordIds ?? [];
-        const recordIdSet = new Set(updatedRecordIds);
-        const financialRecords = updatedRecordIds.length
-          ? prev.financialRecords.map((record) =>
-              recordIdSet.has(record.id) ? { ...record, statementId: updated.id } : record,
-            )
-          : prev.financialRecords;
-        const payments = updatedRecordIds.length
-          ? prev.payments.map((payment) => ({
-              ...payment,
-              financialRecords: (payment.financialRecords ?? []).map((record) =>
-                recordIdSet.has(record.id) ? { ...record, statementId: updated.id } : record,
-              ),
-            }))
-          : prev.payments;
-        statements = applyStatementAggregates(statements, financialRecords);
-        return { statements, financialRecords, payments };
-      });
-      return updated;
-    },
-    [updateAppData],
-  );
-
-  const handleDeleteFinanceStatement = useCallback(
-    async (statementId: string) => {
-      try {
-        await deleteFinanceStatement(statementId);
-        updateAppData((prev) => ({
-          statements: (prev.statements ?? []).filter((statement) => statement.id !== statementId),
-          financialRecords: prev.financialRecords.map((record) =>
-            record.statementId === statementId ? { ...record, statementId: null } : record,
-          ),
-          payments: prev.payments.map((payment) => ({
-            ...payment,
-            financialRecords: (payment.financialRecords ?? []).map((record) =>
-              record.statementId === statementId ? { ...record, statementId: null } : record,
-            ),
-          })),
-        }));
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при удалении ведомости'));
-        throw err;
-      }
-    },
-    [setError, updateAppData],
-  );
-
-  const handleRemoveFinanceStatementRecords = useCallback(
-    async (statementId: string, recordIds: string[]) => {
-      try {
-        await removeFinanceStatementRecords(statementId, recordIds);
-        updateAppData((prev) => {
-          const recordIdSet = new Set(recordIds);
-          const financialRecords = prev.financialRecords.map((record) =>
-            recordIdSet.has(record.id) ? { ...record, statementId: null } : record,
-          );
-          const payments = prev.payments.map((payment) => ({
-            ...payment,
-            financialRecords: (payment.financialRecords ?? []).map((record) =>
-              recordIdSet.has(record.id) ? { ...record, statementId: null } : record,
-            ),
-          }));
-          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
-          return { financialRecords, payments, statements };
-        });
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при обновлении ведомости'));
-        throw err;
-      }
-    },
-    [setError, updateAppData],
-  );
-
   const handleLogout = useCallback(() => {
     clearTokens();
     setCurrentUser(null);
@@ -3683,326 +2907,6 @@ const AppContent: React.FC = () => {
       users: [],
     });
   }, [resetPoliciesListState, resetPoliciesState, setAppData, setCurrentUser, setIsAuthenticated]);
-
-  const openCommandsPalette = useCallback(() => {
-    setPaletteMode((prev) => (prev === 'commands' ? null : 'commands'));
-  }, []);
-
-  const openHelpPalette = useCallback(() => {
-    setPaletteMode((prev) => (prev === 'help' ? null : 'help'));
-  }, []);
-
-  const closePalette = useCallback(() => {
-    setPaletteMode(null);
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    if (typeof window === 'undefined') {
-      return;
-    }
-    if (window.sessionStorage.getItem(PALETTE_HINT_SESSION_KEY) === '1') {
-      return;
-    }
-
-    addNotification(
-      `Откройте командную палитру: ${formatShortcut('mod+k')} (справка: ${formatShortcut('mod+/')})`,
-      'success',
-      7000,
-    );
-    window.sessionStorage.setItem(PALETTE_HINT_SESSION_KEY, '1');
-  }, [addNotification, isAuthenticated]);
-
-  const commandItems = useMemo<CommandPaletteItem[]>(
-    () => [
-      ...NAVIGATION_COMMANDS.map((item) => ({
-        id: `nav-${item.path}`,
-        title: item.label,
-        subtitle: 'Перейти в раздел',
-        keywords: [item.path, 'раздел', 'навигация'],
-        onSelect: () => navigate(item.path),
-      })),
-      {
-        id: 'create-deal',
-        title: 'Новая сделка',
-        subtitle: 'Создание',
-        shortcut: formatShortcut('mod+shift+d'),
-        keywords: ['сделка', 'создать'],
-        onSelect: openDealCreateModal,
-      },
-      {
-        id: 'create-client',
-        title: 'Новый клиент',
-        subtitle: 'Создание',
-        shortcut: formatShortcut('mod+shift+c'),
-        keywords: ['клиент', 'создать'],
-        onSelect: openClientCreateModal,
-      },
-      {
-        id: 'create-task',
-        title: 'Новая задача',
-        subtitle: 'Создание',
-        shortcut: formatShortcut('mod+shift+t'),
-        keywords: ['задача', 'создать'],
-        onSelect: openTaskCreateFlow,
-      },
-      {
-        id: 'show-hotkeys-help',
-        title: 'Справка по горячим клавишам',
-        subtitle: 'Помощь',
-        shortcut: formatShortcut('mod+/'),
-        keywords: ['шорткаты', 'горячие клавиши', 'помощь'],
-        onSelect: () => {
-          setPaletteMode('help');
-          return false;
-        },
-      },
-      ...(isDealsRoute && selectedDeal
-        ? [
-            {
-              id: 'deal-open-preview',
-              title: `Открыть сделку: ${selectedDeal.title}`,
-              subtitle: 'Контекст сделки',
-              shortcut: formatShortcut('mod+o'),
-              keywords: ['сделка', 'открыть', 'превью'],
-              onSelect: openSelectedDealPreview,
-            },
-            {
-              id: 'deal-delete',
-              title: `Удалить сделку: ${selectedDeal.title}`,
-              subtitle: 'Контекст сделки',
-              shortcut: formatShortcut('mod+backspace'),
-              keywords: ['сделка', 'удалить'],
-              disabled: Boolean(selectedDeal.deletedAt),
-              onSelect: deleteSelectedDeal,
-            },
-            {
-              id: 'deal-restore',
-              title: `Восстановить сделку: ${selectedDeal.title}`,
-              subtitle: 'Контекст сделки',
-              shortcut: formatShortcut('mod+shift+r'),
-              keywords: ['сделка', 'восстановить'],
-              disabled: !selectedDeal.deletedAt,
-              onSelect: restoreSelectedDeal,
-            },
-          ]
-        : []),
-      ...(isClientsRoute && selectedClientShortcut
-        ? [
-            {
-              id: 'client-open-edit',
-              title: `Открыть клиента: ${selectedClientShortcut.name}`,
-              subtitle: 'Контекст клиентов',
-              shortcut: formatShortcut('mod+o'),
-              keywords: ['клиент', 'открыть', 'редактировать'],
-              onSelect: openSelectedClient,
-            },
-            {
-              id: 'client-delete',
-              title: `Удалить клиента: ${selectedClientShortcut.name}`,
-              subtitle: 'Контекст клиентов',
-              shortcut: formatShortcut('mod+backspace'),
-              keywords: ['клиент', 'удалить'],
-              onSelect: deleteSelectedClient,
-            },
-          ]
-        : []),
-      ...(isPoliciesRoute && selectedPolicyShortcut
-        ? [
-            {
-              id: 'policy-open-edit',
-              title: `Открыть полис: ${selectedPolicyShortcut.number}`,
-              subtitle: 'Контекст полисов',
-              shortcut: formatShortcut('mod+o'),
-              keywords: ['полис', 'открыть', 'редактировать'],
-              onSelect: openSelectedPolicy,
-            },
-          ]
-        : []),
-      ...(isTasksRoute && selectedTaskShortcut
-        ? [
-            {
-              id: 'task-open-deal-preview',
-              title: `Открыть сделку задачи: ${selectedTaskShortcut.title}`,
-              subtitle: 'Контекст задач',
-              shortcut: formatShortcut('mod+o'),
-              keywords: ['задача', 'сделка', 'открыть'],
-              disabled: !selectedTaskShortcut.dealId,
-              onSelect: openSelectedTaskDealPreview,
-            },
-            {
-              id: 'task-mark-done',
-              title: `Отметить выполненной: ${selectedTaskShortcut.title}`,
-              subtitle: 'Контекст задач',
-              shortcut: formatShortcut('mod+enter'),
-              keywords: ['задача', 'выполнено', 'done'],
-              disabled: selectedTaskShortcut.status === 'done',
-              onSelect: markSelectedTaskDone,
-            },
-          ]
-        : []),
-    ],
-    [
-      deleteSelectedClient,
-      deleteSelectedDeal,
-      isClientsRoute,
-      isDealsRoute,
-      isPoliciesRoute,
-      isTasksRoute,
-      markSelectedTaskDone,
-      navigate,
-      openClientCreateModal,
-      openDealCreateModal,
-      openSelectedClient,
-      openSelectedDealPreview,
-      openSelectedPolicy,
-      openSelectedTaskDealPreview,
-      openTaskCreateFlow,
-      restoreSelectedDeal,
-      selectedClientShortcut,
-      selectedDeal,
-      selectedPolicyShortcut,
-      selectedTaskShortcut,
-    ],
-  );
-
-  const taskDealItems = useMemo<CommandPaletteItem[]>(() => {
-    const candidates = deals
-      .filter((deal) => !deal.deletedAt)
-      .sort((left, right) => {
-        const leftPinned = left.isPinned ? 1 : 0;
-        const rightPinned = right.isPinned ? 1 : 0;
-        if (leftPinned !== rightPinned) {
-          return rightPinned - leftPinned;
-        }
-        return (right.createdAt ?? '').localeCompare(left.createdAt ?? '');
-      });
-
-    return candidates.map((deal) => ({
-      id: `task-deal-${deal.id}`,
-      title: deal.title,
-      subtitle: deal.clientName ? `Клиент: ${deal.clientName}` : 'Выбор сделки для задачи',
-      keywords: [deal.clientName ?? '', deal.executorName ?? ''],
-      onSelect: () => {
-        selectDealById(deal.id);
-        setQuickTaskDealId(deal.id);
-      },
-    }));
-  }, [deals, selectDealById]);
-
-  useGlobalHotkeys([
-    {
-      id: 'open-command-palette',
-      combo: 'mod+k',
-      handler: openCommandsPalette,
-      allowInInput: true,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'open-hotkeys-help',
-      combo: 'mod+/',
-      handler: openHelpPalette,
-      allowInInput: true,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'create-deal-hotkey',
-      combo: 'mod+shift+d',
-      handler: openDealCreateModal,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'create-client-hotkey',
-      combo: 'mod+shift+c',
-      handler: openClientCreateModal,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'create-task-hotkey',
-      combo: 'mod+shift+t',
-      handler: openTaskCreateFlow,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'context-prev-selection-hotkey',
-      combo: 'alt+arrowup',
-      handler: () => cycleActiveContextSelection(-1),
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && deals.length > 0) ||
-          (isClientsRoute && sortedClientsForShortcuts.length > 0) ||
-          (isPoliciesRoute && sortedPoliciesForShortcuts.length > 0) ||
-          (isTasksRoute && sortedTasksForShortcuts.length > 0)),
-    },
-    {
-      id: 'context-next-selection-hotkey',
-      combo: 'alt+arrowdown',
-      handler: () => cycleActiveContextSelection(1),
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && deals.length > 0) ||
-          (isClientsRoute && sortedClientsForShortcuts.length > 0) ||
-          (isPoliciesRoute && sortedPoliciesForShortcuts.length > 0) ||
-          (isTasksRoute && sortedTasksForShortcuts.length > 0)),
-    },
-    {
-      id: 'context-open-hotkey',
-      combo: 'mod+o',
-      handler: () => {
-        void openPrimaryContextAction();
-      },
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && selectedDeal?.id != null) ||
-          (isClientsRoute && selectedClientShortcut != null) ||
-          (isPoliciesRoute && selectedPolicyShortcut != null) ||
-          (isTasksRoute && selectedTaskShortcut?.dealId != null)),
-    },
-    {
-      id: 'context-delete-hotkey',
-      combo: 'mod+backspace',
-      handler: () => {
-        void deletePrimaryContextAction();
-      },
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && selectedDeal?.id != null && selectedDeal?.deletedAt == null) ||
-          (isClientsRoute && selectedClientShortcut != null)),
-    },
-    {
-      id: 'deals-restore-selected-hotkey',
-      combo: 'mod+shift+r',
-      handler: () => {
-        void restoreSelectedDeal();
-      },
-      enabled:
-        isAuthenticated &&
-        isDealsRoute &&
-        selectedDeal?.id != null &&
-        selectedDeal?.deletedAt != null,
-    },
-    {
-      id: 'tasks-mark-done-hotkey',
-      combo: 'mod+enter',
-      handler: () => {
-        void markSelectedTaskDone();
-      },
-      enabled:
-        isAuthenticated &&
-        isTasksRoute &&
-        selectedTaskShortcut != null &&
-        selectedTaskShortcut.status !== 'done',
-    },
-    {
-      id: 'close-palette-hotkey',
-      combo: 'escape',
-      handler: closePalette,
-      allowInInput: true,
-      enabled: isAuthenticated && paletteMode !== null,
-    },
-  ]);
 
   const routeData = useMemo<AppRouteDataBundle>(
     () => ({
