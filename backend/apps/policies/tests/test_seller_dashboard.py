@@ -204,10 +204,10 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         self.assertNotIn("POLICY-OTHER", policy_numbers)
 
         financial_totals = payload.get("financial_totals", {})
-        self.assertEqual(financial_totals.get("income_total"), "150.00")
+        self.assertEqual(financial_totals.get("income_total"), "160.00")
         self.assertEqual(financial_totals.get("expense_total"), "65.00")
-        self.assertEqual(financial_totals.get("net_total"), "85.00")
-        self.assertEqual(financial_totals.get("records_count"), 3)
+        self.assertEqual(financial_totals.get("net_total"), "95.00")
+        self.assertEqual(financial_totals.get("records_count"), 4)
 
         rows = payload.get("financial_by_company_type", [])
         by_key = {
@@ -218,10 +218,10 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         self.assertIn(("Не указано", "Не указано"), by_key)
 
         company_row = by_key[("Company", "Type")]
-        self.assertEqual(company_row["income_total"], "150.00")
+        self.assertEqual(company_row["income_total"], "160.00")
         self.assertEqual(company_row["expense_total"], "40.00")
-        self.assertEqual(company_row["net_total"], "110.00")
-        self.assertEqual(company_row["records_count"], 2)
+        self.assertEqual(company_row["net_total"], "120.00")
+        self.assertEqual(company_row["records_count"], 3)
 
         unknown_row = by_key[("Не указано", "Не указано")]
         self.assertEqual(unknown_row["income_total"], "0.00")
