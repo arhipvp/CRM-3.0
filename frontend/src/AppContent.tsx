@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoginPage } from './components/LoginPage';
 import { useNotification } from './contexts/NotificationContext';
@@ -21,77 +21,29 @@ import { BTN_DANGER, BTN_SECONDARY } from './components/common/buttonStyles';
 import { FormActions } from './components/common/forms/FormActions';
 import { FormModal } from './components/common/modal/FormModal';
 import { SimilarClientsModal } from './components/views/SimilarClientsModal';
-import type { AddTaskFormValues } from './components/forms/AddTaskForm';
-import type { DealFormValues } from './components/forms/DealForm';
-import type { QuoteFormValues } from './components/forms/AddQuoteForm';
 import { Modal } from './components/Modal';
 import { formatErrorMessage } from './utils/formatErrorMessage';
-import { markTaskAsDeleted } from './utils/tasks';
 import {
-  createClient,
-  createDeal,
-  createQuote,
-  updateQuote,
-  deleteQuote,
-  deleteDeal,
-  restoreDeal,
-  fetchChatMessages,
-  createChatMessage,
-  deleteChatMessage,
-  closeDeal,
-  reopenDeal,
-  updateDeal,
-  pinDeal,
-  unpinDeal,
-  mergeDeals,
   fetchDealHistory,
-  fetchTasksByDeal,
-  fetchQuotesByDeal,
-  fetchPoliciesWithPagination,
-  createTask,
-  updateTask,
-  deleteTask,
   clearTokens,
-  APIError,
   consumePostLoginRedirect,
   getPostLoginRedirect,
-  fetchDeal,
-  createDealMailbox,
-  checkDealMailbox,
-  createPolicy,
-  updatePolicy,
-  deletePolicy,
-  createPayment,
-  updatePayment,
-  deletePayment,
-  createFinancialRecord,
-  updateFinancialRecord,
-  deleteFinancialRecord,
 } from './api';
-import type { FilterParams } from './api';
-import { Client, Deal, FinancialRecord, Payment, Policy, Quote, Task, User } from './types';
+import { Client, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDealFilters } from './hooks/useDealFilters';
 import { useConfirm } from './hooks/useConfirm';
-import { confirmTexts } from './constants/confirmTexts';
-import type { PolicyFormValues } from './components/forms/addPolicy/types';
 import type { ModalType } from './components/app/types';
 import type { FinancialRecordModalState, PaymentModalState } from './types';
-import { normalizePaymentDraft } from './utils/normalizePaymentDraft';
-import { markQuoteAsDeleted } from './utils/quotes';
-import { parseNumericAmount } from './utils/parseNumericAmount';
-import { formatAmountValue, matchSalesChannel, parseAmountValue } from './utils/appContent';
-import { buildPolicyDraftFromRecognition, normalizeStringValue } from './utils/policyRecognition';
-import {
-  buildCommissionIncomeNote,
-  resolveSalesChannelName,
-  shouldAutofillCommissionNote,
-} from './utils/financialRecordNotes';
+import { formatAmountValue, parseAmountValue } from './utils/appContent';
 import { formatShortcut } from './hotkeys/formatShortcut';
 import { useClientActions } from './hooks/appContent/useClientActions';
 import { useCommandPalette } from './hooks/appContent/useCommandPalette';
+import { useDealActions } from './hooks/appContent/useDealActions';
+import { useDealDetailsData } from './hooks/appContent/useDealDetailsData';
 import { useFinanceActions } from './hooks/appContent/useFinanceActions';
+import { usePolicyActions } from './hooks/appContent/usePolicyActions';
 import { useDealPreviewController } from './hooks/appContent/useDealPreviewController';
 import { resolveEffectiveSelectedDealId } from './hooks/useSelectedDeal';
 import type { CommandPaletteItem } from './components/common/modal/CommandPalette';
@@ -171,24 +123,6 @@ const AppContent: React.FC = () => {
   const [modal, setModal] = useState<ModalType>(null);
   const [quoteDealId, setQuoteDealId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
-  const [policyDealId, setPolicyDealId] = useState<string | null>(null);
-  const [policyPrefill, setPolicyPrefill] = useState<{
-    values: PolicyFormValues;
-    insuranceCompanyName?: string;
-    insuranceTypeName?: string;
-  } | null>(null);
-  const [policyDefaultCounterparty, setPolicyDefaultCounterparty] = useState<string | undefined>(
-    undefined,
-  );
-  const [policySourceFileIds, setPolicySourceFileIds] = useState<string[]>([]);
-
-  const closePolicyModal = useCallback(() => {
-    setPolicyDealId(null);
-    setPolicyPrefill(null);
-    setPolicyDefaultCounterparty(undefined);
-    setPolicySourceFileIds([]);
-  }, []);
-  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
     useState<FinancialRecordModalState | null>(null);
@@ -201,7 +135,6 @@ const AppContent: React.FC = () => {
     invalidateDealsCache,
     refreshPolicies,
     refreshPoliciesList,
-    policiesFilters: policiesFiltersFromHook,
     updateAppData,
     setAppData,
     resetPoliciesState,
@@ -226,10 +159,6 @@ const AppContent: React.FC = () => {
     error,
     setError,
   } = useAppData();
-  const policiesFilters = useMemo(
-    () => policiesFiltersFromHook ?? { ordering: '-start_date' },
-    [policiesFiltersFromHook],
-  );
   const {
     authLoading,
     currentUser,
@@ -313,12 +242,6 @@ const AppContent: React.FC = () => {
   } = useDealPreviewController();
   const [isDealSelectionBlocked, setDealSelectionBlocked] = useState(false);
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
-  const [dealTasksLoadingIds, setDealTasksLoadingIds] = useState<Set<string>>(
-    () => new Set<string>(),
-  );
-  const [dealQuotesLoadingIds, setDealQuotesLoadingIds] = useState<Set<string>>(
-    () => new Set<string>(),
-  );
   const [isRefreshingDealsList, setIsRefreshingDealsList] = useState(false);
   const location = useLocation();
   const isDealsRoute = location.pathname.startsWith('/deals');
@@ -387,13 +310,6 @@ const AppContent: React.FC = () => {
     });
   }, [ensureFinanceDataLoaded, isAuthenticated, isCommissionsRoute, refreshPolicies, setError]);
 
-  const dealsById = useMemo(() => {
-    const map = new Map<string, Deal>();
-    deals.forEach((deal) => {
-      map.set(deal.id, deal);
-    });
-    return map;
-  }, [deals]);
   const effectiveSelectedDealId = useMemo(
     () =>
       resolveEffectiveSelectedDealId({
@@ -417,410 +333,46 @@ const AppContent: React.FC = () => {
     });
     return map;
   }, [users]);
-  const getDealExecutorName = useCallback(
-    (dealId: string | null) => (dealId ? (dealsById.get(dealId)?.executorName ?? null) : null),
-    [dealsById],
-  );
-  const policyDealExecutorName = getDealExecutorName(policyDealId);
-  const editingPolicyExecutorName = getDealExecutorName(editingPolicy?.dealId ?? null);
-  const protectedCreatedDealRef = useRef<Deal | null>(null);
-  const preservedDeepLinkedDealRef = useRef<Deal | null>(null);
-  const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
-  const deepLinkedDealLoadedRef = useRef<string | null>(null);
-  const deepLinkedDealLoadingRef = useRef<string | null>(null);
-  const deepLinkedDealIdRef = useRef<string | null>(deepLinkedDealId);
-  const selectedDealIdRef = useRef<string | null>(null);
-  const previewDealIdRef = useRef<string | null>(null);
-  const DEAL_DETAILS_CACHE_TTL_MS = 60_000;
-  const dealTasksCacheRef = useRef(new Map<string, { loadedAt: number; data: Task[] }>());
-  const dealQuotesCacheRef = useRef(new Map<string, { loadedAt: number; data: Quote[] }>());
-  const dealPoliciesCacheRef = useRef(new Map<string, { loadedAt: number; data: Policy[] }>());
-  const dealTasksInFlightRef = useRef(new Map<string, Promise<Task[]>>());
-  const dealQuotesInFlightRef = useRef(new Map<string, Promise<Quote[]>>());
-  const dealPoliciesInFlightRef = useRef(new Map<string, Promise<Policy[]>>());
 
-  const isCacheFresh = useCallback(
-    (loadedAt: number) => Date.now() - loadedAt < DEAL_DETAILS_CACHE_TTL_MS,
-    [],
-  );
-
-  const invalidateDealTasksCache = useCallback((dealId?: string | null) => {
-    if (dealId) {
-      dealTasksCacheRef.current.delete(dealId);
-      dealTasksInFlightRef.current.delete(dealId);
-      return;
-    }
-    dealTasksCacheRef.current.clear();
-    dealTasksInFlightRef.current.clear();
-  }, []);
-
-  const invalidateDealQuotesCache = useCallback((dealId?: string | null) => {
-    if (dealId) {
-      dealQuotesCacheRef.current.delete(dealId);
-      dealQuotesInFlightRef.current.delete(dealId);
-      return;
-    }
-    dealQuotesCacheRef.current.clear();
-    dealQuotesInFlightRef.current.clear();
-  }, []);
-
-  const invalidateDealPoliciesCache = useCallback((dealId?: string | null) => {
-    if (dealId) {
-      dealPoliciesCacheRef.current.delete(dealId);
-      dealPoliciesInFlightRef.current.delete(dealId);
-      return;
-    }
-    dealPoliciesCacheRef.current.clear();
-    dealPoliciesInFlightRef.current.clear();
-  }, []);
-
-  const cacheDealQuotes = useCallback((dealId: string, quotes: Quote[]) => {
-    dealQuotesCacheRef.current.set(dealId, {
-      loadedAt: Date.now(),
-      data: quotes,
-    });
-  }, []);
-
-  const mergeDealWithHydratedQuotes = useCallback(
-    (incomingDeal: Deal, existingDeal?: Deal | null): Deal => {
-      if (incomingDeal.quotes.length > 0) {
-        cacheDealQuotes(incomingDeal.id, incomingDeal.quotes);
-        return incomingDeal;
-      }
-
-      const cachedQuotes = dealQuotesCacheRef.current.get(incomingDeal.id)?.data;
-      const preservedQuotes = cachedQuotes ?? existingDeal?.quotes;
-      if (preservedQuotes && preservedQuotes.length > 0) {
-        return { ...incomingDeal, quotes: preservedQuotes };
-      }
-
-      return incomingDeal;
-    },
-    [cacheDealQuotes],
-  );
-
-  const restoreDealsQuotesFromCache = useCallback(
-    (dealIds?: string[]) => {
-      updateAppData((prev) => {
-        let hasChanges = false;
-        const targetIds = dealIds ? new Set(dealIds) : null;
-        const nextDeals = prev.deals.map((deal) => {
-          if (targetIds && !targetIds.has(deal.id)) {
-            return deal;
-          }
-          if (deal.quotes.length > 0) {
-            return deal;
-          }
-
-          const cachedQuotes = dealQuotesCacheRef.current.get(deal.id)?.data;
-          if (!cachedQuotes || cachedQuotes.length === 0) {
-            return deal;
-          }
-
-          hasChanges = true;
-          return { ...deal, quotes: cachedQuotes };
-        });
-
-        if (!hasChanges) {
-          return {};
-        }
-
-        return { deals: nextDeals };
-      });
-    },
-    [updateAppData],
-  );
-
-  const loadDealPolicies = useCallback(
-    async (dealId: string, options?: { force?: boolean }) => {
-      const force = options?.force ?? false;
-      const applyDealPolicies = (dealPolicies: Policy[]) => {
-        updateAppData((prev) => ({
-          policies: [
-            ...prev.policies.filter((policy) => policy.dealId !== dealId),
-            ...dealPolicies,
-          ],
-        }));
-      };
-
-      const cached = dealPoliciesCacheRef.current.get(dealId);
-      if (!force && cached && isCacheFresh(cached.loadedAt)) {
-        applyDealPolicies(cached.data);
-        return;
-      }
-
-      const existingPromise = dealPoliciesInFlightRef.current.get(dealId);
-      if (existingPromise) {
-        try {
-          const dealPolicies = await existingPromise;
-          applyDealPolicies(dealPolicies);
-        } catch (err) {
-          setError(formatErrorMessage(err, 'Error loading policies for the deal'));
-        }
-        return;
-      }
-
-      const request = (async () => {
-        const pageSize = 100;
-        const retrieved: Policy[] = [];
-        let page = 1;
-        while (true) {
-          const payload = await fetchPoliciesWithPagination({
-            deal: dealId,
-            page,
-            page_size: pageSize,
-          });
-          retrieved.push(...payload.results);
-          if (!payload.next) {
-            break;
-          }
-          page += 1;
-        }
-        dealPoliciesCacheRef.current.set(dealId, {
-          loadedAt: Date.now(),
-          data: retrieved,
-        });
-        return retrieved;
-      })().finally(() => {
-        dealPoliciesInFlightRef.current.delete(dealId);
-      });
-
-      dealPoliciesInFlightRef.current.set(dealId, request);
-
-      try {
-        const dealPolicies = await request;
-        applyDealPolicies(dealPolicies);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Error loading policies for the deal'));
-      }
-    },
-    [isCacheFresh, setError, updateAppData],
-  );
-
-  const markDealTasksLoading = useCallback((dealId: string) => {
-    setDealTasksLoadingIds((prev) => {
-      if (prev.has(dealId)) {
-        return prev;
-      }
-      const next = new Set(prev);
-      next.add(dealId);
-      return next;
-    });
-  }, []);
-
-  const unmarkDealTasksLoading = useCallback((dealId: string) => {
-    setDealTasksLoadingIds((prev) => {
-      if (!prev.has(dealId)) {
-        return prev;
-      }
-      const next = new Set(prev);
-      next.delete(dealId);
-      return next;
-    });
-  }, []);
-
-  const markDealQuotesLoading = useCallback((dealId: string) => {
-    setDealQuotesLoadingIds((prev) => {
-      if (prev.has(dealId)) {
-        return prev;
-      }
-      const next = new Set(prev);
-      next.add(dealId);
-      return next;
-    });
-  }, []);
-
-  const unmarkDealQuotesLoading = useCallback((dealId: string) => {
-    setDealQuotesLoadingIds((prev) => {
-      if (!prev.has(dealId)) {
-        return prev;
-      }
-      const next = new Set(prev);
-      next.delete(dealId);
-      return next;
-    });
-  }, []);
-
-  const refreshDealsWithSelection = useCallback(
-    async (filters?: FilterParams, options?: { force?: boolean }) => {
-      const dealsData = await refreshDeals(filters, options);
-      restoreDealsQuotesFromCache();
-      const currentSelectedDealId = selectedDealIdRef.current;
-      if (!currentSelectedDealId) {
-        return dealsData;
-      }
-      if (dealsData.some((deal) => deal.id === currentSelectedDealId)) {
-        if (skipNextMissingSelectedDealClearRef.current === currentSelectedDealId) {
-          skipNextMissingSelectedDealClearRef.current = null;
-        }
-        if (protectedCreatedDealRef.current?.id === currentSelectedDealId) {
-          protectedCreatedDealRef.current = null;
-        }
-        return dealsData;
-      }
-      if (deepLinkedDealIdRef.current === currentSelectedDealId) {
-        const preservedDeepLinkedDeal = preservedDeepLinkedDealRef.current;
-        if (preservedDeepLinkedDeal?.id === currentSelectedDealId) {
-          updateAppData((prev) => {
-            if (prev.deals.some((deal) => deal.id === preservedDeepLinkedDeal.id)) {
-              return {};
-            }
-            return { deals: [preservedDeepLinkedDeal, ...prev.deals] };
-          });
-        }
-        return dealsData;
-      }
-      if (skipNextMissingSelectedDealClearRef.current === currentSelectedDealId) {
-        skipNextMissingSelectedDealClearRef.current = null;
-        return dealsData;
-      }
-      const protectedCreatedDeal = protectedCreatedDealRef.current;
-      if (protectedCreatedDeal?.id === currentSelectedDealId) {
-        updateAppData((prev) => {
-          if (prev.deals.some((deal) => deal.id === protectedCreatedDeal.id)) {
-            return {};
-          }
-          return { deals: [protectedCreatedDeal, ...prev.deals] };
-        });
-        return dealsData;
-      }
-      clearSelectedDealFocus();
-      return dealsData;
-    },
-    [clearSelectedDealFocus, refreshDeals, restoreDealsQuotesFromCache, updateAppData],
-  );
-
-  const syncDealsByIds = useCallback(
-    async (dealIds: (string | null | undefined)[]) => {
-      const normalizedIds = Array.from(new Set(dealIds.filter((id): id is string => Boolean(id))));
-      if (!normalizedIds.length) {
-        return;
-      }
-      const fetchedDeals = await Promise.all(normalizedIds.map((dealId) => fetchDeal(dealId)));
-      updateAppData((prev) => {
-        const existingDealsById = new Map(prev.deals.map((deal) => [deal.id, deal]));
-        const dealMap = new Map<string, Deal>(
-          fetchedDeals.map((deal) => [
-            deal.id,
-            mergeDealWithHydratedQuotes(deal, existingDealsById.get(deal.id)),
-          ]),
-        );
-        const existingIds = new Set(prev.deals.map((deal) => deal.id));
-        const updatedDeals = prev.deals.map((deal) => dealMap.get(deal.id) ?? deal);
-        const missingDeals = fetchedDeals
-          .filter((deal) => !existingIds.has(deal.id))
-          .map((deal) => dealMap.get(deal.id) ?? deal);
-        const preservedDeepLinkedDeal = deepLinkedDealIdRef.current
-          ? (dealMap.get(deepLinkedDealIdRef.current) ??
-            existingDealsById.get(deepLinkedDealIdRef.current) ??
-            fetchedDeals.find((deal) => deal.id === deepLinkedDealIdRef.current) ??
-            null)
-          : null;
-        preservedDeepLinkedDealRef.current = preservedDeepLinkedDeal;
-        return { deals: [...updatedDeals, ...missingDeals] };
-      });
-      invalidateDealsCache();
-    },
-    [invalidateDealsCache, mergeDealWithHydratedQuotes, updateAppData],
-  );
-
-  useEffect(() => {
-    if (!isDealsRoute) {
-      deepLinkedDealLoadedRef.current = null;
-      deepLinkedDealLoadingRef.current = null;
-      return;
-    }
-
-    if (!deepLinkedDealId) {
-      deepLinkedDealLoadedRef.current = null;
-      deepLinkedDealLoadingRef.current = null;
-      return;
-    }
-
-    if (!isAuthenticated) {
-      return;
-    }
-
-    if (dealsById.has(deepLinkedDealId)) {
-      deepLinkedDealLoadedRef.current = deepLinkedDealId;
-      deepLinkedDealLoadingRef.current = null;
-      return;
-    }
-
-    if (
-      deepLinkedDealLoadedRef.current === deepLinkedDealId ||
-      deepLinkedDealLoadingRef.current === deepLinkedDealId
-    ) {
-      return;
-    }
-
-    deepLinkedDealLoadingRef.current = deepLinkedDealId;
-    syncDealsByIds([deepLinkedDealId])
-      .then(() => {
-        deepLinkedDealLoadedRef.current = deepLinkedDealId;
-      })
-      .catch((err) => {
-        deepLinkedDealLoadedRef.current = null;
-        if (err instanceof APIError && err.status === 403) {
-          setError('Нет доступа к сделке по ссылке.');
-          return;
-        }
-        if (err instanceof APIError && err.status === 404) {
-          setError('Сделка по ссылке не найдена.');
-          return;
-        }
-        setError(formatErrorMessage(err, 'Не удалось открыть сделку по ссылке.'));
-      })
-      .finally(() => {
-        if (deepLinkedDealLoadingRef.current === deepLinkedDealId) {
-          deepLinkedDealLoadingRef.current = null;
-        }
-      });
-  }, [deepLinkedDealId, dealsById, isAuthenticated, isDealsRoute, setError, syncDealsByIds]);
-
-  const handleSelectDeal = useCallback(
-    (dealId: string) => {
-      if (isDealSelectionBlocked) {
-        return;
-      }
-      selectDealById(dealId);
-      if (!dealId || dealsById.has(dealId)) {
-        return;
-      }
-      syncDealsByIds([dealId]).catch((err) => {
-        setError(formatErrorMessage(err, 'Не удалось загрузить сделку'));
-      });
-    },
-    [dealsById, isDealSelectionBlocked, selectDealById, setError, syncDealsByIds],
-  );
-  const handleOpenDealPreview = useCallback(
-    (dealId: string) => {
-      openDealPreviewById(dealId);
-      handleSelectDeal(dealId);
-    },
-    [handleSelectDeal, openDealPreviewById],
-  );
-  const handleRefreshSelectedDeal = useCallback(
-    async (dealId: string) => {
-      await syncDealsByIds([dealId]);
-      await refreshDealsWithSelection(dealFilters, { force: true });
-      await rehydrateDealDetailsRef.current(dealId);
-    },
-    [dealFilters, refreshDealsWithSelection, syncDealsByIds],
-  );
-  const handleRefreshDealsList = useCallback(async () => {
-    setIsRefreshingDealsList(true);
-    setError(null);
-    invalidateDealsCache();
-    try {
-      await refreshDealsWithSelection(dealFilters, { force: true });
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Ошибка при обновлении списка сделок'));
-      throw err;
-    } finally {
-      setIsRefreshingDealsList(false);
-    }
-  }, [dealFilters, invalidateDealsCache, refreshDealsWithSelection, setError]);
+  const {
+    dealsById,
+    mergeDealWithHydratedQuotes,
+    invalidateDealTasksCache,
+    invalidateDealQuotesCache,
+    invalidateDealPoliciesCache,
+    cacheDealQuotes,
+    refreshDealsWithSelection,
+    syncDealsByIds,
+    handleSelectDeal,
+    handleOpenDealPreview,
+    handleRefreshSelectedDeal,
+    handleRefreshDealsList,
+    loadDealPolicies,
+    handleRefreshSelectedDealPolicies,
+    handleRefreshPreviewDealPolicies,
+    registerProtectedCreatedDeal,
+    isSelectedDealTasksLoading,
+    isSelectedDealQuotesLoading,
+    isPreviewDealTasksLoading,
+    isPreviewDealQuotesLoading,
+  } = useDealDetailsData({
+    deals,
+    deepLinkedDealId,
+    isAuthenticated,
+    isDealsRoute,
+    effectiveSelectedDealId,
+    previewDealId,
+    isDealSelectionBlocked,
+    dealFilters,
+    refreshDeals,
+    invalidateDealsCache,
+    updateAppData,
+    setError,
+    clearSelectedDealFocus,
+    selectDealById,
+    openDealPreviewById,
+    setIsRefreshingDealsList,
+  });
   const previewDeal = previewDealId ? (dealsById.get(previewDealId) ?? null) : null;
   const previewClient = previewDeal ? (clientsById.get(previewDeal.clientId) ?? null) : null;
   const previewSellerUser = previewDeal ? usersById.get(previewDeal.seller ?? '') : undefined;
@@ -829,51 +381,9 @@ const AppContent: React.FC = () => {
   const selectedDeal = effectiveSelectedDealId
     ? (dealsById.get(effectiveSelectedDealId) ?? null)
     : null;
-  const isSelectedDealTasksLoading = selectedDeal
-    ? dealTasksLoadingIds.has(selectedDeal.id)
-    : false;
-  const isSelectedDealQuotesLoading = selectedDeal
-    ? dealQuotesLoadingIds.has(selectedDeal.id)
-    : false;
-  const isPreviewDealTasksLoading = previewDeal ? dealTasksLoadingIds.has(previewDeal.id) : false;
-  const isPreviewDealQuotesLoading = previewDeal ? dealQuotesLoadingIds.has(previewDeal.id) : false;
   const isClientsRoute = location.pathname.startsWith('/clients');
   const isPoliciesRoute = location.pathname.startsWith('/policies');
   const isTasksRoute = location.pathname.startsWith('/tasks');
-
-  useEffect(() => {
-    deepLinkedDealIdRef.current = deepLinkedDealId;
-    if (!deepLinkedDealId) {
-      preservedDeepLinkedDealRef.current = null;
-      return;
-    }
-
-    if (preservedDeepLinkedDealRef.current?.id !== deepLinkedDealId) {
-      preservedDeepLinkedDealRef.current = dealsById.get(deepLinkedDealId) ?? null;
-      return;
-    }
-
-    const currentDeepLinkedDeal = dealsById.get(deepLinkedDealId);
-    if (currentDeepLinkedDeal) {
-      preservedDeepLinkedDealRef.current = currentDeepLinkedDeal;
-    }
-  }, [dealsById, deepLinkedDealId]);
-
-  useEffect(() => {
-    selectedDealIdRef.current = effectiveSelectedDealId;
-    const protectedCreatedDeal = protectedCreatedDealRef.current;
-    if (
-      protectedCreatedDeal &&
-      effectiveSelectedDealId &&
-      effectiveSelectedDealId !== protectedCreatedDeal.id
-    ) {
-      protectedCreatedDealRef.current = null;
-    }
-  }, [effectiveSelectedDealId]);
-
-  useEffect(() => {
-    previewDealIdRef.current = previewDealId;
-  }, [previewDealId]);
 
   useEffect(() => {
     if (!isAuthenticated || !isTasksRoute) {
@@ -883,17 +393,6 @@ const AppContent: React.FC = () => {
       setError(formatErrorMessage(err, 'Ошибка при загрузке задач'));
     });
   }, [ensureTasksLoaded, isAuthenticated, isTasksRoute, setError]);
-  const dealFiltersRef = useRef<FilterParams>(dealFilters);
-  const policiesFiltersRef = useRef<FilterParams>(policiesFilters);
-  const rehydrateDealDetailsRef = useRef<(dealId: string) => Promise<void>>(async () => undefined);
-
-  useEffect(() => {
-    dealFiltersRef.current = dealFilters;
-  }, [dealFilters]);
-
-  useEffect(() => {
-    policiesFiltersRef.current = policiesFilters;
-  }, [policiesFilters]);
 
   const [selectedClientShortcutId, setSelectedClientShortcutId] = useState<string | null>(null);
   const [selectedPolicyShortcutId, setSelectedPolicyShortcutId] = useState<string | null>(null);
@@ -1095,85 +594,42 @@ const AppContent: React.FC = () => {
     setFinancialRecordModal,
   });
 
-  const handlePolicyDraftReady = useCallback(
-    (
-      dealId: string,
-      parsed: Record<string, unknown>,
-      _fileName?: string | null,
-      fileId?: string | null,
-      parsedFileIds?: string[],
-    ) => {
-      if (!parsed) {
-        return;
-      }
-      const draft = buildPolicyDraftFromRecognition(parsed);
-      const policyObj = (parsed.policy ?? {}) as Record<string, unknown>;
-      const recognizedSalesChannel = normalizeStringValue(
-        policyObj.sales_channel ??
-          policyObj.sales_channel_name ??
-          policyObj.salesChannel ??
-          policyObj.salesChannelName,
-      );
-      const matchedChannel = matchSalesChannel(salesChannels, recognizedSalesChannel);
-      const commissionNote = buildCommissionIncomeNote(matchedChannel?.name);
-      const paymentsWithNotes = draft.payments.map((payment) => ({
-        ...payment,
-        incomes: payment.incomes.map((income) =>
-          shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
-        ),
-      }));
-
-      const recognizedPolicyClientName = normalizeStringValue(
-        parsed.insured_client_name ??
-          parsed.client_name ??
-          policyObj.insured_client_name ??
-          policyObj.client_name ??
-          policyObj.client ??
-          policyObj.insured_client ??
-          policyObj.contractor,
-      );
-      const matchedPolicyClient = recognizedPolicyClientName?.length
-        ? clients.find(
-            (client) => client.name.toLowerCase() === recognizedPolicyClientName.toLowerCase(),
-          )
-        : undefined;
-
-      const values = {
-        ...draft,
-        salesChannelId: matchedChannel?.id,
-        payments: paymentsWithNotes,
-        clientId: matchedPolicyClient?.id ?? undefined,
-        clientName: matchedPolicyClient?.name ?? (recognizedPolicyClientName || undefined),
-      };
-      const recognizedInsuranceType = normalizeStringValue(
-        policyObj.insurance_type ??
-          policyObj.insuranceType ??
-          parsed.insurance_type ??
-          parsed.insuranceType,
-      );
-      setPolicyDealId(dealId);
-      setPolicyDefaultCounterparty(undefined);
-      const resolvedFileIds = parsedFileIds?.length
-        ? Array.from(new Set(parsedFileIds.filter((id): id is string => Boolean(id))))
-        : fileId
-          ? [fileId]
-          : [];
-      setPolicySourceFileIds(resolvedFileIds);
-      setPolicyPrefill({
-        values,
-        insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
-        insuranceTypeName: recognizedInsuranceType,
-      });
-    },
-    [salesChannels, clients],
-  );
-
-  const handleRequestAddPolicy = useCallback((dealId: string) => {
-    setPolicyDefaultCounterparty(undefined);
-    setPolicyPrefill(null);
-    setPolicySourceFileIds([]);
-    setPolicyDealId(dealId);
-  }, []);
+  const {
+    policyDealId,
+    policyPrefill,
+    policyDefaultCounterparty,
+    editingPolicy,
+    setEditingPolicy,
+    closePolicyModal,
+    handlePolicyDraftReady,
+    handleRequestAddPolicy,
+    handleRequestEditPolicy,
+    handleAddPolicy,
+    handleUpdatePolicy,
+    handleDeletePolicy,
+    policyDealExecutorName,
+    editingPolicyExecutorName,
+  } = usePolicyActions({
+    clients,
+    dealsById,
+    policies,
+    payments,
+    statements,
+    salesChannels,
+    dealFilters,
+    setModal,
+    setError,
+    setIsSyncing,
+    updateAppData,
+    invalidateDealsCache,
+    invalidateDealPoliciesCache,
+    loadDealPolicies,
+    mergeDealWithHydratedQuotes,
+    refreshDealsWithSelection,
+    syncDealsByIds,
+    selectDealById,
+    adjustPaymentsTotals,
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -1186,1347 +642,64 @@ const AppContent: React.FC = () => {
     });
   }, [dealFilters, isAuthenticated, refreshDealsWithSelection, setError]);
 
-  const handleAddDeal = useCallback(
-    async (data: DealFormValues) => {
-      invalidateDealsCache();
-      const created = await createDeal({
-        title: data.title,
-        clientId: data.clientId,
-        description: data.description,
-        expectedClose: data.expectedClose,
-        executorId: data.executorId,
-        source: data.source?.trim() || undefined,
-        visibleUserIds: data.visibleUserIds,
-      });
-      updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
-      protectedCreatedDealRef.current = created;
-      skipNextMissingSelectedDealClearRef.current = created.id;
-      selectDealById(created.id);
-      requestDealRowFocus(created.id);
-      setModal(null);
-    },
-    [invalidateDealsCache, requestDealRowFocus, selectDealById, setModal, updateAppData],
-  );
-
-  const handleCloseDeal = useCallback(
-    async (dealId: string, payload: { reason: string; status?: 'won' | 'lost' }) => {
-      invalidateDealsCache();
-      setIsSyncing(true);
-      try {
-        const updated = await closeDeal(dealId, payload);
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
-        }));
-      } catch (err) {
-        const message =
-          err instanceof APIError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Ошибка при закрытии сделки';
-        setError(message);
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [invalidateDealsCache, setError, setIsSyncing, updateAppData],
-  );
-
-  const handleReopenDeal = useCallback(
-    async (dealId: string) => {
-      invalidateDealsCache();
-      setIsSyncing(true);
-      try {
-        const updated = await reopenDeal(dealId);
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
-        }));
-        selectDealById(updated.id);
-      } catch (err) {
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Ошибка при восстановлении сделки'));
-        }
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [addNotification, invalidateDealsCache, setError, setIsSyncing, selectDealById, updateAppData],
-  );
-
-  const handleUpdateDeal = useCallback(
-    async (dealId: string, data: DealFormValues) => {
-      invalidateDealsCache();
-      setIsSyncing(true);
-      try {
-        const updated = await updateDeal(dealId, data);
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
-        }));
-        selectDealById(updated.id);
-      } catch (err) {
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Ошибка при обновлении сделки'));
-        }
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [addNotification, invalidateDealsCache, setError, setIsSyncing, selectDealById, updateAppData],
-  );
-
-  const handlePinDeal = useCallback(
-    async (dealId: string) => {
-      invalidateDealsCache();
-      setIsSyncing(true);
-      try {
-        await pinDeal(dealId);
-        await refreshDealsWithSelection(dealFilters, { force: true });
-        addNotification('Сделка закреплена', 'success', 3000);
-      } catch (err) {
-        if (err instanceof APIError && err.status === 400) {
-          addNotification(err.message || 'Нельзя закрепить больше 5 сделок', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Ошибка при закреплении сделки'));
-        }
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [
-      addNotification,
-      dealFilters,
-      invalidateDealsCache,
-      refreshDealsWithSelection,
-      setError,
-      setIsSyncing,
-    ],
-  );
-
-  const handleUnpinDeal = useCallback(
-    async (dealId: string) => {
-      invalidateDealsCache();
-      setIsSyncing(true);
-      try {
-        await unpinDeal(dealId);
-        await refreshDealsWithSelection(dealFilters, { force: true });
-        addNotification('Сделка откреплена', 'success', 3000);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при откреплении сделки'));
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [
-      addNotification,
-      dealFilters,
-      invalidateDealsCache,
-      refreshDealsWithSelection,
-      setError,
-      setIsSyncing,
-    ],
-  );
-
-  const handlePostponeDeal = useCallback(
-    async (dealId: string, data: DealFormValues) => {
-      invalidateDealsCache();
-      const previousSelection = selectedDealId;
-      const previousFocusCleared = isDealFocusCleared;
-      setIsSyncing(true);
-      try {
-        await updateDeal(dealId, data);
-        await refreshDeals(dealFilters, { force: true });
-        clearSelectedDealFocus();
-      } catch (err) {
-        if (previousSelection) {
-          selectDealById(previousSelection);
-        } else if (previousFocusCleared) {
-          clearSelectedDealFocus();
-        } else {
-          resetDealSelection();
-        }
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('Ошибка доступа при обновлении сделки', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Не удалось обновить сделку'));
-        }
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [
-      addNotification,
-      clearSelectedDealFocus,
-      dealFilters,
-      invalidateDealsCache,
-      isDealFocusCleared,
-      refreshDeals,
-      resetDealSelection,
-      selectedDealId,
-      selectDealById,
-      setError,
-      setIsSyncing,
-    ],
-  );
-  const handleDeleteDeal = useCallback(
-    async (dealId: string) => {
-      const confirmed = await confirm(confirmTexts.deleteDeal());
-      if (!confirmed) {
-        return;
-      }
-
-      setIsSyncing(true);
-      try {
-        await deleteDeal(dealId);
-        await refreshDealsWithSelection(dealFilters, { force: true });
-        setError(null);
-        addNotification('Сделка удалена', 'success', 4000);
-      } catch (err) {
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('Ошибка доступа при удалении сделки', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Не удалось удалить сделку'));
-        }
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [addNotification, confirm, dealFilters, refreshDealsWithSelection, setError, setIsSyncing],
-  );
-
-  const handleRestoreDeal = useCallback(
-    async (dealId: string) => {
-      setIsSyncing(true);
-      try {
-        const restored = await restoreDeal(dealId);
-        await refreshDealsWithSelection(dealFilters, { force: true });
-        selectDealById(restored.id);
-        setError(null);
-        addNotification('Сделка восстановлена', 'success', 4000);
-      } catch (err) {
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('Ошибка доступа при восстановлении сделки', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Не удалось восстановить сделку'));
-        }
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [
-      addNotification,
-      dealFilters,
-      refreshDealsWithSelection,
-      setError,
-      selectDealById,
-      setIsSyncing,
-    ],
-  );
-
-  const cycleSelectedDeal = useCallback(
-    (direction: 1 | -1) => {
-      if (!isDealsRoute || !deals.length) {
-        return;
-      }
-
-      if (!selectedDealId) {
-        handleSelectDeal(deals[0].id);
-        return;
-      }
-
-      const currentIndex = deals.findIndex((deal) => deal.id === selectedDealId);
-      if (currentIndex < 0) {
-        handleSelectDeal(deals[0].id);
-        return;
-      }
-
-      const nextIndex = (currentIndex + direction + deals.length) % deals.length;
-      handleSelectDeal(deals[nextIndex].id);
-    },
-    [deals, handleSelectDeal, isDealsRoute, selectedDealId],
-  );
-
-  const openSelectedDealPreview = useCallback(() => {
-    if (!isDealsRoute || !selectedDeal?.id) {
-      return;
-    }
-    handleOpenDealPreview(selectedDeal.id);
-  }, [handleOpenDealPreview, isDealsRoute, selectedDeal?.id]);
-
-  const deleteSelectedDeal = useCallback(async () => {
-    if (!isDealsRoute || !selectedDeal?.id || selectedDeal.deletedAt) {
-      return;
-    }
-    await handleDeleteDeal(selectedDeal.id);
-  }, [handleDeleteDeal, isDealsRoute, selectedDeal]);
-
-  const restoreSelectedDeal = useCallback(async () => {
-    if (!isDealsRoute || !selectedDeal?.id || !selectedDeal.deletedAt) {
-      return;
-    }
-    await handleRestoreDeal(selectedDeal.id);
-  }, [handleRestoreDeal, isDealsRoute, selectedDeal]);
-
-  const handleMergeDeals = useCallback(
-    async (
-      targetDealId: string,
-      sourceDealIds: string[],
-      finalDeal: DealFormValues,
-      previewSnapshotId?: string,
-    ) => {
-      invalidateDealsCache();
-      setIsSyncing(true);
-      try {
-        const result = await mergeDeals({
-          targetDealId,
-          sourceDealIds,
-          finalDeal,
-          includeDeleted: true,
-          previewSnapshotId,
-        });
-        updateAppData((prev) => {
-          const mergedIds = new Set(result.mergedDealIds);
-          const resultDealId = result.resultDeal.id;
-          const resultDealTitle = result.resultDeal.title;
-          const resultClientName = result.resultDeal.clientName;
-
-          return {
-            deals: [...prev.deals.filter((deal) => !mergedIds.has(deal.id)), result.resultDeal],
-            policies: prev.policies.map((policy) =>
-              mergedIds.has(policy.dealId)
-                ? {
-                    ...policy,
-                    dealId: resultDealId,
-                    dealTitle: resultDealTitle,
-                  }
-                : policy,
-            ),
-            payments: prev.payments.map((payment) =>
-              payment.dealId && mergedIds.has(payment.dealId)
-                ? {
-                    ...payment,
-                    dealId: resultDealId,
-                    dealTitle: resultDealTitle,
-                    dealClientName: resultClientName ?? payment.dealClientName,
-                  }
-                : payment,
-            ),
-            tasks: prev.tasks.map((task) =>
-              task.dealId && mergedIds.has(task.dealId)
-                ? {
-                    ...task,
-                    dealId: resultDealId,
-                    dealTitle: resultDealTitle,
-                    clientName: resultClientName ?? task.clientName,
-                  }
-                : task,
-            ),
-          };
-        });
-        selectDealById(result.resultDeal.id);
-        setError(null);
-        addNotification('Сделки объединены', 'success', 4000);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка объединения сделок'));
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [addNotification, invalidateDealsCache, setError, selectDealById, setIsSyncing, updateAppData],
-  );
-
-  const handleAddQuote = useCallback(
-    async (dealId: string, values: QuoteFormValues) => {
-      invalidateDealsCache();
-      invalidateDealQuotesCache(dealId);
-      try {
-        const created = await createQuote({ dealId, ...values });
-        const nextQuotesForDeal = [created, ...(dealsById.get(dealId)?.quotes ?? [])];
-        cacheDealQuotes(dealId, nextQuotesForDeal);
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) =>
-            deal.id === dealId ? { ...deal, quotes: [created, ...(deal.quotes ?? [])] } : deal,
-          ),
-        }));
-        setQuoteDealId(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при добавлении предложения'));
-        throw err;
-      }
-    },
-    [
-      cacheDealQuotes,
-      dealsById,
-      invalidateDealQuotesCache,
-      invalidateDealsCache,
-      setError,
-      setQuoteDealId,
-      updateAppData,
-    ],
-  );
-
-  const handleUpdateQuote = useCallback(
-    async (values: QuoteFormValues) => {
-      if (!editingQuote) {
-        return;
-      }
-      invalidateDealsCache();
-      const { id, dealId } = editingQuote;
-      invalidateDealQuotesCache(dealId);
-      try {
-        const updated = await updateQuote(id, values);
-        const nextQuotesForDeal = (dealsById.get(dealId)?.quotes ?? []).map((quote) =>
-          quote.id === id ? updated : quote,
-        );
-        cacheDealQuotes(dealId, nextQuotesForDeal);
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) =>
-            deal.id === dealId
-              ? {
-                  ...deal,
-                  quotes: deal.quotes
-                    ? deal.quotes.map((quote) => (quote.id === id ? updated : quote))
-                    : [updated],
-                }
-              : deal,
-          ),
-        }));
-        setEditingQuote(null);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при обновлении предложения'));
-        throw err;
-      }
-    },
-    [
-      cacheDealQuotes,
-      dealsById,
-      editingQuote,
-      invalidateDealQuotesCache,
-      invalidateDealsCache,
-      setEditingQuote,
-      setError,
-      updateAppData,
-    ],
-  );
-
-  const handleRequestEditQuote = useCallback((quote: Quote) => {
-    setEditingQuote(quote);
-  }, []);
-
-  const handleDeleteQuote = useCallback(
-    async (dealId: string, quoteId: string) => {
-      invalidateDealsCache();
-      invalidateDealQuotesCache(dealId);
-      try {
-        await deleteQuote(quoteId);
-        const nextQuotesForDeal = markQuoteAsDeleted(dealsById.get(dealId)?.quotes ?? [], quoteId);
-        cacheDealQuotes(dealId, nextQuotesForDeal);
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) =>
-            deal.id === dealId
-              ? { ...deal, quotes: markQuoteAsDeleted(deal.quotes ?? [], quoteId) }
-              : deal,
-          ),
-        }));
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при удалении предложения'));
-        throw err;
-      }
-    },
-    [
-      cacheDealQuotes,
-      dealsById,
-      invalidateDealQuotesCache,
-      invalidateDealsCache,
-      setError,
-      updateAppData,
-    ],
-  );
-
-  const handleAddPolicy = useCallback(
-    async (dealId: string, values: PolicyFormValues) => {
-      invalidateDealsCache();
-      invalidateDealPoliciesCache(dealId);
-      setIsSyncing(true);
-      const {
-        number,
-        insuranceCompanyId,
-        insuranceTypeId,
-        isVehicle,
-        brand,
-        model,
-        vin,
-        startDate,
-        endDate,
-        salesChannelId,
-        clientId: selectedPolicyClientId,
-        clientName: selectedPolicyClientName,
-        counterparty,
-        note,
-        payments: paymentDrafts = [],
-      } = values;
-      const sourceFileIds = policySourceFileIds;
-      const sourceFileId = sourceFileIds[0];
-      let deal = dealsById.get(dealId);
-      let clientId = deal?.clientId;
-      if (!clientId) {
-        try {
-          const fetchedDeal = mergeDealWithHydratedQuotes(await fetchDeal(dealId), deal);
-          deal = fetchedDeal;
-          clientId = fetchedDeal.clientId;
-          updateAppData((prev) => ({
-            deals: prev.deals.some((item) => item.id === dealId)
-              ? prev.deals
-              : [fetchedDeal, ...prev.deals],
-          }));
-        } catch (err) {
-          setError(formatErrorMessage(err, 'Ошибка при получении сделки'));
-          throw err;
-        }
-      }
-
-      try {
-        let resolvedPolicyClientId = selectedPolicyClientId;
-        const normalizedPolicyClientName = selectedPolicyClientName?.trim();
-        if (!resolvedPolicyClientId && normalizedPolicyClientName) {
-          const normalizedLower = normalizedPolicyClientName.toLowerCase();
-          if (clientId && deal?.clientName?.toLowerCase() === normalizedLower) {
-            resolvedPolicyClientId = clientId;
-          } else {
-            const matchedClient = clients.find(
-              (client) => client.name.toLowerCase() === normalizedLower,
-            );
-            if (matchedClient) {
-              resolvedPolicyClientId = matchedClient.id;
-            } else {
-              const createdClient = await createClient({ name: normalizedPolicyClientName });
-              updateAppData((prev) => ({ clients: [createdClient, ...prev.clients] }));
-              resolvedPolicyClientId = createdClient.id;
-            }
-          }
-        }
-        const created = await createPolicy({
-          dealId,
-          clientId: resolvedPolicyClientId || clientId,
-          number,
-          insuranceCompanyId,
-          insuranceTypeId,
-          isVehicle,
-          salesChannelId,
-          brand,
-          model,
-          vin,
-          counterparty,
-          note,
-          startDate,
-          endDate,
-          sourceFileId,
-          sourceFileIds: sourceFileIds.length ? sourceFileIds : undefined,
-        });
-        updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
-        const parsePolicyAmount = (value?: string | null) => {
-          const parsed = parseNumericAmount(value ?? '');
-          return Number.isFinite(parsed) ? parsed : 0;
-        };
-        let policyPaymentsTotal = parsePolicyAmount(created.paymentsTotal);
-        let policyPaymentsPaid = parsePolicyAmount(created.paymentsPaid);
-        const formatPolicyAmount = (value: number) => value.toFixed(2);
-        const syncPolicyTotals = () => {
-          const formattedTotal = formatPolicyAmount(policyPaymentsTotal);
-          const formattedPaid = formatPolicyAmount(policyPaymentsPaid);
-          updateAppData((prev) => ({
-            policies: prev.policies.map((policy) =>
-              policy.id === created.id
-                ? {
-                    ...policy,
-                    paymentsTotal: formattedTotal,
-                    paymentsPaid: formattedPaid,
-                  }
-                : policy,
-            ),
-          }));
-        };
-
-        const hasCounterparty = Boolean(counterparty?.trim());
-        const executorName = deal?.executorName?.trim();
-        const hasExecutor = Boolean(executorName);
-        const ensureExpenses = hasCounterparty || hasExecutor;
-        const expenseTargetName = counterparty?.trim() || executorName || 'контрагент';
-        const expenseNote = `Расход контрагенту ${expenseTargetName}`;
-        const salesChannelName = resolveSalesChannelName(salesChannels, salesChannelId);
-        const autoIncomeNote = buildCommissionIncomeNote(salesChannelName);
-        const paymentsToProcess = paymentDrafts.map((payment) =>
-          normalizePaymentDraft(payment, ensureExpenses, {
-            autoIncomeNote,
-            autoExpenseNote: ensureExpenses ? expenseNote : undefined,
-          }),
-        );
-
-        let dealPaymentsTotalDelta = 0;
-        let dealPaymentsPaidDelta = 0;
-        let paymentsCreated = 0;
-
-        try {
-          for (const paymentDraft of paymentsToProcess) {
-            const amount = parseNumericAmount(paymentDraft.amount);
-            if (!Number.isFinite(amount) || amount < 0) {
-              continue;
-            }
-
-            const payment = await createPayment({
-              dealId,
-              policyId: created.id,
-              amount,
-              description: paymentDraft.description,
-              scheduledDate: paymentDraft.scheduledDate || null,
-              actualDate: paymentDraft.actualDate || null,
-            });
-            paymentsCreated += 1;
-            const createdRecords: FinancialRecord[] = [];
-
-            for (const income of paymentDraft.incomes) {
-              const incomeAmount = parseNumericAmount(income.amount);
-              if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
-                continue;
-              }
-
-              const record = await createFinancialRecord({
-                paymentId: payment.id,
-                amount: incomeAmount,
-                date: income.date || null,
-                description: income.description,
-                source: income.source,
-                note: income.note,
-              });
-              createdRecords.push(record);
-            }
-
-            for (const expense of paymentDraft.expenses) {
-              const expenseAmount = parseNumericAmount(expense.amount);
-              if (!Number.isFinite(expenseAmount) || expenseAmount < 0) {
-                continue;
-              }
-
-              const record = await createFinancialRecord({
-                paymentId: payment.id,
-                amount: -Math.abs(expenseAmount),
-                date: expense.date || null,
-                description: expense.description,
-                source: expense.source,
-                note: expense.note,
-              });
-              createdRecords.push(record);
-            }
-
-            const paymentWithRecords: Payment = {
-              ...payment,
-              financialRecords: createdRecords.length
-                ? [...createdRecords, ...(payment.financialRecords ?? [])]
-                : payment.financialRecords,
-            };
-            policyPaymentsTotal += amount;
-            if (payment.actualDate) {
-              policyPaymentsPaid += amount;
-              dealPaymentsPaidDelta += amount;
-            }
-            dealPaymentsTotalDelta += amount;
-            syncPolicyTotals();
-            updateAppData((prev) => ({
-              payments: [paymentWithRecords, ...prev.payments],
-              financialRecords:
-                createdRecords.length > 0
-                  ? [...createdRecords, ...prev.financialRecords]
-                  : prev.financialRecords,
-            }));
-          }
-        } catch (err) {
-          if (paymentsCreated === 0) {
-            try {
-              await deletePolicy(created.id);
-              updateAppData((prev) => ({
-                policies: prev.policies.filter((policy) => policy.id !== created.id),
-              }));
-            } catch (cleanupErr) {
-              console.error('Failed to delete policy after payment failure', cleanupErr);
-            }
-          }
-          throw err;
-        }
-
-        if (dealPaymentsTotalDelta || dealPaymentsPaidDelta) {
-          updateAppData((prev) => ({
-            deals: adjustPaymentsTotals(
-              prev.deals,
-              dealId,
-              dealPaymentsTotalDelta,
-              dealPaymentsPaidDelta,
-            ),
-          }));
-        }
-
-        let refreshFailed = false;
-        try {
-          const refreshedDeal = mergeDealWithHydratedQuotes(
-            await fetchDeal(dealId),
-            dealsById.get(dealId),
-          );
-          updateAppData((prev) => ({
-            deals: prev.deals.some((deal) => deal.id === refreshedDeal.id)
-              ? prev.deals.map((deal) => (deal.id === refreshedDeal.id ? refreshedDeal : deal))
-              : [refreshedDeal, ...prev.deals],
-          }));
-          selectDealById(refreshedDeal.id);
-        } catch (refreshErr) {
-          setError(
-            refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить данные сделки',
-          );
-          refreshFailed = true;
-        }
-
-        try {
-          await loadDealPolicies(dealId, { force: true });
-        } catch (refreshErr) {
-          setError(
-            refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить список полисов',
-          );
-          refreshFailed = true;
-        }
-        try {
-          await refreshDealsWithSelection(dealFilters, { force: true });
-        } catch (refreshErr) {
-          setError(
-            refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить список сделок',
-          );
-          refreshFailed = true;
-        }
-
-        if (!refreshFailed) {
-          closePolicyModal();
-        }
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Не удалось сохранить полис'));
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [
-      adjustPaymentsTotals,
-      closePolicyModal,
-      clients,
-      dealFilters,
-      dealsById,
-      invalidateDealsCache,
-      invalidateDealPoliciesCache,
-      loadDealPolicies,
-      mergeDealWithHydratedQuotes,
-      policySourceFileIds,
-      refreshDealsWithSelection,
-      salesChannels,
-      setError,
-      setIsSyncing,
-      selectDealById,
-      updateAppData,
-    ],
-  );
-  const handleRequestEditPolicy = useCallback(
-    (policy: Policy) => {
-      setModal(null);
-      closePolicyModal();
-      setEditingPolicy(policy);
-    },
-    [closePolicyModal, setModal],
-  );
-  const handleUpdatePolicy = useCallback(
-    async (policyId: string, values: PolicyFormValues) => {
-      setIsSyncing(true);
-      invalidateDealsCache();
-      try {
-        const {
-          number,
-          insuranceCompanyId,
-          insuranceTypeId,
-          isVehicle,
-          brand,
-          model,
-          vin,
-          counterparty,
-          note,
-          salesChannelId,
-          startDate,
-          endDate,
-          clientId: selectedPolicyClientId,
-          clientName: selectedPolicyClientName,
-          payments: paymentDrafts = [],
-        } = values;
-
-        const currentPolicy = policies.find((policy) => policy.id === policyId);
-        if (!currentPolicy) {
-          throw new Error('Не удалось найти полис для обновления.');
-        }
-        invalidateDealPoliciesCache(currentPolicy.dealId);
-
-        const statementById = new Map(
-          (statements ?? []).map((statement) => [statement.id, statement]),
-        );
-
-        const existingPayments = payments.filter(
-          (payment) => payment.policyId === policyId && !payment.deletedAt,
-        );
-        const existingPaymentById = new Map(
-          existingPayments.map((payment) => [payment.id, payment]),
-        );
-
-        // Existing records are sourced primarily from `payments` because
-        // `financialRecords` might be loaded partially (pagination on backend).
-        const existingRecords = existingPayments
-          .flatMap((payment) => payment.financialRecords ?? [])
-          .filter((record) => !record.deletedAt);
-        const existingRecordById = new Map(existingRecords.map((record) => [record.id, record]));
-
-        const draftPaymentIds = new Set(
-          paymentDrafts.map((draft) => draft.id).filter(Boolean) as string[],
-        );
-        const paymentsToDelete = existingPayments.filter(
-          (payment) => !draftPaymentIds.has(payment.id),
-        );
-
-        const getRecordDraftIds = (draft: (typeof paymentDrafts)[number]) => {
-          const ids: string[] = [];
-          for (const income of draft.incomes ?? []) {
-            if (income.id) ids.push(income.id);
-          }
-          for (const expense of draft.expenses ?? []) {
-            if (expense.id) ids.push(expense.id);
-          }
-          return ids;
-        };
-
-        const isDraftStatementLinked = (recordId: string) => {
-          const record = existingRecordById.get(recordId);
-          if (!record?.statementId) {
-            return false;
-          }
-          const statement = statementById.get(record.statementId);
-          return Boolean(statement && !statement.paidAt);
-        };
-
-        // Fail fast: запрещаем удаление записей, привязанных к черновику ведомости.
-        // Это предотвращает частичное сохранение, если далее будут сетевые запросы.
-        for (const payment of paymentsToDelete) {
-          const paymentRecords = existingRecords.filter(
-            (record) => record.paymentId === payment.id,
-          );
-          const blocked = paymentRecords.find(
-            (record) => record.statementId && isDraftStatementLinked(record.id),
-          );
-          if (blocked) {
-            throw new Error('Сначала уберите запись из ведомости');
-          }
-        }
-        for (const draft of paymentDrafts) {
-          if (!draft.id) continue;
-          const submittedRecordIds = new Set(getRecordDraftIds(draft));
-          const paymentRecords = existingRecords.filter((record) => record.paymentId === draft.id);
-          for (const record of paymentRecords) {
-            if (!submittedRecordIds.has(record.id) && isDraftStatementLinked(record.id)) {
-              throw new Error('Сначала уберите запись из ведомости');
-            }
-          }
-        }
-
-        let resolvedPolicyClientId = selectedPolicyClientId;
-        const normalizedPolicyClientName = selectedPolicyClientName?.trim();
-        if (!resolvedPolicyClientId && normalizedPolicyClientName) {
-          const normalizedLower = normalizedPolicyClientName.toLowerCase();
-          if (
-            currentPolicy?.clientId &&
-            currentPolicy?.clientName?.toLowerCase() === normalizedLower
-          ) {
-            resolvedPolicyClientId = currentPolicy.clientId;
-          } else {
-            const matchedClient = clients.find(
-              (client) => client.name.toLowerCase() === normalizedLower,
-            );
-            if (matchedClient) {
-              resolvedPolicyClientId = matchedClient.id;
-            } else {
-              const createdClient = await createClient({ name: normalizedPolicyClientName });
-              updateAppData((prev) => ({ clients: [createdClient, ...prev.clients] }));
-              resolvedPolicyClientId = createdClient.id;
-            }
-          }
-        }
-        const updated = await updatePolicy(policyId, {
-          number,
-          insuranceCompanyId,
-          insuranceTypeId,
-          isVehicle,
-          brand,
-          model,
-          vin,
-          counterparty,
-          note,
-          salesChannelId,
-          startDate,
-          endDate,
-          clientId: resolvedPolicyClientId || currentPolicy.clientId,
-        });
-        updateAppData((prev) => ({
-          policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
-        }));
-
-        const parsePaymentAmount = (value?: string | null) => {
-          const parsed = parseNumericAmount(value ?? '');
-          return Number.isFinite(parsed) ? parsed : 0;
-        };
-
-        const parseRecordAmount = (value: string | null | undefined, sign: 1 | -1) => {
-          const parsed = parseNumericAmount(value ?? '');
-          if (!Number.isFinite(parsed)) {
-            return parsed;
-          }
-          const abs = Math.abs(parsed);
-          return sign === -1 ? -abs : abs;
-        };
-
-        const affectedDealIds = new Set<string>();
-        if (currentPolicy.dealId) {
-          affectedDealIds.add(currentPolicy.dealId);
-        }
-
-        // 1) Удаляем платежи, которые исчезли из формы.
-        for (const payment of paymentsToDelete) {
-          await deletePayment(payment.id);
-          const paymentAmount = parseAmountValue(payment.amount);
-          const paymentPaid = payment.actualDate ? paymentAmount : 0;
-          updateAppData((prev) => ({
-            payments: prev.payments.filter((item) => item.id !== payment.id),
-            financialRecords: prev.financialRecords.filter(
-              (record) => record.paymentId !== payment.id,
-            ),
-            policies: adjustPaymentsTotals(
-              prev.policies,
-              payment.policyId,
-              -paymentAmount,
-              -paymentPaid,
-            ),
-            deals: adjustPaymentsTotals(prev.deals, payment.dealId, -paymentAmount, -paymentPaid),
-          }));
-        }
-
-        // 2) Обновляем/создаем платежи и синхронизируем записи.
-        for (const draft of paymentDrafts) {
-          const draftAmount = parsePaymentAmount(draft.amount);
-          const draftScheduled = draft.scheduledDate ? draft.scheduledDate : null;
-          const draftActual = draft.actualDate ? draft.actualDate : null;
-          const draftDescription = draft.description ?? '';
-
-          let paymentId = draft.id;
-          let paymentEntity = paymentId ? existingPaymentById.get(paymentId) : undefined;
-
-          if (paymentId) {
-            const previousPayment = paymentEntity;
-            if (previousPayment) {
-              const previousAmount = parseAmountValue(previousPayment.amount);
-              const previousPaid = previousPayment.actualDate ? previousAmount : 0;
-              const nextPaid = draftActual ? draftAmount : 0;
-
-              const needsUpdate =
-                parseAmountValue(previousPayment.amount) !== draftAmount ||
-                (previousPayment.description ?? '') !== draftDescription ||
-                (previousPayment.scheduledDate ?? null) !== draftScheduled ||
-                (previousPayment.actualDate ?? null) !== draftActual;
-
-              if (needsUpdate) {
-                const updatedPayment = await updatePayment(paymentId, {
-                  policyId,
-                  dealId: currentPolicy.dealId ?? undefined,
-                  amount: draftAmount,
-                  description: draftDescription,
-                  scheduledDate: draftScheduled,
-                  actualDate: draftActual,
-                });
-
-                updateAppData((prev) => ({
-                  payments: prev.payments.map((payment) =>
-                    payment.id === updatedPayment.id ? updatedPayment : payment,
-                  ),
-                  policies: adjustPaymentsTotals(
-                    prev.policies,
-                    policyId,
-                    draftAmount - previousAmount,
-                    nextPaid - previousPaid,
-                  ),
-                  deals: adjustPaymentsTotals(
-                    prev.deals,
-                    currentPolicy.dealId,
-                    draftAmount - previousAmount,
-                    nextPaid - previousPaid,
-                  ),
-                }));
-                paymentEntity = updatedPayment;
-              }
-            }
-          } else {
-            const createdPayment = await createPayment({
-              dealId: currentPolicy.dealId,
-              policyId,
-              amount: draftAmount,
-              description: draftDescription,
-              scheduledDate: draftScheduled,
-              actualDate: draftActual,
-            });
-            paymentId = createdPayment.id;
-            paymentEntity = createdPayment;
-
-            const paidDelta = createdPayment.actualDate ? draftAmount : 0;
-            updateAppData((prev) => ({
-              payments: [createdPayment, ...prev.payments],
-              policies: adjustPaymentsTotals(prev.policies, policyId, draftAmount, paidDelta),
-              deals: adjustPaymentsTotals(prev.deals, currentPolicy.dealId, draftAmount, paidDelta),
-            }));
-          }
-
-          if (!paymentId) {
-            continue;
-          }
-
-          const paymentRecords = existingRecords.filter((record) => record.paymentId === paymentId);
-          const submittedIncomeIds = new Set(
-            (draft.incomes ?? []).map((r) => r.id).filter(Boolean) as string[],
-          );
-          const submittedExpenseIds = new Set(
-            (draft.expenses ?? []).map((r) => r.id).filter(Boolean) as string[],
-          );
-          const submittedRecordIds = new Set([...submittedIncomeIds, ...submittedExpenseIds]);
-
-          const recordsToDelete = paymentRecords.filter(
-            (record) => !submittedRecordIds.has(record.id),
-          );
-          for (const record of recordsToDelete) {
-            await deleteFinancialRecord(record.id);
-            updateAppData((prev) => ({
-              financialRecords: prev.financialRecords.filter((item) => item.id !== record.id),
-              payments: prev.payments.map((payment) =>
-                payment.id === record.paymentId
-                  ? {
-                      ...payment,
-                      financialRecords: (payment.financialRecords ?? []).filter(
-                        (item) => item.id !== record.id,
-                      ),
-                    }
-                  : payment,
-              ),
-            }));
-          }
-
-          const updateOrCreateRecord = async (
-            recordDraft: (typeof draft.incomes)[number],
-            sign: 1 | -1,
-          ) => {
-            const amount = parseRecordAmount(recordDraft.amount, sign);
-            if (!Number.isFinite(amount)) {
-              return;
-            }
-
-            const payload = {
-              amount,
-              date: recordDraft.date ? recordDraft.date : null,
-              description: recordDraft.description ?? '',
-              source: recordDraft.source ?? '',
-              note: recordDraft.note ?? '',
-            };
-
-            if (recordDraft.id) {
-              const existing = existingRecordById.get(recordDraft.id);
-              if (existing) {
-                const existingAmount = parseNumericAmount(existing.amount ?? '');
-                const existingDate = existing.date ?? null;
-                const existingDescription = (existing.description ?? '').trim();
-                const existingSource = (existing.source ?? '').trim();
-                const existingNote = (existing.note ?? '').trim();
-
-                const nextDescription = (payload.description ?? '').trim();
-                const nextSource = (payload.source ?? '').trim();
-                const nextNote = (payload.note ?? '').trim();
-
-                const hasChanges =
-                  (Number.isFinite(existingAmount) ? existingAmount : 0) !== payload.amount ||
-                  (existingDate ?? null) !== (payload.date ?? null) ||
-                  existingDescription !== nextDescription ||
-                  existingSource !== nextSource ||
-                  existingNote !== nextNote;
-
-                if (!hasChanges) {
-                  return;
-                }
-
-                const statement = existing.statementId
-                  ? statementById.get(existing.statementId)
-                  : undefined;
-                if (statement?.paidAt) {
-                  // Avoid partial saves: user is trying to change a record inside a paid statement.
-                  throw new Error('Нельзя изменять записи в выплаченной ведомости.');
-                }
-              }
-              const updatedRecord = await updateFinancialRecord(recordDraft.id, payload);
-              updateAppData((prev) => ({
-                financialRecords: prev.financialRecords.map((record) =>
-                  record.id === updatedRecord.id ? updatedRecord : record,
-                ),
-                payments: prev.payments.map((payment) =>
-                  payment.id === updatedRecord.paymentId
-                    ? {
-                        ...payment,
-                        financialRecords: (payment.financialRecords ?? []).map((record) =>
-                          record.id === updatedRecord.id ? updatedRecord : record,
-                        ),
-                      }
-                    : payment,
-                ),
-              }));
-              return;
-            }
-
-            const createdRecord = await createFinancialRecord({
-              paymentId,
-              ...payload,
-            });
-            updateAppData((prev) => ({
-              financialRecords: [createdRecord, ...prev.financialRecords],
-              payments: prev.payments.map((payment) =>
-                payment.id === createdRecord.paymentId
-                  ? {
-                      ...payment,
-                      financialRecords: [...(payment.financialRecords ?? []), createdRecord],
-                    }
-                  : payment,
-              ),
-            }));
-          };
-
-          for (const income of draft.incomes ?? []) {
-            await updateOrCreateRecord(income, 1);
-          }
-          for (const expense of draft.expenses ?? []) {
-            await updateOrCreateRecord(expense, -1);
-          }
-        }
-
-        if (affectedDealIds.size) {
-          await syncDealsByIds(Array.from(affectedDealIds));
-          await Promise.all(
-            Array.from(affectedDealIds).map((dealId) => loadDealPolicies(dealId, { force: true })),
-          );
-        }
-        setEditingPolicy(null);
-      } catch (err) {
-        const message =
-          err instanceof APIError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Не удалось обновить полис.';
-        setError(message);
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [
-      adjustPaymentsTotals,
-      clients,
-      invalidateDealsCache,
-      invalidateDealPoliciesCache,
-      loadDealPolicies,
-      payments,
-      policies,
-      setEditingPolicy,
-      setError,
-      setIsSyncing,
-      statements,
-      syncDealsByIds,
-      updateAppData,
-    ],
-  );
-  const handleDeletePolicy = useCallback(
-    async (policyId: string) => {
-      const targetPolicy = policies.find((policy) => policy.id === policyId);
-      const targetDealId = targetPolicy?.dealId ?? null;
-      invalidateDealsCache();
-      invalidateDealPoliciesCache(targetDealId);
-      try {
-        await deletePolicy(policyId);
-        updateAppData((prev) => {
-          const removedPaymentIds = new Set<string>();
-          const remainingPayments = prev.payments.filter((payment) => {
-            const shouldRemove = payment.policyId === policyId;
-            if (shouldRemove) {
-              removedPaymentIds.add(payment.id);
-            }
-            return !shouldRemove;
-          });
-          return {
-            policies: prev.policies.filter((policy) => policy.id !== policyId),
-            payments: remainingPayments,
-            financialRecords: prev.financialRecords.filter(
-              (record) => !removedPaymentIds.has(record.paymentId),
-            ),
-          };
-        });
-        if (targetDealId) {
-          await syncDealsByIds([targetDealId]);
-          await loadDealPolicies(targetDealId, { force: true });
-        }
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Не удалось удалить полис'));
-        throw err;
-      }
-    },
-    [
-      invalidateDealPoliciesCache,
-      invalidateDealsCache,
-      loadDealPolicies,
-      policies,
-      setError,
-      syncDealsByIds,
-      updateAppData,
-    ],
-  );
-
-  const handleDriveFolderCreated = useCallback(
-    (dealId: string, folderId: string) => {
-      invalidateDealsCache();
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) =>
-          deal.id === dealId ? { ...deal, driveFolderId: folderId } : deal,
-        ),
-      }));
-    },
-    [invalidateDealsCache, updateAppData],
-  );
-  const handleFetchChatMessages = useCallback(
-    async (dealId: string) => {
-      try {
-        return await fetchChatMessages(dealId);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Не удалось загрузить сообщения'));
-        throw err;
-      }
-    },
-    [setError],
-  );
-
-  const handleCreateDealMailbox = useCallback(
-    async (dealId: string) => {
-      const result = await createDealMailbox(dealId);
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) => (deal.id === result.deal.id ? result.deal : deal)),
-      }));
-      invalidateDealsCache();
-      return result;
-    },
-    [invalidateDealsCache, updateAppData],
-  );
-
-  const handleCheckDealMailbox = useCallback(
-    async (dealId: string) => {
-      const result = await checkDealMailbox(dealId);
-      updateAppData((prev) => ({
-        deals: prev.deals.map((deal) => (deal.id === result.deal.id ? result.deal : deal)),
-      }));
-      invalidateDealsCache();
-      return result;
-    },
-    [invalidateDealsCache, updateAppData],
-  );
-
-  const handleSendChatMessage = useCallback(
-    async (dealId: string, body: string) => {
-      try {
-        return await createChatMessage(dealId, body);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Не удалось отправить сообщение'));
-        throw err;
-      }
-    },
-    [setError],
-  );
-
-  const handleDeleteChatMessage = useCallback(
-    async (messageId: string) => {
-      try {
-        await deleteChatMessage(messageId);
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Не удалось удалить сообщение'));
-        throw err;
-      }
-    },
-    [setError],
-  );
-
-  const handleCreateTask = useCallback(
-    async (dealId: string, data: AddTaskFormValues) => {
-      setIsSyncing(true);
-      invalidateDealTasksCache(dealId);
-      try {
-        const created = await createTask({ dealId, ...data });
-        updateAppData((prev) => ({ tasks: [created, ...prev.tasks] }));
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при создании задачи'));
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [invalidateDealTasksCache, setError, setIsSyncing, updateAppData],
-  );
-
-  const handleUpdateTask = useCallback(
-    async (taskId: string, data: Partial<AddTaskFormValues>) => {
-      setIsSyncing(true);
-      invalidateDealTasksCache();
-      try {
-        const updated = await updateTask(taskId, data);
-        updateAppData((prev) => ({
-          tasks: prev.tasks.map((task) => (task.id === updated.id ? updated : task)),
-        }));
-      } catch (err) {
-        if (err instanceof APIError && err.status === 403) {
-          addNotification('Ошибка доступа при обновлении задачи', 'error', 4000);
-        } else {
-          setError(formatErrorMessage(err, 'Ошибка при обновлении задачи'));
-        }
-        throw err;
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [addNotification, invalidateDealTasksCache, setError, setIsSyncing, updateAppData],
-  );
-
-  const handleDeleteTask = useCallback(
-    async (taskId: string) => {
-      invalidateDealTasksCache();
-      try {
-        await deleteTask(taskId);
-        updateAppData((prev) => ({ tasks: markTaskAsDeleted(prev.tasks, taskId) }));
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при удалении задачи'));
-        throw err;
-      }
-    },
-    [invalidateDealTasksCache, setError, updateAppData],
-  );
+  const {
+    handleAddDeal,
+    handleCloseDeal,
+    handleReopenDeal,
+    handleUpdateDeal,
+    handlePinDeal,
+    handleUnpinDeal,
+    handlePostponeDeal,
+    handleDeleteDeal,
+    handleRestoreDeal,
+    handleMergeDeals,
+    handleAddQuote,
+    handleUpdateQuote,
+    handleRequestEditQuote,
+    handleDeleteQuote,
+    handleDriveFolderCreated,
+    handleFetchChatMessages,
+    handleCreateDealMailbox,
+    handleCheckDealMailbox,
+    handleSendChatMessage,
+    handleDeleteChatMessage,
+    handleCreateTask,
+    handleUpdateTask,
+    handleDeleteTask,
+    cycleSelectedDeal,
+    openSelectedDealPreview,
+    deleteSelectedDeal,
+    restoreSelectedDeal,
+  } = useDealActions({
+    deals,
+    dealsById,
+    selectedDeal,
+    selectedDealId,
+    isDealFocusCleared,
+    isDealsRoute,
+    dealFilters,
+    editingQuote,
+    setEditingQuote,
+    setQuoteDealId,
+    setModal,
+    confirm,
+    addNotification,
+    setError,
+    setIsSyncing,
+    updateAppData,
+    invalidateDealsCache,
+    refreshDeals,
+    refreshDealsWithSelection,
+    selectDealById,
+    clearSelectedDealFocus,
+    resetDealSelection,
+    requestDealRowFocus,
+    registerProtectedCreatedDeal,
+    invalidateDealQuotesCache,
+    invalidateDealTasksCache,
+    cacheDealQuotes,
+    openDealPreview: handleOpenDealPreview,
+  });
 
   const cycleSelectedClient = useCallback(
     (direction: 1 | -1) => {
@@ -2737,157 +910,6 @@ const AppContent: React.FC = () => {
       openPrimaryContextAction,
       deletePrimaryContextAction,
     });
-
-  const loadDealTasks = useCallback(
-    async (dealId: string) => {
-      const cached = dealTasksCacheRef.current.get(dealId);
-      if (cached && isCacheFresh(cached.loadedAt)) {
-        updateAppData((prev) => ({
-          tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...cached.data],
-        }));
-        return;
-      }
-
-      const existingPromise = dealTasksInFlightRef.current.get(dealId);
-      if (existingPromise) {
-        markDealTasksLoading(dealId);
-        try {
-          const dealTasks = await existingPromise;
-          updateAppData((prev) => ({
-            tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...dealTasks],
-          }));
-        } catch (err) {
-          setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
-        } finally {
-          unmarkDealTasksLoading(dealId);
-        }
-        return;
-      }
-
-      const request = fetchTasksByDeal(dealId, { showDeleted: true })
-        .then((dealTasks) => {
-          dealTasksCacheRef.current.set(dealId, { loadedAt: Date.now(), data: dealTasks });
-          return dealTasks;
-        })
-        .finally(() => {
-          dealTasksInFlightRef.current.delete(dealId);
-        });
-      dealTasksInFlightRef.current.set(dealId, request);
-
-      markDealTasksLoading(dealId);
-      try {
-        const dealTasks = await request;
-        updateAppData((prev) => ({
-          tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...dealTasks],
-        }));
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
-      } finally {
-        unmarkDealTasksLoading(dealId);
-      }
-    },
-    [isCacheFresh, markDealTasksLoading, setError, unmarkDealTasksLoading, updateAppData],
-  );
-
-  const loadDealQuotes = useCallback(
-    async (dealId: string) => {
-      const cached = dealQuotesCacheRef.current.get(dealId);
-      if (cached && isCacheFresh(cached.loadedAt)) {
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) =>
-            deal.id === dealId ? { ...deal, quotes: cached.data } : deal,
-          ),
-        }));
-        return;
-      }
-
-      const existingPromise = dealQuotesInFlightRef.current.get(dealId);
-      if (existingPromise) {
-        markDealQuotesLoading(dealId);
-        try {
-          const dealQuotes = await existingPromise;
-          updateAppData((prev) => ({
-            deals: prev.deals.map((deal) =>
-              deal.id === dealId ? { ...deal, quotes: dealQuotes } : deal,
-            ),
-          }));
-        } catch (err) {
-          setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
-        } finally {
-          unmarkDealQuotesLoading(dealId);
-        }
-        return;
-      }
-
-      const request = fetchQuotesByDeal(dealId, { showDeleted: true })
-        .then((dealQuotes) => {
-          cacheDealQuotes(dealId, dealQuotes);
-          return dealQuotes;
-        })
-        .finally(() => {
-          dealQuotesInFlightRef.current.delete(dealId);
-        });
-      dealQuotesInFlightRef.current.set(dealId, request);
-
-      markDealQuotesLoading(dealId);
-      try {
-        const dealQuotes = await request;
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) =>
-            deal.id === dealId ? { ...deal, quotes: dealQuotes } : deal,
-          ),
-        }));
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
-      } finally {
-        unmarkDealQuotesLoading(dealId);
-      }
-    },
-    [
-      cacheDealQuotes,
-      isCacheFresh,
-      markDealQuotesLoading,
-      setError,
-      unmarkDealQuotesLoading,
-      updateAppData,
-    ],
-  );
-
-  useEffect(() => {
-    rehydrateDealDetailsRef.current = async (dealId: string) => {
-      await Promise.all([loadDealTasks(dealId), loadDealQuotes(dealId)]);
-    };
-  }, [loadDealQuotes, loadDealTasks]);
-
-  useEffect(() => {
-    if (!effectiveSelectedDealId || !isAuthenticated) {
-      return;
-    }
-    void loadDealTasks(effectiveSelectedDealId);
-    void loadDealQuotes(effectiveSelectedDealId);
-  }, [effectiveSelectedDealId, isAuthenticated, loadDealQuotes, loadDealTasks]);
-
-  const handleRefreshSelectedDealPolicies = useCallback(
-    async (options?: { force?: boolean }) => {
-      const dealId = selectedDealIdRef.current;
-      if (!dealId) {
-        return;
-      }
-      await loadDealPolicies(dealId, options);
-    },
-    [loadDealPolicies],
-  );
-
-  const handleRefreshPreviewDealPolicies = useCallback(
-    async (options?: { force?: boolean }) => {
-      const dealId = previewDealIdRef.current;
-      if (!dealId) {
-        return;
-      }
-      await loadDealPolicies(dealId, options);
-    },
-    [loadDealPolicies],
-  );
 
   const handleLogout = useCallback(() => {
     clearTokens();

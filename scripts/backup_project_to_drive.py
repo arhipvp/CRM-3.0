@@ -97,6 +97,18 @@ def _env_value(env: dict[str, str], *names: str, default: str = "") -> str:
     return default
 
 
+def _oauth_refresh_token(env: dict[str, str]) -> str:
+    refresh_token = _env_value(env, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN")
+    refresh_token_file = _env_value(env, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE")
+    if refresh_token_file:
+        token_path = Path(refresh_token_file).expanduser()
+        if token_path.exists():
+            file_token = token_path.read_text(encoding="utf-8").strip()
+            if file_token:
+                return file_token
+    return refresh_token
+
+
 def get_drive_auth_mode(env: dict[str, str]) -> str:
     raw = _env_value(env, "GOOGLE_DRIVE_AUTH_MODE", default=DRIVE_AUTH_MODE_AUTO)
     mode = raw.lower()
@@ -419,7 +431,7 @@ class DriveBackup:
         client_secret = _env_value(
             env, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "Client-key"
         )
-        refresh_token = _env_value(env, "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN")
+        refresh_token = _oauth_refresh_token(env)
         token_uri = _env_value(
             env,
             "GOOGLE_DRIVE_OAUTH_TOKEN_URI",
