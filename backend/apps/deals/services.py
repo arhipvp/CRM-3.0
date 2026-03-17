@@ -12,8 +12,10 @@ from apps.chat.models import ChatMessage
 from apps.clients.models import Client
 from apps.common.drive import (
     DriveError,
+    DriveConfigurationError,
     delete_drive_folder,
     ensure_deal_folder,
+    is_drive_oauth_configured,
     move_drive_folder_contents,
 )
 from apps.documents.models import Document
@@ -56,6 +58,15 @@ def _retry_drive_operation(action, *, description: str):
             raise
     if last_error:
         raise last_error
+
+
+def _is_drive_configuration_error(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, DriveConfigurationError):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 class DealSimilarityService:
@@ -607,33 +618,45 @@ class DealMergeService:
     def _prepare_drive_folders(self, target_client: Client | None) -> None:
         if not target_client:
             return
-
-        _retry_drive_operation(
-            lambda: ensure_deal_folder(self.target_deal),
-            description=f"ensure target deal folder {self.target_deal.pk}",
-        )
-
-        target_folder_id = self.target_deal.drive_folder_id
-        if not target_folder_id:
+        if not is_drive_oauth_configured():
+            logger.info(
+                "Skipping deal merge Drive sync because Drive OAuth is not fully configured."
+            )
             return
+        try:
+            _retry_drive_operation(
+                lambda: ensure_deal_folder(self.target_deal),
+                description=f"ensure target deal folder {self.target_deal.pk}",
+            )
 
-        for deal in self.source_deals:
-            _retry_drive_operation(
-                lambda deal=deal: ensure_deal_folder(deal),
-                description=f"ensure source deal folder {deal.pk}",
-            )
-            source_folder_id = deal.drive_folder_id
-            if not source_folder_id or source_folder_id == target_folder_id:
-                continue
-            _retry_drive_operation(
-                lambda source_folder_id=source_folder_id: move_drive_folder_contents(
-                    source_folder_id, target_folder_id
-                ),
-                description=f"move deal folder contents from {source_folder_id}",
-            )
-            _retry_drive_operation(
-                lambda source_folder_id=source_folder_id: delete_drive_folder(
-                    source_folder_id
-                ),
-                description=f"delete deal folder {source_folder_id}",
-            )
+            target_folder_id = self.target_deal.drive_folder_id
+            if not target_folder_id:
+                return
+
+            for deal in self.source_deals:
+                _retry_drive_operation(
+                    lambda deal=deal: ensure_deal_folder(deal),
+                    description=f"ensure source deal folder {deal.pk}",
+                )
+                source_folder_id = deal.drive_folder_id
+                if not source_folder_id or source_folder_id == target_folder_id:
+                    continue
+                _retry_drive_operation(
+                    lambda source_folder_id=source_folder_id: move_drive_folder_contents(
+                        source_folder_id, target_folder_id
+                    ),
+                    description=f"move deal folder contents from {source_folder_id}",
+                )
+                _retry_drive_operation(
+                    lambda source_folder_id=source_folder_id: delete_drive_folder(
+                        source_folder_id
+                    ),
+                    description=f"delete deal folder {source_folder_id}",
+                )
+        except DriveError as exc:
+            if _is_drive_configuration_error(exc):
+                logger.info(
+                    "Skipping deal merge Drive sync because Drive OAuth is not fully configured."
+                )
+                return
+            raise

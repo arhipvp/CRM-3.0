@@ -99,7 +99,9 @@ class DriveAuthTests(SimpleTestCase):
             with self.assertRaises(_FakeHttpError):
                 drive._run_with_drive_service(
                     "test_operation",
-                    lambda service: (_ for _ in ()).throw(_FakeHttpError(404, "notFound")),
+                    lambda service: (_ for _ in ()).throw(
+                        _FakeHttpError(404, "notFound")
+                    ),
                 )
 
     def test_extract_refresh_error_details_marks_revoked_token(self):

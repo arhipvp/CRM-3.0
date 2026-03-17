@@ -113,6 +113,26 @@ def _get_oauth_settings() -> dict[str, str]:
     }
 
 
+def is_drive_oauth_configured(*, require_root_folder: bool = True) -> bool:
+    """Return whether Drive OAuth settings are complete enough for Drive operations."""
+
+    oauth_settings = _get_oauth_settings()
+    has_oauth = all(
+        [
+            oauth_settings["client_id"],
+            oauth_settings["client_secret"],
+            oauth_settings["refresh_token"],
+        ]
+    )
+    if not has_oauth:
+        return False
+    if require_root_folder:
+        root_folder_id = getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "").strip()
+        if not root_folder_id:
+            return False
+    return True
+
+
 def _build_drive_client(credentials: Any, *, auth_type: str):
     if not _gdrive_build:
         raise DriveConfigurationError("Drive client dependencies are not available.")
@@ -161,6 +181,7 @@ def _build_oauth_drive_service():
         scopes=DRIVE_SCOPES,
     )
     return _build_drive_client(credentials, auth_type=DRIVE_AUTH_MODE_OAUTH)
+
 
 def _extract_http_error_status_reason(exc: Exception) -> tuple[Optional[int], str]:
     if not _GDriveHttpError or not isinstance(exc, _GDriveHttpError):
@@ -238,6 +259,7 @@ def _extract_drive_error_details(exc: Exception) -> tuple[Optional[int], str, st
         exc.__class__.__name__.lower(),
         str(exc).strip() or exc.__class__.__name__,
     )
+
 
 def _log_drive_api_failure(operation: str, auth_type: str, exc: Exception) -> None:
     status, code, message = _extract_drive_error_details(exc)

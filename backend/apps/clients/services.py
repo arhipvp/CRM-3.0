@@ -7,9 +7,11 @@ from typing import Sequence
 
 from apps.common.drive import (
     DriveError,
+    DriveConfigurationError,
     delete_drive_folder,
     ensure_client_folder,
     ensure_deal_folder,
+    is_drive_oauth_configured,
     move_drive_folder_contents,
 )
 from apps.deals.models import Deal
@@ -54,6 +56,15 @@ def _retry_drive_operation(action, *, description: str):
             raise
     if last_error:
         raise last_error
+
+
+def _is_drive_configuration_error(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, DriveConfigurationError):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 class ClientMergeService:
@@ -227,29 +238,42 @@ class ClientMergeService:
     def _prepare_drive_folders(
         self, source_deal_ids_by_client: dict[str, list[str]]
     ) -> None:
-        target_folder_id = _retry_drive_operation(
-            lambda: ensure_client_folder(self.target_client),
-            description=f"ensure client folder for {self.target_client.pk}",
-        )
+        if not is_drive_oauth_configured():
+            logger.info(
+                "Skipping client merge Drive sync because Drive OAuth is not fully configured."
+            )
+            return
+        try:
+            target_folder_id = _retry_drive_operation(
+                lambda: ensure_client_folder(self.target_client),
+                description=f"ensure client folder for {self.target_client.pk}",
+            )
 
-        for source in self.source_clients:
-            source_deal_ids = source_deal_ids_by_client.get(str(source.id), [])
-            if source_deal_ids:
-                self._ensure_deal_folders(source_deal_ids)
+            for source in self.source_clients:
+                source_deal_ids = source_deal_ids_by_client.get(str(source.id), [])
+                if source_deal_ids:
+                    self._ensure_deal_folders(source_deal_ids)
 
-            if target_folder_id and source.drive_folder_id:
-                _retry_drive_operation(
-                    lambda source_folder_id=source.drive_folder_id: move_drive_folder_contents(
-                        source_folder_id, target_folder_id
-                    ),
-                    description=f"move client folder contents from {source.pk}",
+                if target_folder_id and source.drive_folder_id:
+                    _retry_drive_operation(
+                        lambda source_folder_id=source.drive_folder_id: move_drive_folder_contents(
+                            source_folder_id, target_folder_id
+                        ),
+                        description=f"move client folder contents from {source.pk}",
+                    )
+                    _retry_drive_operation(
+                        lambda source_folder_id=source.drive_folder_id: delete_drive_folder(
+                            source_folder_id
+                        ),
+                        description=f"delete client folder for {source.pk}",
+                    )
+        except DriveError as exc:
+            if _is_drive_configuration_error(exc):
+                logger.info(
+                    "Skipping client merge Drive sync because Drive OAuth is not fully configured."
                 )
-                _retry_drive_operation(
-                    lambda source_folder_id=source.drive_folder_id: delete_drive_folder(
-                        source_folder_id
-                    ),
-                    description=f"delete client folder for {source.pk}",
-                )
+                return
+            raise
 
     def merge(self) -> dict:
         self._apply_field_overrides()

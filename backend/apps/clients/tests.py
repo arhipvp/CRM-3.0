@@ -114,9 +114,12 @@ class ClientMergeServiceTests(TestCase):
 
     def test_merge_aborts_on_drive_error_before_db_changes(self):
         original_name = self.target.name
-        with patch(
-            "apps.clients.services.ensure_client_folder",
-            side_effect=DriveError("Drive unavailable"),
+        with (
+            patch("apps.clients.services.is_drive_oauth_configured", return_value=True),
+            patch(
+                "apps.clients.services.ensure_client_folder",
+                side_effect=DriveError("Drive unavailable"),
+            ),
         ):
             with self.assertRaises(DriveError):
                 ClientMergeService(

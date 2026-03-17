@@ -131,19 +131,19 @@ def test_drive_backup_builds_oauth_service(monkeypatch):
         raising=False,
     )
     monkeypatch.setattr(backup_script, "build", fake_build)
-    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_CLIENT_ID", "client-id")
-    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "client-secret")
-    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", "refresh-token")
+    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_CLIENT_ID", "oauth-client-id")
+    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "oauth-client-secret-value")
+    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", "oauth-refresh-token-value")
 
     drive_backup = backup_script.DriveBackup({})
 
     assert drive_backup.services == [("oauth", "drive-service")]
     assert captured["credentials_kwargs"] == {
         "token": None,
-        "refresh_token": "refresh-token",
+        "refresh_token": "oauth-refresh-token-value",
         "token_uri": backup_script.DEFAULT_GOOGLE_OAUTH_TOKEN_URI,
-        "client_id": "client-id",
-        "client_secret": "client-secret",
+        "client_id": "oauth-client-id",
+        "client_secret": "oauth-client-secret-value",
         "scopes": backup_script.DRIVE_SCOPES,
     }
     assert captured["build_args"]["api_name"] == "drive"
