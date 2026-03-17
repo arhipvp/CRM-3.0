@@ -11,8 +11,8 @@ from typing import Sequence
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
 from apps.common.drive import (
-    DriveError,
     DriveConfigurationError,
+    DriveError,
     delete_drive_folder,
     ensure_deal_folder,
     is_drive_oauth_configured,

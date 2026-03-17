@@ -140,10 +140,10 @@ def test_drive_backup_builds_oauth_service(monkeypatch):
     assert drive_backup.services == [("oauth", "drive-service")]
     assert captured["credentials_kwargs"] == {
         "token": None,
-        "refresh_token": "oauth-refresh-token-value",
+        "refresh_token": "oauth-refresh-token-value",  # pragma: allowlist secret
         "token_uri": backup_script.DEFAULT_GOOGLE_OAUTH_TOKEN_URI,
         "client_id": "oauth-client-id",
-        "client_secret": "oauth-client-secret-value",
+        "client_secret": "oauth-client-secret-value",  # pragma: allowlist secret
         "scopes": backup_script.DRIVE_SCOPES,
     }
     assert captured["build_args"]["api_name"] == "drive"

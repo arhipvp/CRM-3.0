@@ -6,8 +6,8 @@ import time
 from typing import Sequence
 
 from apps.common.drive import (
-    DriveError,
     DriveConfigurationError,
+    DriveError,
     delete_drive_folder,
     ensure_client_folder,
     ensure_deal_folder,
