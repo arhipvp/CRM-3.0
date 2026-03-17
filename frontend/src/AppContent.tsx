@@ -1,9 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LoginPage } from './components/LoginPage';
 import { useNotification } from './contexts/NotificationContext';
-import { AppModals } from './components/app/AppModals';
-import { AppDealPreviewModal } from './components/app/AppDealPreviewModal';
 import { AppRoutes } from './components/app/AppRoutes';
 import type {
   AppRouteDataBundle,
@@ -12,7 +9,6 @@ import type {
   AppRouteFinanceActions,
   AppRouteLoadingState,
 } from './components/app/appRoutes.types';
-import { ClientMergeModal } from './components/app/ClientMergeModal';
 import { AppShell } from './components/app/AppShell';
 import { AppShortcutsController } from './components/app/AppShortcutsController';
 import { ClientForm } from './components/forms/ClientForm';
@@ -20,15 +16,9 @@ import { AddTaskForm } from './components/forms/AddTaskForm';
 import { BTN_DANGER, BTN_SECONDARY } from './components/common/buttonStyles';
 import { FormActions } from './components/common/forms/FormActions';
 import { FormModal } from './components/common/modal/FormModal';
-import { SimilarClientsModal } from './components/views/SimilarClientsModal';
 import { Modal } from './components/Modal';
 import { formatErrorMessage } from './utils/formatErrorMessage';
-import {
-  fetchDealHistory,
-  clearTokens,
-  consumePostLoginRedirect,
-  getPostLoginRedirect,
-} from './api';
+import { fetchDealHistory, clearTokens } from './api';
 import { Client, Quote, User } from './types';
 import { useAppData } from './hooks/useAppData';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
@@ -41,12 +31,41 @@ import { formatShortcut } from './hotkeys/formatShortcut';
 import { useClientActions } from './hooks/appContent/useClientActions';
 import { useCommandPalette } from './hooks/appContent/useCommandPalette';
 import { useDealActions } from './hooks/appContent/useDealActions';
+import { useAppBootstrapNavigation } from './hooks/appContent/useAppBootstrapNavigation';
+import { useAppRouteBindings } from './hooks/appContent/useAppRouteBindings';
 import { useDealDetailsData } from './hooks/appContent/useDealDetailsData';
 import { useFinanceActions } from './hooks/appContent/useFinanceActions';
 import { usePolicyActions } from './hooks/appContent/usePolicyActions';
 import { useDealPreviewController } from './hooks/appContent/useDealPreviewController';
 import { resolveEffectiveSelectedDealId } from './hooks/useSelectedDeal';
 import type { CommandPaletteItem } from './components/common/modal/CommandPalette';
+
+const { Suspense, lazy } = React;
+
+const LoginPage = lazy(async () => {
+  const module = await import('./components/LoginPage');
+  return { default: module.LoginPage };
+});
+
+const AppModals = lazy(async () => {
+  const module = await import('./components/app/AppModals');
+  return { default: module.AppModals };
+});
+
+const AppDealPreviewModal = lazy(async () => {
+  const module = await import('./components/app/AppDealPreviewModal');
+  return { default: module.AppDealPreviewModal };
+});
+
+const ClientMergeModal = lazy(async () => {
+  const module = await import('./components/app/ClientMergeModal');
+  return { default: module.ClientMergeModal };
+});
+
+const SimilarClientsModal = lazy(async () => {
+  const module = await import('./components/views/SimilarClientsModal');
+  return { default: module.SimilarClientsModal };
+});
 
 const HOTKEY_HELP_ITEMS: CommandPaletteItem[] = [
   {
@@ -247,16 +266,6 @@ const AppContent: React.FC = () => {
   const isDealsRoute = location.pathname.startsWith('/deals');
   const isCommissionsRoute = location.pathname.startsWith('/commissions');
   const isLoginRoute = location.pathname === '/login';
-  const pendingPostLoginRedirect = useMemo(
-    () => (isAuthenticated && isLoginRoute ? getPostLoginRedirect(location.search) : null),
-    [isAuthenticated, isLoginRoute, location.search],
-  );
-  const deepLinkedDealId = useMemo(() => {
-    if (!isDealsRoute) {
-      return null;
-    }
-    return new URLSearchParams(location.search).get('dealId');
-  }, [isDealsRoute, location.search]);
   const {
     dealSearchInput,
     setDealSearchInput,
@@ -271,44 +280,20 @@ const AppContent: React.FC = () => {
     setDealOrdering,
     filters: dealFilters,
   } = useDealFilters();
-
-  useEffect(() => {
-    if (!pendingPostLoginRedirect) {
-      return;
-    }
-
-    const nextPath = consumePostLoginRedirect(location.search);
-    if (!nextPath) {
-      return;
-    }
-
-    navigate(nextPath, { replace: true });
-  }, [location.search, navigate, pendingPostLoginRedirect]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !deepLinkedDealId) {
-      return;
-    }
-    selectDealById(deepLinkedDealId);
-  }, [deepLinkedDealId, isAuthenticated, selectDealById]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    if (isCommissionsRoute) {
-      ensureFinanceDataLoaded().catch((err) => {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
-      });
-      refreshPolicies().catch((err) => {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке данных для раздела комиссий'));
-      });
-      return;
-    }
-    ensureFinanceDataLoaded().catch((err) => {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
-    });
-  }, [ensureFinanceDataLoaded, isAuthenticated, isCommissionsRoute, refreshPolicies, setError]);
+  const { deepLinkedDealId, pendingPostLoginRedirect } = useAppBootstrapNavigation({
+    ensureFinanceDataLoaded,
+    ensureTasksLoaded,
+    isAuthenticated,
+    isCommissionsRoute,
+    isDealsRoute,
+    isLoginRoute,
+    isTasksRoute: location.pathname.startsWith('/tasks'),
+    locationSearch: location.search,
+    navigate,
+    refreshPolicies,
+    selectDealById,
+    setError,
+  });
 
   const effectiveSelectedDealId = useMemo(
     () =>
@@ -384,15 +369,6 @@ const AppContent: React.FC = () => {
   const isClientsRoute = location.pathname.startsWith('/clients');
   const isPoliciesRoute = location.pathname.startsWith('/policies');
   const isTasksRoute = location.pathname.startsWith('/tasks');
-
-  useEffect(() => {
-    if (!isAuthenticated || !isTasksRoute) {
-      return;
-    }
-    ensureTasksLoaded().catch((err) => {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке задач'));
-    });
-  }, [ensureTasksLoaded, isAuthenticated, isTasksRoute, setError]);
 
   const [selectedClientShortcutId, setSelectedClientShortcutId] = useState<string | null>(null);
   const [selectedPolicyShortcutId, setSelectedPolicyShortcutId] = useState<string | null>(null);
@@ -1145,6 +1121,13 @@ const AppContent: React.FC = () => {
       policiesHasMore,
     ],
   );
+  const routeBindings = useAppRouteBindings({
+    routeData,
+    routeDealsActions,
+    routeFilters,
+    routeFinanceActions,
+    routeLoading,
+  });
 
   if (authLoading || isLoading) {
     return (
@@ -1155,7 +1138,17 @@ const AppContent: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-slate-100">
+            <div className="text-slate-500">Загрузка...</div>
+          </div>
+        }
+      >
+        <LoginPage onLoginSuccess={handleLoginSuccess} />
+      </Suspense>
+    );
   }
 
   if (pendingPostLoginRedirect) {
@@ -1204,11 +1197,11 @@ const AppContent: React.FC = () => {
       }
     >
       <AppRoutes
-        data={routeData}
-        dealsActions={routeDealsActions}
-        financeActions={routeFinanceActions}
-        filters={routeFilters}
-        loading={routeLoading}
+        data={routeBindings.routeData}
+        dealsActions={routeBindings.routeDealsActions}
+        financeActions={routeBindings.routeFinanceActions}
+        filters={routeBindings.routeFilters}
+        loading={routeBindings.routeLoading}
       />
       <AppShortcutsController
         paletteMode={paletteMode}
@@ -1218,103 +1211,105 @@ const AppContent: React.FC = () => {
         onClose={closePalette}
       />
 
-      <AppDealPreviewModal
-        isOpen={Boolean(previewDealId)}
-        previewDeal={previewDeal}
-        previewClient={previewClient}
-        previewSellerUser={previewSellerUser}
-        previewExecutorUser={previewExecutorUser}
-        onClose={handleCloseDealPreview}
-        panelProps={{
-          deals,
-          clients,
-          onClientEdit: handleClientEditRequest,
-          policies,
-          payments,
-          financialRecords,
-          tasks,
-          users,
-          currentUser,
-          sortedDeals: deals,
-          onSelectDeal: handleSelectDeal,
-          onCloseDeal: handleCloseDeal,
-          onReopenDeal: handleReopenDeal,
-          onUpdateDeal: handleUpdateDeal,
-          onPostponeDeal: handlePostponeDeal,
-          onMergeDeals: handleMergeDeals,
-          onRequestAddQuote: (dealId) => setQuoteDealId(dealId),
-          onRequestEditQuote: handleRequestEditQuote,
-          onRequestAddPolicy: handleRequestAddPolicy,
-          onRequestEditPolicy: handleRequestEditPolicy,
-          onRequestAddClient: () => openClientModal('deal'),
-          pendingDealClientId,
-          onPendingDealClientConsumed: handlePendingDealClientConsumed,
-          onDeleteQuote: handleDeleteQuote,
-          onDeletePolicy: handleDeletePolicy,
-          onRefreshPolicies: handleRefreshPreviewDealPolicies,
-          onPolicyDraftReady: handlePolicyDraftReady,
-          onAddPayment: handleAddPayment,
-          onUpdatePayment: handleUpdatePayment,
-          onDeletePayment: handleDeletePayment,
-          onAddFinancialRecord: handleAddFinancialRecord,
-          onUpdateFinancialRecord: handleUpdateFinancialRecord,
-          onDeleteFinancialRecord: handleDeleteFinancialRecord,
-          onDriveFolderCreated: handleDriveFolderCreated,
-          onCreateDealMailbox: handleCreateDealMailbox,
-          onCheckDealMailbox: handleCheckDealMailbox,
-          onFetchChatMessages: handleFetchChatMessages,
-          onSendChatMessage: handleSendChatMessage,
-          onDeleteChatMessage: handleDeleteChatMessage,
-          onFetchDealHistory: fetchDealHistory,
-          onCreateTask: handleCreateTask,
-          onUpdateTask: handleUpdateTask,
-          onDeleteTask: handleDeleteTask,
-          onDeleteDeal: handleDeleteDeal,
-          onRestoreDeal: handleRestoreDeal,
-          onDealSelectionBlockedChange: setDealSelectionBlocked,
-          isTasksLoading: isPreviewDealTasksLoading,
-          isQuotesLoading: isPreviewDealQuotesLoading,
-        }}
-      />
+      <Suspense fallback={null}>
+        <AppDealPreviewModal
+          isOpen={Boolean(previewDealId)}
+          previewDeal={previewDeal}
+          previewClient={previewClient}
+          previewSellerUser={previewSellerUser}
+          previewExecutorUser={previewExecutorUser}
+          onClose={handleCloseDealPreview}
+          panelProps={{
+            deals,
+            clients,
+            onClientEdit: handleClientEditRequest,
+            policies,
+            payments,
+            financialRecords,
+            tasks,
+            users,
+            currentUser,
+            sortedDeals: deals,
+            onSelectDeal: handleSelectDeal,
+            onCloseDeal: handleCloseDeal,
+            onReopenDeal: handleReopenDeal,
+            onUpdateDeal: handleUpdateDeal,
+            onPostponeDeal: handlePostponeDeal,
+            onMergeDeals: handleMergeDeals,
+            onRequestAddQuote: (dealId) => setQuoteDealId(dealId),
+            onRequestEditQuote: handleRequestEditQuote,
+            onRequestAddPolicy: handleRequestAddPolicy,
+            onRequestEditPolicy: handleRequestEditPolicy,
+            onRequestAddClient: () => openClientModal('deal'),
+            pendingDealClientId,
+            onPendingDealClientConsumed: handlePendingDealClientConsumed,
+            onDeleteQuote: handleDeleteQuote,
+            onDeletePolicy: handleDeletePolicy,
+            onRefreshPolicies: handleRefreshPreviewDealPolicies,
+            onPolicyDraftReady: handlePolicyDraftReady,
+            onAddPayment: handleAddPayment,
+            onUpdatePayment: handleUpdatePayment,
+            onDeletePayment: handleDeletePayment,
+            onAddFinancialRecord: handleAddFinancialRecord,
+            onUpdateFinancialRecord: handleUpdateFinancialRecord,
+            onDeleteFinancialRecord: handleDeleteFinancialRecord,
+            onDriveFolderCreated: handleDriveFolderCreated,
+            onCreateDealMailbox: handleCreateDealMailbox,
+            onCheckDealMailbox: handleCheckDealMailbox,
+            onFetchChatMessages: handleFetchChatMessages,
+            onSendChatMessage: handleSendChatMessage,
+            onDeleteChatMessage: handleDeleteChatMessage,
+            onFetchDealHistory: fetchDealHistory,
+            onCreateTask: handleCreateTask,
+            onUpdateTask: handleUpdateTask,
+            onDeleteTask: handleDeleteTask,
+            onDeleteDeal: handleDeleteDeal,
+            onRestoreDeal: handleRestoreDeal,
+            onDealSelectionBlockedChange: setDealSelectionBlocked,
+            isTasksLoading: isPreviewDealTasksLoading,
+            isQuotesLoading: isPreviewDealQuotesLoading,
+          }}
+        />
 
-      <AppModals
-        modal={modal}
-        setModal={setModal}
-        openClientModal={openClientModal}
-        closeClientModal={closeClientModal}
-        isClientModalOverlayOpen={isClientModalOverlayOpen}
-        clients={clients}
-        users={users}
-        handleAddClient={handleAddClient}
-        handleAddDeal={handleAddDeal}
-        pendingDealClientId={pendingDealClientId}
-        onPendingDealClientConsumed={handlePendingDealClientConsumed}
-        quoteDealId={quoteDealId}
-        setQuoteDealId={setQuoteDealId}
-        handleAddQuote={handleAddQuote}
-        editingQuote={editingQuote}
-        setEditingQuote={setEditingQuote}
-        handleUpdateQuote={handleUpdateQuote}
-        policyDealId={policyDealId}
-        policyDefaultCounterparty={policyDefaultCounterparty}
-        closePolicyModal={closePolicyModal}
-        policyPrefill={policyPrefill}
-        policyDealExecutorName={policyDealExecutorName}
-        editingPolicyExecutorName={editingPolicyExecutorName}
-        editingPolicy={editingPolicy}
-        setEditingPolicy={setEditingPolicy}
-        salesChannels={salesChannels}
-        handleAddPolicy={handleAddPolicy}
-        handleUpdatePolicy={handleUpdatePolicy}
-        paymentModal={paymentModal}
-        setPaymentModal={setPaymentModal}
-        handleUpdatePayment={handleUpdatePayment}
-        payments={payments}
-        financialRecordModal={financialRecordModal}
-        setFinancialRecordModal={setFinancialRecordModal}
-        handleUpdateFinancialRecord={handleUpdateFinancialRecord}
-        financialRecords={financialRecords}
-      />
+        <AppModals
+          modal={modal}
+          setModal={setModal}
+          openClientModal={openClientModal}
+          closeClientModal={closeClientModal}
+          isClientModalOverlayOpen={isClientModalOverlayOpen}
+          clients={clients}
+          users={users}
+          handleAddClient={handleAddClient}
+          handleAddDeal={handleAddDeal}
+          pendingDealClientId={pendingDealClientId}
+          onPendingDealClientConsumed={handlePendingDealClientConsumed}
+          quoteDealId={quoteDealId}
+          setQuoteDealId={setQuoteDealId}
+          handleAddQuote={handleAddQuote}
+          editingQuote={editingQuote}
+          setEditingQuote={setEditingQuote}
+          handleUpdateQuote={handleUpdateQuote}
+          policyDealId={policyDealId}
+          policyDefaultCounterparty={policyDefaultCounterparty}
+          closePolicyModal={closePolicyModal}
+          policyPrefill={policyPrefill}
+          policyDealExecutorName={policyDealExecutorName}
+          editingPolicyExecutorName={editingPolicyExecutorName}
+          editingPolicy={editingPolicy}
+          setEditingPolicy={setEditingPolicy}
+          salesChannels={salesChannels}
+          handleAddPolicy={handleAddPolicy}
+          handleUpdatePolicy={handleUpdatePolicy}
+          paymentModal={paymentModal}
+          setPaymentModal={setPaymentModal}
+          handleUpdatePayment={handleUpdatePayment}
+          payments={payments}
+          financialRecordModal={financialRecordModal}
+          setFinancialRecordModal={setFinancialRecordModal}
+          handleUpdateFinancialRecord={handleUpdateFinancialRecord}
+          financialRecords={financialRecords}
+        />
+      </Suspense>
       {quickTaskDeal && (
         <Modal
           title={`Новая задача: ${quickTaskDeal.title}`}
@@ -1378,36 +1373,38 @@ const AppContent: React.FC = () => {
           </form>
         </FormModal>
       )}
-      <SimilarClientsModal
-        isOpen={Boolean(similarClientTargetId)}
-        targetClient={similarTargetClient}
-        candidates={similarCandidates}
-        isLoading={isSimilarClientsLoading}
-        error={similarClientsError}
-        onClose={closeSimilarClientsModal}
-        onMerge={handleMergeFromSimilar}
-      />
-      {mergeTargetClient && (
-        <ClientMergeModal
-          targetClient={mergeTargetClient}
-          mergeCandidates={mergeCandidates}
-          mergeSearch={mergeSearch}
-          mergeSources={mergeSources}
-          mergeStep={clientMergeStep}
-          mergePreview={clientMergePreview}
-          mergeError={mergeError}
-          isMergingClients={isMergingClients}
-          isPreviewLoading={isClientMergePreviewLoading}
-          isPreviewConfirmed={isClientMergePreviewConfirmed}
-          fieldOverrides={clientMergeFieldOverrides}
-          onClose={closeMergeModal}
-          onSubmit={handleMergeSubmit}
-          onPreview={handleClientMergePreview}
-          onToggleSource={toggleMergeSource}
-          onSearchChange={setMergeSearch}
-          onFieldOverridesChange={setClientMergeFieldOverrides}
+      <Suspense fallback={null}>
+        <SimilarClientsModal
+          isOpen={Boolean(similarClientTargetId)}
+          targetClient={similarTargetClient}
+          candidates={similarCandidates}
+          isLoading={isSimilarClientsLoading}
+          error={similarClientsError}
+          onClose={closeSimilarClientsModal}
+          onMerge={handleMergeFromSimilar}
         />
-      )}
+        {mergeTargetClient && (
+          <ClientMergeModal
+            targetClient={mergeTargetClient}
+            mergeCandidates={mergeCandidates}
+            mergeSearch={mergeSearch}
+            mergeSources={mergeSources}
+            mergeStep={clientMergeStep}
+            mergePreview={clientMergePreview}
+            mergeError={mergeError}
+            isMergingClients={isMergingClients}
+            isPreviewLoading={isClientMergePreviewLoading}
+            isPreviewConfirmed={isClientMergePreviewConfirmed}
+            fieldOverrides={clientMergeFieldOverrides}
+            onClose={closeMergeModal}
+            onSubmit={handleMergeSubmit}
+            onPreview={handleClientMergePreview}
+            onToggleSource={toggleMergeSource}
+            onSearchChange={setMergeSearch}
+            onFieldOverridesChange={setClientMergeFieldOverrides}
+          />
+        )}
+      </Suspense>
       <ConfirmDialogRenderer />
     </AppShell>
   );

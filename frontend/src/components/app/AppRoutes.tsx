@@ -1,10 +1,18 @@
 import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { ClientsView } from '../views/ClientsView';
-import { DealsView } from '../views/DealsView';
 import { RouteSkeleton } from './RouteSkeleton';
 import type { AppRoutesProps } from './appRoutes.types';
+
+const ClientsView = lazy(async () => {
+  const module = await import('../views/ClientsView');
+  return { default: module.ClientsView };
+});
+
+const DealsView = lazy(async () => {
+  const module = await import('../views/DealsView');
+  return { default: module.DealsView };
+});
 
 const SellerDashboardView = lazy(async () => {
   const module = await import('../views/SellerDashboardView');
@@ -56,92 +64,96 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
       <Route
         path="/deals"
         element={
-          <DealsView
-            deals={data.deals}
-            clients={data.clients}
-            onClientEdit={dealsActions.onClientEdit}
-            policies={data.policies}
-            payments={data.payments}
-            financialRecords={data.financialRecords}
-            tasks={data.tasks}
-            users={data.users}
-            currentUser={data.currentUser}
-            selectedDealId={dealsActions.selectedDealId}
-            isDealFocusCleared={dealsActions.isDealFocusCleared}
-            dealRowFocusRequest={dealsActions.dealRowFocusRequest}
-            onSelectDeal={dealsActions.onSelectDeal}
-            onClearDealFocus={dealsActions.onClearDealFocus}
-            onCloseDeal={dealsActions.onCloseDeal}
-            onReopenDeal={dealsActions.onReopenDeal}
-            onUpdateDeal={dealsActions.onUpdateDeal}
-            onRefreshDeal={dealsActions.onRefreshDeal}
-            onRefreshDealsList={dealsActions.onRefreshDealsList}
-            onPinDeal={dealsActions.onPinDeal}
-            onUnpinDeal={dealsActions.onUnpinDeal}
-            onPostponeDeal={dealsActions.onPostponeDeal}
-            onRequestAddQuote={dealsActions.onRequestAddQuote}
-            onRequestEditQuote={dealsActions.onRequestEditQuote}
-            onRequestAddPolicy={dealsActions.onRequestAddPolicy}
-            onRequestEditPolicy={dealsActions.onRequestEditPolicy}
-            pendingDealClientId={dealsActions.pendingDealClientId}
-            onPendingDealClientConsumed={dealsActions.onPendingDealClientConsumed}
-            onDeleteQuote={dealsActions.onDeleteQuote}
-            onDeletePolicy={dealsActions.onDeletePolicy}
-            onAddPayment={financeActions.onAddPayment}
-            onUpdatePayment={financeActions.onUpdatePayment}
-            onAddFinancialRecord={financeActions.onAddFinancialRecord}
-            onUpdateFinancialRecord={financeActions.onUpdateFinancialRecord}
-            onDeleteFinancialRecord={financeActions.onDeleteFinancialRecord}
-            onDeletePayment={financeActions.onDeletePayment}
-            onDriveFolderCreated={dealsActions.onDriveFolderCreated}
-            onCreateDealMailbox={dealsActions.onCreateDealMailbox}
-            onCheckDealMailbox={dealsActions.onCheckDealMailbox}
-            onFetchChatMessages={dealsActions.onFetchChatMessages}
-            onSendChatMessage={dealsActions.onSendChatMessage}
-            onDeleteChatMessage={dealsActions.onDeleteChatMessage}
-            onFetchDealHistory={dealsActions.onFetchDealHistory}
-            onCreateTask={dealsActions.onCreateTask}
-            onUpdateTask={dealsActions.onUpdateTask}
-            onDeleteTask={dealsActions.onDeleteTask}
-            onDeleteDeal={dealsActions.onDeleteDeal}
-            onRestoreDeal={dealsActions.onRestoreDeal}
-            onMergeDeals={dealsActions.onMergeDeals}
-            dealSearch={filters.dealSearch}
-            onDealSearchChange={filters.onDealSearchChange}
-            onDealSearchSubmit={filters.onDealSearchSubmit}
-            dealExecutorFilter={filters.dealExecutorFilter}
-            onDealExecutorFilterChange={filters.onDealExecutorFilterChange}
-            dealShowDeleted={filters.dealShowDeleted}
-            onDealShowDeletedChange={filters.onDealShowDeletedChange}
-            dealShowClosed={filters.dealShowClosed}
-            onDealShowClosedChange={filters.onDealShowClosedChange}
-            dealOrdering={filters.dealOrdering}
-            onDealOrderingChange={filters.onDealOrderingChange}
-            onDealSelectionBlockedChange={dealsActions.onDealSelectionBlockedChange}
-            onRequestAddClient={dealsActions.onRequestAddClient}
-            onPolicyDraftReady={dealsActions.onPolicyDraftReady}
-            onRefreshPolicies={dealsActions.onRefreshPolicies}
-            onLoadMoreDeals={loading.onLoadMoreDeals}
-            dealsHasMore={loading.dealsHasMore}
-            dealsTotalCount={loading.dealsTotalCount}
-            isLoadingMoreDeals={loading.isLoadingMoreDeals}
-            isRefreshingDealsList={loading.isRefreshingDealsList}
-            isSelectedDealTasksLoading={loading.isSelectedDealTasksLoading}
-            isSelectedDealQuotesLoading={loading.isSelectedDealQuotesLoading}
-          />
+          <Suspense fallback={<RouteSkeleton />}>
+            <DealsView
+              deals={data.deals}
+              clients={data.clients}
+              onClientEdit={dealsActions.onClientEdit}
+              policies={data.policies}
+              payments={data.payments}
+              financialRecords={data.financialRecords}
+              tasks={data.tasks}
+              users={data.users}
+              currentUser={data.currentUser}
+              selectedDealId={dealsActions.selectedDealId}
+              isDealFocusCleared={dealsActions.isDealFocusCleared}
+              dealRowFocusRequest={dealsActions.dealRowFocusRequest}
+              onSelectDeal={dealsActions.onSelectDeal}
+              onClearDealFocus={dealsActions.onClearDealFocus}
+              onCloseDeal={dealsActions.onCloseDeal}
+              onReopenDeal={dealsActions.onReopenDeal}
+              onUpdateDeal={dealsActions.onUpdateDeal}
+              onRefreshDeal={dealsActions.onRefreshDeal}
+              onRefreshDealsList={dealsActions.onRefreshDealsList}
+              onPinDeal={dealsActions.onPinDeal}
+              onUnpinDeal={dealsActions.onUnpinDeal}
+              onPostponeDeal={dealsActions.onPostponeDeal}
+              onRequestAddQuote={dealsActions.onRequestAddQuote}
+              onRequestEditQuote={dealsActions.onRequestEditQuote}
+              onRequestAddPolicy={dealsActions.onRequestAddPolicy}
+              onRequestEditPolicy={dealsActions.onRequestEditPolicy}
+              pendingDealClientId={dealsActions.pendingDealClientId}
+              onPendingDealClientConsumed={dealsActions.onPendingDealClientConsumed}
+              onDeleteQuote={dealsActions.onDeleteQuote}
+              onDeletePolicy={dealsActions.onDeletePolicy}
+              onAddPayment={financeActions.onAddPayment}
+              onUpdatePayment={financeActions.onUpdatePayment}
+              onAddFinancialRecord={financeActions.onAddFinancialRecord}
+              onUpdateFinancialRecord={financeActions.onUpdateFinancialRecord}
+              onDeleteFinancialRecord={financeActions.onDeleteFinancialRecord}
+              onDeletePayment={financeActions.onDeletePayment}
+              onDriveFolderCreated={dealsActions.onDriveFolderCreated}
+              onCreateDealMailbox={dealsActions.onCreateDealMailbox}
+              onCheckDealMailbox={dealsActions.onCheckDealMailbox}
+              onFetchChatMessages={dealsActions.onFetchChatMessages}
+              onSendChatMessage={dealsActions.onSendChatMessage}
+              onDeleteChatMessage={dealsActions.onDeleteChatMessage}
+              onFetchDealHistory={dealsActions.onFetchDealHistory}
+              onCreateTask={dealsActions.onCreateTask}
+              onUpdateTask={dealsActions.onUpdateTask}
+              onDeleteTask={dealsActions.onDeleteTask}
+              onDeleteDeal={dealsActions.onDeleteDeal}
+              onRestoreDeal={dealsActions.onRestoreDeal}
+              onMergeDeals={dealsActions.onMergeDeals}
+              dealSearch={filters.dealSearch}
+              onDealSearchChange={filters.onDealSearchChange}
+              onDealSearchSubmit={filters.onDealSearchSubmit}
+              dealExecutorFilter={filters.dealExecutorFilter}
+              onDealExecutorFilterChange={filters.onDealExecutorFilterChange}
+              dealShowDeleted={filters.dealShowDeleted}
+              onDealShowDeletedChange={filters.onDealShowDeletedChange}
+              dealShowClosed={filters.dealShowClosed}
+              onDealShowClosedChange={filters.onDealShowClosedChange}
+              dealOrdering={filters.dealOrdering}
+              onDealOrderingChange={filters.onDealOrderingChange}
+              onDealSelectionBlockedChange={dealsActions.onDealSelectionBlockedChange}
+              onRequestAddClient={dealsActions.onRequestAddClient}
+              onPolicyDraftReady={dealsActions.onPolicyDraftReady}
+              onRefreshPolicies={dealsActions.onRefreshPolicies}
+              onLoadMoreDeals={loading.onLoadMoreDeals}
+              dealsHasMore={loading.dealsHasMore}
+              dealsTotalCount={loading.dealsTotalCount}
+              isLoadingMoreDeals={loading.isLoadingMoreDeals}
+              isRefreshingDealsList={loading.isRefreshingDealsList}
+              isSelectedDealTasksLoading={loading.isSelectedDealTasksLoading}
+              isSelectedDealQuotesLoading={loading.isSelectedDealQuotesLoading}
+            />
+          </Suspense>
         }
       />
       <Route
         path="/clients"
         element={
-          <ClientsView
-            clients={data.clients}
-            deals={data.deals}
-            onClientEdit={dealsActions.onClientEdit}
-            onClientDelete={dealsActions.onClientDelete}
-            onClientMerge={dealsActions.onClientMerge}
-            onClientFindSimilar={dealsActions.onClientFindSimilar}
-          />
+          <Suspense fallback={<RouteSkeleton />}>
+            <ClientsView
+              clients={data.clients}
+              deals={data.deals}
+              onClientEdit={dealsActions.onClientEdit}
+              onClientDelete={dealsActions.onClientDelete}
+              onClientMerge={dealsActions.onClientMerge}
+              onClientFindSimilar={dealsActions.onClientFindSimilar}
+            />
+          </Suspense>
         }
       />
       <Route

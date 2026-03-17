@@ -1,77 +1,51 @@
 # Python
 __pycache__/
 *.py[cod]
-*.sqlite3
-.venv/
-
-# Django
-backend/staticfiles/
-backend/media/
-.env
-backend/.env
-backend/.env.*
-!backend/.env.example
-!frontend/.env.example
-!.env.production.example
-
-# Sensitive overrides (should never be committed)
-.env.vps.secure
-
-# Node
-node_modules/
-frontend/node_modules/
-frontend/dist/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.idea/
-.vscode/
-
-frontend_example/
-.claude/settings.local.json
-deploy_key
-deploy_key.pub
-
-# -------------------------
-# Python / Django
-# -------------------------
-__pycache__/
-*.py[cod]
 *.pyo
 *.pyd
 *.sqlite3
-*.log
-*.pot
-*.pyc
 *.egg-info/
-*.mo
-
-# Virtual envs
+*.cover
+*.log
+.venv/
 venv/
 env/
-.venv/
+.pytest_cache/
+.ruff_cache/
 
-# Django secrets
-*.env
+# Django / backend artifacts
+backend/staticfiles/
+backend/media/
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.coverage
+backend/coverage.xml
+backend/backend.log
+
+# Environment and secrets
+.env
 .env.*
-!env.example
+!.env.production.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+.env.vps.secure
 runtime-secrets/
+credentials.json
+secrets/
+*.secret
+*.key
+*.pem
+deploy_key
+deploy_key.pub
+id_rsa
+id_rsa.pub
 
-# Migrations auto-generated pycache
-**/migrations/__pycache__/
-
-# Ignore entire migrations except __init__.py (optional)
-# Uncomment if нужно держать миграции под контролем вручную
-# **/migrations/[0-9]*.py
-
-
-# -------------------------
-# Node.js / React / Vite
-# -------------------------
+# Node / frontend artifacts
 node_modules/
+frontend/node_modules/
+frontend/dist/
 dist/
 build/
 npm-debug.log*
@@ -79,100 +53,28 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-
-# -------------------------
-# OS / Editor files
-# -------------------------
+# OS / editors
 .DS_Store
 Thumbs.db
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 
-
-# -------------------------
-# Docker / Deployment
-# -------------------------
+# Docker / local infra overrides
 docker-compose.override.yml
-docker-compose.yml
 docker-data/
 docker-volumes/
 tmp/
 *.pid
-nginx.conf
 
-# Local overrides (do not push server configs)
-stack.local.yml
-compose.local.yml
-
-# If you use secrets in docker compose
-secrets/
-*.secret
-*.key
-
-# -------------------------
-# GitHub Actions
-# -------------------------
-# SSH keys, tokens — must NEVER go into repo
-id_rsa
-id_rsa.pub
-*.pem
-
-
-# -------------------------
 # PostgreSQL artifacts
-# -------------------------
 pgdata/
 postgres-data/
 *.sql
 
-
-# -------------------------
-# Logs (backend + frontend)
-# -------------------------
-*.log
-logs/
-backend.log
-frontend.log
-
-# env-файлы (локальные и прод)
-.env
-.env.*
-backend/.env
-frontend/.env
-credentials.json
-backup_2025-11-12_16-11.xlsx
-deploy.sh
-*nginx.conf*
-
-# Excel temp artifacts
-scripts/templates/~$*
-~$*.xlsx
-backup_2025-11-24_15-20.xlsx
-*nginx.conf*
-nginx.conf
-!frontend/nginx.conf
-docker-compose.yml
-frontend/vite.config.ts
-run_client_import.sh
-import/
-scripts/*
-backend/client_mapping.json
-backend/scripts/import_business_data.py
-scripts/full_import.sh
-scripts/import_business_data.py
-transform_deals.py
-docs/DATA_TRANSFER.md
-tools/run_full_import.ps1
-transform_deals.py
-ToDo.md
-docker-compose.prod.yml
-OPEN_NOTEBOOK_PLAN.md
-AGENTS.md
-AGENTS.md
-
-# Local Sber issuance test harness
+# Misc local workspaces
+frontend_example/
+.claude/settings.local.json
 tools/sber_issuance/local/
 tools/sber_issuance/.local_runs/
-tools/sber_issuance/runner.js

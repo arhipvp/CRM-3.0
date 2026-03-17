@@ -139,6 +139,31 @@ jobs:
       - name: Run Ruff (linting)
         run: ruff check backend/
 
+  backend-tests-smoke:
+    name: Backend Tests (Smoke SQLite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run smoke tests with default SQLite profile
+        env:
+          PYTHONUTF8: '1'
+        run: |
+          cd backend
+          python -X utf8 manage.py test tests.test_encoding tests.test_test_settings_profile
+
   backend-tests-core:
     name: Backend Tests (Core)
     runs-on: ubuntu-latest
@@ -182,6 +207,7 @@ jobs:
 
       - name: Run core backend tests
         env:
+          CRM_TEST_USE_POSTGRES: 'true'
           DEBUG: 'False'
           DJANGO_DB_ENGINE: django.db.backends.postgresql
           DJANGO_DB_HOST: localhost
@@ -248,6 +274,7 @@ jobs:
 
       - name: Run domain backend tests
         env:
+          CRM_TEST_USE_POSTGRES: 'true'
           DEBUG: 'False'
           DJANGO_DB_ENGINE: django.db.backends.postgresql
           DJANGO_DB_HOST: localhost
@@ -314,6 +341,7 @@ jobs:
 
       - name: Run finance backend tests
         env:
+          CRM_TEST_USE_POSTGRES: 'true'
           DEBUG: 'False'
           DJANGO_DB_ENGINE: django.db.backends.postgresql
           DJANGO_DB_HOST: localhost
@@ -475,6 +503,7 @@ jobs:
         docker-changes,
         secret-scan,
         backend-lint,
+        backend-tests-smoke,
         backend-tests-core,
         backend-tests-domain,
         backend-tests-finance,
@@ -546,6 +575,10 @@ jobs:
           fi
           if [ "${{ needs.secret-scan.result }}" = "failure" ]; then
             echo "Secret scan failed"
+            exit 1
+          fi
+          if [ "${{ needs.backend-tests-smoke.result }}" = "failure" ]; then
+            echo "Backend smoke tests failed"
             exit 1
           fi
           if [ "${{ needs.backend-tests-core.result }}" = "failure" ] || [ "${{ needs.backend-tests-domain.result }}" = "failure" ] || [ "${{ needs.backend-tests-finance.result }}" = "failure" ]; then

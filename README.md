@@ -122,8 +122,30 @@ docker compose up --build
 ## Проверки и workflow
 - **Python**: `isort .` (учитывает `.isort.cfg`), затем `black .` (исключая папки `migrations` через `pyproject.toml`).
 - **Frontend**: `npm run lint`, `npm run test`, `npm run build`.
-- **Тесты**: `python manage.py test` проверяет DRF APIClient-слоты; `frontend/__tests__/` и `src/__tests__/` покрывают визуальные блоки и utils.
+- **Тесты**: `python manage.py test` и `pytest` по умолчанию используют `backend/config/test_settings.py` и SQLite, а PostgreSQL-профиль включается только через `CRM_TEST_USE_POSTGRES=true`.
 - **Перед PR** убедитесь, что `python manage.py test`, `npm run lint`, `npm run test` и `npm run build` проходят. Docker-compose можно использовать для интеграции.
+
+## Путь разработчика
+```bash
+# Backend: smoke/локальные проверки без PostgreSQL
+cd backend
+python -X utf8 manage.py test
+pytest
+
+# Backend: проверка на PostgreSQL только при явном флаге
+set CRM_TEST_USE_POSTGRES=true
+pytest
+
+# Frontend
+cd frontend
+npm run test
+npm run build
+
+# Local docker
+docker compose up --build
+```
+- Для Google Drive вместо tracked `credentials.json` используйте `runtime-secrets/google-drive-service-account.json` или укажите свой путь через `GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE`.
+- `docker-compose*.yml` больше не требуют корневой `credentials.json` как обязательный tracked-файл.
 
 ## Admin Conventions
 - Используем единые базовые классы из `apps/common/admin.py`: `CRMAdminUXMixin` и `SoftDeleteAdmin`/`SoftDeleteImportExportAdmin`.
@@ -140,6 +162,7 @@ docker compose up --build
 - Перед каждым коммитом запускайте pre-commit: `pre-commit run --all-files`. Конфигурация включает `detect-secrets` и блокирует утечки в изменённых файлах.
 - В CI добавлен job `Secret Scan (changed files)`, который проверяет только изменённые файлы в push/PR, чтобы не требовать ретроспективной ротации текущих кредов.
 - Перед merge делайте ручную проверку diff на секреты: `git diff --cached`.
+- JWT по-прежнему хранятся во frontend в `localStorage`; это оставлено как совместимый текущий контракт, но считается отдельным security backlog item из-за XSS-риска.
 
 ## Ресурсы и контакты
 - `AGENTS.md` — требования по кодировке, SSH-доступ, стандарты задавания секретов.

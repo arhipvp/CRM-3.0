@@ -1,11 +1,33 @@
-﻿const envBase = import.meta.env.VITE_API_URL;
-export const API_BASE = (envBase && envBase.trim() !== '' ? envBase : '/api/v1').replace(/\/$/, '');
+const envBase = import.meta.env.VITE_API_URL;
+export const API_BASE = (envBase && envBase.trim() !== '' ? envBase : '/api/v1').replace(
+  /\/$/,
+  '',
+);
+const API_DEBUG = import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === 'true';
 
 const TOKEN_KEY = 'jwt_access_token';
 const REFRESH_TOKEN_KEY = 'jwt_refresh_token';
 const REFRESH_ENDPOINT = '/auth/refresh/';
 const LOGIN_PATH = '/login';
 const POST_LOGIN_REDIRECT_KEY = 'crm_post_login_redirect';
+
+const debugLog = (...args: unknown[]) => {
+  if (API_DEBUG) {
+    console.log(...args);
+  }
+};
+
+const debugWarn = (...args: unknown[]) => {
+  if (API_DEBUG) {
+    console.warn(...args);
+  }
+};
+
+const debugError = (...args: unknown[]) => {
+  if (API_DEBUG) {
+    console.error(...args);
+  }
+};
 
 export function getAccessToken(): string | null {
   return typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
@@ -59,13 +81,13 @@ async function refreshAccessToken(): Promise<boolean> {
     });
 
     if (!response.ok) {
-      console.warn(`Token refresh failed with status ${response.status}`);
+      debugWarn(`Token refresh failed with status ${response.status}`);
       return false;
     }
 
     const data = (await response.json()) as RefreshResponse;
     if (!data.access) {
-      console.warn('Token refresh response missing new access token');
+      debugWarn('Token refresh response missing new access token');
       return false;
     }
 
@@ -74,10 +96,10 @@ async function refreshAccessToken(): Promise<boolean> {
       setRefreshToken(data.refresh);
     }
 
-    console.log('Access token renewed via refresh token');
+    debugLog('Access token renewed via refresh token');
     return true;
   } catch (error) {
-    console.error('Refreshing access token failed', error);
+    debugError('Refreshing access token failed', error);
     return false;
   }
 }
@@ -184,6 +206,36 @@ export class APIError extends Error {
   }
 }
 
+const attachAuthHeader = (headers: Headers, path: string) => {
+  const token = getAccessToken();
+  const refreshToken = getRefreshToken();
+  const hadToken = Boolean(token);
+  const hadRefreshToken = Boolean(refreshToken);
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+    debugLog(`API request ${path}: token present`);
+  } else {
+    debugLog(`API request ${path}: NO TOKEN FOUND`);
+  }
+
+  return { hadRefreshToken, hadToken };
+};
+
+const parseForbiddenDetail = async (response: Response) => {
+  const text = await response.text();
+  let detail = 'Access denied';
+  try {
+    const json = JSON.parse(text);
+    if (json.detail) {
+      detail = json.detail;
+    }
+  } catch {
+    // Keep default message if response is not JSON
+  }
+  return detail;
+};
+
 export async function request<T = unknown>(
   path: string,
   options: RequestInit = {},
@@ -199,16 +251,7 @@ export async function request<T = unknown>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const token = getAccessToken();
-  const refreshToken = getRefreshToken();
-  const hadToken = Boolean(token);
-  const hadRefreshToken = Boolean(refreshToken);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-    console.log(`API request ${path}: token present`);
-  } else {
-    console.log(`API request ${path}: NO TOKEN FOUND`);
-  }
+  const { hadRefreshToken, hadToken } = attachAuthHeader(headers, path);
 
   const response = await fetch(`${API_BASE}${path}`, {
     headers,
@@ -220,28 +263,17 @@ export async function request<T = unknown>(
       return request(path, options, true);
     }
     const hadAnyTokens = hadToken || hadRefreshToken;
-    console.warn(
+    debugWarn(
       `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`,
     );
     clearTokens();
-    // Redirect even when tokens are missing to avoid leaving the app in a broken
-    // state on protected pages after a hard refresh or domain change.
     redirectToLogin();
     throw new APIError('Unauthorized', 401, path);
   }
 
   if (response.status === 403) {
-    const text = await response.text();
-    let detail = 'Access denied';
-    try {
-      const json = JSON.parse(text);
-      if (json.detail) {
-        detail = json.detail;
-      }
-    } catch {
-      // Keep default message if response is not JSON
-    }
-    console.warn(`Forbidden (403) on ${path}: ${detail}`);
+    const detail = await parseForbiddenDetail(response);
+    debugWarn(`Forbidden (403) on ${path}: ${detail}`);
     throw new APIError(detail, 403, path);
   }
 
@@ -265,16 +297,7 @@ export async function requestBlob(
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
 
-  const token = getAccessToken();
-  const refreshToken = getRefreshToken();
-  const hadToken = Boolean(token);
-  const hadRefreshToken = Boolean(refreshToken);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-    console.log(`API request ${path}: token present`);
-  } else {
-    console.log(`API request ${path}: NO TOKEN FOUND`);
-  }
+  const { hadRefreshToken, hadToken } = attachAuthHeader(headers, path);
 
   const response = await fetch(`${API_BASE}${path}`, {
     headers,
@@ -286,7 +309,7 @@ export async function requestBlob(
       return requestBlob(path, options, true);
     }
     const hadAnyTokens = hadToken || hadRefreshToken;
-    console.warn(
+    debugWarn(
       `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`,
     );
     clearTokens();
@@ -297,17 +320,8 @@ export async function requestBlob(
   }
 
   if (response.status === 403) {
-    const text = await response.text();
-    let detail = 'Access denied';
-    try {
-      const json = JSON.parse(text);
-      if (json.detail) {
-        detail = json.detail;
-      }
-    } catch {
-      // Keep default message if response is not JSON
-    }
-    console.warn(`Forbidden (403) on ${path}: ${detail}`);
+    const detail = await parseForbiddenDetail(response);
+    debugWarn(`Forbidden (403) on ${path}: ${detail}`);
     throw new APIError(detail, 403, path);
   }
 
@@ -327,16 +341,7 @@ export async function requestBlobWithHeaders(
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
 
-  const token = getAccessToken();
-  const refreshToken = getRefreshToken();
-  const hadToken = Boolean(token);
-  const hadRefreshToken = Boolean(refreshToken);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-    console.log(`API request ${path}: token present`);
-  } else {
-    console.log(`API request ${path}: NO TOKEN FOUND`);
-  }
+  const { hadRefreshToken, hadToken } = attachAuthHeader(headers, path);
 
   const response = await fetch(`${API_BASE}${path}`, {
     headers,
@@ -348,7 +353,7 @@ export async function requestBlobWithHeaders(
       return requestBlobWithHeaders(path, options, true);
     }
     const hadAnyTokens = hadToken || hadRefreshToken;
-    console.warn(
+    debugWarn(
       `Unauthorized (401) on ${path}. Clearing tokens${hadAnyTokens ? ' and redirecting to login.' : '.'}`,
     );
     clearTokens();
@@ -359,17 +364,8 @@ export async function requestBlobWithHeaders(
   }
 
   if (response.status === 403) {
-    const text = await response.text();
-    let detail = 'Access denied';
-    try {
-      const json = JSON.parse(text);
-      if (json.detail) {
-        detail = json.detail;
-      }
-    } catch {
-      // Keep default message if response is not JSON
-    }
-    console.warn(`Forbidden (403) on ${path}: ${detail}`);
+    const detail = await parseForbiddenDetail(response);
+    debugWarn(`Forbidden (403) on ${path}: ${detail}`);
     throw new APIError(detail, 403, path);
   }
 

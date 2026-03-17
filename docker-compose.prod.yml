@@ -52,6 +52,7 @@ services:
       OPEN_NOTEBOOK_EMBED_ON_UPLOAD: ${OPEN_NOTEBOOK_EMBED_ON_UPLOAD:-true}
       OPEN_NOTEBOOK_CONTEXT_LEVEL: ${OPEN_NOTEBOOK_CONTEXT_LEVEL:-full content}
       GOOGLE_DRIVE_AUTH_MODE: ${GOOGLE_DRIVE_AUTH_MODE:-oauth}
+      GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE:-/run/crm3-secrets/google-drive-service-account.json}
       GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID}
       GOOGLE_DRIVE_OAUTH_CLIENT_ID: ${GOOGLE_DRIVE_OAUTH_CLIENT_ID}
       GOOGLE_DRIVE_OAUTH_CLIENT_SECRET: ${GOOGLE_DRIVE_OAUTH_CLIENT_SECRET}
@@ -86,7 +87,6 @@ services:
       - ./backend:/app
       - backend_media:/app/media
       - backend_static:/app/staticfiles
-      - ./credentials.json:/app/credentials.json:ro
       - ./runtime-secrets:/run/crm3-secrets
     networks:
       - crm_network
@@ -121,6 +121,7 @@ services:
       TELEGRAM_INTERNAL_API_TIMEOUT_SECONDS: ${TELEGRAM_INTERNAL_API_TIMEOUT_SECONDS:-15}
       CRM_PUBLIC_URL: ${CRM_PUBLIC_URL}
       GOOGLE_DRIVE_AUTH_MODE: ${GOOGLE_DRIVE_AUTH_MODE:-oauth}
+      GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE:-/run/crm3-secrets/google-drive-service-account.json}
       GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID}
       GOOGLE_DRIVE_OAUTH_CLIENT_ID: ${GOOGLE_DRIVE_OAUTH_CLIENT_ID}
       GOOGLE_DRIVE_OAUTH_CLIENT_SECRET: ${GOOGLE_DRIVE_OAUTH_CLIENT_SECRET}
@@ -141,8 +142,6 @@ services:
       - ./backend:/app
       - backend_media:/app/media
       - backend_static:/app/staticfiles
-      - ./credentials.json:/app/credentials.json:ro
-      - ./runtime-secrets:/run/crm3-secrets
       - ./runtime-secrets:/run/crm3-secrets
     networks:
       - crm_network
