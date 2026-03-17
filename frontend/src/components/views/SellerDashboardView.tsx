@@ -1,14 +1,15 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchSellerDashboard } from '../../api/policies';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   SellerDashboardFinancialByCompanyTypeRow,
   SellerDashboardPaymentsByDay,
-  SellerDashboardResponse,
   SellerDashboardTasksByExecutor,
 } from '../../types';
 import { formatCurrencyRu, formatDateRu, RU_LOCALE } from '../../utils/formatting';
 import { BTN_SM_PRIMARY } from '../common/buttonStyles';
-import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import {
+  useSellerDashboardController,
+  type SellerDashboardFinancialSort,
+} from './hooks/useSellerDashboardController';
 
 const CHART_HEIGHT = 190;
 const CHART_PADDING = 28;
@@ -86,13 +87,7 @@ type FinancialMatrixResult = {
   maxExpensePair: FinancialMaxExpensePair | null;
 };
 
-type FinancialSort =
-  | 'net_desc'
-  | 'net_asc'
-  | 'income_desc'
-  | 'expense_desc'
-  | 'count_desc'
-  | 'alpha';
+type FinancialSort = SellerDashboardFinancialSort;
 
 const parseNumber = (value: string | number) => {
   const parsed = Number(value);
@@ -543,61 +538,27 @@ const FinancialCellView: React.FC<{
 };
 
 export const SellerDashboardView: React.FC = () => {
-  const [dashboard, setDashboard] = useState<SellerDashboardResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [calendarMode, setCalendarMode] = useState<'sum' | 'split'>('sum');
-  const [financialSearch, setFinancialSearch] = useState('');
-  const [financialSort, setFinancialSort] = useState<FinancialSort>('net_desc');
-  const [hideZeroRowsCols, setHideZeroRowsCols] = useState(true);
-  const [showOnlyWithData, setShowOnlyWithData] = useState(true);
-  const dashboardRequestRef = useRef(0);
-  const dashboardAbortControllerRef = useRef<AbortController | null>(null);
-
-  const loadDashboard = useCallback(async (override?: { startDate?: string; endDate?: string }) => {
-    dashboardRequestRef.current += 1;
-    const requestId = dashboardRequestRef.current;
-    dashboardAbortControllerRef.current?.abort();
-    const controller = new AbortController();
-    dashboardAbortControllerRef.current = controller;
-    setIsLoading(true);
-    try {
-      const payload = await fetchSellerDashboard(override, { signal: controller.signal });
-      if (requestId !== dashboardRequestRef.current) {
-        return;
-      }
-      setDashboard(payload);
-      setError(null);
-      setStartDate((prev) => prev || payload.rangeStart || '');
-      setEndDate((prev) => prev || payload.rangeEnd || '');
-    } catch (err) {
-      if (controller.signal.aborted) {
-        return;
-      }
-      if (requestId !== dashboardRequestRef.current) {
-        return;
-      }
-      setDashboard(null);
-      setError(formatErrorMessage(err, 'Ошибка загрузки дашборда.'));
-    } finally {
-      if (requestId === dashboardRequestRef.current) {
-        dashboardAbortControllerRef.current = null;
-        setIsLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
-
-  useEffect(() => {
-    return () => {
-      dashboardAbortControllerRef.current?.abort();
-    };
-  }, []);
+  const {
+    dashboard,
+    isLoading,
+    error,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    calendarMode,
+    setCalendarMode,
+    financialSearch,
+    setFinancialSearch,
+    financialSort,
+    setFinancialSort,
+    hideZeroRowsCols,
+    setHideZeroRowsCols,
+    showOnlyWithData,
+    setShowOnlyWithData,
+    resetFinancialControls,
+    handleApply,
+  } = useSellerDashboardController();
 
   const periodLabel = useMemo(() => {
     if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {
@@ -932,20 +893,6 @@ export const SellerDashboardView: React.FC = () => {
   const hasFinancialRows = financialRows.length > 0;
   const hasFilteredFinancialRows =
     financialMatrix.rows.length > 0 && (financialMatrix.types.length > 0 || !showOnlyWithData);
-
-  const resetFinancialControls = useCallback(() => {
-    setFinancialSearch('');
-    setFinancialSort('net_desc');
-    setHideZeroRowsCols(true);
-    setShowOnlyWithData(true);
-  }, []);
-
-  const handleApply = useCallback(() => {
-    void loadDashboard({
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    });
-  }, [endDate, loadDashboard, startDate]);
 
   return (
     <section aria-labelledby="sellerDashboardHeading" className="space-y-6 pb-2">

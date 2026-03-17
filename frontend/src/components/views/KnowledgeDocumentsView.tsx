@@ -32,28 +32,12 @@ import { InlineAlert } from '../common/InlineAlert';
 import { PANEL_MUTED_TEXT, STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { useConfirm } from '../../hooks/useConfirm';
 import { confirmTexts } from '../../constants/confirmTexts';
-
-const formatDate = (value?: string | null): string => {
-  if (!value) {
-    return '—';
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return '—';
-  }
-  return parsed.toLocaleDateString('ru-RU');
-};
-
-const formatDateTime = (value?: string | null): string => {
-  if (!value) {
-    return '—';
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return '—';
-  }
-  return parsed.toLocaleString('ru-RU');
-};
+import {
+  collectKnowledgeReferenceItems as collectReferenceItems,
+  formatKnowledgeDate as formatDate,
+  formatKnowledgeDateTime as formatDateTime,
+  renderKnowledgeAnswerWithCitations,
+} from './knowledgeDocuments.utils';
 
 export const KnowledgeDocumentsView: React.FC = () => {
   const { confirm, ConfirmDialogRenderer } = useConfirm();
@@ -446,66 +430,6 @@ export const KnowledgeDocumentsView: React.FC = () => {
     }
   };
 
-  const collectReferenceItems = (text: string, sourceCitations: KnowledgeCitation[]) => {
-    const regex = /\[source:([^\]]+)\]/g;
-    const orderedIds: string[] = [];
-    let match = regex.exec(text);
-    while (match) {
-      const sourceId = match[1];
-      if (!orderedIds.includes(sourceId)) {
-        orderedIds.push(sourceId);
-      }
-      match = regex.exec(text);
-    }
-
-    return orderedIds.map((sourceId) => {
-      const citation = sourceCitations.find((item) => item.sourceId === sourceId);
-      return {
-        sourceId,
-        title: citation?.title || 'Источник',
-        fileUrl: citation?.fileUrl || null,
-      };
-    });
-  };
-
-  const renderAnswerWithCitations = (text: string, sourceCitations: KnowledgeCitation[]) => {
-    const references = collectReferenceItems(text, sourceCitations);
-    if (!references.length) {
-      return text;
-    }
-    const indexBySource = new Map(references.map((item, index) => [item.sourceId, index + 1]));
-    const parts: Array<string | React.ReactNode> = [];
-    const regex = /\[source:([^\]]+)\]/g;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null = regex.exec(text);
-    let key = 0;
-    while (match) {
-      const start = match.index;
-      const end = regex.lastIndex;
-      parts.push(text.slice(lastIndex, start));
-      const sourceId = match[1];
-      const number = indexBySource.get(sourceId);
-      if (number) {
-        parts.push(
-          <sup key={`cite-${key}`}>
-            <button
-              type="button"
-              className="text-blue-600 hover:text-blue-700"
-              onClick={() => handleOpenSource(sourceId)}
-            >
-              [{number}]
-            </button>
-          </sup>,
-        );
-        key += 1;
-      }
-      lastIndex = end;
-      match = regex.exec(text);
-    }
-    parts.push(text.slice(lastIndex));
-    return parts;
-  };
-
   return (
     <div className="space-y-6 px-6 py-6">
       <section className="app-panel space-y-6 p-6 shadow-none">
@@ -639,7 +563,9 @@ export const KnowledgeDocumentsView: React.FC = () => {
         </div>
         {answer && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
-            <div className="text-blue-700">{renderAnswerWithCitations(answer, citations)}</div>
+                <div className="text-blue-700">
+                  {renderKnowledgeAnswerWithCitations(answer, citations, handleOpenSource)}
+                </div>
             {collectReferenceItems(answer, citations).length > 0 && (
               <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
                 <div className="font-semibold text-slate-700">Источники</div>
@@ -707,7 +633,11 @@ export const KnowledgeDocumentsView: React.FC = () => {
               <div className="text-sm font-semibold text-slate-900">{item.question}</div>
               <div className="text-sm text-slate-700 whitespace-pre-line">
                 <span className="text-blue-700">
-                  {renderAnswerWithCitations(item.answer, item.citations)}
+                            {renderKnowledgeAnswerWithCitations(
+                              item.answer,
+                              item.citations,
+                              handleOpenSource,
+                            )}
                 </span>
               </div>
               {collectReferenceItems(item.answer, item.citations).length > 0 && (
