@@ -563,9 +563,9 @@ export const KnowledgeDocumentsView: React.FC = () => {
         </div>
         {answer && (
           <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line space-y-3">
-                <div className="text-blue-700">
-                  {renderKnowledgeAnswerWithCitations(answer, citations, handleOpenSource)}
-                </div>
+            <div className="text-blue-700">
+              {renderKnowledgeAnswerWithCitations(answer, citations, handleOpenSource)}
+            </div>
             {collectReferenceItems(answer, citations).length > 0 && (
               <div className="border-t border-slate-100 pt-2 text-xs text-slate-600 space-y-1">
                 <div className="font-semibold text-slate-700">Источники</div>
@@ -633,11 +633,11 @@ export const KnowledgeDocumentsView: React.FC = () => {
               <div className="text-sm font-semibold text-slate-900">{item.question}</div>
               <div className="text-sm text-slate-700 whitespace-pre-line">
                 <span className="text-blue-700">
-                            {renderKnowledgeAnswerWithCitations(
-                              item.answer,
-                              item.citations,
-                              handleOpenSource,
-                            )}
+                  {renderKnowledgeAnswerWithCitations(
+                    item.answer,
+                    item.citations,
+                    handleOpenSource,
+                  )}
                 </span>
               </div>
               {collectReferenceItems(item.answer, item.citations).length > 0 && (

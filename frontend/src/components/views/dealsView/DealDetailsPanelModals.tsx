@@ -1,14 +1,6 @@
 import React from 'react';
 
-import type {
-  Client,
-  Deal,
-  FinancialRecord,
-  Payment,
-  Policy,
-  Task,
-  User,
-} from '../../../types';
+import type { Client, Deal, FinancialRecord, Payment, Policy, Task, User } from '../../../types';
 import type { AddFinancialRecordFormValues } from '../../forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import { AddTaskForm } from '../../forms/AddTaskForm';

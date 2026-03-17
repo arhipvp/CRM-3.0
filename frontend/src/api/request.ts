@@ -1,8 +1,5 @@
 const envBase = import.meta.env.VITE_API_URL;
-export const API_BASE = (envBase && envBase.trim() !== '' ? envBase : '/api/v1').replace(
-  /\/$/,
-  '',
-);
+export const API_BASE = (envBase && envBase.trim() !== '' ? envBase : '/api/v1').replace(/\/$/, '');
 const API_DEBUG = import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === 'true';
 
 const TOKEN_KEY = 'jwt_access_token';

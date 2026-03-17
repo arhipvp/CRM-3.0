@@ -89,7 +89,9 @@ export const useDealDetailsPanelActions = ({
   const [delayLeadDaysLoading, setDelayLeadDaysLoading] = useState(false);
   const [delayNextContactInput, setDelayNextContactInput] = useState<string | null>(null);
   const [delayValidationError, setDelayValidationError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'policies' | 'quotes' | 'files' | 'chat' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'tasks' | 'policies' | 'quotes' | 'files' | 'chat' | 'history'
+  >('overview');
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [isCreatingMailbox, setIsCreatingMailbox] = useState(false);
@@ -435,7 +437,7 @@ export const useDealDetailsPanelActions = ({
   ]);
 
   const editingTask = editingTaskId
-    ? relatedTasks.find((task) => task.id === editingTaskId) ?? null
+    ? (relatedTasks.find((task) => task.id === editingTaskId) ?? null)
     : null;
 
   return {

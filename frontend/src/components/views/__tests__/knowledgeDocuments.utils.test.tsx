@@ -17,13 +17,10 @@ describe('knowledgeDocuments utils', () => {
   });
 
   it('collects unique references in order', () => {
-    const result = collectKnowledgeReferenceItems(
-      'A [source:one] B [source:two] C [source:one]',
-      [
-        { sourceId: 'one', documentId: 'doc-1', title: 'Первый' },
-        { sourceId: 'two', documentId: 'doc-2', title: 'Второй' },
-      ],
-    );
+    const result = collectKnowledgeReferenceItems('A [source:one] B [source:two] C [source:one]', [
+      { sourceId: 'one', documentId: 'doc-1', title: 'Первый' },
+      { sourceId: 'two', documentId: 'doc-2', title: 'Второй' },
+    ]);
 
     expect(result).toEqual([
       { sourceId: 'one', title: 'Первый', fileUrl: null },

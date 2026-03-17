@@ -80,13 +80,7 @@ export const useAppBootstrapNavigation = ({
     ensureFinanceDataLoaded().catch((err) => {
       setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
     });
-  }, [
-    ensureFinanceDataLoaded,
-    isAuthenticated,
-    isCommissionsRoute,
-    refreshPolicies,
-    setError,
-  ]);
+  }, [ensureFinanceDataLoaded, isAuthenticated, isCommissionsRoute, refreshPolicies, setError]);
 
   useEffect(() => {
     if (!isAuthenticated || !isTasksRoute) {

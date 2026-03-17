@@ -1,7 +1,5 @@
 import os
 
-from . import settings as base_settings
-
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-secret-key")
 os.environ.setdefault("DEBUG", "True")
 os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
@@ -23,13 +21,13 @@ if not _test_flag("CRM_TEST_USE_POSTGRES"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": str(base_settings.BASE_DIR / "test.sqlite3"),
+            "NAME": str(BASE_DIR / "test.sqlite3"),
             "ATOMIC_REQUESTS": False,
         }
     }
     MIGRATION_MODULES = {
         app_config.split(".")[-1]: None
-        for app_config in base_settings.INSTALLED_APPS
+        for app_config in INSTALLED_APPS
         if app_config.startswith("apps.")
     }
 

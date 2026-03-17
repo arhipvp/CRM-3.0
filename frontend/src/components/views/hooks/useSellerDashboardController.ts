@@ -20,8 +20,7 @@ export const useSellerDashboardController = () => {
   const [endDate, setEndDate] = useState('');
   const [calendarMode, setCalendarMode] = useState<'sum' | 'split'>('sum');
   const [financialSearch, setFinancialSearch] = useState('');
-  const [financialSort, setFinancialSort] =
-    useState<SellerDashboardFinancialSort>('net_desc');
+  const [financialSort, setFinancialSort] = useState<SellerDashboardFinancialSort>('net_desc');
   const [hideZeroRowsCols, setHideZeroRowsCols] = useState(true);
   const [showOnlyWithData, setShowOnlyWithData] = useState(true);
   const dashboardRequestRef = useRef(0);
