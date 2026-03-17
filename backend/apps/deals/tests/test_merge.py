@@ -1,7 +1,9 @@
 import datetime
+from unittest.mock import patch
 
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
+from apps.common.drive import DriveOperationError
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import (
     Deal,
@@ -104,6 +106,7 @@ class DealMergeServiceTestCase(TestCase):
                 "time_ticks": 0,
             },
         )
+        self.assertEqual(result["warnings"], [])
 
     def test_merge_does_not_change_policy_client_fields(self):
         external_client = Client.objects.create(name="External Policy Client")
@@ -148,6 +151,87 @@ class DealMergeServiceTestCase(TestCase):
 
         result_deal = result["result_deal"]
         self.assertEqual(result_deal.description, f"Описание сделки\n\n{ids_block}")
+
+    @patch("apps.deals.services.try_delete_drive_folder")
+    @patch("apps.deals.services.move_drive_folder_contents_verified")
+    @patch("apps.deals.services.ensure_deal_folder")
+    @patch("apps.deals.services.is_drive_oauth_configured")
+    def test_merge_returns_warning_when_delete_fails_after_verified_move(
+        self,
+        is_drive_oauth_configured_mock,
+        ensure_deal_folder_mock,
+        move_drive_folder_contents_verified_mock,
+        try_delete_drive_folder_mock,
+    ):
+        self.target.drive_folder_id = "target-folder"
+        self.target.save(update_fields=["drive_folder_id"])
+        self.source.drive_folder_id = "source-folder"
+        self.source.save(update_fields=["drive_folder_id"])
+
+        is_drive_oauth_configured_mock.return_value = True
+        ensure_deal_folder_mock.side_effect = lambda deal: deal.drive_folder_id
+        move_drive_folder_contents_verified_mock.return_value = {
+            "source_before_count": 2,
+            "source_after_count": 0,
+            "target_before_count": 3,
+            "target_after_count": 5,
+        }
+        try_delete_drive_folder_mock.return_value = {
+            "deleted": False,
+            "error": "Unable to delete Drive folder.",
+        }
+
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            final_deal_data={
+                "title": "Merged Deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+            },
+            actor=self.user,
+        ).merge()
+
+        self.assertEqual(len(result["warnings"]), 1)
+        self.assertIn("source-folder", result["warnings"][0])
+        self.assertTrue(Deal.objects.with_deleted().get(pk=self.target.pk).is_deleted())
+        self.assertTrue(Deal.objects.with_deleted().get(pk=self.source.pk).is_deleted())
+
+    @patch("apps.deals.services.move_drive_folder_contents_verified")
+    @patch("apps.deals.services.ensure_deal_folder")
+    @patch("apps.deals.services.is_drive_oauth_configured")
+    def test_merge_fails_when_drive_transfer_verification_fails(
+        self,
+        is_drive_oauth_configured_mock,
+        ensure_deal_folder_mock,
+        move_drive_folder_contents_verified_mock,
+    ):
+        self.target.drive_folder_id = "target-folder"
+        self.target.save(update_fields=["drive_folder_id"])
+        self.source.drive_folder_id = "source-folder"
+        self.source.save(update_fields=["drive_folder_id"])
+
+        is_drive_oauth_configured_mock.return_value = True
+        ensure_deal_folder_mock.side_effect = lambda deal: deal.drive_folder_id
+        move_drive_folder_contents_verified_mock.side_effect = DriveOperationError(
+            "Drive folder transfer verification failed: source folder is not empty."
+        )
+
+        with self.assertRaises(DriveOperationError):
+            DealMergeService(
+                target_deal=self.target,
+                source_deals=[self.source],
+                final_deal_data={
+                    "title": "Merged Deal",
+                    "client_id": self.client_obj.id,
+                    "seller_id": self.user.id,
+                },
+                actor=self.user,
+            ).merge()
+
+        self.assertTrue(Deal.objects.alive().filter(pk=self.target.pk).exists())
+        self.assertTrue(Deal.objects.alive().filter(pk=self.source.pk).exists())
+        self.assertFalse(Deal.objects.filter(title="Merged Deal").exists())
 
 
 class DealMergeAPITestCase(AuthenticatedAPITestCase):
@@ -222,6 +306,79 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
         self.assertFalse(Deal.objects.alive().filter(id=self.target.id).exists())
         self.assertFalse(Deal.objects.alive().filter(id=self.source.id).exists())
         self.assertFalse(Deal.objects.alive().filter(id=self.source_extra.id).exists())
+        self.assertEqual(response.data["warnings"], [])
+
+    @patch("apps.deals.services.try_delete_drive_folder")
+    @patch("apps.deals.services.move_drive_folder_contents_verified")
+    @patch("apps.deals.services.ensure_deal_folder")
+    @patch("apps.deals.services.is_drive_oauth_configured")
+    def test_merge_returns_warning_in_api_response_when_folder_delete_fails(
+        self,
+        is_drive_oauth_configured_mock,
+        ensure_deal_folder_mock,
+        move_drive_folder_contents_verified_mock,
+        try_delete_drive_folder_mock,
+    ):
+        self.target.drive_folder_id = "target-folder"
+        self.target.save(update_fields=["drive_folder_id"])
+        self.source.drive_folder_id = "source-folder"
+        self.source.save(update_fields=["drive_folder_id"])
+
+        is_drive_oauth_configured_mock.return_value = True
+        ensure_deal_folder_mock.side_effect = lambda deal: deal.drive_folder_id
+        move_drive_folder_contents_verified_mock.return_value = {
+            "source_before_count": 1,
+            "source_after_count": 0,
+            "target_before_count": 0,
+            "target_after_count": 1,
+        }
+        try_delete_drive_folder_mock.return_value = {
+            "deleted": False,
+            "error": "Unable to delete Drive folder.",
+        }
+
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/deals/merge/",
+            self._payload([self.source]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["warnings"]), 1)
+        self.assertIn("source-folder", response.data["warnings"][0])
+
+    @patch("apps.deals.services.move_drive_folder_contents_verified")
+    @patch("apps.deals.services.ensure_deal_folder")
+    @patch("apps.deals.services.is_drive_oauth_configured")
+    def test_merge_returns_503_when_drive_transfer_verification_fails(
+        self,
+        is_drive_oauth_configured_mock,
+        ensure_deal_folder_mock,
+        move_drive_folder_contents_verified_mock,
+    ):
+        self.target.drive_folder_id = "target-folder"
+        self.target.save(update_fields=["drive_folder_id"])
+        self.source.drive_folder_id = "source-folder"
+        self.source.save(update_fields=["drive_folder_id"])
+
+        is_drive_oauth_configured_mock.return_value = True
+        ensure_deal_folder_mock.side_effect = lambda deal: deal.drive_folder_id
+        move_drive_folder_contents_verified_mock.side_effect = DriveOperationError(
+            "Drive folder transfer verification failed: source folder is not empty."
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/deals/merge/",
+            self._payload([self.source]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertIn("detail", response.data)
+        self.assertTrue(Deal.objects.alive().filter(pk=self.target.pk).exists())
+        self.assertTrue(Deal.objects.alive().filter(pk=self.source.pk).exists())
 
     def test_merge_allows_specifying_client(self):
         self.authenticate(self.seller)

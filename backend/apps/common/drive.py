@@ -68,6 +68,18 @@ class DriveFileInfo(TypedDict):
     parent_id: NotRequired[Optional[str]]
 
 
+class DriveFolderMoveVerification(TypedDict):
+    source_before_count: int
+    source_after_count: int
+    target_before_count: int
+    target_after_count: int
+
+
+class DriveFolderDeleteAttempt(TypedDict):
+    deleted: bool
+    error: str
+
+
 class DriveConnectionStatus(TypedDict):
     status: str
     auth_mode: str
@@ -983,6 +995,72 @@ def move_drive_folder_contents(source_folder_id: str, target_folder_id: str) -> 
             break
 
 
+def count_drive_folder_items(folder_id: str) -> int:
+    """Count direct non-trashed children inside a Drive folder."""
+
+    if not folder_id:
+        return 0
+
+    total = 0
+    page_token: Optional[str] = None
+
+    while True:
+        try:
+            response = _run_with_drive_service(
+                "count_drive_folder_items",
+                lambda service: service.files()
+                .list(
+                    q=f"'{folder_id}' in parents and trashed = false",
+                    spaces="drive",
+                    fields="nextPageToken, files(id)",
+                    pageSize=200,
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                )
+                .execute(),
+            )
+        except Exception as exc:
+            raise DriveOperationError("Unable to count Drive folder contents.") from exc
+
+        response_data = response or {}
+        total += len(response_data.get("files", []))
+        page_token = response_data.get("nextPageToken")
+        if not page_token:
+            break
+
+    return total
+
+
+def move_drive_folder_contents_verified(
+    source_folder_id: str, target_folder_id: str
+) -> DriveFolderMoveVerification:
+    """Move folder contents and verify transfer by before/after counts."""
+
+    source_before_count = count_drive_folder_items(source_folder_id)
+    target_before_count = count_drive_folder_items(target_folder_id)
+
+    move_drive_folder_contents(source_folder_id, target_folder_id)
+
+    source_after_count = count_drive_folder_items(source_folder_id)
+    target_after_count = count_drive_folder_items(target_folder_id)
+
+    if source_after_count != 0:
+        raise DriveOperationError(
+            "Drive folder transfer verification failed: source folder is not empty."
+        )
+    if (target_after_count - target_before_count) < source_before_count:
+        raise DriveOperationError(
+            "Drive folder transfer verification failed: target folder item count did not increase as expected."
+        )
+
+    return {
+        "source_before_count": source_before_count,
+        "source_after_count": source_after_count,
+        "target_before_count": target_before_count,
+        "target_after_count": target_after_count,
+    }
+
+
 def delete_drive_folder(folder_id: str) -> None:
     """Delete a Drive folder."""
 
@@ -999,3 +1077,16 @@ def delete_drive_folder(folder_id: str) -> None:
         )
     except Exception as exc:
         raise DriveOperationError("Unable to delete Drive folder.") from exc
+
+
+def try_delete_drive_folder(folder_id: str) -> DriveFolderDeleteAttempt:
+    """Attempt to delete a Drive folder and return the outcome."""
+
+    try:
+        delete_drive_folder(folder_id)
+    except DriveError as exc:
+        return {
+            "deleted": False,
+            "error": str(exc).strip() or "Unable to delete Drive folder.",
+        }
+    return {"deleted": True, "error": ""}

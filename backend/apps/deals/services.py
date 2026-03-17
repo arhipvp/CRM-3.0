@@ -13,10 +13,10 @@ from apps.clients.models import Client
 from apps.common.drive import (
     DriveConfigurationError,
     DriveError,
-    delete_drive_folder,
     ensure_deal_folder,
     is_drive_oauth_configured,
-    move_drive_folder_contents,
+    move_drive_folder_contents_verified,
+    try_delete_drive_folder,
 )
 from apps.documents.models import Document
 from apps.finances.models import Payment
@@ -382,6 +382,7 @@ class DealMergeService:
         self._source_ids = [deal.pk for deal in self.source_deals]
         self._all_merge_ids = [self.target_deal.pk, *self._source_ids]
         self._all_deals = [self.target_deal, *self.source_deals]
+        self._warnings: list[str] = []
 
     def _get_earliest_date(self, field_name: str) -> date | None:
         values: list[date] = []
@@ -613,6 +614,7 @@ class DealMergeService:
                 str(deal.id) for deal in [self.target_deal, *self.source_deals]
             ],
             "moved_counts": moved_counts,
+            "warnings": list(self._warnings),
         }
 
     def _prepare_drive_folders(self, target_client: Client | None) -> None:
@@ -642,17 +644,23 @@ class DealMergeService:
                 if not source_folder_id or source_folder_id == target_folder_id:
                     continue
                 _retry_drive_operation(
-                    lambda source_folder_id=source_folder_id: move_drive_folder_contents(
+                    lambda source_folder_id=source_folder_id: move_drive_folder_contents_verified(
                         source_folder_id, target_folder_id
                     ),
                     description=f"move deal folder contents from {source_folder_id}",
                 )
-                _retry_drive_operation(
-                    lambda source_folder_id=source_folder_id: delete_drive_folder(
-                        source_folder_id
-                    ),
-                    description=f"delete deal folder {source_folder_id}",
-                )
+                delete_result = try_delete_drive_folder(source_folder_id)
+                if not delete_result["deleted"]:
+                    logger.warning(
+                        "Deal merge left source Drive folder undeleted. deal_id=%s folder_id=%s error=%s",
+                        deal.pk,
+                        source_folder_id,
+                        delete_result["error"],
+                    )
+                    self._warnings.append(
+                        "Файлы из папки сделки перенесены, но старая папка Google Drive "
+                        f"не удалена автоматически (сделка {deal.pk}, папка {source_folder_id})."
+                    )
         except DriveError as exc:
             if _is_drive_configuration_error(exc):
                 logger.info(

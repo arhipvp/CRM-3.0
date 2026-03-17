@@ -436,6 +436,9 @@ export const useDealActions = ({
         selectDealById(result.resultDeal.id);
         setError(null);
         addNotification('Сделки объединены', 'success', 4000);
+        result.warnings.forEach((warning) => {
+          addNotification(warning, 'warning', 7000);
+        });
       } catch (err) {
         setError(formatErrorMessage(err, 'Ошибка объединения сделок'));
         throw err;
