@@ -17,7 +17,6 @@ from urllib.parse import quote_plus
 
 import psycopg
 from google.oauth2 import credentials as oauth_credentials
-from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
@@ -29,11 +28,6 @@ FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 DEFAULT_EXCLUDED_TABLES = ("users_auditlog",)
 DEFAULT_BACKUP_MAX_SESSIONS = 2000
 DEFAULT_GOOGLE_OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
-DRIVE_AUTH_MODE_AUTO = "auto"
-DRIVE_AUTH_MODE_OAUTH = "oauth"
-DRIVE_AUTH_MODE_SERVICE_ACCOUNT = "service_account"
-DRIVE_FALLBACK_HTTP_STATUSES = {401, 403, 404, 410}
-
 ROOT_ENV_FILES = (".env", "backend/.env")
 EXCLUDE_DIRS = {
     ".git",
@@ -107,20 +101,6 @@ def _oauth_refresh_token(env: dict[str, str]) -> str:
             if file_token:
                 return file_token
     return refresh_token
-
-
-def get_drive_auth_mode(env: dict[str, str]) -> str:
-    raw = _env_value(env, "GOOGLE_DRIVE_AUTH_MODE", default=DRIVE_AUTH_MODE_AUTO)
-    mode = raw.lower()
-    if mode not in {
-        DRIVE_AUTH_MODE_AUTO,
-        DRIVE_AUTH_MODE_OAUTH,
-        DRIVE_AUTH_MODE_SERVICE_ACCOUNT,
-    }:
-        raise SystemExit(
-            "GOOGLE_DRIVE_AUTH_MODE must be one of: auto, oauth, service_account"
-        )
-    return mode
 
 
 def should_exclude(path: Path, root: Path) -> bool:
@@ -393,38 +373,16 @@ class DriveBackup:
         self.services = self._build_services(env)
 
     def _build_services(self, env: dict[str, str]) -> list[tuple[str, Any]]:
-        mode = get_drive_auth_mode(env)
         oauth_service = self._build_oauth_service(env)
-        service_account_service = self._build_service_account_service(env)
-
-        if mode == DRIVE_AUTH_MODE_OAUTH:
-            if not oauth_service:
-                raise SystemExit(
-                    "OAuth mode is enabled but OAuth credentials are not configured."
-                )
-            return [(DRIVE_AUTH_MODE_OAUTH, oauth_service)]
-
-        if mode == DRIVE_AUTH_MODE_SERVICE_ACCOUNT:
-            if not service_account_service:
-                raise SystemExit(
-                    "Service account mode is enabled but GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE is not configured."
-                )
-            return [(DRIVE_AUTH_MODE_SERVICE_ACCOUNT, service_account_service)]
-
-        services: list[tuple[str, Any]] = []
-        if oauth_service:
-            services.append((DRIVE_AUTH_MODE_OAUTH, oauth_service))
-        if service_account_service:
-            services.append((DRIVE_AUTH_MODE_SERVICE_ACCOUNT, service_account_service))
-        if not services:
+        if not oauth_service:
             raise SystemExit(
-                "Drive credentials are not configured. Set OAuth credentials or GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE."
+                "Google Drive OAuth credentials are not configured. "
+                "Set GOOGLE_DRIVE_OAUTH_CLIENT_ID, GOOGLE_DRIVE_OAUTH_CLIENT_SECRET "
+                "and GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN or GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE."
             )
 
-        logger.info(
-            "Drive backup auth order: %s", " -> ".join(name for name, _ in services)
-        )
-        return services
+        logger.info("Drive backup auth: oauth")
+        return [("oauth", oauth_service)]
 
     def _build_oauth_service(self, env: dict[str, str]) -> Optional[Any]:
         client_id = _env_value(env, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "Client-ID")
@@ -458,37 +416,13 @@ class DriveBackup:
         )
         return build("drive", "v3", credentials=credentials, cache_discovery=False)
 
-    def _build_service_account_service(self, env: dict[str, str]) -> Optional[Any]:
-        credentials_file = _env_value(env, "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE")
-        if not credentials_file:
-            return None
-
-        key_path = Path(credentials_file).expanduser()
-        if not key_path.exists():
-            raise SystemExit(f"Service account file {key_path} does not exist.")
-
-        credentials = service_account.Credentials.from_service_account_file(
-            key_path, scopes=DRIVE_SCOPES
-        )
-        return build("drive", "v3", credentials=credentials, cache_discovery=False)
-
     def _run(self, operation: str, action):
-        for index, (auth_type, service) in enumerate(self.services):
-            has_fallback = index < len(self.services) - 1
-            try:
-                return action(service)
-            except HttpError as exc:
-                status = getattr(getattr(exc, "resp", None), "status", None)
-                if has_fallback and status in DRIVE_FALLBACK_HTTP_STATUSES:
-                    logger.warning(
-                        "Drive %s failed with %s using %s, retrying with fallback.",
-                        operation,
-                        status,
-                        auth_type,
-                    )
-                    continue
-                raise
-        raise RuntimeError(f"Drive operation {operation} failed for all auth modes")
+        _, service = self.services[0]
+        try:
+            return action(service)
+        except HttpError:
+            logger.exception("Drive %s failed with OAuth credentials", operation)
+            raise
 
     def create_folder(self, name: str, parent_id: str) -> str:
         logger.debug("Creating Drive folder %s under %s", name, parent_id)

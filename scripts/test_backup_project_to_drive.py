@@ -11,7 +11,6 @@ def _load_backup_script():
     google_module = types.ModuleType("google")
     oauth2_module = types.ModuleType("google.oauth2")
     credentials_module = types.ModuleType("google.oauth2.credentials")
-    service_account_module = types.ModuleType("google.oauth2.service_account")
     googleapiclient_module = types.ModuleType("googleapiclient")
     discovery_module = types.ModuleType("googleapiclient.discovery")
     errors_module = types.ModuleType("googleapiclient.errors")
@@ -31,7 +30,6 @@ def _load_backup_script():
         "google": google_module,
         "google.oauth2": oauth2_module,
         "google.oauth2.credentials": credentials_module,
-        "google.oauth2.service_account": service_account_module,
         "googleapiclient": googleapiclient_module,
         "googleapiclient.discovery": discovery_module,
         "googleapiclient.errors": errors_module,
@@ -90,3 +88,64 @@ def test_oauth_refresh_token_falls_back_to_env_when_file_empty(tmp_path, monkeyp
     monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE", str(token_file))
 
     assert backup_script._oauth_refresh_token({}) == "stale-token"
+
+
+def test_drive_backup_requires_oauth_credentials(monkeypatch):
+    backup_script = _load_backup_script()
+
+    monkeypatch.delenv("GOOGLE_DRIVE_OAUTH_CLIENT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", raising=False)
+    monkeypatch.delenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE", raising=False)
+
+    try:
+        backup_script.DriveBackup({})
+    except SystemExit as exc:
+        assert "Google Drive OAuth credentials are not configured" in str(exc)
+    else:
+        raise AssertionError("DriveBackup must fail without OAuth credentials")
+
+
+def test_drive_backup_builds_oauth_service(monkeypatch):
+    backup_script = _load_backup_script()
+
+    captured: dict[str, object] = {}
+
+    class DummyCredentials:
+        def __init__(self, **kwargs):
+            captured["credentials_kwargs"] = kwargs
+
+    def fake_build(api_name, version, credentials=None, cache_discovery=None):
+        captured["build_args"] = {
+            "api_name": api_name,
+            "version": version,
+            "credentials": credentials,
+            "cache_discovery": cache_discovery,
+        }
+        return "drive-service"
+
+    monkeypatch.setattr(
+        backup_script.oauth_credentials,
+        "Credentials",
+        DummyCredentials,
+        raising=False,
+    )
+    monkeypatch.setattr(backup_script, "build", fake_build)
+    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", "refresh-token")
+
+    drive_backup = backup_script.DriveBackup({})
+
+    assert drive_backup.services == [("oauth", "drive-service")]
+    assert captured["credentials_kwargs"] == {
+        "token": None,
+        "refresh_token": "refresh-token",
+        "token_uri": backup_script.DEFAULT_GOOGLE_OAUTH_TOKEN_URI,
+        "client_id": "client-id",
+        "client_secret": "client-secret",
+        "scopes": backup_script.DRIVE_SCOPES,
+    }
+    assert captured["build_args"]["api_name"] == "drive"
+    assert captured["build_args"]["version"] == "v3"
+    assert captured["build_args"]["cache_discovery"] is False

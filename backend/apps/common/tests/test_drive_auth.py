@@ -19,96 +19,32 @@ class _FakeHttpError(Exception):
 
 class DriveAuthTests(SimpleTestCase):
     @override_settings(
-        GOOGLE_DRIVE_AUTH_MODE="auto",
         GOOGLE_DRIVE_OAUTH_CLIENT_ID="client-id",
         GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",  # pragma: allowlist secret
         GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="refresh-token",
         GOOGLE_DRIVE_OAUTH_TOKEN_URI="https://oauth2.googleapis.com/token",
-        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/tmp/service-account.json",
     )
-    def test_auto_mode_retries_with_service_account_on_oauth_404(self):
-        gdrive_build = Mock(side_effect=["oauth-service", "sa-service"])
+    def test_get_drive_services_returns_oauth_service(self):
+        gdrive_build = Mock(return_value="oauth-service")
         oauth_module = SimpleNamespace(Credentials=Mock(return_value="oauth-creds"))
-        service_account_module = SimpleNamespace(
-            Credentials=SimpleNamespace(
-                from_service_account_file=Mock(return_value="sa-creds")
-            )
-        )
 
         with (
             patch.object(drive, "_drive_import_error", None),
             patch.object(drive, "_gdrive_build", gdrive_build),
             patch.object(drive, "_oauth_credentials", oauth_module),
-            patch.object(drive, "_service_account", service_account_module),
-            patch.object(drive, "_GDriveHttpError", _FakeHttpError),
         ):
+            services = drive._get_drive_services()
 
-            def _operation(service):
-                if service == "sa-service":
-                    return "legacy-result"
-                raise _FakeHttpError(404, "notFound")
-
-            result = drive._run_with_drive_service(
-                "test_operation",
-                _operation,
-            )
-
-        self.assertEqual(result, "legacy-result")
-        self.assertEqual(gdrive_build.call_count, 2)
-        self.assertEqual(
-            gdrive_build.call_args_list[0].kwargs["credentials"], "oauth-creds"
-        )
-        self.assertEqual(
-            gdrive_build.call_args_list[1].kwargs["credentials"], "sa-creds"
-        )
+        self.assertEqual(services, [(drive.DRIVE_AUTH_MODE_OAUTH, "oauth-service")])
+        self.assertEqual(gdrive_build.call_count, 1)
+        self.assertEqual(gdrive_build.call_args.kwargs["credentials"], "oauth-creds")
 
     @override_settings(
-        GOOGLE_DRIVE_AUTH_MODE="auto",
-        GOOGLE_DRIVE_OAUTH_CLIENT_ID="client-id",
-        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",  # pragma: allowlist secret
-        GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="refresh-token",
-        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/tmp/service-account.json",
-    )
-    def test_auto_mode_retries_with_service_account_on_oauth_refresh_error(self):
-        gdrive_build = Mock(side_effect=["oauth-service", "sa-service"])
-        oauth_module = SimpleNamespace(Credentials=Mock(return_value="oauth-creds"))
-        service_account_module = SimpleNamespace(
-            Credentials=SimpleNamespace(
-                from_service_account_file=Mock(return_value="sa-creds")
-            )
-        )
-
-        with (
-            patch.object(drive, "_drive_import_error", None),
-            patch.object(drive, "_gdrive_build", gdrive_build),
-            patch.object(drive, "_oauth_credentials", oauth_module),
-            patch.object(drive, "_service_account", service_account_module),
-        ):
-
-            def _operation(service):
-                if service == "sa-service":
-                    return "fallback-result"
-                raise RefreshError("invalid_grant: Token has been expired or revoked.")
-
-            diagnostics = {}
-            result = drive._run_with_drive_service(
-                "test_operation",
-                _operation,
-                diagnostics=diagnostics,
-            )
-
-        self.assertEqual(result, "fallback-result")
-        self.assertTrue(diagnostics["using_fallback"])
-        self.assertEqual(diagnostics["last_error_code"], "oauth_refresh_revoked")
-
-    @override_settings(
-        GOOGLE_DRIVE_AUTH_MODE="auto",
         GOOGLE_DRIVE_OAUTH_CLIENT_ID="client-id",
         GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="",
         GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="",
-        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="",
     )
-    def test_auto_mode_rejects_partial_oauth_configuration(self):
+    def test_rejects_partial_oauth_configuration(self):
         with (
             patch.object(drive, "_drive_import_error", None),
             patch.object(drive, "_gdrive_build", Mock(return_value="unused")),
@@ -117,7 +53,6 @@ class DriveAuthTests(SimpleTestCase):
                 "_oauth_credentials",
                 SimpleNamespace(Credentials=Mock(return_value="oauth-creds")),
             ),
-            patch.object(drive, "_service_account", Mock()),
         ):
             with self.assertRaisesMessage(
                 DriveConfigurationError,
@@ -126,13 +61,11 @@ class DriveAuthTests(SimpleTestCase):
                 drive._get_drive_services()
 
     @override_settings(
-        GOOGLE_DRIVE_AUTH_MODE="oauth",
         GOOGLE_DRIVE_OAUTH_CLIENT_ID="",
         GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="",
         GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="",
-        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/tmp/service-account.json",
     )
-    def test_oauth_mode_requires_oauth_credentials(self):
+    def test_requires_oauth_credentials(self):
         with (
             patch.object(drive, "_drive_import_error", None),
             patch.object(drive, "_gdrive_build", Mock(return_value="unused")),
@@ -141,18 +74,37 @@ class DriveAuthTests(SimpleTestCase):
                 "_oauth_credentials",
                 SimpleNamespace(Credentials=Mock(return_value="oauth-creds")),
             ),
-            patch.object(
-                drive,
-                "_service_account",
-                SimpleNamespace(
-                    Credentials=SimpleNamespace(
-                        from_service_account_file=Mock(return_value="sa-creds")
-                    )
-                ),
-            ),
         ):
             with self.assertRaisesMessage(
                 DriveConfigurationError,
-                "OAuth mode is enabled but OAuth credentials are not configured.",
+                "Google Drive OAuth credentials are not configured.",
             ):
                 drive._get_drive_services()
+
+    @override_settings(
+        GOOGLE_DRIVE_OAUTH_CLIENT_ID="client-id",
+        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="client-secret",  # pragma: allowlist secret
+        GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN="refresh-token",
+    )
+    def test_run_with_drive_service_does_not_fallback_on_http_error(self):
+        gdrive_build = Mock(return_value="oauth-service")
+        oauth_module = SimpleNamespace(Credentials=Mock(return_value="oauth-creds"))
+
+        with (
+            patch.object(drive, "_drive_import_error", None),
+            patch.object(drive, "_gdrive_build", gdrive_build),
+            patch.object(drive, "_oauth_credentials", oauth_module),
+            patch.object(drive, "_GDriveHttpError", _FakeHttpError),
+        ):
+            with self.assertRaises(_FakeHttpError):
+                drive._run_with_drive_service(
+                    "test_operation",
+                    lambda service: (_ for _ in ()).throw(_FakeHttpError(404, "notFound")),
+                )
+
+    def test_extract_refresh_error_details_marks_revoked_token(self):
+        code, message = drive._extract_refresh_error_details(
+            RefreshError("invalid_grant: Token has been expired or revoked.")
+        )
+        self.assertEqual(code, "oauth_refresh_revoked")
+        self.assertIn("invalid_grant", message)

@@ -34,7 +34,6 @@ services:
       DJANGO_DB_HOST: db
       DJANGO_DB_PORT: "5432"
       RUN_MIGRATIONS: "true"
-      GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE:-/run/crm3-secrets/google-drive-service-account.json}
     depends_on:
       - db
     volumes:
