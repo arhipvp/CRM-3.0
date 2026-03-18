@@ -4,12 +4,13 @@ import type { Dispatch, SetStateAction } from 'react';
 import {
   APIError,
   fetchDeal,
+  fetchPaymentsWithPagination,
   fetchPoliciesWithPagination,
   fetchQuotesByDeal,
   fetchTasksByDeal,
 } from '../../api';
 import type { FilterParams } from '../../api';
-import type { Deal, Policy, Quote, Task } from '../../types';
+import type { Deal, FinancialRecord, Payment, Policy, Quote, Task } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import type { useAppData } from '../useAppData';
 
@@ -78,9 +79,11 @@ export const useDealDetailsData = ({
   const dealTasksCacheRef = useRef(new Map<string, { loadedAt: number; data: Task[] }>());
   const dealQuotesCacheRef = useRef(new Map<string, { loadedAt: number; data: Quote[] }>());
   const dealPoliciesCacheRef = useRef(new Map<string, { loadedAt: number; data: Policy[] }>());
+  const dealPaymentsCacheRef = useRef(new Map<string, { loadedAt: number; data: Payment[] }>());
   const dealTasksInFlightRef = useRef(new Map<string, Promise<Task[]>>());
   const dealQuotesInFlightRef = useRef(new Map<string, Promise<Quote[]>>());
   const dealPoliciesInFlightRef = useRef(new Map<string, Promise<Policy[]>>());
+  const dealPaymentsInFlightRef = useRef(new Map<string, Promise<Payment[]>>());
   const rehydrateDealDetailsRef = useRef<(dealId: string) => Promise<void>>(async () => undefined);
 
   const isCacheFresh = useCallback(
@@ -116,6 +119,16 @@ export const useDealDetailsData = ({
     }
     dealPoliciesCacheRef.current.clear();
     dealPoliciesInFlightRef.current.clear();
+  }, []);
+
+  const invalidateDealPaymentsCache = useCallback((dealId?: string | null) => {
+    if (dealId) {
+      dealPaymentsCacheRef.current.delete(dealId);
+      dealPaymentsInFlightRef.current.delete(dealId);
+      return;
+    }
+    dealPaymentsCacheRef.current.clear();
+    dealPaymentsInFlightRef.current.clear();
   }, []);
 
   const cacheDealQuotes = useCallback((dealId: string, quotes: Quote[]) => {
@@ -236,6 +249,97 @@ export const useDealDetailsData = ({
         applyDealPolicies(dealPolicies);
       } catch (err) {
         setError(formatErrorMessage(err, 'Error loading policies for the deal'));
+      }
+    },
+    [isCacheFresh, setError, updateAppData],
+  );
+
+  const loadDealPayments = useCallback(
+    async (dealId: string, options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+
+      const applyDealPayments = (dealPayments: Payment[]) => {
+        updateAppData((prev) => {
+          const dealPolicyIds = new Set(
+            prev.policies.filter((policy) => policy.dealId === dealId).map((policy) => policy.id),
+          );
+          const paymentIdsToReplace = new Set(
+            prev.payments
+              .filter(
+                (payment) =>
+                  payment.dealId === dealId ||
+                  (payment.policyId ? dealPolicyIds.has(payment.policyId) : false),
+              )
+              .map((payment) => payment.id),
+          );
+          const fetchedRecords: FinancialRecord[] = dealPayments.flatMap(
+            (payment) => payment.financialRecords ?? [],
+          );
+
+          return {
+            payments: [
+              ...prev.payments.filter((payment) => !paymentIdsToReplace.has(payment.id)),
+              ...dealPayments,
+            ],
+            financialRecords: [
+              ...prev.financialRecords.filter(
+                (record) => !paymentIdsToReplace.has(record.paymentId),
+              ),
+              ...fetchedRecords,
+            ],
+          };
+        });
+      };
+
+      const cached = dealPaymentsCacheRef.current.get(dealId);
+      if (!force && cached && isCacheFresh(cached.loadedAt)) {
+        applyDealPayments(cached.data);
+        return;
+      }
+
+      const existingPromise = dealPaymentsInFlightRef.current.get(dealId);
+      if (existingPromise) {
+        try {
+          const dealPayments = await existingPromise;
+          applyDealPayments(dealPayments);
+        } catch (err) {
+          setError(formatErrorMessage(err, 'Error loading payments for the deal'));
+        }
+        return;
+      }
+
+      const request = (async () => {
+        const pageSize = 100;
+        const retrieved: Payment[] = [];
+        let page = 1;
+        while (true) {
+          const payload = await fetchPaymentsWithPagination({
+            deal: dealId,
+            page,
+            page_size: pageSize,
+          });
+          retrieved.push(...payload.results);
+          if (!payload.next) {
+            break;
+          }
+          page += 1;
+        }
+        dealPaymentsCacheRef.current.set(dealId, {
+          loadedAt: Date.now(),
+          data: retrieved,
+        });
+        return retrieved;
+      })().finally(() => {
+        dealPaymentsInFlightRef.current.delete(dealId);
+      });
+
+      dealPaymentsInFlightRef.current.set(dealId, request);
+
+      try {
+        const dealPayments = await request;
+        applyDealPayments(dealPayments);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Error loading payments for the deal'));
       }
     },
     [isCacheFresh, setError, updateAppData],
@@ -626,9 +730,9 @@ export const useDealDetailsData = ({
 
   useEffect(() => {
     rehydrateDealDetailsRef.current = async (dealId: string) => {
-      await Promise.all([loadDealTasks(dealId), loadDealQuotes(dealId)]);
+      await Promise.all([loadDealTasks(dealId), loadDealQuotes(dealId), loadDealPayments(dealId)]);
     };
-  }, [loadDealQuotes, loadDealTasks]);
+  }, [loadDealPayments, loadDealQuotes, loadDealTasks]);
 
   useEffect(() => {
     if (!effectiveSelectedDealId || !isAuthenticated) {
@@ -636,7 +740,15 @@ export const useDealDetailsData = ({
     }
     void loadDealTasks(effectiveSelectedDealId);
     void loadDealQuotes(effectiveSelectedDealId);
-  }, [effectiveSelectedDealId, isAuthenticated, loadDealQuotes, loadDealTasks]);
+    void loadDealPayments(effectiveSelectedDealId);
+  }, [effectiveSelectedDealId, isAuthenticated, loadDealPayments, loadDealQuotes, loadDealTasks]);
+
+  useEffect(() => {
+    if (!previewDealId || !isAuthenticated || previewDealId === effectiveSelectedDealId) {
+      return;
+    }
+    void loadDealPayments(previewDealId);
+  }, [effectiveSelectedDealId, isAuthenticated, loadDealPayments, previewDealId]);
 
   const handleRefreshSelectedDealPolicies = useCallback(
     async (options?: { force?: boolean }) => {
@@ -671,6 +783,7 @@ export const useDealDetailsData = ({
     invalidateDealTasksCache,
     invalidateDealQuotesCache,
     invalidateDealPoliciesCache,
+    invalidateDealPaymentsCache,
     cacheDealQuotes,
     refreshDealsWithSelection,
     syncDealsByIds,
@@ -679,6 +792,7 @@ export const useDealDetailsData = ({
     handleRefreshSelectedDeal,
     handleRefreshDealsList,
     loadDealPolicies,
+    loadDealPayments,
     loadDealTasks,
     loadDealQuotes,
     handleRefreshSelectedDealPolicies,

@@ -10,6 +10,7 @@ interface UseAppBootstrapNavigationArgs {
   isCommissionsRoute: boolean;
   isDealsRoute: boolean;
   isLoginRoute: boolean;
+  isPoliciesRoute: boolean;
   isTasksRoute: boolean;
   locationSearch: string;
   navigate: (to: string, options?: { replace?: boolean }) => void;
@@ -25,6 +26,7 @@ export const useAppBootstrapNavigation = ({
   isCommissionsRoute,
   isDealsRoute,
   isLoginRoute,
+  isPoliciesRoute,
   isTasksRoute,
   locationSearch,
   navigate,
@@ -77,10 +79,19 @@ export const useAppBootstrapNavigation = ({
       });
       return;
     }
-    ensureFinanceDataLoaded().catch((err) => {
-      setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
-    });
-  }, [ensureFinanceDataLoaded, isAuthenticated, isCommissionsRoute, refreshPolicies, setError]);
+    if (isPoliciesRoute) {
+      ensureFinanceDataLoaded().catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
+      });
+    }
+  }, [
+    ensureFinanceDataLoaded,
+    isAuthenticated,
+    isCommissionsRoute,
+    isPoliciesRoute,
+    refreshPolicies,
+    setError,
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated || !isTasksRoute) {

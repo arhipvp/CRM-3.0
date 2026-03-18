@@ -288,6 +288,7 @@ const AppContent: React.FC = () => {
     isCommissionsRoute,
     isDealsRoute,
     isLoginRoute,
+    isPoliciesRoute: location.pathname.startsWith('/policies'),
     isTasksRoute: location.pathname.startsWith('/tasks'),
     locationSearch: location.search,
     navigate,

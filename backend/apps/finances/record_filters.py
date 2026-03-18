@@ -1,3 +1,5 @@
+from django.db.models import Q
+
 from apps.finances.models import FinancialRecord, Statement
 
 from .permissions import parse_bool
@@ -17,6 +19,24 @@ def _parse_nullable_bool(value):
 
 
 def apply_financial_record_filters(queryset, params):
+    payment_id = params.get("payment")
+    if payment_id:
+        queryset = queryset.filter(payment_id=payment_id)
+
+    deal_id = params.get("deal")
+    if deal_id:
+        queryset = queryset.filter(
+            Q(payment__deal_id=deal_id) | Q(payment__policy__deal_id=deal_id)
+        ).distinct()
+
+    policy_id = params.get("policy")
+    if policy_id:
+        queryset = queryset.filter(payment__policy_id=policy_id)
+
+    statement_id = params.get("statement")
+    if statement_id:
+        queryset = queryset.filter(statement_id=statement_id)
+
     record_type = params.get("record_type")
     if record_type == Statement.TYPE_INCOME:
         queryset = queryset.filter(record_type=FinancialRecord.RecordType.INCOME)

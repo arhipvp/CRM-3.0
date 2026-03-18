@@ -1,6 +1,7 @@
 """FilterSets for Finances app"""
 
 import django_filters
+from django.db.models import Q
 
 from .models import Payment
 
@@ -17,7 +18,7 @@ class PaymentFilterSet(django_filters.FilterSet):
     Also supports ordering by scheduled_date and created_at.
     """
 
-    deal = django_filters.UUIDFilter(field_name="deal__id", label="Deal ID")
+    deal = django_filters.UUIDFilter(method="filter_deal", label="Deal ID")
 
     policy = django_filters.UUIDFilter(field_name="policy__id", label="Policy ID")
 
@@ -41,6 +42,9 @@ class PaymentFilterSet(django_filters.FilterSet):
     class Meta:
         model = Payment
         fields = ("deal", "policy")
+
+    def filter_deal(self, queryset, _, value):
+        return queryset.filter(Q(deal__id=value) | Q(policy__deal__id=value)).distinct()
 
     def filter_paid(self, queryset, _, value):
         if value:

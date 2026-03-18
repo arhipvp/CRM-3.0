@@ -1,10 +1,14 @@
 from apps.users.models import UserRole
 
+ADMIN_ROLE_NAMES = {"Admin", "Администратор"}
+
 
 def is_admin_user(user) -> bool:
     if not user or not user.is_authenticated:
         return False
-    return UserRole.objects.filter(user=user, role__name="Admin").exists()
+    if getattr(user, "is_superuser", False):
+        return True
+    return UserRole.objects.filter(user=user, role__name__in=ADMIN_ROLE_NAMES).exists()
 
 
 def get_deal_from_payment(payment):

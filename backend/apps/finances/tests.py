@@ -39,6 +39,12 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         self.admin_user = User.objects.create_user(  # pragma: allowlist secret
             username="admin", password="pass"  # pragma: allowlist secret
         )
+        self.superuser = User.objects.create_superuser(  # pragma: allowlist secret
+            username="root", password="pass", email="root@example.com"
+        )
+        self.localized_admin = User.objects.create_user(  # pragma: allowlist secret
+            username="localized-admin", password="pass"  # pragma: allowlist secret
+        )
 
         client = Client.objects.create(name="Client")
         self.deal = Deal.objects.create(
@@ -60,6 +66,10 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             name="Admin", defaults={"description": "Системный администратор"}
         )
         UserRole.objects.create(user=self.admin_user, role=admin_role)
+        localized_admin_role, _ = Role.objects.get_or_create(
+            name="Администратор", defaults={"description": "Локализованный администратор"}
+        )
+        UserRole.objects.create(user=self.localized_admin, role=localized_admin_role)
 
         self.payment = Payment.objects.create(
             deal=self.deal, amount=Decimal("1000.00"), description="Initial"
@@ -180,6 +190,41 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = self._extract_results(response)
         self.assertEqual([item["id"] for item in results], [str(self.payment.id)])
+
+    def test_superuser_can_list_all_financial_records_without_admin_role(self):
+        self.authenticate(self.superuser)
+
+        response = self.api_client.get("/api/v1/financial_records/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.fin_record.id)])
+
+    def test_localized_admin_role_is_treated_as_admin(self):
+        self.authenticate(self.localized_admin)
+
+        response = self.api_client.get("/api/v1/financial_records/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.fin_record.id)])
+
+    def test_deal_filter_on_payments_includes_policy_linked_payments(self):
+        policy = Policy.objects.create(number="POLICY-DEAL-FILTER", deal=self.deal)
+        policy_payment = Payment.objects.create(
+            policy=policy,
+            amount=Decimal("800.00"),
+            description="Policy-linked payment",
+        )
+
+        self.authenticate(self.visible_user)
+        response = self.api_client.get("/api/v1/payments/", {"deal": str(self.deal.id)})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        returned_ids = {item["id"] for item in results}
+        self.assertIn(str(self.payment.id), returned_ids)
+        self.assertIn(str(policy_payment.id), returned_ids)
 
     def test_visible_user_can_list_financial_records_for_visible_deal(self):
         self.authenticate(self.visible_user)
@@ -694,6 +739,12 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.payment = Payment.objects.create(
             deal=self.deal, amount=Decimal("1000.00"), description="Payment seed"
         )
+        self.policy = Policy.objects.create(number="FILTER-POLICY", deal=self.deal)
+        self.policy_payment = Payment.objects.create(
+            policy=self.policy,
+            amount=Decimal("1200.00"),
+            description="Policy payment seed",
+        )
         self.income_record = FinancialRecord.objects.create(
             payment=self.payment, amount=Decimal("250.00"), note="AlphaNote"
         )
@@ -703,6 +754,22 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
             description="Beta expense",
             date=timezone.now().date(),
         )
+        self.policy_record = FinancialRecord.objects.create(
+            payment=self.policy_payment,
+            amount=Decimal("175.00"),
+            note="Policy linked note",
+        )
+        self.statement = Statement.objects.create(
+            name="Filter statement",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        self.policy_record.statement = self.statement
+        self.policy_record.save(update_fields=["statement"])
+
+    def _extract_results(self, response):
+        payload = response.json()
+        return payload.get("results", payload)
 
     def test_filter_unpaid_only(self):
         self.authenticate(self.seller)
@@ -723,6 +790,49 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         record_ids = {str(item["id"]) for item in results}
         self.assertIn(str(self.income_record.id), record_ids)
         self.assertNotIn(str(self.expense_record.id), record_ids)
+
+    def test_filter_by_payment(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"payment": str(self.policy_payment.id)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.policy_record.id)])
+
+    def test_filter_by_policy(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"policy": str(self.policy.id)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.policy_record.id)])
+
+    def test_filter_by_deal_includes_policy_linked_records(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"deal": str(self.deal.id)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        returned_ids = {item["id"] for item in results}
+        self.assertIn(str(self.income_record.id), returned_ids)
+        self.assertIn(str(self.expense_record.id), returned_ids)
+        self.assertIn(str(self.policy_record.id), returned_ids)
+
+    def test_filter_by_statement(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"statement": str(self.statement.id)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        self.assertEqual([item["id"] for item in results], [str(self.policy_record.id)])
 
     def test_record_type_labels_are_readable(self):
         self.authenticate(self.seller)
