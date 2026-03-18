@@ -9,19 +9,16 @@ import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import type {
   Client,
   FinancialRecord,
+  FinancialRecordModalState,
   Payment,
+  PaymentModalState,
   Policy,
   Quote,
   SalesChannel,
   User,
-  FinancialRecordModalState,
-  PaymentModalState,
 } from '../../types';
 import type { ModalType } from './types';
-import type {
-  PaymentDraft,
-  PolicyFormValues,
-} from '../forms/addPolicy/types';
+import type { PaymentDraft, PolicyFormValues } from '../forms/addPolicy/types';
 import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { PaymentModal } from '../payments/PaymentModal';
 import { FormModal } from '../common/modal/FormModal';
