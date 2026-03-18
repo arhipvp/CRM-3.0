@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { splitFinancialRecords } from '../AppModals';
+import { splitFinancialRecords } from '../financialRecordDrafts';
 import type { FinancialRecord } from '../../../types';
 
 const buildRecord = (overrides: Partial<FinancialRecord>): FinancialRecord => ({
