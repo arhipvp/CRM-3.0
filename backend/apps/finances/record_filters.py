@@ -1,6 +1,5 @@
-from django.db.models import Q
-
 from apps.finances.models import FinancialRecord, Statement
+from django.db.models import Q
 
 from .permissions import parse_bool
 

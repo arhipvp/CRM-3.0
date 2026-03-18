@@ -41,7 +41,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
         self.superuser = User.objects.create_superuser(  # pragma: allowlist secret
             username="root",
-            password="pass",
+            password="pass",  # pragma: allowlist secret
             email="root@example.com",  # pragma: allowlist secret
         )
         self.localized_admin = User.objects.create_user(  # pragma: allowlist secret
