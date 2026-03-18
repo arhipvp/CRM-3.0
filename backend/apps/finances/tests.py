@@ -40,7 +40,9 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             username="admin", password="pass"  # pragma: allowlist secret
         )
         self.superuser = User.objects.create_superuser(  # pragma: allowlist secret
-            username="root", password="pass", email="root@example.com"
+            username="root",
+            password="pass",
+            email="root@example.com",  # pragma: allowlist secret
         )
         self.localized_admin = User.objects.create_user(  # pragma: allowlist secret
             username="localized-admin", password="pass"  # pragma: allowlist secret
@@ -67,7 +69,8 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
         UserRole.objects.create(user=self.admin_user, role=admin_role)
         localized_admin_role, _ = Role.objects.get_or_create(
-            name="Администратор", defaults={"description": "Локализованный администратор"}
+            name="Администратор",
+            defaults={"description": "Локализованный администратор"},
         )
         UserRole.objects.create(user=self.localized_admin, role=localized_admin_role)
 

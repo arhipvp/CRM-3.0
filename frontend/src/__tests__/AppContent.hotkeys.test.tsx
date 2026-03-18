@@ -403,11 +403,11 @@ describe('AppContent hotkeys integration', () => {
     });
   });
 
-  it('loads finance data globally after authentication', async () => {
+  it('does not load full finance data globally on deals route after authentication', async () => {
     renderAppContent('/deals');
 
     await waitFor(() => {
-      expect(ensureFinanceDataLoadedMock).toHaveBeenCalledTimes(1);
+      expect(ensureFinanceDataLoadedMock).not.toHaveBeenCalled();
     });
   });
 
