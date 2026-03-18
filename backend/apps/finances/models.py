@@ -142,6 +142,10 @@ class FinancialRecord(SoftDeleteModel):
     Отрицательное число - расход (затраты на ведение дел)
     """
 
+    class RecordType(models.TextChoices):
+        INCOME = "income", "Доход"
+        EXPENSE = "expense", "Расход"
+
     payment = models.ForeignKey(
         Payment,
         related_name="financial_records",
@@ -161,6 +165,12 @@ class FinancialRecord(SoftDeleteModel):
         decimal_places=2,
         help_text="Сумма (положительное = доход, отрицательное = расход)",
     )
+    record_type = models.CharField(
+        max_length=20,
+        choices=RecordType.choices,
+        default=RecordType.INCOME,
+        help_text="Тип записи",
+    )
     date = models.DateField(null=True, blank=True, help_text="Дата операции")
     description = models.CharField(
         max_length=255, blank=True, help_text="Описание операции"
@@ -177,6 +187,37 @@ class FinancialRecord(SoftDeleteModel):
         verbose_name = "Финансовая запись"
         verbose_name_plural = "Финансовые записи"
 
+    @classmethod
+    def infer_record_type_from_amount(cls, amount):
+        if amount is None:
+            return cls.RecordType.INCOME
+        return cls.RecordType.EXPENSE if amount < 0 else cls.RecordType.INCOME
+
+    @classmethod
+    def normalize_amount_for_record_type(cls, record_type, amount):
+        if amount is None:
+            return amount
+        return -abs(amount) if record_type == cls.RecordType.EXPENSE else abs(amount)
+
+    def save(self, *args, **kwargs):
+        if self.record_type not in self.RecordType.values:
+            self.record_type = self.infer_record_type_from_amount(self.amount)
+        elif (
+            self._state.adding
+            and self.record_type == self.RecordType.INCOME
+            and self.amount is not None
+            and self.amount < 0
+        ):
+            # Legacy ORM call sites may still omit record_type and rely on signed amount.
+            self.record_type = self.RecordType.EXPENSE
+        self.amount = self.normalize_amount_for_record_type(
+            self.record_type,
+            self.amount,
+        )
+        super().save(*args, **kwargs)
+
     def __str__(self) -> str:
-        record_type = "Доход" if self.amount >= 0 else "Расход"
-        return f"{record_type} {abs(self.amount)} РУБ для платежа {self.payment_id}"
+        return (
+            f"{self.get_record_type_display()} {abs(self.amount)} РУБ для платежа "
+            f"{self.payment_id}"
+        )

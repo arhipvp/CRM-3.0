@@ -3,6 +3,18 @@ from rest_framework import serializers
 
 from .models import FinancialRecord, Payment, Statement
 
+READABLE_RECORD_TYPES = {
+    FinancialRecord.RecordType.INCOME: FinancialRecord.RecordType.INCOME.label,
+    FinancialRecord.RecordType.EXPENSE: FinancialRecord.RecordType.EXPENSE.label,
+}
+
+RECORD_TYPE_INPUTS = {
+    FinancialRecord.RecordType.INCOME: FinancialRecord.RecordType.INCOME,
+    FinancialRecord.RecordType.EXPENSE: FinancialRecord.RecordType.EXPENSE,
+    FinancialRecord.RecordType.INCOME.label: FinancialRecord.RecordType.INCOME,
+    FinancialRecord.RecordType.EXPENSE.label: FinancialRecord.RecordType.EXPENSE,
+}
+
 
 class StatementSerializer(serializers.ModelSerializer):
     record_ids = serializers.PrimaryKeyRelatedField(
@@ -64,11 +76,22 @@ class StatementSerializer(serializers.ModelSerializer):
             if record.amount == 0:
                 errors.append(f"Запись {record.id} имеет нулевую сумму.")
                 continue
-            if statement_type == Statement.TYPE_INCOME and record.amount < 0:
+            record_statement_type = (
+                Statement.TYPE_INCOME
+                if record.record_type == FinancialRecord.RecordType.INCOME
+                else Statement.TYPE_EXPENSE
+            )
+            if (
+                statement_type == Statement.TYPE_INCOME
+                and record_statement_type == Statement.TYPE_EXPENSE
+            ):
                 errors.append(
                     f"Запись {record.id} относится к расходам и не подходит для ведомости доходов."
                 )
-            if statement_type == Statement.TYPE_EXPENSE and record.amount > 0:
+            if (
+                statement_type == Statement.TYPE_EXPENSE
+                and record_statement_type == Statement.TYPE_INCOME
+            ):
                 errors.append(
                     f"Запись {record.id} относится к доходам и не подходит для ведомости расходов."
                 )
@@ -192,8 +215,31 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
         ]
 
     def get_record_type(self, obj):
-        """Возвращает 'Доход' или 'Расход' в зависимости от знака amount"""
-        return "Доход" if obj.amount >= 0 else "Расход"
+        return READABLE_RECORD_TYPES.get(
+            obj.record_type,
+            FinancialRecord.RecordType.INCOME.label,
+        )
+
+    def validate(self, attrs):
+        raw_record_type = self.initial_data.get(
+            "record_type",
+            self.initial_data.get("recordType"),
+        )
+        resolved_record_type = RECORD_TYPE_INPUTS.get(raw_record_type)
+        amount = attrs.get("amount", getattr(self.instance, "amount", None))
+
+        if resolved_record_type is None and self.instance:
+            resolved_record_type = self.instance.record_type
+        if resolved_record_type is None:
+            resolved_record_type = FinancialRecord.infer_record_type_from_amount(amount)
+
+        attrs["record_type"] = resolved_record_type
+        if amount is not None:
+            attrs["amount"] = FinancialRecord.normalize_amount_for_record_type(
+                resolved_record_type,
+                amount,
+            )
+        return attrs
 
 
 class PaymentSerializer(serializers.ModelSerializer):

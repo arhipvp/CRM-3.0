@@ -120,6 +120,25 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_create_expense_with_positive_amount_is_normalized_by_record_type(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/financial_records/",
+            {
+                "payment": str(self.payment.id),
+                "amount": "50.00",
+                "record_type": "expense",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payload = response.json()
+        self.assertEqual(payload["record_type"], "Расход")
+
+        created_record = FinancialRecord.objects.get(id=payload["id"])
+        self.assertEqual(created_record.record_type, FinancialRecord.RecordType.EXPENSE)
+        self.assertEqual(created_record.amount, Decimal("-50.00"))
+
     def test_executor_cannot_create_financial_record(self):
         self.authenticate(self.executor)
         response = self.api_client.post(
@@ -194,6 +213,27 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_update_expense_with_positive_amount_keeps_negative_sign(self):
+        self.fin_record.record_type = FinancialRecord.RecordType.EXPENSE
+        self.fin_record.amount = Decimal("-100.00")
+        self.fin_record.save()
+
+        self.authenticate(self.seller)
+        response = self.api_client.patch(
+            f"/api/v1/financial_records/{self.fin_record.id}/",
+            {"amount": "75.00", "record_type": "expense"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["record_type"], "Расход")
+
+        self.fin_record.refresh_from_db()
+        self.assertEqual(
+            self.fin_record.record_type, FinancialRecord.RecordType.EXPENSE
+        )
+        self.assertEqual(self.fin_record.amount, Decimal("-75.00"))
 
     def test_financial_record_list_includes_enriched_payment_fields(self):
         self.authenticate(self.seller)
@@ -693,6 +733,27 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         by_id = {str(item["id"]): item for item in results}
         self.assertEqual(by_id[str(self.income_record.id)]["record_type"], "Доход")
         self.assertEqual(by_id[str(self.expense_record.id)]["record_type"], "Расход")
+
+    def test_record_type_is_source_of_truth_for_filters_and_labels(self):
+        broken_expense = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("-15.00"),
+            note="Broken legacy expense",
+        )
+        FinancialRecord.objects.filter(id=broken_expense.id).update(
+            amount=Decimal("15.00"),
+            record_type=FinancialRecord.RecordType.EXPENSE,
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/financial_records/?record_type=expense")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        results = payload.get("results", payload)
+        by_id = {str(item["id"]): item for item in results}
+
+        self.assertIn(str(broken_expense.id), by_id)
+        self.assertEqual(by_id[str(broken_expense.id)]["record_type"], "Расход")
 
     def test_search_applies_for_short_queries(self):
         self.authenticate(self.seller)

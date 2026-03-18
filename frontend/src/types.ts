@@ -432,12 +432,12 @@ export interface FinancialRecord {
     amount: string;
     date: string;
   }>;
-  amount: string; // Положительное = доход, отрицательное = расход
+  amount: string; // На этапе совместимости знак сохраняется в amount
   date?: string | null;
   description?: string;
   source?: string;
   note?: string;
-  recordType?: FinancialRecordType; // Вычисляемое поле
+  recordType?: FinancialRecordType; // Основной тип записи из API, знак служит fallback
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

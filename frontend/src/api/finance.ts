@@ -128,6 +128,7 @@ export async function fetchFinancialRecordsWithPagination(
 export async function createFinancialRecord(data: {
   paymentId: string;
   amount: number;
+  recordType?: 'income' | 'expense';
   date?: string | null;
   description?: string;
   source?: string;
@@ -138,6 +139,7 @@ export async function createFinancialRecord(data: {
     body: JSON.stringify({
       payment: data.paymentId,
       amount: data.amount,
+      record_type: data.recordType,
       date: data.date || null,
       description: data.description || '',
       source: data.source || '',
@@ -151,6 +153,7 @@ export async function updateFinancialRecord(
   id: string,
   data: Partial<{
     amount: number;
+    recordType: 'income' | 'expense';
     date: string | null;
     description: string;
     source: string;
@@ -161,6 +164,7 @@ export async function updateFinancialRecord(
     method: 'PATCH',
     body: JSON.stringify({
       amount: data.amount,
+      record_type: data.recordType,
       date: data.date,
       description: data.description,
       source: data.source,

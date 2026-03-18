@@ -351,6 +351,7 @@ export const usePolicyActions = ({
               const record = await createFinancialRecord({
                 paymentId: payment.id,
                 amount: incomeAmount,
+                recordType: 'income',
                 date: income.date || null,
                 description: income.description,
                 source: income.source,
@@ -368,6 +369,7 @@ export const usePolicyActions = ({
               const record = await createFinancialRecord({
                 paymentId: payment.id,
                 amount: -Math.abs(expenseAmount),
+                recordType: 'expense',
                 date: expense.date || null,
                 description: expense.description,
                 source: expense.source,
@@ -768,15 +770,16 @@ export const usePolicyActions = ({
 
           const updateOrCreateRecord = async (
             recordDraft: (typeof draft.incomes)[number],
-            sign: 1 | -1,
+            recordType: 'income' | 'expense',
           ) => {
-            const amount = parseRecordAmount(recordDraft.amount, sign);
+            const amount = parseRecordAmount(recordDraft.amount, recordType === 'expense' ? -1 : 1);
             if (!Number.isFinite(amount)) {
               return;
             }
 
             const payload = {
               amount,
+              recordType,
               date: recordDraft.date ? recordDraft.date : null,
               description: recordDraft.description ?? '',
               source: recordDraft.source ?? '',
@@ -851,10 +854,10 @@ export const usePolicyActions = ({
           };
 
           for (const income of draft.incomes ?? []) {
-            await updateOrCreateRecord(income, 1);
+            await updateOrCreateRecord(income, 'income');
           }
           for (const expense of draft.expenses ?? []) {
-            await updateOrCreateRecord(expense, -1);
+            await updateOrCreateRecord(expense, 'expense');
           }
         }
 

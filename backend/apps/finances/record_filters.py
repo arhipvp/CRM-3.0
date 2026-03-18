@@ -1,4 +1,4 @@
-from apps.finances.models import Statement
+from apps.finances.models import FinancialRecord, Statement
 
 from .permissions import parse_bool
 
@@ -19,9 +19,9 @@ def _parse_nullable_bool(value):
 def apply_financial_record_filters(queryset, params):
     record_type = params.get("record_type")
     if record_type == Statement.TYPE_INCOME:
-        queryset = queryset.filter(amount__gt=0)
+        queryset = queryset.filter(record_type=FinancialRecord.RecordType.INCOME)
     elif record_type == Statement.TYPE_EXPENSE:
-        queryset = queryset.filter(amount__lt=0)
+        queryset = queryset.filter(record_type=FinancialRecord.RecordType.EXPENSE)
 
     if parse_bool(params.get("unpaid_only")):
         queryset = queryset.filter(date__isnull=True)

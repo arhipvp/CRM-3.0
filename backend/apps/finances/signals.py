@@ -132,8 +132,7 @@ def log_financial_record_change(sender, instance, created, **kwargs):
 
     old_value = getattr(instance, "_old_value", None)
 
-    record_type = "Доход" if instance.amount >= 0 else "Расход"
-    record_name = f"{record_type} {abs(instance.amount)} руб."
+    record_name = f"{instance.get_record_type_display()} {abs(instance.amount)} руб."
 
     description_map = {
         "create": f"Создана {record_name}",
@@ -165,8 +164,7 @@ def log_financial_record_delete(sender, instance, **kwargs):
     """Логировать жёсткое удаление FinancialRecord."""
 
     actor = getattr(instance, "_audit_actor", None)
-    record_type = "Доход" if instance.amount >= 0 else "Расход"
-    record_name = f"{record_type} {abs(instance.amount)} руб."
+    record_name = f"{instance.get_record_type_display()} {abs(instance.amount)} руб."
 
     AuditLog.objects.create(
         actor=actor,

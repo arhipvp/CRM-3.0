@@ -45,6 +45,7 @@ class FinancialRecordResource(resources.ModelResource):
             "id",
             "payment",
             "statement",
+            "record_type",
             "amount",
             "date",
             "description",
@@ -58,6 +59,7 @@ class FinancialRecordResource(resources.ModelResource):
             "id",
             "payment",
             "statement",
+            "record_type",
             "amount",
             "date",
             "description",
@@ -108,7 +110,15 @@ class FinancialRecordInline(admin.TabularInline):
 
     model = FinancialRecord
     extra = 1
-    fields = ("amount", "date", "description", "source", "note", "statement")
+    fields = (
+        "record_type",
+        "amount",
+        "date",
+        "description",
+        "source",
+        "note",
+        "statement",
+    )
     readonly_fields = ("created_at", "updated_at")
 
 
@@ -244,7 +254,16 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
     fieldsets = (
         (
             "Основная информация",
-            {"fields": ("id", "payment", "statement", "amount", "record_type_badge")},
+            {
+                "fields": (
+                    "id",
+                    "payment",
+                    "statement",
+                    "record_type",
+                    "amount",
+                    "record_type_badge",
+                )
+            },
         ),
         ("Детали", {"fields": ("date", "description", "source")}),
         ("Примечание", {"fields": ("note",)}),
@@ -254,7 +273,11 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
 
     @admin.display(description="Сумма")
     def amount_display(self, obj):
-        color = "#06ffa5" if obj.amount >= 0 else "#ff006e"
+        color = (
+            "#06ffa5"
+            if obj.record_type == FinancialRecord.RecordType.INCOME
+            else "#ff006e"
+        )
         return format_html(
             '<span style="color: {}; font-weight: bold;">{} руб.</span>',
             color,
@@ -264,7 +287,7 @@ class FinancialRecordAdmin(SoftDeleteImportExportAdmin):
     @admin.display(description="Тип")
     def record_type_badge(self, obj):
         """Показывает тип записи: Доход или Расход."""
-        if obj.amount >= 0:
+        if obj.record_type == FinancialRecord.RecordType.INCOME:
             return format_html(
                 '<span style="background-color: #06ffa5; color: white; padding: 3px 8px; border-radius: 3px;">Доход</span>'
             )

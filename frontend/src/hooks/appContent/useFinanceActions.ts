@@ -113,6 +113,7 @@ export const useFinanceActions = ({
         const zeroIncome = await createFinancialRecord({
           paymentId: created.id,
           amount: 0,
+          recordType: 'income',
           date: new Date().toISOString().split('T')[0],
           description: 'Счёт: автоматически создан для учета',
           source: 'Система',
@@ -299,6 +300,7 @@ export const useFinanceActions = ({
         const created = await createFinancialRecord({
           paymentId,
           amount: normalizeFinancialRecordAmount(values),
+          recordType: values.recordType,
           date: values.date || null,
           description: values.description,
           source: values.source,
@@ -331,6 +333,7 @@ export const useFinanceActions = ({
       try {
         const updated = await updateFinancialRecord(recordId, {
           amount: normalizeFinancialRecordAmount(values),
+          recordType: values.recordType,
           date: values.date || null,
           description: values.description,
           source: values.source,
