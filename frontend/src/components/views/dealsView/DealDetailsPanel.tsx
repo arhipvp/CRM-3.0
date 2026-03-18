@@ -18,7 +18,9 @@ import type { AddFinancialRecordFormValues } from '../../forms/AddFinancialRecor
 import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../../forms/AddTaskForm';
 import type { DealFormValues } from '../../forms/DealForm';
+import { BTN_PRIMARY } from '../../common/buttonStyles';
 import { InlineAlert } from '../../common/InlineAlert';
+import { FormModal } from '../../common/modal/FormModal';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useFinancialRecordModal } from '../../../hooks/useFinancialRecordModal';
 import { usePaymentModal } from '../../../hooks/usePaymentModal';
@@ -905,14 +907,26 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         handleQuickNextContactShift={handleQuickNextContactShift}
       />
       <ConfirmDialogRenderer />
-      {isTimeTrackingConfirmModalOpen && (
-        <InlineAlert>
-          Продолжить учет времени по сделке?
-          <button type="button" className="ml-2 underline" onClick={continueTracking}>
+      <FormModal
+        isOpen={isTimeTrackingConfirmModalOpen}
+        title="Продолжить учет времени по сделке?"
+        onClose={() => undefined}
+        size="sm"
+        closeOnOverlayClick={false}
+        closeOnEscape={false}
+        hideCloseButton
+        zIndex={80}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">
+            Учет времени приостановлен. Чтобы продолжить работу со сделкой, подтвердите продолжение
+            учета времени.
+          </p>
+          <button type="button" onClick={continueTracking} className={`${BTN_PRIMARY} w-full`}>
             Продолжить
           </button>
-        </InlineAlert>
-      )}
+        </div>
+      </FormModal>
     </>
   );
 };

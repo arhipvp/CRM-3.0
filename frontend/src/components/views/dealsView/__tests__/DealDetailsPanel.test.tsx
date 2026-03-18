@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import type { Deal, User } from '../../../../types';
@@ -500,7 +500,14 @@ describe('DealDetailsPanel', () => {
     await waitFor(() => {
       expect(onDealSelectionBlockedChange).toHaveBeenCalledWith(true);
     });
-    expect(screen.getByText('Продолжить учет времени по сделке?')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Продолжить учет времени по сделке?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        'Учет времени приостановлен. Чтобы продолжить работу со сделкой, подтвердите продолжение учета времени.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
   });
 
   it('clears selected deal focus by close button', async () => {
