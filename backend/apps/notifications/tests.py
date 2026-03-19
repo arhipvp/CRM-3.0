@@ -88,8 +88,8 @@ class FakeCallbackClient:
 
 class TelegramIntakeServiceTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="seller", password="pass")
-        self.other_user = User.objects.create_user(username="other", password="pass")
+        self.user = User.objects.create_user(username="seller")
+        self.other_user = User.objects.create_user(username="other")
         TelegramProfile.objects.create(user=self.user, chat_id=1001)
 
         self.client_obj = Client.objects.create(
@@ -938,7 +938,7 @@ class TelegramIntakeDriveUploadApiTests(TelegramIntakeServiceTests):
 
 class TelegramBotCommandTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="callback-user", password="pass")
+        self.user = User.objects.create_user(username="callback-user")
         TelegramProfile.objects.create(user=self.user, chat_id=2001)
 
     def test_callback_does_not_send_duplicate_when_result_already_sent(self):
@@ -966,12 +966,8 @@ class TelegramBotCommandTests(TestCase):
 @override_settings(TELEGRAM_BOT_TOKEN="test-token")
 class TaskCompletionTelegramNotificationTests(TestCase):
     def setUp(self):
-        self.creator = User.objects.create_user(
-            username="task-creator", password="pass"
-        )
-        self.executor = User.objects.create_user(
-            username="task-executor", password="pass"
-        )
+        self.creator = User.objects.create_user(username="task-creator")
+        self.executor = User.objects.create_user(username="task-executor")
         self.client_obj = Client.objects.create(
             name="Тестовый клиент",
             created_by=self.creator,
@@ -1189,8 +1185,8 @@ class TaskCompletionTelegramNotificationTests(TestCase):
 
 class DriveReconnectApiTests(TestCase):
     def setUp(self):
-        self.vova = User.objects.create_user(username="Vova", password="pass")
-        self.other = User.objects.create_user(username="other-drive", password="pass")
+        self.vova = User.objects.create_user(username="Vova")
+        self.other = User.objects.create_user(username="other-drive")
         self.api_client = APIClient()
 
     def test_notification_settings_response_includes_drive_status(self):
