@@ -62,7 +62,9 @@ class MailboxListAPITests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
         self.user = User.objects.create_user(username="mailbox_owner", password="pass")
-        self.other_user = User.objects.create_user(username="mailbox_other", password="pass")
+        self.other_user = User.objects.create_user(
+            username="mailbox_other", password="pass"
+        )
         self.client_record = Client.objects.create(name="Тестовый клиент")
         self.deal = Deal.objects.create(
             title="Сделка с почтой",

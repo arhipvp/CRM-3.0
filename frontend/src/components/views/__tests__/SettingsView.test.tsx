@@ -102,9 +102,7 @@ describe('SettingsView', () => {
 
     render(<SettingsView />);
 
-    expect(
-      await screen.findByText('Не удалось загрузить почтовые ящики.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Не удалось загрузить почтовые ящики.')).toBeInTheDocument();
     expect(screen.queryByText(/<!doctype html>/i)).not.toBeInTheDocument();
   });
 });
