@@ -263,6 +263,111 @@ describe('useAppData loading strategy', () => {
     ]);
   });
 
+  it('retries commissions snapshot load after a stale response and marks it as loaded', async () => {
+    const recordsDeferred = deferred<
+      Array<{
+        id: string;
+        paymentId: string;
+        amount: string;
+        createdAt: string;
+        updatedAt: string;
+      }>
+    >();
+    const statementsDeferred = deferred<
+      Array<{
+        id: string;
+        name: string;
+        statementType: 'income' | 'expense';
+        status: 'draft' | 'paid';
+        createdAt: string;
+        updatedAt: string;
+      }>
+    >();
+
+    mockedFetchFinancialRecords.mockReturnValueOnce(recordsDeferred.promise as never);
+    mockedFetchFinanceStatements.mockReturnValueOnce(statementsDeferred.promise as never);
+    mockedFetchFinancialRecords.mockResolvedValueOnce([
+      {
+        id: 'server-record',
+        paymentId: 'payment-1',
+        amount: '250',
+        createdAt: '2026-01-03T00:00:00Z',
+        updatedAt: '2026-01-03T00:00:00Z',
+      } as never,
+    ]);
+    mockedFetchFinanceStatements.mockResolvedValueOnce([
+      {
+        id: 'server-statement',
+        name: 'Повторная ведомость',
+        statementType: 'income',
+        status: 'draft',
+        createdAt: '2026-01-03T00:00:00Z',
+        updatedAt: '2026-01-03T00:00:00Z',
+      } as never,
+    ]);
+
+    const { result } = renderHook(() => useAppData());
+
+    let commissionsPromise: Promise<void> | undefined;
+    await act(async () => {
+      commissionsPromise = result.current.ensureCommissionsDataLoaded();
+    });
+
+    await act(async () => {
+      result.current.updateAppData(() => ({
+        financialRecords: [
+          {
+            id: 'local-record',
+            paymentId: 'payment-local',
+            amount: '777',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          } as never,
+        ],
+      }));
+    });
+
+    await act(async () => {
+      recordsDeferred.resolve([
+        {
+          id: 'stale-record',
+          paymentId: 'payment-stale',
+          amount: '100',
+          createdAt: '2026-01-02T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+        },
+      ]);
+      statementsDeferred.resolve([
+        {
+          id: 'stale-statement',
+          name: 'Устаревшая ведомость',
+          statementType: 'income',
+          status: 'draft',
+          createdAt: '2026-01-02T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+        },
+      ]);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(2);
+      expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      await commissionsPromise;
+    });
+
+    expect(result.current.hasCommissionsSnapshotLoaded).toBe(true);
+    expect(result.current.dataState.financialRecords.map((record) => record.id)).toEqual([
+      'server-record',
+    ]);
+    expect(result.current.dataState.statements.map((statement) => statement.id)).toEqual([
+      'server-statement',
+    ]);
+  });
+
   it('preserves finance snapshot when startup load finishes after commissions finance load', async () => {
     const dealsDeferred = deferred<{
       count: number;

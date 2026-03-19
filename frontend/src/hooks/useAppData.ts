@@ -420,26 +420,29 @@ export const useAppData = () => {
       }
       commissionsRequestRef.current += 1;
       const requestId = commissionsRequestRef.current;
-      const startedRevision = financeRevisionRef.current;
       setIsCommissionsDataLoading(true);
       const loadPromise = (async () => {
         try {
-          const [financialRecordsData, statementsData] = await Promise.all([
-            fetchFinancialRecords(),
-            fetchFinanceStatements(),
-          ]);
-          if (commissionsRequestRef.current !== requestId) {
+          while (commissionsRequestRef.current === requestId) {
+            const startedRevision = financeRevisionRef.current;
+            const [financialRecordsData, statementsData] = await Promise.all([
+              fetchFinancialRecords(),
+              fetchFinanceStatements(),
+            ]);
+            if (commissionsRequestRef.current !== requestId) {
+              return;
+            }
+            if (financeRevisionRef.current !== startedRevision) {
+              continue;
+            }
+            setAppData({
+              financialRecords: financialRecordsData,
+              statements: statementsData,
+            });
+            commissionsDataLoadedRef.current = true;
+            setHasCommissionsSnapshotLoaded(true);
             return;
           }
-          if (financeRevisionRef.current !== startedRevision) {
-            return;
-          }
-          setAppData({
-            financialRecords: financialRecordsData,
-            statements: statementsData,
-          });
-          commissionsDataLoadedRef.current = true;
-          setHasCommissionsSnapshotLoaded(true);
         } catch (err) {
           if (commissionsRequestRef.current === requestId) {
             setError(formatErrorMessage(err, 'Ошибка при загрузке данных раздела комиссий'));
