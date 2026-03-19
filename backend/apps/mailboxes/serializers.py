@@ -6,7 +6,7 @@ from .models import Mailbox
 
 
 class MailboxSerializer(serializers.ModelSerializer):
-    deal_id = serializers.UUIDField(source="deal_id", read_only=True)
+    deal_id = serializers.UUIDField(read_only=True)
 
     class Meta:
         model = Mailbox

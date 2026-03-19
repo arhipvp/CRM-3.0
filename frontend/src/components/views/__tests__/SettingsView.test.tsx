@@ -9,20 +9,24 @@ const apiMocks = vi.hoisted(() => ({
   fetchMailboxes: vi.fn(),
 }));
 
-vi.mock('../../../api', () => ({
-  changePassword: vi.fn(),
-  createDriveReconnect: vi.fn(),
-  createMailbox: vi.fn(),
-  createTelegramLink: vi.fn(),
-  deleteMailbox: vi.fn(),
-  fetchDriveStatus: vi.fn(),
-  fetchMailboxes: apiMocks.fetchMailboxes,
-  fetchMailboxMessages: vi.fn(),
-  fetchNotificationSettings: apiMocks.fetchNotificationSettings,
-  getCurrentUser: apiMocks.getCurrentUser,
-  unlinkTelegram: vi.fn(),
-  updateNotificationSettings: vi.fn(),
-}));
+vi.mock('../../../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../api')>();
+  return {
+    ...actual,
+    changePassword: vi.fn(),
+    createDriveReconnect: vi.fn(),
+    createMailbox: vi.fn(),
+    createTelegramLink: vi.fn(),
+    deleteMailbox: vi.fn(),
+    fetchDriveStatus: vi.fn(),
+    fetchMailboxes: apiMocks.fetchMailboxes,
+    fetchMailboxMessages: vi.fn(),
+    fetchNotificationSettings: apiMocks.fetchNotificationSettings,
+    getCurrentUser: apiMocks.getCurrentUser,
+    unlinkTelegram: vi.fn(),
+    updateNotificationSettings: vi.fn(),
+  };
+});
 
 const hasOwnText = (value: string) => (_content: string, element: Element | null) => {
   if (!element || !element.textContent?.includes(value)) {
@@ -88,5 +92,19 @@ describe('SettingsView', () => {
     expect(
       screen.queryByRole('button', { name: 'Переподключить Google Drive' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('shows safe mailbox error instead of raw html payload', async () => {
+    apiMocks.getCurrentUser.mockResolvedValue({ id: 4, username: 'Vova', roles: ['Admin'] });
+    apiMocks.fetchMailboxes.mockRejectedValue(
+      new Error('<!doctype html><html><body><h1>Server Error (500)</h1></body></html>'),
+    );
+
+    render(<SettingsView />);
+
+    expect(
+      await screen.findByText('Не удалось загрузить почтовые ящики.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/<!doctype html>/i)).not.toBeInTheDocument();
   });
 });

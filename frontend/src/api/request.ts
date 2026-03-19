@@ -26,6 +26,53 @@ const debugError = (...args: unknown[]) => {
   }
 };
 
+const HTML_TAG_PATTERN = /<[^>]+>/;
+
+const looksLikeHtml = (value: string): boolean => {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.startsWith('<!doctype html') ||
+    normalized.startsWith('<html') ||
+    normalized.startsWith('<body') ||
+    HTML_TAG_PATTERN.test(normalized)
+  );
+};
+
+const extractErrorMessage = async (response: Response, path: string): Promise<string> => {
+  const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      const payload = (await response.json()) as {
+        detail?: string;
+        message?: string;
+        error?: string;
+      };
+      const message = payload.detail ?? payload.message ?? payload.error;
+      if (typeof message === 'string' && message.trim()) {
+        return message.trim();
+      }
+    } catch {
+      // Fall through to generic handling when body is malformed.
+    }
+  } else {
+    try {
+      const text = (await response.text()).trim();
+      if (text && !looksLikeHtml(text)) {
+        return text;
+      }
+    } catch {
+      // Ignore body parsing errors and use a generic message below.
+    }
+  }
+
+  if (response.status >= 500) {
+    return 'Ошибка сервера';
+  }
+
+  return `Request ${path} failed with status ${response.status}`;
+};
+
 export function getAccessToken(): string | null {
   return typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
 }
@@ -275,8 +322,7 @@ export async function request<T = unknown>(
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request ${path} failed with status ${response.status}`);
+    throw new Error(await extractErrorMessage(response, path));
   }
 
   if (response.status === 204) {
@@ -323,8 +369,7 @@ export async function requestBlob(
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request ${path} failed with status ${response.status}`);
+    throw new Error(await extractErrorMessage(response, path));
   }
 
   return response.blob();
@@ -367,8 +412,7 @@ export async function requestBlobWithHeaders(
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request ${path} failed with status ${response.status}`);
+    throw new Error(await extractErrorMessage(response, path));
   }
 
   return { blob: await response.blob(), headers: response.headers };

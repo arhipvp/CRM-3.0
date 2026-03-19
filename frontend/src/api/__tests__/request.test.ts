@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildLoginRedirectPath, consumePostLoginRedirect, getPostLoginRedirect } from '../request';
+import {
+  buildLoginRedirectPath,
+  consumePostLoginRedirect,
+  getPostLoginRedirect,
+  request,
+} from '../request';
 
 describe('request post-login redirect helpers', () => {
   beforeEach(() => {
@@ -39,5 +44,39 @@ describe('request post-login redirect helpers', () => {
     expect(window.sessionStorage.getItem('crm_post_login_redirect')).toBe(
       '/deals?dealId=deal-keep',
     );
+  });
+});
+
+describe('request error normalization', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns generic server error for html 500 payload', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('<!doctype html><html><body><h1>Server Error (500)</h1></body></html>', {
+          status: 500,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+      ),
+    );
+
+    await expect(request('/mailboxes/')).rejects.toThrow('Ошибка сервера');
+  });
+
+  it('prefers json detail for structured api errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: 'Такой ящик уже существует.' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(request('/mailboxes/')).rejects.toThrow('Такой ящик уже существует.');
   });
 });
