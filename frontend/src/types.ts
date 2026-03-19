@@ -51,7 +51,7 @@ export interface Quote {
   insuranceType: string;
   sumInsured: number;
   premium: number;
-  deductible?: string;
+  deductible?: number | null;
   officialDealer: boolean;
   gap: boolean;
   comments?: string;

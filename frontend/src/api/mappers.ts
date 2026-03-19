@@ -32,9 +32,9 @@
 import {
   toNullableNumber,
   toNumberValue,
-  toOptionalString,
   toNullableString,
   toStringValue,
+  toOptionalString,
 } from './helpers';
 
 const DEAL_STATUSES: DealStatus[] = ['open', 'won', 'lost', 'on_hold'];
@@ -144,7 +144,7 @@ export const mapQuote = (raw: Record<string, unknown>): Quote => ({
   insuranceType: toStringValue(raw.insurance_type_name ?? raw.insurance_type ?? ''),
   sumInsured: toNumberValue(raw.sum_insured),
   premium: toNumberValue(raw.premium),
-  deductible: toOptionalString(raw.deductible),
+  deductible: toNullableNumber(raw.deductible),
   officialDealer: Boolean(raw.official_dealer ?? raw.officialDealer ?? false),
   gap: Boolean(raw.gap ?? false),
   comments: toOptionalString(raw.comments),

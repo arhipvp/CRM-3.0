@@ -158,6 +158,27 @@ def notify_task_created(task) -> None:
     )
 
 
+def notify_task_completed(task) -> None:
+    creator = getattr(task, "created_by", None)
+    if not creator:
+        return
+    deal = getattr(task, "deal", None)
+    deal_title = _format_deal_title(deal)
+    deal_part = f" (сделка: {deal_title})" if deal_title else ""
+    text = _append_link(
+        f"Задача выполнена: {task.title}{deal_part}", getattr(deal, "id", None)
+    )
+    send_notification(
+        user=creator,
+        text=text,
+        event_type="task_completed",
+        object_type="task",
+        object_id=task.id,
+        trigger_date=timezone.localdate(getattr(task, "completed_at", None)),
+        setting_attr="notify_tasks",
+    )
+
+
 def notify_deal_event(deal, message: str) -> None:
     message_with_link = _append_link(message, getattr(deal, "id", None))
     for user in _get_deal_recipients(deal):

@@ -211,7 +211,7 @@ export async function createQuote(data: {
   insuranceTypeId: string;
   sumInsured: number;
   premium: number;
-  deductible?: string;
+  deductible?: number | null;
   officialDealer: boolean;
   gap: boolean;
   comments?: string;
@@ -247,7 +247,7 @@ export async function updateQuote(
     insuranceTypeId: string;
     sumInsured: number;
     premium: number;
-    deductible?: string;
+    deductible?: number | null;
     officialDealer: boolean;
     gap: boolean;
     comments?: string;

@@ -84,14 +84,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           return a.sumInsured - b.sumInsured;
         case 'premium':
           return a.premium - b.premium;
+        case 'deductible':
+          return (a.deductible ?? -1) - (b.deductible ?? -1);
         case 'createdAt':
           return (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0);
         case 'insuranceType':
           return compareStrings(String(a.insuranceType ?? ''), String(b.insuranceType ?? ''));
         case 'insuranceCompany':
           return compareStrings(String(a.insuranceCompany ?? ''), String(b.insuranceCompany ?? ''));
-        case 'deductible':
-          return compareStrings(String(a.deductible ?? ''), String(b.deductible ?? ''));
         case 'comments':
           return compareStrings(String(a.comments ?? ''), String(b.comments ?? ''));
         case 'seller': {
@@ -235,7 +235,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <td
                     className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
                   >
-                    {quote.deductible || '-'}
+                    {quote.deductible === null || quote.deductible === undefined
+                      ? '-'
+                      : formatCurrency(String(quote.deductible))}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
                     <input

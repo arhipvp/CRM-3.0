@@ -11,11 +11,14 @@ from apps.documents.models import Document
 from apps.notes.models import Note
 from apps.notifications.management.commands.run_telegram_bot import Command
 from apps.notifications.models import (
+    NotificationDelivery,
+    NotificationSettings,
     TelegramDealRoutingSession,
     TelegramInboundMessage,
     TelegramProfile,
 )
 from apps.notifications.telegram_intake import IntakeResult, TelegramIntakeService
+from apps.tasks.models import Task
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -958,6 +961,230 @@ class TelegramBotCommandTests(TestCase):
 
         self.assertEqual(len(fake_client.answered_callbacks), 1)
         self.assertEqual(len(fake_client.sent_messages), 0)
+
+
+@override_settings(TELEGRAM_BOT_TOKEN="test-token")
+class TaskCompletionTelegramNotificationTests(TestCase):
+    def setUp(self):
+        self.creator = User.objects.create_user(
+            username="task-creator", password="pass"
+        )
+        self.executor = User.objects.create_user(
+            username="task-executor", password="pass"
+        )
+        self.client_obj = Client.objects.create(
+            name="Тестовый клиент",
+            created_by=self.creator,
+        )
+        self.deal = Deal.objects.create(
+            title="Сделка по задаче",
+            client=self.client_obj,
+            seller=self.creator,
+            executor=self.executor,
+            status=Deal.DealStatus.OPEN,
+        )
+        TelegramProfile.objects.create(user=self.creator, chat_id=3001)
+        NotificationSettings.objects.create(
+            user=self.creator,
+            telegram_enabled=True,
+            notify_tasks=True,
+        )
+        self.fake_tg = FakeTelegramClient()
+
+    def _create_task(self, **kwargs):
+        payload = {
+            "deal": self.deal,
+            "title": "Проверить договор",
+            "created_by": self.creator,
+            "assignee": self.executor,
+            "status": Task.TaskStatus.TODO,
+        }
+        payload.update(kwargs)
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            return Task.objects.create(**payload)
+
+    def test_sends_notification_when_task_changes_from_todo_to_done(self):
+        task = self._create_task()
+
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            task.status = Task.TaskStatus.DONE
+            task.completed_at = timezone.now()
+            task.completed_by = self.executor
+            task.save(update_fields=["status", "completed_at", "completed_by"])
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 1)
+        completion_message = self.fake_tg.sent_messages[0]
+        self.assertEqual(completion_message["chat_id"], 3001)
+        self.assertIn("Задача выполнена", completion_message["text"])
+        self.assertIn("Проверить договор", completion_message["text"])
+        self.assertEqual(
+            NotificationDelivery.objects.filter(
+                user=self.creator,
+                event_type="task_completed",
+                object_type="task",
+                object_id=str(task.id),
+            ).count(),
+            1,
+        )
+
+    def test_does_not_send_completion_notification_on_create_with_done_status(self):
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            self._create_task(
+                status=Task.TaskStatus.DONE,
+                completed_at=timezone.now(),
+                completed_by=self.executor,
+            )
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 0)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(event_type="task_completed").exists()
+        )
+
+    def test_does_not_send_when_status_is_saved_without_transition_to_done(self):
+        task = self._create_task()
+
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            task.title = "Проверить договор срочно"
+            task.save(update_fields=["title"])
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 0)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(event_type="task_completed").exists()
+        )
+
+    def test_sends_again_after_reopen_and_second_completion(self):
+        task = self._create_task()
+
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            task.status = Task.TaskStatus.DONE
+            task.completed_at = timezone.now()
+            task.completed_by = self.executor
+            task.save(update_fields=["status", "completed_at", "completed_by"])
+
+            task.status = Task.TaskStatus.TODO
+            task.completed_at = None
+            task.completed_by = None
+            task.save(update_fields=["status", "completed_at", "completed_by"])
+
+            task.status = Task.TaskStatus.DONE
+            task.completed_at = timezone.now() + timedelta(days=1)
+            task.completed_by = self.executor
+            task.save(update_fields=["status", "completed_at", "completed_by"])
+
+        self.assertEqual(
+            NotificationDelivery.objects.filter(
+                user=self.creator,
+                event_type="task_completed",
+                object_type="task",
+                object_id=str(task.id),
+            ).count(),
+            2,
+        )
+        self.assertEqual(len(self.fake_tg.sent_messages), 2)
+
+    def test_does_not_send_when_task_notifications_are_disabled(self):
+        task = self._create_task()
+        settings_obj = self.creator.notification_settings
+        settings_obj.notify_tasks = False
+        settings_obj.save(update_fields=["notify_tasks"])
+
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            task.status = Task.TaskStatus.DONE
+            task.completed_at = timezone.now()
+            task.completed_by = self.executor
+            task.save(update_fields=["status", "completed_at", "completed_by"])
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 0)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(event_type="task_completed").exists()
+        )
+
+    def test_does_not_send_when_telegram_is_disabled(self):
+        task = self._create_task()
+        settings_obj = self.creator.notification_settings
+        settings_obj.telegram_enabled = False
+        settings_obj.save(update_fields=["telegram_enabled"])
+
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            task.status = Task.TaskStatus.DONE
+            task.completed_at = timezone.now()
+            task.completed_by = self.executor
+            task.save(update_fields=["status", "completed_at", "completed_by"])
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 0)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(event_type="task_completed").exists()
+        )
+
+    def test_does_not_send_without_creator_or_chat_binding(self):
+        task_without_creator = self._create_task(created_by=None)
+        task_without_chat = self._create_task(title="Без привязки")
+        self.creator.telegram_profile.chat_id = None
+        self.creator.telegram_profile.save(update_fields=["chat_id"])
+
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            task_without_creator.status = Task.TaskStatus.DONE
+            task_without_creator.completed_at = timezone.now()
+            task_without_creator.completed_by = self.executor
+            task_without_creator.save(
+                update_fields=["status", "completed_at", "completed_by"]
+            )
+
+            task_without_chat.status = Task.TaskStatus.DONE
+            task_without_chat.completed_at = timezone.now()
+            task_without_chat.completed_by = self.executor
+            task_without_chat.save(
+                update_fields=["status", "completed_at", "completed_by"]
+            )
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 0)
+        self.assertFalse(
+            NotificationDelivery.objects.filter(event_type="task_completed").exists()
+        )
+
+    def test_existing_task_created_notification_still_works(self):
+        TelegramProfile.objects.create(user=self.executor, chat_id=3002)
+        NotificationSettings.objects.create(
+            user=self.executor,
+            telegram_enabled=True,
+            notify_tasks=True,
+        )
+
+        self._create_task(title="Новая задача исполнителю")
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 1)
+        self.assertEqual(self.fake_tg.sent_messages[0]["chat_id"], 3002)
+        self.assertIn("Новая задача", self.fake_tg.sent_messages[0]["text"])
+        self.assertTrue(
+            NotificationDelivery.objects.filter(
+                user=self.executor,
+                event_type="task_created",
+            ).exists()
+        )
 
 
 class DriveReconnectApiTests(TestCase):

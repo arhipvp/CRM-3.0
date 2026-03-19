@@ -568,7 +568,7 @@ describe('AppContent hotkeys integration', () => {
       insuranceType: 'Каско',
       sumInsured: 1000000,
       premium: 50000,
-      deductible: '',
+      deductible: null,
       officialDealer: false,
       gap: false,
       comments: 'Тест',

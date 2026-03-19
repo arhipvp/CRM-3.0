@@ -20,6 +20,13 @@ User = get_user_model()
 
 
 class QuoteSerializer(serializers.ModelSerializer):
+    deductible = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        coerce_to_string=False,
+    )
     seller = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         required=False,

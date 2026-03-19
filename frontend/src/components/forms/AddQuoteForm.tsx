@@ -13,7 +13,7 @@ export interface QuoteFormValues {
   insuranceTypeId: string;
   sumInsured: number;
   premium: number;
-  deductible?: string;
+  deductible?: number | null;
   officialDealer: boolean;
   gap: boolean;
   comments?: string;
@@ -40,7 +40,11 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
     initialValues ? String(initialValues.sumInsured) : '',
   );
   const [premium, setPremium] = useState(initialValues ? String(initialValues.premium) : '');
-  const [deductible, setDeductible] = useState(initialValues?.deductible ?? '');
+  const [deductible, setDeductible] = useState(
+    initialValues?.deductible !== undefined && initialValues?.deductible !== null
+      ? String(initialValues.deductible)
+      : '',
+  );
   const [officialDealer, setOfficialDealer] = useState(initialValues?.officialDealer ?? false);
   const [gap, setGap] = useState(initialValues?.gap ?? false);
   const [comments, setComments] = useState(initialValues?.comments ?? '');
@@ -97,7 +101,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         insuranceTypeId,
         sumInsured: Number(sumInsured),
         premium: Number(premium),
-        deductible: deductible.trim() || undefined,
+        deductible: deductible.trim() ? Number(deductible) : undefined,
         officialDealer,
         gap,
         comments: comments.trim() || undefined,
@@ -115,8 +119,9 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
       <FormError message={optionsError} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FormField label="Страховая компания" required>
+        <FormField label="Страховая компания" required htmlFor="quote-insurance-company">
           <select
+            id="quote-insurance-company"
             value={insuranceCompanyId}
             onChange={(event) => setInsuranceCompanyId(event.target.value)}
             disabled={loadingOptions}
@@ -131,8 +136,9 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
           </select>
         </FormField>
 
-        <FormField label="Тип страхования" required>
+        <FormField label="Тип страхования" required htmlFor="quote-insurance-type">
           <select
+            id="quote-insurance-type"
             value={insuranceTypeId}
             onChange={(event) => setInsuranceTypeId(event.target.value)}
             disabled={loadingOptions}
@@ -147,8 +153,9 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
           </select>
         </FormField>
 
-        <FormField label="Страховая сумма, ₽" required>
+        <FormField label="Страховая сумма, ₽" required htmlFor="quote-sum-insured">
           <input
+            id="quote-sum-insured"
             type="number"
             min="0"
             step="0.01"
@@ -158,8 +165,9 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
           />
         </FormField>
 
-        <FormField label="Премия, ₽" required>
+        <FormField label="Премия, ₽" required htmlFor="quote-premium">
           <input
+            id="quote-premium"
             type="number"
             min="0"
             step="0.01"
@@ -191,17 +199,21 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         </label>
       </div>
 
-      <FormField label="Франшиза">
+      <FormField label="Франшиза, ₽" htmlFor="quote-deductible">
         <input
-          type="text"
+          id="quote-deductible"
+          type="number"
+          min="0"
+          step="0.01"
           value={deductible}
           onChange={(event) => setDeductible(event.target.value)}
           className="field field-input"
         />
       </FormField>
 
-      <FormField label="Комментарий">
+      <FormField label="Комментарий" htmlFor="quote-comments">
         <textarea
+          id="quote-comments"
           value={comments}
           onChange={(event) => setComments(event.target.value)}
           rows={3}

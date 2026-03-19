@@ -15,6 +15,7 @@ def task_pre_save(sender, instance, **kwargs):
         try:
             old_instance = Task.objects.with_deleted().get(pk=instance.pk)
             store_old_values(old_instance)
+            instance._old_status = old_instance.status
             instance._was_deleted = old_instance.deleted_at is not None
             instance._now_deleted = instance.deleted_at is not None
         except Task.DoesNotExist:
@@ -63,6 +64,13 @@ def log_task_change(sender, instance, created, **kwargs):
         from apps.notifications.telegram_notifications import notify_task_created
 
         notify_task_created(instance)
+    elif (
+        getattr(instance, "_old_status", None) != Task.TaskStatus.DONE
+        and instance.status == Task.TaskStatus.DONE
+    ):
+        from apps.notifications.telegram_notifications import notify_task_completed
+
+        notify_task_completed(instance)
 
     if hasattr(instance, "_was_deleted"):
         delattr(instance, "_was_deleted")
@@ -70,6 +78,8 @@ def log_task_change(sender, instance, created, **kwargs):
         delattr(instance, "_now_deleted")
     if hasattr(instance, "_old_value"):
         delattr(instance, "_old_value")
+    if hasattr(instance, "_old_status"):
+        delattr(instance, "_old_status")
 
 
 @receiver(post_delete, sender=Task)
