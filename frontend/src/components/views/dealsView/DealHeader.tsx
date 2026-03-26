@@ -67,7 +67,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Клиент
+            Контактное лицо
           </span>
           <span className="inline-flex items-center gap-2 font-semibold text-slate-900">
             {clientDisplayName}

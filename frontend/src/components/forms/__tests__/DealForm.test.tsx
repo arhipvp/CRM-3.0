@@ -39,7 +39,7 @@ describe('DealForm', () => {
       />,
     );
 
-    const clientInput = screen.getByPlaceholderText('Начните вводить имя клиента');
+    const clientInput = screen.getByPlaceholderText('Начните вводить имя контактного лица');
     await waitFor(() => expect(clientInput).toHaveValue('Клиент 2'));
     expect(onPreselectedClientConsumed).toHaveBeenCalledTimes(1);
   });
@@ -101,7 +101,7 @@ describe('DealForm', () => {
       />,
     );
 
-    const clientInput = screen.getByPlaceholderText('Начните вводить имя клиента');
+    const clientInput = screen.getByPlaceholderText('Начните вводить имя контактного лица');
     fireEvent.focus(clientInput);
     fireEvent.change(clientInput, { target: { value: 'Клиент 2' } });
     fireEvent.mouseDown(await screen.findByRole('button', { name: 'Клиент 2' }));
@@ -122,5 +122,22 @@ describe('DealForm', () => {
     );
 
     expect(clientInput).toHaveValue('Клиент 2');
+  });
+
+  it('показывает новый label и текст ошибки для контактного лица', async () => {
+    render(<DealForm {...baseProps} clients={[makeClient('client-1', 'Клиент 1')]} />);
+
+    expect(screen.getByText(/Контактное лицо/)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Например: КАСКО / ОСАГО'), {
+      target: { value: 'Сделка' },
+    });
+    const clientInput = screen.getByPlaceholderText('Начните вводить имя контактного лица');
+    fireEvent.change(clientInput, { target: { value: '' } });
+
+    fireEvent.submit(screen.getByRole('button', { name: 'Создать сделку' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Контактное лицо обязательно.')).toBeInTheDocument();
+    });
   });
 });

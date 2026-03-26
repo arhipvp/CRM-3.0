@@ -20,7 +20,7 @@ class ClientOwnershipTests(TestCase):
         self.user = User.objects.create_user(username="owner")
         self.other_user = User.objects.create_user(username="other")
 
-    def test_owner_query_includes_created_clients(self):
+    def test_authenticated_user_query_returns_all_clients(self):
         client_owned = Client.objects.create(name="Owned", created_by=self.user)
         client_for_deal = Client.objects.create(name="Deal client")
         Deal.objects.create(title="Deal", client=client_for_deal, seller=self.user)
@@ -36,7 +36,7 @@ class ClientOwnershipTests(TestCase):
 
         self.assertIn(client_owned, queryset)
         self.assertIn(client_for_deal, queryset)
-        self.assertNotIn(client_other, queryset)
+        self.assertIn(client_other, queryset)
 
     def test_perform_create_sets_created_by(self):
         request = self.factory.post("/clients/", {"name": "New"})
@@ -333,7 +333,7 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
         self.assertIn("reasons", first)
         self.assertIn("same_phone", first["reasons"])
 
-    def test_similar_endpoint_respects_access_rights(self):
+    def test_similar_endpoint_allows_other_authenticated_users(self):
         self.authenticate(self.other)
         response = self.api_client.post(
             "/api/v1/clients/similar/",
@@ -342,8 +342,8 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
             },
             format="json",
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("target_client_id", response.data)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("candidates", response.data)
 
     def test_similar_endpoint_handles_missing_target(self):
         self.authenticate(self.owner)
@@ -356,3 +356,31 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("target_client_id", response.data)
+
+
+class ClientReadAccessAPITests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.owner = User.objects.create_user(username="owner-read", password="pass")
+        self.other = User.objects.create_user(username="other-read", password="pass")
+        self.owner_client = Client.objects.create(name="Owner client", created_by=self.owner)
+        self.other_client = Client.objects.create(name="Other client", created_by=self.other)
+
+    def test_list_returns_all_clients_for_authenticated_user(self):
+        self.authenticate(self.other)
+
+        response = self.api_client.get("/api/v1/clients/", format="json")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.data.get("results", response.data)
+        client_ids = {item["id"] for item in payload}
+        self.assertIn(str(self.owner_client.id), client_ids)
+        self.assertIn(str(self.other_client.id), client_ids)
+
+    def test_detail_returns_foreign_client_for_authenticated_user(self):
+        self.authenticate(self.other)
+
+        response = self.api_client.get(f"/api/v1/clients/{self.owner_client.id}/", format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], str(self.owner_client.id))

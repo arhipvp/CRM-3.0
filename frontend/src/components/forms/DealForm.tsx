@@ -333,7 +333,7 @@ export const DealForm: React.FC<DealFormProps> = ({
       return;
     }
     if (!selectedClientId) {
-      setError('Клиент обязателен.');
+      setError('Контактное лицо обязательно.');
       return;
     }
 
@@ -384,7 +384,7 @@ export const DealForm: React.FC<DealFormProps> = ({
         />
       </FormField>
 
-      <FormField label="Клиент" required>
+      <FormField label="Контактное лицо" required>
         <div className="flex flex-col gap-2">
           <div className="relative flex items-center gap-2">
             <div className="relative flex-1">
@@ -400,7 +400,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                   setTimeout(() => setShowClientSuggestions(false), 120);
                 }}
                 className="field field-input"
-                placeholder="Начните вводить имя клиента"
+                placeholder="Начните вводить имя контактного лица"
               />
               {showClientSuggestions && (
                 <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
@@ -419,7 +419,9 @@ export const DealForm: React.FC<DealFormProps> = ({
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-slate-600">Клиент не найден</div>
+                    <div className="px-3 py-2 text-sm text-slate-600">
+                      Контактное лицо не найдено
+                    </div>
                   )}
                 </div>
               )}
@@ -427,7 +429,7 @@ export const DealForm: React.FC<DealFormProps> = ({
 
             {shouldShowAddClient && (
               <button type="button" onClick={onRequestAddClient} className={BTN_SM_SECONDARY}>
-                + Клиент
+                + Контактное лицо
               </button>
             )}
           </div>

@@ -2,9 +2,8 @@ from apps.clients.services import ClientMergeService, ClientSimilarityService
 from apps.common.drive import DriveError, ensure_client_folder
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
-from apps.users.models import AuditLog, UserRole
+from apps.users.models import AuditLog
 from django.contrib.auth.models import AnonymousUser
-from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -46,21 +45,7 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         serializer.save(created_by=self._resolve_user())
 
     def get_queryset(self):
-        user = self._resolve_user()
         queryset = Client.objects.alive().order_by("-created_at")
-
-        # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
-        if not user.is_authenticated:
-            return queryset
-
-        # Администраторы видят всех клиентов
-        is_admin = UserRole.objects.filter(user=user, role__name="Admin").exists()
-
-        if not is_admin:
-            queryset = queryset.filter(
-                Q(created_by=user) | Q(deals__seller=user) | Q(deals__executor=user)
-            ).distinct()
-
         return queryset
 
     @action(

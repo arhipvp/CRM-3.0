@@ -50,6 +50,7 @@ describe('DealHeader', () => {
     expect(screen.getByText('Deal title')).toBeInTheDocument();
     expect(screen.getByText('#123e4567')).toHaveAttribute('title', deal.id);
     expect(screen.getByText('Test description')).toBeInTheDocument();
+    expect(screen.getByText('Контактное лицо')).toBeInTheDocument();
     expect(screen.getByText('Client A')).toBeInTheDocument();
     expect(screen.getByText('Seller')).toBeInTheDocument();
     expect(screen.getByText('Executor')).toBeInTheDocument();
