@@ -363,8 +363,12 @@ class ClientReadAccessAPITests(AuthenticatedAPITestCase):
         super().setUp()
         self.owner = User.objects.create_user(username="owner-read", password="pass")
         self.other = User.objects.create_user(username="other-read", password="pass")
-        self.owner_client = Client.objects.create(name="Owner client", created_by=self.owner)
-        self.other_client = Client.objects.create(name="Other client", created_by=self.other)
+        self.owner_client = Client.objects.create(
+            name="Owner client", created_by=self.owner
+        )
+        self.other_client = Client.objects.create(
+            name="Other client", created_by=self.other
+        )
 
     def test_list_returns_all_clients_for_authenticated_user(self):
         self.authenticate(self.other)
@@ -380,7 +384,9 @@ class ClientReadAccessAPITests(AuthenticatedAPITestCase):
     def test_detail_returns_foreign_client_for_authenticated_user(self):
         self.authenticate(self.other)
 
-        response = self.api_client.get(f"/api/v1/clients/{self.owner_client.id}/", format="json")
+        response = self.api_client.get(
+            f"/api/v1/clients/{self.owner_client.id}/", format="json"
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["id"], str(self.owner_client.id))
