@@ -754,9 +754,13 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.assertIn("Сумма, ₽", headers)
         header_index = {value: index + 1 for index, value in enumerate(headers)}
 
-        self.assertEqual(
-            ws.cell(row=2, column=header_index["Доходы / расходы"]).value,
-            "Доход 150.00 ₽ · 08.02.2026\nРасход 75.00 ₽ · 08.02.2026",
+        operations_cell = ws.cell(row=2, column=header_index["Доходы / расходы"]).value
+        self.assertCountEqual(
+            operations_cell.splitlines(),
+            [
+                "Доход 150.00 ₽ · 08.02.2026",
+                "Расход 75.00 ₽ · 08.02.2026",
+            ],
         )
         self.assertEqual(
             ws.cell(row=2, column=header_index["Сальдо, ₽"]).value,

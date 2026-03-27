@@ -126,7 +126,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                         deleted_at__isnull=True,
                     )
                     .only("id", "amount", "date", "payment_id")
-                    .order_by("-date"),
+                    .order_by("-date", "-amount", "id"),
                     to_attr="paid_records",
                 )
             )
@@ -424,7 +424,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                         date__isnull=False, deleted_at__isnull=True
                     )
                     .only("id", "amount", "date", "payment_id")
-                    .order_by("-date"),
+                    .order_by("-date", "-amount", "id"),
                     to_attr="paid_records",
                 )
             )
