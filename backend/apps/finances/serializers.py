@@ -227,9 +227,21 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
         )
         resolved_record_type = RECORD_TYPE_INPUTS.get(raw_record_type)
         amount = attrs.get("amount", getattr(self.instance, "amount", None))
+        instance_record_type = (
+            RECORD_TYPE_INPUTS.get(getattr(self.instance, "record_type", None))
+            if self.instance
+            else None
+        )
+        instance_amount = (
+            getattr(self.instance, "amount", None) if self.instance else None
+        )
 
         if resolved_record_type is None and self.instance:
-            resolved_record_type = self.instance.record_type
+            resolved_record_type = instance_record_type
+        if resolved_record_type is None and self.instance:
+            resolved_record_type = FinancialRecord.infer_record_type_from_amount(
+                instance_amount
+            )
         if resolved_record_type is None:
             resolved_record_type = FinancialRecord.infer_record_type_from_amount(amount)
 

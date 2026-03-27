@@ -10,10 +10,21 @@ interface UseRecordAmountEditingArgs {
     recordId: string,
     values: AddFinancialRecordFormValues,
   ) => Promise<void>;
+  isRowAmountLocked?: (row: IncomeExpenseRow) => boolean;
 }
 
-export const useRecordAmountEditing = ({ onUpdateFinancialRecord }: UseRecordAmountEditingArgs) => {
+const normalizeAbsoluteAmount = (value: number) => value.toFixed(2).replace(/\.?0+$/, '');
+
+export const useRecordAmountEditing = ({
+  onUpdateFinancialRecord,
+  isRowAmountLocked,
+}: UseRecordAmountEditingArgs) => {
   const [amountDrafts, setAmountDrafts] = useState<Record<string, AmountDraft>>({});
+  const [statementAmountDraft, setStatementAmountDraft] = useState<AmountDraft>({
+    mode: 'rub',
+    value: '',
+  });
+  const [isApplyingStatementAmount, setIsApplyingStatementAmount] = useState(false);
 
   const getAbsoluteSaldoBase = useCallback((row: IncomeExpenseRow) => {
     const value = Number(row.paymentPaidBalance ?? 0);
@@ -33,6 +44,42 @@ export const useRecordAmountEditing = ({ onUpdateFinancialRecord }: UseRecordAmo
       return percent.toFixed(2).replace(/\.?0+$/, '');
     },
     [getAbsoluteSaldoBase],
+  );
+
+  const getAbsoluteAmountFromDraft = useCallback(
+    (row: IncomeExpenseRow, draft: AmountDraft) => {
+      const parsed = Number(draft.value);
+      if (!Number.isFinite(parsed)) {
+        return null;
+      }
+      if (draft.mode === 'rub') {
+        return Math.abs(parsed);
+      }
+      const base = getAbsoluteSaldoBase(row);
+      if (base <= 0) {
+        return null;
+      }
+      return Math.abs((base * parsed) / 100);
+    },
+    [getAbsoluteSaldoBase],
+  );
+
+  const buildRecordUpdateValues = useCallback(
+    (row: IncomeExpenseRow, absoluteAmount: number): AddFinancialRecordFormValues => {
+      const recordType: AddFinancialRecordFormValues['recordType'] =
+        row.recordAmount >= 0 ? 'income' : 'expense';
+
+      return {
+        paymentId: row.payment.id,
+        recordType,
+        amount: normalizeAbsoluteAmount(absoluteAmount),
+        date: row.recordDate ?? null,
+        description: row.recordDescription ?? '',
+        source: row.recordSource ?? '',
+        note: row.recordNote ?? '',
+      };
+    },
+    [],
   );
 
   const handleRecordAmountChange = useCallback((recordId: string, value: string) => {
@@ -74,7 +121,7 @@ export const useRecordAmountEditing = ({ onUpdateFinancialRecord }: UseRecordAmo
               ...prev,
               [row.recordId]: {
                 mode: 'rub',
-                value: absoluteAmount.toFixed(2).replace(/\.?0+$/, ''),
+                value: normalizeAbsoluteAmount(absoluteAmount),
               },
             };
           }
@@ -94,55 +141,113 @@ export const useRecordAmountEditing = ({ onUpdateFinancialRecord }: UseRecordAmo
       if (!onUpdateFinancialRecord) {
         return;
       }
+      if (isRowAmountLocked?.(row)) {
+        return;
+      }
       const draft = amountDrafts[row.recordId];
       if (!draft) {
         return;
       }
-      const parsed = Number(draft.value);
-      if (!Number.isFinite(parsed)) {
+      const absoluteAmount = getAbsoluteAmountFromDraft(row, draft);
+      if (absoluteAmount === null) {
         return;
       }
-
-      const absoluteAmount =
-        draft.mode === 'percent'
-          ? (() => {
-              const base = getAbsoluteSaldoBase(row);
-              if (base <= 0) {
-                return NaN;
-              }
-              return (base * parsed) / 100;
-            })()
-          : parsed;
-
-      if (!Number.isFinite(absoluteAmount)) {
-        return;
-      }
-      const recordType: AddFinancialRecordFormValues['recordType'] =
-        row.recordAmount >= 0 ? 'income' : 'expense';
-      await onUpdateFinancialRecord(row.recordId, {
-        paymentId: row.payment.id,
-        recordType,
-        amount: Math.abs(absoluteAmount).toString(),
-        date: row.recordDate ?? null,
-        description: row.recordDescription ?? '',
-        source: row.recordSource ?? '',
-        note: row.recordNote ?? '',
-      });
+      await onUpdateFinancialRecord(
+        row.recordId,
+        buildRecordUpdateValues(row, Math.abs(absoluteAmount)),
+      );
       setAmountDrafts((prev) => {
         const next = { ...prev };
         delete next[row.recordId];
         return next;
       });
     },
-    [amountDrafts, getAbsoluteSaldoBase, onUpdateFinancialRecord],
+    [
+      amountDrafts,
+      buildRecordUpdateValues,
+      getAbsoluteAmountFromDraft,
+      isRowAmountLocked,
+      onUpdateFinancialRecord,
+    ],
+  );
+
+  const handleStatementAmountChange = useCallback((value: string) => {
+    setStatementAmountDraft((prev) => ({ ...prev, value }));
+  }, []);
+
+  const toggleStatementAmountMode = useCallback(() => {
+    setStatementAmountDraft((prev) => ({
+      mode: prev.mode === 'rub' ? 'percent' : 'rub',
+      value: prev.value,
+    }));
+  }, []);
+
+  const applyStatementAmountToRows = useCallback(
+    async (rows: IncomeExpenseRow[]) => {
+      if (!onUpdateFinancialRecord || isApplyingStatementAmount) {
+        return;
+      }
+      const candidates = rows.filter((row) => !isRowAmountLocked?.(row));
+      if (!candidates.length) {
+        return;
+      }
+
+      const updates = candidates
+        .map((row) => {
+          const absoluteAmount = getAbsoluteAmountFromDraft(row, statementAmountDraft);
+          if (absoluteAmount === null) {
+            return null;
+          }
+          return {
+            row,
+            values: buildRecordUpdateValues(row, absoluteAmount),
+          };
+        })
+        .filter((item): item is { row: IncomeExpenseRow; values: AddFinancialRecordFormValues } =>
+          Boolean(item),
+        );
+
+      if (!updates.length) {
+        return;
+      }
+
+      setIsApplyingStatementAmount(true);
+      try {
+        for (const update of updates) {
+          await onUpdateFinancialRecord(update.row.recordId, update.values);
+        }
+        setAmountDrafts((prev) => {
+          const next = { ...prev };
+          updates.forEach(({ row }) => {
+            delete next[row.recordId];
+          });
+          return next;
+        });
+      } finally {
+        setIsApplyingStatementAmount(false);
+      }
+    },
+    [
+      buildRecordUpdateValues,
+      getAbsoluteAmountFromDraft,
+      isApplyingStatementAmount,
+      isRowAmountLocked,
+      onUpdateFinancialRecord,
+      statementAmountDraft,
+    ],
   );
 
   return {
     amountDrafts,
+    statementAmountDraft,
+    isApplyingStatementAmount,
     getAbsoluteSaldoBase,
     getPercentFromSaldo,
     handleRecordAmountChange,
     toggleRecordAmountMode,
     handleRecordAmountBlur,
+    handleStatementAmountChange,
+    toggleStatementAmountMode,
+    applyStatementAmountToRows,
   };
 };

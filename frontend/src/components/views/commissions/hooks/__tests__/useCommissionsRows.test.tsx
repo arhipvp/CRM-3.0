@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { useCommissionsRows } from '../useCommissionsRows';
@@ -88,5 +88,65 @@ describe('useCommissionsRows', () => {
     });
     expect(result.current.filteredRows[0].payment.id).toBe('payment-2');
     expect(result.current.filteredRows[0].payment.amount).toBe('8000');
+  });
+
+  it('sorts statement rows by actual record amount and keeps date fallback for equal amounts', () => {
+    const { result } = renderHook(() =>
+      useCommissionsRows({
+        financialRecords: [
+          {
+            id: 'record-1',
+            paymentId: 'payment-1',
+            statementId: 'statement-1',
+            amount: '300',
+            date: '2026-03-02',
+            createdAt: '2026-03-06T10:00:00Z',
+            updatedAt: '2026-03-06T10:00:00Z',
+          },
+          {
+            id: 'record-2',
+            paymentId: 'payment-2',
+            statementId: 'statement-1',
+            amount: '100',
+            date: '2026-03-03',
+            createdAt: '2026-03-06T10:00:00Z',
+            updatedAt: '2026-03-06T10:00:00Z',
+          },
+          {
+            id: 'record-3',
+            paymentId: 'payment-3',
+            statementId: 'statement-1',
+            amount: '300',
+            date: '2026-03-04',
+            createdAt: '2026-03-06T10:00:00Z',
+            updatedAt: '2026-03-06T10:00:00Z',
+          },
+        ],
+        allRecords: [],
+        paymentsById: new Map(),
+        selectedStatementId: 'statement-1',
+        viewMode: 'statements',
+      }),
+    );
+
+    act(() => {
+      result.current.toggleAmountSort();
+    });
+
+    expect(result.current.filteredRows.map((row) => row.recordId)).toEqual([
+      'record-2',
+      'record-3',
+      'record-1',
+    ]);
+
+    act(() => {
+      result.current.toggleAmountSort();
+    });
+
+    expect(result.current.filteredRows.map((row) => row.recordId)).toEqual([
+      'record-3',
+      'record-1',
+      'record-2',
+    ]);
   });
 });

@@ -283,6 +283,29 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(self.fin_record.amount, Decimal("-75.00"))
 
+    def test_update_legacy_expense_with_missing_record_type_keeps_expense_type(self):
+        FinancialRecord.objects.filter(id=self.fin_record.id).update(
+            record_type="Расход",
+            amount=Decimal("-100.00"),
+        )
+        self.fin_record.refresh_from_db()
+
+        self.authenticate(self.seller)
+        response = self.api_client.patch(
+            f"/api/v1/financial_records/{self.fin_record.id}/",
+            {"amount": "75.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["record_type"], "Расход")
+
+        self.fin_record.refresh_from_db()
+        self.assertEqual(
+            self.fin_record.record_type, FinancialRecord.RecordType.EXPENSE
+        )
+        self.assertEqual(self.fin_record.amount, Decimal("-75.00"))
+
     def test_financial_record_list_includes_enriched_payment_fields(self):
         self.authenticate(self.seller)
 

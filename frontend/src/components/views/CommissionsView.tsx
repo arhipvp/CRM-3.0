@@ -142,13 +142,20 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   });
   const {
     amountDrafts,
+    statementAmountDraft,
+    isApplyingStatementAmount,
     getAbsoluteSaldoBase,
     getPercentFromSaldo,
     handleRecordAmountChange,
     toggleRecordAmountMode,
     handleRecordAmountBlur,
+    handleStatementAmountChange,
+    toggleStatementAmountMode,
+    applyStatementAmountToRows,
   } = useRecordAmountEditing({
     onUpdateFinancialRecord,
+    isRowAmountLocked: (row) =>
+      Boolean(row.statementId && statementsById.get(row.statementId)?.paidAt),
   });
   const {
     selectedStatementId,
@@ -304,6 +311,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       policiesById={policiesById}
       statementsById={statementsById}
       amountDrafts={amountDrafts}
+      statementAmountDraft={statementAmountDraft}
+      isApplyingStatementAmount={isApplyingStatementAmount}
       isAllRecordsLoading={isAllRecordsLoading}
       isRecordAmountEditable={Boolean(onUpdateFinancialRecord)}
       canAttachSelectedAction={Boolean(onUpdateStatement)}
@@ -328,6 +337,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       onRecordAmountChange={handleRecordAmountChange}
       onRecordAmountBlur={handleRecordAmountBlur}
       onToggleRecordAmountMode={toggleRecordAmountMode}
+      onStatementAmountChange={handleStatementAmountChange}
+      onToggleStatementAmountMode={toggleStatementAmountMode}
+      onApplyStatementAmount={() => applyStatementAmountToRows(filteredRows)}
     />
   );
 
