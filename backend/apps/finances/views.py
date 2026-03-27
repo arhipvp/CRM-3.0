@@ -454,6 +454,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "Тип полиса",
             "Канал продаж",
             "Платеж, ₽",
+            "Доходы / расходы",
             "Сальдо, ₽",
             "Примечание",
             "Сумма, ₽",
@@ -477,9 +478,10 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         ws.column_dimensions["C"].width = 20
         ws.column_dimensions["D"].width = 20
         ws.column_dimensions["E"].width = 22
-        ws.column_dimensions["F"].width = 22
-        ws.column_dimensions["G"].width = 28
-        ws.column_dimensions["H"].width = 18
+        ws.column_dimensions["F"].width = 28
+        ws.column_dimensions["G"].width = 16
+        ws.column_dimensions["H"].width = 28
+        ws.column_dimensions["I"].width = 16
 
         for record in records:
             payment = payments_by_id.get(record.payment_id)
@@ -527,16 +529,17 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             saldo_value = (
                 sum((pr.amount for pr in paid_records), 0) if paid_records else 0
             )
-            saldo_lines = [format_money(saldo_value)]
+            saldo_cell = format_money(saldo_value)
             if paid_records:
+                operations_lines = []
                 for pr in paid_records:
                     entry_type = "Доход" if pr.amount >= 0 else "Расход"
-                    saldo_lines.append(
+                    operations_lines.append(
                         f"{entry_type} {format_money(abs(pr.amount))} · {format_date(pr.date)}"
                     )
+                operations_cell = "\n".join(operations_lines)
             else:
-                saldo_lines.append("Операций нет")
-            saldo_cell = "\n".join(saldo_lines)
+                operations_cell = "Операций нет"
 
             parts = [
                 (record.note or "").strip(),
@@ -554,8 +557,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 else:
                     comment_cell += f"\nВедомость: {statement.name}"
 
-            amount_sign = "+" if record.amount >= 0 else "-"
-            amount_cell = f"{amount_sign}{format_money(abs(record.amount))}\n{format_date(record.date)}"
+            amount_cell = format_money(abs(record.amount))
 
             client_cell = f"{policy_client_name}\n{deal_title}\nКонтакт по сделке: {deal_client_name}"
 
@@ -566,6 +568,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     policy_type,
                     sales_channel,
                     payment_cell,
+                    operations_cell,
                     saldo_cell,
                     comment_cell,
                     amount_cell,

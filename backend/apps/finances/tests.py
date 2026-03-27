@@ -722,6 +722,12 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
                 created_by=self.seller,
                 drive_folder_id="folder123",
             )
+            self.payment.actual_date = fixed_now.date()
+            self.payment.save(update_fields=["actual_date"])
+            self.income_record.date = fixed_now.date()
+            self.income_record.save(update_fields=["date"])
+            self.expense_record.date = fixed_now.date()
+            self.expense_record.save(update_fields=["date"])
             self.income_record.statement = statement
             self.income_record.save(update_fields=["statement"])
             response = self.api_client.post(
@@ -744,7 +750,38 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         ws = workbook.active
         headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
         self.assertIn("Клиент / сделка", headers)
+        self.assertIn("Доходы / расходы", headers)
         self.assertIn("Сумма, ₽", headers)
+        header_index = {value: index + 1 for index, value in enumerate(headers)}
+
+        self.assertEqual(
+            ws.cell(row=2, column=header_index["Доходы / расходы"]).value,
+            "Доход 150.00 ₽ · 08.02.2026\nРасход 75.00 ₽ · 08.02.2026",
+        )
+        self.assertEqual(
+            ws.cell(row=2, column=header_index["Сальдо, ₽"]).value,
+            "75.00 ₽",
+        )
+        self.assertEqual(
+            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
+            "150.00 ₽",
+        )
+        self.assertNotIn(
+            "Доход",
+            ws.cell(row=2, column=header_index["Сальдо, ₽"]).value,
+        )
+        self.assertNotIn(
+            "08.02.2026",
+            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
+        )
+        self.assertNotIn(
+            "+",
+            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
+        )
+        self.assertNotIn(
+            "-",
+            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
+        )
         workbook.close()
 
 
