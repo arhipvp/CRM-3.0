@@ -4,10 +4,10 @@ from typing import List
 
 from apps.common.drive import (
     DriveError,
+    build_drive_file_tree_map,
     download_drive_file,
     ensure_deal_folder,
     ensure_policy_folder,
-    list_drive_folder_contents,
     move_drive_file_to_folder,
 )
 from apps.common.permissions import EditProtectedMixin
@@ -239,14 +239,12 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
         try:
-            drive_files = list_drive_folder_contents(folder_id)
+            file_map = build_drive_file_tree_map(folder_id)
         except DriveError as exc:
             logger.exception("Cannot list drive files")
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-
-        file_map = {item["id"]: item for item in drive_files}
         seen = set()
         results: List[dict] = []
         company_names = list(

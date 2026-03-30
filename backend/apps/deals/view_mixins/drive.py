@@ -4,6 +4,7 @@ from io import BytesIO
 from apps.common.drive import (
     DriveError,
     DriveFileInfo,
+    build_drive_file_tree_map,
     download_drive_file,
     ensure_deal_folder,
     ensure_trash_folder,
@@ -187,8 +188,7 @@ class DealDriveMixin:
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                drive_files = list_drive_folder_contents(folder_id)
-                drive_file_map = {item["id"]: item for item in drive_files}
+                drive_file_map = build_drive_file_tree_map(folder_id)
                 target_file = drive_file_map.get(file_id)
                 if not target_file or target_file["is_folder"]:
                     return Response(
@@ -228,8 +228,7 @@ class DealDriveMixin:
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                drive_files = list_drive_folder_contents(folder_id)
-                drive_file_map = {item["id"]: item for item in drive_files}
+                drive_file_map = build_drive_file_tree_map(folder_id)
                 missing_file_ids = [
                     file_id
                     for file_id in file_ids
@@ -307,10 +306,9 @@ class DealDriveMixin:
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            drive_files = list_drive_folder_contents(folder_id)
-            drive_file_map: dict[str, DriveFileInfo] = {
-                item["id"]: item for item in drive_files
-            }
+            drive_file_map: dict[str, DriveFileInfo] = build_drive_file_tree_map(
+                folder_id
+            )
             missing_ids = [
                 file_id for file_id in file_ids if file_id not in drive_file_map
             ]

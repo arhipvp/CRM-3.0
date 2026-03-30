@@ -1,3 +1,4 @@
+import zipfile
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
@@ -1193,3 +1194,120 @@ class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.income_record.refresh_from_db()
         self.assertIsNone(self.income_record.statement_id)
+
+
+class StatementDriveDownloadTests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.seller = User.objects.create_user(  # pragma: allowlist secret
+            username="statement-drive-seller",
+            password="pass",  # pragma: allowlist secret
+        )
+        self.statement = Statement.objects.create(
+            name="Drive Statement",
+            statement_type="income",
+            created_by=self.seller,
+            drive_folder_id="statement-folder",
+        )
+        self.authenticate(self.seller)
+
+    def test_downloads_nested_file_from_statement_subfolder(self):
+        file_map = {
+            "nested-file": {
+                "id": "nested-file",
+                "name": "nested.pdf",
+                "mime_type": "application/pdf",
+                "is_folder": False,
+                "parent_id": "subfolder-1",
+            }
+        }
+
+        with (
+            patch(
+                "apps.finances.views.build_drive_file_tree_map",
+                return_value=file_map,
+            ) as tree_mock,
+            patch(
+                "apps.finances.views.download_drive_file",
+                return_value=b"nested-pdf",
+            ) as download_mock,
+        ):
+            response = self.api_client.post(
+                f"/api/v1/finance_statements/{self.statement.id}/drive-files/download/",
+                {"file_ids": ["nested-file"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.content, b"nested-pdf")
+        self.assertIn("nested.pdf", response["Content-Disposition"])
+        tree_mock.assert_called_once_with("statement-folder")
+        download_mock.assert_called_once_with("nested-file")
+
+    def test_downloads_zip_with_files_from_nested_statement_folders(self):
+        file_map = {
+            "nested-file": {
+                "id": "nested-file",
+                "name": "nested.pdf",
+                "mime_type": "application/pdf",
+                "is_folder": False,
+                "parent_id": "subfolder-1",
+            },
+            "root-file": {
+                "id": "root-file",
+                "name": "root.pdf",
+                "mime_type": "application/pdf",
+                "is_folder": False,
+                "parent_id": "statement-folder",
+            },
+        }
+
+        with (
+            patch(
+                "apps.finances.views.build_drive_file_tree_map",
+                return_value=file_map,
+            ),
+            patch(
+                "apps.finances.views.download_drive_file",
+                side_effect=[b"nested-pdf", b"root-pdf"],
+            ),
+        ):
+            response = self.api_client.post(
+                f"/api/v1/finance_statements/{self.statement.id}/drive-files/download/",
+                {"file_ids": ["nested-file", "root-file"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        archive = zipfile.ZipFile(BytesIO(response.content))
+        self.assertEqual(sorted(archive.namelist()), ["nested.pdf", "root.pdf"])
+        self.assertEqual(archive.read("nested.pdf"), b"nested-pdf")
+        self.assertEqual(archive.read("root.pdf"), b"root-pdf")
+
+    def test_rejects_folder_selection_found_in_nested_statement_tree(self):
+        file_map = {
+            "nested-folder": {
+                "id": "nested-folder",
+                "name": "folder",
+                "mime_type": "application/vnd.google-apps.folder",
+                "is_folder": True,
+                "parent_id": "statement-folder",
+            }
+        }
+
+        with patch(
+            "apps.finances.views.build_drive_file_tree_map",
+            return_value=file_map,
+        ) as tree_mock:
+            response = self.api_client.post(
+                f"/api/v1/finance_statements/{self.statement.id}/drive-files/download/",
+                {"file_ids": ["nested-folder"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"],
+            "Скачивание папок не поддерживается. Выберите только файлы.",
+        )
+        tree_mock.assert_called_once_with("statement-folder")

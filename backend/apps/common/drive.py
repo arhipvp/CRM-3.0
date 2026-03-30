@@ -810,6 +810,30 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
     return results
 
 
+def build_drive_file_tree_map(root_folder_id: str) -> dict[str, DriveFileInfo]:
+    """Return a map of all files and folders in a Drive folder tree by ID."""
+
+    if not root_folder_id:
+        raise DriveOperationError("Root folder ID must be provided.")
+
+    pending_folder_ids = [root_folder_id]
+    visited_folder_ids: set[str] = set()
+    items_by_id: dict[str, DriveFileInfo] = {}
+
+    while pending_folder_ids:
+        current_folder_id = pending_folder_ids.pop()
+        if current_folder_id in visited_folder_ids:
+            continue
+        visited_folder_ids.add(current_folder_id)
+
+        for item in list_drive_folder_contents(current_folder_id):
+            items_by_id[item["id"]] = item
+            if item["is_folder"] and item["id"] not in visited_folder_ids:
+                pending_folder_ids.append(item["id"])
+
+    return items_by_id
+
+
 def download_drive_file(file_id: str) -> bytes:
     """Скачать файл из Google Drive и вернуть байты."""
 

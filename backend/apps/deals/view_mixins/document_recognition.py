@@ -6,9 +6,9 @@ from typing import Any
 
 from apps.common.drive import (
     DriveError,
+    build_drive_file_tree_map,
     download_drive_file,
     ensure_deal_folder,
-    list_drive_folder_contents,
 )
 from apps.notes.models import Note
 from apps.users.models import AuditLog
@@ -77,14 +77,12 @@ class DealDocumentRecognitionMixin:
             )
 
         try:
-            drive_files = list_drive_folder_contents(folder_id)
+            file_map = build_drive_file_tree_map(folder_id)
         except DriveError as exc:
             return Response(
                 {"detail": str(exc)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-
-        file_map = {item["id"]: item for item in drive_files}
         seen_ids: set[str] = set()
         results: list[dict[str, Any]] = []
 

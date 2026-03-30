@@ -14,6 +14,10 @@ from rest_framework import status
 
 @contextmanager
 def _time_limit(seconds: int):
+    if not hasattr(signal, "SIGALRM"):
+        yield
+        return
+
     def _handle_timeout(signum, frame):  # pragma: no cover - signal handler
         raise TimeoutError(f"Тест превысил лимит {seconds} секунд")
 
@@ -55,8 +59,8 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
             with (
                 patch(
-                    "apps.deals.view_mixins.document_recognition.list_drive_folder_contents",
-                    return_value=drive_files,
+                    "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                    return_value={item["id"]: item for item in drive_files},
                 ),
                 patch(
                     "apps.deals.view_mixins.document_recognition.download_drive_file",
@@ -115,8 +119,8 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.deals.view_mixins.document_recognition.list_drive_folder_contents",
-                return_value=drive_files,
+                "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                return_value={item["id"]: item for item in drive_files},
             ),
             patch(
                 "apps.deals.view_mixins.document_recognition.download_drive_file",
@@ -175,8 +179,8 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.deals.view_mixins.document_recognition.list_drive_folder_contents",
-                return_value=drive_files,
+                "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                return_value={item["id"]: item for item in drive_files},
             ),
             patch(
                 "apps.deals.view_mixins.document_recognition.download_drive_file",
@@ -234,8 +238,8 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         self.authenticate(self.seller)
         Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
         with patch(
-            "apps.deals.view_mixins.document_recognition.list_drive_folder_contents",
-            return_value=[],
+            "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+            return_value={},
         ):
             response = self.api_client.post(
                 f"/api/v1/deals/{self.deal.id}/recognize-documents/",
@@ -249,6 +253,51 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         self.assertIn(
             "не найден", response.data["results"][0]["error"]["message"].lower()
         )
+
+    def test_recognize_documents_uses_nested_file_from_subfolder(self):
+        self.authenticate(self.seller)
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+        file_map = {
+            "nested-file": {
+                "id": "nested-file",
+                "name": "passport.jpg",
+                "is_folder": False,
+                "parent_id": "folder-1",
+            }
+        }
+
+        with (
+            patch(
+                "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                return_value=file_map,
+            ) as tree_mock,
+            patch(
+                "apps.deals.view_mixins.document_recognition.download_drive_file",
+                return_value=b"nested-image",
+            ),
+            patch(
+                "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
+            ) as recognize_mock,
+        ):
+            recognize_mock.return_value.document_type = "passport"
+            recognize_mock.return_value.normalized_type = "passport"
+            recognize_mock.return_value.confidence = 0.88
+            recognize_mock.return_value.warnings = []
+            recognize_mock.return_value.accepted_fields = ["number"]
+            recognize_mock.return_value.rejected_fields = {}
+            recognize_mock.return_value.data = {"number": "123"}
+            recognize_mock.return_value.extracted_text = "Номер 123"
+            recognize_mock.return_value.transcript = "nested"
+
+            response = self.api_client.post(
+                f"/api/v1/deals/{self.deal.id}/recognize-documents/",
+                {"file_ids": ["nested-file"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"][0]["status"], "parsed")
+        tree_mock.assert_called_once_with("deal-folder")
 
     def test_other_user_cannot_access_recognition(self):
         self.authenticate(self.other_user)
