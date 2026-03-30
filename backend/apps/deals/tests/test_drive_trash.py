@@ -12,9 +12,11 @@ from rest_framework import status
 class DealDriveTrashTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
-        self.seller = User.objects.create_user(username="seller-trash", password="pass")
+        self.seller = User.objects.create_user(  # pragma: allowlist secret
+            username="seller-trash", password="pass"  # pragma: allowlist secret
+        )
         self.other_user = User.objects.create_user(
-            username="other-trash", password="pass"
+            username="other-trash", password="pass"  # pragma: allowlist secret
         )
         self.client_record = Client.objects.create(name="Client")
         self.deal = Deal.objects.create(
