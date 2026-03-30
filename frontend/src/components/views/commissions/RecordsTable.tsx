@@ -58,6 +58,7 @@ interface RecordsTableProps {
   statementAmountDraft: StatementAmountDraft;
   isApplyingStatementAmount: boolean;
   isAllRecordsLoading: boolean;
+  isStatementRecordsLoading: boolean;
   isRecordAmountEditable: boolean;
   canAttachSelectedAction: boolean;
   canRemoveSelectedAction: boolean;
@@ -103,6 +104,7 @@ export const RecordsTable = ({
   statementAmountDraft,
   isApplyingStatementAmount,
   isAllRecordsLoading,
+  isStatementRecordsLoading,
   isRecordAmountEditable,
   canAttachSelectedAction,
   canRemoveSelectedAction,
@@ -643,6 +645,8 @@ export const RecordsTable = ({
               <EmptyTableState colSpan={9}>
                 {viewMode === 'all' && isAllRecordsLoading
                   ? 'Загрузка записей...'
+                  : viewMode === 'statements' && isStatementRecordsLoading
+                    ? 'Загрузка записей ведомости...'
                   : viewMode === 'statements' && selectedStatement
                     ? 'Записей в ведомости пока нет'
                     : 'Записей пока нет'}

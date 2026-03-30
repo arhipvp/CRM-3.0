@@ -9,6 +9,7 @@ vi.mock('../../../api', () => ({
 }));
 
 describe('useAppBootstrapNavigation', () => {
+  const ensureCommissionsDataLoaded = vi.fn().mockResolvedValue(undefined);
   const ensureFinanceDataLoaded = vi.fn().mockResolvedValue(undefined);
   const ensureTasksLoaded = vi.fn().mockResolvedValue(undefined);
   const navigate = vi.fn();
@@ -23,6 +24,7 @@ describe('useAppBootstrapNavigation', () => {
   it('does not preload full finance snapshot on deals route', async () => {
     renderHook(() =>
       useAppBootstrapNavigation({
+        ensureCommissionsDataLoaded,
         ensureFinanceDataLoaded,
         ensureTasksLoaded,
         isAuthenticated: true,
@@ -47,6 +49,7 @@ describe('useAppBootstrapNavigation', () => {
   it('still preloads finance snapshot on policies route', async () => {
     renderHook(() =>
       useAppBootstrapNavigation({
+        ensureCommissionsDataLoaded,
         ensureFinanceDataLoaded,
         ensureTasksLoaded,
         isAuthenticated: true,
@@ -65,6 +68,33 @@ describe('useAppBootstrapNavigation', () => {
 
     await waitFor(() => {
       expect(ensureFinanceDataLoaded).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('loads only commissions snapshot on commissions route', async () => {
+    renderHook(() =>
+      useAppBootstrapNavigation({
+        ensureCommissionsDataLoaded,
+        ensureFinanceDataLoaded,
+        ensureTasksLoaded,
+        isAuthenticated: true,
+        isCommissionsRoute: true,
+        isDealsRoute: false,
+        isLoginRoute: false,
+        isPoliciesRoute: false,
+        isTasksRoute: false,
+        locationSearch: '',
+        navigate,
+        refreshPolicies,
+        selectDealById,
+        setError,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(ensureCommissionsDataLoaded).toHaveBeenCalledTimes(1);
+      expect(ensureFinanceDataLoaded).not.toHaveBeenCalled();
+      expect(refreshPolicies).toHaveBeenCalledTimes(1);
     });
   });
 });

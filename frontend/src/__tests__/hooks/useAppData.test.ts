@@ -143,14 +143,14 @@ describe('useAppData loading strategy', () => {
     });
   });
 
-  it('loads commissions snapshot without waiting for payments', async () => {
+  it('loads commissions snapshot using only statements data', async () => {
     const { result } = renderHook(() => useAppData());
 
     await act(async () => {
       await result.current.ensureCommissionsDataLoaded();
     });
 
-    expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinancialRecords).not.toHaveBeenCalled();
     expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
     expect(mockedFetchPaymentsWithPagination).not.toHaveBeenCalled();
     expect(result.current.hasCommissionsSnapshotLoaded).toBe(true);
@@ -164,11 +164,8 @@ describe('useAppData loading strategy', () => {
       results: never[];
     }>();
     const recordsDeferred = deferred<never[]>();
-    const statementsDeferred = deferred<never[]>();
-
     mockedFetchPaymentsWithPagination.mockReturnValueOnce(paymentsDeferred.promise);
     mockedFetchFinancialRecords.mockReturnValueOnce(recordsDeferred.promise);
-    mockedFetchFinanceStatements.mockReturnValueOnce(statementsDeferred.promise);
 
     const { result } = renderHook(() => useAppData());
 
@@ -181,11 +178,10 @@ describe('useAppData loading strategy', () => {
     });
 
     expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
-    expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinanceStatements).not.toHaveBeenCalled();
 
     await act(async () => {
       recordsDeferred.resolve([]);
-      statementsDeferred.resolve([]);
       await Promise.resolve();
     });
 
@@ -264,15 +260,6 @@ describe('useAppData loading strategy', () => {
   });
 
   it('retries commissions snapshot load after a stale response and marks it as loaded', async () => {
-    const recordsDeferred = deferred<
-      Array<{
-        id: string;
-        paymentId: string;
-        amount: string;
-        createdAt: string;
-        updatedAt: string;
-      }>
-    >();
     const statementsDeferred = deferred<
       Array<{
         id: string;
@@ -284,17 +271,7 @@ describe('useAppData loading strategy', () => {
       }>
     >();
 
-    mockedFetchFinancialRecords.mockReturnValueOnce(recordsDeferred.promise as never);
     mockedFetchFinanceStatements.mockReturnValueOnce(statementsDeferred.promise as never);
-    mockedFetchFinancialRecords.mockResolvedValueOnce([
-      {
-        id: 'server-record',
-        paymentId: 'payment-1',
-        amount: '250',
-        createdAt: '2026-01-03T00:00:00Z',
-        updatedAt: '2026-01-03T00:00:00Z',
-      } as never,
-    ]);
     mockedFetchFinanceStatements.mockResolvedValueOnce([
       {
         id: 'server-statement',
@@ -315,11 +292,12 @@ describe('useAppData loading strategy', () => {
 
     await act(async () => {
       result.current.updateAppData(() => ({
-        financialRecords: [
+        statements: [
           {
-            id: 'local-record',
-            paymentId: 'payment-local',
-            amount: '777',
+            id: 'local-statement',
+            name: 'Локальная ведомость',
+            statementType: 'income',
+            status: 'draft',
             createdAt: '2026-01-01T00:00:00Z',
             updatedAt: '2026-01-01T00:00:00Z',
           } as never,
@@ -328,15 +306,6 @@ describe('useAppData loading strategy', () => {
     });
 
     await act(async () => {
-      recordsDeferred.resolve([
-        {
-          id: 'stale-record',
-          paymentId: 'payment-stale',
-          amount: '100',
-          createdAt: '2026-01-02T00:00:00Z',
-          updatedAt: '2026-01-02T00:00:00Z',
-        },
-      ]);
       statementsDeferred.resolve([
         {
           id: 'stale-statement',
@@ -351,7 +320,6 @@ describe('useAppData loading strategy', () => {
     });
 
     await waitFor(() => {
-      expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(2);
       expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(2);
     });
 
@@ -360,15 +328,12 @@ describe('useAppData loading strategy', () => {
     });
 
     expect(result.current.hasCommissionsSnapshotLoaded).toBe(true);
-    expect(result.current.dataState.financialRecords.map((record) => record.id)).toEqual([
-      'server-record',
-    ]);
     expect(result.current.dataState.statements.map((statement) => statement.id)).toEqual([
       'server-statement',
     ]);
   });
 
-  it('preserves finance snapshot when startup load finishes after commissions finance load', async () => {
+  it('preserves finance snapshot when startup load finishes after separate commissions load', async () => {
     const dealsDeferred = deferred<{
       count: number;
       next: string | null;
@@ -427,10 +392,16 @@ describe('useAppData loading strategy', () => {
     const { result } = renderHook(() => useAppData());
 
     let loadPromise: Promise<void> | undefined;
+    let commissionsPromise: Promise<void> | undefined;
     let financePromise: Promise<void> | undefined;
 
     await act(async () => {
       loadPromise = result.current.loadData();
+    });
+
+    await act(async () => {
+      commissionsPromise = result.current.ensureCommissionsDataLoaded();
+      await commissionsPromise;
     });
 
     await act(async () => {

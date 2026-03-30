@@ -141,6 +141,7 @@ export interface AppRouteFilterState {
 }
 
 export interface AppRouteLoadingState {
+  onRefreshCommissionsSnapshot?: () => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   dealsTotalCount: number;

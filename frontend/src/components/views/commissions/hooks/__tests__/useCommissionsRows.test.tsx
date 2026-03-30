@@ -7,7 +7,7 @@ describe('useCommissionsRows', () => {
   it('builds all-record rows from enriched financial record payload even when payments are not loaded', () => {
     const { result } = renderHook(() =>
       useCommissionsRows({
-        financialRecords: [],
+        statementRecords: [],
         allRecords: [
           {
             id: 'record-1',
@@ -57,7 +57,7 @@ describe('useCommissionsRows', () => {
   it('builds statement rows from financialRecords even when payments are not loaded', () => {
     const { result } = renderHook(() =>
       useCommissionsRows({
-        financialRecords: [
+        statementRecords: [
           {
             id: 'record-2',
             paymentId: 'payment-2',
@@ -93,7 +93,7 @@ describe('useCommissionsRows', () => {
   it('sorts statement rows by actual record amount and keeps date fallback for equal amounts', () => {
     const { result } = renderHook(() =>
       useCommissionsRows({
-        financialRecords: [
+        statementRecords: [
           {
             id: 'record-1',
             paymentId: 'payment-1',

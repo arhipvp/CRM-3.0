@@ -33,6 +33,21 @@ describe('useAllRecordsController', () => {
     mockedFetchFinancialRecordsWithPagination.mockReset();
   });
 
+  it('does not load records until all-records mode is active', async () => {
+    renderHook(() =>
+      useAllRecordsController({
+        viewMode: 'statements',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
+  });
+
   it('keeps empty search result when an older request resolves later', async () => {
     mockedFetchFinancialRecordsWithPagination.mockResolvedValueOnce({
       count: 0,

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { FinancialRecord, Payment, Policy, Statement } from '../../types';
+import type { Payment, Policy, Statement } from '../../types';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
@@ -19,16 +19,17 @@ import { useCommissionsRows } from './commissions/hooks/useCommissionsRows';
 import { useCommissionsViewModel } from './commissions/hooks/useCommissionsViewModel';
 import { useRecordAmountEditing } from './commissions/hooks/useRecordAmountEditing';
 import { useStatementDriveManager } from './commissions/hooks/useStatementDriveManager';
+import { useStatementRecordsController } from './commissions/hooks/useStatementRecordsController';
 import { useStatementRecordsSelection } from './commissions/hooks/useStatementRecordsSelection';
 import { useStatementsManager } from './commissions/hooks/useStatementsManager';
 
 interface CommissionsViewProps {
   payments: Payment[];
-  financialRecords?: FinancialRecord[];
   policies: Policy[];
   statements: Statement[];
   isLoading?: boolean;
   hasCommissionsSnapshotLoaded?: boolean;
+  onRefreshStatements?: () => Promise<void>;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
@@ -78,11 +79,11 @@ const normalizeText = (value?: string | null) => {
 
 export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
-  financialRecords = [],
   policies,
   statements,
   isLoading = false,
   hasCommissionsSnapshotLoaded = false,
+  onRefreshStatements,
   onDealSelect,
   onDealPreview,
   onUpdateFinancialRecord,
@@ -94,7 +95,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
 
-  const [viewMode, setViewMode] = useState<'all' | 'statements'>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'statements'>('statements');
   const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
   const [showPaidStatements, setShowPaidStatements] = useState(false);
 
@@ -141,23 +142,6 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     statementsById,
   });
   const {
-    amountDrafts,
-    statementAmountDraft,
-    isApplyingStatementAmount,
-    getAbsoluteSaldoBase,
-    getPercentFromSaldo,
-    handleRecordAmountChange,
-    toggleRecordAmountMode,
-    handleRecordAmountBlur,
-    handleStatementAmountChange,
-    toggleStatementAmountMode,
-    applyStatementAmountToRows,
-  } = useRecordAmountEditing({
-    onUpdateFinancialRecord,
-    isRowAmountLocked: (row) =>
-      Boolean(row.statementId && statementsById.get(row.statementId)?.paidAt),
-  });
-  const {
     selectedStatementId,
     setSelectedStatementId,
     selectedStatement,
@@ -173,9 +157,41 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     viewMode,
     targetStatementId,
   });
+  const {
+    statementRecords,
+    isStatementRecordsLoading,
+    statementRecordsError,
+    loadStatementRecords,
+  } = useStatementRecordsController({
+    selectedStatementId,
+    viewMode,
+  });
+  const {
+    amountDrafts,
+    statementAmountDraft,
+    isApplyingStatementAmount,
+    getAbsoluteSaldoBase,
+    getPercentFromSaldo,
+    handleRecordAmountChange,
+    toggleRecordAmountMode,
+    handleRecordAmountBlur,
+    handleStatementAmountChange,
+    toggleStatementAmountMode,
+    applyStatementAmountToRows,
+  } = useRecordAmountEditing({
+    onUpdateFinancialRecord: async (recordId, values) => {
+      await onUpdateFinancialRecord?.(recordId, values);
+      await onRefreshStatements?.();
+      if (viewMode === 'statements') {
+        await loadStatementRecords();
+      }
+    },
+    isRowAmountLocked: (row) =>
+      Boolean(row.statementId && statementsById.get(row.statementId)?.paidAt),
+  });
   const { filteredRows, toggleAmountSort, getAmountSortIndicator, getAmountSortLabel } =
     useCommissionsRows({
-      financialRecords,
+      statementRecords,
       allRecords,
       paymentsById,
       selectedStatementId,
@@ -250,11 +266,19 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     isAttachStatementPaid,
     filteredRows,
     viewMode,
-    onUpdateStatement,
-    onRemoveStatementRecords,
+    onUpdateStatement: async (statementId, values) => {
+      const updated = await onUpdateStatement?.(statementId, values);
+      await onRefreshStatements?.();
+      return updated as Statement;
+    },
+    onRemoveStatementRecords: async (statementId, recordIds) => {
+      await onRemoveStatementRecords?.(statementId, recordIds);
+      await onRefreshStatements?.();
+    },
     onRefreshAllRecords: async () => {
       await loadAllRecords('reset');
     },
+    onRefreshStatementRecords: loadStatementRecords,
   });
 
   useEffect(() => {
@@ -283,9 +307,23 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   } = useStatementsManager({
     selectedStatementId,
     selectedStatement,
-    onCreateStatement,
-    onUpdateStatement,
-    onDeleteStatement,
+    onCreateStatement: async (values) => {
+      const created = await onCreateStatement?.(values);
+      await onRefreshStatements?.();
+      return created as Statement;
+    },
+    onUpdateStatement: async (statementId, values) => {
+      const updated = await onUpdateStatement?.(statementId, values);
+      await onRefreshStatements?.();
+      if (viewMode === 'statements') {
+        await loadStatementRecords();
+      }
+      return updated as Statement;
+    },
+    onDeleteStatement: async (statementId) => {
+      await onDeleteStatement?.(statementId);
+      await onRefreshStatements?.();
+    },
     confirm,
     resetSelection,
     setSelectedStatementId,
@@ -314,6 +352,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       statementAmountDraft={statementAmountDraft}
       isApplyingStatementAmount={isApplyingStatementAmount}
       isAllRecordsLoading={isAllRecordsLoading}
+      isStatementRecordsLoading={isStatementRecordsLoading}
       isRecordAmountEditable={Boolean(onUpdateFinancialRecord)}
       canAttachSelectedAction={Boolean(onUpdateStatement)}
       canRemoveSelectedAction={Boolean(onRemoveStatementRecords)}
@@ -351,7 +390,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     ? statements
     : statements.filter((statement) => !statement.paidAt);
   const hasAnyFinanceData =
-    payments.length > 0 || financialRecords.length > 0 || statements.length > 0;
+    statements.length > 0;
   const shouldShowStatementsPendingState =
     viewMode === 'statements' && !hasCommissionsSnapshotLoaded && (isLoading || hasAnyFinanceData);
 
@@ -675,6 +714,22 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       className="outline-none"
                       hidden={statementTab !== 'records'}
                     >
+                      {statementRecordsError && (
+                        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <span>{statementRecordsError}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void loadStatementRecords();
+                              }}
+                              className={BTN_SM_SECONDARY}
+                            >
+                              Повторить
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       {recordsTable}
                     </div>
                     <div

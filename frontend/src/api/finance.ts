@@ -108,6 +108,18 @@ export async function fetchFinancialRecords(): Promise<FinancialRecord[]> {
   return fetchAllPages('/financial_records/', mapFinancialRecord);
 }
 
+export async function fetchStatementFinancialRecords(
+  statementId: string,
+  options?: RequestInit,
+): Promise<FinancialRecord[]> {
+  return fetchAllPages(
+    '/financial_records/',
+    mapFinancialRecord,
+    { statement: statementId },
+    options,
+  );
+}
+
 export async function fetchFinancialRecordsWithPagination(
   filters?: FilterParams,
   options?: RequestInit,

@@ -4,6 +4,7 @@ import { consumePostLoginRedirect, getPostLoginRedirect } from '../../api';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 interface UseAppBootstrapNavigationArgs {
+  ensureCommissionsDataLoaded: (options?: { force?: boolean }) => Promise<void>;
   ensureFinanceDataLoaded: (options?: { force?: boolean }) => Promise<void>;
   ensureTasksLoaded: (options?: { force?: boolean }) => Promise<void>;
   isAuthenticated: boolean;
@@ -20,6 +21,7 @@ interface UseAppBootstrapNavigationArgs {
 }
 
 export const useAppBootstrapNavigation = ({
+  ensureCommissionsDataLoaded,
   ensureFinanceDataLoaded,
   ensureTasksLoaded,
   isAuthenticated,
@@ -71,8 +73,8 @@ export const useAppBootstrapNavigation = ({
       return;
     }
     if (isCommissionsRoute) {
-      ensureFinanceDataLoaded().catch((err) => {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке финансовых данных'));
+      ensureCommissionsDataLoaded().catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке данных ведомостей'));
       });
       refreshPolicies().catch((err) => {
         setError(formatErrorMessage(err, 'Ошибка при загрузке данных для раздела комиссий'));
@@ -85,6 +87,7 @@ export const useAppBootstrapNavigation = ({
       });
     }
   }, [
+    ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     isAuthenticated,
     isCommissionsRoute,

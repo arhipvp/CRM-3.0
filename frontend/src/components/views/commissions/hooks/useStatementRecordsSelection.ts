@@ -17,6 +17,7 @@ interface UseStatementRecordsSelectionArgs {
   ) => Promise<Statement>;
   onRemoveStatementRecords?: (statementId: string, recordIds: string[]) => Promise<void>;
   onRefreshAllRecords: () => Promise<void>;
+  onRefreshStatementRecords?: () => Promise<void>;
 }
 
 export const useStatementRecordsSelection = ({
@@ -28,6 +29,7 @@ export const useStatementRecordsSelection = ({
   onUpdateStatement,
   onRemoveStatementRecords,
   onRefreshAllRecords,
+  onRefreshStatementRecords,
 }: UseStatementRecordsSelectionArgs) => {
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
@@ -84,8 +86,9 @@ export const useStatementRecordsSelection = ({
       return;
     }
     await onRemoveStatementRecords(selectedStatement.id, selectedRecordIds);
+    await onRefreshStatementRecords?.();
     setSelectedRecordIds([]);
-  }, [onRemoveStatementRecords, selectedRecordIds, selectedStatement]);
+  }, [onRefreshStatementRecords, onRemoveStatementRecords, selectedRecordIds, selectedStatement]);
 
   const selectableRecordIds = useMemo(() => {
     if (!attachStatement || isAttachStatementPaid) {

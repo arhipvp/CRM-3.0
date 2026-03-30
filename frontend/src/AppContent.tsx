@@ -149,6 +149,7 @@ const AppContent: React.FC = () => {
   const {
     dataState,
     loadData,
+    ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureTasksLoaded,
     refreshDeals,
@@ -282,6 +283,7 @@ const AppContent: React.FC = () => {
     filters: dealFilters,
   } = useDealFilters();
   const { deepLinkedDealId, pendingPostLoginRedirect } = useAppBootstrapNavigation({
+    ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureTasksLoaded,
     isAuthenticated,
@@ -814,6 +816,9 @@ const AppContent: React.FC = () => {
 
   const routeLoading = useMemo<AppRouteLoadingState>(
     () => ({
+      onRefreshCommissionsSnapshot: async () => {
+        await ensureCommissionsDataLoaded({ force: true });
+      },
       onLoadMoreDeals: loadMoreDeals,
       dealsHasMore,
       dealsTotalCount,
@@ -834,6 +839,7 @@ const AppContent: React.FC = () => {
     [
       dealsHasMore,
       dealsTotalCount,
+      ensureCommissionsDataLoaded,
       hasCommissionsSnapshotLoaded,
       isCommissionsDataLoading,
       hasFinanceSnapshotLoaded,

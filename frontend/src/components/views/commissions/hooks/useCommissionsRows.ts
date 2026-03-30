@@ -4,7 +4,7 @@ import type { FinancialRecord, Payment } from '../../../../types';
 import type { IncomeExpenseRow } from '../RecordsTable';
 
 interface UseCommissionsRowsArgs {
-  financialRecords: FinancialRecord[];
+  statementRecords: FinancialRecord[];
   allRecords: FinancialRecord[];
   paymentsById: Map<string, Payment>;
   selectedStatementId: string | null;
@@ -65,7 +65,7 @@ const buildAllModeRow = (record: FinancialRecord, payment: Payment): IncomeExpen
 };
 
 export const useCommissionsRows = ({
-  financialRecords,
+  statementRecords,
   allRecords,
   paymentsById,
   selectedStatementId,
@@ -74,14 +74,14 @@ export const useCommissionsRows = ({
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
 
   const statementRows = useMemo<IncomeExpenseRow[]>(() => {
-    return financialRecords
+    return statementRecords
       .filter((record) => Boolean(record.statementId))
       .map((record) => {
         const payment = paymentsById.get(record.paymentId) ?? buildPaymentFallback(record);
         return buildAllModeRow(record, payment);
       })
       .filter((row) => Number.isFinite(row.recordAmount) && row.recordAmount !== 0);
-  }, [financialRecords, paymentsById]);
+  }, [paymentsById, statementRecords]);
 
   const allRows = useMemo<IncomeExpenseRow[]>(() => {
     const result: IncomeExpenseRow[] = [];
