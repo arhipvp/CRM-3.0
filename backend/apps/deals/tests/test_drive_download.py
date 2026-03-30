@@ -13,7 +13,8 @@ class DealDriveDownloadTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
         self.seller = User.objects.create_user(  # pragma: allowlist secret
-            username="seller-drive-download", password="pass"  # pragma: allowlist secret
+            username="seller-drive-download",
+            password="pass",  # pragma: allowlist secret
         )
         self.client_record = Client.objects.create(name="Client")
         self.deal = Deal.objects.create(
