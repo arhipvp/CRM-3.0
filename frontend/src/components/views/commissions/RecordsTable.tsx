@@ -12,6 +12,7 @@ import { PolicyNumberButton } from '../../policies/PolicyNumberButton';
 export type AllRecordsSortKey = 'none' | 'payment' | 'saldo' | 'comment' | 'amount';
 export type AmountDraft = { mode: 'rub' | 'percent'; value: string };
 export type StatementAmountDraft = AmountDraft;
+export type IncomeExpenseKind = 'income' | 'expense';
 const SORT_LABEL_CLASS = 'text-[11px] font-semibold uppercase tracking-wide text-slate-900';
 const SORT_BUTTON_BASE_CLASS =
   'flex w-full items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
@@ -21,6 +22,7 @@ export type IncomeExpenseRow = {
   payment: Payment;
   recordId: string;
   statementId?: string | null;
+  recordKind: IncomeExpenseKind;
   recordAmount: number;
   paymentPaidBalance?: number;
   paymentPaidEntries?: Array<{ amount: string; date: string }>;
@@ -430,7 +432,7 @@ export const RecordsTable = ({
               const dealId = row.dealId ?? payment.dealId;
               const isPaymentPaid = Boolean(row.paymentActualDate ?? payment.actualDate);
               const recordAmount = row.recordAmount;
-              const isIncome = recordAmount > 0;
+              const isIncome = row.recordKind === 'income';
               const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
               const recordDateLabel = formatDateRu(row.recordDate);
               const paymentBalance = row.paymentPaidBalance;

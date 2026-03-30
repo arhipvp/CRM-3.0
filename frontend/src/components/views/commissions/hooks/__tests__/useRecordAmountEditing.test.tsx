@@ -19,6 +19,8 @@ const buildRow = (
   payment: overrides.payment ?? buildPayment(`payment-${overrides.recordId}`),
   recordId: overrides.recordId,
   statementId: overrides.statementId ?? 'statement-1',
+  recordKind:
+    overrides.recordKind ?? (overrides.recordAmount < 0 ? 'expense' : 'income'),
   recordAmount: overrides.recordAmount,
   paymentPaidBalance: overrides.paymentPaidBalance ?? 1000,
   paymentPaidEntries: overrides.paymentPaidEntries ?? [],
@@ -134,6 +136,33 @@ describe('useRecordAmountEditing', () => {
       2,
       'record-2',
       expect.objectContaining({ amount: '250' }),
+    );
+  });
+
+  it('preserves expense type for zero-amount expense rows during update', async () => {
+    const onUpdateFinancialRecord = vi.fn().mockResolvedValue(undefined);
+    const row = buildRow({
+      recordId: 'record-zero-expense',
+      recordAmount: 0,
+      recordKind: 'expense',
+    });
+    const { result } = renderHook(() =>
+      useRecordAmountEditing({
+        onUpdateFinancialRecord,
+      }),
+    );
+
+    act(() => {
+      result.current.handleRecordAmountChange(row.recordId, '25');
+    });
+
+    await act(async () => {
+      await result.current.handleRecordAmountBlur(row);
+    });
+
+    expect(onUpdateFinancialRecord).toHaveBeenCalledWith(
+      'record-zero-expense',
+      expect.objectContaining({ amount: '25', recordType: 'expense' }),
     );
   });
 });

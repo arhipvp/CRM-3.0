@@ -42,7 +42,10 @@ export const useStatementRecordsSelection = ({
       if (row.statementId && row.statementId !== attachStatement.id) {
         return false;
       }
-      const isIncome = row.recordAmount > 0;
+      if (row.recordAmount === 0) {
+        return false;
+      }
+      const isIncome = row.recordKind === 'income';
       if (attachStatement.statementType === 'income' && !isIncome) {
         return false;
       }

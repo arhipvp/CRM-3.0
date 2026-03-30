@@ -67,7 +67,7 @@ export const useRecordAmountEditing = ({
   const buildRecordUpdateValues = useCallback(
     (row: IncomeExpenseRow, absoluteAmount: number): AddFinancialRecordFormValues => {
       const recordType: AddFinancialRecordFormValues['recordType'] =
-        row.recordAmount >= 0 ? 'income' : 'expense';
+        row.recordKind === 'income' ? 'income' : 'expense';
 
       return {
         paymentId: row.payment.id,

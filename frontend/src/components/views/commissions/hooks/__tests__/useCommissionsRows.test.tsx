@@ -39,6 +39,7 @@ describe('useCommissionsRows', () => {
     expect(result.current.filteredRows).toHaveLength(1);
     expect(result.current.filteredRows[0]).toMatchObject({
       recordId: 'record-1',
+      recordKind: 'income',
       dealId: 'deal-1',
       dealTitle: 'Сделка №1',
       dealClientName: 'Мария',
@@ -82,6 +83,7 @@ describe('useCommissionsRows', () => {
     expect(result.current.filteredRows[0]).toMatchObject({
       recordId: 'record-2',
       statementId: 'statement-1',
+      recordKind: 'expense',
       dealTitle: 'Сделка №2',
       dealClientName: 'Иван',
       recordAmount: -1200,
@@ -148,5 +150,61 @@ describe('useCommissionsRows', () => {
       'record-1',
       'record-2',
     ]);
+  });
+
+  it('keeps zero income records visible in the all-records list', () => {
+    const { result } = renderHook(() =>
+      useCommissionsRows({
+        statementRecords: [],
+        allRecords: [
+          {
+            id: 'record-zero-income',
+            paymentId: 'payment-zero-income',
+            amount: '0',
+            recordType: 'Доход',
+            createdAt: '2026-03-06T10:00:00Z',
+            updatedAt: '2026-03-06T10:00:00Z',
+          },
+        ],
+        paymentsById: new Map(),
+        selectedStatementId: null,
+        viewMode: 'all',
+      }),
+    );
+
+    expect(result.current.filteredRows).toHaveLength(1);
+    expect(result.current.filteredRows[0]).toMatchObject({
+      recordId: 'record-zero-income',
+      recordKind: 'income',
+      recordAmount: 0,
+    });
+  });
+
+  it('keeps zero expense records visible in the all-records list', () => {
+    const { result } = renderHook(() =>
+      useCommissionsRows({
+        statementRecords: [],
+        allRecords: [
+          {
+            id: 'record-zero-expense',
+            paymentId: 'payment-zero-expense',
+            amount: '0',
+            recordType: 'Расход',
+            createdAt: '2026-03-06T10:00:00Z',
+            updatedAt: '2026-03-06T10:00:00Z',
+          },
+        ],
+        paymentsById: new Map(),
+        selectedStatementId: null,
+        viewMode: 'all',
+      }),
+    );
+
+    expect(result.current.filteredRows).toHaveLength(1);
+    expect(result.current.filteredRows[0]).toMatchObject({
+      recordId: 'record-zero-expense',
+      recordKind: 'expense',
+      recordAmount: 0,
+    });
   });
 });

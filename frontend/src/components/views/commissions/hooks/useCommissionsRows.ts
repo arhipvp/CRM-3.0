@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import type { FinancialRecord, Payment } from '../../../../types';
-import type { IncomeExpenseRow } from '../RecordsTable';
+import type { IncomeExpenseKind, IncomeExpenseRow } from '../RecordsTable';
 
 interface UseCommissionsRowsArgs {
   statementRecords: FinancialRecord[];
@@ -29,6 +29,16 @@ const buildPaymentFallback = (record: FinancialRecord): Payment => ({
   updatedAt: record.updatedAt,
 });
 
+const resolveRecordKind = (record: FinancialRecord): IncomeExpenseKind => {
+  if (record.recordType === 'Расход') {
+    return 'expense';
+  }
+  if (record.recordType === 'Доход') {
+    return 'income';
+  }
+  return Number(record.amount) < 0 ? 'expense' : 'income';
+};
+
 const buildAllModeRow = (record: FinancialRecord, payment: Payment): IncomeExpenseRow => {
   const paidBalanceValue = record.paymentPaidBalance;
   const paidBalance = paidBalanceValue ? Number(paidBalanceValue) : undefined;
@@ -43,6 +53,7 @@ const buildAllModeRow = (record: FinancialRecord, payment: Payment): IncomeExpen
     payment,
     recordId: record.id,
     statementId: record.statementId,
+    recordKind: resolveRecordKind(record),
     recordAmount: Number(record.amount),
     paymentPaidBalance: Number.isFinite(paidBalance) ? paidBalance : undefined,
     paymentPaidEntries: paidEntries,
@@ -88,7 +99,7 @@ export const useCommissionsRows = ({
     allRecords.forEach((record) => {
       const payment = paymentsById.get(record.paymentId) ?? buildPaymentFallback(record);
       const amount = Number(record.amount);
-      if (!Number.isFinite(amount) || amount === 0) {
+      if (!Number.isFinite(amount)) {
         return;
       }
       result.push(buildAllModeRow(record, payment));
