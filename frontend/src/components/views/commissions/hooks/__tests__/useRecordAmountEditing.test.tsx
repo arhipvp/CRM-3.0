@@ -19,8 +19,7 @@ const buildRow = (
   payment: overrides.payment ?? buildPayment(`payment-${overrides.recordId}`),
   recordId: overrides.recordId,
   statementId: overrides.statementId ?? 'statement-1',
-  recordKind:
-    overrides.recordKind ?? (overrides.recordAmount < 0 ? 'expense' : 'income'),
+  recordKind: overrides.recordKind ?? (overrides.recordAmount < 0 ? 'expense' : 'income'),
   recordAmount: overrides.recordAmount,
   paymentPaidBalance: overrides.paymentPaidBalance ?? 1000,
   paymentPaidEntries: overrides.paymentPaidEntries ?? [],
