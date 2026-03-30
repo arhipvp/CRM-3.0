@@ -389,8 +389,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const visibleStatements = showPaidStatements
     ? statements
     : statements.filter((statement) => !statement.paidAt);
-  const hasAnyFinanceData =
-    statements.length > 0;
+  const hasAnyFinanceData = statements.length > 0;
   const shouldShowStatementsPendingState =
     viewMode === 'statements' && !hasCommissionsSnapshotLoaded && (isLoading || hasAnyFinanceData);
 

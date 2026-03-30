@@ -647,9 +647,9 @@ export const RecordsTable = ({
                   ? 'Загрузка записей...'
                   : viewMode === 'statements' && isStatementRecordsLoading
                     ? 'Загрузка записей ведомости...'
-                  : viewMode === 'statements' && selectedStatement
-                    ? 'Записей в ведомости пока нет'
-                    : 'Записей пока нет'}
+                    : viewMode === 'statements' && selectedStatement
+                      ? 'Записей в ведомости пока нет'
+                      : 'Записей пока нет'}
               </EmptyTableState>
             )}
           </tbody>

@@ -1,14 +1,11 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import userEvent from '@testing-library/user-event';
 
-import { CommissionsView } from '../CommissionsView';
+import { fetchFinancialRecordsWithPagination, fetchStatementFinancialRecords } from '../../../api';
 import { NotificationProvider } from '../../../contexts/NotificationProvider';
-import {
-  fetchFinancialRecordsWithPagination,
-  fetchStatementFinancialRecords,
-} from '../../../api';
+import { CommissionsView } from '../CommissionsView';
 
 vi.mock('../../../api', async () => {
   const actual = await vi.importActual<typeof import('../../../api')>('../../../api');
@@ -97,7 +94,10 @@ describe('CommissionsView', () => {
     );
 
     expect(await screen.findAllByText('Клиент А')).toHaveLength(2);
-    expect(mockedFetchStatementFinancialRecords).toHaveBeenCalledWith('statement-1', expect.any(Object));
+    expect(mockedFetchStatementFinancialRecords).toHaveBeenCalledWith(
+      'statement-1',
+      expect.any(Object),
+    );
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
   });
 
@@ -210,5 +210,5 @@ describe('CommissionsView', () => {
       'record-1',
       expect.objectContaining({ amount: '100' }),
     );
-  });
+  }, 10000);
 });

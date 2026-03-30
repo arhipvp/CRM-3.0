@@ -411,13 +411,13 @@ describe('AppContent hotkeys integration', () => {
     });
   });
 
-  it('loads full finance data on commissions route without lightweight commissions snapshot', async () => {
+  it('loads lightweight commissions snapshot on commissions route', async () => {
     renderAppContent('/commissions');
 
     await waitFor(() => {
-      expect(ensureFinanceDataLoadedMock).toHaveBeenCalledTimes(1);
+      expect(ensureCommissionsDataLoadedMock).toHaveBeenCalledTimes(1);
     });
-    expect(ensureCommissionsDataLoadedMock).not.toHaveBeenCalled();
+    expect(ensureFinanceDataLoadedMock).not.toHaveBeenCalled();
   });
 
   it('loads quotes for the first auto-selected deal without explicit selectedDealId', async () => {
