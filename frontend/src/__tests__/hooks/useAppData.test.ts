@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_TASKS_API_ORDERING } from '../../api/tasks';
 import { buildDealsCacheKey } from '../../hooks/useAppData';
 import { useAppData } from '../../hooks/useAppData';
 import type { FilterParams } from '../../api';
@@ -16,6 +17,7 @@ import {
 } from '../../api';
 
 vi.mock('../../api', () => ({
+  DEFAULT_TASKS_API_ORDERING: '-priority,due_at,-created_at',
   fetchClients: vi.fn(),
   fetchDealsWithPagination: vi.fn(),
   fetchFinancialRecords: vi.fn(),
@@ -140,6 +142,10 @@ describe('useAppData loading strategy', () => {
       expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
       expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
       expect(mockedFetchTasks).toHaveBeenCalledTimes(1);
+    });
+    expect(mockedFetchTasks).toHaveBeenCalledWith({
+      ordering: DEFAULT_TASKS_API_ORDERING,
+      show_deleted: false,
     });
   });
 

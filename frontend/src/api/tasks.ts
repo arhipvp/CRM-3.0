@@ -3,6 +3,8 @@ import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from '.
 import { mapTask } from './mappers';
 import type { Task } from '../types';
 
+export const DEFAULT_TASKS_API_ORDERING = '-priority,due_at,-created_at';
+
 export async function fetchTasks(
   filters?: FilterParams,
   options?: { pageSize?: number },

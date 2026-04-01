@@ -14,7 +14,7 @@ class TaskFilterSet(django_filters.FilterSet):
     - priority: Task priority (low, medium, high)
     - deal: Associated deal
 
-    Also supports ordering by due_at and created_at.
+    Also supports ordering by priority, due_at and created_at.
     """
 
     status = django_filters.ChoiceFilter(
@@ -29,6 +29,7 @@ class TaskFilterSet(django_filters.FilterSet):
 
     ordering = django_filters.OrderingFilter(
         fields=(
+            ("priority", "priority"),
             ("created_at", "created_at"),
             ("updated_at", "updated_at"),
             ("due_at", "due_at"),

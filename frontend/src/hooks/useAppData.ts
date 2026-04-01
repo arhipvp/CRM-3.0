@@ -1,6 +1,7 @@
 import { useCallback, useReducer, useRef, useState } from 'react';
 
 import {
+  DEFAULT_TASKS_API_ORDERING,
   fetchClients,
   fetchDealsWithPagination,
   fetchFinancialRecords,
@@ -106,6 +107,7 @@ export const useAppData = () => {
   const commissionsDataLoadedRef = useRef(false);
   const financeDataLoadedRef = useRef(false);
   const tasksLoadedRef = useRef(false);
+  const tasksLoadKeyRef = useRef<string | null>(null);
   const dealsCacheRef = useRef(
     new Map<string, { results: Deal[]; nextPage: number | null; totalCount: number }>(),
   );
@@ -383,6 +385,7 @@ export const useAppData = () => {
     setHasCommissionsSnapshotLoaded(false);
     setHasFinanceSnapshotLoaded(false);
     tasksLoadedRef.current = false;
+    tasksLoadKeyRef.current = null;
     try {
       const dealsPromise = refreshDeals();
       const [clientsData, usersData, salesChannelsData] = await Promise.all([
@@ -519,9 +522,12 @@ export const useAppData = () => {
   );
 
   const ensureTasksLoaded = useCallback(
-    async (options?: { force?: boolean }) => {
+    async (options?: { force?: boolean; showDeleted?: boolean; ordering?: string }) => {
       const force = options?.force ?? false;
-      if (tasksLoadedRef.current && !force) {
+      const showDeleted = options?.showDeleted ?? false;
+      const ordering = options?.ordering ?? DEFAULT_TASKS_API_ORDERING;
+      const loadKey = JSON.stringify({ showDeleted, ordering });
+      if (tasksLoadedRef.current && tasksLoadKeyRef.current === loadKey && !force) {
         return;
       }
       if (isTasksLoading) {
@@ -529,9 +535,13 @@ export const useAppData = () => {
       }
       setIsTasksLoading(true);
       try {
-        const tasksData = await fetchTasks({ show_deleted: true });
+        const tasksData = await fetchTasks({
+          ordering,
+          show_deleted: showDeleted,
+        });
         setAppData({ tasks: tasksData });
         tasksLoadedRef.current = true;
+        tasksLoadKeyRef.current = loadKey;
       } catch (err) {
         setError(
           formatErrorMessage(

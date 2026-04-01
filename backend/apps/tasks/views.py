@@ -1,30 +1,65 @@
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, Value, When
+from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-from rest_framework import viewsets
+from rest_framework import filters, viewsets
 
 from .filters import TaskFilterSet
 from .models import Task
 from .serializers import TaskSerializer
 
 
+class TaskOrderingFilter(filters.OrderingFilter):
+    """Поддерживает бизнес-сортировку по приоритету задач."""
+
+    ordering_aliases = {
+        "priority": "priority_order",
+        "-priority": "-priority_order",
+    }
+
+    def get_ordering(self, request, queryset, view):
+        ordering = super().get_ordering(request, queryset, view)
+        if not ordering:
+            return ordering
+        return [self.ordering_aliases.get(item, item) for item in ordering]
+
+
 class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     filterset_class = TaskFilterSet
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter, TaskOrderingFilter)
     search_fields = ["title", "description"]
-    ordering_fields = ["created_at", "updated_at", "due_at"]
-    ordering = ["-created_at"]
+    ordering_fields = ["created_at", "updated_at", "due_at", "priority"]
+    ordering = ["-priority_order", "due_at_is_null", "due_at", "-created_at"]
     owner_field = "created_by"
     _allow_executor_status_update = False
 
     def get_queryset(self):
         user = self.request.user
         show_deleted = self.request.query_params.get("show_deleted") == "true"
+        manager = Task.objects.with_deleted() if show_deleted else Task.objects.all()
         queryset = (
-            Task.objects.with_deleted().order_by("-created_at")
-            if show_deleted
-            else Task.objects.all().order_by("-created_at")
+            manager.select_related(
+                "deal",
+                "deal__client",
+                "assignee",
+                "created_by",
+                "completed_by",
+            ).annotate(
+                priority_order=Case(
+                    When(priority=Task.PriorityChoices.URGENT, then=Value(4)),
+                    When(priority=Task.PriorityChoices.HIGH, then=Value(3)),
+                    When(priority=Task.PriorityChoices.NORMAL, then=Value(2)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                ),
+                due_at_is_null=Case(
+                    When(due_at__isnull=True, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                ),
+            )
         )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
@@ -40,7 +75,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 Q(deal__seller=user)
                 | Q(deal__executor=user)
                 | Q(deal__visible_users=user)
-                | Q(deal__tasks__assignee=user)
+                | Q(assignee=user)
             ).distinct()
 
         return queryset

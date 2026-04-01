@@ -141,6 +141,11 @@ export interface AppRouteFilterState {
 }
 
 export interface AppRouteLoadingState {
+  onRefreshTasks?: (options?: {
+    force?: boolean;
+    showDeleted?: boolean;
+    ordering?: string;
+  }) => Promise<void>;
   onRefreshCommissionsSnapshot?: () => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;

@@ -816,6 +816,7 @@ const AppContent: React.FC = () => {
 
   const routeLoading = useMemo<AppRouteLoadingState>(
     () => ({
+      onRefreshTasks: ensureTasksLoaded,
       onRefreshCommissionsSnapshot: async () => {
         await ensureCommissionsDataLoaded({ force: true });
       },
@@ -840,6 +841,7 @@ const AppContent: React.FC = () => {
       dealsHasMore,
       dealsTotalCount,
       ensureCommissionsDataLoaded,
+      ensureTasksLoaded,
       hasCommissionsSnapshotLoaded,
       isCommissionsDataLoading,
       hasFinanceSnapshotLoaded,

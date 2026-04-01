@@ -1,16 +1,20 @@
-﻿import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FilterParams } from '../../api';
+import { DEFAULT_TASKS_API_ORDERING } from '../../api/tasks';
 import type { Task, TaskPriority, User } from '../../types';
 import { FilterBar } from '../FilterBar';
-import { FilterParams } from '../../api';
-
-import { STATUS_LABELS, PRIORITY_LABELS } from '../tasks/constants';
 import { BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { PRIORITY_LABELS, STATUS_LABELS } from '../tasks/constants';
 import { TaskTable } from '../tasks/TaskTable';
 
-type TaskSortKey = 'dueAt' | 'priority' | 'createdAt';
+type TaskSortKey = 'dueAt' | 'priority' | 'createdAt' | 'priorityThenDueAt';
+
+const DEFAULT_TASKS_SORTING = 'priorityThenDueAt';
+const DEFAULT_TASKS_FILTERS: FilterParams = { ordering: DEFAULT_TASKS_SORTING };
 
 const TASK_SORT_OPTIONS = [
+  { value: DEFAULT_TASKS_SORTING, label: 'Сначала срочные, затем ближайший срок' },
   { value: '-dueAt', label: 'Срок (сначала ближние)' },
   { value: 'dueAt', label: 'Срок (сначала дальние)' },
   { value: '-priority', label: 'Приоритет (высокие сначала)' },
@@ -33,16 +37,39 @@ const getPriorityOrder = (priority: TaskPriority): number => {
   }
 };
 
+const getDueAtValue = (task: Task): number => {
+  if (!task.dueAt) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return new Date(task.dueAt).getTime();
+};
+
 const getTaskSortValue = (task: Task, key: TaskSortKey): number => {
   switch (key) {
+    case 'priorityThenDueAt':
+      return 0;
     case 'priority':
       return getPriorityOrder(task.priority);
     case 'createdAt':
       return new Date(task.createdAt).getTime();
     case 'dueAt':
     default:
-      return task.dueAt ? new Date(task.dueAt).getTime() : 0;
+      return getDueAtValue(task);
   }
+};
+
+const compareTasksByPriorityThenDueAt = (a: Task, b: Task): number => {
+  const priorityComparison = getPriorityOrder(b.priority) - getPriorityOrder(a.priority);
+  if (priorityComparison !== 0) {
+    return priorityComparison;
+  }
+
+  const dueAtComparison = getDueAtValue(a) - getDueAtValue(b);
+  if (dueAtComparison !== 0) {
+    return dueAtComparison;
+  }
+
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 };
 
 interface TasksViewProps {
@@ -50,6 +77,11 @@ interface TasksViewProps {
   currentUser: User | null;
   isLoading?: boolean;
   isBackgroundRefreshing?: boolean;
+  onRefreshTasks?: (options?: {
+    force?: boolean;
+    showDeleted?: boolean;
+    ordering?: string;
+  }) => Promise<void>;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
 }
@@ -58,11 +90,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
   tasks,
   currentUser,
   isLoading = false,
+  onRefreshTasks,
   onDealSelect,
   onDealPreview,
 }) => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<FilterParams>({});
+  const [filters, setFilters] = useState<FilterParams>(DEFAULT_TASKS_FILTERS);
+  const lastShowDeletedRef = useRef(false);
 
   const handleDealClick = useCallback(
     (dealId?: string) => {
@@ -78,6 +112,19 @@ export const TasksView: React.FC<TasksViewProps> = ({
     },
     [navigate, onDealPreview, onDealSelect],
   );
+
+  useEffect(() => {
+    const showDeleted = String(filters.show_deleted) === 'true';
+    if (showDeleted === lastShowDeletedRef.current) {
+      return;
+    }
+    lastShowDeletedRef.current = showDeleted;
+    onRefreshTasks?.({
+      force: true,
+      ordering: DEFAULT_TASKS_API_ORDERING,
+      showDeleted,
+    }).catch(() => undefined);
+  }, [filters.show_deleted, onRefreshTasks]);
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -131,7 +178,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
       result = result.filter((task) => (currentUserId ? task.assignee === currentUserId : false));
     }
 
-    const ordering = (filters.ordering as string) || '-dueAt';
+    const ordering = (filters.ordering as string) || DEFAULT_TASKS_SORTING;
+    if (ordering === DEFAULT_TASKS_SORTING) {
+      result.sort(compareTasksByPriorityThenDueAt);
+      return result;
+    }
+
     const direction = ordering.startsWith('-') ? -1 : 1;
     const field = (ordering.replace(/^-/, '') as TaskSortKey) || 'dueAt';
 
@@ -140,7 +192,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
   }, [filters, tasks, currentUser?.id]);
 
   const isTasksEmpty = tasks.length === 0;
-  const hasActiveFilters = Object.keys(filters).length > 0;
+  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return false;
+    }
+    if (key === 'ordering') {
+      return value !== DEFAULT_TASKS_SORTING;
+    }
+    return true;
+  });
 
   let emptyStateMessage = 'По текущим условиям задач не найдено.';
   if (isTasksEmpty) {
@@ -159,6 +219,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       </h1>
       <FilterBar
         onFilterChange={setFilters}
+        initialFilters={DEFAULT_TASKS_FILTERS}
         searchPlaceholder="Поиск задач, сделок или описаний..."
         sortOptions={TASK_SORT_OPTIONS}
         customFilters={[
