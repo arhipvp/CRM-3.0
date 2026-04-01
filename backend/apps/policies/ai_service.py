@@ -16,8 +16,8 @@ from typing import Callable, List, Tuple
 
 import openai
 from django.conf import settings
-from PyPDF2 import PdfReader
 from docx import Document
+from PyPDF2 import PdfReader
 
 logger = logging.getLogger(__name__)
 

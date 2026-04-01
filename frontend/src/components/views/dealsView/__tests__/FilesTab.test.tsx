@@ -76,7 +76,9 @@ describe('FilesTab', () => {
   it('renders updated policy recognition button and hides document recognition action', () => {
     renderWithProviders();
 
-    expect(screen.getByRole('button', { name: 'Распознать полис (PDF, DOC, DOCX)' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Распознать полис (PDF, DOC, DOCX)' }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Распознать документы' })).not.toBeInTheDocument();
   });
 

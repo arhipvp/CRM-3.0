@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.policies.ai_service import PolicyRecognitionError
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
+from apps.policies.ai_service import PolicyRecognitionError
 from django.contrib.auth.models import User
 from rest_framework import status
 
