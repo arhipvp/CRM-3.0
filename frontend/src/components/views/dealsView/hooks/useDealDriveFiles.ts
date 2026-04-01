@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type {
-  Deal,
-  DocumentRecognitionResult,
-  DriveFile,
-  PolicyRecognitionResult,
-} from '../../../../types';
+import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import {
   downloadDealDriveFiles,
   fetchDealDriveFiles,
-  recognizeDealDocuments,
   recognizeDealPolicies,
   renameDealDriveFile,
   trashDealDriveFiles,
@@ -76,11 +70,6 @@ export const useDealDriveFiles = ({
   const [isRecognizing, setRecognizing] = useState(false);
   const [recognitionResults, setRecognitionResults] = useState<PolicyRecognitionResult[]>([]);
   const [recognitionMessage, setRecognitionMessage] = useState<string | null>(null);
-  const [isDocumentRecognizing, setDocumentRecognizing] = useState(false);
-  const [documentRecognitionResults, setDocumentRecognitionResults] = useState<
-    DocumentRecognitionResult[]
-  >([]);
-  const [documentRecognitionMessage, setDocumentRecognitionMessage] = useState<string | null>(null);
   const [isTrashing, setIsTrashing] = useState(false);
   const [trashMessage, setTrashMessage] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -98,8 +87,6 @@ export const useDealDriveFiles = ({
     setSelectedDriveFileIds([]);
     setRecognitionResults([]);
     setRecognitionMessage(null);
-    setDocumentRecognitionResults([]);
-    setDocumentRecognitionMessage(null);
     setTrashMessage(null);
     setDownloadMessage(null);
     setRenameMessage(null);
@@ -342,17 +329,17 @@ export const useDealDriveFiles = ({
     () =>
       selectedDriveFileIds.length > 0 &&
       selectedDriveFiles.length === selectedDriveFileIds.length &&
-      selectedDriveFiles.every((file) => file.mimeType?.toLowerCase() === 'application/pdf'),
-    [selectedDriveFileIds, selectedDriveFiles],
-  );
-
-  const canRecognizeSelectedDocumentFiles = useMemo(
-    () =>
-      selectedDriveFileIds.length > 0 &&
-      selectedDriveFiles.length === selectedDriveFileIds.length &&
       selectedDriveFiles.every((file) => {
         const mimeType = (file.mimeType ?? '').toLowerCase();
-        return mimeType === 'application/pdf' || mimeType.startsWith('image/');
+        const normalizedName = (file.name ?? '').toLowerCase();
+        return (
+          mimeType === 'application/pdf' ||
+          mimeType === 'application/msword' ||
+          mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          normalizedName.endsWith('.pdf') ||
+          normalizedName.endsWith('.doc') ||
+          normalizedName.endsWith('.docx')
+        );
       }),
     [selectedDriveFileIds, selectedDriveFiles],
   );
@@ -369,7 +356,7 @@ export const useDealDriveFiles = ({
     }
 
     if (!canRecognizeSelectedFiles) {
-      setRecognitionMessage('Выберите только PDF-файлы.');
+      setRecognitionMessage('Выберите только файлы PDF, DOC или DOCX.');
       return;
     }
 
@@ -420,61 +407,6 @@ export const useDealDriveFiles = ({
     canRecognizeSelectedFiles,
     onPolicyDraftReady,
     onRefreshPolicies,
-    selectedDeal,
-    selectedDriveFileIds,
-  ]);
-
-  const handleRecognizeDocuments = useCallback(async () => {
-    const deal = selectedDeal;
-    if (!deal) {
-      return;
-    }
-
-    if (!selectedDriveFileIds.length) {
-      setDocumentRecognitionMessage('Выберите хотя бы один файл для распознавания.');
-      return;
-    }
-
-    if (!canRecognizeSelectedDocumentFiles) {
-      setDocumentRecognitionMessage('Можно распознавать только PDF и изображения.');
-      return;
-    }
-
-    const currentDealId = deal.id;
-    latestDealIdRef.current = currentDealId;
-    setDocumentRecognizing(true);
-    setDocumentRecognitionMessage(null);
-
-    try {
-      const { results } = await recognizeDealDocuments(currentDealId, selectedDriveFileIds);
-      if (latestDealIdRef.current !== currentDealId) {
-        return;
-      }
-      setDocumentRecognitionResults(results);
-      setSelectedDriveFileIds([]);
-      if (onRefreshNotes) {
-        await onRefreshNotes();
-      }
-      await loadDriveFiles();
-    } catch (error) {
-      if (latestDealIdRef.current !== currentDealId) {
-        return;
-      }
-      console.error('Ошибка распознавания документов:', error);
-      setDocumentRecognitionMessage(
-        error instanceof Error
-          ? error.message
-          : 'Не удалось распознать документы. Попробуйте ещё раз.',
-      );
-    } finally {
-      if (latestDealIdRef.current === currentDealId) {
-        setDocumentRecognizing(false);
-      }
-    }
-  }, [
-    canRecognizeSelectedDocumentFiles,
-    loadDriveFiles,
-    onRefreshNotes,
     selectedDeal,
     selectedDriveFileIds,
   ]);
@@ -700,13 +632,9 @@ export const useDealDriveFiles = ({
     driveError,
     selectedDriveFileIds,
     canRecognizeSelectedFiles,
-    canRecognizeSelectedDocumentFiles,
     isRecognizing,
     recognitionResults,
     recognitionMessage,
-    isDocumentRecognizing,
-    documentRecognitionResults,
-    documentRecognitionMessage,
     isTrashing,
     trashMessage,
     isDownloading,
@@ -726,7 +654,6 @@ export const useDealDriveFiles = ({
     toggleDriveFileSelection,
     toggleDriveSortDirection,
     handleRecognizePolicies,
-    handleRecognizeDocuments,
     handleTrashSelectedFiles,
     handleTrashDriveFile,
     handleDownloadDriveFiles,

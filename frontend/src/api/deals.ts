@@ -10,7 +10,6 @@ import type {
   DealSimilarityResponse,
   DealTimeTrackingSummary,
   DealTimeTrackingTickResponse,
-  DocumentRecognitionResult,
   Quote,
 } from '../types';
 
@@ -548,120 +547,6 @@ export async function checkDealMailbox(dealId: string): Promise<DealMailboxSyncR
       failed: Number(rawSync.failed ?? 0),
       deleted: Number(rawSync.deleted ?? 0),
     },
-  };
-}
-
-export async function recognizeDealDocuments(
-  dealId: string,
-  fileIds: string[],
-): Promise<{ results: DocumentRecognitionResult[]; noteId: string | null }> {
-  const payload = await request<{ results?: unknown[]; noteId?: unknown }>(
-    `/deals/${dealId}/recognize-documents/`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ file_ids: fileIds }),
-    },
-  );
-  const rawResults = Array.isArray(payload.results)
-    ? (payload.results as Record<string, unknown>[])
-    : [];
-  const normalizeDocumentType = (
-    value: unknown,
-  ): 'passport' | 'driver_license' | 'epts' | 'sts' | null => {
-    const raw = String(value ?? '')
-      .trim()
-      .toLowerCase();
-    if (!raw || raw === 'unknown') {
-      return null;
-    }
-    if (raw === 'passport' || raw === 'паспорт' || raw === 'паспорт рф') {
-      return 'passport';
-    }
-    if (
-      raw === 'driver_license' ||
-      raw === 'driver licence' ||
-      raw === 'driver license' ||
-      raw === 'в/у' ||
-      raw === 'водительское удостоверение'
-    ) {
-      return 'driver_license';
-    }
-    if (raw === 'epts' || raw === 'эптс' || raw === 'электронный птс') {
-      return 'epts';
-    }
-    if (
-      raw === 'sts' ||
-      raw === 'стс' ||
-      raw === 'свидетельство о регистрации тс' ||
-      raw === 'свидетельство о регистрации транспортного средства'
-    ) {
-      return 'sts';
-    }
-    return null;
-  };
-  const results: DocumentRecognitionResult[] = rawResults.map((item) => {
-    const status = String(item.status ?? 'error') === 'parsed' ? 'parsed' : 'error';
-    const rawDoc =
-      item.doc && typeof item.doc === 'object' ? (item.doc as Record<string, unknown>) : null;
-    const rawValidation =
-      rawDoc?.validation && typeof rawDoc.validation === 'object'
-        ? (rawDoc.validation as Record<string, unknown>)
-        : {};
-    const rawType = String(rawDoc?.rawType ?? '').trim();
-    const normalizedType =
-      normalizeDocumentType(rawDoc?.normalizedType) ?? normalizeDocumentType(rawType);
-    const warningsRaw = Array.isArray(rawDoc?.warnings) ? rawDoc?.warnings : [];
-    const fields =
-      rawDoc?.fields && typeof rawDoc.fields === 'object'
-        ? (rawDoc.fields as Record<string, unknown>)
-        : {};
-    const acceptedRaw = Array.isArray(rawValidation.accepted) ? rawValidation.accepted : [];
-    const rejectedRaw =
-      rawValidation.rejected && typeof rawValidation.rejected === 'object'
-        ? (rawValidation.rejected as Record<string, unknown>)
-        : {};
-    const confidenceRaw = rawDoc?.confidence;
-    const confidence =
-      confidenceRaw === null || confidenceRaw === undefined || Number.isNaN(Number(confidenceRaw))
-        ? null
-        : Number(confidenceRaw);
-    const rawError =
-      item.error && typeof item.error === 'object' ? (item.error as Record<string, unknown>) : null;
-    return {
-      fileId: String(item.fileId ?? item.file_id ?? ''),
-      fileName: item.fileName === undefined ? null : String(item.fileName ?? item.file_name ?? ''),
-      status,
-      transcript:
-        item.transcript === undefined
-          ? null
-          : String(item.transcript ?? item.transcript_text ?? ''),
-      doc: rawDoc
-        ? {
-            rawType: rawType || 'unknown',
-            normalizedType,
-            confidence,
-            warnings: warningsRaw.map((warning) => String(warning)).filter(Boolean),
-            fields,
-            validation: {
-              accepted: acceptedRaw.map((field) => String(field)).filter(Boolean),
-              rejected: Object.fromEntries(
-                Object.entries(rejectedRaw).map(([key, value]) => [key, String(value)]),
-              ),
-            },
-            extractedText: String(rawDoc.extractedText ?? ''),
-          }
-        : null,
-      error: rawError
-        ? {
-            code: String(rawError.code ?? 'recognition_error'),
-            message: String(rawError.message ?? 'Ошибка распознавания документа.'),
-          }
-        : null,
-    };
-  });
-  return {
-    results,
-    noteId: payload.noteId === undefined || payload.noteId === null ? null : String(payload.noteId),
   };
 }
 

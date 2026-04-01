@@ -13,20 +13,17 @@ vi.mock('../../../../api', () => ({
   trashDealDriveFiles: vi.fn(),
   renameDealDriveFile: vi.fn(),
   recognizeDealPolicies: vi.fn(),
-  recognizeDealDocuments: vi.fn(),
 }));
 
 import {
   downloadDealDriveFiles,
   fetchDealDriveFiles,
-  recognizeDealDocuments,
   recognizeDealPolicies,
   trashDealDriveFiles,
 } from '../../../../api';
 const downloadDealDriveFilesMock = vi.mocked(downloadDealDriveFiles);
 const fetchDealDriveFilesMock = vi.mocked(fetchDealDriveFiles);
 const recognizeDealPoliciesMock = vi.mocked(recognizeDealPolicies);
-const recognizeDealDocumentsMock = vi.mocked(recognizeDealDocuments);
 const trashDealDriveFilesMock = vi.mocked(trashDealDriveFiles);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
@@ -185,26 +182,50 @@ describe('useDealDriveFiles', () => {
     });
   });
 
-  it('recognizes selected PDF files and notifies about parsed drafts', async () => {
+  it('recognizes selected PDF, DOC and DOCX files and notifies about parsed drafts', async () => {
     const deal = createDeal();
-    const file = {
-      id: 'file-1',
-      name: 'policy.pdf',
-      mimeType: 'application/pdf',
-      size: 1024,
-      createdAt: '2025-01-01T00:00:00Z',
-      modifiedAt: '2025-01-01T00:00:00Z',
-      webViewLink: 'https://drive.google.com/file',
-      isFolder: false,
-      parentId: null,
-    };
+    const files = [
+      {
+        id: 'file-1',
+        name: 'policy.pdf',
+        mimeType: 'application/pdf',
+        size: 1024,
+        createdAt: '2025-01-01T00:00:00Z',
+        modifiedAt: '2025-01-01T00:00:00Z',
+        webViewLink: 'https://drive.google.com/file',
+        isFolder: false,
+        parentId: null,
+      },
+      {
+        id: 'file-2',
+        name: 'policy.doc',
+        mimeType: 'application/msword',
+        size: 1024,
+        createdAt: '2025-01-01T00:00:00Z',
+        modifiedAt: '2025-01-01T00:00:00Z',
+        webViewLink: 'https://drive.google.com/file',
+        isFolder: false,
+        parentId: null,
+      },
+      {
+        id: 'file-3',
+        name: 'policy.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        size: 1024,
+        createdAt: '2025-01-01T00:00:00Z',
+        modifiedAt: '2025-01-01T00:00:00Z',
+        webViewLink: 'https://drive.google.com/file',
+        isFolder: false,
+        parentId: null,
+      },
+    ];
     const parsedResult = {
-      fileId: file.id,
+      fileId: files[0].id,
       status: 'parsed' as const,
       data: { foo: 'bar' },
       fileName: 'policy.pdf',
     };
-    fetchDealDriveFilesMock.mockResolvedValue({ files: [file], folderId: null });
+    fetchDealDriveFilesMock.mockResolvedValue({ files, folderId: null });
     recognizeDealPoliciesMock.mockResolvedValueOnce({ results: [parsedResult] });
 
     const onPolicyDraftReady = vi.fn();
@@ -215,7 +236,7 @@ describe('useDealDriveFiles', () => {
     });
 
     act(() => {
-      resultRef.current?.toggleDriveFileSelection(file.id);
+      files.forEach((file) => resultRef.current?.toggleDriveFileSelection(file.id));
     });
 
     await act(async () => {
@@ -223,7 +244,10 @@ describe('useDealDriveFiles', () => {
     });
 
     await waitFor(() => {
-      expect(recognizeDealPoliciesMock).toHaveBeenCalledWith(deal.id, [file.id]);
+      expect(recognizeDealPoliciesMock).toHaveBeenCalledWith(
+        deal.id,
+        files.map((file) => file.id),
+      );
       expect(onPolicyDraftReady).toHaveBeenCalledWith(
         deal.id,
         parsedResult.data,
@@ -234,64 +258,6 @@ describe('useDealDriveFiles', () => {
     });
 
     expect(resultRef.current?.recognitionResults).toEqual([parsedResult]);
-  });
-
-  it('recognizes selected image files as documents', async () => {
-    const deal = createDeal();
-    const file = {
-      id: 'file-img-1',
-      name: 'passport.jpg',
-      mimeType: 'image/jpeg',
-      size: 2048,
-      createdAt: '2025-01-01T00:00:00Z',
-      modifiedAt: '2025-01-01T00:00:00Z',
-      webViewLink: 'https://drive.google.com/file',
-      isFolder: false,
-      parentId: null,
-    };
-    fetchDealDriveFilesMock.mockResolvedValue({ files: [file], folderId: null });
-    recognizeDealDocumentsMock.mockResolvedValueOnce({
-      noteId: 'note-1',
-      results: [
-        {
-          fileId: file.id,
-          fileName: file.name,
-          status: 'parsed',
-          doc: {
-            rawType: 'passport',
-            normalizedType: 'passport',
-            confidence: 0.91,
-            warnings: [],
-            fields: { number: '1234 567890' },
-            validation: { accepted: ['number'], rejected: {} },
-            extractedText: '',
-          },
-          transcript: '{"document_type":"passport"}',
-          error: null,
-        },
-      ],
-    });
-
-    const onRefreshNotes = vi.fn().mockResolvedValue(undefined);
-    const { resultRef } = renderDriveHook(deal, { onRefreshNotes });
-    await act(async () => {
-      await resultRef.current?.loadDriveFiles();
-    });
-    act(() => {
-      resultRef.current?.toggleDriveFileSelection(file.id);
-    });
-    await act(async () => {
-      await resultRef.current?.handleRecognizeDocuments();
-    });
-
-    await waitFor(() => {
-      expect(recognizeDealDocumentsMock).toHaveBeenCalledWith(deal.id, [file.id]);
-      expect(resultRef.current?.documentRecognitionResults[0]?.doc?.rawType).toBe('passport');
-      expect(resultRef.current?.documentRecognitionResults[0]?.transcript).toBe(
-        '{"document_type":"passport"}',
-      );
-      expect(onRefreshNotes).toHaveBeenCalledTimes(1);
-    });
   });
 
   it('trashes a single file when confirmed', async () => {

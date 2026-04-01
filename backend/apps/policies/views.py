@@ -292,11 +292,25 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
                 continue
 
+            try:
+                extracted_text = extract_text_from_bytes(content, file_info["name"])
+            except PolicyRecognitionError as exc:
+                results.append(
+                    {
+                        "fileId": file_id,
+                        "fileName": file_info["name"],
+                        "status": "error",
+                        "message": str(exc),
+                        "transcript": exc.transcript,
+                    }
+                )
+                continue
+
             downloaded_files.append(
                 {
                     "id": file_id,
                     "name": file_info["name"],
-                    "text": extract_text_from_bytes(content, file_info["name"]),
+                    "text": extracted_text,
                 }
             )
 

@@ -28,13 +28,9 @@ const baseProps: ComponentProps<typeof FilesTab> = {
   selectedDriveFileIds: [],
   toggleDriveFileSelection: vi.fn(),
   handleRecognizePolicies: vi.fn().mockResolvedValue(undefined),
-  handleRecognizeDocuments: vi.fn().mockResolvedValue(undefined),
   isRecognizing: false,
   recognitionResults: [],
   recognitionMessage: null,
-  isDocumentRecognizing: false,
-  documentRecognitionResults: [],
-  documentRecognitionMessage: null,
   isTrashing: false,
   trashMessage: null,
   handleTrashSelectedFiles: vi.fn().mockResolvedValue(undefined),
@@ -50,7 +46,6 @@ const baseProps: ComponentProps<typeof FilesTab> = {
   isFolderLoading: vi.fn().mockReturnValue(false),
   getDriveFileDepth: vi.fn().mockReturnValue(0),
   canRecognizeSelectedFiles: false,
-  canRecognizeSelectedDocumentFiles: false,
   driveSortDirection: 'desc' as const,
   toggleDriveSortDirection: vi.fn(),
   isRenaming: false,
@@ -77,59 +72,12 @@ const renderWithProviders = (props: Partial<typeof baseProps> = {}) =>
     </NotificationContext.Provider>,
   );
 
-describe('FilesTab document recognition transcript', () => {
-  it('renders transcript spoiler when transcript is present', () => {
-    renderWithProviders({
-      documentRecognitionResults: [
-        {
-          fileId: 'file-1',
-          fileName: 'sts.jpg',
-          status: 'parsed',
-          transcript: '{"raw":"log"}',
-          doc: {
-            rawType: 'sts',
-            normalizedType: 'sts',
-            confidence: 1,
-            warnings: [],
-            fields: { owner: 'ИВАНОВ ИВАН' },
-            validation: { accepted: ['owner'], rejected: {} },
-            extractedText: 'text',
-          },
-          error: null,
-        },
-      ],
-    });
+describe('FilesTab', () => {
+  it('renders updated policy recognition button and hides document recognition action', () => {
+    renderWithProviders();
 
-    const detailsSummary = screen.getByText('Показать транскрипт');
-    expect(detailsSummary).toBeInTheDocument();
-
-    fireEvent.click(detailsSummary);
-    expect(screen.getByText('{"raw":"log"}')).toBeInTheDocument();
-  });
-
-  it('does not render transcript spoiler when transcript is empty', () => {
-    renderWithProviders({
-      documentRecognitionResults: [
-        {
-          fileId: 'file-1',
-          fileName: 'sts.jpg',
-          status: 'parsed',
-          transcript: null,
-          doc: {
-            rawType: 'sts',
-            normalizedType: 'sts',
-            confidence: 1,
-            warnings: [],
-            fields: { owner: 'ИВАНОВ ИВАН' },
-            validation: { accepted: ['owner'], rejected: {} },
-            extractedText: 'text',
-          },
-          error: null,
-        },
-      ],
-    });
-
-    expect(screen.queryByText('Показать транскрипт')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Распознать полис (PDF, DOC, DOCX)' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Распознать документы' })).not.toBeInTheDocument();
   });
 
   it('renders preview action only for image files and opens modal', async () => {

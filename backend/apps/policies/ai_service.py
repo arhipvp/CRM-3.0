@@ -5,14 +5,19 @@ from __future__ import annotations
 import json
 import logging
 import re
+import shutil
+import subprocess
+import tempfile
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+from pathlib import Path
 from typing import Callable, List, Tuple
 
 import openai
 from django.conf import settings
 from PyPDF2 import PdfReader
+from docx import Document
 
 logger = logging.getLogger(__name__)
 
@@ -258,9 +263,77 @@ VIN_CLARIFY_PROMPT = (
 
 
 def extract_text_from_bytes(content: bytes, filename: str) -> str:
-    """Извлечь текст из PDF или текстового файла."""
+    """Извлечь текст из PDF, DOCX или DOC файла."""
 
-    if filename.lower().endswith(".pdf"):
+    normalized_name = (filename or "").lower()
+
+    if normalized_name.endswith(".docx"):
+        try:
+            document = Document(BytesIO(content))
+        except Exception as exc:
+            raise PolicyRecognitionError(
+                f"Не удалось извлечь текст из Word-файла {filename}."
+            ) from exc
+
+        paragraphs = [paragraph.text.strip() for paragraph in document.paragraphs]
+        text = "\n".join(part for part in paragraphs if part)
+        if text:
+            return text
+        raise PolicyRecognitionError(
+            f"Не удалось извлечь текст из Word-файла {filename}."
+        )
+
+    if normalized_name.endswith(".doc"):
+        soffice_path = shutil.which("soffice")
+        if not soffice_path:
+            raise PolicyRecognitionError(
+                "Не удалось извлечь текст из Word-файла. "
+                "Для файлов .doc нужен установленный LibreOffice/headless converter (soffice)."
+            )
+        with tempfile.TemporaryDirectory(prefix="policy-doc-") as temp_dir:
+            temp_path = Path(temp_dir)
+            input_path = temp_path / "source.doc"
+            output_path = temp_path / "source.txt"
+            input_path.write_bytes(content)
+            try:
+                subprocess.run(
+                    [
+                        soffice_path,
+                        "--headless",
+                        "--convert-to",
+                        "txt:Text",
+                        "--outdir",
+                        str(temp_path),
+                        str(input_path),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+            except subprocess.TimeoutExpired as exc:
+                raise PolicyRecognitionError(
+                    f"Не удалось извлечь текст из Word-файла {filename}."
+                ) from exc
+            except subprocess.CalledProcessError as exc:
+                raise PolicyRecognitionError(
+                    "Не удалось извлечь текст из Word-файла. "
+                    "Для файлов .doc нужен установленный LibreOffice/headless converter (soffice)."
+                ) from exc
+
+            if not output_path.exists():
+                raise PolicyRecognitionError(
+                    f"Не удалось извлечь текст из Word-файла {filename}."
+                )
+
+            text = output_path.read_text(encoding="utf-8", errors="ignore").strip()
+            if text:
+                return text
+            raise PolicyRecognitionError(
+                f"Не удалось извлечь текст из Word-файла {filename}."
+            )
+
+    if normalized_name.endswith(".pdf"):
         try:
             reader = PdfReader(
                 content if hasattr(content, "read") else BytesIO(content)

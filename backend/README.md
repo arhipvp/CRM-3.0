@@ -54,6 +54,7 @@ python manage.py migrate
 python manage.py runserver
 ```
 - Для env: `DJANGO_SECRET_KEY`, `DEBUG`, `DJANGO_DB_*`, JWT-параметры, CORS, `GOOGLE_DRIVE_*` (OAuth client id/secret, refresh token или token file, folder ids), `OPENAI_*`.
+- Для распознавания полисов из Word: `.docx` поддерживается через Python-библиотеку, а для `.doc` нужен установленный LibreOffice/headless converter (`soffice`). В Docker-образ backend он устанавливается автоматически.
 - Перед релизом обязательно `python manage.py check --deploy`.
 - `manage.py test` автоматически переключает backend на `config.test_settings`, чтобы локальные тесты не зависели от случайной Postgres-конфигурации.
 

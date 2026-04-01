@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type {
-  Deal,
-  DocumentRecognitionResult,
-  DriveFile,
-  PolicyRecognitionResult,
-} from '../../../../types';
+import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
 import { copyToClipboard } from '../../../../utils/clipboard';
@@ -24,12 +19,7 @@ import {
 } from '../../../common/uiClassNames';
 import { InlineAlert } from '../../../common/InlineAlert';
 import { Modal } from '../../../Modal';
-import {
-  formatDocumentRecognitionSummary,
-  formatDriveDate,
-  formatDriveFileSize,
-  formatRecognitionSummary,
-} from '../helpers';
+import { formatDriveDate, formatDriveFileSize, formatRecognitionSummary } from '../helpers';
 
 interface FilesTabProps {
   selectedDeal: Deal | null;
@@ -40,13 +30,9 @@ interface FilesTabProps {
   selectedDriveFileIds: string[];
   toggleDriveFileSelection: (fileId: string) => void;
   handleRecognizePolicies: () => Promise<void>;
-  handleRecognizeDocuments: () => Promise<void>;
   isRecognizing: boolean;
   recognitionResults: PolicyRecognitionResult[];
   recognitionMessage: string | null;
-  isDocumentRecognizing: boolean;
-  documentRecognitionResults: DocumentRecognitionResult[];
-  documentRecognitionMessage: string | null;
   isTrashing: boolean;
   trashMessage: string | null;
   handleTrashSelectedFiles: () => Promise<void>;
@@ -62,7 +48,6 @@ interface FilesTabProps {
   isFolderLoading: (folderId: string) => boolean;
   getDriveFileDepth: (fileId: string) => number;
   canRecognizeSelectedFiles: boolean;
-  canRecognizeSelectedDocumentFiles: boolean;
   driveSortDirection: 'asc' | 'desc';
   toggleDriveSortDirection: () => void;
   isRenaming: boolean;
@@ -85,13 +70,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   selectedDriveFileIds,
   toggleDriveFileSelection,
   handleRecognizePolicies,
-  handleRecognizeDocuments,
   isRecognizing,
   recognitionResults,
   recognitionMessage,
-  isDocumentRecognizing,
-  documentRecognitionResults,
-  documentRecognitionMessage,
   isTrashing,
   trashMessage,
   handleTrashSelectedFiles,
@@ -102,7 +83,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   getDriveFileBlob,
   driveError,
   canRecognizeSelectedFiles,
-  canRecognizeSelectedDocumentFiles,
   sortedDriveFiles,
   expandedFolderIds,
   toggleFolderExpanded,
@@ -481,27 +461,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       <div className="flex flex-wrap items-center gap-2 pt-2">
         <button
           type="button"
-          onClick={handleRecognizeDocuments}
-          disabled={
-            isDocumentRecognizing ||
-            isRecognizing ||
-            isTrashing ||
-            isDownloading ||
-            !selectedDeal.driveFolderId ||
-            selectedDriveFileIds.length === 0 ||
-            !canRecognizeSelectedDocumentFiles ||
-            !!driveError
-          }
-          className={BTN_SM_PRIMARY}
-        >
-          {isDocumentRecognizing ? 'Распознаём...' : 'Распознать документы'}
-        </button>
-        <button
-          type="button"
           onClick={handleRecognizePolicies}
           disabled={
             isRecognizing ||
-            isDocumentRecognizing ||
             isTrashing ||
             isDownloading ||
             !selectedDeal.driveFolderId ||
@@ -511,14 +473,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           }
           className={BTN_SM_PRIMARY}
         >
-          {isRecognizing ? 'Распознаём...' : 'Распознать полис (только PDF)'}
+          {isRecognizing ? 'Распознаём...' : 'Распознать полис (PDF, DOC, DOCX)'}
         </button>
         <button
           type="button"
           onClick={() => handleDownloadDriveFiles()}
           disabled={
             isRecognizing ||
-            isDocumentRecognizing ||
             isTrashing ||
             isDownloading ||
             !selectedDeal.driveFolderId ||
@@ -534,7 +495,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           onClick={handleTrashSelectedFiles}
           disabled={
             isRecognizing ||
-            isDocumentRecognizing ||
             isTrashing ||
             isDownloading ||
             !selectedDeal.driveFolderId ||
@@ -553,9 +513,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       </div>
 
       {recognitionMessage && <p className={STATUS_BADGE_DANGER_XS}>{recognitionMessage}</p>}
-      {documentRecognitionMessage && (
-        <p className={STATUS_BADGE_DANGER_XS}>{documentRecognitionMessage}</p>
-      )}
 
       {trashMessage && <p className={STATUS_BADGE_DANGER_XS}>{trashMessage}</p>}
 
@@ -579,44 +536,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               >
                 {formatRecognitionSummary(result)}
               </p>
-              {result.transcript && (
-                <details className="text-[10px] text-slate-400">
-                  <summary>Показать транскрипт</summary>
-                  <pre className="whitespace-pre-wrap text-[11px] leading-snug">
-                    {result.transcript}
-                  </pre>
-                </details>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {documentRecognitionResults.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3 text-xs">
-          {documentRecognitionResults.map((result) => (
-            <div key={`${result.fileId}-${result.status}`} className="space-y-1">
-              <p className="font-semibold text-slate-900">{result.fileName ?? result.fileId}</p>
-              <p
-                className={`text-[11px] ${
-                  result.status === 'error' ? 'text-rose-600' : 'text-slate-500'
-                }`}
-              >
-                {formatDocumentRecognitionSummary(result)}
-              </p>
-              {result.doc?.normalizedType && (
-                <p className="text-[11px] text-slate-500">
-                  Категория CRM: <span className="font-medium">{result.doc.normalizedType}</span>
-                </p>
-              )}
-              {result.doc?.warnings && result.doc.warnings.length > 0 && (
-                <p className="text-[11px] text-amber-700">
-                  Предупреждения: {result.doc.warnings.join(', ')}
-                </p>
-              )}
-              {result.error?.message && result.status === 'error' && (
-                <p className="text-[11px] text-rose-600">Ошибка: {result.error.message}</p>
-              )}
               {result.transcript && (
                 <details className="text-[10px] text-slate-400">
                   <summary>Показать транскрипт</summary>
@@ -656,11 +575,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             selectedFileIds={selectedDriveFileIds}
             onToggleSelection={toggleDriveFileSelection}
             isSelectionDisabled={() =>
-              isDriveLoading ||
-              isTrashing ||
-              isDownloading ||
-              isRecognizing ||
-              isDocumentRecognizing
+              isDriveLoading || isTrashing || isDownloading || isRecognizing
             }
             expandedFolderIds={expandedFolderIds}
             onToggleFolder={toggleFolderExpanded}

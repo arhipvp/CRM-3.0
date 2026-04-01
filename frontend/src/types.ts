@@ -193,29 +193,6 @@ export interface PolicyIssuanceStatus {
   log: PolicyIssuanceLogEntry[];
 }
 
-export interface DocumentRecognitionResult {
-  fileId: string;
-  fileName?: string | null;
-  status: 'parsed' | 'error';
-  transcript?: string | null;
-  doc: {
-    rawType: string;
-    normalizedType?: 'passport' | 'driver_license' | 'epts' | 'sts' | null;
-    confidence: number | null;
-    warnings: string[];
-    fields: Record<string, unknown>;
-    validation: {
-      accepted: string[];
-      rejected: Record<string, string>;
-    };
-    extractedText: string;
-  } | null;
-  error: {
-    code: string;
-    message: string;
-  } | null;
-}
-
 export interface ChatMessage {
   id: string;
   deal: string;
