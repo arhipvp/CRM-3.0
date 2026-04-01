@@ -428,6 +428,18 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.income_record = FinancialRecord.objects.create(
             payment=self.payment, amount=Decimal("150.00"), description="Income"
         )
+        self.zero_income_record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("0.00"),
+            record_type=FinancialRecord.RecordType.INCOME,
+            description="Zero income",
+        )
+        self.zero_expense_record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("0.00"),
+            record_type=FinancialRecord.RecordType.EXPENSE,
+            description="Zero expense",
+        )
         self.expense_record = FinancialRecord.objects.create(
             payment=self.payment, amount=Decimal("-75.00"), description="Expense"
         )
@@ -455,6 +467,52 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
                 "name": "Income Sheet",
                 "statement_type": "income",
                 "record_ids": [str(self.expense_record.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        payload = response.json()
+        errors = payload.get("record_ids", [])
+        self.assertTrue(any("не подходит" in str(error) for error in errors))
+
+    def test_can_add_zero_income_record_to_income_statement(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Income Sheet",
+                "statement_type": "income",
+                "record_ids": [str(self.zero_income_record.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.zero_income_record.refresh_from_db()
+        self.assertIsNotNone(self.zero_income_record.statement_id)
+
+    def test_can_add_zero_expense_record_to_expense_statement(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Expense Sheet",
+                "statement_type": "expense",
+                "record_ids": [str(self.zero_expense_record.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.zero_expense_record.refresh_from_db()
+        self.assertIsNotNone(self.zero_expense_record.statement_id)
+
+    def test_cannot_add_zero_income_record_to_expense_statement(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Expense Sheet",
+                "statement_type": "expense",
+                "record_ids": [str(self.zero_income_record.id)],
             },
             format="json",
         )

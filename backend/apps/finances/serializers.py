@@ -73,9 +73,6 @@ class StatementSerializer(serializers.ModelSerializer):
             ):
                 errors.append(f"Запись {record.id} уже включена в другую ведомость.")
                 continue
-            if record.amount == 0:
-                errors.append(f"Запись {record.id} имеет нулевую сумму.")
-                continue
             record_statement_type = (
                 Statement.TYPE_INCOME
                 if record.record_type == FinancialRecord.RecordType.INCOME

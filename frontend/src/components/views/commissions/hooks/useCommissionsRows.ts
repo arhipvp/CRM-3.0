@@ -91,7 +91,7 @@ export const useCommissionsRows = ({
         const payment = paymentsById.get(record.paymentId) ?? buildPaymentFallback(record);
         return buildAllModeRow(record, payment);
       })
-      .filter((row) => Number.isFinite(row.recordAmount) && row.recordAmount !== 0);
+      .filter((row) => Number.isFinite(row.recordAmount));
   }, [paymentsById, statementRecords]);
 
   const allRows = useMemo<IncomeExpenseRow[]>(() => {

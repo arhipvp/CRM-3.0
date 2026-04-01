@@ -79,8 +79,34 @@ describe('useStatementRecordsSelection', () => {
     expect(result.current.canAttachRow(row)).toBe(true);
   });
 
-  it('keeps zero-amount rows unavailable for attaching to statements', () => {
+  it('allows zero-amount rows when their type matches the target statement', () => {
     const attachStatement = buildStatement({ id: 'statement-income', statementType: 'income' });
+    const zeroIncomeRow = buildRow({
+      recordId: 'record-zero-income',
+      recordAmount: 0,
+      recordKind: 'income',
+    });
+
+    const { result } = renderHook(() =>
+      useStatementRecordsSelection({
+        attachStatement,
+        selectedStatement: undefined,
+        isAttachStatementPaid: false,
+        filteredRows: [zeroIncomeRow],
+        viewMode: 'all',
+        onUpdateStatement: vi.fn(),
+        onRemoveStatementRecords: vi.fn(),
+        onRefreshAllRecords: vi.fn().mockResolvedValue(undefined),
+        onRefreshStatementRecords: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
+
+    expect(result.current.canAttachRow(zeroIncomeRow)).toBe(true);
+    expect(result.current.selectableRecordIds).toEqual(['record-zero-income']);
+  });
+
+  it('keeps zero-amount rows unavailable when their type mismatches the target statement', () => {
+    const attachStatement = buildStatement({ id: 'statement-expense', statementType: 'expense' });
     const zeroIncomeRow = buildRow({
       recordId: 'record-zero-income',
       recordAmount: 0,

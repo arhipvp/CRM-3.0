@@ -434,6 +434,7 @@ export const RecordsTable = ({
               const recordAmount = row.recordAmount;
               const isIncome = row.recordKind === 'income';
               const recordClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
+              const recordTypeLabel = isIncome ? 'Доход' : 'Расход';
               const recordDateLabel = formatDateRu(row.recordDate);
               const paymentBalance = row.paymentPaidBalance;
               const paymentBalanceLabel =
@@ -575,6 +576,9 @@ export const RecordsTable = ({
                     ) : (
                       <p className="text-sm font-semibold text-slate-400">—</p>
                     )}
+                    <p className={`mt-1 text-[11px] font-semibold ${recordClass}`}>
+                      {recordTypeLabel}
+                    </p>
                     {secondaryComment && (
                       <p className="mt-1 text-[11px] text-slate-500">{secondaryComment}</p>
                     )}

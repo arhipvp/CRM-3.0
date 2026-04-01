@@ -207,4 +207,34 @@ describe('useCommissionsRows', () => {
       recordAmount: 0,
     });
   });
+
+  it('keeps zero records visible inside a selected statement and preserves their type', () => {
+    const { result } = renderHook(() =>
+      useCommissionsRows({
+        statementRecords: [
+          {
+            id: 'record-zero-expense',
+            paymentId: 'payment-zero-expense',
+            statementId: 'statement-1',
+            amount: '0',
+            recordType: 'Расход',
+            createdAt: '2026-03-06T10:00:00Z',
+            updatedAt: '2026-03-06T10:00:00Z',
+          },
+        ],
+        allRecords: [],
+        paymentsById: new Map(),
+        selectedStatementId: 'statement-1',
+        viewMode: 'statements',
+      }),
+    );
+
+    expect(result.current.filteredRows).toHaveLength(1);
+    expect(result.current.filteredRows[0]).toMatchObject({
+      recordId: 'record-zero-expense',
+      statementId: 'statement-1',
+      recordKind: 'expense',
+      recordAmount: 0,
+    });
+  });
 });
