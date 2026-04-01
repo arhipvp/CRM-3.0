@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NotificationContext } from '../../../../contexts/NotificationContext';
@@ -290,6 +291,7 @@ describe('FilesTab', () => {
   });
 
   it('shows validation error for empty preview rename and does not submit', async () => {
+    const user = userEvent.setup();
     const handleRenameDriveFile = vi.fn().mockResolvedValue(undefined);
     const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
     const originalCreateObjectURL = URL.createObjectURL;
@@ -324,10 +326,10 @@ describe('FilesTab', () => {
     const renameInput = within(dialog).getByLabelText('Имя файла') as HTMLInputElement;
     const renameForm = renameInput.closest('form');
     expect(renameForm).not.toBeNull();
-    fireEvent.change(renameInput, { target: { value: '   ' } });
-    await waitFor(() => {
-      expect(renameInput.value).toBe('   ');
-    });
+    await user.click(renameInput);
+    renameInput.setSelectionRange(0, renameInput.value.length);
+    await user.keyboard('{Backspace}');
+    await user.type(renameInput, '   ');
     fireEvent.submit(renameForm as HTMLFormElement);
 
     expect(
