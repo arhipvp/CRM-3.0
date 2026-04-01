@@ -17,7 +17,6 @@ interface UseDealDriveFilesParams {
   onConfirmAction?: (message: string) => Promise<boolean>;
   onConfirmDeleteFile?: (fileName: string) => Promise<boolean>;
   onRefreshPolicies?: () => Promise<void>;
-  onRefreshNotes?: () => Promise<void>;
   onPolicyDraftReady?: (
     dealId: string,
     parsed: Record<string, unknown>,
@@ -56,7 +55,6 @@ export const useDealDriveFiles = ({
   onConfirmAction,
   onConfirmDeleteFile,
   onRefreshPolicies,
-  onRefreshNotes,
   onPolicyDraftReady,
 }: UseDealDriveFilesParams) => {
   const [rootFiles, setRootFiles] = useState<DriveFile[]>([]);

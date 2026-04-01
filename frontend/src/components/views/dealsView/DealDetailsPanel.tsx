@@ -297,7 +297,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     onConfirmAction: async (message) => confirm(confirmTexts.deleteDriveFiles(message)),
     onConfirmDeleteFile: async (name) => confirm(confirmTexts.deleteDriveFile(name)),
     onRefreshPolicies,
-    onRefreshNotes: reloadNotes,
     onPolicyDraftReady,
   });
 

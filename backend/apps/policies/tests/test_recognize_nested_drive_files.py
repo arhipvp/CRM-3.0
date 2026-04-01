@@ -108,7 +108,9 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"][0]["status"], "parsed")
-        self.assertEqual(response.data["results"][0]["data"]["policyNumber"], "DOCX-123")
+        self.assertEqual(
+            response.data["results"][0]["data"]["policyNumber"], "DOCX-123"
+        )
         extract_mock.assert_called_once_with(b"docx-bytes", "policy.docx")
         recognize_mock.assert_called_once_with(
             "Файл policy.docx:\ndocx policy text",
@@ -146,7 +148,9 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
             patch(
                 "apps.policies.views.extract_text_from_bytes",
                 side_effect=[
-                    PolicyRecognitionError("Не удалось извлечь текст из Word-файла broken.doc."),
+                    PolicyRecognitionError(
+                        "Не удалось извлечь текст из Word-файла broken.doc."
+                    ),
                     "pdf policy text",
                 ],
             ) as extract_mock,

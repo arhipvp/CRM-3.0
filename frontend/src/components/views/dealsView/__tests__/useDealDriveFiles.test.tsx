@@ -46,7 +46,6 @@ const renderDriveHook = (
     onDriveFolderCreated?: (dealId: string, folderId: string) => void;
     onConfirmDeleteFile?: (fileName: string) => Promise<boolean>;
     onRefreshPolicies?: () => Promise<void>;
-    onRefreshNotes?: () => Promise<void>;
     onPolicyDraftReady?: (
       dealId: string,
       parsed: Record<string, unknown>,
@@ -65,7 +64,6 @@ const renderDriveHook = (
       onDriveFolderCreated: options?.onDriveFolderCreated ?? (() => {}),
       onConfirmDeleteFile: options?.onConfirmDeleteFile,
       onRefreshPolicies: options?.onRefreshPolicies,
-      onRefreshNotes: options?.onRefreshNotes,
       onPolicyDraftReady: options?.onPolicyDraftReady,
     });
     useEffect(() => {
