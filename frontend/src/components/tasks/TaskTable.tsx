@@ -149,6 +149,7 @@ export function TaskTable({
           <tbody className="bg-white">
             {tasks.map((task) => {
               const isDone = task.status === 'done';
+              const isUrgent = task.priority === 'urgent';
               const checklistCount = task.checklist?.length ?? 0;
 
               return (
@@ -163,7 +164,15 @@ export function TaskTable({
                 >
                   <td className={taskCellClassName}>
                     <p
-                      className={`font-semibold leading-snug ${isDone ? 'text-slate-500 line-through' : 'text-slate-900'}`}
+                      className={`font-semibold leading-snug ${
+                        isDone
+                          ? isUrgent
+                            ? 'text-rose-700 line-through'
+                            : 'text-slate-500 line-through'
+                          : isUrgent
+                            ? 'text-rose-700'
+                            : 'text-slate-900'
+                      }`}
                     >
                       {task.title}
                     </p>
