@@ -1,8 +1,8 @@
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
 from django.db.models import Case, IntegerField, Q, Value, When
-from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
 
 from .filters import TaskFilterSet
