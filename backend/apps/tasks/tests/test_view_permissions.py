@@ -190,4 +190,7 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         payload = response.data.get("results", response.data)
         returned_ids = [item["id"] for item in payload]
 
-        self.assertLess(returned_ids.index(str(urgent_task.id)), returned_ids.index(str(low_task.id)))
+        self.assertLess(
+            returned_ids.index(str(urgent_task.id)),
+            returned_ids.index(str(low_task.id)),
+        )

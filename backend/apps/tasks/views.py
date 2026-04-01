@@ -39,27 +39,25 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         user = self.request.user
         show_deleted = self.request.query_params.get("show_deleted") == "true"
         manager = Task.objects.with_deleted() if show_deleted else Task.objects.all()
-        queryset = (
-            manager.select_related(
-                "deal",
-                "deal__client",
-                "assignee",
-                "created_by",
-                "completed_by",
-            ).annotate(
-                priority_order=Case(
-                    When(priority=Task.PriorityChoices.URGENT, then=Value(4)),
-                    When(priority=Task.PriorityChoices.HIGH, then=Value(3)),
-                    When(priority=Task.PriorityChoices.NORMAL, then=Value(2)),
-                    default=Value(1),
-                    output_field=IntegerField(),
-                ),
-                due_at_is_null=Case(
-                    When(due_at__isnull=True, then=Value(1)),
-                    default=Value(0),
-                    output_field=IntegerField(),
-                ),
-            )
+        queryset = manager.select_related(
+            "deal",
+            "deal__client",
+            "assignee",
+            "created_by",
+            "completed_by",
+        ).annotate(
+            priority_order=Case(
+                When(priority=Task.PriorityChoices.URGENT, then=Value(4)),
+                When(priority=Task.PriorityChoices.HIGH, then=Value(3)),
+                When(priority=Task.PriorityChoices.NORMAL, then=Value(2)),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            due_at_is_null=Case(
+                When(due_at__isnull=True, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
         )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
