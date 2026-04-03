@@ -70,12 +70,6 @@ const SimilarClientsModal = lazy(async () => {
 
 const HOTKEY_HELP_ITEMS: CommandPaletteItem[] = [
   {
-    id: 'help-open-palette',
-    title: 'Открыть командную палитру',
-    shortcut: formatShortcut('mod+k'),
-    disabled: true,
-  },
-  {
     id: 'help-open-hotkeys',
     title: 'Открыть справку по горячим клавишам',
     shortcut: formatShortcut('mod+/'),
@@ -600,7 +594,6 @@ const AppContent: React.FC = () => {
       selectedDealId,
       selectedDealExists: Boolean(selectedDealId && dealsById.has(selectedDealId)),
       navigate: (path) => navigate(path),
-      addNotification,
       selectDealById,
       setQuickTaskDealId,
       openDealCreateModal,

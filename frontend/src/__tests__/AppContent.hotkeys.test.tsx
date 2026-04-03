@@ -393,16 +393,6 @@ describe('AppContent hotkeys integration', () => {
     });
   });
 
-  it('opens command palette via Ctrl+K', async () => {
-    renderAppContent('/deals');
-
-    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-
-    await waitFor(() => {
-      expect(screen.getByText(/Командная палитра/i)).toBeInTheDocument();
-    });
-  });
-
   it('does not load full finance data globally on deals route after authentication', async () => {
     renderAppContent('/deals');
 

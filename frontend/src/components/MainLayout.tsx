@@ -30,7 +30,6 @@ const HIDDEN_NAV_PATHS = new Set(['/knowledge', '/library']);
 
 const HOTKEY_ADD_DEAL = formatShortcut('mod+shift+d');
 const HOTKEY_ADD_CLIENT = formatShortcut('mod+shift+c');
-const HOTKEY_OPEN_PALETTE = formatShortcut('mod+k');
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
   onAddDeal,
@@ -50,23 +49,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">CRM 3.0</p>
               <h1 className="text-2xl font-bold text-blue-700">Insure Desk</h1>
             </div>
-            <button
-              type="button"
-              onClick={onOpenCommandPalette}
-              className={`${BTN_QUIET} rounded-xl px-3 py-1.5 text-xs`}
-            >
-              {HOTKEY_OPEN_PALETTE}
-            </button>
           </div>
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className={`${BTN_QUIET} w-full justify-between rounded-xl`}
+            className={`${BTN_QUIET} w-full rounded-xl`}
           >
             Команды
-            <span className="rounded-md border border-[var(--app-border)] px-2 py-0.5 text-xs text-slate-600">
-              {HOTKEY_OPEN_PALETTE}
-            </span>
           </button>
         </div>
 

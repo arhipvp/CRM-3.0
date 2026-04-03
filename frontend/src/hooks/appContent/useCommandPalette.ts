@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import type { CommandPaletteItem } from '../../components/common/modal/CommandPalette';
 import type { Client, Deal, Policy, Task } from '../../types';
@@ -17,8 +17,6 @@ const NAVIGATION_COMMANDS: Array<{ path: string; label: string }> = [
   { path: '/settings', label: 'Настройки' },
 ];
 
-const PALETTE_HINT_SESSION_KEY = 'crm_hotkeys_palette_hint_seen';
-
 interface UseCommandPaletteParams {
   isAuthenticated: boolean;
   deals: Deal[];
@@ -36,11 +34,6 @@ interface UseCommandPaletteParams {
   selectedDealId: string | null;
   selectedDealExists: boolean;
   navigate: (path: string) => void;
-  addNotification: (
-    message: string,
-    type?: 'error' | 'success' | 'info' | 'warning',
-    duration?: number,
-  ) => void;
   selectDealById: (dealId: string) => void;
   setQuickTaskDealId: React.Dispatch<React.SetStateAction<string | null>>;
   openDealCreateModal: () => void;
@@ -75,7 +68,6 @@ export const useCommandPalette = ({
   selectedDealId,
   selectedDealExists,
   navigate,
-  addNotification,
   selectDealById,
   setQuickTaskDealId,
   openDealCreateModal,
@@ -113,25 +105,6 @@ export const useCommandPalette = ({
   const closePalette = useCallback(() => {
     setPaletteMode(null);
   }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    if (typeof window === 'undefined') {
-      return;
-    }
-    if (window.sessionStorage.getItem(PALETTE_HINT_SESSION_KEY) === '1') {
-      return;
-    }
-
-    addNotification(
-      `Откройте командную палитру: ${formatShortcut('mod+k')} (справка: ${formatShortcut('mod+/')})`,
-      'success',
-      7000,
-    );
-    window.sessionStorage.setItem(PALETTE_HINT_SESSION_KEY, '1');
-  }, [addNotification, isAuthenticated]);
 
   const commandItems = useMemo<CommandPaletteItem[]>(
     () => [
@@ -311,13 +284,6 @@ export const useCommandPalette = ({
   }, [deals, selectDealById, setQuickTaskDealId]);
 
   useGlobalHotkeys([
-    {
-      id: 'open-command-palette',
-      combo: 'mod+k',
-      handler: openCommandsPalette,
-      allowInInput: true,
-      enabled: isAuthenticated,
-    },
     {
       id: 'open-hotkeys-help',
       combo: 'mod+/',
