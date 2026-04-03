@@ -309,7 +309,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
     setError(null);
 
     if (!navigator.clipboard?.read) {
-      setError('Браузер не поддерживает чтение буфера. Используйте Ctrl+V.');
+      setError('Браузер не поддерживает чтение буфера.');
       return;
     }
 
@@ -393,7 +393,7 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
               {isUploading ? 'Загружаем файл...' : 'Нажмите или перетащите файл сюда'}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Максимум 100 МБ • Можно вставить из буфера (Ctrl+V)
+              Максимум 100 МБ • Можно вставить из буфера
             </p>
           </div>
         </div>

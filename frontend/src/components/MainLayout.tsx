@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 
-import { formatShortcut } from '../hotkeys/formatShortcut';
 import type { User } from '../types';
 import { BTN_DANGER, BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY } from './common/buttonStyles';
 import { UserBadge } from './common/UserBadge';
@@ -27,9 +26,6 @@ const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
 ];
 
 const HIDDEN_NAV_PATHS = new Set(['/knowledge', '/library']);
-
-const HOTKEY_ADD_DEAL = formatShortcut('mod+shift+d');
-const HOTKEY_ADD_CLIENT = formatShortcut('mod+shift+c');
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
   onAddDeal,
@@ -85,20 +81,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
         <div className="space-y-3 border-t border-[var(--app-border)] bg-white/70 p-4">
           <button type="button" onClick={onAddDeal} className={`${BTN_PRIMARY} w-full rounded-xl`}>
-            <span className="mr-auto">+ Добавить сделку</span>
-            <span className="rounded-md border border-white/40 px-2 py-0.5 text-xs">
-              {HOTKEY_ADD_DEAL}
-            </span>
+            + Добавить сделку
           </button>
           <button
             type="button"
             onClick={onAddClient}
             className={`${BTN_SECONDARY} w-full rounded-xl`}
           >
-            <span className="mr-auto">+ Добавить клиента</span>
-            <span className="rounded-md border border-[var(--app-border)] px-2 py-0.5 text-xs text-slate-600">
-              {HOTKEY_ADD_CLIENT}
-            </span>
+            + Добавить клиента
           </button>
 
           {currentUser && (

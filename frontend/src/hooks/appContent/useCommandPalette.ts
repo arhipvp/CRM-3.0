@@ -2,10 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { CommandPaletteItem } from '../../components/common/modal/CommandPalette';
 import type { Client, Deal, Policy, Task } from '../../types';
-import { formatShortcut } from '../../hotkeys/formatShortcut';
-import { useGlobalHotkeys } from '../../hotkeys/useGlobalHotkeys';
 
-export type PaletteMode = null | 'commands' | 'help' | 'taskDeal';
+export type PaletteMode = null | 'commands' | 'taskDeal';
 
 const NAVIGATION_COMMANDS: Array<{ path: string; label: string }> = [
   { path: '/seller-dashboard', label: 'Дашборд продавца' },
@@ -18,7 +16,6 @@ const NAVIGATION_COMMANDS: Array<{ path: string; label: string }> = [
 ];
 
 interface UseCommandPaletteParams {
-  isAuthenticated: boolean;
   deals: Deal[];
   selectedDeal: Deal | null;
   selectedClientShortcut: Client | null;
@@ -28,9 +25,6 @@ interface UseCommandPaletteParams {
   isClientsRoute: boolean;
   isPoliciesRoute: boolean;
   isTasksRoute: boolean;
-  sortedClientsCount: number;
-  sortedPoliciesCount: number;
-  sortedTasksCount: number;
   selectedDealId: string | null;
   selectedDealExists: boolean;
   navigate: (path: string) => void;
@@ -46,13 +40,9 @@ interface UseCommandPaletteParams {
   openSelectedPolicy: () => void;
   openSelectedTaskDealPreview: () => void;
   markSelectedTaskDone: () => Promise<void>;
-  cycleActiveContextSelection: (direction: 1 | -1) => void;
-  openPrimaryContextAction: () => void;
-  deletePrimaryContextAction: () => Promise<void>;
 }
 
 export const useCommandPalette = ({
-  isAuthenticated,
   deals,
   selectedDeal,
   selectedClientShortcut,
@@ -62,9 +52,6 @@ export const useCommandPalette = ({
   isClientsRoute,
   isPoliciesRoute,
   isTasksRoute,
-  sortedClientsCount,
-  sortedPoliciesCount,
-  sortedTasksCount,
   selectedDealId,
   selectedDealExists,
   navigate,
@@ -80,18 +67,11 @@ export const useCommandPalette = ({
   openSelectedPolicy,
   openSelectedTaskDealPreview,
   markSelectedTaskDone,
-  cycleActiveContextSelection,
-  openPrimaryContextAction,
-  deletePrimaryContextAction,
 }: UseCommandPaletteParams) => {
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
 
   const openCommandsPalette = useCallback(() => {
     setPaletteMode((prev) => (prev === 'commands' ? null : 'commands'));
-  }, []);
-
-  const openHelpPalette = useCallback(() => {
-    setPaletteMode((prev) => (prev === 'help' ? null : 'help'));
   }, []);
 
   const openTaskCreateFlow = useCallback(() => {
@@ -119,7 +99,6 @@ export const useCommandPalette = ({
         id: 'create-deal',
         title: 'Новая сделка',
         subtitle: 'Создание',
-        shortcut: formatShortcut('mod+shift+d'),
         keywords: ['сделка', 'создать'],
         onSelect: openDealCreateModal,
       },
@@ -127,7 +106,6 @@ export const useCommandPalette = ({
         id: 'create-client',
         title: 'Новый клиент',
         subtitle: 'Создание',
-        shortcut: formatShortcut('mod+shift+c'),
         keywords: ['клиент', 'создать'],
         onSelect: openClientCreateModal,
       },
@@ -135,20 +113,8 @@ export const useCommandPalette = ({
         id: 'create-task',
         title: 'Новая задача',
         subtitle: 'Создание',
-        shortcut: formatShortcut('mod+shift+t'),
         keywords: ['задача', 'создать'],
         onSelect: openTaskCreateFlow,
-      },
-      {
-        id: 'show-hotkeys-help',
-        title: 'Справка по горячим клавишам',
-        subtitle: 'Помощь',
-        shortcut: formatShortcut('mod+/'),
-        keywords: ['шорткаты', 'горячие клавиши', 'помощь'],
-        onSelect: () => {
-          setPaletteMode('help');
-          return false;
-        },
       },
       ...(isDealsRoute && selectedDeal
         ? [
@@ -156,7 +122,6 @@ export const useCommandPalette = ({
               id: 'deal-open-preview',
               title: `Открыть сделку: ${selectedDeal.title}`,
               subtitle: 'Контекст сделки',
-              shortcut: formatShortcut('mod+o'),
               keywords: ['сделка', 'открыть', 'превью'],
               onSelect: openSelectedDealPreview,
             },
@@ -164,7 +129,6 @@ export const useCommandPalette = ({
               id: 'deal-delete',
               title: `Удалить сделку: ${selectedDeal.title}`,
               subtitle: 'Контекст сделки',
-              shortcut: formatShortcut('mod+backspace'),
               keywords: ['сделка', 'удалить'],
               disabled: Boolean(selectedDeal.deletedAt),
               onSelect: deleteSelectedDeal,
@@ -173,7 +137,6 @@ export const useCommandPalette = ({
               id: 'deal-restore',
               title: `Восстановить сделку: ${selectedDeal.title}`,
               subtitle: 'Контекст сделки',
-              shortcut: formatShortcut('mod+shift+r'),
               keywords: ['сделка', 'восстановить'],
               disabled: !selectedDeal.deletedAt,
               onSelect: restoreSelectedDeal,
@@ -186,7 +149,6 @@ export const useCommandPalette = ({
               id: 'client-open-edit',
               title: `Открыть клиента: ${selectedClientShortcut.name}`,
               subtitle: 'Контекст клиентов',
-              shortcut: formatShortcut('mod+o'),
               keywords: ['клиент', 'открыть', 'редактировать'],
               onSelect: openSelectedClient,
             },
@@ -194,7 +156,6 @@ export const useCommandPalette = ({
               id: 'client-delete',
               title: `Удалить клиента: ${selectedClientShortcut.name}`,
               subtitle: 'Контекст клиентов',
-              shortcut: formatShortcut('mod+backspace'),
               keywords: ['клиент', 'удалить'],
               onSelect: deleteSelectedClient,
             },
@@ -206,7 +167,6 @@ export const useCommandPalette = ({
               id: 'policy-open-edit',
               title: `Открыть полис: ${selectedPolicyShortcut.number}`,
               subtitle: 'Контекст полисов',
-              shortcut: formatShortcut('mod+o'),
               keywords: ['полис', 'открыть', 'редактировать'],
               onSelect: openSelectedPolicy,
             },
@@ -218,7 +178,6 @@ export const useCommandPalette = ({
               id: 'task-open-deal-preview',
               title: `Открыть сделку задачи: ${selectedTaskShortcut.title}`,
               subtitle: 'Контекст задач',
-              shortcut: formatShortcut('mod+o'),
               keywords: ['задача', 'сделка', 'открыть'],
               disabled: !selectedTaskShortcut.dealId,
               onSelect: openSelectedTaskDealPreview,
@@ -227,7 +186,6 @@ export const useCommandPalette = ({
               id: 'task-mark-done',
               title: `Отметить выполненной: ${selectedTaskShortcut.title}`,
               subtitle: 'Контекст задач',
-              shortcut: formatShortcut('mod+enter'),
               keywords: ['задача', 'выполнено', 'done'],
               disabled: selectedTaskShortcut.status === 'done',
               onSelect: markSelectedTaskDone,
@@ -283,115 +241,9 @@ export const useCommandPalette = ({
     }));
   }, [deals, selectDealById, setQuickTaskDealId]);
 
-  useGlobalHotkeys([
-    {
-      id: 'open-hotkeys-help',
-      combo: 'mod+/',
-      handler: openHelpPalette,
-      allowInInput: true,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'create-deal-hotkey',
-      combo: 'mod+shift+d',
-      handler: openDealCreateModal,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'create-client-hotkey',
-      combo: 'mod+shift+c',
-      handler: openClientCreateModal,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'create-task-hotkey',
-      combo: 'mod+shift+t',
-      handler: openTaskCreateFlow,
-      enabled: isAuthenticated,
-    },
-    {
-      id: 'context-prev-selection-hotkey',
-      combo: 'alt+arrowup',
-      handler: () => cycleActiveContextSelection(-1),
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && deals.length > 0) ||
-          (isClientsRoute && sortedClientsCount > 0) ||
-          (isPoliciesRoute && sortedPoliciesCount > 0) ||
-          (isTasksRoute && sortedTasksCount > 0)),
-    },
-    {
-      id: 'context-next-selection-hotkey',
-      combo: 'alt+arrowdown',
-      handler: () => cycleActiveContextSelection(1),
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && deals.length > 0) ||
-          (isClientsRoute && sortedClientsCount > 0) ||
-          (isPoliciesRoute && sortedPoliciesCount > 0) ||
-          (isTasksRoute && sortedTasksCount > 0)),
-    },
-    {
-      id: 'context-open-hotkey',
-      combo: 'mod+o',
-      handler: () => {
-        void openPrimaryContextAction();
-      },
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && selectedDeal?.id != null) ||
-          (isClientsRoute && selectedClientShortcut != null) ||
-          (isPoliciesRoute && selectedPolicyShortcut != null) ||
-          (isTasksRoute && selectedTaskShortcut?.dealId != null)),
-    },
-    {
-      id: 'context-delete-hotkey',
-      combo: 'mod+backspace',
-      handler: () => {
-        void deletePrimaryContextAction();
-      },
-      enabled:
-        isAuthenticated &&
-        ((isDealsRoute && selectedDeal?.id != null && selectedDeal?.deletedAt == null) ||
-          (isClientsRoute && selectedClientShortcut != null)),
-    },
-    {
-      id: 'deals-restore-selected-hotkey',
-      combo: 'mod+shift+r',
-      handler: () => {
-        void restoreSelectedDeal();
-      },
-      enabled:
-        isAuthenticated &&
-        isDealsRoute &&
-        selectedDeal?.id != null &&
-        selectedDeal?.deletedAt != null,
-    },
-    {
-      id: 'tasks-mark-done-hotkey',
-      combo: 'mod+enter',
-      handler: () => {
-        void markSelectedTaskDone();
-      },
-      enabled:
-        isAuthenticated &&
-        isTasksRoute &&
-        selectedTaskShortcut != null &&
-        selectedTaskShortcut.status !== 'done',
-    },
-    {
-      id: 'close-palette-hotkey',
-      combo: 'escape',
-      handler: closePalette,
-      allowInInput: true,
-      enabled: isAuthenticated && paletteMode !== null,
-    },
-  ]);
-
   return {
     paletteMode,
     openCommandsPalette,
-    openHelpPalette,
     openTaskCreateFlow,
     closePalette,
     commandItems,

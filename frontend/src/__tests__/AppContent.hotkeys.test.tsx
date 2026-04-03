@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -433,49 +433,7 @@ describe('AppContent hotkeys integration', () => {
     });
   });
 
-  it('switches selected deal and opens preview with Ctrl+O', async () => {
-    appDataMock.deals = [
-      {
-        id: 'deal-1',
-        title: 'Сделка первая',
-        clientId: 'client-1',
-        status: 'open',
-        createdAt: '2025-01-01T00:00:00Z',
-        quotes: [],
-        documents: [],
-        clientName: 'Клиент 1',
-      },
-      {
-        id: 'deal-2',
-        title: 'Сделка вторая',
-        clientId: 'client-2',
-        status: 'open',
-        createdAt: '2026-01-01T00:00:00Z',
-        quotes: [],
-        documents: [],
-        clientName: 'Клиент 2',
-      },
-    ];
-
-    renderAppContent('/deals?dealId=deal-1');
-
-    expect(screen.getByTestId('selected-deal-title')).toHaveTextContent('Сделка первая');
-
-    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('selected-deal-title')).toHaveTextContent('Сделка вторая');
-    });
-
-    fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
-
-    await waitFor(() => {
-      expect(screen.getByText(/Сделка: Сделка вторая/i)).toBeInTheDocument();
-      expect(screen.getByTestId('deal-preview-panel')).toHaveTextContent('Сделка вторая');
-    });
-  });
-
-  it('deduplicates repeated tasks/quotes loading for the same selected deal within TTL', async () => {
+  it('does not render the removed hotkeys context top slot', async () => {
     appDataMock.deals = [
       {
         id: 'deal-1',
@@ -492,19 +450,10 @@ describe('AppContent hotkeys integration', () => {
     renderAppContent('/deals?dealId=deal-1');
 
     await waitFor(() => {
-      expect(fetchTasksByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
-      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
     });
-    expect(fetchTasksByDeal).toHaveBeenCalledTimes(1);
-    expect(fetchQuotesByDeal).toHaveBeenCalledTimes(1);
 
-    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
-    fireEvent.keyDown(window, { key: 'ArrowUp', altKey: true });
-
-    await waitFor(() => {
-      expect(fetchTasksByDeal).toHaveBeenCalledTimes(1);
-      expect(fetchQuotesByDeal).toHaveBeenCalledTimes(1);
-    });
+    expect(screen.queryByTestId('top-slot')).not.toBeInTheDocument();
   });
 
   it('loads quotes for the second deal after manual selection from auto-selected first deal', async () => {
@@ -1003,140 +952,6 @@ describe('AppContent hotkeys integration', () => {
       expect(updateDealMock).toHaveBeenCalled();
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
       expect(screen.getByTestId('focus-cleared')).toHaveTextContent('false');
-    });
-  });
-
-  it('opens client delete modal via Ctrl+Backspace in clients context', async () => {
-    appDataMock.clients = [
-      {
-        id: 'client-old',
-        name: 'Клиент Старый',
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 'client-new',
-        name: 'Клиент Новый',
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z',
-      },
-    ];
-
-    renderAppContent('/clients');
-
-    fireEvent.keyDown(window, { key: 'Backspace', ctrlKey: true });
-
-    await waitFor(() => {
-      const dialog = screen.getByRole('dialog', { name: /Удалить клиента/i });
-      expect(dialog).toBeInTheDocument();
-      expect(within(dialog).getByText(/Клиент Новый/i)).toBeInTheDocument();
-    });
-  });
-
-  it('switches selected client and opens edit modal via Ctrl+O in clients context', async () => {
-    appDataMock.clients = [
-      {
-        id: 'client-old',
-        name: 'Клиент Старый',
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 'client-new',
-        name: 'Клиент Новый',
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z',
-      },
-    ];
-
-    renderAppContent('/clients');
-
-    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
-    fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
-
-    await waitFor(() => {
-      const dialog = screen.getByRole('dialog', { name: /Редактировать клиента/i });
-      expect(dialog).toBeInTheDocument();
-      expect(within(dialog).getByTestId('client-form')).toHaveTextContent(/Клиент Старый/i);
-    });
-  });
-
-  it('switches selected policy and opens edit policy by Ctrl+O', async () => {
-    appDataMock.policiesList = [
-      {
-        id: 'policy-1',
-        number: 'AAA-001',
-        insuranceCompanyId: 'ins-1',
-        insuranceCompany: 'Inscorp',
-        insuranceTypeId: 'type-1',
-        insuranceType: 'КАСКО',
-        dealId: 'deal-1',
-        status: 'active',
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 'policy-2',
-        number: 'BBB-002',
-        insuranceCompanyId: 'ins-2',
-        insuranceCompany: 'Inscorp 2',
-        insuranceTypeId: 'type-2',
-        insuranceType: 'ОСАГО',
-        dealId: 'deal-2',
-        status: 'active',
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z',
-      },
-    ];
-
-    renderAppContent('/policies');
-
-    expect(screen.getByText('BBB-002')).toBeInTheDocument();
-
-    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
-
-    await waitFor(() => {
-      expect(screen.getByText('AAA-001')).toBeInTheDocument();
-    });
-
-    fireEvent.keyDown(window, { key: 'o', ctrlKey: true });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('app-modals-editing-policy')).toHaveTextContent(
-        'editing-policy:AAA-001',
-      );
-    });
-  });
-
-  it('switches selected task and marks it done via Ctrl+Enter', async () => {
-    appDataMock.tasks = [
-      {
-        id: 'task-1',
-        title: 'Перезвонить клиенту',
-        status: 'todo',
-        priority: 'normal',
-        createdAt: '2026-01-02T00:00:00Z',
-        dueAt: '2026-01-02',
-        dealId: 'deal-1',
-      },
-      {
-        id: 'task-2',
-        title: 'Отправить документы',
-        status: 'todo',
-        priority: 'normal',
-        createdAt: '2026-01-03T00:00:00Z',
-        dueAt: '2026-01-03',
-        dealId: 'deal-2',
-      },
-    ];
-
-    renderAppContent('/tasks');
-
-    fireEvent.keyDown(window, { key: 'ArrowDown', altKey: true });
-    fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true });
-
-    await waitFor(() => {
-      expect(updateTask).toHaveBeenCalledWith('task-2', { status: 'done' });
     });
   });
 });

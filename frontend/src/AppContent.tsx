@@ -26,7 +26,6 @@ import { useConfirm } from './hooks/useConfirm';
 import type { ModalType } from './components/app/types';
 import type { FinancialRecordModalState, PaymentModalState } from './types';
 import { formatAmountValue, parseAmountValue } from './utils/appContent';
-import { formatShortcut } from './hotkeys/formatShortcut';
 import { useClientActions } from './hooks/appContent/useClientActions';
 import { useCommandPalette } from './hooks/appContent/useCommandPalette';
 import { useDealActions } from './hooks/appContent/useDealActions';
@@ -38,7 +37,6 @@ import { usePolicyActions } from './hooks/appContent/usePolicyActions';
 import { useDealPreviewController } from './hooks/appContent/useDealPreviewController';
 import { useShortcutContextController } from './hooks/appContent/useShortcutContextController';
 import { resolveEffectiveSelectedDealId } from './hooks/useSelectedDeal';
-import type { CommandPaletteItem } from './components/common/modal/CommandPalette';
 import { runAsyncUiAction } from './utils/uiAction';
 
 const { Suspense, lazy } = React;
@@ -67,69 +65,6 @@ const SimilarClientsModal = lazy(async () => {
   const module = await import('./components/views/SimilarClientsModal');
   return { default: module.SimilarClientsModal };
 });
-
-const HOTKEY_HELP_ITEMS: CommandPaletteItem[] = [
-  {
-    id: 'help-open-hotkeys',
-    title: 'Открыть справку по горячим клавишам',
-    shortcut: formatShortcut('mod+/'),
-    disabled: true,
-  },
-  {
-    id: 'help-create-deal',
-    title: 'Создать сделку',
-    shortcut: formatShortcut('mod+shift+d'),
-    disabled: true,
-  },
-  {
-    id: 'help-create-client',
-    title: 'Создать клиента',
-    shortcut: formatShortcut('mod+shift+c'),
-    disabled: true,
-  },
-  {
-    id: 'help-create-task',
-    title: 'Создать задачу',
-    shortcut: formatShortcut('mod+shift+t'),
-    disabled: true,
-  },
-  {
-    id: 'help-close-layer',
-    title: 'Закрыть активное окно',
-    shortcut: formatShortcut('escape'),
-    disabled: true,
-  },
-  {
-    id: 'help-context-switch',
-    title: 'Текущий раздел: переключить выбранную сущность',
-    shortcut: `${formatShortcut('alt+arrowup')} / ${formatShortcut('alt+arrowdown')}`,
-    disabled: true,
-  },
-  {
-    id: 'help-context-open',
-    title: 'Текущий раздел: открыть выбранную сущность',
-    shortcut: formatShortcut('mod+o'),
-    disabled: true,
-  },
-  {
-    id: 'help-context-delete',
-    title: 'Текущий раздел: удалить выбранную сущность (где доступно)',
-    shortcut: formatShortcut('mod+backspace'),
-    disabled: true,
-  },
-  {
-    id: 'help-deals-restore',
-    title: 'Сделки: восстановить выбранную',
-    shortcut: formatShortcut('mod+shift+r'),
-    disabled: true,
-  },
-  {
-    id: 'help-tasks-done',
-    title: 'Задачи: отметить выбранную выполненной',
-    shortcut: formatShortcut('mod+enter'),
-    disabled: true,
-  },
-];
 
 const AppContent: React.FC = () => {
   const { addNotification } = useNotification();
@@ -541,21 +476,14 @@ const AppContent: React.FC = () => {
   });
 
   const {
-    activeShortcutContext,
-    cycleActiveContextSelection,
-    deletePrimaryContextAction,
     deleteSelectedClient,
     markSelectedTaskDone,
-    openPrimaryContextAction,
     openSelectedClient,
     openSelectedPolicy,
     openSelectedTaskDealPreview,
     selectedClientShortcut,
     selectedPolicyShortcut,
     selectedTaskShortcut,
-    sortedClientsForShortcuts,
-    sortedPoliciesForShortcuts,
-    sortedTasksForShortcuts,
   } = useShortcutContextController({
     clients,
     clientsById,
@@ -588,9 +516,6 @@ const AppContent: React.FC = () => {
       isClientsRoute,
       isPoliciesRoute,
       isTasksRoute,
-      sortedClientsCount: sortedClientsForShortcuts.length,
-      sortedPoliciesCount: sortedPoliciesForShortcuts.length,
-      sortedTasksCount: sortedTasksForShortcuts.length,
       selectedDealId,
       selectedDealExists: Boolean(selectedDealId && dealsById.has(selectedDealId)),
       navigate: (path) => navigate(path),
@@ -606,9 +531,6 @@ const AppContent: React.FC = () => {
       openSelectedPolicy,
       openSelectedTaskDealPreview,
       markSelectedTaskDone,
-      cycleActiveContextSelection,
-      openPrimaryContextAction,
-      deletePrimaryContextAction,
     });
 
   const handleLogout = useCallback(() => {
@@ -898,33 +820,6 @@ const AppContent: React.FC = () => {
       onLogout={handleLogout}
       error={error}
       onClearError={() => setError(null)}
-      topSlot={
-        activeShortcutContext ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="font-semibold text-sky-900">
-              {activeShortcutContext.title}: выбрано для хоткеев
-            </span>
-            <span className="rounded-lg border border-sky-200 bg-white px-2 py-1 font-medium text-slate-800">
-              {activeShortcutContext.label}
-            </span>
-            <span className="text-sky-800">
-              {formatShortcut('alt+arrowup')} / {formatShortcut('alt+arrowdown')} — переключить
-            </span>
-            <span className="text-sky-800">{formatShortcut('mod+o')} — открыть</span>
-            {(isDealsRoute || isClientsRoute) && (
-              <span className="text-sky-800">{formatShortcut('mod+backspace')} — удалить</span>
-            )}
-            {isDealsRoute && (
-              <span className="text-sky-800">{formatShortcut('mod+shift+r')} — восстановить</span>
-            )}
-            {isTasksRoute && (
-              <span className="text-sky-800">
-                {formatShortcut('mod+enter')} — отметить выполненной
-              </span>
-            )}
-          </div>
-        ) : null
-      }
     >
       <AppRoutes
         data={routeBindings.routeData}
@@ -936,7 +831,6 @@ const AppContent: React.FC = () => {
       <AppShortcutsController
         paletteMode={paletteMode}
         commandItems={commandItems}
-        hotkeyHelpItems={HOTKEY_HELP_ITEMS}
         taskDealItems={taskDealItems}
         onClose={closePalette}
       />

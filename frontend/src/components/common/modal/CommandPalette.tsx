@@ -6,7 +6,6 @@ export interface CommandPaletteItem {
   id: string;
   title: string;
   subtitle?: string;
-  shortcut?: string;
   keywords?: string[];
   disabled?: boolean;
   onSelect?: () => boolean | void | Promise<boolean | void>;
@@ -128,11 +127,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                           </span>
                         )}
                       </span>
-                      {item.shortcut && (
-                        <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500">
-                          {item.shortcut}
-                        </span>
-                      )}
                     </button>
                   </li>
                 );
