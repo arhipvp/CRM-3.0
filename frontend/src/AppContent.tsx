@@ -506,7 +506,6 @@ const AppContent: React.FC = () => {
 
   const { paletteMode, openCommandsPalette, closePalette, commandItems, taskDealItems } =
     useCommandPalette({
-      isAuthenticated,
       deals,
       selectedDeal,
       selectedClientShortcut,
