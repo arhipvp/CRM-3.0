@@ -98,6 +98,13 @@ describe('AddPolicyForm', () => {
     const paymentCards = within(screen.getByTestId('policy-payment-list')).getAllByTestId(
       'policy-payment-card',
     );
+    expect(within(paymentCards[0]).getByTestId('policy-payment-amount-accent')).toBeInTheDocument();
+    expect(
+      within(paymentCards[0]).getByTestId('policy-payment-scheduled-date-accent'),
+    ).toBeInTheDocument();
+    expect(
+      within(paymentCards[0]).getByTestId('policy-payment-actual-date-accent'),
+    ).toBeInTheDocument();
     const scheduledDates = paymentCards.map((card) => {
       const input = card.querySelector('[data-payment-field="scheduled-date"]') as HTMLInputElement;
       return input.value;
@@ -165,8 +172,8 @@ describe('AddPolicyForm', () => {
           description: 'Апрель',
           scheduledDate: '2026-04-13',
           actualDate: '',
-          incomes: [],
-          expenses: [],
+          incomes: [{ amount: '2500', date: '2026-04-14', note: 'Комиссия' }],
+          expenses: [{ amount: '500', date: '2026-04-15', note: 'Списание' }],
         },
         {
           amount: '16859.00',
@@ -192,6 +199,9 @@ describe('AddPolicyForm', () => {
     expect(screen.getByTestId('policy-finance-payment-list').className).toContain(
       'overflow-y-auto',
     );
+    expect(screen.getAllByTestId('policy-finance-payment-amount-chip')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('policy-finance-payment-scheduled-chip')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('policy-finance-payment-actual-chip')[0]).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('policy-finance-payment-index-3'));
     expect(screen.getByTestId('policy-finance-payment-index-3').className).toContain('bg-sky-100');
@@ -209,6 +219,14 @@ describe('AddPolicyForm', () => {
       screen.getByText('Добавьте доход, чтобы привязать поступление к этому платежу.'),
     ).toBeInTheDocument();
     expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(1);
+
+    fireEvent.click(within(financeCards[1]).getByRole('button', { name: 'Развернуть' }));
+    await waitFor(() => {
+      expect(screen.getAllByTestId('incomes-record-amount-accent')[0]).toBeInTheDocument();
+    });
+    expect(screen.getAllByTestId('incomes-record-date-accent')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('expenses-record-amount-accent')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('expenses-record-date-accent')[0]).toBeInTheDocument();
   });
 
   it('shows inline payment errors, allows early actual dates, and reports dirty state', async () => {

@@ -239,17 +239,24 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                       {payment.description || `Платёж #${displayIndex + 1}`}
                     </p>
                     <div className="flex flex-wrap gap-2 text-[11px] font-medium">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                      <span
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800 shadow-sm"
+                        data-testid="policy-finance-payment-amount-chip"
+                      >
                         Сумма {formatCurrency(payment.amount || '0')}
                       </span>
-                      <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-700">
+                      <span
+                        className="rounded-full border border-sky-200 bg-sky-100 px-3 py-1.5 text-sky-800 shadow-sm"
+                        data-testid="policy-finance-payment-scheduled-chip"
+                      >
                         План {formatDate(payment.scheduledDate)}
                       </span>
                       <span
-                        className={`rounded-full px-2.5 py-1 ${
+                        data-testid="policy-finance-payment-actual-chip"
+                        className={`rounded-full ${
                           payment.actualDate
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-rose-100 text-rose-700'
+                            ? 'border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-cyan-800 shadow-sm'
+                            : 'border border-rose-200 bg-rose-100 px-3 py-1.5 text-rose-700 shadow-sm'
                         }`}
                       >
                         {payment.actualDate

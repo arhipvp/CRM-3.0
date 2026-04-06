@@ -41,26 +41,38 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Сумма, ₽</label>
+          <div
+            data-testid={`${type}-record-amount-accent`}
+            className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-3 shadow-inner shadow-emerald-100/70"
+          >
+            <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
+              Сумма, ₽
+            </label>
+            <p className="mt-1 text-[11px] text-emerald-700">Главная сумма финансовой записи</p>
             <input
               type="number"
               value={record.amount}
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'amount', e.target.value)
               }
-              className="field field-input mt-1"
+              className="field field-input mt-2 bg-white ring-2 ring-emerald-100/80"
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Фактическая дата</label>
+          <div
+            data-testid={`${type}-record-date-accent`}
+            className="rounded-2xl border border-sky-200 bg-sky-50/90 p-3 shadow-inner shadow-sky-100/70"
+          >
+            <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-sky-800">
+              Фактическая дата
+            </label>
+            <p className="mt-1 text-[11px] text-sky-700">Дата поступления или списания</p>
             <input
               type="date"
               value={record.date || ''}
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)
               }
-              className="field field-input mt-1"
+              className="field field-input mt-2 border-sky-300 bg-white ring-2 ring-sky-100/80"
             />
           </div>
         </div>
