@@ -23,6 +23,7 @@ import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
 import { PaymentModal } from '../payments/PaymentModal';
 import { FormModal } from '../common/modal/FormModal';
 import { splitFinancialRecords } from './financialRecordDrafts';
+import { sortPaymentDraftEntries } from '../forms/addPolicy/paymentDraftOrdering';
 
 interface PolicyPrefill {
   values: PolicyFormValues;
@@ -65,7 +66,9 @@ const buildPolicyFormValues = (
   endDate: policy.endDate,
   clientId: policy.clientId ?? policy.insuredClientId,
   clientName: policy.clientName ?? policy.insuredClientName,
-  payments: payments.map((payment) => buildPaymentDraft(payment, financialRecords)),
+  payments: sortPaymentDraftEntries(
+    payments.map((payment) => buildPaymentDraft(payment, financialRecords)),
+  ).map((entry) => entry.payment),
 });
 
 interface AppModalsProps {
@@ -210,6 +213,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
           onClose={closePolicyModal}
           size="xl"
           closeOnOverlayClick={false}
+          panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
+          bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
         >
           <AddPolicyForm
             salesChannels={salesChannels}
@@ -234,6 +239,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
           onClose={() => setEditingPolicy(null)}
           size="xl"
           closeOnOverlayClick={false}
+          panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
+          bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
         >
           <AddPolicyForm
             salesChannels={salesChannels}

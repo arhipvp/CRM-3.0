@@ -39,4 +39,21 @@ describe('Modal', () => {
     fireEvent.click(screen.getByRole('button'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('applies custom panel and body classes when provided', () => {
+    render(
+      <Modal
+        title="Styled modal"
+        onClose={vi.fn()}
+        panelClassName="custom-panel"
+        bodyClassName="custom-body"
+      >
+        <div>Body</div>
+      </Modal>,
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.className).toContain('custom-panel');
+    expect(screen.getByText('Body').parentElement?.className).toContain('custom-body');
+  });
 });

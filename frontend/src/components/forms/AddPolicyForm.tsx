@@ -17,6 +17,10 @@ import {
 import { PolicyBasicsStep } from './addPolicy/components/PolicyBasicsStep';
 import { PolicyFinanceStep } from './addPolicy/components/PolicyFinanceStep';
 import { PolicyPaymentsStep } from './addPolicy/components/PolicyPaymentsStep';
+import {
+  getFirstScheduledPaymentEntry,
+  sortPaymentDraftEntries,
+} from './addPolicy/paymentDraftOrdering';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import {
@@ -138,6 +142,11 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   ];
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = steps.length;
+  const orderedPaymentEntries = useMemo(() => sortPaymentDraftEntries(payments), [payments]);
+  const firstScheduledPaymentEntry = useMemo(
+    () => getFirstScheduledPaymentEntry(payments),
+    [payments],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -316,20 +325,22 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
   const handleStartDateChange = (value: string) => {
     const previousStart = startDate;
-    const previousScheduledDate = payments[0]?.scheduledDate ?? '';
+    const firstPaymentEntry = orderedPaymentEntries[0];
+    const previousScheduledDate = firstPaymentEntry?.payment.scheduledDate ?? '';
     const shouldUpdateFirstPayment =
       !previousScheduledDate || previousScheduledDate === previousStart;
+    const indexToUpdate = firstPaymentEntry?.sourceIndex ?? 0;
 
     setStartDate(value);
 
     if (payments.length && shouldUpdateFirstPayment) {
       setPayments((prev) => {
-        if (!prev.length) {
+        if (!prev.length || !prev[indexToUpdate]) {
           return prev;
         }
         const updated = [...prev];
-        updated[0] = {
-          ...updated[0],
+        updated[indexToUpdate] = {
+          ...updated[indexToUpdate],
           scheduledDate: value,
         };
         return updated;
@@ -357,7 +368,10 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       ? 'Срок полиса отличается от стандартного годового периода. Уточните даты, если это ожидаемо.'
       : null;
   const firstPaymentDateWarning =
-    startDate && payments[0] && payments[0].scheduledDate && payments[0].scheduledDate !== startDate
+    startDate &&
+    firstScheduledPaymentEntry &&
+    firstScheduledPaymentEntry.payment.scheduledDate &&
+    firstScheduledPaymentEntry.payment.scheduledDate !== startDate
       ? 'Дата первого платежа не совпадает с началом полиса. Проверьте расписание.'
       : null;
 
@@ -620,132 +634,143 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-6">
-      {(error || optionsError) && (
-        <p className="app-alert app-alert-danger">{error || optionsError}</p>
-      )}
+    <form
+      onSubmit={handleSubmit}
+      onKeyDown={handleFormKeyDown}
+      className="flex h-full min-h-0 flex-col"
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5" data-testid="policy-form-body">
+        <div className="space-y-6">
+          {(error || optionsError) && (
+            <p className="app-alert app-alert-danger">{error || optionsError}</p>
+          )}
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-2">
-          {steps.map((step, stepIndex) => (
-            <button
-              key={step.title}
-              type="button"
-              onClick={() => setCurrentStep(stepIndex + 1)}
-              className={`btn btn-sm ${currentStep === stepIndex + 1 ? 'btn-primary' : 'btn-secondary'}`}
-            >
-              {step.title}
-            </button>
-          ))}
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {steps.map((step, stepIndex) => (
+                <button
+                  key={step.title}
+                  type="button"
+                  onClick={() => setCurrentStep(stepIndex + 1)}
+                  className={`btn btn-sm ${currentStep === stepIndex + 1 ? 'btn-primary' : 'btn-secondary'}`}
+                >
+                  {step.title}
+                </button>
+              ))}
+            </div>
+            <p className="text-sm text-slate-600">{steps[currentStep - 1].description}</p>
+          </div>
+
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <PolicyBasicsStep
+                number={number}
+                onNumberChange={setNumber}
+                insuranceCompanyId={insuranceCompanyId}
+                onInsuranceCompanyChange={setInsuranceCompanyId}
+                loadingOptions={loadingOptions}
+                companies={companies}
+                insuranceTypeId={insuranceTypeId}
+                onInsuranceTypeChange={setInsuranceTypeId}
+                types={types}
+                salesChannelId={salesChannelId}
+                onSalesChannelChange={setSalesChannelId}
+                salesChannels={salesChannels}
+                clientQuery={clientQuery}
+                onClientQueryChange={(value) => {
+                  setClientQuery(value);
+                  setShowClientSuggestions(true);
+                  setPolicyClientId('');
+                }}
+                onClientQueryFocus={() => setShowClientSuggestions(true)}
+                onClientQueryBlur={() => {
+                  setTimeout(() => setShowClientSuggestions(false), 120);
+                }}
+                showClientSuggestions={showClientSuggestions}
+                filteredClients={filteredClients}
+                onClientSelect={handleClientSelect}
+                onRequestAddClient={onRequestAddClient}
+                isVehicle={isVehicle}
+                onIsVehicleChange={(checked) => {
+                  if (!checked) {
+                    setBrand('');
+                    setModel('');
+                    setVin('');
+                  }
+                  setIsVehicle(checked);
+                }}
+                brand={brand}
+                onBrandChange={(value) => {
+                  setBrand(value);
+                  setModel('');
+                }}
+                model={model}
+                onModelChange={setModel}
+                vin={vin}
+                onVinChange={setVin}
+                vehicleBrands={vehicleBrands}
+                vehicleModels={vehicleModels}
+              />
+              <div className="space-y-2">
+                <label className="app-label" htmlFor="policy-note-input">
+                  Примечание к полису
+                </label>
+                <textarea
+                  id="policy-note-input"
+                  rows={4}
+                  maxLength={2000}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="Комментарий, особенности, важные договоренности..."
+                  className="field field-textarea min-h-28"
+                />
+                <p className="text-xs text-slate-500">{note.length}/2000</p>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <PolicyPaymentsStep
+              startDate={startDate}
+              onStartDateChange={handleStartDateChange}
+              endDate={endDate}
+              onEndDateChange={handleEndDateChange}
+              policyDurationWarning={policyDurationWarning}
+              paymentEntries={orderedPaymentEntries}
+              onAddPayment={handleAddPayment}
+              firstPaymentDateWarning={firstPaymentDateWarning}
+              onPaymentFieldChange={updatePaymentField}
+              onRemovePayment={handleRemovePayment}
+              onAddRecord={addRecord}
+              onUpdateRecord={updateRecordField}
+              onRemoveRecord={removeRecord}
+            />
+          )}
+
+          {currentStep === 3 && (
+            <PolicyFinanceStep
+              counterparty={counterparty}
+              onCounterpartyChange={setCounterparty}
+              onCounterpartyTouched={() => setCounterpartyTouched(true)}
+              onAddCounterpartyExpenses={handleAddCounterpartyExpenses}
+              executorName={executorName}
+              onAddExecutorExpenses={handleAddExecutorExpenses}
+              payments={payments}
+              expandedPaymentIndex={expandedPaymentIndex}
+              onTogglePaymentDetails={togglePaymentDetails}
+              onExpandPaymentDetails={setExpandedPaymentIndex}
+              onAddRecord={addRecord}
+              onUpdateRecord={updateRecordField}
+              onRemoveRecord={removeRecord}
+            />
+          )}
         </div>
-        <p className="text-sm text-slate-600">{steps[currentStep - 1].description}</p>
       </div>
 
-      {currentStep === 1 && (
-        <div className="space-y-4">
-          <PolicyBasicsStep
-            number={number}
-            onNumberChange={setNumber}
-            insuranceCompanyId={insuranceCompanyId}
-            onInsuranceCompanyChange={setInsuranceCompanyId}
-            loadingOptions={loadingOptions}
-            companies={companies}
-            insuranceTypeId={insuranceTypeId}
-            onInsuranceTypeChange={setInsuranceTypeId}
-            types={types}
-            salesChannelId={salesChannelId}
-            onSalesChannelChange={setSalesChannelId}
-            salesChannels={salesChannels}
-            clientQuery={clientQuery}
-            onClientQueryChange={(value) => {
-              setClientQuery(value);
-              setShowClientSuggestions(true);
-              setPolicyClientId('');
-            }}
-            onClientQueryFocus={() => setShowClientSuggestions(true)}
-            onClientQueryBlur={() => {
-              setTimeout(() => setShowClientSuggestions(false), 120);
-            }}
-            showClientSuggestions={showClientSuggestions}
-            filteredClients={filteredClients}
-            onClientSelect={handleClientSelect}
-            onRequestAddClient={onRequestAddClient}
-            isVehicle={isVehicle}
-            onIsVehicleChange={(checked) => {
-              if (!checked) {
-                setBrand('');
-                setModel('');
-                setVin('');
-              }
-              setIsVehicle(checked);
-            }}
-            brand={brand}
-            onBrandChange={(value) => {
-              setBrand(value);
-              setModel('');
-            }}
-            model={model}
-            onModelChange={setModel}
-            vin={vin}
-            onVinChange={setVin}
-            vehicleBrands={vehicleBrands}
-            vehicleModels={vehicleModels}
-          />
-          <div className="space-y-2">
-            <label className="app-label" htmlFor="policy-note-input">
-              Примечание к полису
-            </label>
-            <textarea
-              id="policy-note-input"
-              rows={4}
-              maxLength={2000}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="Комментарий, особенности, важные договоренности..."
-              className="field field-textarea min-h-28"
-            />
-            <p className="text-xs text-slate-500">{note.length}/2000</p>
-          </div>
-        </div>
-      )}
-
-      {currentStep === 2 && (
-        <PolicyPaymentsStep
-          startDate={startDate}
-          onStartDateChange={handleStartDateChange}
-          endDate={endDate}
-          onEndDateChange={handleEndDateChange}
-          policyDurationWarning={policyDurationWarning}
-          payments={payments}
-          onAddPayment={handleAddPayment}
-          firstPaymentDateWarning={firstPaymentDateWarning}
-          onPaymentFieldChange={updatePaymentField}
-          onRemovePayment={handleRemovePayment}
-          onAddRecord={addRecord}
-          onUpdateRecord={updateRecordField}
-          onRemoveRecord={removeRecord}
-        />
-      )}
-
-      {currentStep === 3 && (
-        <PolicyFinanceStep
-          counterparty={counterparty}
-          onCounterpartyChange={setCounterparty}
-          onCounterpartyTouched={() => setCounterpartyTouched(true)}
-          onAddCounterpartyExpenses={handleAddCounterpartyExpenses}
-          executorName={executorName}
-          onAddExecutorExpenses={handleAddExecutorExpenses}
-          payments={payments}
-          expandedPaymentIndex={expandedPaymentIndex}
-          onTogglePaymentDetails={togglePaymentDetails}
-          onExpandPaymentDetails={setExpandedPaymentIndex}
-          onAddRecord={addRecord}
-          onUpdateRecord={updateRecordField}
-          onRemoveRecord={removeRecord}
-        />
-      )}
-
-      <div className="flex items-center justify-between gap-3 pt-2">
+      <div
+        className="flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4"
+        data-testid="policy-form-footer"
+      >
         <button type="button" onClick={onCancel} className={BTN_SECONDARY} disabled={isSubmitting}>
           Отмена
         </button>

@@ -18,6 +18,8 @@ interface ModalProps {
   hideCloseButton?: boolean;
   size?: ModalSize;
   zIndex?: number;
+  panelClassName?: string;
+  bodyClassName?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -29,6 +31,8 @@ export const Modal: React.FC<ModalProps> = ({
   hideCloseButton = false,
   size = 'md',
   zIndex = 40,
+  panelClassName = '',
+  bodyClassName = '',
 }) => {
   const titleId = React.useId();
   const sizeClass = MODAL_SIZE_TO_CLASS[size];
@@ -59,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
       }}
     >
       <div
-        className={`w-full rounded-2xl border border-slate-200 bg-white shadow-2xl ${sizeClass}`}
+        className={`w-full rounded-2xl border border-slate-200 bg-white shadow-2xl ${sizeClass} ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -75,7 +79,7 @@ export const Modal: React.FC<ModalProps> = ({
             </button>
           )}
         </div>
-        <div className="p-5">{children}</div>
+        <div className={`p-5 ${bodyClassName}`}>{children}</div>
       </div>
     </div>
   );

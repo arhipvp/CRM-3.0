@@ -14,6 +14,8 @@ interface FormModalProps {
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
   hideCloseButton?: boolean;
+  panelClassName?: string;
+  bodyClassName?: string;
 }
 
 export const FormModal: React.FC<FormModalProps> = ({
@@ -26,6 +28,8 @@ export const FormModal: React.FC<FormModalProps> = ({
   closeOnOverlayClick,
   closeOnEscape,
   hideCloseButton,
+  panelClassName,
+  bodyClassName,
 }) => {
   if (!isOpen) {
     return null;
@@ -40,6 +44,8 @@ export const FormModal: React.FC<FormModalProps> = ({
       closeOnOverlayClick={closeOnOverlayClick}
       closeOnEscape={closeOnEscape}
       hideCloseButton={hideCloseButton}
+      panelClassName={panelClassName}
+      bodyClassName={bodyClassName}
     >
       {children}
     </Modal>
