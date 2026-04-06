@@ -13,6 +13,9 @@ interface PolicyPaymentsStepProps {
   policyDurationWarning: string | null;
   paymentEntries: PaymentDraftOrderEntry[];
   paymentIssuesByIndex: PaymentIssuesByIndex;
+  expandedPaymentIndex: number | null;
+  onTogglePaymentDetails: (index: number) => void;
+  onExpandPaymentDetails: (index: number) => void;
   onAddPayment: () => void;
   firstPaymentDateWarning: string | null;
   onPaymentFieldChange: (
@@ -40,6 +43,9 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
   policyDurationWarning,
   paymentEntries,
   paymentIssuesByIndex,
+  expandedPaymentIndex,
+  onTogglePaymentDetails,
+  onExpandPaymentDetails,
   onAddPayment,
   firstPaymentDateWarning,
   onPaymentFieldChange,
@@ -55,16 +61,23 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
     paymentEntries[0]?.sourceIndex ?? null,
   );
 
-  const scrollToPayment = (sourceIndex: number) => {
+  const scrollToPayment = (sourceIndex: number, behavior: ScrollBehavior = 'smooth') => {
+    const container = paymentListRef.current;
     const card = cardRefs.current[sourceIndex];
-    if (!card) {
+    if (!container || !card) {
       return;
     }
 
     setActiveSourceIndex(sourceIndex);
-    if (typeof card.scrollIntoView === 'function') {
-      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const offset = cardRect.top - containerRect.top + container.scrollTop - 12;
+    if (typeof container.scrollTo === 'function') {
+      container.scrollTo({ top: Math.max(offset, 0), behavior });
+      return;
     }
+
+    container.scrollTop = Math.max(offset, 0);
   };
 
   React.useEffect(() => {
@@ -107,6 +120,18 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
       window.removeEventListener('resize', updateActiveSourceIndex);
     };
   }, [paymentEntries, showMiniIndex]);
+
+  React.useEffect(() => {
+    if (expandedPaymentIndex == null) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      scrollToPayment(expandedPaymentIndex, 'smooth');
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [expandedPaymentIndex]);
 
   return (
     <div className="space-y-5">
@@ -156,7 +181,10 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
                 <button
                   key={`jump-${entry.sourceIndex}`}
                   type="button"
-                  onClick={() => scrollToPayment(entry.sourceIndex)}
+                  onClick={() => {
+                    onExpandPaymentDetails(entry.sourceIndex);
+                    scrollToPayment(entry.sourceIndex);
+                  }}
                   data-testid={`policy-payment-index-${displayIndex + 1}`}
                   className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                     activeSourceIndex === entry.sourceIndex
@@ -206,6 +234,9 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
                 onRemoveRecord={onRemoveRecord}
                 showRecords={false}
                 dense
+                isExpanded={expandedPaymentIndex === entry.sourceIndex}
+                onToggleExpand={() => onTogglePaymentDetails(entry.sourceIndex)}
+                showExpandToggle
               />
             </div>
           ))}

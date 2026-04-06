@@ -26,6 +26,9 @@ interface PaymentSectionProps {
   showRecords?: boolean;
   dense?: boolean;
   issues?: PaymentIssue[];
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+  showExpandToggle?: boolean;
 }
 
 export const PaymentSection: React.FC<PaymentSectionProps> = ({
@@ -40,6 +43,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   showRecords = true,
   dense = false,
   issues = [],
+  isExpanded = true,
+  onToggleExpand,
+  showExpandToggle = false,
 }) => {
   const issuesByField = issues.reduce<Record<string, PaymentIssue[]>>((acc, issue) => {
     acc[issue.field] = [...(acc[issue.field] ?? []), issue];
@@ -114,138 +120,156 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
           )}
         </div>
       )}
-      <div className={`ml-2 grid grid-cols-1 ${dense ? 'gap-3' : 'gap-4'} md:grid-cols-2`}>
-        <div
-          data-testid="policy-payment-amount-accent"
-          className={`${moneyAccentClassName} ${getFieldClassName('amount')}`}
-        >
-          <div className="mb-2">
-            <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
-              Сумма
-            </label>
-            <p className="mt-1 text-[11px] text-emerald-700">Ключевая сумма шага графика</p>
-          </div>
-          <input
-            type="number"
-            value={payment.amount}
-            onChange={(e) => onFieldChange(paymentIndex, 'amount', e.target.value)}
-            data-payment-field="amount"
-            className={`field field-input bg-white ring-2 ring-emerald-100/80 ${getFieldClassName(
-              'amount',
-            )}`}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Комментарий</label>
-          <input
-            type="text"
-            value={payment.description || ''}
-            onChange={(e) => onFieldChange(paymentIndex, 'description', e.target.value)}
-            data-payment-field="description"
-            className={`field field-input mt-1 ${getFieldClassName('description')}`}
-          />
-        </div>
-        <div
-          data-testid="policy-payment-scheduled-date-accent"
-          className={`${dateAccentClassName} ${getFieldClassName('scheduledDate')}`}
-        >
-          <div className="mb-2 flex items-start justify-between gap-3">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-sky-800">
-                Плановая дата
-              </label>
-              <p className="mt-1 text-[11px] text-sky-700">Главная дата для графика полиса</p>
+      {isExpanded && (
+        <>
+          <div className={`ml-2 grid grid-cols-1 ${dense ? 'gap-3' : 'gap-4'} md:grid-cols-2`}>
+            <div
+              data-testid="policy-payment-amount-accent"
+              className={`${moneyAccentClassName} ${getFieldClassName('amount')}`}
+            >
+              <div className="mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
+                  Сумма
+                </label>
+                <p className="mt-1 text-[11px] text-emerald-700">Ключевая сумма шага графика</p>
+              </div>
+              <input
+                type="number"
+                value={payment.amount}
+                onChange={(e) => onFieldChange(paymentIndex, 'amount', e.target.value)}
+                data-payment-field="amount"
+                className={`field field-input bg-white ring-2 ring-emerald-100/80 ${getFieldClassName(
+                  'amount',
+                )}`}
+              />
             </div>
-            <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-700">
-              Ключевая
-            </span>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-600">Комментарий</label>
+              <input
+                type="text"
+                value={payment.description || ''}
+                onChange={(e) => onFieldChange(paymentIndex, 'description', e.target.value)}
+                data-payment-field="description"
+                className={`field field-input mt-1 ${getFieldClassName('description')}`}
+              />
+            </div>
+            <div
+              data-testid="policy-payment-scheduled-date-accent"
+              className={`${dateAccentClassName} ${getFieldClassName('scheduledDate')}`}
+            >
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-sky-800">
+                    Плановая дата
+                  </label>
+                  <p className="mt-1 text-[11px] text-sky-700">Главная дата для графика полиса</p>
+                </div>
+                <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  Ключевая
+                </span>
+              </div>
+              <input
+                type="date"
+                value={payment.scheduledDate || ''}
+                onChange={(e) => onFieldChange(paymentIndex, 'scheduledDate', e.target.value)}
+                data-payment-field="scheduled-date"
+                className={`field field-input border-sky-300 bg-white ring-2 ring-sky-100/80 ${getFieldClassName(
+                  'scheduledDate',
+                )}`}
+              />
+            </div>
+            <div
+              data-testid="policy-payment-actual-date-accent"
+              className={`${dateAccentClassName} ${getFieldClassName('actualDate')}`}
+            >
+              <div className="mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-sky-800">
+                  Фактическая дата
+                </label>
+                <p className="mt-1 text-[11px] text-sky-700">Когда платёж реально поступил</p>
+              </div>
+              <input
+                type="date"
+                value={payment.actualDate || ''}
+                onChange={(e) => onFieldChange(paymentIndex, 'actualDate', e.target.value)}
+                data-payment-field="actual-date"
+                className={`field field-input border-sky-300 bg-white ring-2 ring-sky-100/80 ${getFieldClassName(
+                  'actualDate',
+                )}`}
+              />
+            </div>
           </div>
-          <input
-            type="date"
-            value={payment.scheduledDate || ''}
-            onChange={(e) => onFieldChange(paymentIndex, 'scheduledDate', e.target.value)}
-            data-payment-field="scheduled-date"
-            className={`field field-input border-sky-300 bg-white ring-2 ring-sky-100/80 ${getFieldClassName(
-              'scheduledDate',
-            )}`}
-          />
-        </div>
-        <div
-          data-testid="policy-payment-actual-date-accent"
-          className={`${dateAccentClassName} ${getFieldClassName('actualDate')}`}
-        >
-          <div className="mb-2">
-            <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-sky-800">
-              Фактическая дата
-            </label>
-            <p className="mt-1 text-[11px] text-sky-700">Когда платёж реально поступил</p>
-          </div>
-          <input
-            type="date"
-            value={payment.actualDate || ''}
-            onChange={(e) => onFieldChange(paymentIndex, 'actualDate', e.target.value)}
-            data-payment-field="actual-date"
-            className={`field field-input border-sky-300 bg-white ring-2 ring-sky-100/80 ${getFieldClassName(
-              'actualDate',
-            )}`}
-          />
-        </div>
-      </div>
 
-      {showRecords && (
-        <div className={dense ? 'space-y-2' : 'space-y-3'}>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Доходы
-              </h4>
-              <button
-                type="button"
-                className={LINK_ACTION_XS}
-                onClick={() => onAddRecord(paymentIndex, 'incomes')}
-              >
-                + Добавить доход
-              </button>
+          {showRecords && (
+            <div className={dense ? 'space-y-2' : 'space-y-3'}>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Доходы
+                  </h4>
+                  <button
+                    type="button"
+                    className={LINK_ACTION_XS}
+                    onClick={() => onAddRecord(paymentIndex, 'incomes')}
+                  >
+                    + Добавить доход
+                  </button>
+                </div>
+                {payment.incomes.length === 0 && (
+                  <p className="text-xs text-slate-500">
+                    Добавьте доход, чтобы привязать поступление к этому платежу.
+                  </p>
+                )}
+                <FinancialRecordInputs
+                  paymentIndex={paymentIndex}
+                  type="incomes"
+                  records={payment.incomes}
+                  onUpdateRecord={onUpdateRecord}
+                  onRemoveRecord={onRemoveRecord}
+                />
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Расходы
+                  </h4>
+                  <button
+                    type="button"
+                    className={LINK_ACTION_XS}
+                    onClick={() => onAddRecord(paymentIndex, 'expenses')}
+                  >
+                    + Добавить расход
+                  </button>
+                </div>
+                {payment.expenses.length === 0 && (
+                  <p className="text-xs text-slate-500">
+                    Добавьте расход, чтобы контролировать связанные списания.
+                  </p>
+                )}
+                <FinancialRecordInputs
+                  paymentIndex={paymentIndex}
+                  type="expenses"
+                  records={payment.expenses}
+                  onUpdateRecord={onUpdateRecord}
+                  onRemoveRecord={onRemoveRecord}
+                />
+              </div>
             </div>
-            {payment.incomes.length === 0 && (
-              <p className="text-xs text-slate-500">
-                Добавьте доход, чтобы привязать поступление к этому платежу.
-              </p>
-            )}
-            <FinancialRecordInputs
-              paymentIndex={paymentIndex}
-              type="incomes"
-              records={payment.incomes}
-              onUpdateRecord={onUpdateRecord}
-              onRemoveRecord={onRemoveRecord}
-            />
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Расходы
-              </h4>
-              <button
-                type="button"
-                className={LINK_ACTION_XS}
-                onClick={() => onAddRecord(paymentIndex, 'expenses')}
-              >
-                + Добавить расход
-              </button>
-            </div>
-            {payment.expenses.length === 0 && (
-              <p className="text-xs text-slate-500">
-                Добавьте расход, чтобы контролировать связанные списания.
-              </p>
-            )}
-            <FinancialRecordInputs
-              paymentIndex={paymentIndex}
-              type="expenses"
-              records={payment.expenses}
-              onUpdateRecord={onUpdateRecord}
-              onRemoveRecord={onRemoveRecord}
-            />
-          </div>
+          )}
+        </>
+      )}
+
+      {showExpandToggle && onToggleExpand && (
+        <div className="ml-2 border-t border-slate-200/90 pt-3">
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-expanded={isExpanded}
+            data-testid="policy-payment-expand-toggle"
+            className="btn btn-sm btn-secondary w-full justify-center"
+          >
+            {isExpanded ? 'Свернуть' : 'Развернуть'}
+          </button>
         </div>
       )}
     </section>

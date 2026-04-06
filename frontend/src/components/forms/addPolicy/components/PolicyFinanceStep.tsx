@@ -286,14 +286,6 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                     >
                       + Расход
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onTogglePaymentDetails(sourceIndex)}
-                      className="btn btn-sm btn-secondary whitespace-nowrap"
-                      aria-expanded={isExpanded}
-                    >
-                      {isExpanded ? 'Свернуть' : 'Развернуть'}
-                    </button>
                   </div>
                 </div>
                 {isExpanded && (
@@ -366,6 +358,17 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                     </div>
                   </div>
                 )}
+                <div className="ml-2 border-t border-slate-200/90 px-4 pb-4 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => onTogglePaymentDetails(sourceIndex)}
+                    className="btn btn-sm btn-secondary w-full justify-center"
+                    aria-expanded={isExpanded}
+                    data-testid="policy-finance-payment-expand-toggle"
+                  >
+                    {isExpanded ? 'Свернуть' : 'Развернуть'}
+                  </button>
+                </div>
               </section>
             );
           })}

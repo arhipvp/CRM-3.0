@@ -320,15 +320,17 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
 
   useEffect(() => {
     setExpandedPaymentIndex((prev) => {
-      if (!payments.length) {
+      if (!orderedPaymentEntries.length) {
         return null;
       }
-      if (prev == null || prev >= payments.length) {
-        return 0;
+
+      if (prev == null || !orderedPaymentEntries.some((entry) => entry.sourceIndex === prev)) {
+        return orderedPaymentEntries[0].sourceIndex;
       }
+
       return prev;
     });
-  }, [payments.length]);
+  }, [orderedPaymentEntries]);
 
   useEffect(() => {
     if (!initialInsuranceCompanyName || !companies.length) {
@@ -827,6 +829,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               policyDurationWarning={policyDurationWarning}
               paymentEntries={orderedPaymentEntries}
               paymentIssuesByIndex={paymentIssuesByIndex}
+              expandedPaymentIndex={expandedPaymentIndex}
+              onTogglePaymentDetails={togglePaymentDetails}
+              onExpandPaymentDetails={setExpandedPaymentIndex}
               onAddPayment={handleAddPayment}
               firstPaymentDateWarning={firstPaymentDateWarning}
               onPaymentFieldChange={updatePaymentField}

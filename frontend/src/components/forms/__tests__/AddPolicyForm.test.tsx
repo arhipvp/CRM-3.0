@@ -98,14 +98,40 @@ describe('AddPolicyForm', () => {
     const paymentCards = within(screen.getByTestId('policy-payment-list')).getAllByTestId(
       'policy-payment-card',
     );
-    expect(within(paymentCards[0]).getByTestId('policy-payment-amount-accent')).toBeInTheDocument();
+    expect(within(paymentCards[0]).getByTestId('policy-payment-expand-toggle').className).toContain(
+      'w-full',
+    );
+    fireEvent.click(within(paymentCards[0]).getByRole('button', { name: 'Развернуть' }));
+    await waitFor(() => {
+      expect(
+        within(paymentCards[0]).getByTestId('policy-payment-amount-accent'),
+      ).toBeInTheDocument();
+    });
     expect(
       within(paymentCards[0]).getByTestId('policy-payment-scheduled-date-accent'),
     ).toBeInTheDocument();
     expect(
       within(paymentCards[0]).getByTestId('policy-payment-actual-date-accent'),
     ).toBeInTheDocument();
+    expect(
+      within(paymentCards[1]).queryByTestId('policy-payment-amount-accent'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(paymentCards[2]).getByRole('button', { name: 'Развернуть' }));
+    await waitFor(() => {
+      expect(
+        within(paymentCards[2]).getByTestId('policy-payment-amount-accent'),
+      ).toBeInTheDocument();
+    });
+    expect(
+      within(paymentCards[0]).queryByTestId('policy-payment-amount-accent'),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(1);
     const scheduledDates = paymentCards.map((card) => {
+      const toggleButton = within(card).getByTestId('policy-payment-expand-toggle');
+      if (toggleButton.getAttribute('aria-expanded') !== 'true') {
+        fireEvent.click(toggleButton);
+      }
       const input = card.querySelector('[data-payment-field="scheduled-date"]') as HTMLInputElement;
       return input.value;
     });
@@ -199,6 +225,9 @@ describe('AddPolicyForm', () => {
     expect(screen.getByTestId('policy-finance-payment-list').className).toContain(
       'overflow-y-auto',
     );
+    expect(screen.getAllByTestId('policy-finance-payment-expand-toggle')[0].className).toContain(
+      'w-full',
+    );
     expect(screen.getAllByTestId('policy-finance-payment-amount-chip')[0]).toBeInTheDocument();
     expect(screen.getAllByTestId('policy-finance-payment-scheduled-chip')[0]).toBeInTheDocument();
     expect(screen.getAllByTestId('policy-finance-payment-actual-chip')[0]).toBeInTheDocument();
@@ -227,6 +256,48 @@ describe('AddPolicyForm', () => {
     expect(screen.getAllByTestId('incomes-record-date-accent')[0]).toBeInTheDocument();
     expect(screen.getAllByTestId('expenses-record-amount-accent')[0]).toBeInTheDocument();
     expect(screen.getAllByTestId('expenses-record-date-accent')[0]).toBeInTheDocument();
+  });
+
+  it('keeps the same expanded payment when switching from payments to finance step', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: 'Январь',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+        {
+          amount: '16859.00',
+          description: 'Апрель',
+          scheduledDate: '2026-04-13',
+          actualDate: '',
+          incomes: [{ amount: '2500', date: '2026-04-14', note: 'Комиссия' }],
+          expenses: [],
+        },
+      ]),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+    const paymentCards = await waitFor(() => screen.getAllByTestId('policy-payment-card'));
+    fireEvent.click(within(paymentCards[1]).getByRole('button', { name: 'Развернуть' }));
+
+    await waitFor(() => {
+      expect(
+        within(paymentCards[1]).getByTestId('policy-payment-amount-accent'),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+
+    const financeCards = await waitFor(() => screen.getAllByTestId('policy-finance-payment-card'));
+    expect(within(financeCards[1]).getByRole('button', { name: 'Свернуть' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getAllByTestId('incomes-record-amount-accent')[0]).toBeInTheDocument();
   });
 
   it('shows inline payment errors, allows early actual dates, and reports dirty state', async () => {
