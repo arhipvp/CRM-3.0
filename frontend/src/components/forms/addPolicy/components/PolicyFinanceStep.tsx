@@ -2,7 +2,7 @@ import React from 'react';
 
 import { formatCurrency, formatDate } from '../../../views/dealsView/helpers';
 import { FinancialRecordInputs } from './FinancialRecordInputs';
-import type { FinancialRecordDraft, PaymentDraft } from '../types';
+import type { FinancialRecordDraft } from '../types';
 import type { PaymentDraftOrderEntry } from '../paymentDraftOrdering';
 import type { PaymentIssuesByIndex } from '../paymentIssues';
 
