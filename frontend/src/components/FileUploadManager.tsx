@@ -183,7 +183,7 @@ const collectFilesFromClipboardItems = async (items: ClipboardItem[]): Promise<F
   return dedupeFiles(files);
 };
 
-export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, disabled }) => {
+export function FileUploadManager({ onUpload, disabled }: FileUploadManagerProps) {
   const [isUploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -425,4 +425,4 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({ onUpload, 
       {error && <div className="app-alert app-alert-danger">{error}</div>}
     </div>
   );
-};
+}

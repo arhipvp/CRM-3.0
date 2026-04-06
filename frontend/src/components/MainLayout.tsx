@@ -1,8 +1,13 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 
 import type { User } from '../types';
-import { BTN_DANGER, BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY } from './common/buttonStyles';
+import {
+  BTN_BLOCK_DANGER,
+  BTN_BLOCK_PRIMARY,
+  BTN_BLOCK_QUIET,
+  BTN_BLOCK_SECONDARY,
+} from './common/buttonStyles';
 import { UserBadge } from './common/UserBadge';
 
 interface MainLayoutProps {
@@ -11,8 +16,8 @@ interface MainLayoutProps {
   onOpenCommandPalette: () => void;
   currentUser?: User;
   onLogout?: () => void;
-  topSlot?: React.ReactNode;
-  children: React.ReactNode;
+  topSlot?: ReactNode;
+  children: ReactNode;
 }
 
 const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
@@ -27,7 +32,19 @@ const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
 
 const HIDDEN_NAV_PATHS = new Set(['/knowledge', '/library']);
 
-export const MainLayout: React.FC<MainLayoutProps> = ({
+const NAV_LINK_BASE_CLASS =
+  'relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors before:absolute before:inset-y-1.5 before:left-1 before:w-1 before:rounded-full before:bg-blue-500 before:opacity-0 before:transition-opacity';
+const NAV_LINK_ACTIVE_CLASS = 'bg-blue-50 text-blue-900 before:opacity-100';
+const NAV_LINK_IDLE_CLASS = 'text-slate-700 hover:bg-slate-100';
+const NAV_ICON_CLASS =
+  'inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--app-border)] bg-white text-[10px] font-bold text-slate-500';
+const TOP_SLOT_CLASS =
+  'rounded-2xl border border-blue-200/90 bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-white px-4 py-3 shadow-sm';
+
+const getNavLinkClassName = (isActive: boolean) =>
+  `${NAV_LINK_BASE_CLASS} ${isActive ? NAV_LINK_ACTIVE_CLASS : NAV_LINK_IDLE_CLASS}`;
+
+export function MainLayout({
   onAddDeal,
   onAddClient,
   onOpenCommandPalette,
@@ -35,7 +52,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   onLogout,
   topSlot,
   children,
-}) => {
+}: MainLayoutProps) {
   return (
     <div className="min-h-screen bg-[var(--app-bg)] text-slate-900 lg:flex">
       <aside className="border-b border-[var(--app-border)] bg-[var(--app-sidebar-bg)]/95 backdrop-blur lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-72 lg:flex-col lg:border-b-0 lg:border-r">
@@ -46,11 +63,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <h1 className="text-2xl font-bold text-blue-700">Insure Desk</h1>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onOpenCommandPalette}
-            className={`${BTN_QUIET} w-full rounded-xl`}
-          >
+          <button type="button" onClick={onOpenCommandPalette} className={BTN_BLOCK_QUIET}>
             Команды
           </button>
         </div>
@@ -59,19 +72,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           <ul className="flex min-w-max gap-1 lg:min-w-0 lg:flex-col">
             {NAV_ITEMS.filter((item) => !HIDDEN_NAV_PATHS.has(item.path)).map((item) => (
               <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors before:absolute before:inset-y-1.5 before:left-1 before:w-1 before:rounded-full before:bg-blue-500 before:opacity-0 before:transition-opacity ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-900 before:opacity-100'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`
-                  }
-                >
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--app-border)] bg-white text-[10px] font-bold text-slate-500">
-                    {item.icon}
-                  </span>
+                <NavLink to={item.path} className={({ isActive }) => getNavLinkClassName(isActive)}>
+                  <span className={NAV_ICON_CLASS}>{item.icon}</span>
                   {item.label}
                 </NavLink>
               </li>
@@ -80,14 +82,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </nav>
 
         <div className="space-y-3 border-t border-[var(--app-border)] bg-white/70 p-4">
-          <button type="button" onClick={onAddDeal} className={`${BTN_PRIMARY} w-full rounded-xl`}>
+          <button type="button" onClick={onAddDeal} className={BTN_BLOCK_PRIMARY}>
             + Добавить сделку
           </button>
-          <button
-            type="button"
-            onClick={onAddClient}
-            className={`${BTN_SECONDARY} w-full rounded-xl`}
-          >
+          <button type="button" onClick={onAddClient} className={BTN_BLOCK_SECONDARY}>
             + Добавить клиента
           </button>
 
@@ -106,11 +104,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 </p>
               </div>
               {onLogout && (
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className={`${BTN_DANGER} w-full rounded-xl`}
-                >
+                <button type="button" onClick={onLogout} className={BTN_BLOCK_DANGER}>
                   Выйти
                 </button>
               )}
@@ -121,14 +115,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
       <main className="min-h-screen flex-1 px-3 py-4 sm:px-5 lg:ml-72 lg:px-7 lg:py-6">
         <div className="w-full space-y-4">
-          {topSlot && (
-            <section className="rounded-2xl border border-blue-200/90 bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-white px-4 py-3 shadow-sm">
-              {topSlot}
-            </section>
-          )}
+          {topSlot && <section className={TOP_SLOT_CLASS}>{topSlot}</section>}
           <div className="w-full">{children}</div>
         </div>
       </main>
     </div>
   );
-};
+}

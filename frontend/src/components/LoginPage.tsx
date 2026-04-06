@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import { login } from '../api';
-import { BTN_PRIMARY } from './common/buttonStyles';
+import { BTN_BLOCK_PRIMARY } from './common/buttonStyles';
 import { FORM_INPUT_DISABLED } from './common/forms/formClassNames';
 import { InlineAlert } from './common/InlineAlert';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
@@ -10,13 +10,13 @@ interface LoginPageProps {
   onLoginSuccess: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -75,7 +75,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className={`${BTN_PRIMARY} w-full justify-center`}
+            className={`${BTN_BLOCK_PRIMARY} justify-center`}
           >
             {isLoading ? 'Входим...' : 'Войти'}
           </button>
@@ -83,4 +83,4 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       </div>
     </div>
   );
-};
+}

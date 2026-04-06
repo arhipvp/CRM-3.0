@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   fetchClientDriveFiles,
@@ -35,13 +35,13 @@ const formatDriveFileSize = (bytes?: number | null) => {
   return `${(bytes / Math.pow(k, i)).toFixed(1).replace(/\.0$/, '')} ${sizes[i]}`;
 };
 
-export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
+export function DriveFilesModal({
   isOpen,
   onClose,
   entityId,
   entityType,
   title,
-}) => {
+}: DriveFilesModalProps) {
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,4 +123,4 @@ export const DriveFilesModal: React.FC<DriveFilesModalProps> = ({
       </div>
     </Modal>
   );
-};
+}

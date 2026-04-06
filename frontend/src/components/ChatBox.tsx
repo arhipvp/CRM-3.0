@@ -18,12 +18,7 @@ const getUserDisplayName = (user: User) => {
   return parts.length ? parts.join(' ') : user.username;
 };
 
-export const ChatBox: React.FC<ChatBoxProps> = ({
-  messages,
-  currentUser,
-  onSendMessage,
-  onDeleteMessage,
-}) => {
+export function ChatBox({ messages, currentUser, onSendMessage, onDeleteMessage }: ChatBoxProps) {
   const [newMessage, setNewMessage] = useState('');
   const [isSubmitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -219,4 +214,4 @@ export const ChatBox: React.FC<ChatBoxProps> = ({
       )}
     </div>
   );
-};
+}

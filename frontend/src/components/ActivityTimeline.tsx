@@ -1,4 +1,4 @@
-import { ActivityLog } from '../types';
+import type { ActivityLog } from '../types';
 import { ColoredLabel } from './common/ColoredLabel';
 import { PANEL_MUTED_TEXT } from './common/uiClassNames';
 
@@ -68,10 +68,7 @@ const formatDateTime = (dateString: string) => {
   }).format(date);
 };
 
-export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
-  activities,
-  isLoading = false,
-}) => {
+export function ActivityTimeline({ activities, isLoading = false }: ActivityTimelineProps) {
   if (isLoading) {
     return (
       <div className="app-panel-muted p-4">
@@ -152,4 +149,4 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       })}
     </div>
   );
-};
+}

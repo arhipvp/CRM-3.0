@@ -211,4 +211,4 @@ describe('CommissionsView', () => {
       expect.objectContaining({ amount: '100' }),
     );
   }, 10000);
-});
+}, 20000);

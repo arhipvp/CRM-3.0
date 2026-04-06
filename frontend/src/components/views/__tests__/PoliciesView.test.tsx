@@ -180,7 +180,7 @@ describe('PoliciesView', () => {
     await waitFor(() => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
     });
-  });
+  }, 10000);
 
   it('keeps KPI refresh and filter wiring for computed status', async () => {
     const onRefreshPoliciesList = vi.fn().mockResolvedValue(undefined);

@@ -1,11 +1,11 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 
-type PanelMessageProps = {
-  children: React.ReactNode;
+interface PanelMessageProps {
+  children: ReactNode;
   className?: string;
-};
+}
 
-export const PanelMessage: React.FC<PanelMessageProps> = ({ children, className }) => {
+export function PanelMessage({ children, className }: PanelMessageProps) {
   const classes = [
     'app-panel-muted',
     'inline-flex',
@@ -19,4 +19,4 @@ export const PanelMessage: React.FC<PanelMessageProps> = ({ children, className 
     .join(' ');
 
   return <div className={classes}>{children}</div>;
-};
+}

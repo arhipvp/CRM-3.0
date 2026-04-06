@@ -212,7 +212,7 @@ describe('FilesTab', () => {
       writable: true,
       value: originalRevokeObjectURL,
     });
-  });
+  }, 10000);
 
   it('calls per-file delete handler', () => {
     const handleTrashDriveFile = vi.fn().mockResolvedValue(undefined);

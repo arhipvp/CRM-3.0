@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect, useId, type ReactNode } from 'react';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -12,7 +12,7 @@ const MODAL_SIZE_TO_CLASS: Record<ModalSize, string> = {
 interface ModalProps {
   title: string;
   onClose: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
   hideCloseButton?: boolean;
@@ -22,7 +22,7 @@ interface ModalProps {
   bodyClassName?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({
+export function Modal({
   title,
   onClose,
   children,
@@ -33,11 +33,11 @@ export const Modal: React.FC<ModalProps> = ({
   zIndex = 40,
   panelClassName = '',
   bodyClassName = '',
-}) => {
-  const titleId = React.useId();
+}: ModalProps) {
+  const titleId = useId();
   const sizeClass = MODAL_SIZE_TO_CLASS[size];
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!closeOnEscape) {
       return;
     }
@@ -83,4 +83,4 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
-};
+}

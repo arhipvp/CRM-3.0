@@ -26,6 +26,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - **`hooks/` и `contexts/`** поддерживают состояние (например, `useAuth`, `useDealsFilter`, контексты auth/session) и управляют подписками на WebSocket/интервалами.
 - **`utils/`, `types/` и `src/__tests__/`** — утилиты, типы и Vitest/Testing Library сценарии для компонентов и helpers.
 - **Унификация переиспользования**: базовые примитивы форм/таблиц/alerts/modals лежат в `frontend/src/components/common/*`, confirm/prompt-потоки — в `frontend/src/hooks/useConfirm.ts` и `frontend/src/components/common/modal/PromptDialog.tsx`; подробности в `frontend/docs/component-reuse-audit.md`.
+- **Инженерный стиль frontend**: обязательные правила по компонентам, props, export и shared style primitives описаны в `docs/frontend-style-guide.md`; `npm run lint` проверяет их автоматически.
 - **`public/`** хватка favicon, manifest, Robots, а `vite.config.ts` описывает прокси к backend и сборку.
 
 ### Инфраструктура

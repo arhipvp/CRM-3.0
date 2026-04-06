@@ -1,20 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
 import { copyToClipboard } from '../../../../utils/clipboard';
 import { useNotification } from '../../../../contexts/NotificationContext';
 import {
-  BTN_PRIMARY,
-  BTN_SECONDARY,
+  BTN_BLOCK_PRIMARY,
+  BTN_BLOCK_SECONDARY,
   BTN_SM_DANGER,
   BTN_SM_PRIMARY,
   BTN_SM_SECONDARY,
 } from '../../../common/buttonStyles';
 import { DriveFilesTable } from '../../../common/table/DriveFilesTable';
 import {
+  CONTENT_SECTION_DIVIDER,
   LINK_ACTION_XS,
+  LOADING_SPINNER_SM,
+  MODAL_INPUT_SHELL,
   PANEL_MUTED_TEXT,
+  PANEL_SECTION,
+  RESULT_CARD,
+  SECTION_META_TEXT,
   STATUS_BADGE_DANGER_XS,
 } from '../../../common/uiClassNames';
 import { InlineAlert } from '../../../common/InlineAlert';
@@ -61,7 +67,106 @@ interface FilesTabProps {
   onCheckMailbox: () => Promise<void>;
 }
 
-export const FilesTab: React.FC<FilesTabProps> = ({
+interface ImagePreviewState {
+  fileId: string;
+  src: string;
+  name: string;
+}
+
+interface HeaderActionButtonProps {
+  onClick: () => void | Promise<void>;
+  disabled: boolean;
+  className: string;
+  children: ReactNode;
+}
+
+interface ActionLinkButtonProps {
+  onClick: () => void | Promise<void>;
+  disabled: boolean;
+  children: ReactNode;
+}
+
+interface RecognitionResultsProps {
+  results: PolicyRecognitionResult[];
+}
+
+const FILE_ACTION_LINK_CLASS = `${LINK_ACTION_XS} disabled:text-slate-300`;
+const SORT_HEADER_BUTTON_CLASS =
+  'flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+const SORT_HEADER_TITLE_CLASS =
+  'text-[11px] font-semibold uppercase tracking-wide text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2';
+const SORT_HEADER_VALUE_CLASS = 'text-[11px] font-semibold uppercase tracking-wide text-slate-900';
+const PREVIEW_RENAME_INPUT_CLASS =
+  'min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none disabled:cursor-not-allowed disabled:text-slate-400';
+const RENAME_INPUT_CLASS =
+  'min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none';
+
+function HeaderActionButton({ onClick, disabled, className, children }: HeaderActionButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void onClick();
+      }}
+      disabled={disabled}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ActionLinkButton({ onClick, disabled, children }: ActionLinkButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void onClick();
+      }}
+      disabled={disabled}
+      className={FILE_ACTION_LINK_CLASS}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RecognitionResults({ results }: RecognitionResultsProps) {
+  if (!results.length) {
+    return null;
+  }
+
+  return (
+    <div className={RESULT_CARD}>
+      {results.map((result) => (
+        <div key={`${result.fileId}-${result.status}`} className="space-y-1">
+          <p className="font-semibold text-slate-900">{result.fileName ?? result.fileId}</p>
+          <p
+            className={`text-[11px] ${
+              result.status === 'error'
+                ? 'text-rose-600'
+                : result.status === 'exists'
+                  ? 'text-amber-600'
+                  : 'text-slate-500'
+            }`}
+          >
+            {formatRecognitionSummary(result)}
+          </p>
+          {result.transcript && (
+            <details className="text-[10px] text-slate-400">
+              <summary>Показать транскрипт</summary>
+              <pre className="whitespace-pre-wrap text-[11px] leading-snug">
+                {result.transcript}
+              </pre>
+            </details>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function FilesTab({
   selectedDeal,
   isDriveLoading,
   loadDriveFiles,
@@ -99,16 +204,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   mailboxActionSuccess,
   onCreateMailbox,
   onCheckMailbox,
-}) => {
+}: FilesTabProps) {
   const { addNotification } = useNotification();
   const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<{
-    fileId: string;
-    src: string;
-    name: string;
-  } | null>(null);
+  const [imagePreview, setImagePreview] = useState<ImagePreviewState | null>(null);
   const [previewRenameDraft, setPreviewRenameDraft] = useState('');
   const [previewRenameError, setPreviewRenameError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -136,12 +237,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const disableUpload = !selectedDeal?.driveFolderId;
   const driveFolderLink = buildDriveFolderLink(selectedDeal?.driveFolderId);
   const mailboxEmail = (selectedDeal?.mailboxEmail ?? '').trim();
-  const getSortIndicator = () => (driveSortDirection === 'asc' ? '↑' : '↓');
-  const getSortLabel = () => (driveSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию');
-  const getColumnTitleClass = () => {
-    const baseClass = 'text-[11px] font-semibold uppercase tracking-wide';
-    return `${baseClass} text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2`;
-  };
+  const sortIndicator = driveSortDirection === 'asc' ? '↑' : '↓';
+  const sortLabel = driveSortDirection === 'asc' ? 'по возрастанию' : 'по убыванию';
   const getAriaSort = (): 'ascending' | 'descending' =>
     driveSortDirection === 'asc' ? 'ascending' : 'descending';
   const isRenameDisabled =
@@ -373,16 +470,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const renameExtension = renamingFile ? splitFileName(renamingFile.name).extension : '';
 
   return (
-    <section className="app-panel p-6 shadow-none space-y-5">
+    <section className={`${PANEL_SECTION} space-y-5`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="app-label">Файлы</p>
             {isDriveLoading && (
-              <span
-                className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-sky-600 animate-spin"
-                aria-label="Идет загрузка файлов"
-              />
+              <span className={LOADING_SPINNER_SM} aria-label="Идет загрузка файлов" />
             )}
             {driveFolderLink && (
               <a href={driveFolderLink} target="_blank" rel="noreferrer" className={LINK_ACTION_XS}>
@@ -390,45 +484,38 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               </a>
             )}
           </div>
-          <p className="text-xs text-slate-500">
+          <p className={SECTION_META_TEXT}>
             Файлы загружаются прямо из папки, привязанной к этой сделке.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!selectedDeal.mailboxEmail && (
-            <button
-              type="button"
-              onClick={() => {
-                void onCreateMailbox();
-              }}
+            <HeaderActionButton
+              onClick={onCreateMailbox}
               disabled={isCreatingMailbox || isCheckingMailbox}
               className={BTN_SM_PRIMARY}
             >
               {isCreatingMailbox ? 'Создаю ящик...' : 'Создать почту сделки'}
-            </button>
+            </HeaderActionButton>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              void onCheckMailbox();
-            }}
+          <HeaderActionButton
+            onClick={onCheckMailbox}
             disabled={!selectedDeal.mailboxEmail || isCheckingMailbox || isCreatingMailbox}
             className={BTN_SM_SECONDARY}
           >
             {isCheckingMailbox ? 'Проверяем почту...' : 'Проверить почту'}
-          </button>
-          <button
-            type="button"
+          </HeaderActionButton>
+          <HeaderActionButton
             onClick={loadDriveFiles}
             disabled={!selectedDeal.driveFolderId || isDriveLoading}
             className={BTN_SM_SECONDARY}
           >
             {isDriveLoading ? 'Обновляю...' : 'Обновить'}
-          </button>
+          </HeaderActionButton>
         </div>
       </div>
       {mailboxEmail && (
-        <p className="text-xs text-slate-500">
+        <p className={SECTION_META_TEXT}>
           Почта сделки:{' '}
           <button
             type="button"
@@ -505,7 +592,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         >
           {isTrashing ? 'Удаляю...' : 'Удалить'}
         </button>
-        <p className="text-xs text-slate-500">
+        <p className={SECTION_META_TEXT}>
           {selectedDriveFileIds.length
             ? `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
             : 'Выберите файлы для распознавания.'}
@@ -520,34 +607,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
 
       {renameMessage && <p className={STATUS_BADGE_DANGER_XS}>{renameMessage}</p>}
 
-      {recognitionResults.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3 text-xs">
-          {recognitionResults.map((result) => (
-            <div key={`${result.fileId}-${result.status}`} className="space-y-1">
-              <p className="font-semibold text-slate-900">{result.fileName ?? result.fileId}</p>
-              <p
-                className={`text-[11px] ${
-                  result.status === 'error'
-                    ? 'text-rose-600'
-                    : result.status === 'exists'
-                      ? 'text-amber-600'
-                      : 'text-slate-500'
-                }`}
-              >
-                {formatRecognitionSummary(result)}
-              </p>
-              {result.transcript && (
-                <details className="text-[10px] text-slate-400">
-                  <summary>Показать транскрипт</summary>
-                  <pre className="whitespace-pre-wrap text-[11px] leading-snug">
-                    {result.transcript}
-                  </pre>
-                </details>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <RecognitionResults results={recognitionResults} />
 
       {driveError && renderStatusMessage(driveError, 'danger')}
 
@@ -557,7 +617,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
           'Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.',
         )}
 
-      <div className="space-y-3 border-t border-slate-100 pt-4">
+      <div className={CONTENT_SECTION_DIVIDER}>
         {!driveError &&
           selectedDeal.driveFolderId &&
           isDriveLoading &&
@@ -586,13 +646,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               <button
                 type="button"
                 onClick={toggleDriveSortDirection}
-                aria-label={`Сортировать по дате, текущий порядок ${getSortLabel()}`}
-                className="flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                aria-label={`Сортировать по дате, текущий порядок ${sortLabel}`}
+                className={SORT_HEADER_BUTTON_CLASS}
               >
-                <span className={getColumnTitleClass()}>Дата</span>
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
-                  {getSortIndicator()}
-                </span>
+                <span className={SORT_HEADER_TITLE_CLASS}>Дата</span>
+                <span className={SORT_HEADER_VALUE_CLASS}>{sortIndicator}</span>
               </button>
             }
             renderDate={(file) => formatDriveDate(file.modifiedAt ?? file.createdAt)}
@@ -612,11 +670,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                   <span className="text-xs text-slate-400">—</span>
                 )}
                 {isImageFile(file) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handlePreviewImage(file);
-                    }}
+                  <ActionLinkButton
+                    onClick={() => handlePreviewImage(file)}
                     disabled={
                       isPreviewLoading ||
                       isDownloading ||
@@ -624,40 +679,31 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                       isDriveLoading ||
                       !!driveError
                     }
-                    className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                   >
                     Просмотреть
-                  </button>
+                  </ActionLinkButton>
                 )}
-                <button
-                  type="button"
+                <ActionLinkButton
                   onClick={() => handleDownloadDriveFiles([file.id])}
                   disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
-                  className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                 >
                   Скачать
-                </button>
+                </ActionLinkButton>
                 {!file.isFolder && (
-                  <button
-                    type="button"
+                  <ActionLinkButton
                     onClick={() => openRenameModal(file)}
                     disabled={isRenameDisabled}
-                    className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                   >
                     Переименовать
-                  </button>
+                  </ActionLinkButton>
                 )}
                 {!file.isFolder && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleTrashDriveFile(file);
-                    }}
+                  <ActionLinkButton
+                    onClick={() => handleTrashDriveFile(file)}
                     disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
-                    className={`${LINK_ACTION_XS} disabled:text-slate-300`}
                   >
                     Удалить
-                  </button>
+                  </ActionLinkButton>
                 )}
               </div>
             )}
@@ -688,7 +734,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 Имя файла
               </label>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                <div className={MODAL_INPUT_SHELL}>
                   <input
                     id="deal-image-preview-rename"
                     name="previewRenameDraft"
@@ -696,7 +742,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                     value={previewRenameDraft}
                     onChange={(event) => setPreviewRenameDraft(event.target.value)}
                     disabled={isPreviewRenameDisabled}
-                    className="min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
+                    className={PREVIEW_RENAME_INPUT_CLASS}
                   />
                   {previewRenameExtension && (
                     <span className="shrink-0 text-sm font-medium text-slate-500">
@@ -755,12 +801,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             {renameError && <InlineAlert as="p">{renameError}</InlineAlert>}
             <div>
               <label className="block text-sm font-semibold text-slate-700">Новое имя</label>
-              <div className="mt-1 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              <div className={MODAL_INPUT_SHELL}>
                 <input
                   type="text"
                   value={renameDraft}
                   onChange={(event) => setRenameDraft(event.target.value)}
-                  className="min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none"
+                  className={RENAME_INPUT_CLASS}
                 />
                 {renameExtension && (
                   <span className="shrink-0 text-sm font-medium text-slate-500">
@@ -774,15 +820,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 type="button"
                 onClick={handleRenameSubmit}
                 disabled={isRenaming}
-                className={`${BTN_PRIMARY} w-full rounded-xl`}
+                className={BTN_BLOCK_PRIMARY}
               >
                 {isRenaming ? 'Сохраняем...' : 'Сохранить'}
               </button>
-              <button
-                type="button"
-                onClick={closeRenameModal}
-                className={`${BTN_SECONDARY} w-full`}
-              >
+              <button type="button" onClick={closeRenameModal} className={BTN_BLOCK_SECONDARY}>
                 Отмена
               </button>
             </div>
@@ -791,4 +833,4 @@ export const FilesTab: React.FC<FilesTabProps> = ({
       )}
     </section>
   );
-};
+}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { BTN_PRIMARY, BTN_SECONDARY } from './common/buttonStyles';
 
 interface PaginationProps {
@@ -8,12 +7,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export const Pagination: React.FC<PaginationProps> = ({
-  currentPage,
-  totalItems,
-  pageSize,
-  onPageChange,
-}) => {
+export function Pagination({ currentPage, totalItems, pageSize, onPageChange }: PaginationProps) {
   const totalPages = Math.ceil(totalItems / pageSize);
 
   if (totalPages <= 1) {
@@ -111,4 +105,4 @@ export const Pagination: React.FC<PaginationProps> = ({
       </nav>
     </div>
   );
-};
+}

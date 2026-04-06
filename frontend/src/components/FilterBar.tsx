@@ -1,5 +1,6 @@
-﻿import React, { useId, useState } from 'react';
-import { FilterParams } from '../api';
+import { useId, useState } from 'react';
+
+import type { FilterParams } from '../api';
 import { BTN_SM_SECONDARY } from './common/buttonStyles';
 
 type CustomFilterDefinition =
@@ -22,7 +23,7 @@ export interface FilterBarProps {
   layout?: 'flow' | 'inline-wrap';
 }
 
-export const FilterBar: React.FC<FilterBarProps> = ({
+export function FilterBar({
   onFilterChange,
   initialFilters,
   searchPlaceholder = 'Поиск...',
@@ -30,7 +31,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   customFilters = [],
   density = 'default',
   layout = 'flow',
-}) => {
+}: FilterBarProps) {
   const idPrefix = useId();
   const initialSearch = (initialFilters?.search as string | undefined) ?? '';
   const initialOrdering = (initialFilters?.ordering as string | undefined) ?? '';
@@ -238,4 +239,4 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
     </div>
   );
-};
+}
