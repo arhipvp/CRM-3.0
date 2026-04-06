@@ -222,9 +222,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                   cardRefs.current[sourceIndex] = node;
                 }}
                 className={`relative overflow-hidden rounded-[28px] border border-slate-300/90 bg-gradient-to-br from-white via-white to-slate-50/90 shadow-[0_18px_42px_rgba(15,23,42,0.12)] transition ${
-                  isExpanded
-                    ? 'ring-1 ring-sky-200 shadow-[0_24px_54px_rgba(14,165,233,0.18)]'
-                    : ''
+                  isExpanded ? 'ring-1 ring-sky-200 shadow-[0_24px_54px_rgba(14,165,233,0.18)]' : ''
                 }`}
                 data-testid="policy-finance-payment-card"
               >

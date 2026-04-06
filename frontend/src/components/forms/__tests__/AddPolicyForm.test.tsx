@@ -189,7 +189,9 @@ describe('AddPolicyForm', () => {
     expect(financeText[2]).toContain('Июль');
     expect(financeText[3]).toContain('Октябрь');
     expect(screen.getByTestId('policy-finance-payment-mini-index')).toBeInTheDocument();
-    expect(screen.getByTestId('policy-finance-payment-list').className).toContain('overflow-y-auto');
+    expect(screen.getByTestId('policy-finance-payment-list').className).toContain(
+      'overflow-y-auto',
+    );
 
     fireEvent.click(screen.getByTestId('policy-finance-payment-index-3'));
     expect(screen.getByTestId('policy-finance-payment-index-3').className).toContain('bg-sky-100');
