@@ -45,6 +45,19 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
   onUpdateRecord,
   onRemoveRecord,
 }) => {
+  const paymentListRef = React.useRef<HTMLDivElement | null>(null);
+  const cardRefs = React.useRef<Record<number, HTMLDivElement | null>>({});
+  const showMiniIndex = paymentEntries.length >= 4;
+
+  const scrollToPayment = (sourceIndex: number) => {
+    const card = cardRefs.current[sourceIndex];
+    if (!card) {
+      return;
+    }
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -78,14 +91,30 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="app-label">Платежи</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Плановые даты идут по порядку, чтобы график было проще проверить.
-            </p>
           </div>
           <button type="button" onClick={onAddPayment} className="btn btn-sm btn-secondary">
             + Добавить платёж
           </button>
         </div>
+        {showMiniIndex && (
+          <div
+            className="sticky top-0 z-10 mt-4 rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur"
+            data-testid="policy-payment-mini-index"
+          >
+            <div className="flex flex-wrap gap-2">
+              {paymentEntries.map((entry, displayIndex) => (
+                <button
+                  key={`jump-${entry.sourceIndex}`}
+                  type="button"
+                  onClick={() => scrollToPayment(entry.sourceIndex)}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                >
+                  Платёж {displayIndex + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mt-4 space-y-3">
           {firstPaymentDateWarning && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -99,23 +128,30 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
           )}
         </div>
         <div
-          className="mt-4 max-h-[min(46vh,34rem)] space-y-3 overflow-y-auto pr-1"
+          ref={paymentListRef}
+          className="mt-4 max-h-[min(46vh,34rem)] space-y-5 overflow-y-auto pr-1"
           data-testid="policy-payment-list"
         >
           {paymentEntries.map((entry, displayIndex) => (
-            <PaymentSection
+            <div
               key={entry.payment.id ?? `payment-${entry.sourceIndex}`}
-              paymentIndex={entry.sourceIndex}
-              paymentNumber={displayIndex + 1}
-              payment={entry.payment}
-              onFieldChange={onPaymentFieldChange}
-              onRemovePayment={onRemovePayment}
-              onAddRecord={onAddRecord}
-              onUpdateRecord={onUpdateRecord}
-              onRemoveRecord={onRemoveRecord}
-              showRecords={false}
-              dense
-            />
+              ref={(node) => {
+                cardRefs.current[entry.sourceIndex] = node;
+              }}
+            >
+              <PaymentSection
+                paymentIndex={entry.sourceIndex}
+                paymentNumber={displayIndex + 1}
+                payment={entry.payment}
+                onFieldChange={onPaymentFieldChange}
+                onRemovePayment={onRemovePayment}
+                onAddRecord={onAddRecord}
+                onUpdateRecord={onUpdateRecord}
+                onRemoveRecord={onRemoveRecord}
+                showRecords={false}
+                dense
+              />
+            </div>
           ))}
         </div>
       </div>

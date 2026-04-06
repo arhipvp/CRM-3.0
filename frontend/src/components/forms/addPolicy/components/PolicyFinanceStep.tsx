@@ -3,6 +3,7 @@ import React from 'react';
 import { formatCurrency, formatDate } from '../../../views/dealsView/helpers';
 import { FinancialRecordInputs } from './FinancialRecordInputs';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
+import type { PaymentDraftOrderEntry } from '../paymentDraftOrdering';
 
 interface PolicyFinanceStepProps {
   counterparty: string;
@@ -11,7 +12,7 @@ interface PolicyFinanceStepProps {
   onAddCounterpartyExpenses: () => void;
   executorName?: string | null;
   onAddExecutorExpenses: () => void;
-  payments: PaymentDraft[];
+  paymentEntries: PaymentDraftOrderEntry[];
   expandedPaymentIndex: number | null;
   onTogglePaymentDetails: (index: number) => void;
   onExpandPaymentDetails: (index: number) => void;
@@ -33,7 +34,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
   onAddCounterpartyExpenses,
   executorName,
   onAddExecutorExpenses,
-  payments,
+  paymentEntries,
   expandedPaymentIndex,
   onTogglePaymentDetails,
   onExpandPaymentDetails,
@@ -43,10 +44,10 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        <div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 shadow-inner shadow-slate-200/40 md:p-5">
           <label className="app-label">Контрагент</label>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <input
               type="text"
               value={counterparty}
@@ -66,9 +67,9 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
             </button>
           </div>
         </div>
-        <div>
+        <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 shadow-inner shadow-slate-200/40 md:p-5">
           <label className="app-label">Исполнитель по сделке</label>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <input
               type="text"
               value={executorName ?? 'отсутствует'}
@@ -87,33 +88,48 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
         </div>
       </div>
 
-      <div className="space-y-4">
-        {payments.map((payment, paymentIndex) => {
-          const isExpanded = expandedPaymentIndex === paymentIndex;
+      <div className="space-y-5" data-testid="policy-finance-payment-list">
+        {paymentEntries.map((entry, displayIndex) => {
+          const { payment, sourceIndex } = entry;
+          const isExpanded = expandedPaymentIndex === sourceIndex;
           return (
             <section
-              key={`records-${paymentIndex}`}
-              className="rounded-2xl border border-slate-200 bg-white shadow-sm"
+              key={`records-${sourceIndex}`}
+              className="relative overflow-hidden rounded-[28px] border border-slate-300/90 bg-gradient-to-br from-white via-white to-slate-50/90 shadow-[0_18px_42px_rgba(15,23,42,0.12)]"
+              data-testid="policy-finance-payment-card"
             >
-              <div className="flex flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0 space-y-1">
+              <div className="absolute inset-y-0 left-0 w-2 rounded-l-[28px] bg-gradient-to-b from-sky-500 via-cyan-500 to-emerald-400" />
+              <div className="ml-2 flex flex-col gap-3 border-b border-slate-200/90 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 space-y-2">
                   <p className="text-sm font-semibold text-slate-900">
-                    {payment.description || `Платёж #${paymentIndex + 1}`}
+                    {payment.description || `Платёж #${displayIndex + 1}`}
                   </p>
-                  <p className="flex flex-wrap gap-3 text-xs text-slate-500">
-                    <span>Сумма {formatCurrency(payment.amount || '0')}</span>
-                    <span>План {formatDate(payment.scheduledDate)}</span>
-                    <span className={payment.actualDate ? 'text-emerald-600' : 'text-rose-600'}>
-                      Оплачен {payment.actualDate ? formatDate(payment.actualDate) : 'не оплачен'}
+                  <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                      Сумма {formatCurrency(payment.amount || '0')}
                     </span>
-                  </p>
+                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-700">
+                      План {formatDate(payment.scheduledDate)}
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-1 ${
+                        payment.actualDate
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-rose-100 text-rose-700'
+                      }`}
+                    >
+                      {payment.actualDate
+                        ? `Оплачен ${formatDate(payment.actualDate)}`
+                        : 'Не оплачен'}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      onAddRecord(paymentIndex, 'incomes');
-                      onExpandPaymentDetails(paymentIndex);
+                      onAddRecord(sourceIndex, 'incomes');
+                      onExpandPaymentDetails(sourceIndex);
                     }}
                     className="btn btn-sm btn-secondary"
                   >
@@ -122,8 +138,8 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      onAddRecord(paymentIndex, 'expenses');
-                      onExpandPaymentDetails(paymentIndex);
+                      onAddRecord(sourceIndex, 'expenses');
+                      onExpandPaymentDetails(sourceIndex);
                     }}
                     className="btn btn-sm btn-secondary"
                   >
@@ -131,16 +147,17 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onTogglePaymentDetails(paymentIndex)}
+                    onClick={() => onTogglePaymentDetails(sourceIndex)}
                     className="btn btn-sm btn-secondary whitespace-nowrap"
+                    aria-expanded={isExpanded}
                   >
                     {isExpanded ? 'Свернуть' : 'Развернуть'}
                   </button>
                 </div>
               </div>
               {isExpanded && (
-                <div className="space-y-3 border-t border-slate-100 px-4 pb-4 pt-3">
-                  <div className="app-panel-muted p-4">
+                <div className="ml-2 space-y-4 px-4 pb-4 pt-4">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-inner">
                     <div className="mb-2 flex items-center justify-between">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Доходы
@@ -148,7 +165,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                       <button
                         type="button"
                         className="btn btn-sm btn-quiet"
-                        onClick={() => onAddRecord(paymentIndex, 'incomes')}
+                        onClick={() => onAddRecord(sourceIndex, 'incomes')}
                       >
                         + Добавить доход
                       </button>
@@ -159,14 +176,14 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                       </p>
                     )}
                     <FinancialRecordInputs
-                      paymentIndex={paymentIndex}
+                      paymentIndex={sourceIndex}
                       type="incomes"
                       records={payment.incomes}
                       onUpdateRecord={onUpdateRecord}
                       onRemoveRecord={onRemoveRecord}
                     />
                   </div>
-                  <div className="app-panel-muted p-4">
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-inner">
                     <div className="mb-2 flex items-center justify-between">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Расходы
@@ -174,7 +191,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                       <button
                         type="button"
                         className="btn btn-sm btn-quiet"
-                        onClick={() => onAddRecord(paymentIndex, 'expenses')}
+                        onClick={() => onAddRecord(sourceIndex, 'expenses')}
                       >
                         + Добавить расход
                       </button>
@@ -185,7 +202,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                       </p>
                     )}
                     <FinancialRecordInputs
-                      paymentIndex={paymentIndex}
+                      paymentIndex={sourceIndex}
                       type="expenses"
                       records={payment.expenses}
                       onUpdateRecord={onUpdateRecord}

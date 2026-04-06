@@ -35,7 +35,7 @@ const renderForm = (initialValues: PolicyFormValues) =>
   );
 
 describe('AddPolicyForm', () => {
-  it('renders a constrained body with a sticky footer and sorts payments by scheduled date', async () => {
+  it('renders a constrained body, shows mini index for long lists, and sorts payments by scheduled date', async () => {
     renderForm(
       buildInitialValues([
         {
@@ -79,10 +79,14 @@ describe('AddPolicyForm', () => {
     const formFooter = screen.getByTestId('policy-form-footer');
     expect(formBody.className).toContain('overflow-y-auto');
     expect(formFooter.className).toContain('border-t');
+    expect(
+      screen.queryByText('Плановые даты идут по порядку, чтобы график было проще проверить.'),
+    ).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getAllByTestId('policy-payment-card')).toHaveLength(4);
     });
+    expect(screen.getByTestId('policy-payment-mini-index')).toBeInTheDocument();
 
     const paymentCards = within(screen.getByTestId('policy-payment-list')).getAllByTestId(
       'policy-payment-card',
@@ -128,5 +132,58 @@ describe('AddPolicyForm', () => {
         'Дата первого платежа не совпадает с началом полиса. Проверьте расписание.',
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps finance step in chronological order and allows only one expanded payment at a time', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: 'Октябрь',
+          scheduledDate: '2026-10-10',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+        {
+          amount: '16859.00',
+          description: 'Январь',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+        {
+          amount: '16859.00',
+          description: 'Апрель',
+          scheduledDate: '2026-04-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+
+    const financeCards = await waitFor(() => screen.getAllByTestId('policy-finance-payment-card'));
+    const financeText = financeCards.map((card) => card.textContent ?? '');
+
+    expect(financeText[0]).toContain('Январь');
+    expect(financeText[1]).toContain('Апрель');
+    expect(financeText[2]).toContain('Октябрь');
+
+    const expandButtons = screen.getAllByRole('button', { name: 'Развернуть' });
+    fireEvent.click(expandButtons[0]);
+    expect(
+      screen.getByText('Добавьте доход, чтобы привязать поступление к этому платежу.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Развернуть' })[1]);
+
+    expect(
+      screen.getByText('Добавьте доход, чтобы привязать поступление к этому платежу.'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(1);
   });
 });

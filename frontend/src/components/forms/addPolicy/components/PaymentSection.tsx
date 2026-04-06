@@ -40,12 +40,13 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 }) => (
   <section
     data-testid="policy-payment-card"
-    className={`rounded-[26px] border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50/80 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ${
+    className={`relative overflow-hidden rounded-[28px] border border-slate-300/90 bg-gradient-to-br from-white via-white to-slate-50/90 shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${
       dense ? 'space-y-3 p-4' : 'space-y-4 p-5'
     }`}
   >
+    <div className="absolute inset-y-0 left-0 w-2 rounded-l-[28px] bg-gradient-to-b from-sky-500 via-cyan-500 to-emerald-400" />
     <div
-      className={`flex items-start justify-between border-b border-slate-200/80 pb-3 ${
+      className={`ml-2 flex items-start justify-between border-b border-slate-200/90 pb-3 ${
         dense ? 'gap-3' : 'gap-4'
       }`}
     >
@@ -68,12 +69,12 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
       <button
         type="button"
         onClick={() => onRemovePayment(paymentIndex)}
-        className="link-danger text-xs"
+        className="link-danger rounded-full border border-rose-100 bg-rose-50/70 px-3 py-1 text-xs"
       >
         Удалить платёж
       </button>
     </div>
-    <div className={`grid grid-cols-1 ${dense ? 'gap-3' : 'gap-4'} md:grid-cols-2`}>
+    <div className={`ml-2 grid grid-cols-1 ${dense ? 'gap-3' : 'gap-4'} md:grid-cols-2`}>
       <div className="space-y-1">
         <label className="block text-xs font-medium text-slate-600">Сумма</label>
         <input
