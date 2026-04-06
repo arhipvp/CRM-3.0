@@ -83,11 +83,10 @@ export const buildPaymentIssuesByIndex = ({
     scheduledDateCounts.set(scheduledDate, (scheduledDateCounts.get(scheduledDate) ?? 0) + 1);
   });
 
-  paymentEntries.forEach((entry, displayIndex) => {
+  paymentEntries.forEach((entry) => {
     const { payment, sourceIndex } = entry;
     const issues: PaymentIssue[] = [];
     const amount = parseNumericAmount(payment.amount ?? '');
-    const description = payment.description?.trim() ?? '';
     const scheduledDate = payment.scheduledDate?.trim() ?? '';
 
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -106,14 +105,6 @@ export const buildPaymentIssuesByIndex = ({
       });
     }
 
-    if (payment.actualDate && scheduledDate && isBefore(payment.actualDate, scheduledDate)) {
-      issues.push({
-        severity: 'error',
-        field: 'actualDate',
-        message: 'Фактическая дата не может быть раньше плановой.',
-      });
-    }
-
     if (scheduledDate && (scheduledDateCounts.get(scheduledDate) ?? 0) > 1) {
       issues.push({
         severity: 'warning',
@@ -127,14 +118,6 @@ export const buildPaymentIssuesByIndex = ({
         severity: 'warning',
         field: 'actualDate',
         message: 'Плановая дата уже прошла, но фактическая дата не указана.',
-      });
-    }
-
-    if (paymentEntries.length > 1 && displayIndex > 0 && !description) {
-      issues.push({
-        severity: 'warning',
-        field: 'description',
-        message: 'Добавьте комментарий, чтобы проще различать платежи в длинном графике.',
       });
     }
 

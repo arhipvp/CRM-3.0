@@ -168,6 +168,14 @@ describe('AddPolicyForm', () => {
           incomes: [],
           expenses: [],
         },
+        {
+          amount: '16859.00',
+          description: 'Июль',
+          scheduledDate: '2026-07-12',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
       ]),
     );
 
@@ -178,15 +186,22 @@ describe('AddPolicyForm', () => {
 
     expect(financeText[0]).toContain('Январь');
     expect(financeText[1]).toContain('Апрель');
-    expect(financeText[2]).toContain('Октябрь');
+    expect(financeText[2]).toContain('Июль');
+    expect(financeText[3]).toContain('Октябрь');
+    expect(screen.getByTestId('policy-finance-payment-mini-index')).toBeInTheDocument();
+    expect(screen.getByTestId('policy-finance-payment-list').className).toContain('overflow-y-auto');
+
+    fireEvent.click(screen.getByTestId('policy-finance-payment-index-3'));
+    expect(screen.getByTestId('policy-finance-payment-index-3').className).toContain('bg-sky-100');
 
     const expandButtons = screen.getAllByRole('button', { name: 'Развернуть' });
-    fireEvent.click(expandButtons[0]);
+    fireEvent.click(expandButtons[2]);
     expect(
       screen.getByText('Добавьте доход, чтобы привязать поступление к этому платежу.'),
     ).toBeInTheDocument();
+    expect(screen.getByTestId('policy-finance-payment-index-3').className).toContain('bg-sky-100');
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Развернуть' })[1]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Развернуть' })[0]);
 
     expect(
       screen.getByText('Добавьте доход, чтобы привязать поступление к этому платежу.'),
@@ -194,7 +209,7 @@ describe('AddPolicyForm', () => {
     expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(1);
   });
 
-  it('shows inline payment errors, blocks submit on errors, and reports dirty state', async () => {
+  it('shows inline payment errors, allows early actual dates, and reports dirty state', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const onDirtyChange = vi.fn();
 
@@ -220,8 +235,11 @@ describe('AddPolicyForm', () => {
     expect(screen.getByTestId('policy-payment-issues')).toHaveTextContent(
       'Укажите сумму больше нуля.',
     );
-    expect(screen.getByTestId('policy-payment-issues')).toHaveTextContent(
+    expect(screen.getByTestId('policy-payment-issues')).not.toHaveTextContent(
       'Фактическая дата не может быть раньше плановой.',
+    );
+    expect(screen.getByTestId('policy-payment-issues')).not.toHaveTextContent(
+      'Добавьте комментарий, чтобы проще различать платежи в длинном графике.',
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
@@ -239,6 +257,38 @@ describe('AddPolicyForm', () => {
       expect(screen.getByTestId('policy-form-dirty-badge')).toBeInTheDocument();
     });
     expect(onDirtyChange).toHaveBeenCalledWith(true);
+  });
+
+  it('allows saving with an early actual date and no comment warnings', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-04-27',
+          actualDate: '2026-04-04',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      { onSubmit },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('policy-payment-card')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('policy-payment-issues')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('allows saving when there are only warnings', async () => {
