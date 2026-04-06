@@ -117,6 +117,13 @@ interface AppModalsProps {
   ) => Promise<void>;
   financialRecords: FinancialRecord[];
   setEditingQuote: React.Dispatch<React.SetStateAction<Quote | null>>;
+  confirm: (options: {
+    title?: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    tone?: 'danger' | 'primary';
+  }) => Promise<boolean>;
 }
 
 export const AppModals: React.FC<AppModalsProps> = ({
@@ -156,10 +163,61 @@ export const AppModals: React.FC<AppModalsProps> = ({
   handleUpdateFinancialRecord,
   financialRecords,
   setEditingQuote,
+  confirm,
 }) => {
   const editingPolicyPayments = editingPolicy
     ? payments.filter((payment) => payment.policyId === editingPolicy.id)
     : [];
+  const [isAddPolicyDirty, setIsAddPolicyDirty] = React.useState(false);
+  const [isEditPolicyDirty, setIsEditPolicyDirty] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!policyDealId) {
+      setIsAddPolicyDirty(false);
+    }
+  }, [policyDealId]);
+
+  React.useEffect(() => {
+    if (!editingPolicy) {
+      setIsEditPolicyDirty(false);
+    }
+  }, [editingPolicy]);
+
+  const requestClosePolicyModal = async () => {
+    if (isAddPolicyDirty) {
+      const confirmed = await confirm({
+        title: 'Закрыть форму полиса?',
+        message: 'В форме есть несохранённые изменения. Закрыть без сохранения?',
+        confirmText: 'Закрыть',
+        cancelText: 'Остаться',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsAddPolicyDirty(false);
+    closePolicyModal();
+  };
+
+  const requestCloseEditingPolicyModal = async () => {
+    if (isEditPolicyDirty) {
+      const confirmed = await confirm({
+        title: 'Закрыть форму полиса?',
+        message: 'В форме есть несохранённые изменения. Закрыть без сохранения?',
+        confirmText: 'Закрыть',
+        cancelText: 'Остаться',
+        tone: 'danger',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsEditPolicyDirty(false);
+    setEditingPolicy(null);
+  };
 
   return (
     <>
@@ -210,7 +268,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
         <FormModal
           isOpen
           title="Добавить полис"
-          onClose={closePolicyModal}
+          onClose={() => {
+            void requestClosePolicyModal();
+          }}
           size="xl"
           closeOnOverlayClick={false}
           panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
@@ -226,8 +286,11 @@ export const AppModals: React.FC<AppModalsProps> = ({
             executorName={policyDealExecutorName}
             clients={clients}
             onRequestAddClient={() => openClientModal()}
+            onDirtyChange={setIsAddPolicyDirty}
             onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-            onCancel={closePolicyModal}
+            onCancel={() => {
+              void requestClosePolicyModal();
+            }}
           />
         </FormModal>
       )}
@@ -236,7 +299,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
         <FormModal
           isOpen
           title="Редактировать полис"
-          onClose={() => setEditingPolicy(null)}
+          onClose={() => {
+            void requestCloseEditingPolicyModal();
+          }}
           size="xl"
           closeOnOverlayClick={false}
           panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
@@ -255,8 +320,11 @@ export const AppModals: React.FC<AppModalsProps> = ({
             executorName={editingPolicyExecutorName}
             clients={clients}
             onRequestAddClient={() => openClientModal()}
+            onDirtyChange={setIsEditPolicyDirty}
             onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
-            onCancel={() => setEditingPolicy(null)}
+            onCancel={() => {
+              void requestCloseEditingPolicyModal();
+            }}
           />
         </FormModal>
       )}

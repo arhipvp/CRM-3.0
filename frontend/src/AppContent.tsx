@@ -931,6 +931,7 @@ const AppContent: React.FC = () => {
           setFinancialRecordModal={setFinancialRecordModal}
           handleUpdateFinancialRecord={handleUpdateFinancialRecord}
           financialRecords={financialRecords}
+          confirm={confirm}
         />
       </Suspense>
       {quickTaskDeal && (

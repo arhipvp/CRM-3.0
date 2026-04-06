@@ -3,6 +3,7 @@ import React from 'react';
 import { PaymentSection } from './PaymentSection';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
 import type { PaymentDraftOrderEntry } from '../paymentDraftOrdering';
+import type { PaymentIssuesByIndex } from '../paymentIssues';
 
 interface PolicyPaymentsStepProps {
   startDate: string;
@@ -11,6 +12,7 @@ interface PolicyPaymentsStepProps {
   onEndDateChange: (value: string) => void;
   policyDurationWarning: string | null;
   paymentEntries: PaymentDraftOrderEntry[];
+  paymentIssuesByIndex: PaymentIssuesByIndex;
   onAddPayment: () => void;
   firstPaymentDateWarning: string | null;
   onPaymentFieldChange: (
@@ -37,6 +39,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
   onEndDateChange,
   policyDurationWarning,
   paymentEntries,
+  paymentIssuesByIndex,
   onAddPayment,
   firstPaymentDateWarning,
   onPaymentFieldChange,
@@ -48,6 +51,9 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
   const paymentListRef = React.useRef<HTMLDivElement | null>(null);
   const cardRefs = React.useRef<Record<number, HTMLDivElement | null>>({});
   const showMiniIndex = paymentEntries.length >= 4;
+  const [activeSourceIndex, setActiveSourceIndex] = React.useState<number | null>(
+    paymentEntries[0]?.sourceIndex ?? null,
+  );
 
   const scrollToPayment = (sourceIndex: number) => {
     const card = cardRefs.current[sourceIndex];
@@ -55,8 +61,52 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
       return;
     }
 
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveSourceIndex(sourceIndex);
+    if (typeof card.scrollIntoView === 'function') {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
+
+  React.useEffect(() => {
+    setActiveSourceIndex(paymentEntries[0]?.sourceIndex ?? null);
+  }, [paymentEntries]);
+
+  React.useEffect(() => {
+    const container = paymentListRef.current;
+    if (!container || !showMiniIndex) {
+      return;
+    }
+
+    const updateActiveSourceIndex = () => {
+      const containerTop = container.getBoundingClientRect().top;
+      let nextActive = paymentEntries[0]?.sourceIndex ?? null;
+      let smallestDistance = Number.POSITIVE_INFINITY;
+
+      paymentEntries.forEach((entry) => {
+        const card = cardRefs.current[entry.sourceIndex];
+        if (!card) {
+          return;
+        }
+
+        const distance = Math.abs(card.getBoundingClientRect().top - containerTop - 12);
+        if (distance < smallestDistance) {
+          smallestDistance = distance;
+          nextActive = entry.sourceIndex;
+        }
+      });
+
+      setActiveSourceIndex(nextActive);
+    };
+
+    updateActiveSourceIndex();
+    container.addEventListener('scroll', updateActiveSourceIndex, { passive: true });
+    window.addEventListener('resize', updateActiveSourceIndex);
+
+    return () => {
+      container.removeEventListener('scroll', updateActiveSourceIndex);
+      window.removeEventListener('resize', updateActiveSourceIndex);
+    };
+  }, [paymentEntries, showMiniIndex]);
 
   return (
     <div className="space-y-5">
@@ -107,7 +157,12 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
                   key={`jump-${entry.sourceIndex}`}
                   type="button"
                   onClick={() => scrollToPayment(entry.sourceIndex)}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                  data-testid={`policy-payment-index-${displayIndex + 1}`}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    activeSourceIndex === entry.sourceIndex
+                      ? 'border-sky-300 bg-sky-100 text-sky-800 shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'
+                  }`}
                 >
                   Платёж {displayIndex + 1}
                 </button>
@@ -143,6 +198,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
                 paymentIndex={entry.sourceIndex}
                 paymentNumber={displayIndex + 1}
                 payment={entry.payment}
+                issues={paymentIssuesByIndex[entry.sourceIndex] ?? []}
                 onFieldChange={onPaymentFieldChange}
                 onRemovePayment={onRemovePayment}
                 onAddRecord={onAddRecord}

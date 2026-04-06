@@ -21,6 +21,11 @@ import {
   getFirstScheduledPaymentEntry,
   sortPaymentDraftEntries,
 } from './addPolicy/paymentDraftOrdering';
+import { buildPaymentIssuesByIndex, countPaymentIssues } from './addPolicy/paymentIssues';
+import {
+  buildInitialPolicyFormSnapshot,
+  buildPolicyFormSnapshot,
+} from './addPolicy/policyFormState';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import {
@@ -41,6 +46,7 @@ interface AddPolicyFormProps {
   executorName?: string | null;
   clients: Client[];
   onRequestAddClient: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const MAX_CLIENT_SUGGESTIONS = 5;
@@ -63,6 +69,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   executorName,
   clients,
   onRequestAddClient,
+  onDirtyChange,
 }) => {
   const [number, setNumber] = useState('');
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
@@ -147,6 +154,84 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     () => getFirstScheduledPaymentEntry(payments),
     [payments],
   );
+  const todayDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const paymentIssuesByIndex = useMemo(
+    () =>
+      buildPaymentIssuesByIndex({
+        paymentEntries: orderedPaymentEntries,
+        startDate,
+        endDate,
+        todayDate,
+      }),
+    [orderedPaymentEntries, startDate, endDate, todayDate],
+  );
+  const paymentErrorsCount = useMemo(
+    () => countPaymentIssues(paymentIssuesByIndex, 'error'),
+    [paymentIssuesByIndex],
+  );
+  const paymentWarningsCount = useMemo(
+    () => countPaymentIssues(paymentIssuesByIndex, 'warning'),
+    [paymentIssuesByIndex],
+  );
+  const currentSnapshot = useMemo(
+    () =>
+      buildPolicyFormSnapshot({
+        number,
+        insuranceCompanyId,
+        insuranceTypeId,
+        isVehicle,
+        brand,
+        model,
+        vin,
+        counterparty,
+        note,
+        salesChannelId,
+        startDate,
+        endDate,
+        policyClientId,
+        clientQuery,
+        payments,
+      }),
+    [
+      number,
+      insuranceCompanyId,
+      insuranceTypeId,
+      isVehicle,
+      brand,
+      model,
+      vin,
+      counterparty,
+      note,
+      salesChannelId,
+      startDate,
+      endDate,
+      policyClientId,
+      clientQuery,
+      payments,
+    ],
+  );
+  const baselineSnapshot = useMemo(
+    () => buildInitialPolicyFormSnapshot({ initialValues, defaultCounterparty, executorName }),
+    [defaultCounterparty, executorName, initialValues],
+  );
+  const [isDirtyReady, setIsDirtyReady] = useState(false);
+  const isDirty = isDirtyReady && currentSnapshot !== baselineSnapshot;
+
+  useEffect(() => {
+    setIsDirtyReady(false);
+  }, [baselineSnapshot]);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setIsDirtyReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [baselineSnapshot, currentSnapshot]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     let isMounted = true;
@@ -581,6 +666,10 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setError('Заполните номер полиса, страховую компанию и тип страхования.');
       return;
     }
+    if (paymentErrorsCount > 0) {
+      setError('Исправьте ошибки в платежах перед сохранением полиса.');
+      return;
+    }
 
     const normalizedVin = vin.trim();
 
@@ -737,6 +826,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               onEndDateChange={handleEndDateChange}
               policyDurationWarning={policyDurationWarning}
               paymentEntries={orderedPaymentEntries}
+              paymentIssuesByIndex={paymentIssuesByIndex}
               onAddPayment={handleAddPayment}
               firstPaymentDateWarning={firstPaymentDateWarning}
               onPaymentFieldChange={updatePaymentField}
@@ -756,6 +846,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
               executorName={executorName}
               onAddExecutorExpenses={handleAddExecutorExpenses}
               paymentEntries={orderedPaymentEntries}
+              paymentIssuesByIndex={paymentIssuesByIndex}
               expandedPaymentIndex={expandedPaymentIndex}
               onTogglePaymentDetails={togglePaymentDetails}
               onExpandPaymentDetails={setExpandedPaymentIndex}
@@ -774,7 +865,25 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         <button type="button" onClick={onCancel} className={BTN_SECONDARY} disabled={isSubmitting}>
           Отмена
         </button>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          {isDirty && (
+            <span
+              className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800"
+              data-testid="policy-form-dirty-badge"
+            >
+              Есть несохранённые изменения
+            </span>
+          )}
+          {paymentErrorsCount > 0 && (
+            <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-800">
+              Ошибок: {paymentErrorsCount}
+            </span>
+          )}
+          {paymentWarningsCount > 0 && (
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+              Предупреждений: {paymentWarningsCount}
+            </span>
+          )}
           {currentStep > 1 && (
             <button
               type="button"

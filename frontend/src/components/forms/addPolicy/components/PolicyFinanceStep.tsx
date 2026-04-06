@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from '../../../views/dealsView/helpers';
 import { FinancialRecordInputs } from './FinancialRecordInputs';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
 import type { PaymentDraftOrderEntry } from '../paymentDraftOrdering';
+import type { PaymentIssuesByIndex } from '../paymentIssues';
 
 interface PolicyFinanceStepProps {
   counterparty: string;
@@ -13,6 +14,7 @@ interface PolicyFinanceStepProps {
   executorName?: string | null;
   onAddExecutorExpenses: () => void;
   paymentEntries: PaymentDraftOrderEntry[];
+  paymentIssuesByIndex: PaymentIssuesByIndex;
   expandedPaymentIndex: number | null;
   onTogglePaymentDetails: (index: number) => void;
   onExpandPaymentDetails: (index: number) => void;
@@ -35,6 +37,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
   executorName,
   onAddExecutorExpenses,
   paymentEntries,
+  paymentIssuesByIndex,
   expandedPaymentIndex,
   onTogglePaymentDetails,
   onExpandPaymentDetails,
@@ -92,6 +95,9 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
         {paymentEntries.map((entry, displayIndex) => {
           const { payment, sourceIndex } = entry;
           const isExpanded = expandedPaymentIndex === sourceIndex;
+          const issues = paymentIssuesByIndex[sourceIndex] ?? [];
+          const errors = issues.filter((issue) => issue.severity === 'error');
+          const warnings = issues.filter((issue) => issue.severity === 'warning');
           return (
             <section
               key={`records-${sourceIndex}`}
@@ -157,6 +163,20 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
               </div>
               {isExpanded && (
                 <div className="ml-2 space-y-4 px-4 pb-4 pt-4">
+                  {(errors.length > 0 || warnings.length > 0) && (
+                    <div className="space-y-2" data-testid="policy-finance-payment-issues">
+                      {errors.length > 0 && (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                          {errors.map((issue) => issue.message).join(' ')}
+                        </div>
+                      )}
+                      {warnings.length > 0 && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                          {warnings.map((issue) => issue.message).join(' ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-inner">
                     <div className="mb-2 flex items-center justify-between">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">

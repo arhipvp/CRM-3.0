@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -21,7 +22,10 @@ const buildInitialValues = (payments: PolicyFormValues['payments']): PolicyFormV
   payments,
 });
 
-const renderForm = (initialValues: PolicyFormValues) =>
+const renderForm = (
+  initialValues: PolicyFormValues,
+  overrides?: Partial<ComponentProps<typeof AddPolicyForm>>,
+) =>
   render(
     <AddPolicyForm
       onSubmit={vi.fn().mockResolvedValue(undefined)}
@@ -31,6 +35,7 @@ const renderForm = (initialValues: PolicyFormValues) =>
       clients={[]}
       onRequestAddClient={vi.fn()}
       isEditing
+      {...overrides}
     />,
   );
 
@@ -87,6 +92,8 @@ describe('AddPolicyForm', () => {
       expect(screen.getAllByTestId('policy-payment-card')).toHaveLength(4);
     });
     expect(screen.getByTestId('policy-payment-mini-index')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('policy-payment-index-2'));
+    expect(screen.getByTestId('policy-payment-index-2').className).toContain('bg-sky-100');
 
     const paymentCards = within(screen.getByTestId('policy-payment-list')).getAllByTestId(
       'policy-payment-card',
@@ -185,5 +192,85 @@ describe('AddPolicyForm', () => {
       screen.getByText('Добавьте доход, чтобы привязать поступление к этому платежу.'),
     ).toBeInTheDocument();
     expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(1);
+  });
+
+  it('shows inline payment errors, blocks submit on errors, and reports dirty state', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onDirtyChange = vi.fn();
+
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '0',
+          description: '',
+          scheduledDate: '2028-02-01',
+          actualDate: '2028-01-01',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      { onSubmit, onDirtyChange },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('policy-payment-issues')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('policy-payment-issues')).toHaveTextContent(
+      'Укажите сумму больше нуля.',
+    );
+    expect(screen.getByTestId('policy-payment-issues')).toHaveTextContent(
+      'Фактическая дата не может быть раньше плановой.',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Исправьте ошибки в платежах перед сохранением полиса.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+    fireEvent.change(screen.getByDisplayValue('0'), { target: { value: '15000' } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('policy-form-dirty-badge')).toBeInTheDocument();
+    });
+    expect(onDirtyChange).toHaveBeenCalledWith(true);
+  });
+
+  it('allows saving when there are only warnings', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      { onSubmit },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
   });
 });
