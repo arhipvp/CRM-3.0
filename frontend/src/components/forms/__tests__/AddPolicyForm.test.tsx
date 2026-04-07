@@ -322,15 +322,21 @@ describe('AddPolicyForm', () => {
     const counterpartyCard = counterpartyInput.closest('div.rounded-\\[28px\\]');
     expect(counterpartyCard).not.toBeNull();
 
-    expect(screen.getByText('Добавьте расход, чтобы контролировать связанные списания.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Добавьте расход, чтобы контролировать связанные списания.'),
+    ).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Расход контрагенту СпецКонтрагент')).not.toBeInTheDocument();
 
-    fireEvent.click(within(counterpartyCard as HTMLElement).getByRole('button', { name: '+ Расход' }));
+    fireEvent.click(
+      within(counterpartyCard as HTMLElement).getByRole('button', { name: '+ Расход' }),
+    );
 
     const expenseNotes = await screen.findAllByDisplayValue('Расход контрагенту СпецКонтрагент');
     expect(expenseNotes).toHaveLength(1);
 
-    fireEvent.click(within(counterpartyCard as HTMLElement).getByRole('button', { name: '+ Расход' }));
+    fireEvent.click(
+      within(counterpartyCard as HTMLElement).getByRole('button', { name: '+ Расход' }),
+    );
     expect(screen.getAllByDisplayValue('Расход контрагенту СпецКонтрагент')).toHaveLength(1);
   });
 
