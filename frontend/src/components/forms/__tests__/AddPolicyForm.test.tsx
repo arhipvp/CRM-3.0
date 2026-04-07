@@ -300,6 +300,40 @@ describe('AddPolicyForm', () => {
     expect(screen.getAllByTestId('incomes-record-amount-accent')[0]).toBeInTheDocument();
   });
 
+  it('does not auto-add counterparty expense and adds it only by button without duplicates', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: 'Январь',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      { isEditing: false, initialValues: undefined },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+
+    const counterpartyInput = await screen.findByPlaceholderText('Контрагент / организация');
+    fireEvent.change(counterpartyInput, { target: { value: 'СпецКонтрагент' } });
+    const counterpartyCard = counterpartyInput.closest('div.rounded-\\[28px\\]');
+    expect(counterpartyCard).not.toBeNull();
+
+    expect(screen.getByText('Добавьте расход, чтобы контролировать связанные списания.')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Расход контрагенту СпецКонтрагент')).not.toBeInTheDocument();
+
+    fireEvent.click(within(counterpartyCard as HTMLElement).getByRole('button', { name: '+ Расход' }));
+
+    const expenseNotes = await screen.findAllByDisplayValue('Расход контрагенту СпецКонтрагент');
+    expect(expenseNotes).toHaveLength(1);
+
+    fireEvent.click(within(counterpartyCard as HTMLElement).getByRole('button', { name: '+ Расход' }));
+    expect(screen.getAllByDisplayValue('Расход контрагенту СпецКонтрагент')).toHaveLength(1);
+  });
+
   it('shows inline payment errors, allows early actual dates, and reports dirty state', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const onDirtyChange = vi.fn();

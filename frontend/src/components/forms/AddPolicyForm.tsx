@@ -62,7 +62,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onCancel,
   salesChannels,
   initialValues,
-  isEditing = false,
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
   defaultCounterparty,
@@ -140,7 +139,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
-  const hasAutoExpenseRef = useRef(false);
   const submitLabel = initialValues ? 'Сохранить полис' : 'Создать полис';
   const steps = [
     { title: 'Полис', description: 'Номер, страховая и тип' },
@@ -259,7 +257,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   }, []);
 
   useEffect(() => {
-    hasAutoExpenseRef.current = false;
     if (!initialValues) {
       setNumber('');
       setInsuranceCompanyId('');
@@ -483,29 +480,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       }),
     );
   }, []);
-
-  useEffect(() => {
-    if (isEditing || hasAutoExpenseRef.current) {
-      return;
-    }
-    const counterpartyName = counterparty.trim();
-    const executor = executorName?.trim();
-    const note = counterpartyName
-      ? `Расход контрагенту ${counterpartyName}`
-      : executor
-        ? `Расход исполнителю ${executor}`
-        : '';
-    if (!note) {
-      return;
-    }
-    const hasAnyExpense = payments.some((payment) => payment.expenses.length > 0);
-    if (hasAnyExpense) {
-      hasAutoExpenseRef.current = true;
-      return;
-    }
-    appendExpenseToAllPayments(note);
-    hasAutoExpenseRef.current = true;
-  }, [appendExpenseToAllPayments, counterparty, executorName, initialValues, isEditing, payments]);
 
   const handleAddCounterpartyExpenses = () => {
     const name = counterparty.trim();
