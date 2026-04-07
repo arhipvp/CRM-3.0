@@ -48,7 +48,7 @@ describe('eventUtils', () => {
     expect(window.upcomingEvents).toHaveLength(1);
     expect(window.nextEvent).not.toBeNull();
     expect(window.nextEvent?.title).toBe('Очередной платёж');
-    expect(window.nextEvent?.description).toContain('Сумма');
+    expect(window.nextEvent?.description).toContain('Сумма 1 200,00 ₽');
     expect(window.suggestedNextContactInput).toBe('2026-10-24');
   });
 

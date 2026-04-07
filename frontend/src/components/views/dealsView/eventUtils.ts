@@ -1,4 +1,5 @@
 import type { Payment, Policy } from '../../../types';
+import { formatCurrencyRu } from '../../../utils/formatting';
 
 export type DealEventType = 'payment' | 'policyExpiration';
 
@@ -26,8 +27,6 @@ const buildPolicyDescription = (policy: Policy) => {
   return 'Окончание страхования';
 };
 
-const formatAmount = (amount: number) => `${amount.toLocaleString('ru-RU')} ₽`;
-
 const normalizeAmount = (value: Payment['amount']) => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : null;
@@ -48,7 +47,7 @@ const buildPaymentDescription = (
   }
   const amount = normalizeAmount(payment.amount);
   if (amount !== null) {
-    parts.push(`Сумма ${formatAmount(amount)}`);
+    parts.push(`Сумма ${formatCurrencyRu(amount)}`);
   }
   if (parts.length) {
     return {

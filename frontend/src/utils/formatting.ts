@@ -36,5 +36,7 @@ export function formatCurrencyRu(
   if (!Number.isFinite(value)) {
     return fallback;
   }
-  return value.toLocaleString(RU_LOCALE, { style: 'currency', currency: RUB_CURRENCY });
+  return value
+    .toLocaleString(RU_LOCALE, { style: 'currency', currency: RUB_CURRENCY })
+    .replace(/[\u00A0\u202F]/g, ' ');
 }

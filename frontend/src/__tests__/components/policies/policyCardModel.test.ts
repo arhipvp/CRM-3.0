@@ -47,4 +47,15 @@ describe('buildPolicyCardModel', () => {
     const model = buildPolicyCardModel(policy, []);
     expect(model.client).toBe('Policy Client');
   });
+
+  it('formats summary amounts with spaces and ruble signs', () => {
+    const policy = createPolicy({
+      paymentsPaid: '1200',
+      paymentsTotal: '1234567.89',
+    });
+
+    const model = buildPolicyCardModel(policy, []);
+
+    expect(model.sum).toBe('1 200,00 ₽ / 1 234 567,89 ₽');
+  });
 });

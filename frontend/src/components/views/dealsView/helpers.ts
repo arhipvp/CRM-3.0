@@ -5,6 +5,7 @@ import type {
   Policy,
   PolicyRecognitionResult,
 } from '../../../types';
+import { formatCurrencyRu } from '../../../utils/formatting';
 
 const DATE_FORMATTER = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -93,10 +94,7 @@ export const getDeadlineTone = (value?: string | null) => {
   return 'text-slate-500';
 };
 
-export const formatCurrency = (value?: string) => {
-  const amount = Number(value ?? 0);
-  return amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' });
-};
+export const formatCurrency = (value?: string) => formatCurrencyRu(value ?? 0);
 
 export const formatDriveDate = (value?: string | null) => {
   if (!value) {
