@@ -325,6 +325,7 @@ export const DealForm: React.FC<DealFormProps> = ({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const trimmedTitle = title.trim();
+    const trimmedDescription = description.trim();
     const resolvedClient = resolveClientFromQuery();
     const selectedClientId = resolvedClient?.id ?? clientId;
 
@@ -340,7 +341,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     const payload: DealFormValues = {
       title: trimmedTitle,
       clientId: selectedClientId,
-      description: description.trim() || undefined,
+      description: trimmedDescription,
       expectedClose: expectedClose || null,
       executorId: executorId || undefined,
       source: source.trim(),

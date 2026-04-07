@@ -140,4 +140,66 @@ describe('DealForm', () => {
       expect(screen.getByText('Контактное лицо обязательно.')).toBeInTheDocument();
     });
   });
+
+  it('в режиме редактирования позволяет полностью очистить описание', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DealForm
+        {...baseProps}
+        onSubmit={onSubmit}
+        clients={[makeClient('client-1', 'Клиент 1')]}
+        mode="edit"
+        initialValues={{
+          title: 'Сделка',
+          clientId: 'client-1',
+          description: 'Исходное описание',
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByDisplayValue('Исходное описание'), { target: { value: '   ' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: '',
+        }),
+      );
+    });
+  });
+
+  it('отправляет trimmed описание без изменений для остальных полей', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DealForm
+        {...baseProps}
+        onSubmit={onSubmit}
+        clients={[makeClient('client-1', 'Клиент 1')]}
+        mode="edit"
+        initialValues={{
+          title: 'Сделка',
+          clientId: 'client-1',
+          description: 'Исходное описание',
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByDisplayValue('Исходное описание'), {
+      target: { value: '  новое описание  ' },
+    });
+    fireEvent.submit(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Сделка',
+          clientId: 'client-1',
+          description: 'новое описание',
+        }),
+      );
+    });
+  });
 });
