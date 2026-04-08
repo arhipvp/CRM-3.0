@@ -372,6 +372,28 @@ describe('AddPolicyForm', () => {
     expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
   });
 
+  it('auto-adds executor expense in create form prefill drafts without touching edit form behavior', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: 'Январь',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      {
+        isEditing: false,
+        executorName: 'Alisa',
+      },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
+  });
+
   it('adds executor expense to all current payments by button in edit form without implicit backfill on open', async () => {
     renderForm(
       buildInitialValues([

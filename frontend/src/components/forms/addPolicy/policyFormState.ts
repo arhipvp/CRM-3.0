@@ -81,19 +81,32 @@ export const buildDefaultPaymentExpenses = (
   return [];
 };
 
-const normalizeInitialPayments = (payments: PaymentDraft[]) =>
+export const normalizeCreateFormPayments = ({
+  payments,
+  defaultCounterparty,
+  executorName,
+}: {
+  payments: PaymentDraft[];
+  defaultCounterparty?: string;
+  executorName?: string | null;
+}) =>
   payments.map((payment) => ({
     ...payment,
     incomes: payment.incomes ?? [],
-    expenses: payment.expenses ?? [],
+    expenses:
+      payment.expenses && payment.expenses.length > 0
+        ? payment.expenses
+        : buildDefaultPaymentExpenses(defaultCounterparty, executorName),
   }));
 
 export const buildInitialPolicyFormSnapshot = ({
   initialValues,
+  isEditing,
   defaultCounterparty,
   executorName,
 }: {
   initialValues?: PolicyFormValues;
+  isEditing?: boolean;
   defaultCounterparty?: string;
   executorName?: string | null;
 }) => {
@@ -113,7 +126,17 @@ export const buildInitialPolicyFormSnapshot = ({
       endDate: initialValues.endDate ?? '',
       policyClientId: initialValues.clientId ?? '',
       clientQuery: initialValues.clientName ?? '',
-      payments: normalizeInitialPayments(initialValues.payments ?? []),
+      payments: isEditing
+        ? (initialValues.payments ?? []).map((payment) => ({
+            ...payment,
+            incomes: payment.incomes ?? [],
+            expenses: payment.expenses ?? [],
+          }))
+        : normalizeCreateFormPayments({
+            payments: initialValues.payments ?? [],
+            defaultCounterparty,
+            executorName,
+          }),
     });
   }
 

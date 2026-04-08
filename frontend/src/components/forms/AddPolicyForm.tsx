@@ -26,6 +26,7 @@ import {
   buildDefaultPaymentExpenses,
   buildInitialPolicyFormSnapshot,
   buildPolicyFormSnapshot,
+  normalizeCreateFormPayments,
 } from './addPolicy/policyFormState';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
@@ -76,6 +77,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onCancel,
   salesChannels,
   initialValues,
+  isEditing = false,
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
   defaultCounterparty,
@@ -227,8 +229,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     ],
   );
   const baselineSnapshot = useMemo(
-    () => buildInitialPolicyFormSnapshot({ initialValues, defaultCounterparty, executorName }),
-    [defaultCounterparty, executorName, initialValues],
+    () =>
+      buildInitialPolicyFormSnapshot({
+        initialValues,
+        isEditing,
+        defaultCounterparty,
+        executorName,
+      }),
+    [defaultCounterparty, executorName, initialValues, isEditing],
   );
   const [isDirtyReady, setIsDirtyReady] = useState(false);
   const isDirty = isDirtyReady && currentSnapshot !== baselineSnapshot;
@@ -317,17 +325,23 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setHasManualEndDate(!!initialValues.endDate);
     const initialPayments = initialValues.payments || [];
     setPayments(
-      initialPayments.map((payment) => ({
-        ...payment,
-        incomes: payment.incomes ?? [],
-        expenses: payment.expenses ?? [],
-      })),
+      isEditing
+        ? initialPayments.map((payment) => ({
+            ...payment,
+            incomes: payment.incomes ?? [],
+            expenses: payment.expenses ?? [],
+          }))
+        : normalizeCreateFormPayments({
+            payments: initialPayments,
+            defaultCounterparty,
+            executorName,
+          }),
     );
     setCounterpartyTouched(Boolean(initialValues.counterparty));
     setPolicyClientId(initialValues.clientId || '');
     setClientQuery(initialValues.clientName ?? '');
     setCurrentStep(1);
-  }, [defaultCounterparty, executorName, initialValues]);
+  }, [defaultCounterparty, executorName, initialValues, isEditing]);
 
   useEffect(() => {
     if (initialValues) {
