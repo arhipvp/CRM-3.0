@@ -165,9 +165,18 @@ export const AppModals: React.FC<AppModalsProps> = ({
   setEditingQuote,
   confirm,
 }) => {
-  const editingPolicyPayments = editingPolicy
-    ? payments.filter((payment) => payment.policyId === editingPolicy.id)
-    : [];
+  const editingPolicyPayments = React.useMemo(
+    () =>
+      editingPolicy ? payments.filter((payment) => payment.policyId === editingPolicy.id) : [],
+    [editingPolicy, payments],
+  );
+  const editingPolicyInitialValues = React.useMemo(
+    () =>
+      editingPolicy
+        ? buildPolicyFormValues(editingPolicy, editingPolicyPayments, financialRecords)
+        : undefined,
+    [editingPolicy, editingPolicyPayments, financialRecords],
+  );
   const [isAddPolicyDirty, setIsAddPolicyDirty] = React.useState(false);
   const [isEditPolicyDirty, setIsEditPolicyDirty] = React.useState(false);
 
@@ -309,11 +318,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
         >
           <AddPolicyForm
             salesChannels={salesChannels}
-            initialValues={buildPolicyFormValues(
-              editingPolicy,
-              editingPolicyPayments,
-              financialRecords,
-            )}
+            initialValues={editingPolicyInitialValues}
             isEditing
             initialInsuranceCompanyName={editingPolicy.insuranceCompany}
             initialInsuranceTypeName={editingPolicy.insuranceType}

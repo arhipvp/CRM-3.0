@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,6 +41,54 @@ const renderForm = (
   );
 
 describe('AddPolicyForm', () => {
+  it('keeps actual date and current step when edit form rerenders from dirty state', async () => {
+    const DirtyRerenderHarness = () => {
+      const [isDirty, setIsDirty] = React.useState(false);
+
+      return (
+        <div data-testid={isDirty ? 'dirty-yes' : 'dirty-no'}>
+          <AddPolicyForm
+            onSubmit={vi.fn().mockResolvedValue(undefined)}
+            onCancel={vi.fn()}
+            salesChannels={[]}
+            initialValues={buildInitialValues([
+              {
+                amount: '16859.00',
+                description: '',
+                scheduledDate: '2026-04-18',
+                actualDate: '',
+                incomes: [],
+                expenses: [],
+              },
+            ])}
+            clients={[]}
+            onRequestAddClient={vi.fn()}
+            isEditing
+            onDirtyChange={setIsDirty}
+          />
+        </div>
+      );
+    };
+
+    render(<DirtyRerenderHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+
+    const paymentCard = await screen.findByTestId('policy-payment-card');
+    const actualDateInput = paymentCard.querySelector(
+      '[data-payment-field="actual-date"]',
+    ) as HTMLInputElement;
+
+    fireEvent.change(actualDateInput, { target: { value: '2026-04-08' } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dirty-yes')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('policy-payment-card')).toBeInTheDocument();
+    expect(actualDateInput.value).toBe('2026-04-08');
+    expect(screen.getByTestId('policy-form-dirty-badge')).toBeInTheDocument();
+  });
+
   it('renders a constrained body, shows mini index for long lists, and sorts payments by scheduled date', async () => {
     renderForm(
       buildInitialValues([

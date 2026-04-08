@@ -26,7 +26,6 @@ import {
   buildDefaultPaymentExpenses,
   buildInitialPolicyFormSnapshot,
   buildPolicyFormSnapshot,
-  normalizeCreateFormPayments,
 } from './addPolicy/policyFormState';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
@@ -238,6 +237,27 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       }),
     [defaultCounterparty, executorName, initialValues, isEditing],
   );
+  const initialFormState = useMemo(
+    () =>
+      JSON.parse(baselineSnapshot) as {
+        number: string;
+        insuranceCompanyId: string;
+        insuranceTypeId: string;
+        isVehicle: boolean;
+        brand: string;
+        model: string;
+        vin: string;
+        counterparty: string;
+        note: string;
+        salesChannelId: string;
+        startDate: string;
+        endDate: string;
+        policyClientId: string;
+        clientQuery: string;
+        payments: PaymentDraft[];
+      },
+    [baselineSnapshot],
+  );
   const [isDirtyReady, setIsDirtyReady] = useState(false);
   const isDirty = isDirtyReady && currentSnapshot !== baselineSnapshot;
 
@@ -283,65 +303,25 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!initialValues) {
-      setNumber('');
-      setInsuranceCompanyId('');
-      setInsuranceTypeId('');
-      setIsVehicle(false);
-      setBrand('');
-      setModel('');
-      setVin('');
-      setCounterparty('');
-      setNote('');
-      setCounterpartyTouched(false);
-      setSalesChannelId('');
-      setStartDate('');
-      setEndDate('');
-      setHasManualEndDate(false);
-      setPayments([
-        createPaymentDraftWithDefaults({
-          incomeNote: buildCommissionIncomeNote(),
-          defaultCounterparty,
-          executorName,
-        }),
-      ]);
-      setCurrentStep(1);
-      setPolicyClientId('');
-      setClientQuery('');
-      return;
-    }
-    setNumber(initialValues.number || '');
-    setInsuranceCompanyId(initialValues.insuranceCompanyId);
-    setInsuranceTypeId(initialValues.insuranceTypeId);
-    setIsVehicle(initialValues.isVehicle);
-    setBrand(initialValues.brand || '');
-    setModel(initialValues.model || '');
-    setVin(initialValues.vin || '');
-    setCounterparty(initialValues.counterparty || '');
-    setNote(initialValues.note || '');
-    setSalesChannelId(initialValues.salesChannelId || '');
-    setStartDate(initialValues.startDate || '');
-    setEndDate(initialValues.endDate || '');
-    setHasManualEndDate(!!initialValues.endDate);
-    const initialPayments = initialValues.payments || [];
-    setPayments(
-      isEditing
-        ? initialPayments.map((payment) => ({
-            ...payment,
-            incomes: payment.incomes ?? [],
-            expenses: payment.expenses ?? [],
-          }))
-        : normalizeCreateFormPayments({
-            payments: initialPayments,
-            defaultCounterparty,
-            executorName,
-          }),
-    );
-    setCounterpartyTouched(Boolean(initialValues.counterparty));
-    setPolicyClientId(initialValues.clientId || '');
-    setClientQuery(initialValues.clientName ?? '');
+    setNumber(initialFormState.number || '');
+    setInsuranceCompanyId(initialFormState.insuranceCompanyId || '');
+    setInsuranceTypeId(initialFormState.insuranceTypeId || '');
+    setIsVehicle(initialFormState.isVehicle);
+    setBrand(initialFormState.brand || '');
+    setModel(initialFormState.model || '');
+    setVin(initialFormState.vin || '');
+    setCounterparty(initialFormState.counterparty || '');
+    setNote(initialFormState.note || '');
+    setSalesChannelId(initialFormState.salesChannelId || '');
+    setStartDate(initialFormState.startDate || '');
+    setEndDate(initialFormState.endDate || '');
+    setHasManualEndDate(Boolean(initialFormState.endDate));
+    setPayments(initialFormState.payments ?? []);
+    setCounterpartyTouched(Boolean(initialFormState.counterparty));
+    setPolicyClientId(initialFormState.policyClientId || '');
+    setClientQuery(initialFormState.clientQuery || '');
     setCurrentStep(1);
-  }, [defaultCounterparty, executorName, initialValues, isEditing]);
+  }, [initialFormState]);
 
   useEffect(() => {
     if (initialValues) {
