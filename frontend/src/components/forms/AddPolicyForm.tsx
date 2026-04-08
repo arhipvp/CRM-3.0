@@ -23,6 +23,7 @@ import {
 } from './addPolicy/paymentDraftOrdering';
 import { buildPaymentIssuesByIndex, countPaymentIssues } from './addPolicy/paymentIssues';
 import {
+  buildDefaultPaymentExpenses,
   buildInitialPolicyFormSnapshot,
   buildPolicyFormSnapshot,
 } from './addPolicy/policyFormState';
@@ -56,6 +57,19 @@ const normalizeTypeForComparison = (value: string) =>
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]/gu, '')
     .trim();
+
+const createPaymentDraftWithDefaults = ({
+  incomeNote,
+  defaultCounterparty,
+  executorName,
+}: {
+  incomeNote: string;
+  defaultCounterparty?: string;
+  executorName?: string | null;
+}): PaymentDraft => ({
+  ...createPaymentWithDefaultIncome(incomeNote),
+  expenses: buildDefaultPaymentExpenses(defaultCounterparty, executorName),
+});
 
 export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   onSubmit,
@@ -93,7 +107,11 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [endDate, setEndDate] = useState('');
   const [policyClientId, setPolicyClientId] = useState('');
   const [payments, setPayments] = useState<PaymentDraft[]>(() => [
-    createPaymentWithDefaultIncome(buildCommissionIncomeNote()),
+    createPaymentDraftWithDefaults({
+      incomeNote: buildCommissionIncomeNote(),
+      defaultCounterparty,
+      executorName,
+    }),
   ]);
   const [expandedPaymentIndex, setExpandedPaymentIndex] = useState<number | null>(0);
   const [clientQuery, setClientQuery] = useState('');
@@ -272,7 +290,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setStartDate('');
       setEndDate('');
       setHasManualEndDate(false);
-      setPayments([createPaymentWithDefaultIncome(buildCommissionIncomeNote())]);
+      setPayments([
+        createPaymentDraftWithDefaults({
+          incomeNote: buildCommissionIncomeNote(),
+          defaultCounterparty,
+          executorName,
+        }),
+      ]);
       setCurrentStep(1);
       setPolicyClientId('');
       setClientQuery('');
@@ -303,7 +327,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setPolicyClientId(initialValues.clientId || '');
     setClientQuery(initialValues.clientName ?? '');
     setCurrentStep(1);
-  }, [initialValues]);
+  }, [defaultCounterparty, executorName, initialValues]);
 
   useEffect(() => {
     if (initialValues) {
@@ -498,7 +522,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   };
 
   const handleAddPayment = () => {
-    setPayments((prev) => [...prev, createPaymentWithDefaultIncome(commissionNote)]);
+    setPayments((prev) => [
+      ...prev,
+      createPaymentDraftWithDefaults({
+        incomeNote: commissionNote,
+        defaultCounterparty,
+        executorName,
+      }),
+    ]);
   };
 
   const handleRemovePayment = (index: number) => {

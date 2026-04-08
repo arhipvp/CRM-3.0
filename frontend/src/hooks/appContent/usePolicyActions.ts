@@ -30,11 +30,9 @@ import type {
 import { formatAmountValue, matchSalesChannel, parseAmountValue } from '../../utils/appContent';
 import {
   buildCommissionIncomeNote,
-  resolveSalesChannelName,
   shouldAutofillCommissionNote,
 } from '../../utils/financialRecordNotes';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
-import { normalizePaymentDraft } from '../../utils/normalizePaymentDraft';
 import { parseNumericAmount } from '../../utils/parseNumericAmount';
 import {
   buildPolicyDraftFromRecognition,
@@ -305,20 +303,7 @@ export const usePolicyActions = ({
           }));
         };
 
-        const hasCounterparty = Boolean(counterparty?.trim());
-        const executorName = deal?.executorName?.trim();
-        const hasExecutor = Boolean(executorName);
-        const ensureExpenses = hasCounterparty || hasExecutor;
-        const expenseTargetName = counterparty?.trim() || executorName || 'контрагент';
-        const expenseNote = `Расход контрагенту ${expenseTargetName}`;
-        const salesChannelName = resolveSalesChannelName(salesChannels, salesChannelId);
-        const autoIncomeNote = buildCommissionIncomeNote(salesChannelName);
-        const paymentsToProcess = paymentDrafts.map((payment) =>
-          normalizePaymentDraft(payment, ensureExpenses, {
-            autoIncomeNote,
-            autoExpenseNote: ensureExpenses ? expenseNote : undefined,
-          }),
-        );
+        const paymentsToProcess = paymentDrafts;
 
         let dealPaymentsTotalDelta = 0;
         let dealPaymentsPaidDelta = 0;
@@ -484,7 +469,6 @@ export const usePolicyActions = ({
       mergeDealWithHydratedQuotes,
       policySourceFileIds,
       refreshDealsWithSelection,
-      salesChannels,
       selectDealById,
       setError,
       setIsSyncing,

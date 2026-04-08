@@ -63,7 +63,7 @@ export const buildPolicyFormSnapshot = (input: PolicyFormSnapshotInput) =>
     payments: input.payments.map(normalizePayment),
   });
 
-const buildDefaultPaymentExpenses = (
+export const buildDefaultPaymentExpenses = (
   defaultCounterparty?: string,
   executorName?: string | null,
 ): FinancialRecordDraft[] => {

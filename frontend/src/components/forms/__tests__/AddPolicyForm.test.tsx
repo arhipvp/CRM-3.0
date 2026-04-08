@@ -340,6 +340,77 @@ describe('AddPolicyForm', () => {
     expect(screen.getAllByDisplayValue('Расход контрагенту СпецКонтрагент')).toHaveLength(1);
   });
 
+  it('auto-adds executor expense in create form drafts, including newly added payments', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      {
+        isEditing: false,
+        initialValues: undefined,
+        executorName: 'Alisa',
+      },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Добавить платёж' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    const financeCards = await screen.findAllByTestId('policy-finance-payment-card');
+    fireEvent.click(within(financeCards[1]).getByRole('button', { name: 'Развернуть' }));
+
+    expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
+  });
+
+  it('adds executor expense to all current payments by button in edit form without implicit backfill on open', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: 'Январь',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+        {
+          amount: '16859.00',
+          description: 'Апрель',
+          scheduledDate: '2026-04-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      { executorName: 'Alisa' },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(screen.queryByDisplayValue('Расход исполнителю Alisa')).not.toBeInTheDocument();
+
+    const executorInput = screen.getByDisplayValue('Alisa');
+    const executorCard = executorInput.closest('div.rounded-\\[28px\\]');
+    expect(executorCard).not.toBeNull();
+
+    fireEvent.click(within(executorCard as HTMLElement).getByRole('button', { name: '+ Расход' }));
+
+    expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
+
+    const financeCards = await screen.findAllByTestId('policy-finance-payment-card');
+    fireEvent.click(within(financeCards[1]).getByRole('button', { name: 'Развернуть' }));
+    expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
+  });
+
   it('shows inline payment errors, allows early actual dates, and reports dirty state', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const onDirtyChange = vi.fn();
