@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
@@ -67,10 +67,12 @@ interface FilesTabProps {
   onCheckMailbox: () => Promise<void>;
 }
 
-interface ImagePreviewState {
-  fileId: string;
+type FilePreviewKind = 'image' | 'pdf' | 'drive';
+
+interface FilePreviewState {
+  file: DriveFile;
+  kind: FilePreviewKind;
   src: string;
-  name: string;
 }
 
 interface HeaderActionButtonProps {
@@ -100,6 +102,9 @@ const PREVIEW_RENAME_INPUT_CLASS =
   'min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none disabled:cursor-not-allowed disabled:text-slate-400';
 const RENAME_INPUT_CLASS =
   'min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none';
+const PDF_MIME_TYPE = 'application/pdf';
+const DOC_MIME_TYPE = 'application/msword';
+const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 function HeaderActionButton({ onClick, disabled, className, children }: HeaderActionButtonProps) {
   return (
@@ -209,11 +214,12 @@ export function FilesTab({
   const [renamingFile, setRenamingFile] = useState<DriveFile | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<ImagePreviewState | null>(null);
+  const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null);
   const [previewRenameDraft, setPreviewRenameDraft] = useState('');
   const [previewRenameError, setPreviewRenameError] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const filePreviewSrcRef = useRef<string | null>(null);
 
   const splitFileName = useCallback((name: string): { baseName: string; extension: string } => {
     const lastDotIndex = name.lastIndexOf('.');
@@ -267,31 +273,79 @@ export function FilesTab({
     [],
   );
 
-  const previewableImages = useMemo(
-    () => sortedDriveFiles.filter((file) => isImageFile(file)),
-    [isImageFile, sortedDriveFiles],
+  const getNormalizedFileName = useCallback((file: DriveFile) => file.name.toLowerCase(), []);
+
+  const isPdfFile = useCallback(
+    (file: DriveFile) =>
+      !file.isFolder &&
+      (file.mimeType?.toLowerCase() === PDF_MIME_TYPE ||
+        getNormalizedFileName(file).endsWith('.pdf')),
+    [getNormalizedFileName],
   );
 
-  const currentImageIndex = useMemo(() => {
-    if (!imagePreview) {
+  const isWordFile = useCallback(
+    (file: DriveFile) => {
+      if (file.isFolder) {
+        return false;
+      }
+      const mimeType = file.mimeType?.toLowerCase();
+      const normalizedName = getNormalizedFileName(file);
+      return (
+        mimeType === DOC_MIME_TYPE ||
+        mimeType === DOCX_MIME_TYPE ||
+        normalizedName.endsWith('.doc') ||
+        normalizedName.endsWith('.docx')
+      );
+    },
+    [getNormalizedFileName],
+  );
+
+  const getFilePreviewKind = useCallback(
+    (file: DriveFile): FilePreviewKind | null => {
+      if (isImageFile(file)) {
+        return 'image';
+      }
+      if (isPdfFile(file)) {
+        return 'pdf';
+      }
+      if (isWordFile(file)) {
+        return 'drive';
+      }
+      return null;
+    },
+    [isImageFile, isPdfFile, isWordFile],
+  );
+
+  const isPreviewableFile = useCallback(
+    (file: DriveFile) => getFilePreviewKind(file) !== null,
+    [getFilePreviewKind],
+  );
+
+  const previewableFiles = useMemo(
+    () => sortedDriveFiles.filter((file) => isPreviewableFile(file)),
+    [isPreviewableFile, sortedDriveFiles],
+  );
+
+  const currentPreviewIndex = useMemo(() => {
+    if (!filePreview) {
       return -1;
     }
-    return previewableImages.findIndex((file) => file.id === imagePreview.fileId);
-  }, [imagePreview, previewableImages]);
-  const canGoPrev = currentImageIndex > 0;
-  const canGoNext = currentImageIndex >= 0 && currentImageIndex < previewableImages.length - 1;
-  const previewRenameExtension = imagePreview ? splitFileName(imagePreview.name).extension : '';
+    return previewableFiles.findIndex((file) => file.id === filePreview.file.id);
+  }, [filePreview, previewableFiles]);
+  const canGoPrev = currentPreviewIndex > 0;
+  const canGoNext = currentPreviewIndex >= 0 && currentPreviewIndex < previewableFiles.length - 1;
+  const previewRenameExtension = filePreview ? splitFileName(filePreview.file.name).extension : '';
   const isPreviewRenameDisabled =
     isRenaming ||
     isDriveLoading ||
     isTrashing ||
     isDownloading ||
     isSelectedDealDeleted ||
-    !imagePreview;
+    !filePreview;
 
-  const closeImagePreview = useCallback(() => {
-    setImagePreview((prev) => {
-      if (prev?.src && typeof URL.revokeObjectURL === 'function') {
+  const closeFilePreview = useCallback(() => {
+    setFilePreview((prev) => {
+      if (prev?.src.startsWith('blob:') && typeof URL.revokeObjectURL === 'function') {
         URL.revokeObjectURL(prev.src);
       }
       return null;
@@ -302,64 +356,73 @@ export function FilesTab({
     setIsPreviewLoading(false);
   }, []);
 
-  const openImageByIndex = useCallback(
+  const openFileByIndex = useCallback(
     async (index: number) => {
-      if (index < 0 || index >= previewableImages.length) {
+      if (index < 0 || index >= previewableFiles.length) {
         return;
       }
-      const targetFile = previewableImages[index];
+      const targetFile = previewableFiles[index];
+      const previewKind = getFilePreviewKind(targetFile);
+      if (!previewKind) {
+        return;
+      }
       setIsPreviewLoading(true);
       setPreviewError(null);
       try {
-        const blob = await getDriveFileBlob(targetFile.id);
-        if (typeof URL.createObjectURL !== 'function') {
-          throw new Error('URL.createObjectURL is not available');
+        let nextSrc = '';
+        if (previewKind === 'drive') {
+          nextSrc = `https://drive.google.com/file/d/${encodeURIComponent(targetFile.id)}/preview`;
+        } else {
+          const blob = await getDriveFileBlob(targetFile.id);
+          if (typeof URL.createObjectURL !== 'function') {
+            throw new Error('URL.createObjectURL is not available');
+          }
+          nextSrc = URL.createObjectURL(blob);
         }
-        const nextSrc = URL.createObjectURL(blob);
-        setImagePreview((prev) => {
-          if (prev?.src && typeof URL.revokeObjectURL === 'function') {
+        setFilePreview((prev) => {
+          if (prev?.src.startsWith('blob:') && typeof URL.revokeObjectURL === 'function') {
             URL.revokeObjectURL(prev.src);
           }
-          return { fileId: targetFile.id, src: nextSrc, name: targetFile.name };
+          return { file: targetFile, kind: previewKind, src: nextSrc };
         });
       } catch (error) {
-        console.error('Ошибка предпросмотра изображения:', error);
-        setPreviewError('Не удалось загрузить изображение для просмотра.');
+        console.error('Ошибка предпросмотра файла:', error);
+        setPreviewError('Не удалось загрузить файл для просмотра.');
       } finally {
         setIsPreviewLoading(false);
       }
     },
-    [getDriveFileBlob, previewableImages],
+    [getDriveFileBlob, getFilePreviewKind, previewableFiles],
   );
 
-  const handlePreviewImage = async (file: DriveFile) => {
-    if (!isImageFile(file)) {
+  const handlePreviewFile = async (file: DriveFile) => {
+    if (!isPreviewableFile(file)) {
       return;
     }
-    const targetIndex = previewableImages.findIndex((candidate) => candidate.id === file.id);
+    const targetIndex = previewableFiles.findIndex((candidate) => candidate.id === file.id);
     if (targetIndex === -1) {
       return;
     }
-    await openImageByIndex(targetIndex);
+    await openFileByIndex(targetIndex);
   };
 
-  const goToPrevImage = useCallback(() => {
+  const goToPrevFile = useCallback(() => {
     if (!canGoPrev || isPreviewLoading) {
       return;
     }
-    void openImageByIndex(currentImageIndex - 1);
-  }, [canGoPrev, currentImageIndex, isPreviewLoading, openImageByIndex]);
+    void openFileByIndex(currentPreviewIndex - 1);
+  }, [canGoPrev, currentPreviewIndex, isPreviewLoading, openFileByIndex]);
 
-  const goToNextImage = useCallback(() => {
+  const goToNextFile = useCallback(() => {
     if (!canGoNext || isPreviewLoading) {
       return;
     }
-    void openImageByIndex(currentImageIndex + 1);
-  }, [canGoNext, currentImageIndex, isPreviewLoading, openImageByIndex]);
+    void openFileByIndex(currentPreviewIndex + 1);
+  }, [canGoNext, currentPreviewIndex, isPreviewLoading, openFileByIndex]);
 
   const handlePreviewRenameSubmit = useCallback(
     async (draftOverride?: string) => {
-      if (!imagePreview) {
+      if (!filePreview) {
         return;
       }
 
@@ -371,83 +434,94 @@ export function FilesTab({
 
       setPreviewRenameError(null);
       await handleRenameDriveFile(
-        imagePreview.fileId,
-        `${trimmedBaseName}${splitFileName(imagePreview.name).extension}`,
+        filePreview.file.id,
+        `${trimmedBaseName}${splitFileName(filePreview.file.name).extension}`,
       );
     },
-    [handleRenameDriveFile, imagePreview, previewRenameDraft, splitFileName],
+    [filePreview, handleRenameDriveFile, previewRenameDraft, splitFileName],
   );
+
+  useEffect(() => {
+    filePreviewSrcRef.current = filePreview?.src ?? null;
+  }, [filePreview?.src]);
 
   useEffect(
     () => () => {
-      if (imagePreview?.src && typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(imagePreview.src);
+      const previewSrc = filePreviewSrcRef.current;
+      if (previewSrc?.startsWith('blob:') && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(previewSrc);
       }
     },
-    [imagePreview],
+    [],
   );
 
   useEffect(() => {
-    if (!imagePreview) {
+    if (!filePreview) {
       return;
     }
-    const isCurrentPreviewInList = previewableImages.some(
-      (file) => file.id === imagePreview.fileId,
-    );
+    const isCurrentPreviewInList = previewableFiles.some((file) => file.id === filePreview.file.id);
     if (!isCurrentPreviewInList) {
-      closeImagePreview();
+      closeFilePreview();
     }
-  }, [closeImagePreview, imagePreview, previewableImages]);
+  }, [closeFilePreview, filePreview, previewableFiles]);
 
   useEffect(() => {
-    if (!imagePreview) {
+    if (!filePreview) {
       return;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        closeImagePreview();
+        closeFilePreview();
         return;
       }
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
-        goToPrevImage();
+        goToPrevFile();
         return;
       }
       if (event.key === 'ArrowRight') {
         event.preventDefault();
-        goToNextImage();
+        goToNextFile();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [closeImagePreview, goToNextImage, goToPrevImage, imagePreview]);
+  }, [closeFilePreview, filePreview, goToNextFile, goToPrevFile]);
 
   useEffect(() => {
-    if (!imagePreview) {
+    if (!filePreview) {
       setPreviewRenameDraft('');
       setPreviewRenameError(null);
       return;
     }
-    const { baseName } = splitFileName(imagePreview.name);
+    const { baseName } = splitFileName(filePreview.file.name);
     setPreviewRenameDraft(baseName);
     setPreviewRenameError(null);
-  }, [imagePreview, splitFileName]);
+  }, [filePreview, splitFileName]);
 
   useEffect(() => {
-    if (!imagePreview) {
+    if (!filePreview) {
       return;
     }
-    const previewFile = sortedDriveFiles.find((file) => file.id === imagePreview.fileId);
-    if (!previewFile || previewFile.name === imagePreview.name) {
+    const previewFile = sortedDriveFiles.find((file) => file.id === filePreview.file.id);
+    if (!previewFile || previewFile.name === filePreview.file.name) {
       return;
     }
-    setImagePreview((prev) =>
-      prev && prev.fileId === previewFile.id ? { ...prev, name: previewFile.name } : prev,
+    setFilePreview((prev) =>
+      prev && prev.file.id === previewFile.id ? { ...prev, file: previewFile } : prev,
     );
-  }, [imagePreview, sortedDriveFiles]);
+  }, [filePreview, sortedDriveFiles]);
+
+  const handlePreviewDelete = useCallback(async () => {
+    if (!filePreview) {
+      return;
+    }
+    await handleTrashDriveFile(filePreview.file);
+    closeFilePreview();
+  }, [closeFilePreview, filePreview, handleTrashDriveFile]);
 
   if (!selectedDeal) {
     return null;
@@ -669,9 +743,9 @@ export function FilesTab({
                 ) : (
                   <span className="text-xs text-slate-400">—</span>
                 )}
-                {isImageFile(file) && (
+                {isPreviewableFile(file) && (
                   <ActionLinkButton
-                    onClick={() => handlePreviewImage(file)}
+                    onClick={() => handlePreviewFile(file)}
                     disabled={
                       isPreviewLoading ||
                       isDownloading ||
@@ -712,8 +786,14 @@ export function FilesTab({
         )}
       </div>
       {previewError && <InlineAlert as="p">{previewError}</InlineAlert>}
-      {imagePreview && (
-        <Modal title="Просмотр изображения" onClose={closeImagePreview} size="lg">
+      {filePreview && (
+        <Modal
+          title="Просмотр файла"
+          onClose={closeFilePreview}
+          size="xl"
+          panelClassName="max-h-[92vh] overflow-hidden"
+          bodyClassName="max-h-[calc(92vh-72px)] overflow-y-auto"
+        >
           <div className="space-y-3">
             <form
               className="space-y-1"
@@ -728,7 +808,7 @@ export function FilesTab({
               }}
             >
               <label
-                htmlFor="deal-image-preview-rename"
+                htmlFor="deal-file-preview-rename"
                 className="block text-xs font-semibold uppercase tracking-wide text-slate-600"
               >
                 Имя файла
@@ -736,7 +816,7 @@ export function FilesTab({
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <div className={MODAL_INPUT_SHELL}>
                   <input
-                    id="deal-image-preview-rename"
+                    id="deal-file-preview-rename"
                     name="previewRenameDraft"
                     type="text"
                     value={previewRenameDraft}
@@ -753,38 +833,91 @@ export function FilesTab({
                 <button type="submit" disabled={isPreviewRenameDisabled} className={BTN_SM_PRIMARY}>
                   Переименовать
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadDriveFiles([filePreview.file.id])}
+                  disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
+                  className={BTN_SM_SECONDARY}
+                >
+                  {isDownloading ? 'Скачиваю...' : 'Скачать'}
+                </button>
+                {filePreview.file.webViewLink && (
+                  <a
+                    href={filePreview.file.webViewLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={BTN_SM_SECONDARY}
+                  >
+                    Открыть в Google Drive
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handlePreviewDelete();
+                  }}
+                  disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
+                  className={BTN_SM_DANGER}
+                >
+                  {isTrashing ? 'Удаляю...' : 'Удалить'}
+                </button>
               </div>
               {previewRenameError && <InlineAlert as="p">{previewRenameError}</InlineAlert>}
             </form>
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={goToPrevImage}
+                onClick={goToPrevFile}
                 disabled={!canGoPrev || isPreviewLoading}
                 className={BTN_SM_SECONDARY}
               >
                 Назад
               </button>
               <p className="text-xs font-semibold text-slate-500">
-                {currentImageIndex >= 0
-                  ? `${currentImageIndex + 1} / ${previewableImages.length}`
+                {currentPreviewIndex >= 0
+                  ? `${currentPreviewIndex + 1} / ${previewableFiles.length}`
                   : '—'}
               </p>
               <button
                 type="button"
-                onClick={goToNextImage}
+                onClick={goToNextFile}
                 disabled={!canGoNext || isPreviewLoading}
                 className={BTN_SM_SECONDARY}
               >
                 Вперёд
               </button>
             </div>
-            <div className="flex justify-center">
-              <img
-                src={imagePreview.src}
-                alt={imagePreview.name}
-                className="max-h-[80vh] max-w-full h-auto w-auto"
-              />
+            <div className="min-h-[60vh] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+              {filePreview.kind === 'image' && (
+                <div className="flex min-h-[60vh] items-center justify-center p-3">
+                  <img
+                    src={filePreview.src}
+                    alt={filePreview.file.name}
+                    className="max-h-[70vh] max-w-full h-auto w-auto"
+                  />
+                </div>
+              )}
+              {filePreview.kind === 'pdf' && (
+                <iframe
+                  src={filePreview.src}
+                  title={`Просмотр файла ${filePreview.file.name}`}
+                  className="h-[70vh] w-full bg-white"
+                />
+              )}
+              {filePreview.kind === 'drive' && (
+                <div className="space-y-2">
+                  <iframe
+                    src={filePreview.src}
+                    title={`Просмотр файла ${filePreview.file.name}`}
+                    className="h-[70vh] w-full bg-white"
+                    allow="autoplay"
+                  />
+                  <p className="px-3 pb-3 text-xs text-slate-500">
+                    Если документ не открылся во встроенном просмотре, откройте его в Google Drive
+                    или скачайте файл.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </Modal>
