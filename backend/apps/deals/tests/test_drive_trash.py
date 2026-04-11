@@ -148,6 +148,46 @@ class DealDriveTrashTests(AuthenticatedAPITestCase):
         ensure_trash_mock.assert_called_once_with("deal-folder")
         move_mock.assert_called_once_with("nested-file", "trash-folder")
 
+    def test_seller_can_trash_file_for_closed_deal_when_show_closed_flag_is_set(self):
+        self.authenticate(self.seller)
+
+        Deal.objects.filter(pk=self.deal.pk).update(
+            drive_folder_id="deal-folder",
+            status=Deal.DealStatus.WON,
+        )
+        file_map = {
+            "closed-file": {
+                "id": "closed-file",
+                "is_folder": False,
+                "parent_id": None,
+            }
+        }
+
+        with (
+            patch(
+                "apps.deals.view_mixins.drive.build_drive_file_tree_map",
+                return_value=file_map,
+            ) as tree_mock,
+            patch(
+                "apps.deals.view_mixins.drive.ensure_trash_folder",
+                return_value="trash-folder",
+            ) as ensure_trash_mock,
+            patch(
+                "apps.deals.view_mixins.drive.move_drive_file_to_folder"
+            ) as move_mock,
+        ):
+            response = self.api_client.delete(
+                f"/api/v1/deals/{self.deal.id}/drive-files/?show_closed=1",
+                {"file_ids": ["closed-file"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["moved_file_ids"], ["closed-file"])
+        tree_mock.assert_called_once_with("deal-folder")
+        ensure_trash_mock.assert_called_once_with("deal-folder")
+        move_mock.assert_called_once_with("closed-file", "trash-folder")
+
     def test_other_user_cannot_trash_files(self):
         self.authenticate(self.other_user)
 

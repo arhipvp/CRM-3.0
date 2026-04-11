@@ -12,6 +12,19 @@ export interface DriveTrashResponse {
   trashFolderId?: string | null;
 }
 
+function buildDealDriveQuery(includeDeleted = false, parentId?: string | null): string {
+  const query = new URLSearchParams();
+  query.set('show_closed', '1');
+  if (includeDeleted) {
+    query.set('show_deleted', '1');
+  }
+  if (parentId) {
+    query.set('parent_id', parentId);
+  }
+  const suffix = query.toString();
+  return suffix ? `?${suffix}` : '';
+}
+
 function extractFilename(contentDisposition: string | null): string | null {
   if (!contentDisposition) {
     return null;
@@ -63,14 +76,7 @@ export async function fetchDealDriveFiles(
   includeDeleted = false,
   parentId?: string | null,
 ): Promise<DriveFilesResponse> {
-  const query = new URLSearchParams();
-  if (includeDeleted) {
-    query.set('show_deleted', '1');
-  }
-  if (parentId) {
-    query.set('parent_id', parentId);
-  }
-  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const suffix = buildDealDriveQuery(includeDeleted, parentId);
   const payload = await request<{ files?: unknown[]; folder_id?: string | null }>(
     `/deals/${dealId}/drive-files/${suffix}`,
   );
@@ -82,7 +88,7 @@ export async function trashDealDriveFiles(
   fileIds: string[],
   includeDeleted = false,
 ): Promise<DriveTrashResponse> {
-  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const suffix = buildDealDriveQuery(includeDeleted);
   const payload = await request<{ moved_file_ids?: unknown; trash_folder_id?: string | null }>(
     `/deals/${dealId}/drive-files/${suffix}`,
     {
@@ -100,7 +106,7 @@ export async function renameDealDriveFile(
   name: string,
   includeDeleted = false,
 ): Promise<DriveFile> {
-  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const suffix = buildDealDriveQuery(includeDeleted);
   const payload = await request<{ file?: unknown }>(`/deals/${dealId}/drive-files/${suffix}`, {
     method: 'PATCH',
     body: JSON.stringify({ file_id: fileId, name }),
@@ -145,7 +151,7 @@ export async function uploadDealDriveFile(
 ): Promise<DriveFile> {
   const formData = new FormData();
   formData.append('file', file);
-  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const suffix = buildDealDriveQuery(includeDeleted);
   const payload = await request<{ file?: unknown; folder_id?: string | null }>(
     `/deals/${dealId}/drive-files/${suffix}`,
     {
@@ -166,7 +172,7 @@ export async function downloadDealDriveFiles(
   fileIds: string[],
   includeDeleted = false,
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const suffix = buildDealDriveQuery(includeDeleted);
   const { blob, headers } = await requestBlobWithHeaders(
     `/deals/${dealId}/drive-files/download/${suffix}`,
     {

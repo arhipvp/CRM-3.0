@@ -48,6 +48,32 @@ class DealDriveFilesListTests(AuthenticatedAPITestCase):
         ensure_folder_mock.assert_called_once()
         list_contents_mock.assert_called_once_with("deal-folder")
 
+    def test_get_returns_files_for_closed_deal_when_show_closed_flag_is_set(self):
+        Deal.objects.filter(pk=self.deal.pk).update(
+            drive_folder_id="deal-folder",
+            status=Deal.DealStatus.WON,
+        )
+        root_files = [{"id": "file-1", "name": "closed.pdf", "is_folder": False}]
+
+        with (
+            patch(
+                "apps.deals.view_mixins.drive.ensure_deal_folder",
+                return_value="deal-folder",
+            ) as ensure_folder_mock,
+            patch(
+                "apps.deals.view_mixins.drive.list_drive_folder_contents",
+                return_value=root_files,
+            ) as list_contents_mock,
+        ):
+            response = self.api_client.get(
+                f"/api/v1/deals/{self.deal.id}/drive-files/?show_closed=1"
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["files"], root_files)
+        ensure_folder_mock.assert_called_once()
+        list_contents_mock.assert_called_once_with("deal-folder")
+
     def test_get_returns_folder_children_when_parent_id_is_valid(self):
         Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
         root_items = [

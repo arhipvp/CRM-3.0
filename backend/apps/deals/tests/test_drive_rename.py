@@ -65,3 +65,46 @@ class DealDriveRenameTests(AuthenticatedAPITestCase):
         self.assertEqual(response.data["file"]["name"], "after.pdf")
         tree_mock.assert_called_once_with("deal-folder")
         rename_mock.assert_called_once_with("nested-file", "after.pdf")
+
+    def test_renames_file_for_closed_deal_when_show_closed_flag_is_set(self):
+        Deal.objects.filter(pk=self.deal.pk).update(
+            drive_folder_id="deal-folder",
+            status=Deal.DealStatus.WON,
+        )
+        file_map = {
+            "closed-file": {
+                "id": "closed-file",
+                "name": "before.pdf",
+                "mime_type": "application/pdf",
+                "is_folder": False,
+                "parent_id": None,
+            }
+        }
+        updated_file = {
+            "id": "closed-file",
+            "name": "after.pdf",
+            "mime_type": "application/pdf",
+            "is_folder": False,
+            "parent_id": None,
+        }
+
+        with (
+            patch(
+                "apps.deals.view_mixins.drive.build_drive_file_tree_map",
+                return_value=file_map,
+            ) as tree_mock,
+            patch(
+                "apps.deals.view_mixins.drive.rename_drive_file",
+                return_value=updated_file,
+            ) as rename_mock,
+        ):
+            response = self.api_client.patch(
+                f"/api/v1/deals/{self.deal.id}/drive-files/?show_closed=1",
+                {"file_id": "closed-file", "name": "after.pdf"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["file"]["name"], "after.pdf")
+        tree_mock.assert_called_once_with("deal-folder")
+        rename_mock.assert_called_once_with("closed-file", "after.pdf")
