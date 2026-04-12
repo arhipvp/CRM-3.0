@@ -42,6 +42,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - UI и API mailcow проксируются через наш `nginx` на поддомен `mail.zoom78.com`.
 - Входящие письма читаются из CRM через IMAP (master user), отправка писем не используется.
 - `docker-compose.prod.yml` использует внешнюю сеть `mailcow_mailcow-network` (её создаёт mailcow при первом запуске).
+- Антиспам `rspamd` использует кастомный порог `reject = 18` в `mailcow/data/conf/rspamd/local.d/actions.conf`; это снижает число ложных отклонений, но немного повышает риск пропуска спама.
 
 **DNS записи (делаются у регистратора домена):**
 - `A` `mail.zoom78.com` → `173.249.7.183`
