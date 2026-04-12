@@ -19,8 +19,12 @@
 - `backend/config/api_router.py`: DRF viewsets для основных сущностей.
 
 ## Frontend: module map
-- `frontend/src/App.tsx`, `frontend/src/AppContent.tsx`: корневой UI, auth, состояние, модалки.
-- `frontend/src/components/app/`: маршруты и модалки.
+- `frontend/src/App.tsx`, `frontend/src/AppContent.tsx`: тонкий root-composition, guards и сборка shell-слоя.
+- `frontend/src/features/app/bootstrap-shell/`: auth bootstrap, route-aware preloading, post-login redirect.
+- `frontend/src/features/app/route-shell/`: сборка route bindings для `AppRoutes`.
+- `frontend/src/features/app/interaction-shell/`: deal preview selection, shortcuts, command palette.
+- `frontend/src/features/app/overlay-shell/`: preview/modal layer и локальные overlay-потоки.
+- `frontend/src/components/app/`: маршруты и UI-компоненты shell-уровня.
 - `frontend/src/components/views/`: страницы (Deals, Clients, Policies, Commissions, Tasks, Knowledge, Settings, SellerDashboard).
 - `frontend/src/components/views/dealsView/`: крупный подпакет (панели, табы, хуки).
 - `frontend/src/components/forms/`: формы (клиент, сделка, расчет, полис, платеж, задача, финзапись).
@@ -35,5 +39,5 @@
 
 ## Где живет бизнес-логика (as-is)
 - Backend: частично в моделях (save/delete), частично в views/serializers/services, а также в signals и утилитах common.
-- Frontend: в `AppContent` (оркестрация), `views/*` и утилитах `utils/*`.
-- Выраженных слоев домена/приложения нет; логика распределена по слоям транспорта.
+- Frontend: orchestration распределена между `features/app/*-shell`, action/hooks слоями и `views/*`; `AppContent` больше не держит весь orchestration в одном файле.
+- Выраженных слоев домена/приложения нет; логика распределена по слоям транспорта.
