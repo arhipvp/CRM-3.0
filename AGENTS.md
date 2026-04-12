@@ -41,7 +41,7 @@
 - `frontend/` — React 19 + Vite + TS, код в `frontend/src/`, общие компоненты в `frontend/src/components/common/*`. :contentReference[oaicite:4]{index=4}
 - `scripts/` — импорт/трансформации/бэкапы, включая Google Drive backup. :contentReference[oaicite:5]{index=5}
 - `systemd/` — юниты для задач типа бэкапа. :contentReference[oaicite:6]{index=6}
-- `mailcow/` — подпапка/сабмодуль (не трогать без явной причины). :contentReference[oaicite:7]{index=7}
+- `mailcow/` — встроенная подпапка репозитория с почтовым стеком (не трогать без явной причины). :contentReference[oaicite:7]{index=7}
 
 ## 3) Правила изменений (чтобы не устроить пожар)
 - Не меняй миграции вручную. Только стандартные инструменты Django.

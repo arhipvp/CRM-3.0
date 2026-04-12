@@ -102,8 +102,6 @@ jobs:
           git fetch origin "${BRANCH}" --quiet
           git reset --hard --quiet
           git checkout "${COMMIT_SHA}"
-          git submodule sync --recursive
-          git submodule update --init --recursive
 
           if [ ! -d mailcow ]; then
             echo "No mailcow/ directory in repo on server. Skipping."
