@@ -5,12 +5,6 @@ from datetime import timedelta
 from decimal import Decimal
 from itertools import cycle, product
 
-from django.contrib.auth.models import User
-from django.core.files.base import ContentFile
-from django.core.management.base import BaseCommand
-from django.db import transaction
-from django.utils import timezone
-
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
 from apps.deals.models import (
@@ -38,6 +32,11 @@ from apps.notifications.models import (
 from apps.policies.models import Policy, PolicyIssuanceExecution
 from apps.tasks.models import Task
 from apps.users.models import AuditLog, Permission, Role, RolePermission, UserRole
+from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
 
 DEMO_TAG = "[DEMO]"
 DEMO_DOMAIN = "demo.local"
