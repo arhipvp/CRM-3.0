@@ -7,12 +7,12 @@ repos:
           - --exclude-files
           - ^(mailcow/|frontend/package-lock\.json)$
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 25.11.0
     hooks:
       - id: black
         files: ^backend/.*\.py$
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 7.0.0
     hooks:
       - id: isort
         files: ^backend/.*\.py$

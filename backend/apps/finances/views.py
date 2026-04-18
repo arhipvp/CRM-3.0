@@ -228,9 +228,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         statement = getattr(instance, "statement", None)
         if statement:
             if statement.paid_at:
-                raise ValidationError(
-                    "Нельзя удалить запись из выплаченной ведомости."
-                )
+                raise ValidationError("Нельзя удалить запись из выплаченной ведомости.")
             # Если запись уже добавлена в черновик ведомости, удалять её нельзя.
             # Сначала нужно убрать запись из ведомости, чтобы не нарушить её состав.
             raise ValidationError(
