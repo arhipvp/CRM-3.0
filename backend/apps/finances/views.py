@@ -464,6 +464,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         header_font = Font(bold=True, color="1F2937")
         header_fill = PatternFill("solid", fgColor="F8FAFC")
         wrap_top = Alignment(wrap_text=True, vertical="top")
+        currency_number_format = '# ##0.00 [$₽-419]'
 
         ws.append(headers)
         for cell in ws[1]:
@@ -530,7 +531,6 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             saldo_value = (
                 sum((pr.amount for pr in paid_records), 0) if paid_records else 0
             )
-            saldo_cell = format_money(saldo_value)
             if paid_records:
                 operations_lines = []
                 for pr in paid_records:
@@ -558,7 +558,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 else:
                     comment_cell += f"\nВедомость: {statement.name}"
 
-            amount_cell = format_money(abs(record.amount))
+            amount_value = abs(record.amount)
 
             client_cell = f"{policy_client_name}\n{deal_title}\nКонтакт по сделке: {deal_client_name}"
 
@@ -570,15 +570,17 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     sales_channel,
                     payment_cell,
                     operations_cell,
-                    saldo_cell,
+                    saldo_value,
                     comment_cell,
-                    amount_cell,
+                    amount_value,
                 ]
             )
 
         for row in ws.iter_rows(min_row=2):
             for cell in row:
                 cell.alignment = wrap_top
+            row[6].number_format = currency_number_format
+            row[8].number_format = currency_number_format
 
         buffer = BytesIO()
         workbook.save(buffer)

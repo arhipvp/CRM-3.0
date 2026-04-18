@@ -36,7 +36,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     topSlot={topSlot}
   >
     {children}
-    <NotificationDisplay />
+    <NotificationDisplay bottomOffsetClassName={error ? 'bottom-28' : 'bottom-4'} />
     {error && (
       <div className="fixed bottom-4 left-4 z-50 w-[min(460px,calc(100vw-1.5rem))]">
         <div className="rounded-3xl border border-rose-200 border-l-4 border-l-rose-500 bg-rose-50/95 text-rose-900 shadow-[0_12px_24px_rgba(190,24,93,0.15)]">

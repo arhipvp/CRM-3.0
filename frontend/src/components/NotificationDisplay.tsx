@@ -35,7 +35,13 @@ const TYPE_STYLES: Record<
   },
 };
 
-export function NotificationDisplay() {
+type NotificationDisplayProps = {
+  bottomOffsetClassName?: string;
+};
+
+export function NotificationDisplay({
+  bottomOffsetClassName = 'bottom-4',
+}: NotificationDisplayProps) {
   const { notifications, removeNotification } = useNotification();
 
   if (!notifications.length) {
@@ -44,7 +50,7 @@ export function NotificationDisplay() {
 
   return (
     <div
-      className="fixed right-5 top-5 z-50 w-[min(420px,calc(100vw-2.5rem))] space-y-3"
+      className={`fixed left-4 z-50 w-[min(460px,calc(100vw-1.5rem))] space-y-3 ${bottomOffsetClassName}`}
       aria-live="polite"
     >
       {notifications.map((notification) => {

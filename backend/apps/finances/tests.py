@@ -823,27 +823,35 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(
             ws.cell(row=2, column=header_index["Сальдо, ₽"]).value,
-            "75.00 ₽",
+            75,
         )
         self.assertEqual(
             ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
-            "150.00 ₽",
+            150,
+        )
+        self.assertIn(
+            "₽",
+            ws.cell(row=2, column=header_index["Сальдо, ₽"]).number_format,
+        )
+        self.assertIn(
+            "₽",
+            ws.cell(row=2, column=header_index["Сумма, ₽"]).number_format,
         )
         self.assertNotIn(
             "Доход",
-            ws.cell(row=2, column=header_index["Сальдо, ₽"]).value,
+            str(ws.cell(row=2, column=header_index["Сальдо, ₽"]).value),
         )
         self.assertNotIn(
             "08.02.2026",
-            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
+            str(ws.cell(row=2, column=header_index["Сумма, ₽"]).value),
         )
         self.assertNotIn(
             "+",
-            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
+            str(ws.cell(row=2, column=header_index["Сумма, ₽"]).value),
         )
         self.assertNotIn(
             "-",
-            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
+            str(ws.cell(row=2, column=header_index["Сумма, ₽"]).value),
         )
         workbook.close()
 
