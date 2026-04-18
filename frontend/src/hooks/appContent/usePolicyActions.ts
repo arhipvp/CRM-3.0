@@ -73,6 +73,42 @@ interface UsePolicyActionsParams {
   ) => T[];
 }
 
+type FinancialRecordUpdateDraft = {
+  amount: number;
+  date: string | null;
+  description: string;
+  source: string;
+  note: string;
+};
+
+const normalizeFinancialRecordText = (value?: string | null) => (value ?? '').trim();
+
+const buildFinancialRecordUpdateDraft = (
+  record: Pick<FinancialRecord, 'amount' | 'date' | 'description' | 'source' | 'note'>,
+): FinancialRecordUpdateDraft => ({
+  amount: Number.isFinite(parseNumericAmount(record.amount ?? ''))
+    ? parseNumericAmount(record.amount ?? '')
+    : 0,
+  date: record.date ?? null,
+  description: normalizeFinancialRecordText(record.description),
+  source: normalizeFinancialRecordText(record.source),
+  note: normalizeFinancialRecordText(record.note),
+});
+
+const hasFinancialRecordDraftChanges = (
+  existing: Pick<FinancialRecord, 'amount' | 'date' | 'description' | 'source' | 'note'>,
+  next: FinancialRecordUpdateDraft,
+) => {
+  const normalizedExisting = buildFinancialRecordUpdateDraft(existing);
+  return (
+    normalizedExisting.amount !== next.amount ||
+    normalizedExisting.date !== next.date ||
+    normalizedExisting.description !== next.description ||
+    normalizedExisting.source !== next.source ||
+    normalizedExisting.note !== next.note
+  );
+};
+
 export const usePolicyActions = ({
   clients,
   dealsById,
@@ -735,6 +771,7 @@ export const usePolicyActions = ({
           const recordsToDelete = paymentRecords.filter(
             (record) => !submittedRecordIds.has(record.id),
           );
+          const deletedRecordIds = new Set(recordsToDelete.map((record) => record.id));
           for (const record of recordsToDelete) {
             await deleteFinancialRecord(record.id);
             updateAppData((prev) => ({
@@ -771,24 +808,19 @@ export const usePolicyActions = ({
             };
 
             if (recordDraft.id) {
+              if (deletedRecordIds.has(recordDraft.id)) {
+                return;
+              }
+
               const existing = existingRecordById.get(recordDraft.id);
               if (existing) {
-                const existingAmount = parseNumericAmount(existing.amount ?? '');
-                const existingDate = existing.date ?? null;
-                const existingDescription = (existing.description ?? '').trim();
-                const existingSource = (existing.source ?? '').trim();
-                const existingNote = (existing.note ?? '').trim();
-
-                const nextDescription = (payload.description ?? '').trim();
-                const nextSource = (payload.source ?? '').trim();
-                const nextNote = (payload.note ?? '').trim();
-
-                const hasChanges =
-                  (Number.isFinite(existingAmount) ? existingAmount : 0) !== payload.amount ||
-                  (existingDate ?? null) !== (payload.date ?? null) ||
-                  existingDescription !== nextDescription ||
-                  existingSource !== nextSource ||
-                  existingNote !== nextNote;
+                const hasChanges = hasFinancialRecordDraftChanges(existing, {
+                  amount: payload.amount,
+                  date: payload.date,
+                  description: payload.description,
+                  source: payload.source,
+                  note: payload.note,
+                });
 
                 if (!hasChanges) {
                   return;

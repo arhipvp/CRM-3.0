@@ -590,7 +590,7 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         message = str(response.data)
-        self.assertIn("Сначала уберите запись из ведомости", message)
+        self.assertIn("Сначала уберите её из состава ведомости", message)
 
     def test_delete_statement_unlinks_records(self):
         self.authenticate(self.seller)
