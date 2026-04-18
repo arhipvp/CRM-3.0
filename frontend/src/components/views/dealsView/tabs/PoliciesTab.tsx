@@ -6,7 +6,10 @@ import type {
   Payment,
   Policy,
 } from '../../../../types';
+import { confirmTexts } from '../../../../constants/confirmTexts';
+import { useConfirm } from '../../../../hooks/useConfirm';
 import { PolicySortKey, policyHasUnpaidPayments, policyHasUnpaidRecords } from '../helpers';
+import { PromptDialog } from '../../../common/modal/PromptDialog';
 import { buildPolicyCardModel } from '../../../policies/policyCardModel';
 import {
   getPolicyComputedStatusBadge,
@@ -52,6 +55,7 @@ interface PoliciesTabProps {
   setEditingFinancialRecordId: React.Dispatch<React.SetStateAction<string | null>>;
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onDeletePayment: (paymentId: string) => Promise<void>;
+  onMarkPaymentPaid?: (paymentId: string, actualDate: string) => Promise<void>;
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
@@ -70,15 +74,21 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   setPolicySortOrder,
   setEditingPaymentId,
   setCreatingPaymentPolicyId,
+  onDeletePayment,
   onRequestAddPolicy,
   onDeletePolicy,
   onRequestEditPolicy,
+  onMarkPaymentPaid,
   onDealPreview,
   onDealSelect,
   isLoading = false,
 }) => {
   const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
   const [showUnpaidRecordsOnly, setShowUnpaidRecordsOnly] = useState(false);
+  const [paymentToMarkPaid, setPaymentToMarkPaid] = useState<Payment | null>(null);
+  const [paymentPaidDate, setPaymentPaidDate] = useState('');
+  const [paymentPaidDateError, setPaymentPaidDateError] = useState<string | null>(null);
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
 
   const paymentsByPolicyMap = useMemo(() => {
     const map = new Map<string, Payment[]>();
@@ -164,6 +174,34 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       return;
     }
     onDealSelect?.(dealId);
+  };
+
+  const closeMarkPaidPrompt = () => {
+    setPaymentToMarkPaid(null);
+    setPaymentPaidDate('');
+    setPaymentPaidDateError(null);
+  };
+
+  const openMarkPaidPrompt = (payment: Payment) => {
+    setPaymentToMarkPaid(payment);
+    setPaymentPaidDate('');
+    setPaymentPaidDateError(null);
+  };
+
+  const handleConfirmMarkPaid = async () => {
+    if (!paymentToMarkPaid || !onMarkPaymentPaid) {
+      return;
+    }
+    if (!paymentPaidDate) {
+      setPaymentPaidDateError('Укажите дату оплаты.');
+      return;
+    }
+    const confirmed = await confirm(confirmTexts.markPaymentAsPaid(paymentPaidDate));
+    if (!confirmed) {
+      return;
+    }
+    await onMarkPaymentPaid(paymentToMarkPaid.id, paymentPaidDate);
+    closeMarkPaidPrompt();
   };
 
   if (!sortedPolicies.length) {
@@ -390,14 +428,40 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     </td>
                     <td className="px-3 py-2 border border-slate-300 align-top">
                       {firstLedgerRow ? (
-                        <div
-                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
-                          title={firstLedgerRow.line.text}
-                        >
-                          <span className="truncate">{firstLedgerRow.line.dateText}</span>
-                          <span className="font-semibold whitespace-nowrap">
-                            {firstLedgerRow.line.amountText}
-                          </span>
+                        <div className="space-y-1">
+                          <div
+                            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
+                            title={firstLedgerRow.line.text}
+                          >
+                            <span className="truncate">{firstLedgerRow.line.dateText}</span>
+                            <span className="font-semibold whitespace-nowrap">
+                              {firstLedgerRow.line.amountText}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
+                              <button
+                                type="button"
+                                onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              >
+                                Проставить оплату
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onDeletePayment(firstLedgerRow.payment.id).catch(() => undefined)}
+                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              disabled={firstLedgerRow.payment.canDelete === false}
+                              title={
+                                firstLedgerRow.payment.canDelete === false
+                                  ? 'Сначала удалите оплаченные финансовые записи'
+                                  : 'Удалить платёж'
+                              }
+                            >
+                              Удалить платёж
+                            </button>
+                          </div>
                         </div>
                       ) : null}
                     </td>
@@ -429,14 +493,40 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                       className="hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-3 py-2 border border-slate-300 align-top">
-                        <div
-                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
-                          title={ledgerRow.line.text}
-                        >
-                          <span className="truncate">{ledgerRow.line.dateText}</span>
-                          <span className="font-semibold whitespace-nowrap">
-                            {ledgerRow.line.amountText}
-                          </span>
+                        <div className="space-y-1">
+                          <div
+                            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
+                            title={ledgerRow.line.text}
+                          >
+                            <span className="truncate">{ledgerRow.line.dateText}</span>
+                            <span className="font-semibold whitespace-nowrap">
+                              {ledgerRow.line.amountText}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
+                              <button
+                                type="button"
+                                onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              >
+                                Проставить оплату
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onDeletePayment(ledgerRow.payment.id).catch(() => undefined)}
+                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              disabled={ledgerRow.payment.canDelete === false}
+                              title={
+                                ledgerRow.payment.canDelete === false
+                                  ? 'Сначала удалите оплаченные финансовые записи'
+                                  : 'Удалить платёж'
+                              }
+                            >
+                              Удалить платёж
+                            </button>
+                          </div>
                         </div>
                       </td>
                       <td className="px-3 py-2 border border-slate-300 align-top">
@@ -468,6 +558,26 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           </tbody>
         </table>
       </div>
+      <PromptDialog
+        isOpen={Boolean(paymentToMarkPaid)}
+        title="Проставить дату оплаты"
+        label="Дата оплаты"
+        value={paymentPaidDate}
+        onChange={(value) => {
+          setPaymentPaidDate(value);
+          if (paymentPaidDateError) {
+            setPaymentPaidDateError(null);
+          }
+        }}
+        error={paymentPaidDateError}
+        confirmLabel="Продолжить"
+        onConfirm={() => {
+          void handleConfirmMarkPaid();
+        }}
+        onCancel={closeMarkPaidPrompt}
+        inputType="date"
+      />
+      <ConfirmDialogRenderer />
     </section>
   );
 };

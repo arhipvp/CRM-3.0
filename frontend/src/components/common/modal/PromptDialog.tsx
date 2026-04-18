@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 import { BTN_PRIMARY, BTN_SECONDARY } from '../buttonStyles';
 import { FormActions } from '../forms/FormActions';
@@ -18,6 +18,7 @@ interface PromptDialogProps {
   isSubmitting?: boolean;
   placeholder?: string;
   error?: string | null;
+  inputType?: 'textarea' | 'date';
 }
 
 export const PromptDialog: React.FC<PromptDialogProps> = ({
@@ -32,7 +33,10 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
   isSubmitting = false,
   placeholder,
   error,
+  inputType = 'textarea',
 }) => {
+  const fieldId = useId();
+
   return (
     <FormModal
       isOpen={isOpen}
@@ -49,15 +53,30 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
         className="space-y-4"
       >
         <FormError message={error} />
-        <FormField label={label} required>
-          <textarea
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            rows={3}
-            className="field-textarea"
-            placeholder={placeholder}
-            disabled={isSubmitting}
-          />
+        <FormField label={label} htmlFor={fieldId} required>
+          {inputType === 'date' ? (
+            <input
+              id={fieldId}
+              aria-label={label}
+              type="date"
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              className="field field-input"
+              placeholder={placeholder}
+              disabled={isSubmitting}
+            />
+          ) : (
+            <textarea
+              id={fieldId}
+              aria-label={label}
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              rows={3}
+              className="field-textarea"
+              placeholder={placeholder}
+              disabled={isSubmitting}
+            />
+          )}
         </FormField>
         <FormActions
           onCancel={onCancel}

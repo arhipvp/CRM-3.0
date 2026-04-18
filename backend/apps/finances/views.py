@@ -824,16 +824,14 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         ).exists():
             return Response(
                 {
-                    "detail": (
-                        "Cannot delete payment while it has paid income/expense records."
-                    )
+                    "detail": "Нельзя удалить платёж, пока у него есть оплаченные финансовые записи."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not instance.can_delete():
             return Response(
-                {"detail": ("Cannot delete payment that is already paid.")},
+                {"detail": "Нельзя удалить оплаченный платёж."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

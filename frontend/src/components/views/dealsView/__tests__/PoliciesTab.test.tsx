@@ -1,5 +1,5 @@
 ﻿import type React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Client, Deal, Payment, Policy } from '../../../../types';
@@ -191,5 +191,31 @@ describe('PoliciesTab', () => {
   it('shows empty fallback when deal has no policies', () => {
     setup({ sortedPolicies: [] });
     expect(screen.getByText('Для сделки пока нет полисов.')).toBeInTheDocument();
+  });
+
+  it('marks payment as paid only after date selection and confirmation', async () => {
+    const onMarkPaymentPaid = vi.fn().mockResolvedValue(undefined);
+
+    setup({
+      onMarkPaymentPaid,
+      relatedPayments: [
+        buildPayment({
+          id: 'payment-to-mark',
+          scheduledDate: '2025-02-28',
+          actualDate: null,
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Проставить оплату' }));
+    fireEvent.change(screen.getByLabelText('Дата оплаты'), {
+      target: { value: '2026-05-12' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Проставить дату' }));
+
+    await waitFor(() => {
+      expect(onMarkPaymentPaid).toHaveBeenCalledWith('payment-to-mark', '2026-05-12');
+    });
   });
 });

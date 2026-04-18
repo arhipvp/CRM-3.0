@@ -75,4 +75,10 @@ export const confirmTexts = {
     confirmText: 'Продолжить',
     tone: 'primary',
   }),
+  markPaymentAsPaid: (paidAt: string): ConfirmDialogOptions => ({
+    title: 'Подтвердите оплату',
+    message: `Проставить дату оплаты ${paidAt} для выбранного платежа?`,
+    confirmText: 'Проставить дату',
+    tone: 'primary',
+  }),
 };

@@ -290,6 +290,51 @@ export const useFinanceActions = ({
     [adjustPaymentsTotals, confirm, payments, setError, syncDealsByIds, updateAppData],
   );
 
+  const handleMarkPaymentPaid = useCallback(
+    async (paymentId: string, actualDate: string) => {
+      const payment = payments.find((item) => item.id === paymentId);
+      if (!payment) {
+        return;
+      }
+
+      try {
+        const previousAmount = parseAmountValue(payment.amount);
+        const previousPaid = payment.actualDate ? previousAmount : 0;
+        const updated = await updatePayment(paymentId, {
+          policyId: payment.policyId,
+          dealId: payment.dealId ?? undefined,
+          amount: previousAmount,
+          description: payment.description ?? '',
+          scheduledDate: payment.scheduledDate ?? null,
+          actualDate,
+        });
+        const updatedAmount = parseAmountValue(updated.amount);
+        const updatedPaid = updated.actualDate ? updatedAmount : 0;
+
+        updateAppData((prev) => ({
+          payments: prev.payments.map((item) => (item.id === updated.id ? updated : item)),
+          policies: adjustPaymentsTotals(
+            prev.policies,
+            updated.policyId,
+            updatedAmount - previousAmount,
+            updatedPaid - previousPaid,
+          ),
+          deals: adjustPaymentsTotals(
+            prev.deals,
+            updated.dealId,
+            updatedAmount - previousAmount,
+            updatedPaid - previousPaid,
+          ),
+        }));
+        await syncDealsByIds([updated.dealId, payment.dealId]);
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при обновлении даты оплаты'));
+        throw err;
+      }
+    },
+    [adjustPaymentsTotals, payments, setError, syncDealsByIds, updateAppData],
+  );
+
   const handleAddFinancialRecord = useCallback(
     async (values: AddFinancialRecordFormValues) => {
       const paymentId = values.paymentId || financialRecordModal?.paymentId;
@@ -539,6 +584,7 @@ export const useFinanceActions = ({
     handleAddPayment,
     handleUpdatePayment,
     handleDeletePayment,
+    handleMarkPaymentPaid,
     handleAddFinancialRecord,
     handleUpdateFinancialRecord,
     handleDeleteFinancialRecord,

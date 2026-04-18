@@ -79,4 +79,36 @@ describe('request error normalization', () => {
 
     await expect(request('/mailboxes/')).rejects.toThrow('Такой ящик уже существует.');
   });
+
+  it('reads non_field_errors from DRF responses', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ non_field_errors: ['Нельзя удалить полис: есть оплаченные платежи.'] }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(request('/policies/policy-1/')).rejects.toThrow(
+      'Нельзя удалить полис: есть оплаченные платежи.',
+    );
+  });
+
+  it('reads field error arrays from DRF responses', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ paid_at: ['Укажите дату оплаты ведомости.'] }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(request('/finance_statements/statement-1/mark-paid/')).rejects.toThrow(
+      'Укажите дату оплаты ведомости.',
+    );
+  });
 });

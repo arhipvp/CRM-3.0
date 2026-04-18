@@ -464,10 +464,24 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         self._detach_source_files_from_notes(deal, normalized_file_ids)
 
     def perform_destroy(self, instance):
-        if instance.payments.filter(
-            actual_date__isnull=False, deleted_at__isnull=True
-        ).exists():
-            raise DRFValidationError("Нельзя удалить полис с оплаченными платежами.")
+        paid_payments = instance.payments.filter(
+            actual_date__isnull=False,
+            deleted_at__isnull=True,
+        )
+        if paid_payments.exists():
+            raise DRFValidationError(
+                {"detail": "Нельзя удалить полис: есть оплаченные платежи."}
+            )
+
+        paid_records = instance.payments.filter(
+            deleted_at__isnull=True,
+            financial_records__date__isnull=False,
+            financial_records__deleted_at__isnull=True,
+        )
+        if paid_records.exists():
+            raise DRFValidationError(
+                {"detail": "Нельзя удалить полис: есть оплаченные финансовые записи."}
+            )
         try:
             instance.delete()
         except DjangoValidationError as exc:

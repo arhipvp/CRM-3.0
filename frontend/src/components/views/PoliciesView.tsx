@@ -2,8 +2,10 @@
 import { Client, Payment, Policy } from '../../types';
 import { useRef } from 'react';
 import { fetchPoliciesKPI, FilterParams } from '../../api';
+import { confirmTexts } from '../../constants/confirmTexts';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { FilterBar } from '../FilterBar';
+import { PromptDialog } from '../common/modal/PromptDialog';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
   TABLE_CELL_CLASS_COMPACT,
@@ -21,6 +23,7 @@ import {
   POLICY_STATUS_TONE_CLASS,
 } from '../policies/policyTableHelpers';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useConfirm } from '../../hooks/useConfirm';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET } from '../common/buttonStyles';
@@ -73,6 +76,7 @@ interface PoliciesViewProps {
   ) => Promise<void>;
   onDeleteFinancialRecord?: (recordId: string) => Promise<void>;
   onDeletePayment?: (paymentId: string) => Promise<void>;
+  onMarkPaymentPaid?: (paymentId: string, actualDate: string) => Promise<void>;
 }
 
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
@@ -86,11 +90,16 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   isPoliciesLoading = false,
   onRefreshPoliciesList,
   onRequestEditPolicy,
+  onDeletePayment,
+  onMarkPaymentPaid,
 }) => {
   const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const [filterBarVersion, setFilterBarVersion] = useState(0);
   const [presetName, setPresetName] = useState('');
   const [presets, setPresets] = useState<PolicyFilterPreset[]>([]);
+  const [paymentToMarkPaid, setPaymentToMarkPaid] = useState<Payment | null>(null);
+  const [paymentPaidDate, setPaymentPaidDate] = useState('');
+  const [paymentPaidDateError, setPaymentPaidDateError] = useState<string | null>(null);
   const [kpi, setKpi] = useState({
     total: 0,
     problemCount: 0,
@@ -100,6 +109,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   });
   const kpiRequestRef = useRef(0);
   const kpiAbortControllerRef = useRef<AbortController | null>(null);
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
 
   const rawSearch = (filters.search ?? '').trim();
   const debouncedSearch = useDebouncedValue(rawSearch, 450);
@@ -283,6 +293,34 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       return;
     }
     onDealSelect?.(dealId);
+  };
+
+  const closeMarkPaidPrompt = () => {
+    setPaymentToMarkPaid(null);
+    setPaymentPaidDate('');
+    setPaymentPaidDateError(null);
+  };
+
+  const openMarkPaidPrompt = (payment: Payment) => {
+    setPaymentToMarkPaid(payment);
+    setPaymentPaidDate('');
+    setPaymentPaidDateError(null);
+  };
+
+  const handleConfirmMarkPaid = async () => {
+    if (!paymentToMarkPaid || !onMarkPaymentPaid) {
+      return;
+    }
+    if (!paymentPaidDate) {
+      setPaymentPaidDateError('Укажите дату оплаты.');
+      return;
+    }
+    const confirmed = await confirm(confirmTexts.markPaymentAsPaid(paymentPaidDate));
+    if (!confirmed) {
+      return;
+    }
+    await onMarkPaymentPaid(paymentToMarkPaid.id, paymentPaidDate);
+    closeMarkPaidPrompt();
   };
 
   return (
@@ -510,14 +548,42 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                       </td>
                       <td className={TABLE_CELL_CLASS_COMPACT}>
                         {firstLedgerRow ? (
-                          <div
-                            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
-                            title={firstLedgerRow.line.text}
-                          >
-                            <span className="truncate">{firstLedgerRow.line.dateText}</span>
-                            <span className="font-semibold whitespace-nowrap">
-                              {firstLedgerRow.line.amountText}
-                            </span>
+                          <div className="space-y-1">
+                            <div
+                              className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
+                              title={firstLedgerRow.line.text}
+                            >
+                              <span className="truncate">{firstLedgerRow.line.dateText}</span>
+                              <span className="font-semibold whitespace-nowrap">
+                                {firstLedgerRow.line.amountText}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
+                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                >
+                                  Проставить оплату
+                                </button>
+                              )}
+                              {onDeletePayment && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeletePayment(firstLedgerRow.payment.id).catch(() => undefined)}
+                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  disabled={firstLedgerRow.payment.canDelete === false}
+                                  title={
+                                    firstLedgerRow.payment.canDelete === false
+                                      ? 'Сначала удалите оплаченные финансовые записи'
+                                      : 'Удалить платёж'
+                                  }
+                                >
+                                  Удалить платёж
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ) : null}
                       </td>
@@ -546,14 +612,42 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                     {ledgerRows.slice(1).map((ledgerRow) => (
                       <tr key={ledgerRow.payment.id} className={TABLE_ROW_CLASS}>
                         <td className={TABLE_CELL_CLASS_COMPACT}>
-                          <div
-                            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
-                            title={ledgerRow.line.text}
-                          >
-                            <span className="truncate">{ledgerRow.line.dateText}</span>
-                            <span className="font-semibold whitespace-nowrap">
-                              {ledgerRow.line.amountText}
-                            </span>
+                          <div className="space-y-1">
+                            <div
+                              className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
+                              title={ledgerRow.line.text}
+                            >
+                              <span className="truncate">{ledgerRow.line.dateText}</span>
+                              <span className="font-semibold whitespace-nowrap">
+                                {ledgerRow.line.amountText}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
+                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                >
+                                  Проставить оплату
+                                </button>
+                              )}
+                              {onDeletePayment && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeletePayment(ledgerRow.payment.id).catch(() => undefined)}
+                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  disabled={ledgerRow.payment.canDelete === false}
+                                  title={
+                                    ledgerRow.payment.canDelete === false
+                                      ? 'Сначала удалите оплаченные финансовые записи'
+                                      : 'Удалить платёж'
+                                  }
+                                >
+                                  Удалить платёж
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className={TABLE_CELL_CLASS_COMPACT}>
@@ -605,6 +699,26 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           </button>
         </div>
       )}
+      <PromptDialog
+        isOpen={Boolean(paymentToMarkPaid)}
+        title="Проставить дату оплаты"
+        label="Дата оплаты"
+        value={paymentPaidDate}
+        onChange={(value) => {
+          setPaymentPaidDate(value);
+          if (paymentPaidDateError) {
+            setPaymentPaidDateError(null);
+          }
+        }}
+        error={paymentPaidDateError}
+        confirmLabel="Продолжить"
+        onConfirm={() => {
+          void handleConfirmMarkPaid();
+        }}
+        onCancel={closeMarkPaidPrompt}
+        inputType="date"
+      />
+      <ConfirmDialogRenderer />
     </section>
   );
 };

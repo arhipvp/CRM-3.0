@@ -38,19 +38,47 @@ const looksLikeHtml = (value: string): boolean => {
   );
 };
 
+const stringifyErrorPayload = (payload: unknown): string | null => {
+  if (typeof payload === 'string') {
+    const trimmed = payload.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  if (Array.isArray(payload)) {
+    const parts = payload
+      .map((item) => stringifyErrorPayload(item))
+      .filter((item): item is string => Boolean(item));
+    return parts.length ? parts.join(' ') : null;
+  }
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+    const directMessage = stringifyErrorPayload(
+      record.detail ?? record.message ?? record.error ?? record.non_field_errors,
+    );
+    if (directMessage) {
+      return directMessage;
+    }
+
+    const parts = Object.entries(record)
+      .filter(([key]) => !['detail', 'message', 'error', 'non_field_errors'].includes(key))
+      .map(([, value]) => stringifyErrorPayload(value))
+      .filter((item): item is string => Boolean(item));
+    return parts.length ? parts.join(' ') : null;
+  }
+
+  return null;
+};
+
 const extractErrorMessage = async (response: Response, path: string): Promise<string> => {
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
 
   if (contentType.includes('application/json')) {
     try {
-      const payload = (await response.json()) as {
-        detail?: string;
-        message?: string;
-        error?: string;
-      };
-      const message = payload.detail ?? payload.message ?? payload.error;
-      if (typeof message === 'string' && message.trim()) {
-        return message.trim();
+      const payload = (await response.json()) as unknown;
+      const message = stringifyErrorPayload(payload);
+      if (message) {
+        return message;
       }
     } catch {
       // Fall through to generic handling when body is malformed.
