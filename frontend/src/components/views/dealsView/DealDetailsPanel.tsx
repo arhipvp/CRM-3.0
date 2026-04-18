@@ -101,6 +101,7 @@ export interface DealDetailsPanelProps {
   onDeletePayment: (paymentId: string) => Promise<void>;
   onMarkPaymentPaid?: (paymentId: string, actualDate: string) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
+  onMarkFinancialRecordPaid?: (recordId: string, paidDate: string) => Promise<void>;
   onUpdateFinancialRecord: (
     recordId: string,
     values: AddFinancialRecordFormValues,
@@ -162,6 +163,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onDeletePayment,
   onMarkPaymentPaid,
   onAddFinancialRecord,
+  onMarkFinancialRecordPaid,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
   onDriveFolderCreated,
@@ -739,6 +741,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     onDeleteFinancialRecord,
                     onDeletePayment,
                     onMarkPaymentPaid,
+                    onMarkFinancialRecordPaid,
                     onDealSelect: onSelectDeal,
                     isLoading: isPoliciesRefreshing,
                   }}

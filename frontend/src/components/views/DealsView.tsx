@@ -68,6 +68,7 @@ interface DealsViewProps {
   onDeletePayment: (paymentId: string) => Promise<void>;
   onMarkPaymentPaid?: (paymentId: string, actualDate: string) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
+  onMarkFinancialRecordPaid?: (recordId: string, paidDate: string) => Promise<void>;
   onUpdateFinancialRecord: (
     recordId: string,
     values: AddFinancialRecordFormValues,
@@ -151,6 +152,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDeletePayment,
   onMarkPaymentPaid,
   onAddFinancialRecord,
+  onMarkFinancialRecordPaid,
   onUpdateFinancialRecord,
   onDeleteFinancialRecord,
   onDriveFolderCreated,
@@ -281,6 +283,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onDeletePayment={onDeletePayment}
             onMarkPaymentPaid={onMarkPaymentPaid}
             onAddFinancialRecord={onAddFinancialRecord}
+            onMarkFinancialRecordPaid={onMarkFinancialRecordPaid}
             onUpdateFinancialRecord={onUpdateFinancialRecord}
             onDeleteFinancialRecord={onDeleteFinancialRecord}
             onDriveFolderCreated={onDriveFolderCreated}

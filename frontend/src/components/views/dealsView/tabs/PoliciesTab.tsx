@@ -56,6 +56,7 @@ interface PoliciesTabProps {
   onDeleteFinancialRecord: (recordId: string) => Promise<void>;
   onDeletePayment: (paymentId: string) => Promise<void>;
   onMarkPaymentPaid?: (paymentId: string, actualDate: string) => Promise<void>;
+  onMarkFinancialRecordPaid?: (recordId: string, paidDate: string) => Promise<void>;
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
@@ -74,11 +75,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   setPolicySortOrder,
   setEditingPaymentId,
   setCreatingPaymentPolicyId,
+  onDeleteFinancialRecord,
   onDeletePayment,
   onRequestAddPolicy,
   onDeletePolicy,
   onRequestEditPolicy,
   onMarkPaymentPaid,
+  onMarkFinancialRecordPaid,
   onDealPreview,
   onDealSelect,
   isLoading = false,
@@ -88,6 +91,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   const [paymentToMarkPaid, setPaymentToMarkPaid] = useState<Payment | null>(null);
   const [paymentPaidDate, setPaymentPaidDate] = useState('');
   const [paymentPaidDateError, setPaymentPaidDateError] = useState<string | null>(null);
+  const [recordToMarkPaidId, setRecordToMarkPaidId] = useState<string | null>(null);
+  const [recordPaidDate, setRecordPaidDate] = useState('');
+  const [recordPaidDateError, setRecordPaidDateError] = useState<string | null>(null);
   const { confirm, ConfirmDialogRenderer } = useConfirm();
 
   const paymentsByPolicyMap = useMemo(() => {
@@ -202,6 +208,34 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     }
     await onMarkPaymentPaid(paymentToMarkPaid.id, paymentPaidDate);
     closeMarkPaidPrompt();
+  };
+
+  const closeMarkRecordPaidPrompt = () => {
+    setRecordToMarkPaidId(null);
+    setRecordPaidDate('');
+    setRecordPaidDateError(null);
+  };
+
+  const openMarkRecordPaidPrompt = (recordId: string) => {
+    setRecordToMarkPaidId(recordId);
+    setRecordPaidDate('');
+    setRecordPaidDateError(null);
+  };
+
+  const handleConfirmRecordMarkPaid = async () => {
+    if (!recordToMarkPaidId || !onMarkFinancialRecordPaid) {
+      return;
+    }
+    if (!recordPaidDate) {
+      setRecordPaidDateError('Укажите дату оплаты.');
+      return;
+    }
+    const confirmed = await confirm(confirmTexts.markFinancialRecordAsPaid(recordPaidDate));
+    if (!confirmed) {
+      return;
+    }
+    await onMarkFinancialRecordPaid(recordToMarkPaidId, recordPaidDate);
+    closeMarkRecordPaidPrompt();
   };
 
   if (!sortedPolicies.length) {
@@ -483,6 +517,30 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                 </span>
                               </div>
                               <p className="truncate">{recordRow.line.comment}</p>
+                              {!recordRow.record.statementId && !recordRow.record.date ? (
+                                <div className="flex flex-wrap gap-1 pt-1">
+                                  {onMarkFinancialRecordPaid ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openMarkRecordPaidPrompt(recordRow.record.id)}
+                                      className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                    >
+                                      Проставить оплату
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      onDeleteFinancialRecord(recordRow.record.id).catch(
+                                        () => undefined,
+                                      )
+                                    }
+                                    className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  >
+                                    Удалить запись
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
                           ))}
                         </div>
@@ -549,6 +607,32 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                   </span>
                                 </div>
                                 <p className="truncate">{recordRow.line.comment}</p>
+                                {!recordRow.record.statementId && !recordRow.record.date ? (
+                                  <div className="flex flex-wrap gap-1 pt-1">
+                                    {onMarkFinancialRecordPaid ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          openMarkRecordPaidPrompt(recordRow.record.id)
+                                        }
+                                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                      >
+                                        Проставить оплату
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        onDeleteFinancialRecord(recordRow.record.id).catch(
+                                          () => undefined,
+                                        )
+                                      }
+                                      className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                    >
+                                      Удалить запись
+                                    </button>
+                                  </div>
+                                ) : null}
                               </div>
                             ))}
                           </div>
@@ -579,6 +663,25 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           void handleConfirmMarkPaid();
         }}
         onCancel={closeMarkPaidPrompt}
+        inputType="date"
+      />
+      <PromptDialog
+        isOpen={Boolean(recordToMarkPaidId)}
+        title="Проставить дату оплаты"
+        label="Дата оплаты"
+        value={recordPaidDate}
+        onChange={(value) => {
+          setRecordPaidDate(value);
+          if (recordPaidDateError) {
+            setRecordPaidDateError(null);
+          }
+        }}
+        error={recordPaidDateError}
+        confirmLabel="Продолжить"
+        onConfirm={() => {
+          void handleConfirmRecordMarkPaid();
+        }}
+        onCancel={closeMarkRecordPaidPrompt}
         inputType="date"
       />
       <ConfirmDialogRenderer />

@@ -218,4 +218,69 @@ describe('PoliciesTab', () => {
       expect(onMarkPaymentPaid).toHaveBeenCalledWith('payment-to-mark', '2026-05-12');
     });
   });
+
+  it('marks financial record as paid only after date selection and confirmation', async () => {
+    const onMarkFinancialRecordPaid = vi.fn().mockResolvedValue(undefined);
+
+    setup({
+      onMarkFinancialRecordPaid,
+      relatedPayments: [
+        buildPayment({
+          id: 'payment-with-record',
+          scheduledDate: '2025-02-28',
+          actualDate: '2025-02-28',
+          financialRecords: [
+            {
+              id: 'record-to-mark',
+              paymentId: 'payment-with-record',
+              amount: '0',
+              recordType: 'Доход',
+              note: 'Комиссия',
+              date: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Проставить оплату' })[0]);
+    fireEvent.change(screen.getByLabelText('Дата оплаты'), {
+      target: { value: '2026-05-15' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Проставить дату' }));
+
+    await waitFor(() => {
+      expect(onMarkFinancialRecordPaid).toHaveBeenCalledWith('record-to-mark', '2026-05-15');
+    });
+  });
+
+  it('hides financial record quick actions for records in statements', () => {
+    setup({
+      relatedPayments: [
+        buildPayment({
+          id: 'payment-with-statement-record',
+          actualDate: '2025-02-28',
+          financialRecords: [
+            {
+              id: 'record-in-statement',
+              paymentId: 'payment-with-statement-record',
+              statementId: 'statement-1',
+              amount: '15',
+              recordType: 'Доход',
+              note: 'Ведомость',
+              date: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      ],
+    });
+
+    expect(screen.queryByRole('button', { name: 'Удалить запись' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Проставить оплату' })).toBeNull();
+  });
 });

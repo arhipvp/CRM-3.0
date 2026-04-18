@@ -33,6 +33,11 @@ export const confirmTexts = {
     title: 'Удалить платёж',
     message: 'Удалить платёж и все связанные записи?',
   }),
+  deleteFinancialRecord: (): ConfirmDialogOptions => ({
+    ...DANGER_DELETE_DEFAULTS,
+    title: 'Удалить финансовую запись',
+    message: 'Удалить выбранную финансовую запись?',
+  }),
   deleteDriveFiles: (message: string): ConfirmDialogOptions => ({
     ...DANGER_DELETE_DEFAULTS,
     title: 'Удалить файлы',
@@ -78,6 +83,12 @@ export const confirmTexts = {
   markPaymentAsPaid: (paidAt: string): ConfirmDialogOptions => ({
     title: 'Подтвердите оплату',
     message: `Проставить дату оплаты ${paidAt} для выбранного платежа?`,
+    confirmText: 'Проставить дату',
+    tone: 'primary',
+  }),
+  markFinancialRecordAsPaid: (paidAt: string): ConfirmDialogOptions => ({
+    title: 'Подтвердите оплату',
+    message: `Проставить дату оплаты ${paidAt} для выбранной финансовой записи?`,
     confirmText: 'Проставить дату',
     tone: 'primary',
   }),

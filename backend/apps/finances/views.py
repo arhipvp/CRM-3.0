@@ -228,10 +228,14 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         statement = getattr(instance, "statement", None)
         if statement:
             if statement.paid_at:
-                raise ValidationError("Cannot delete records from a paid statement.")
+                raise ValidationError(
+                    "Нельзя удалить запись из выплаченной ведомости."
+                )
             # Если запись уже добавлена в черновик ведомости, удалять её нельзя.
             # Сначала нужно убрать запись из ведомости, чтобы не нарушить её состав.
-            raise ValidationError("Сначала уберите запись из ведомости")
+            raise ValidationError(
+                "Нельзя удалить запись из ведомости. Сначала уберите её из состава ведомости."
+            )
         return super().destroy(request, *args, **kwargs)
 
     def get_object(self):

@@ -99,6 +99,7 @@ export interface AppRouteFinanceActions {
   onDeletePayment: (paymentId: string) => Promise<void>;
   onMarkPaymentPaid?: (paymentId: string, actualDate: string) => Promise<void>;
   onAddFinancialRecord: (values: AddFinancialRecordFormValues) => Promise<void>;
+  onMarkFinancialRecordPaid?: (recordId: string, paidDate: string) => Promise<void>;
   onUpdateFinancialRecord: (
     recordId: string,
     values: AddFinancialRecordFormValues,

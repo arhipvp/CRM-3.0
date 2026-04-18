@@ -410,8 +410,57 @@ export const useFinanceActions = ({
     [setError, setFinancialRecordModal, updateAppData],
   );
 
+  const handleMarkFinancialRecordPaid = useCallback(
+    async (recordId: string, paidDate: string) => {
+      const record = payments
+        .flatMap((payment) => payment.financialRecords ?? [])
+        .find((item) => item.id === recordId);
+      if (!record) {
+        return;
+      }
+      const resolvedRecordType = record.recordType === 'Расход' ? 'expense' : 'income';
+      const amount = parseAmountValue(record.amount);
+
+      try {
+        const updated = await updateFinancialRecord(recordId, {
+          recordType: resolvedRecordType,
+          amount: Math.abs(amount),
+          date: paidDate,
+          description: record.description ?? '',
+          source: record.source ?? '',
+          note: record.note ?? '',
+        });
+        updateAppData((prev) => {
+          const financialRecords = prev.financialRecords.map((item) =>
+            item.id === updated.id ? updated : item,
+          );
+          const payments = prev.payments.map((payment) =>
+            payment.id === updated.paymentId
+              ? {
+                  ...payment,
+                  financialRecords: (payment.financialRecords ?? []).map((item) =>
+                    item.id === updated.id ? updated : item,
+                  ),
+                }
+              : payment,
+          );
+          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
+          return { financialRecords, payments, statements };
+        });
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при обновлении даты оплаты записи'));
+        throw err;
+      }
+    },
+    [payments, setError, updateAppData],
+  );
+
   const handleDeleteFinancialRecord = useCallback(
     async (recordId: string) => {
+      const confirmed = await confirm(confirmTexts.deleteFinancialRecord());
+      if (!confirmed) {
+        return;
+      }
       try {
         await deleteFinancialRecord(recordId);
         updateAppData((prev) => {
@@ -438,7 +487,7 @@ export const useFinanceActions = ({
         throw err;
       }
     },
-    [setError, setFinancialRecordModal, updateAppData],
+    [confirm, setError, setFinancialRecordModal, updateAppData],
   );
 
   const handleCreateFinanceStatement = useCallback(
@@ -587,6 +636,7 @@ export const useFinanceActions = ({
     handleMarkPaymentPaid,
     handleAddFinancialRecord,
     handleUpdateFinancialRecord,
+    handleMarkFinancialRecordPaid,
     handleDeleteFinancialRecord,
     handleCreateFinanceStatement,
     handleUpdateFinanceStatement,
