@@ -118,6 +118,7 @@ FROM policies_policy;
 | `python manage.py loaddata fixtures/<file>.json` | Импорт фикстур |
 | `python manage.py drf_create_token` | Создание токена DRF, если команда доступна |
 | `python manage.py check_external_services` | Smoke-проверка AI / Drive / Telegram / Open Notebook / mailcow |
+| `python manage.py seed_demo_data --replace --count 30` | Пересоздать локальный demo-набор данных |
 
 ## Ресурсы
 - `backend/tests/` — примеры API-тестов, проверок прав и регрессий по доменным приложениям.

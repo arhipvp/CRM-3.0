@@ -65,6 +65,14 @@ Backend tests:
 docker compose exec backend python manage.py test
 ```
 
+Demo data:
+
+```powershell
+docker compose exec backend python manage.py seed_demo_data --replace --count 30
+```
+
+Команда наполняет локальную БД детерминированными demo-записями почти по всем рабочим таблицам CRM. Если Google Drive не настроен, при сидировании возможны warning-логи от сигналов, но сами записи будут созданы.
+
 Frontend build smoke:
 
 ```powershell

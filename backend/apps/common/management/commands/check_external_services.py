@@ -58,11 +58,11 @@ class Command(BaseCommand):
                     f"[{result.status.upper()}] {result.name}: {result.detail}"
                 )
 
-        failing_statuses = {"error"}
-        if options["strict"]:
-            failing_statuses.add("missing")
+        failing_statuses = {"error", "missing"} if options["strict"] else set()
 
-        if any(result.status in failing_statuses for result in results):
+        if failing_statuses and any(
+            result.status in failing_statuses for result in results
+        ):
             raise CommandError("One or more external service checks failed.")
 
     def _run_check(self, name: str, probe: Callable[[], str]) -> CheckResult:
@@ -99,7 +99,9 @@ class Command(BaseCommand):
     def _check_drive(self) -> CheckResult:
         status = get_drive_connection_status()
         if status["status"] == "connected":
-            auth_type = status.get("active_auth_type") or status.get("auth_mode") or "oauth"
+            auth_type = (
+                status.get("active_auth_type") or status.get("auth_mode") or "oauth"
+            )
             return CheckResult(
                 name="google_drive",
                 status="ok",
@@ -150,7 +152,10 @@ class Command(BaseCommand):
 
         def probe() -> str:
             notebooks = client.get_notebooks()
-            return f"Open Notebook is reachable; fetched {len(notebooks)} notebook entries."
+            return (
+                "Open Notebook is reachable; "
+                f"fetched {len(notebooks)} notebook entries."
+            )
 
         return self._run_check("open_notebook", probe)
 
@@ -199,8 +204,15 @@ class Command(BaseCommand):
             client = imaplib.IMAP4_SSL(host=host, port=port, timeout=20)
             try:
                 capabilities = client.capabilities or ()
-                capability_list = ", ".join(sorted(cap.decode() if isinstance(cap, bytes) else str(cap) for cap in capabilities))
-                return f"IMAP endpoint is reachable on {host}:{port} ({capability_list})."
+                capability_list = ", ".join(
+                    sorted(
+                        cap.decode() if isinstance(cap, bytes) else str(cap)
+                        for cap in capabilities
+                    )
+                )
+                return (
+                    f"IMAP endpoint is reachable on {host}:{port} ({capability_list})."
+                )
             finally:
                 try:
                     client.logout()

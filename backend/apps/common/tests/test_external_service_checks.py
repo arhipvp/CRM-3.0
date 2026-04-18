@@ -8,6 +8,15 @@ from django.test import SimpleTestCase, override_settings
 
 
 class ExternalServiceChecksCommandTests(SimpleTestCase):
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        GOOGLE_DRIVE_ROOT_FOLDER_ID="",
+        TELEGRAM_BOT_TOKEN="",
+        OPEN_NOTEBOOK_API_URL="",
+        MAILCOW_API_URL="",
+        MAILCOW_API_KEY="",
+        MAILCOW_IMAP_HOST="",
+    )
     def test_reports_missing_services_by_default(self):
         stdout = StringIO()
 
@@ -21,6 +30,15 @@ class ExternalServiceChecksCommandTests(SimpleTestCase):
         self.assertIn("[MISSING] mailcow_api", output)
         self.assertIn("[MISSING] mailcow_imap", output)
 
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        GOOGLE_DRIVE_ROOT_FOLDER_ID="",
+        TELEGRAM_BOT_TOKEN="",
+        OPEN_NOTEBOOK_API_URL="",
+        MAILCOW_API_URL="",
+        MAILCOW_API_KEY="",
+        MAILCOW_IMAP_HOST="",
+    )
     def test_strict_mode_fails_when_service_is_missing(self):
         with self.assertRaises(CommandError):
             call_command("check_external_services", "--strict")
