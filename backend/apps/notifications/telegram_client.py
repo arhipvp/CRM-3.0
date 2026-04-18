@@ -15,6 +15,18 @@ class TelegramClient:
         self._timeout = timeout
         self._base_url = f"https://api.telegram.org/bot{token}"
 
+    def get_me(self) -> dict[str, Any] | None:
+        response = self._post("getMe", {})
+        if not response:
+            return None
+        if not response.get("ok"):
+            logger.warning("Telegram getMe failed: %s", response)
+            return None
+        result = response.get("result")
+        if isinstance(result, dict):
+            return result
+        return None
+
     def get_updates(
         self, offset: int | None = None, timeout: int | None = None
     ) -> list[dict[str, Any]]:

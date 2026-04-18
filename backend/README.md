@@ -54,6 +54,7 @@ python manage.py migrate
 python manage.py runserver
 ```
 - Для env: `DJANGO_SECRET_KEY`, `DEBUG`, `DJANGO_DB_*`, JWT-параметры, CORS, `GOOGLE_DRIVE_*` (OAuth client id/secret, refresh token или token file, folder ids), `OPENAI_*`.
+- Для локального prod-like docker-контура используйте шаблон `backend/.env.example` и общий runbook: [../docs/local-prod-like-stack.md](../docs/local-prod-like-stack.md).
 - Для распознавания полисов из Word: `.docx` поддерживается через Python-библиотеку, а для `.doc` нужен установленный LibreOffice/headless converter (`soffice`). В Docker-образ backend он устанавливается автоматически.
 - Перед релизом обязательно `python manage.py check --deploy`.
 - `manage.py test` автоматически переключает backend на `config.test_settings`, чтобы локальные тесты не зависели от случайной Postgres-конфигурации.
@@ -116,6 +117,7 @@ FROM policies_policy;
 | `python manage.py shell` | Доступ к ORM/утилитам |
 | `python manage.py loaddata fixtures/<file>.json` | Импорт фикстур |
 | `python manage.py drf_create_token` | Создание токена DRF, если команда доступна |
+| `python manage.py check_external_services` | Smoke-проверка AI / Drive / Telegram / Open Notebook / mailcow |
 
 ## Ресурсы
 - `backend/tests/` — примеры API-тестов, проверок прав и регрессий по доменным приложениям.
