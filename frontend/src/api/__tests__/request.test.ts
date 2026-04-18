@@ -84,10 +84,13 @@ describe('request error normalization', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ non_field_errors: ['Нельзя удалить полис: есть оплаченные платежи.'] }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }),
+        new Response(
+          JSON.stringify({ non_field_errors: ['Нельзя удалить полис: есть оплаченные платежи.'] }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
       ),
     );
 

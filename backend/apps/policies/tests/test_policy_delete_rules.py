@@ -13,9 +13,15 @@ from rest_framework import status
 class PolicyDeleteRulesTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
-        self.seller = User.objects.create_user(username="seller_delete", password="pass")
-        self.other_user = User.objects.create_user(username="other_delete", password="pass")
-        self.admin_user = User.objects.create_user(username="admin_delete", password="pass")
+        self.seller = User.objects.create_user(
+            username="seller_delete", password="pass"
+        )
+        self.other_user = User.objects.create_user(
+            username="other_delete", password="pass"
+        )
+        self.admin_user = User.objects.create_user(
+            username="admin_delete", password="pass"
+        )
         self.client_entity = Client.objects.create(name="Delete Rules Client")
         self.deal = Deal.objects.create(
             title="Delete Rules Deal",
@@ -74,7 +80,9 @@ class PolicyDeleteRulesTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertTrue(Policy.objects.with_deleted().filter(pk=policy.pk).exists())
         self.assertTrue(
-            Payment.objects.with_deleted().filter(pk=payment.pk, deleted_at__isnull=False).exists()
+            Payment.objects.with_deleted()
+            .filter(pk=payment.pk, deleted_at__isnull=False)
+            .exists()
         )
 
     def test_admin_can_delete_policy_without_paid_entities(self):

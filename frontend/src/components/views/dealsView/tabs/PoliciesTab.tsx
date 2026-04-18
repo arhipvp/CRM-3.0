@@ -450,7 +450,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             )}
                             <button
                               type="button"
-                              onClick={() => onDeletePayment(firstLedgerRow.payment.id).catch(() => undefined)}
+                              onClick={() =>
+                                onDeletePayment(firstLedgerRow.payment.id).catch(() => undefined)
+                              }
                               className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
                               disabled={firstLedgerRow.payment.canDelete === false}
                               title={
@@ -515,7 +517,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             )}
                             <button
                               type="button"
-                              onClick={() => onDeletePayment(ledgerRow.payment.id).catch(() => undefined)}
+                              onClick={() =>
+                                onDeletePayment(ledgerRow.payment.id).catch(() => undefined)
+                              }
                               className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
                               disabled={ledgerRow.payment.canDelete === false}
                               title={
