@@ -81,6 +81,7 @@ interface AppModalsProps {
   isClientModalOverlayOpen: boolean;
   handleAddClient: (data: {
     name: string;
+    isCounterparty?: boolean;
     phone?: string;
     birthDate?: string | null;
     notes?: string | null;

@@ -56,6 +56,10 @@ class ClientOwnershipTests(TestCase):
         client = serializer.save(created_by=self.user)
         self.assertIsNone(client.email)
 
+    def test_client_defaults_to_not_counterparty(self):
+        client = Client.objects.create(name="Regular client", created_by=self.user)
+        self.assertFalse(client.is_counterparty)
+
     def test_owner_can_modify(self):
         client = Client.objects.create(name="Owned", created_by=self.user)
         viewset = ClientViewSet()
@@ -207,6 +211,35 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_create_client_persists_counterparty_flag(self):
+        response = self.api_client.post(
+            "/api/v1/clients/",
+            {
+                "name": "Контрагент",
+                "is_counterparty": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        created = Client.objects.get(id=response.data["id"])
+        self.assertTrue(created.is_counterparty)
+        self.assertTrue(response.data["is_counterparty"])
+
+    def test_update_client_returns_counterparty_flag(self):
+        response = self.api_client.patch(
+            f"/api/v1/clients/{self.target.id}/",
+            {
+                "is_counterparty": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.target.refresh_from_db()
+        self.assertTrue(self.target.is_counterparty)
+        self.assertTrue(response.data["is_counterparty"])
 
 
 class ClientSimilarityServiceTests(TestCase):

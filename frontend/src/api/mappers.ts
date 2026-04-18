@@ -124,6 +124,7 @@ export const mapPolicyIssuanceStatus = (raw: Record<string, unknown>): PolicyIss
 export const mapClient = (raw: Record<string, unknown>): Client => ({
   id: toStringValue(raw.id),
   name: toStringValue(raw.name),
+  isCounterparty: Boolean(raw.is_counterparty ?? raw.isCounterparty ?? false),
   phone: toOptionalString(raw.phone),
   email: toNullableString(raw.email),
   birthDate: toNullableString(raw.birth_date ?? raw.birthDate),

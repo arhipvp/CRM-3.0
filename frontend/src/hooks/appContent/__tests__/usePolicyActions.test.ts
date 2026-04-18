@@ -361,3 +361,36 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(updateFinancialRecordMock).not.toHaveBeenCalled();
   });
 });
+
+describe('usePolicyActions counterparty defaults', () => {
+  it('uses deal client as default counterparty only when client is marked as counterparty', () => {
+    const deal = createDeal({
+      id: 'deal-1',
+      clientId: 'client-1',
+      clientName: 'ООО Ромашка',
+      executorName: 'Alisa',
+    });
+    const { result } = renderHook(() =>
+      usePolicyActions({
+        ...createParams().params,
+        clients: [
+          {
+            id: 'client-1',
+            name: 'ООО Ромашка',
+            isCounterparty: true,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+          },
+        ],
+        dealsById: new Map([[deal.id, deal]]),
+      }),
+    );
+
+    act(() => {
+      result.current.handleRequestAddPolicy(deal.id);
+    });
+
+    expect(result.current.policyDefaultCounterparty).toBe('ООО Ромашка');
+    expect(result.current.policyDealExecutorName).toBe('Alisa');
+  });
+});

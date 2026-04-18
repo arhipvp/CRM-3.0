@@ -142,6 +142,24 @@ export const usePolicyActions = ({
   const [policySourceFileIds, setPolicySourceFileIds] = useState<string[]>([]);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
 
+  const resolveDealCounterpartyName = useCallback(
+    (dealId: string | null | undefined) => {
+      if (!dealId) {
+        return undefined;
+      }
+      const deal = dealsById.get(dealId);
+      if (!deal?.clientId) {
+        return undefined;
+      }
+      const dealClient = clients.find((client) => client.id === deal.clientId);
+      if (!dealClient?.isCounterparty) {
+        return undefined;
+      }
+      return dealClient.name.trim() || undefined;
+    },
+    [clients, dealsById],
+  );
+
   const closePolicyModal = useCallback(() => {
     setPolicyDealId(null);
     setPolicyPrefill(null);
@@ -222,12 +240,15 @@ export const usePolicyActions = ({
     [clients, salesChannels],
   );
 
-  const handleRequestAddPolicy = useCallback((dealId: string) => {
-    setPolicyDefaultCounterparty(undefined);
-    setPolicyPrefill(null);
-    setPolicySourceFileIds([]);
-    setPolicyDealId(dealId);
-  }, []);
+  const handleRequestAddPolicy = useCallback(
+    (dealId: string) => {
+      setPolicyDefaultCounterparty(resolveDealCounterpartyName(dealId));
+      setPolicyPrefill(null);
+      setPolicySourceFileIds([]);
+      setPolicyDealId(dealId);
+    },
+    [resolveDealCounterpartyName],
+  );
 
   const handleRequestEditPolicy = useCallback(
     (policy: Policy) => {
@@ -961,7 +982,8 @@ export const usePolicyActions = ({
   return {
     policyDealId,
     policyPrefill,
-    policyDefaultCounterparty,
+    policyDefaultCounterparty:
+      policyDefaultCounterparty ?? resolveDealCounterpartyName(policyDealId),
     editingPolicy,
     setEditingPolicy,
     closePolicyModal,

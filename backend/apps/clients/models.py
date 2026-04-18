@@ -24,6 +24,10 @@ class Client(SoftDeleteModel):
     )
     birth_date = models.DateField(null=True, blank=True, help_text="Дата рождения")
     notes = models.TextField(blank=True, help_text="Примечание о клиенте")
+    is_counterparty = models.BooleanField(
+        default=False,
+        help_text="Клиент является контрагентом",
+    )
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
     )

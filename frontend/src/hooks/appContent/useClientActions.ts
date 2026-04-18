@@ -20,6 +20,7 @@ type AddNotification = NotificationContextType['addNotification'];
 
 type ClientFormValues = {
   name: string;
+  isCounterparty?: boolean;
   phone?: string;
   email?: string | null;
   birthDate?: string | null;

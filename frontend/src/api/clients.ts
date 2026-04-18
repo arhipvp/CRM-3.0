@@ -98,6 +98,7 @@ export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
 
 export async function createClient(data: {
   name: string;
+  isCounterparty?: boolean;
   phone?: string;
   birthDate?: string | null;
   notes?: string | null;
@@ -107,6 +108,7 @@ export async function createClient(data: {
     method: 'POST',
     body: JSON.stringify({
       name: data.name,
+      is_counterparty: Boolean(data.isCounterparty),
       phone: data.phone,
       birth_date: data.birthDate || null,
       email: data.email?.trim() || null,
@@ -120,6 +122,7 @@ export async function updateClient(
   id: string,
   data: {
     name: string;
+    isCounterparty?: boolean;
     phone?: string;
     birthDate?: string | null;
     notes?: string | null;
@@ -130,6 +133,7 @@ export async function updateClient(
     method: 'PATCH',
     body: JSON.stringify({
       name: data.name,
+      is_counterparty: Boolean(data.isCounterparty),
       phone: data.phone,
       birth_date: data.birthDate || null,
       email: data.email?.trim() || null,

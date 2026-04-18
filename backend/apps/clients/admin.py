@@ -16,6 +16,7 @@ class ClientResource(resources.ModelResource):
             "phone",
             "email",
             "birth_date",
+            "is_counterparty",
             "notes",
             "created_at",
             "updated_at",
@@ -33,13 +34,20 @@ class ClientAdmin(SoftDeleteImportExportAdmin):
         "phone",
         "email",
         "birth_date",
+        "is_counterparty",
         "short_notes",
         "deals_count",
         "status_badge",
         "created_at",
     )
     search_fields = ("name", "phone", "email", "notes")
-    list_filter = ("created_at", "updated_at", "deleted_at", "birth_date")
+    list_filter = (
+        "is_counterparty",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "birth_date",
+    )
     readonly_fields = (
         "id",
         "created_at",
@@ -54,7 +62,15 @@ class ClientAdmin(SoftDeleteImportExportAdmin):
         (
             "Основные данные",
             {
-                "fields": ("id", "name", "phone", "email", "birth_date", "notes"),
+                "fields": (
+                    "id",
+                    "name",
+                    "phone",
+                    "email",
+                    "birth_date",
+                    "is_counterparty",
+                    "notes",
+                ),
             },
         ),
         (

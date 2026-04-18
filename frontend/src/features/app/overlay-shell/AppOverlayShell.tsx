@@ -48,6 +48,7 @@ type AppOverlayShellProps = {
   handleMergeSubmit: () => Promise<void>;
   handleUpdateClient: (values: {
     name: string;
+    isCounterparty?: boolean;
     phone?: string;
     email?: string | null;
     birthDate?: string | null;
@@ -164,6 +165,7 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
         <ClientForm
           initial={{
             name: editingClient.name,
+            isCounterparty: editingClient.isCounterparty,
             phone: editingClient.phone ?? '',
             email: editingClient.email ?? '',
             birthDate: editingClient.birthDate ?? '',

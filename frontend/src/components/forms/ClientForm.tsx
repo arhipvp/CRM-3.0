@@ -8,6 +8,7 @@ import { FormField } from '../common/forms/FormField';
 interface ClientFormProps {
   initial?: {
     name: string;
+    isCounterparty?: boolean;
     phone?: string;
     email?: string;
     birthDate?: string | null;
@@ -15,6 +16,7 @@ interface ClientFormProps {
   };
   onSubmit: (data: {
     name: string;
+    isCounterparty?: boolean;
     phone?: string;
     email?: string | null;
     birthDate?: string | null;
@@ -29,6 +31,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
   submitLabel = 'Сохранить',
 }) => {
   const [name, setName] = useState(initial?.name ?? '');
+  const [isCounterparty, setIsCounterparty] = useState(initial?.isCounterparty ?? false);
   const [phone, setPhone] = useState(initial?.phone ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? '');
@@ -47,6 +50,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
     try {
       await onSubmit({
         name: name.trim(),
+        isCounterparty,
         phone: phone.trim() || undefined,
         email: email.trim() || null,
         birthDate: birthDate || null,
@@ -91,6 +95,18 @@ export const ClientForm: React.FC<ClientFormProps> = ({
           className="field field-input"
           placeholder="+7 (900) 000-00-00"
         />
+      </FormField>
+
+      <FormField label="Статус">
+        <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={isCounterparty}
+            onChange={(event) => setIsCounterparty(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+          />
+          <span>Клиент является контрагентом</span>
+        </label>
       </FormField>
 
       <FormField label="Дата рождения">

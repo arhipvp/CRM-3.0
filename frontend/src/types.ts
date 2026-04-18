@@ -31,6 +31,7 @@ export interface User {
 export interface Client {
   id: string;
   name: string;
+  isCounterparty?: boolean;
   phone?: string;
   email?: string | null;
   birthDate?: string | null;

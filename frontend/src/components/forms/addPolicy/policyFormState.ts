@@ -69,16 +69,23 @@ export const buildDefaultPaymentExpenses = (
 ): FinancialRecordDraft[] => {
   const counterpartyName = defaultCounterparty?.trim();
   const executor = executorName?.trim();
+  const expenses: FinancialRecordDraft[] = [];
 
   if (counterpartyName) {
-    return [{ ...createEmptyRecord('1'), note: `Расход контрагенту ${counterpartyName}` }];
+    expenses.push({
+      ...createEmptyRecord('1'),
+      note: `Расход контрагенту ${counterpartyName}`,
+    });
   }
 
   if (executor) {
-    return [{ ...createEmptyRecord('1'), note: `Расход исполнителю ${executor}` }];
+    expenses.push({
+      ...createEmptyRecord('1'),
+      note: `Расход исполнителю ${executor}`,
+    });
   }
 
-  return [];
+  return expenses;
 };
 
 export const normalizeCreateFormPayments = ({

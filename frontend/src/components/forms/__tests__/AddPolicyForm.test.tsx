@@ -421,6 +421,99 @@ describe('AddPolicyForm', () => {
     expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
   });
 
+  it('auto-adds counterparty and executor expenses together in create form drafts', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      {
+        isEditing: false,
+        initialValues: undefined,
+        executorName: 'Alisa',
+        defaultCounterparty: 'ООО Ромашка',
+      },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+
+    expect(await screen.findByDisplayValue('Расход контрагенту ООО Ромашка')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
+  });
+
+  it('auto-adds only counterparty expense when no executor is provided', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      {
+        isEditing: false,
+        initialValues: undefined,
+        defaultCounterparty: 'ООО Ромашка',
+      },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+
+    expect(await screen.findByDisplayValue('Расход контрагенту ООО Ромашка')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Расход исполнителю Alisa')).not.toBeInTheDocument();
+  });
+
+  it('auto-adds counterparty and executor expenses to newly added payments in create mode', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-01-13',
+          actualDate: '',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      {
+        isEditing: false,
+        initialValues: undefined,
+        executorName: 'Alisa',
+        defaultCounterparty: 'ООО Ромашка',
+      },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Добавить платёж' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    const financeCards = await screen.findAllByTestId('policy-finance-payment-card');
+    expect(
+      within(financeCards[0]).getByDisplayValue('Расход контрагенту ООО Ромашка'),
+    ).toBeInTheDocument();
+    expect(
+      within(financeCards[0]).getByDisplayValue('Расход исполнителю Alisa'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(financeCards[1]).getByRole('button', { name: 'Развернуть' }));
+
+    expect(
+      within(financeCards[1]).getByDisplayValue('Расход контрагенту ООО Ромашка'),
+    ).toBeInTheDocument();
+    expect(
+      within(financeCards[1]).getByDisplayValue('Расход исполнителю Alisa'),
+    ).toBeInTheDocument();
+  });
+
   it('auto-adds executor expense in create form prefill drafts without touching edit form behavior', async () => {
     renderForm(
       buildInitialValues([
