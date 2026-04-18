@@ -13,15 +13,9 @@ from rest_framework import status
 class PolicyDeleteRulesTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
-        self.seller = User.objects.create_user(
-            username="seller_delete", password="pass"
-        )
-        self.other_user = User.objects.create_user(
-            username="other_delete", password="pass"
-        )
-        self.admin_user = User.objects.create_user(
-            username="admin_delete", password="pass"
-        )
+        self.seller = User.objects.create_user(username="seller_delete")
+        self.other_user = User.objects.create_user(username="other_delete")
+        self.admin_user = User.objects.create_user(username="admin_delete")
         self.client_entity = Client.objects.create(name="Delete Rules Client")
         self.deal = Deal.objects.create(
             title="Delete Rules Deal",
