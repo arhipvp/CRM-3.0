@@ -98,7 +98,7 @@ describe('SellerDashboardView', () => {
 
     expect(await screen.findByText('Полисы выбранного периода')).toBeInTheDocument();
     expect(
-      screen.getByText('В этом периоде у вас нет полисов с началом в выбранном диапазоне.'),
+      await screen.findByText('В этом периоде у вас нет полисов с началом в выбранном диапазоне.'),
     ).toBeInTheDocument();
   });
 });

@@ -464,7 +464,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         header_font = Font(bold=True, color="1F2937")
         header_fill = PatternFill("solid", fgColor="F8FAFC")
         wrap_top = Alignment(wrap_text=True, vertical="top")
-        currency_number_format = '# ##0.00 [$₽-419]'
+        currency_number_format = "# ##0.00 [$₽-419]"
 
         ws.append(headers)
         for cell in ws[1]:
