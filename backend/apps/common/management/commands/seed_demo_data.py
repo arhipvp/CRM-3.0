@@ -81,13 +81,15 @@ class Command(BaseCommand):
         demo_role_ids = [role.id for role in demo_roles]
         demo_deals = list(Deal.objects.filter(title__startswith=f"{DEMO_TAG} Deal "))
         demo_deal_ids = [deal.id for deal in demo_deals]
-        demo_clients = list(Client.objects.filter(name__startswith=f"{DEMO_TAG} Client "))
-        demo_client_ids = [client.id for client in demo_clients]
-        demo_policies = list(
-            Policy.objects.filter(number__startswith="DEMO-POL-")
+        demo_clients = list(
+            Client.objects.filter(name__startswith=f"{DEMO_TAG} Client ")
         )
+        demo_client_ids = [client.id for client in demo_clients]
+        demo_policies = list(Policy.objects.filter(number__startswith="DEMO-POL-"))
         demo_policy_ids = [policy.id for policy in demo_policies]
-        demo_mailboxes = list(Mailbox.objects.filter(email__iendswith=f"@{DEMO_DOMAIN}"))
+        demo_mailboxes = list(
+            Mailbox.objects.filter(email__iendswith=f"@{DEMO_DOMAIN}")
+        )
         demo_mailbox_ids = [mailbox.id for mailbox in demo_mailboxes]
         demo_statements = list(
             Statement.objects.filter(name__startswith=f"{DEMO_TAG} Statement ")
@@ -110,7 +112,9 @@ class Command(BaseCommand):
             routing_session_id__in=demo_session_ids
         ).delete()
         TelegramDealRoutingSession.objects.filter(id__in=demo_session_ids).delete()
-        NotificationDelivery.objects.filter(event_type__startswith="demo_event_").delete()
+        NotificationDelivery.objects.filter(
+            event_type__startswith="demo_event_"
+        ).delete()
         Notification.objects.filter(type__startswith="demo_notice_").delete()
         NotificationSettings.objects.filter(user_id__in=demo_user_ids).delete()
         TelegramProfile.objects.filter(user_id__in=demo_user_ids).delete()
@@ -194,7 +198,9 @@ class Command(BaseCommand):
             )
             statements = self._ensure_statements(users, count, today)
             payments = self._ensure_payments(deals, policies, today)
-            financial_records = self._ensure_financial_records(payments, statements, today)
+            financial_records = self._ensure_financial_records(
+                payments, statements, today
+            )
             tasks = self._ensure_tasks(users, deals, count, now)
             notes = self._ensure_notes(users, deals, count)
             chat_messages = self._ensure_chat_messages(users, deals, count)
@@ -205,7 +211,9 @@ class Command(BaseCommand):
             notifications = self._ensure_notifications(users, deals, count, now)
             telegram_profiles = self._ensure_telegram_profiles(users, count, now)
             notification_settings = self._ensure_notification_settings(users, count)
-            deliveries = self._ensure_notification_deliveries(users, deals, count, today)
+            deliveries = self._ensure_notification_deliveries(
+                users, deals, count, today
+            )
             routing_sessions = self._ensure_routing_sessions(
                 users, deals, clients, telegram_profiles, count, now
             )
@@ -314,7 +322,9 @@ class Command(BaseCommand):
             users.append(user)
         return users
 
-    def _ensure_user_roles(self, users: list[User], roles: list[Role]) -> list[UserRole]:
+    def _ensure_user_roles(
+        self, users: list[User], roles: list[Role]
+    ) -> list[UserRole]:
         links: list[UserRole] = []
         for user, role in zip(users, roles):
             link, _ = UserRole.objects.get_or_create(user=user, role=role)
@@ -387,7 +397,9 @@ class Command(BaseCommand):
                     "next_review_date": today + timedelta(days=(index % 7)),
                     "source": f"{DEMO_TAG} source {index:02d}",
                     "loss_reason": "" if index % 4 else f"{DEMO_TAG} loss {index:02d}",
-                    "closing_reason": "" if index % 3 else f"{DEMO_TAG} close {index:02d}",
+                    "closing_reason": (
+                        "" if index % 3 else f"{DEMO_TAG} close {index:02d}"
+                    ),
                 },
             )
             items.append(item)
@@ -509,7 +521,11 @@ class Command(BaseCommand):
                 defaults={
                     "statement_type": types[(index - 1) % len(types)],
                     "counterparty": f"{DEMO_TAG} Counterparty {index:02d}",
-                    "status": Statement.STATUS_PAID if index % 2 == 0 else Statement.STATUS_DRAFT,
+                    "status": (
+                        Statement.STATUS_PAID
+                        if index % 2 == 0
+                        else Statement.STATUS_DRAFT
+                    ),
                     "paid_at": today if index % 2 == 0 else None,
                     "comment": f"{DEMO_TAG} Ведомость {index:02d}",
                     "created_by": users[index - 1],
@@ -585,7 +601,10 @@ class Command(BaseCommand):
                     "status": statuses[(index - 1) % len(statuses)],
                     "priority": priorities[(index - 1) % len(priorities)],
                     "checklist": [
-                        {"text": f"{DEMO_TAG} checklist {index:02d}-1", "done": index % 2 == 0},
+                        {
+                            "text": f"{DEMO_TAG} checklist {index:02d}-1",
+                            "done": index % 2 == 0,
+                        },
                         {"text": f"{DEMO_TAG} checklist {index:02d}-2", "done": False},
                     ],
                 },
@@ -593,14 +612,17 @@ class Command(BaseCommand):
             items.append(item)
         return items
 
-    def _ensure_notes(self, users: list[User], deals: list[Deal], count: int) -> list[Note]:
+    def _ensure_notes(
+        self, users: list[User], deals: list[Deal], count: int
+    ) -> list[Note]:
         items: list[Note] = []
         for index in range(1, count + 1):
             item, _ = Note.objects.update_or_create(
                 body=f"{DEMO_TAG} Note {index:02d}",
                 defaults={
                     "deal": deals[index - 1],
-                    "author_name": users[index - 1].get_full_name() or users[index - 1].username,
+                    "author_name": users[index - 1].get_full_name()
+                    or users[index - 1].username,
                     "author": users[index - 1],
                     "attachments": [
                         {"name": f"demo-note-{index:02d}.txt", "provider": "local"}
