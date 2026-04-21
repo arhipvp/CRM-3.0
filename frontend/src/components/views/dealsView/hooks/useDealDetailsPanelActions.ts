@@ -318,16 +318,7 @@ export const useDealDetailsPanelActions = ({
     if (!selectedDeal || !selectedDelayEvent || !delayNextContactInput) {
       return;
     }
-    const eventDate = new Date(selectedDelayEvent.date);
-    const nextContactDate = new Date(delayNextContactInput);
-    if (
-      Number.isNaN(eventDate.getTime()) ||
-      Number.isNaN(nextContactDate.getTime()) ||
-      nextContactDate.getTime() > eventDate.getTime()
-    ) {
-      setDelayValidationError('Дата следующего контакта должна быть не позже даты события.');
-      return;
-    }
+    setDelayValidationError(null);
 
     await runAsyncUiAction({
       action: () =>

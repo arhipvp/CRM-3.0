@@ -63,6 +63,10 @@ describe('DealDetailsModals', () => {
     );
 
     expect(screen.getByText('Отложить до следующего контакта')).toBeInTheDocument();
+    expect(screen.queryByText('Дата должна быть не позже даты события.')).not.toBeInTheDocument();
+
+    const nextContactInput = screen.getByDisplayValue('2024-12-01');
+    expect(nextContactInput).not.toHaveAttribute('max');
 
     const eventButton = screen.getByRole('button', { name: /Очередной платёж/ });
     fireEvent.click(eventButton);

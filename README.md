@@ -30,7 +30,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 - **`public/`** хватка favicon, manifest, Robots, а `vite.config.ts` описывает прокси к backend и сборку.
 
 ### Инфраструктура
-- **Docker**: `docker-compose.yml` запускает Postgres, backend, frontend и nginx; монтирует env-файлы и volume для static/media.
+- **Docker**: `docker-compose.yml` запускает Postgres, backend, frontend и nginx; монтирует env-файлы, volume для `static/` и bind-монты для локального backup-root / `Media`, если стенд поднимается из реального бэкапа.
 - **nginx** используется для отдачи статических файлов, кэширования и проксирования API к backend.
 - **Автобэкап**: скрипт `scripts/backup_project_to_drive.py` и systemd-юниты `systemd/crm3-drive-backup.service`, `systemd/crm3-drive-backup.timer` требуют настроенные OAuth env-переменные для Google Drive и доступ к БД. Поддерживаются `GOOGLE_DRIVE_OAUTH_CLIENT_ID`, `GOOGLE_DRIVE_OAUTH_CLIENT_SECRET`, `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN`, `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE`; для production refresh token лучше читать из общего token file. Лог по умолчанию пишется в `/root/crm3/cron-backup.log` согласно юниту.
 - **Переменные окружения**: общий `.env`, `backend/.env` и `frontend/.env` (можно подключить `.env.production`, `.env.vps.secure`). Не коммитить реальные секреты.
@@ -122,6 +122,33 @@ docker compose up --build
 Локальный prod-like стек поднимает Postgres (порт 5435), Django, отдельный `telegram_bot`, собранный frontend и `nginx`; API и UI идут через локальный reverse proxy. Основная инструкция по этому режиму: [docs/local-prod-like-stack.md](docs/local-prod-like-stack.md).
 Для распознавания полисов из Word backend поддерживает `.docx` напрямую, а `.doc` обрабатывает через LibreOffice (`soffice`); в docker-образ backend эта зависимость уже включена.
 
+### Локальное наполнение данными из backup
+Основной production-подобный локальный сценарий теперь использует реальный backup, а не искусственный demo-seed:
+
+```powershell
+python scripts/restore_local_backup.py
+```
+
+По умолчанию скрипт:
+
+- берёт самый свежий снапшот из `G:\Мой диск\CRM 3.0 Backup`
+- копирует нужный SQL-дамп в локальный `tmp/local-backup` для Docker-совместимого restore
+- зеркалирует `Media` в локальный `tmp/local-media`
+- восстанавливает локальную Postgres из `database-dumps/*.sql`
+- поднимает стек с `Media`, доступным через локальный `/media/...`
+
+Если нужен конкретный снапшот:
+
+```powershell
+python scripts/restore_local_backup.py --snapshot crm3-backup-20260418-220018
+```
+
+Если нужен только restore БД без `Media`:
+
+```powershell
+python scripts/restore_local_backup.py --skip-media
+```
+
 ## Проверки и workflow
 - **Python**: `isort .` (учитывает `.isort.cfg`), затем `black .` (исключая папки `migrations` через `pyproject.toml`).
 - **Frontend**: `npm run lint`, `npm run test`, `npm run build`.
@@ -148,6 +175,7 @@ npm run build
 docker compose up --build
 ```
 - Для production-подобного локального контура используйте `docker-compose.yml` и [docs/local-prod-like-stack.md](docs/local-prod-like-stack.md).
+- Для production-подобного наполнения данными используйте `python scripts/restore_local_backup.py`; `seed_demo_data` оставлен как fallback для полностью автономного dev-режима.
 - `frontend/.env` нужен для отдельного Vite dev-режима; в docker-сценарии frontend собирается с аргументами из compose.
 - Для Google Drive используйте только OAuth env: `GOOGLE_DRIVE_OAUTH_CLIENT_ID`, `GOOGLE_DRIVE_OAUTH_CLIENT_SECRET`, `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` или `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE`.
 - `docker-compose*.yml` не требуют отдельного JSON-файла с Drive-учётными данными.

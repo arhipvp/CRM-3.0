@@ -107,7 +107,7 @@ FROM policies_policy;
 
 ## Docker и интеграция
 - `backend/Dockerfile` создаёт образ на Python 3.12, копирует зависимости и код.
-- В `docker-compose.yml` сервис монтирует `backend/.env`, тома `backend_static`, `backend_media` и `runtime-secrets` для shared secret files вроде OAuth refresh token file.
+- В `docker-compose.yml` сервис монтирует `backend/.env`, `backend_static`, bind-монт локального `Media` и `runtime-secrets` для shared secret files вроде OAuth refresh token file.
 - `entrypoint.sh` запускается в контейнере, применяя миграции и стартуя gunicorn с настройками `WORKERS` и `TIMEOUT`.
 
 ## Полезные команды
@@ -118,6 +118,7 @@ FROM policies_policy;
 | `python manage.py loaddata fixtures/<file>.json` | Импорт фикстур |
 | `python manage.py drf_create_token` | Создание токена DRF, если команда доступна |
 | `python manage.py check_external_services` | Smoke-проверка AI / Drive / Telegram / Open Notebook / mailcow |
+| `python ../scripts/restore_local_backup.py` | Полный reset локальной Postgres и restore из свежего backup через локальный staging в `tmp/` |
 | `python manage.py seed_demo_data --replace --count 30` | Пересоздать локальный demo-набор данных |
 
 ## Ресурсы

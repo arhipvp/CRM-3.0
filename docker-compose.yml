@@ -10,6 +10,10 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - type: bind
+        source: ${LOCAL_BACKUP_ROOT:-./tmp/local-backup}
+        target: /backup/crm3
+        read_only: true
     ports:
       - "${POSTGRES_HOST_PORT:-5435}:5432"
     networks:
@@ -44,7 +48,10 @@ services:
     volumes:
       - ./backend:/app
       - backend_static:/app/staticfiles
-      - backend_media:/app/media
+      - type: bind
+        source: ${LOCAL_BACKUP_MEDIA_PATH:-./tmp/local-media}
+        target: /app/media
+        read_only: true
       - ./runtime-secrets:/run/crm3-secrets
     networks:
       - crm_network
@@ -84,7 +91,10 @@ services:
     volumes:
       - ./backend:/app
       - backend_static:/app/staticfiles
-      - backend_media:/app/media
+      - type: bind
+        source: ${LOCAL_BACKUP_MEDIA_PATH:-./tmp/local-media}
+        target: /app/media
+        read_only: true
       - ./runtime-secrets:/run/crm3-secrets
     networks:
       - crm_network
@@ -133,7 +143,10 @@ services:
     volumes:
       - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
       - backend_static:/app/staticfiles:ro
-      - backend_media:/app/media:ro
+      - type: bind
+        source: ${LOCAL_BACKUP_MEDIA_PATH:-./tmp/local-media}
+        target: /app/media
+        read_only: true
     depends_on:
       backend:
         condition: service_healthy
@@ -152,8 +165,6 @@ volumes:
   postgres_data:
     driver: local
   backend_static:
-    driver: local
-  backend_media:
     driver: local
 
 networks:

@@ -76,12 +76,10 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
         <input
           type="date"
           value={nextContactValue ?? ''}
-          max={selectedEvent?.date ?? undefined}
           onChange={(event) => onNextContactChange(event.target.value)}
           disabled={!selectedEvent || isSchedulingDelay || isLeadDaysLoading}
           className="field field-input"
         />
-        <p className="text-xs text-slate-500">Дата должна быть не позже даты события.</p>
         {validationError && (
           <p className="text-xs font-semibold text-rose-600">{validationError}</p>
         )}

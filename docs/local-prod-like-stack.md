@@ -22,6 +22,43 @@
    - для Telegram: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_INTERNAL_API_TOKEN`
    - для Google Drive: `GOOGLE_DRIVE_*`
    - для mailcow: `MAILCOW_API_*`, `MAILCOW_IMAP_*`
+5. Подключить каталог с backup-данными:
+   - backup root по умолчанию: `G:\Мой диск\CRM 3.0 Backup`
+   - внутри него ожидаются каталоги `crm3-backup-*` и общий `Media`
+
+## Основной сценарий данных: restore из backup
+
+Основной способ наполнения локального стенда данными:
+
+```powershell
+python scripts/restore_local_backup.py
+```
+
+Скрипт автоматически:
+
+- выбирает самый свежий `crm3-backup-*`
+- находит внутри него `database-dumps/*.sql`
+- копирует нужный SQL-дамп в `tmp/local-backup`
+- зеркалирует `Media` в `tmp/local-media`, чтобы Docker Desktop гарантированно видел файлы даже если исходный `G:` — это Google Drive virtual FS
+- останавливает app-сервисы
+- поднимает `db`
+- полностью пересоздаёт локальную БД
+- восстанавливает SQL-дамп
+- запускает `backend`, `telegram_bot`, `frontend`, `nginx`
+- монтирует локальный staging `tmp/local-media` как `/media/...`
+
+Полезные варианты:
+
+```powershell
+python scripts/restore_local_backup.py --snapshot crm3-backup-20260418-220018
+python scripts/restore_local_backup.py --skip-media
+```
+
+Важно:
+
+- локальная Postgres считается расходной и будет полностью перезаписана
+- backup остаётся источником истины, но для Docker используется staging в `tmp/local-backup` и `tmp/local-media`
+- данные в backup не анонимизированы; используйте этот режим только локально в закрытом контуре
 
 ## Запуск
 
@@ -59,19 +96,27 @@ docker compose exec backend python manage.py check
 docker compose exec backend python manage.py check_external_services
 ```
 
+Smoke после restore из backup:
+
+```powershell
+curl http://localhost/health/
+curl -I http://localhost/
+docker compose exec backend python manage.py shell -c "from django.contrib.auth import get_user_model; print(get_user_model().objects.count())"
+```
+
 Backend tests:
 
 ```powershell
 docker compose exec backend python manage.py test
 ```
 
-Demo data:
+Fallback demo data:
 
 ```powershell
 docker compose exec backend python manage.py seed_demo_data --replace --count 30
 ```
 
-Команда наполняет локальную БД детерминированными demo-записями почти по всем рабочим таблицам CRM. Если Google Drive не настроен, при сидировании возможны warning-логи от сигналов, но сами записи будут созданы.
+Команда остаётся только как запасной автономный dev-режим, если реальный backup недоступен. Если Google Drive не настроен, при сидировании возможны warning-логи от сигналов, но сами записи будут созданы.
 
 Frontend build smoke:
 
