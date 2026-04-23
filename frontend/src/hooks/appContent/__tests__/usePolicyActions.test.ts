@@ -360,6 +360,36 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
 
     expect(updateFinancialRecordMock).not.toHaveBeenCalled();
   });
+
+  it('передаёт renewedById при обновлении полиса', async () => {
+    const policy = createPolicy();
+    const { params } = createParams({ policy });
+
+    updatePolicyMock.mockResolvedValue({
+      ...policy,
+      renewedById: 'policy-2',
+      renewedByNumber: 'POL-2',
+      isRenewed: true,
+    });
+
+    const { result } = renderHook(() => usePolicyActions(params));
+
+    await act(async () => {
+      await result.current.handleUpdatePolicy(
+        policy.id,
+        createPolicyValues({
+          renewedById: 'policy-2',
+        }),
+      );
+    });
+
+    expect(updatePolicyMock).toHaveBeenCalledWith(
+      policy.id,
+      expect.objectContaining({
+        renewedById: 'policy-2',
+      }),
+    );
+  });
 });
 
 describe('usePolicyActions counterparty defaults', () => {

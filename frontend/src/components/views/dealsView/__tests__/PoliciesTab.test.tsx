@@ -43,6 +43,9 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   salesChannel: overrides.salesChannel ?? '',
   driveFolderId: overrides.driveFolderId ?? null,
   note: overrides.note ?? '',
+  renewedById: overrides.renewedById ?? null,
+  renewedByNumber: overrides.renewedByNumber ?? null,
+  isRenewed: overrides.isRenewed ?? false,
 });
 
 const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
@@ -186,6 +189,20 @@ describe('PoliciesTab', () => {
 
     expect(screen.getByText('Сделка без клика')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Сделка без клика' })).toBeNull();
+  });
+
+  it('shows renewed badge in deal policies table', () => {
+    setup({
+      sortedPolicies: [
+        buildPolicy({
+          isRenewed: true,
+          renewedById: 'policy-2',
+          renewedByNumber: 'POL-2',
+        }),
+      ],
+    });
+
+    expect(screen.getByText('Продлённый')).toHaveAttribute('title', 'Продлён полисом POL-2');
   });
 
   it('shows empty fallback when deal has no policies', () => {

@@ -11,6 +11,8 @@ interface PolicyFormSnapshotInput {
   number: string;
   insuranceCompanyId: string;
   insuranceTypeId: string;
+  renewedById: string;
+  renewsPolicyId: string;
   isVehicle: boolean;
   brand: string;
   model: string;
@@ -49,6 +51,8 @@ export const buildPolicyFormSnapshot = (input: PolicyFormSnapshotInput) =>
     number: input.number,
     insuranceCompanyId: input.insuranceCompanyId,
     insuranceTypeId: input.insuranceTypeId,
+    renewedById: input.renewedById,
+    renewsPolicyId: input.renewsPolicyId,
     isVehicle: input.isVehicle,
     brand: input.brand,
     model: input.model,
@@ -122,6 +126,8 @@ export const buildInitialPolicyFormSnapshot = ({
       number: initialValues.number ?? '',
       insuranceCompanyId: initialValues.insuranceCompanyId ?? '',
       insuranceTypeId: initialValues.insuranceTypeId ?? '',
+      renewedById: initialValues.renewedById ?? '',
+      renewsPolicyId: initialValues.renewsPolicyId ?? '',
       isVehicle: initialValues.isVehicle,
       brand: initialValues.brand ?? '',
       model: initialValues.model ?? '',
@@ -154,6 +160,8 @@ export const buildInitialPolicyFormSnapshot = ({
     number: '',
     insuranceCompanyId: '',
     insuranceTypeId: '',
+    renewedById: '',
+    renewsPolicyId: '',
     isVehicle: false,
     brand: '',
     model: '',

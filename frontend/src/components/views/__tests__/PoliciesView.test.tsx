@@ -49,6 +49,9 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   salesChannel: overrides.salesChannel ?? '',
   driveFolderId: overrides.driveFolderId ?? null,
   note: overrides.note ?? '',
+  renewedById: overrides.renewedById ?? null,
+  renewedByNumber: overrides.renewedByNumber ?? null,
+  isRenewed: overrides.isRenewed ?? false,
 });
 
 const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
@@ -181,6 +184,31 @@ describe('PoliciesView', () => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
     });
   }, 10000);
+
+  it('shows renewed badge with tooltip in the policies list', async () => {
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView
+            policies={[
+              buildPolicy({
+                isRenewed: true,
+                renewedById: 'policy-2',
+                renewedByNumber: 'POL-2',
+              }),
+            ]}
+            payments={[]}
+            onRequestEditPolicy={vi.fn()}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Продлённый')).toHaveAttribute('title', 'Продлён полисом POL-2');
+    await waitFor(() => {
+      expect(fetchPoliciesKPI).toHaveBeenCalled();
+    });
+  });
 
   it('keeps KPI refresh and filter wiring for computed status', async () => {
     const onRefreshPoliciesList = vi.fn().mockResolvedValue(undefined);

@@ -281,6 +281,39 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
             [{"date": today.isoformat(), "total": "120.00"}],
         )
 
+    def test_dashboard_excludes_renewed_policy_expirations(self):
+        today = timezone.localdate()
+        expiring_policy = Policy.objects.create(
+            number="POLICY-EXPIRING",
+            deal=self.deal,
+            insurance_company=self.company,
+            insurance_type=self.insurance_type,
+            start_date=today - timedelta(days=30),
+            end_date=today + timedelta(days=4),
+        )
+        successor_policy = Policy.objects.create(
+            number="POLICY-SUCCESSOR",
+            deal=self.deal,
+            insurance_company=self.company,
+            insurance_type=self.insurance_type,
+            start_date=today + timedelta(days=5),
+            end_date=today + timedelta(days=370),
+        )
+        expiring_policy.renewed_by = successor_policy
+        expiring_policy.save(update_fields=["renewed_by", "updated_at"])
+
+        response = self.api_client.get(
+            "/api/v1/dashboard/seller/",
+            {
+                "start_date": today.isoformat(),
+                "end_date": (today + timedelta(days=10)).isoformat(),
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        payload = response.json()
+        self.assertEqual(payload.get("policy_expirations_by_day"), [])
+
     def test_dashboard_requires_both_dates(self):
         today = timezone.localdate()
         response = self.api_client.get(

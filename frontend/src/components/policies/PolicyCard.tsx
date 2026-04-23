@@ -6,7 +6,11 @@ import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from './PaymentCard';
 import type { PolicyCardModel } from './policyCardModel';
 import { PolicyNumberButton } from './PolicyNumberButton';
-import { getPolicyComputedStatusBadge, getPolicyExpiryBadge } from './policyIndicators';
+import {
+  getPolicyComputedStatusBadge,
+  getPolicyExpiryBadge,
+  getPolicyRenewalBadge,
+} from './policyIndicators';
 import { POLICY_PLACEHOLDER, POLICY_TEXT } from './text';
 import {
   BTN_SM_DANGER,
@@ -112,6 +116,14 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
     () => getPolicyComputedStatusBadge(policy.computedStatus),
     [policy.computedStatus],
   );
+  const renewalBadge = React.useMemo(
+    () =>
+      getPolicyRenewalBadge({
+        isRenewed: policy.isRenewed,
+        renewedByNumber: policy.renewedByNumber,
+      }),
+    [policy.isRenewed, policy.renewedByNumber],
+  );
   const renderTruncatedText = (label: string, value: string) => (
     <LabelValuePair
       label={label}
@@ -187,6 +199,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
               )}
               {computedStatusBadge && (
                 <span
+                  title={computedStatusBadge.tooltip}
                   className={[
                     'rounded-full px-2 py-0.5 text-[11px] font-semibold',
                     computedStatusBadge.tone === 'red'
@@ -197,6 +210,14 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                   ].join(' ')}
                 >
                   {computedStatusBadge.label}
+                </span>
+              )}
+              {renewalBadge && (
+                <span
+                  title={renewalBadge.tooltip}
+                  className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700"
+                >
+                  {renewalBadge.label}
                 </span>
               )}
             </div>

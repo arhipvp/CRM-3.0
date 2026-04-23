@@ -217,7 +217,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
         >
           {paymentEntries.map((entry, displayIndex) => (
             <div
-              key={entry.payment.id ?? `payment-${entry.sourceIndex}`}
+              key={entry.payment.id || `payment-${entry.sourceIndex}`}
               ref={(node) => {
                 cardRefs.current[entry.sourceIndex] = node;
               }}

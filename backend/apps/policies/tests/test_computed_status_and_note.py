@@ -131,3 +131,86 @@ class PolicyComputedStatusAndNoteTests(AuthenticatedAPITestCase):
         kpi_filtered = self.api_client.get("/api/v1/policies/kpi/?search=active-case")
         self.assertEqual(kpi_filtered.status_code, status.HTTP_200_OK)
         self.assertEqual(kpi_filtered.data["total"], 1)
+
+    def test_policy_can_be_marked_as_renewed_from_new_policy_side(self):
+        old_policy = self._create_policy(
+            "POL-OLD",
+            end_date=timezone.localdate() + timedelta(days=5),
+        )
+
+        response = self.api_client.post(
+            "/api/v1/policies/",
+            self._policy_payload(
+                "POL-NEW",
+                end_date=(timezone.localdate() + timedelta(days=370)).isoformat(),
+                renews_policy=str(old_policy.id),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        old_policy.refresh_from_db()
+        self.assertIsNotNone(old_policy.renewed_by_id)
+        self.assertEqual(old_policy.renewed_by.number, "POL-NEW")
+
+        list_response = self.api_client.get("/api/v1/policies/")
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        policy_data = next(
+            item
+            for item in list_response.data.get("results", [])
+            if item["number"] == "POL-OLD"
+        )
+        self.assertTrue(policy_data["is_renewed"])
+        self.assertEqual(str(policy_data["renewed_by"]), str(old_policy.renewed_by_id))
+        self.assertEqual(policy_data["renewed_by_number"], "POL-NEW")
+        self.assertEqual(policy_data["computed_status"], "active")
+
+    def test_policy_renewal_validation_rejects_self_link_and_cycle(self):
+        old_policy = self._create_policy("POL-CYCLE-OLD")
+        new_policy = self._create_policy("POL-CYCLE-NEW")
+
+        self_response = self.api_client.patch(
+            f"/api/v1/policies/{old_policy.id}/",
+            {"renewed_by": str(old_policy.id)},
+            format="json",
+        )
+        self.assertEqual(self_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("renewed_by", self_response.data)
+
+        first_link = self.api_client.patch(
+            f"/api/v1/policies/{old_policy.id}/",
+            {"renewed_by": str(new_policy.id)},
+            format="json",
+        )
+        self.assertEqual(first_link.status_code, status.HTTP_200_OK)
+
+        cycle_response = self.api_client.patch(
+            f"/api/v1/policies/{new_policy.id}/",
+            {"renewed_by": str(old_policy.id)},
+            format="json",
+        )
+        self.assertEqual(cycle_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("renewed_by", cycle_response.data)
+
+    def test_kpi_excludes_renewed_policies_from_expiring_soon(self):
+        today = timezone.localdate()
+        active_policy = self._create_policy(
+            "POL-KPI-ACTIVE",
+            end_date=today + timedelta(days=3),
+        )
+        renewed_policy = self._create_policy(
+            "POL-KPI-RENEWED",
+            end_date=today + timedelta(days=2),
+        )
+        successor_policy = self._create_policy(
+            "POL-KPI-SUCCESSOR",
+            end_date=today + timedelta(days=365),
+        )
+        renewed_policy.renewed_by = successor_policy
+        renewed_policy.save(update_fields=["renewed_by", "updated_at"])
+
+        response = self.api_client.get("/api/v1/policies/kpi/?expiring_days=10")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["expiring_soon_count"], 1)
+        self.assertEqual(active_policy.renewed_by_id, None)

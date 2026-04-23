@@ -170,6 +170,7 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
         Policy.objects.filter(
             deal__seller=user,
             deal__deleted_at__isnull=True,
+            renewed_by__isnull=True,
             end_date__isnull=False,
             end_date__gte=start_date,
             end_date__lte=end_date,

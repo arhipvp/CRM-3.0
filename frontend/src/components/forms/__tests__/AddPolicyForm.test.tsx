@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { describe, expect, it, vi } from 'vitest';
 
 import { AddPolicyForm } from '../AddPolicyForm';
+import type { Policy } from '../../../types';
 import type { PolicyFormValues } from '../addPolicy/types';
 
 vi.mock('../../../api', () => ({
@@ -21,6 +22,25 @@ const buildInitialValues = (payments: PolicyFormValues['payments']): PolicyFormV
   startDate: '2026-01-13',
   endDate: '2027-01-12',
   payments,
+});
+
+const buildPolicyOption = (overrides: Partial<Policy> = {}): Policy => ({
+  id: overrides.id ?? 'policy-old',
+  number: overrides.number ?? 'POL-OLD',
+  insuranceCompanyId: overrides.insuranceCompanyId ?? 'company-1',
+  insuranceCompany: overrides.insuranceCompany ?? 'Ингосстрах',
+  insuranceTypeId: overrides.insuranceTypeId ?? 'type-1',
+  insuranceType: overrides.insuranceType ?? 'Каско',
+  dealId: overrides.dealId ?? 'deal-1',
+  isVehicle: overrides.isVehicle ?? false,
+  status: overrides.status ?? 'active',
+  startDate: overrides.startDate ?? '2025-01-01',
+  endDate: overrides.endDate ?? '2026-01-01',
+  createdAt: overrides.createdAt ?? new Date().toISOString(),
+  updatedAt: overrides.updatedAt ?? new Date().toISOString(),
+  isRenewed: overrides.isRenewed ?? false,
+  renewedById: overrides.renewedById ?? null,
+  renewedByNumber: overrides.renewedByNumber ?? null,
 });
 
 const renderForm = (
@@ -687,6 +707,47 @@ describe('AddPolicyForm', () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('submits selected renewed policy relation in create mode', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AddPolicyForm
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        salesChannels={[]}
+        initialValues={buildInitialValues([
+          {
+            amount: '1000',
+            description: '',
+            scheduledDate: '2026-01-13',
+            actualDate: '',
+            incomes: [],
+            expenses: [],
+          },
+        ])}
+        clients={[]}
+        dealPolicies={[buildPolicyOption()]}
+        onRequestAddClient={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Продлевает полис'), {
+      target: { value: 'policy-old' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          renewsPolicyId: 'policy-old',
+          renewedById: null,
+        }),
+      );
     });
   });
 });

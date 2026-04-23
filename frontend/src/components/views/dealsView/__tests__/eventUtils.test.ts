@@ -62,4 +62,13 @@ describe('eventUtils', () => {
     const events = buildDealEvents({ policies: [], payments: [paidPayment] });
     expect(events).toHaveLength(0);
   });
+
+  it('skips renewed policies when building expiration events', () => {
+    const events = buildDealEvents({
+      policies: [{ ...samplePolicy, isRenewed: true, renewedByNumber: 'NEW-1' }],
+      payments: [],
+    });
+
+    expect(events).toHaveLength(0);
+  });
 });

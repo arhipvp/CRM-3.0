@@ -369,6 +369,9 @@ export interface Policy {
   salesChannel?: string;
   salesChannelId?: string;
   salesChannelName?: string;
+  renewedById?: string | null;
+  renewedByNumber?: string | null;
+  isRenewed?: boolean;
   startDate?: string | null;
   endDate?: string | null;
   status: PolicyStatus;

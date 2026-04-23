@@ -2,6 +2,11 @@ import React from 'react';
 
 import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../../../types';
 
+interface RenewalPolicyOption {
+  id: string;
+  label: string;
+}
+
 interface PolicyBasicsStepProps {
   number: string;
   onNumberChange: (value: string) => void;
@@ -12,6 +17,10 @@ interface PolicyBasicsStepProps {
   insuranceTypeId: string;
   onInsuranceTypeChange: (value: string) => void;
   types: InsuranceType[];
+  renewalLabel?: string;
+  renewalPolicyId: string;
+  onRenewalPolicyChange: (value: string) => void;
+  renewalPolicyOptions: RenewalPolicyOption[];
   salesChannelId: string;
   onSalesChannelChange: (value: string) => void;
   salesChannels: SalesChannel[];
@@ -45,6 +54,10 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
   insuranceTypeId,
   onInsuranceTypeChange,
   types,
+  renewalLabel,
+  renewalPolicyId,
+  onRenewalPolicyChange,
+  renewalPolicyOptions,
   salesChannelId,
   onSalesChannelChange,
   salesChannels,
@@ -111,6 +124,24 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
             {types.map((insuranceType) => (
               <option key={insuranceType.id} value={insuranceType.id}>
                 {insuranceType.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="app-label" htmlFor="policy-renewal-select">
+            {renewalLabel ?? 'Связь продления'}
+          </label>
+          <select
+            id="policy-renewal-select"
+            value={renewalPolicyId}
+            onChange={(event) => onRenewalPolicyChange(event.target.value)}
+            className="field field-input mt-2"
+          >
+            <option value="">Не связано</option>
+            {renewalPolicyOptions.map((policy) => (
+              <option key={policy.id} value={policy.id}>
+                {policy.label}
               </option>
             ))}
           </select>
@@ -208,8 +239,8 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
               placeholder="Toyota"
             />
             <datalist id="vehicle-brand-options">
-              {vehicleBrands.map((option) => (
-                <option key={option} value={option} />
+              {vehicleBrands.map((option, index) => (
+                <option key={`brand-${index}-${option}`} value={option} />
               ))}
             </datalist>
           </div>
@@ -224,8 +255,8 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
               placeholder="Camry"
             />
             <datalist id="vehicle-model-options">
-              {vehicleModels.map((option) => (
-                <option key={option} value={option} />
+              {vehicleModels.map((option, index) => (
+                <option key={`model-${index}-${option}`} value={option} />
               ))}
             </datalist>
           </div>

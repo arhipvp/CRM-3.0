@@ -14,7 +14,11 @@ import {
 } from '../common/tableStyles';
 import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
-import { getPolicyComputedStatusBadge, getPolicyExpiryBadge } from '../policies/policyIndicators';
+import {
+  getPolicyComputedStatusBadge,
+  getPolicyExpiryBadge,
+  getPolicyRenewalBadge,
+} from '../policies/policyIndicators';
 import {
   buildPolicyLedgerRows,
   getPolicyExpiryToneClass,
@@ -473,6 +477,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 const model = buildPolicyCardModel(policy, paymentsForPolicy);
                 const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
                 const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+                const renewalBadge = getPolicyRenewalBadge({
+                  isRenewed: policy.isRenewed,
+                  renewedByNumber: policy.renewedByNumber,
+                });
                 const notePreview = getPolicyNotePreview(policy.note);
                 const rowSpan = Math.max(ledgerRows.length, 1);
                 const firstLedgerRow = ledgerRows[0];
@@ -552,6 +560,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                 )}`}
                               >
                                 {expiryBadge.label}
+                              </span>
+                            )}
+                            {renewalBadge && (
+                              <span
+                                className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
+                                title={renewalBadge.tooltip}
+                              >
+                                {renewalBadge.label}
                               </span>
                             )}
                           </div>

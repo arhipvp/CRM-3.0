@@ -1,6 +1,12 @@
-﻿export type PolicyExpiryBadge = {
+export type PolicyExpiryBadge = {
   label: string;
   tone: 'red' | 'orange';
+};
+
+export type PolicyRenewalBadge = {
+  label: string;
+  tone: 'sky';
+  tooltip: string;
 };
 
 export type PolicyComputedStatusValue = 'problem' | 'due' | 'expired' | 'active';
@@ -73,4 +79,23 @@ export const getPolicyComputedStatusBadge = (status?: string): PolicyComputedSta
     };
   }
   return null;
+};
+
+export const getPolicyRenewalBadge = ({
+  isRenewed,
+  renewedByNumber,
+}: {
+  isRenewed?: boolean;
+  renewedByNumber?: string | null;
+}): PolicyRenewalBadge | null => {
+  if (!isRenewed) {
+    return null;
+  }
+  return {
+    label: 'Продлённый',
+    tone: 'sky',
+    tooltip: renewedByNumber
+      ? `Продлён полисом ${renewedByNumber}`
+      : 'Этот полис продлён новым полисом',
+  };
 };

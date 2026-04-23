@@ -277,6 +277,7 @@ export const usePolicyActions = ({
         salesChannelId,
         clientId: selectedPolicyClientId,
         clientName: selectedPolicyClientName,
+        renewsPolicyId,
         counterparty,
         note,
         payments: paymentDrafts = [],
@@ -336,6 +337,7 @@ export const usePolicyActions = ({
           note,
           startDate,
           endDate,
+          renewsPolicyId: renewsPolicyId || null,
           sourceFileId,
           sourceFileIds: sourceFileIds.length ? sourceFileIds : undefined,
         });
@@ -553,6 +555,7 @@ export const usePolicyActions = ({
           endDate,
           clientId: selectedPolicyClientId,
           clientName: selectedPolicyClientName,
+          renewedById,
           payments: paymentDrafts = [],
         } = values;
 
@@ -661,6 +664,7 @@ export const usePolicyActions = ({
           startDate,
           endDate,
           clientId: resolvedPolicyClientId || currentPolicy.clientId,
+          renewedById: renewedById || null,
         });
         updateAppData((prev) => ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),

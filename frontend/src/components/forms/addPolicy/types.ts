@@ -21,6 +21,8 @@ export interface PolicyFormValues {
   number: string;
   insuranceCompanyId: string;
   insuranceTypeId: string;
+  renewedById?: string | null;
+  renewsPolicyId?: string | null;
   isVehicle: boolean;
   brand?: string;
   model?: string;

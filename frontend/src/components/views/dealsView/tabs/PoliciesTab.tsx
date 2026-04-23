@@ -14,6 +14,7 @@ import { buildPolicyCardModel } from '../../../policies/policyCardModel';
 import {
   getPolicyComputedStatusBadge,
   getPolicyExpiryBadge,
+  getPolicyRenewalBadge,
 } from '../../../policies/policyIndicators';
 import {
   buildPolicyLedgerRows,
@@ -336,6 +337,10 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
               const model = buildPolicyCardModel(policy, payments);
               const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
               const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+              const renewalBadge = getPolicyRenewalBadge({
+                isRenewed: policy.isRenewed,
+                renewedByNumber: policy.renewedByNumber,
+              });
               const notePreview = getPolicyNotePreview(policy.note);
               const rowSpan = Math.max(ledgerRows.length, 1);
               const firstLedgerRow = ledgerRows[0];
@@ -416,6 +421,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                               )}`}
                             >
                               {expiryBadge.label}
+                            </span>
+                          )}
+                          {renewalBadge && (
+                            <span
+                              className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
+                              title={renewalBadge.tooltip}
+                            >
+                              {renewalBadge.label}
                             </span>
                           )}
                         </div>

@@ -278,6 +278,7 @@ def send_policy_expiry_reminders() -> None:
     # Policy.status intentionally ignored; reminders rely solely on end_date.
     max_end_date = today + timedelta(days=reminder_window)
     policies = Policy.objects.filter(
+        renewed_by__isnull=True,
         end_date__isnull=False,
         end_date__gte=today,
         end_date__lte=max_end_date,

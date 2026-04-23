@@ -68,7 +68,7 @@ export const buildDealEvents = ({
   const events: DealEvent[] = [];
 
   policies.forEach((policy) => {
-    if (!policy.endDate) {
+    if (!policy.endDate || policy.isRenewed) {
       return;
     }
     events.push({
