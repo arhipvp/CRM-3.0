@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { Deal, User } from '../../../types';
 import { BTN_SM_QUIET } from '../../common/buttonStyles';
 
@@ -15,6 +15,38 @@ type DealsSortDirection = 'asc' | 'desc' | null;
 type DeadlineBadge = {
   label: string;
   className: string;
+};
+
+const DEALS_LIST_HEIGHT_STORAGE_KEY = 'crm:deals:list-height';
+const DEFAULT_DEALS_LIST_HEIGHT = '26vh';
+const MIN_DEALS_LIST_HEIGHT_PX = 220;
+const MAX_DEALS_LIST_HEIGHT_VIEWPORT_RATIO = 0.7;
+
+const getMaxDealsListHeight = () => {
+  if (typeof window === 'undefined') {
+    return 760;
+  }
+  return Math.max(
+    MIN_DEALS_LIST_HEIGHT_PX,
+    Math.round(window.innerHeight * MAX_DEALS_LIST_HEIGHT_VIEWPORT_RATIO),
+  );
+};
+
+const clampDealsListHeight = (height: number) =>
+  Math.min(Math.max(Math.round(height), MIN_DEALS_LIST_HEIGHT_PX), getMaxDealsListHeight());
+
+const parseStoredDealsListHeight = (raw: string | null) => {
+  if (!raw) {
+    return null;
+  }
+  if (!/^\d+px$/.test(raw)) {
+    return null;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return `${clampDealsListHeight(parsed)}px`;
 };
 
 interface DealsListProps {
@@ -75,9 +107,58 @@ export const DealsList: React.FC<DealsListProps> = ({
   isDealSelectionBlocked = false,
 }) => {
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const lastHandledFocusNonceRef = useRef<number | null>(null);
+  const [dealsListHeight, setDealsListHeight] = useState(DEFAULT_DEALS_LIST_HEIGHT);
 
   const selectedDealId = selectedDeal?.id ?? null;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const storedHeight = parseStoredDealsListHeight(
+      window.localStorage.getItem(DEALS_LIST_HEIGHT_STORAGE_KEY),
+    );
+    if (storedHeight) {
+      setDealsListHeight(storedHeight);
+    }
+  }, []);
+
+  const saveDealsListHeight = useCallback((height: number) => {
+    const clampedHeight = clampDealsListHeight(height);
+    const nextHeight = `${clampedHeight}px`;
+    setDealsListHeight(nextHeight);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DEALS_LIST_HEIGHT_STORAGE_KEY, nextHeight);
+    }
+  }, []);
+
+  const handleResizePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (!tableScrollRef.current) {
+        return;
+      }
+      event.preventDefault();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+
+      const startY = event.clientY;
+      const startHeight = tableScrollRef.current.getBoundingClientRect().height;
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        saveDealsListHeight(startHeight + moveEvent.clientY - startY);
+      };
+
+      const handlePointerUp = () => {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+      };
+
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp, { once: true });
+    },
+    [saveDealsListHeight],
+  );
 
   const getDeadlineBadge = (value?: string | null): DeadlineBadge => {
     if (!value) {
@@ -323,7 +404,16 @@ export const DealsList: React.FC<DealsListProps> = ({
       </div>
 
       <DataTableShell>
-        <div className="hidden max-h-[52vh] overflow-y-auto bg-white/95 md:block">
+        <div
+          ref={tableScrollRef}
+          data-testid="deals-list-scroll"
+          className="hidden overflow-y-auto bg-white/95 md:block"
+          style={{
+            height: dealsListHeight,
+            minHeight: `${MIN_DEALS_LIST_HEIGHT_PX}px`,
+            maxHeight: `${MAX_DEALS_LIST_HEIGHT_VIEWPORT_RATIO * 100}vh`,
+          }}
+        >
           <table className="deals-table min-w-full border-collapse text-left text-sm">
             <thead className={`sticky top-0 backdrop-blur ${TABLE_THEAD_CLASS}`}>
               <tr>
@@ -558,6 +648,15 @@ export const DealsList: React.FC<DealsListProps> = ({
             </tbody>
           </table>
         </div>
+        <button
+          type="button"
+          aria-label="Изменить высоту списка сделок"
+          title="Изменить высоту списка сделок"
+          onPointerDown={handleResizePointerDown}
+          className="hidden h-3 w-full cursor-row-resize border-y border-slate-200 bg-slate-50 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset md:flex md:items-center md:justify-center"
+        >
+          <span className="h-1 w-12 rounded-full bg-slate-300" aria-hidden="true" />
+        </button>
         <div className="divide-y divide-slate-200 bg-white md:hidden">
           {sortedDeals.length ? (
             sortedDeals.map((deal) => {

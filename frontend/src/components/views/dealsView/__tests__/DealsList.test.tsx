@@ -17,6 +17,21 @@ const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
 
 const focusMock = vi.fn();
 const scrollIntoViewMock = vi.fn();
+const DEALS_LIST_HEIGHT_STORAGE_KEY = 'crm:deals:list-height';
+
+const mockTableHeight = (element: HTMLElement, height: number) => {
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+    bottom: height,
+    height,
+    left: 0,
+    right: 0,
+    top: 0,
+    width: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
+};
 
 const renderDealsList = (params?: {
   selectedDeal?: Deal | null;
@@ -65,6 +80,12 @@ const renderDealsList = (params?: {
 
 describe('DealsList dealRowFocusRequest', () => {
   beforeEach(() => {
+    window.localStorage.clear();
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 1000,
+      writable: true,
+    });
     focusMock.mockClear();
     scrollIntoViewMock.mockClear();
     Object.defineProperty(HTMLElement.prototype, 'focus', {
@@ -222,5 +243,78 @@ describe('DealsList dealRowFocusRequest', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Открыть сделку Mobile Deal' }));
 
     expect(onSelectDeal).toHaveBeenCalledWith('mobile-deal');
+  });
+
+  it('uses compact default height for the desktop deals table', () => {
+    renderDealsList();
+
+    expect(screen.getByTestId('deals-list-scroll')).toHaveStyle({ height: '26vh' });
+  });
+
+  it('restores saved desktop deals table height from localStorage', () => {
+    window.localStorage.setItem(DEALS_LIST_HEIGHT_STORAGE_KEY, '360px');
+
+    renderDealsList();
+
+    expect(screen.getByTestId('deals-list-scroll')).toHaveStyle({ height: '360px' });
+  });
+
+  it('falls back to compact default height when saved table height is invalid', () => {
+    window.localStorage.setItem(DEALS_LIST_HEIGHT_STORAGE_KEY, 'not-a-size');
+
+    renderDealsList();
+
+    expect(screen.getByTestId('deals-list-scroll')).toHaveStyle({ height: '26vh' });
+  });
+
+  it('resizes the desktop deals table by dragging the separator', () => {
+    renderDealsList();
+
+    const tableScroll = screen.getByTestId('deals-list-scroll');
+    mockTableHeight(tableScroll, 300);
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Изменить высоту списка сделок' }), {
+      clientY: 300,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(window, { clientY: 380 });
+    fireEvent.pointerUp(window);
+
+    expect(tableScroll).toHaveStyle({ height: '380px' });
+    expect(window.localStorage.getItem(DEALS_LIST_HEIGHT_STORAGE_KEY)).toBe('380px');
+  });
+
+  it('does not resize the desktop deals table below the minimum height', () => {
+    renderDealsList();
+
+    const tableScroll = screen.getByTestId('deals-list-scroll');
+    mockTableHeight(tableScroll, 300);
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Изменить высоту списка сделок' }), {
+      clientY: 300,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(window, { clientY: 0 });
+    fireEvent.pointerUp(window);
+
+    expect(tableScroll).toHaveStyle({ height: '220px' });
+    expect(window.localStorage.getItem(DEALS_LIST_HEIGHT_STORAGE_KEY)).toBe('220px');
+  });
+
+  it('does not resize the desktop deals table above the viewport limit', () => {
+    renderDealsList();
+
+    const tableScroll = screen.getByTestId('deals-list-scroll');
+    mockTableHeight(tableScroll, 650);
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Изменить высоту списка сделок' }), {
+      clientY: 300,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(window, { clientY: 500 });
+    fireEvent.pointerUp(window);
+
+    expect(tableScroll).toHaveStyle({ height: '700px' });
+    expect(window.localStorage.getItem(DEALS_LIST_HEIGHT_STORAGE_KEY)).toBe('700px');
   });
 });
