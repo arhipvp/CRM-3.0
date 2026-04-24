@@ -17,6 +17,7 @@ interface DealDelayModalProps {
   isSchedulingDelay: boolean;
   isLeadDaysLoading?: boolean;
   validationError?: string | null;
+  zIndex?: number;
   onClose: () => void;
   onEventSelect: (eventId: string) => void;
   onNextContactChange: (value: string) => void;
@@ -33,12 +34,13 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
   isSchedulingDelay,
   isLeadDaysLoading,
   validationError,
+  zIndex = 50,
   onClose,
   onEventSelect,
   onNextContactChange,
   onConfirm,
 }) => (
-  <Modal title="Отложить до следующего контакта" onClose={onClose} size="xl" zIndex={50}>
+  <Modal title="Отложить до следующего контакта" onClose={onClose} size="xl" zIndex={zIndex}>
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
         <p className="app-label">Сделка</p>
@@ -188,6 +190,7 @@ interface DealMergeModalProps {
   isActiveSearch: boolean;
   searchQuery: string;
   isMerging: boolean;
+  zIndex?: number;
   onClose: () => void;
   onSubmit: (finalDeal: DealFormValues) => Promise<void>;
   onRequestAddClient: () => void;
@@ -215,11 +218,12 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
   isActiveSearch,
   searchQuery,
   isMerging,
+  zIndex = 50,
   onClose,
   onSubmit,
   onRequestAddClient,
 }) => (
-  <Modal title="Объединить сделки" onClose={onClose} size="xl" zIndex={50}>
+  <Modal title="Объединить сделки" onClose={onClose} size="xl" zIndex={zIndex}>
     <div className="flex max-h-[85vh] flex-col" data-testid="deal-merge-modal-layout">
       <div className="min-h-0 space-y-4 overflow-y-auto pr-1" data-testid="deal-merge-modal-scroll">
         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -357,6 +361,7 @@ interface DealSimilarModalProps {
   includeClosed: boolean;
   isLoading: boolean;
   error: string | null;
+  zIndex?: number;
   onToggleIncludeClosed: (value: boolean) => void;
   onToggleCandidate: (dealId: string) => void;
   onContinue: () => void;
@@ -388,12 +393,13 @@ export const DealSimilarModal: React.FC<DealSimilarModalProps> = ({
   includeClosed,
   isLoading,
   error,
+  zIndex = 50,
   onToggleIncludeClosed,
   onToggleCandidate,
   onContinue,
   onClose,
 }) => (
-  <Modal title="Похожие сделки" onClose={onClose} size="xl" zIndex={50}>
+  <Modal title="Похожие сделки" onClose={onClose} size="xl" zIndex={zIndex}>
     <div className="space-y-4">
       <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
         <p className="app-label">Текущая сделка</p>

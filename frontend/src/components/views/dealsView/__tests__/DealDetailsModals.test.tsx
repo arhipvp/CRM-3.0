@@ -55,6 +55,7 @@ describe('DealDetailsModals', () => {
         upcomingEvents={[upcomingEvent]}
         pastEvents={[pastEvent]}
         isSchedulingDelay={false}
+        zIndex={70}
         onClose={onClose}
         onEventSelect={onEventSelect}
         onNextContactChange={onNextContactChange}
@@ -63,6 +64,11 @@ describe('DealDetailsModals', () => {
     );
 
     expect(screen.getByText('Отложить до следующего контакта')).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Отложить до следующего контакта' }).parentElement,
+    ).toHaveStyle({
+      zIndex: '70',
+    });
     expect(screen.queryByText('Дата должна быть не позже даты события.')).not.toBeInTheDocument();
 
     const nextContactInput = screen.getByDisplayValue('2024-12-01');
@@ -139,6 +145,7 @@ describe('DealDetailsModals', () => {
         isActiveSearch={false}
         searchQuery=""
         isMerging={false}
+        zIndex={70}
         onClose={() => undefined}
         onSubmit={onSubmit}
         onRequestAddClient={() => undefined}
@@ -159,6 +166,9 @@ describe('DealDetailsModals', () => {
     const actions = screen.getByTestId('deal-merge-modal-actions');
 
     expect(layout.className).toContain('max-h-[85vh]');
+    expect(screen.getByRole('dialog', { name: 'Объединить сделки' }).parentElement).toHaveStyle({
+      zIndex: '70',
+    });
     expect(scroll.className).toContain('overflow-y-auto');
     expect(actions.className).toContain('sticky');
   });
@@ -196,6 +206,7 @@ describe('DealDetailsModals', () => {
         includeClosed={false}
         isLoading={false}
         error={null}
+        zIndex={70}
         onToggleIncludeClosed={onToggleIncludeClosed}
         onToggleCandidate={onToggleCandidate}
         onContinue={onContinue}
@@ -204,6 +215,9 @@ describe('DealDetailsModals', () => {
     );
 
     expect(screen.getByText('Похожие сделки')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Похожие сделки' }).parentElement).toHaveStyle({
+      zIndex: '70',
+    });
     fireEvent.click(screen.getByRole('checkbox', { name: /Показывать закрытые сделки/i }));
     expect(onToggleIncludeClosed).toHaveBeenCalledWith(true);
 
@@ -220,6 +234,7 @@ describe('DealDetailsModals', () => {
         includeClosed={false}
         isLoading={false}
         error={null}
+        zIndex={70}
         onToggleIncludeClosed={onToggleIncludeClosed}
         onToggleCandidate={onToggleCandidate}
         onContinue={onContinue}

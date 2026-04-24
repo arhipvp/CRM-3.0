@@ -12,6 +12,7 @@ interface PaymentModalProps {
   dealTitle?: string;
   policies?: Policy[];
   fixedPolicyId?: string;
+  zIndex?: number;
   onSubmit: (values: AddPaymentFormValues) => Promise<void>;
   onClose: () => void;
 }
@@ -24,6 +25,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   dealTitle,
   policies,
   fixedPolicyId,
+  zIndex = 50,
   onSubmit,
   onClose,
 }) => {
@@ -33,7 +35,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       title={title}
       onClose={onClose}
       size="sm"
-      zIndex={50}
+      zIndex={zIndex}
       closeOnOverlayClick={false}
     >
       <AddPaymentForm

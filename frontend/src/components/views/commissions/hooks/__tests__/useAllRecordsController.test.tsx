@@ -12,11 +12,14 @@ vi.mock('../../../../../api', async () => {
   };
 });
 
-vi.mock('../../../../../hooks/useDebouncedValue', () => ({
-  useDebouncedValue: <T,>(value: T) => value,
-}));
-
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
+
+const emptyPayload = {
+  count: 0,
+  next: null,
+  previous: null,
+  results: [],
+};
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -46,6 +49,90 @@ describe('useAllRecordsController', () => {
     });
 
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
+  });
+
+  it('does not apply typed search until search is submitted', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+
+    const { result } = renderHook(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.setAllRecordsSearchInput('гриша');
+      await Promise.resolve();
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1 }),
+      expect.any(Object),
+    );
+    expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: 'гриша' }),
+      expect.any(Object),
+    );
+  });
+
+  it('applies submitted search to server filters', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+
+    const { result } = renderHook(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.applyAllRecordsSearch('гриша');
+      await Promise.resolve();
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, search: 'гриша' }),
+      expect.any(Object),
+    );
+  });
+
+  it('keeps applied search when records are refreshed', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+
+    const { result } = renderHook(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.applyAllRecordsSearch('гриша');
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await result.current.loadAllRecords('reset');
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, search: 'гриша' }),
+      expect.any(Object),
+    );
   });
 
   it('keeps empty search result when an older request resolves later', async () => {
@@ -81,11 +168,11 @@ describe('useAllRecordsController', () => {
 
     await act(async () => {
       await Promise.resolve();
-      result.current.setAllRecordsSearch('старый');
+      result.current.applyAllRecordsSearch('старый');
     });
 
     await act(async () => {
-      result.current.setAllRecordsSearch('новый');
+      result.current.applyAllRecordsSearch('новый');
     });
 
     await act(async () => {
@@ -173,7 +260,7 @@ describe('useAllRecordsController', () => {
     });
 
     await act(async () => {
-      result.current.setAllRecordsSearch('новый');
+      result.current.applyAllRecordsSearch('новый');
     });
 
     await act(async () => {

@@ -13,6 +13,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   tone?: ConfirmTone;
   isLoading?: boolean;
+  zIndex?: number;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -25,6 +26,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelText = 'Отмена',
   tone = 'danger',
   isLoading = false,
+  zIndex = 80,
   onConfirm,
   onCancel,
 }) => {
@@ -35,7 +37,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const confirmClassName = tone === 'danger' ? BTN_DANGER : BTN_PRIMARY;
 
   return (
-    <Modal title={title} onClose={onCancel} size="sm" closeOnOverlayClick={false}>
+    <Modal title={title} onClose={onCancel} size="sm" zIndex={zIndex} closeOnOverlayClick={false}>
       <div className="space-y-4">
         <p className="text-sm text-slate-700">{message}</p>
         <div className="flex justify-end gap-3 pt-2">

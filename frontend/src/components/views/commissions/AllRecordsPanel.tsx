@@ -13,8 +13,9 @@ import {
 } from '../../common/uiClassNames';
 
 interface AllRecordsPanelProps {
-  allRecordsSearch: string;
+  allRecordsSearchInput: string;
   onSearchChange: (value: string) => void;
+  onSearchSubmit: (value?: string) => void;
   allRecordsError: string | null;
   isAllRecordsLoading: boolean;
   onRetryLoad: () => void;
@@ -104,8 +105,9 @@ function RecordTypeButton({
 }
 
 export function AllRecordsPanel({
-  allRecordsSearch,
+  allRecordsSearchInput,
   onSearchChange,
+  onSearchSubmit,
   allRecordsError,
   isAllRecordsLoading,
   onRetryLoad,
@@ -143,19 +145,52 @@ export function AllRecordsPanel({
             </span>
             <span className={SECTION_HELP_TEXT}>Фильтры по записям</span>
           </div>
-          <div className="w-full max-w-sm">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSearchSubmit();
+            }}
+            className="flex w-full max-w-md items-center gap-2"
+          >
             <label htmlFor="allFinancialSearch" className="sr-only">
               Поиск по записям
             </label>
-            <input
-              id="allFinancialSearch"
-              type="search"
-              value={allRecordsSearch}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Поиск по клиенту, полису, сделке, примечанию..."
-              className="field field-input"
-            />
-          </div>
+            <div className="relative flex-1">
+              <input
+                id="allFinancialSearch"
+                type="search"
+                value={allRecordsSearchInput}
+                onChange={(event) => onSearchChange(event.target.value)}
+                placeholder="Поиск по записям"
+                className="field field-input pr-10"
+              />
+              {allRecordsSearchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSearchChange('');
+                    onSearchSubmit('');
+                  }}
+                  aria-label="Очистить поиск финансовых записей"
+                  className="search-clear-btn"
+                  disabled={isAllRecordsLoading}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <button type="submit" className={BTN_SM_QUIET} disabled={isAllRecordsLoading}>
+              Найти
+            </button>
+            <button
+              type="button"
+              className={BTN_SM_QUIET}
+              onClick={onRetryLoad}
+              disabled={isAllRecordsLoading}
+            >
+              {isAllRecordsLoading ? 'Обновляем...' : 'Обновить'}
+            </button>
+          </form>
         </div>
       </div>
       {allRecordsError && (

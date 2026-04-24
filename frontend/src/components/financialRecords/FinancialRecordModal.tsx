@@ -13,6 +13,7 @@ interface FinancialRecordModalProps {
   paymentId: string;
   defaultRecordType?: 'income' | 'expense';
   record?: FinancialRecord;
+  zIndex?: number;
   onSubmit: (values: AddFinancialRecordFormValues) => Promise<void>;
   onClose: () => void;
 }
@@ -23,6 +24,7 @@ export const FinancialRecordModal: React.FC<FinancialRecordModalProps> = ({
   paymentId,
   defaultRecordType,
   record,
+  zIndex = 50,
   onSubmit,
   onClose,
 }) => {
@@ -34,7 +36,7 @@ export const FinancialRecordModal: React.FC<FinancialRecordModalProps> = ({
       title={title}
       onClose={onClose}
       size="sm"
-      zIndex={50}
+      zIndex={zIndex}
       closeOnOverlayClick={false}
     >
       <AddFinancialRecordForm

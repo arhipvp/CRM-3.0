@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FilterParams } from '../../../../api';
 import { fetchFinancialRecordsWithPagination } from '../../../../api';
 import type { FinancialRecord, Statement } from '../../../../types';
-import { useDebouncedValue } from '../../../../hooks/useDebouncedValue';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import type { AllRecordsSortKey } from '../RecordsTable';
 
@@ -16,7 +15,8 @@ export const useAllRecordsController = ({
   viewMode,
   statementsById,
 }: UseAllRecordsControllerArgs) => {
-  const [allRecordsSearch, setAllRecordsSearch] = useState('');
+  const [allRecordsSearchInput, setAllRecordsSearchInput] = useState('');
+  const [allRecordsSearchApplied, setAllRecordsSearchApplied] = useState('');
   const [showUnpaidPayments, setShowUnpaidPayments] = useState(false);
   const [showStatementRecords, setShowStatementRecords] = useState(false);
   const [showPaidRecords, setShowPaidRecords] = useState(false);
@@ -35,10 +35,16 @@ export const useAllRecordsController = ({
   const allRecordsRequestRef = useRef(0);
   const allRecordsAbortControllerRef = useRef<AbortController | null>(null);
 
-  const debouncedSearch = useDebouncedValue(allRecordsSearch.trim(), 450);
-  // Поиск должен фильтровать даже по коротким строкам; иначе при "не нашлось"
-  // пользователь видит полный список, что выглядит как баг.
-  const effectiveSearch = debouncedSearch;
+  const applyAllRecordsSearch = useCallback(
+    (nextSearch?: string) => {
+      const rawValue = nextSearch ?? allRecordsSearchInput;
+      if (nextSearch !== undefined) {
+        setAllRecordsSearchInput(rawValue);
+      }
+      setAllRecordsSearchApplied(rawValue.trim());
+    },
+    [allRecordsSearchInput],
+  );
 
   const isRecordTypeLocked = useMemo(
     () => viewMode === 'all' && Boolean(targetStatementId),
@@ -69,8 +75,8 @@ export const useAllRecordsController = ({
       const controller = new AbortController();
       allRecordsAbortControllerRef.current = controller;
       const filters: FilterParams = {};
-      if (effectiveSearch) {
-        filters.search = effectiveSearch;
+      if (allRecordsSearchApplied) {
+        filters.search = allRecordsSearchApplied;
       }
       if (!showUnpaidPayments) {
         filters.payment_paid = true;
@@ -145,7 +151,7 @@ export const useAllRecordsController = ({
       }
     },
     [
-      effectiveSearch,
+      allRecordsSearchApplied,
       allRecordsSortDirection,
       allRecordsSortKey,
       recordTypeFilter,
@@ -216,8 +222,10 @@ export const useAllRecordsController = ({
   );
 
   return {
-    allRecordsSearch,
-    setAllRecordsSearch,
+    allRecordsSearchInput,
+    setAllRecordsSearchInput,
+    allRecordsSearchApplied,
+    applyAllRecordsSearch,
     showUnpaidPayments,
     setShowUnpaidPayments,
     showStatementRecords,

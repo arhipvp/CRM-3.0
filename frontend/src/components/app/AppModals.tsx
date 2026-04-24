@@ -25,6 +25,8 @@ import { FormModal } from '../common/modal/FormModal';
 import { splitFinancialRecords } from './financialRecordDrafts';
 import { sortPaymentDraftEntries } from '../forms/addPolicy/paymentDraftOrdering';
 
+const APP_OVERLAY_MODAL_Z_INDEX = 70;
+
 interface PolicyPrefill {
   values: PolicyFormValues;
   insuranceCompanyName?: string;
@@ -267,7 +269,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
       )}
 
       {quoteDealId && (
-        <FormModal isOpen title="Добавить расчёт" onClose={() => setQuoteDealId(null)}>
+        <FormModal
+          isOpen
+          title="Добавить расчёт"
+          onClose={() => setQuoteDealId(null)}
+          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+        >
           <AddQuoteForm
             onSubmit={(values) => handleAddQuote(quoteDealId, values)}
             onCancel={() => setQuoteDealId(null)}
@@ -276,7 +283,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
       )}
 
       {editingQuote && (
-        <FormModal isOpen title="Редактировать расчёт" onClose={() => setEditingQuote(null)}>
+        <FormModal
+          isOpen
+          title="Редактировать расчёт"
+          onClose={() => setEditingQuote(null)}
+          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+        >
           <AddQuoteForm
             initialValues={editingQuote}
             onSubmit={handleUpdateQuote}
@@ -293,6 +305,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
             void requestClosePolicyModal();
           }}
           size="xl"
+          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
           closeOnOverlayClick={false}
           panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
           bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
@@ -325,6 +338,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
             void requestCloseEditingPolicyModal();
           }}
           size="xl"
+          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
           closeOnOverlayClick={false}
           panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
           bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
@@ -354,6 +368,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
           isOpen
           title="Редактировать платёж"
           payment={payments.find((p) => p.id === paymentModal.paymentId)}
+          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
           onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
           onClose={() => setPaymentModal(null)}
         />
@@ -365,13 +380,19 @@ export const AppModals: React.FC<AppModalsProps> = ({
           title="Редактировать запись"
           paymentId={financialRecordModal.paymentId!}
           record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
+          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
           onClose={() => setFinancialRecordModal(null)}
           onSubmit={(values) => handleUpdateFinancialRecord(financialRecordModal.recordId!, values)}
         />
       )}
 
       {isClientModalOverlayOpen && (
-        <FormModal isOpen title="Новый клиент" onClose={closeClientModal} zIndex={50}>
+        <FormModal
+          isOpen
+          title="Новый клиент"
+          onClose={closeClientModal}
+          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+        >
           <ClientForm onSubmit={handleAddClient} />
         </FormModal>
       )}

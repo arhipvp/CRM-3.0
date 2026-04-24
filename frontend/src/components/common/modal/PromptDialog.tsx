@@ -20,6 +20,7 @@ interface PromptDialogProps {
   error?: string | null;
   inputType?: 'textarea' | 'date';
   required?: boolean;
+  zIndex?: number;
 }
 
 export const PromptDialog: React.FC<PromptDialogProps> = ({
@@ -36,6 +37,7 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
   error,
   inputType = 'textarea',
   required = true,
+  zIndex,
 }) => {
   const fieldId = useId();
 
@@ -45,6 +47,7 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
       title={title}
       onClose={onCancel}
       size="sm"
+      zIndex={zIndex}
       closeOnOverlayClick={false}
     >
       <form

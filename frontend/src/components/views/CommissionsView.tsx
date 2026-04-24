@@ -112,8 +112,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [statements],
   );
   const {
-    allRecordsSearch,
-    setAllRecordsSearch,
+    allRecordsSearchInput,
+    setAllRecordsSearchInput,
+    applyAllRecordsSearch,
     showUnpaidPayments,
     setShowUnpaidPayments,
     showStatementRecords,
@@ -761,8 +762,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           hidden={viewMode !== 'all'}
         >
           <AllRecordsPanel
-            allRecordsSearch={allRecordsSearch}
-            onSearchChange={setAllRecordsSearch}
+            allRecordsSearchInput={allRecordsSearchInput}
+            onSearchChange={setAllRecordsSearchInput}
+            onSearchSubmit={applyAllRecordsSearch}
             allRecordsError={allRecordsError}
             isAllRecordsLoading={isAllRecordsLoading}
             onRetryLoad={() => {

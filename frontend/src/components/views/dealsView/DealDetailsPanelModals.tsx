@@ -15,6 +15,8 @@ import { BTN_SECONDARY } from '../../common/buttonStyles';
 import { DealDelayModal, DealMergeModal, DealSimilarModal } from './DealDetailsModals';
 import type { DealEvent } from './eventUtils';
 
+const DEAL_CHILD_MODAL_Z_INDEX = 70;
+
 interface DealDetailsPanelModalsProps {
   clients: Client[];
   users: User[];
@@ -199,7 +201,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
         title="Редактировать сделку"
         onClose={() => setIsEditingDeal(false)}
         size="sm"
-        zIndex={50}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
         closeOnOverlayClick={false}
       >
         <div className="space-y-3">
@@ -246,7 +248,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
         title="Новая задача"
         onClose={() => setIsCreatingTask(false)}
         size="sm"
-        zIndex={50}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
         closeOnOverlayClick={false}
       >
         <AddTaskForm
@@ -266,7 +268,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
         title="Редактировать задачу"
         onClose={() => setEditingTaskId(null)}
         size="sm"
-        zIndex={50}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
         closeOnOverlayClick={false}
       >
         <AddTaskForm
@@ -291,6 +293,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
         dealTitle={selectedDeal.title}
         policies={relatedPolicies}
         fixedPolicyId={paymentFixedPolicyId}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
         onClose={closePaymentModal}
         onSubmit={async (data) => {
           if (editingPaymentId === 'new') {
@@ -310,6 +313,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
         paymentId={financialRecordPaymentId}
         defaultRecordType={financialRecordDefaultRecordType}
         record={editingFinancialRecord}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
         onSubmit={async (data) => {
           if (editingFinancialRecordId) {
             await onUpdateFinancialRecord(editingFinancialRecordId, data);
@@ -331,6 +335,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
         isSchedulingDelay={isSchedulingDelay}
         isLeadDaysLoading={isLeadDaysLoading}
         validationError={validationError}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
         onClose={() => setIsDelayModalOpen(false)}
         onEventSelect={onEventSelect}
         onNextContactChange={onNextContactChange}
@@ -363,6 +368,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
         onClose={closeMergeModal}
         onSubmit={handleMergeSubmit}
         onRequestAddClient={onRequestAddClient}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
       />
     )}
     {isSimilarModalOpen && selectedDeal && (
@@ -379,6 +385,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
           void continueFromSimilarToMerge();
         }}
         onClose={closeSimilarModal}
+        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
       />
     )}
     <PromptDialog
@@ -390,6 +397,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
       error={closeDealReasonError}
       confirmLabel={isClosingDeal ? 'Закрытие...' : 'Закрыть сделку'}
       isSubmitting={isClosingDeal}
+      zIndex={DEAL_CHILD_MODAL_Z_INDEX}
       onConfirm={handleCloseDealConfirm}
       onCancel={() => setIsCloseDealPromptOpen(false)}
     />
