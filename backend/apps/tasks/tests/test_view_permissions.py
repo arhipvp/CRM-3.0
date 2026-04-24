@@ -74,7 +74,10 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         self.authenticate(self.executor)
         response = self.api_client.patch(
             f"/api/v1/tasks/{self.task.id}/",
-            {"status": Task.TaskStatus.DONE},
+            {
+                "status": Task.TaskStatus.DONE,
+                "completion_comment": "  Готово, документы проверены.  ",
+            },
             format="json",
         )
 
@@ -84,6 +87,41 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         self.assertEqual(self.task.status, Task.TaskStatus.DONE)
         self.assertEqual(self.task.completed_by_id, self.executor.id)
         self.assertIsNotNone(self.task.completed_at)
+        self.assertEqual(self.task.completion_comment, "Готово, документы проверены.")
+        self.assertEqual(
+            response.data["completion_comment"], "Готово, документы проверены."
+        )
+
+    def test_reopening_task_clears_completion_comment(self):
+        self.task.assignee = self.executor
+        self.task.status = Task.TaskStatus.DONE
+        self.task.completed_by = self.executor
+        self.task.completed_at = timezone.now()
+        self.task.completion_comment = "Выполнено с комментарием"
+        self.task.save(
+            update_fields=[
+                "assignee",
+                "status",
+                "completed_by",
+                "completed_at",
+                "completion_comment",
+            ]
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.patch(
+            f"/api/v1/tasks/{self.task.id}/",
+            {"status": Task.TaskStatus.TODO},
+            format="json",
+        )
+
+        self.task.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.task.status, Task.TaskStatus.TODO)
+        self.assertIsNone(self.task.completed_by)
+        self.assertIsNone(self.task.completed_at)
+        self.assertEqual(self.task.completion_comment, "")
 
     def test_deleted_tasks_hidden_by_default(self):
         self._delete_task(self.seller)

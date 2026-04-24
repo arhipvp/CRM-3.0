@@ -486,6 +486,7 @@ export const mapTask = (raw: Record<string, unknown>): Task => {
     completedAt: raw.completed_at === undefined ? undefined : toNullableString(raw.completed_at),
     completedByName:
       raw.completed_by_name === undefined ? undefined : toNullableString(raw.completed_by_name),
+    completionComment: toOptionalString(raw.completion_comment ?? raw.completionComment) ?? '',
     deletedAt: raw.deleted_at === undefined ? undefined : toNullableString(raw.deleted_at),
   };
 };

@@ -596,5 +596,6 @@ export interface Task {
   createdAt: string;
   completedAt?: string | null;
   completedByName?: string | null;
+  completionComment?: string;
   deletedAt?: string | null;
 }

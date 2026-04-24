@@ -13,6 +13,8 @@ import { DataTableShell } from '../common/table/DataTableShell';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 import { useConfirm } from '../../hooks/useConfirm';
 import { confirmTexts } from '../../constants/confirmTexts';
+import { PromptDialog } from '../common/modal/PromptDialog';
+import { useState } from 'react';
 
 interface TaskTableProps {
   tasks: Task[];
@@ -22,7 +24,7 @@ interface TaskTableProps {
   showClientColumn?: boolean;
   showReminderColumn?: boolean;
   taskColumnClassName?: string;
-  onMarkTaskDone?: (taskId: string) => void;
+  onMarkTaskDone?: (taskId: string, completionComment?: string) => void;
   onEditTask?: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => Promise<void>;
   completingTaskIds?: string[];
@@ -46,6 +48,8 @@ export function TaskTable({
   onDealClick,
 }: TaskTableProps) {
   const { confirm, ConfirmDialogRenderer } = useConfirm();
+  const [completionTaskId, setCompletionTaskId] = useState<string | null>(null);
+  const [completionComment, setCompletionComment] = useState('');
   const hasActions =
     showActions && (Boolean(onMarkTaskDone) || Boolean(onEditTask) || Boolean(onDeleteTask));
 
@@ -78,15 +82,25 @@ export function TaskTable({
     onDeleteTask(taskId).catch(() => undefined);
   };
 
-  const handleMarkDone = async (taskId: string) => {
+  const openCompletionPrompt = (taskId: string) => {
     if (!onMarkTaskDone) {
       return;
     }
-    const confirmed = await confirm(confirmTexts.completeTask());
-    if (!confirmed) {
+    setCompletionTaskId(taskId);
+    setCompletionComment('');
+  };
+
+  const closeCompletionPrompt = () => {
+    setCompletionTaskId(null);
+    setCompletionComment('');
+  };
+
+  const handleCompleteTask = () => {
+    if (!onMarkTaskDone || !completionTaskId) {
       return;
     }
-    onMarkTaskDone(taskId);
+    onMarkTaskDone(completionTaskId, completionComment.trim());
+    closeCompletionPrompt();
   };
 
   const handleDealClick = (task: Task) => {
@@ -267,6 +281,11 @@ export function TaskTable({
                         )}
                       </p>
                     )}
+                    {isDone && task.completionComment && (
+                      <p className="mt-1 text-[11px] font-medium leading-snug text-sky-700">
+                        Комментарий: {task.completionComment}
+                      </p>
+                    )}
                   </td>
 
                   {hasActions && (
@@ -275,7 +294,7 @@ export function TaskTable({
                         {onMarkTaskDone && task.status !== 'done' && (
                           <button
                             type="button"
-                            onClick={() => handleMarkDone(task.id)}
+                            onClick={() => openCompletionPrompt(task.id)}
                             disabled={completingTaskIds.includes(task.id)}
                             className="icon-btn h-8 w-8 text-emerald-700 hover:bg-emerald-50"
                             aria-label="Отметить выполненной"
@@ -320,6 +339,18 @@ export function TaskTable({
         </table>
       </DataTableShell>
       <ConfirmDialogRenderer />
+      <PromptDialog
+        isOpen={Boolean(completionTaskId)}
+        title="Выполнение задачи"
+        label="Комментарий"
+        value={completionComment}
+        onChange={setCompletionComment}
+        onCancel={closeCompletionPrompt}
+        onConfirm={handleCompleteTask}
+        confirmLabel="Завершить"
+        placeholder="Например: посчитано в Сбер, клиенту отправлено"
+        required={false}
+      />
     </>
   );
 }

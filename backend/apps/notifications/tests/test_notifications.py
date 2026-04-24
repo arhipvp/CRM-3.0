@@ -208,6 +208,42 @@ class TaskCompletionTelegramNotificationTests(TestCase):
             return Task.objects.create(**payload)
 
     def test_sends_notification_when_task_changes_from_todo_to_done(self):
+        task = self._create_task(completion_comment="Посчитал каско в Сбер.")
+
+        with patch(
+            "apps.notifications.telegram_notifications.get_telegram_client",
+            return_value=self.fake_tg,
+        ):
+            task.status = Task.TaskStatus.DONE
+            task.completed_at = timezone.now()
+            task.completed_by = self.executor
+            task.save(
+                update_fields=[
+                    "status",
+                    "completed_at",
+                    "completed_by",
+                    "completion_comment",
+                ]
+            )
+
+        self.assertEqual(len(self.fake_tg.sent_messages), 1)
+        completion_message = self.fake_tg.sent_messages[0]
+        self.assertEqual(completion_message["chat_id"], 3001)
+        self.assertIn("✅", completion_message["text"])
+        self.assertIn("Задача выполнена", completion_message["text"])
+        self.assertIn("Проверить договор", completion_message["text"])
+        self.assertIn("Комментарий: Посчитал каско в Сбер.", completion_message["text"])
+        self.assertEqual(
+            NotificationDelivery.objects.filter(
+                user=self.creator,
+                event_type="task_completed",
+                object_type="task",
+                object_id=str(task.id),
+            ).count(),
+            1,
+        )
+
+    def test_completion_notification_omits_empty_comment(self):
         task = self._create_task()
 
         with patch(
@@ -220,20 +256,7 @@ class TaskCompletionTelegramNotificationTests(TestCase):
             task.save(update_fields=["status", "completed_at", "completed_by"])
 
         self.assertEqual(len(self.fake_tg.sent_messages), 1)
-        completion_message = self.fake_tg.sent_messages[0]
-        self.assertEqual(completion_message["chat_id"], 3001)
-        self.assertIn("✅", completion_message["text"])
-        self.assertIn("Задача выполнена", completion_message["text"])
-        self.assertIn("Проверить договор", completion_message["text"])
-        self.assertEqual(
-            NotificationDelivery.objects.filter(
-                user=self.creator,
-                event_type="task_completed",
-                object_type="task",
-                object_id=str(task.id),
-            ).count(),
-            1,
-        )
+        self.assertNotIn("Комментарий:", self.fake_tg.sent_messages[0]["text"])
 
     def test_does_not_send_completion_notification_on_create_with_done_status(self):
         with patch(

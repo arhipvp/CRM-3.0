@@ -23,7 +23,10 @@ interface UseDealDetailsPanelActionsParams {
     payload: { reason: string; status?: 'won' | 'lost' },
   ) => Promise<void>;
   onReopenDeal: (dealId: string) => Promise<void>;
-  onUpdateTask: (taskId: string, data: { status: 'done' }) => Promise<void>;
+  onUpdateTask: (
+    taskId: string,
+    data: { status: 'done'; completionComment?: string },
+  ) => Promise<void>;
   onCreateDealMailbox: (dealId: string) => Promise<{
     deal: { mailboxEmail?: string | null };
     mailboxInitialPassword?: string | null;
@@ -295,14 +298,18 @@ export const useDealDetailsPanelActions = ({
   }, [isSelectedDealDeleted, openSimilarModal, selectedDeal]);
 
   const handleMarkTaskDone = useCallback(
-    async (taskId: string) => {
+    async (taskId: string, completionComment = '') => {
       if (completingTaskIds.includes(taskId)) {
         return;
       }
 
       setCompletingTaskIds((prev) => [...prev, taskId]);
       await runAsyncUiAction({
-        action: () => onUpdateTask(taskId, { status: 'done' }),
+        action: () =>
+          onUpdateTask(taskId, {
+            status: 'done',
+            completionComment: completionComment.trim(),
+          }),
         debugLabel: 'Task completion failed',
         fallbackMessage: 'Не удалось отметить задачу выполненной.',
         setError: setActionError,

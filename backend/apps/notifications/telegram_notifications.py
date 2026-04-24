@@ -173,8 +173,10 @@ def notify_task_completed(task) -> None:
     deal = getattr(task, "deal", None)
     deal_title = _format_deal_title(deal)
     deal_part = f" (сделка: {deal_title})" if deal_title else ""
+    comment = str(getattr(task, "completion_comment", "") or "").strip()
+    comment_part = f"\nКомментарий: {comment}" if comment else ""
     text = _append_link(
-        f"{TASK_COMPLETED_PREFIX} {task.title}{deal_part}",
+        f"{TASK_COMPLETED_PREFIX} {task.title}{deal_part}{comment_part}",
         getattr(deal, "id", None),
     )
     send_notification(

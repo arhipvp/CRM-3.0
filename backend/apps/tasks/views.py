@@ -87,6 +87,9 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if status == Task.TaskStatus.DONE:
             completion_kwargs["completed_by"] = user
             completion_kwargs["completed_at"] = timezone.now()
+            completion_kwargs["completion_comment"] = str(
+                serializer.validated_data.get("completion_comment") or ""
+            ).strip()
         if not assignee_provided and deal and deal.executor:
             serializer.save(
                 created_by=user, assignee=deal.executor, **completion_kwargs
@@ -102,9 +105,20 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if new_status == Task.TaskStatus.DONE and old_status != Task.TaskStatus.DONE:
             completion_kwargs["completed_by"] = user
             completion_kwargs["completed_at"] = timezone.now()
+            completion_kwargs["completion_comment"] = str(
+                serializer.validated_data.get("completion_comment") or ""
+            ).strip()
         elif new_status != Task.TaskStatus.DONE and old_status == Task.TaskStatus.DONE:
             completion_kwargs["completed_by"] = None
             completion_kwargs["completed_at"] = None
+            completion_kwargs["completion_comment"] = ""
+        elif (
+            new_status == Task.TaskStatus.DONE
+            and "completion_comment" in serializer.validated_data
+        ):
+            completion_kwargs["completion_comment"] = str(
+                serializer.validated_data.get("completion_comment") or ""
+            ).strip()
         serializer.save(**completion_kwargs)
 
     def _is_deal_seller(self, user, instance):
@@ -133,7 +147,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return False
 
         requested_fields = set(request.data.keys())
-        return requested_fields.issubset({"status"})
+        return requested_fields.issubset({"status", "completion_comment"})
 
     def _can_modify(self, user, instance):
         if getattr(self, "_allow_executor_status_update", False):

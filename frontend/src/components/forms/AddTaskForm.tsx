@@ -13,6 +13,7 @@ export interface AddTaskFormValues {
   priority: TaskPriority;
   dueAt?: string | null;
   status?: TaskStatus;
+  completionComment?: string;
 }
 
 interface AddTaskFormProps {

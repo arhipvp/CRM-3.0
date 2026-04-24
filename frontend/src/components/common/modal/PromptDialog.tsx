@@ -19,6 +19,7 @@ interface PromptDialogProps {
   placeholder?: string;
   error?: string | null;
   inputType?: 'textarea' | 'date';
+  required?: boolean;
 }
 
 export const PromptDialog: React.FC<PromptDialogProps> = ({
@@ -34,6 +35,7 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
   placeholder,
   error,
   inputType = 'textarea',
+  required = true,
 }) => {
   const fieldId = useId();
 
@@ -53,7 +55,7 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
         className="space-y-4"
       >
         <FormError message={error} />
-        <FormField label={label} htmlFor={fieldId} required>
+        <FormField label={label} htmlFor={fieldId} required={required}>
           {inputType === 'date' ? (
             <input
               id={fieldId}

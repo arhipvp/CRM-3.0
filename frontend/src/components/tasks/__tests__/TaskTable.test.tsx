@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { TaskTable } from '../TaskTable';
 import type { Task } from '../../../types';
 
@@ -21,6 +22,7 @@ const buildTask = (overrides: Partial<Task> = {}): Task => ({
   createdAt: '2026-04-01T09:00:00Z',
   completedAt: null,
   completedByName: null,
+  completionComment: '',
   deletedAt: null,
   ...overrides,
 });
@@ -56,5 +58,34 @@ describe('TaskTable', () => {
 
     expect(screen.getByText('Срочная задача')).toHaveClass('text-rose-700');
     expect(screen.getByText('Срочная задача')).toHaveClass('line-through');
+  });
+
+  it('renders completion comment in blue for completed task', () => {
+    render(
+      <TaskTable
+        tasks={[
+          buildTask({
+            status: 'done',
+            completionComment: 'Посчитано в Сбер.',
+            completedAt: '2026-04-01T11:00:00Z',
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('Комментарий: Посчитано в Сбер.')).toHaveClass('text-sky-700');
+  });
+
+  it('asks for completion comment before marking task done', async () => {
+    const user = userEvent.setup();
+    const onMarkTaskDone = vi.fn();
+
+    render(<TaskTable tasks={[buildTask()]} showActions onMarkTaskDone={onMarkTaskDone} />);
+
+    await user.click(screen.getByRole('button', { name: 'Отметить выполненной' }));
+    await user.type(screen.getByLabelText('Комментарий'), 'Готово, отправлено клиенту');
+    await user.click(screen.getByRole('button', { name: 'Завершить' }));
+
+    expect(onMarkTaskDone).toHaveBeenCalledWith('task-1', 'Готово, отправлено клиенту');
   });
 });

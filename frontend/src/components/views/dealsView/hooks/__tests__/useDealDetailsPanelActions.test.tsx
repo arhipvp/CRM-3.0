@@ -75,4 +75,50 @@ describe('useDealDetailsPanelActions', () => {
       expectedClose: '2026-10-24',
     });
   });
+
+  it('passes trimmed completion comment when marking task done', async () => {
+    const onUpdateTask = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useDealDetailsPanelActions({
+        selectedDeal,
+        relatedTasks: [],
+        dealEvents: [],
+        nextDelayEventId: null,
+        selectedDelayEvent: null,
+        selectedDelayEventNextContact: null,
+        isSelectedDealDeleted: false,
+        isDealClosedStatus: false,
+        isCurrentUserSeller: true,
+        canReopenClosedDeal: false,
+        onDeleteDeal: vi.fn().mockResolvedValue(undefined),
+        onRestoreDeal: vi.fn().mockResolvedValue(undefined),
+        onCloseDeal: vi.fn().mockResolvedValue(undefined),
+        onReopenDeal: vi.fn().mockResolvedValue(undefined),
+        onUpdateTask,
+        onCreateDealMailbox: vi.fn().mockResolvedValue({ deal: {} }),
+        onCheckDealMailbox: vi.fn().mockResolvedValue({
+          mailboxSync: { processed: 0, skipped: 0, failed: 0, deleted: 0 },
+        }),
+        onRefreshDeal: vi.fn().mockResolvedValue(undefined),
+        onRefreshPolicies: vi.fn().mockResolvedValue(undefined),
+        onScheduleDelay: vi.fn().mockResolvedValue(undefined),
+        onLoadChatMessages: vi.fn().mockResolvedValue(undefined),
+        onLoadActivityLogs: vi.fn().mockResolvedValue(undefined),
+        onReloadNotes: vi.fn().mockResolvedValue(undefined),
+        onLoadDriveFiles: vi.fn().mockResolvedValue(undefined),
+        openMergeModal: vi.fn(),
+        openSimilarModal: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleMarkTaskDone('task-1', '  Готово  ');
+    });
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+      status: 'done',
+      completionComment: 'Готово',
+    });
+  });
 });

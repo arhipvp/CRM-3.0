@@ -104,6 +104,7 @@ export async function updateTask(
     priority: string;
     dueAt: string | null;
     status: string;
+    completionComment: string;
     assigneeId?: string | null;
   }>,
 ): Promise<Task> {
@@ -113,6 +114,7 @@ export async function updateTask(
     priority: data.priority,
     due_at: data.dueAt,
     status: data.status,
+    completion_comment: data.completionComment,
   };
   if ('assigneeId' in data) {
     body.assignee = data.assigneeId === '' ? null : data.assigneeId;

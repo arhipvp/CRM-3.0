@@ -10,7 +10,7 @@ interface TasksTabProps {
   relatedTasks: Task[];
   onCreateTaskClick: () => void;
   onEditTaskClick: (taskId: string) => void;
-  onMarkTaskDone: (taskId: string) => void;
+  onMarkTaskDone: (taskId: string, completionComment?: string) => void;
   onDeleteTask: (taskId: string) => Promise<void>;
   completingTaskIds: string[];
 }

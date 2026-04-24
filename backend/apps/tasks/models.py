@@ -66,6 +66,11 @@ class Task(SoftDeleteModel):
     completed_at = models.DateTimeField(
         null=True, blank=True, help_text="Дата и время завершения"
     )
+    completion_comment = models.TextField(
+        blank=True,
+        default="",
+        help_text="Комментарий при завершении задачи",
+    )
 
     # Статус и приоритет
     status = models.CharField(
