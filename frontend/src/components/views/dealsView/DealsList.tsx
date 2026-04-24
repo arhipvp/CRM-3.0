@@ -12,6 +12,10 @@ import { formatDate, formatDeletedAt, getDeadlineTone, getUserDisplayName } from
 
 type DealsSortKey = 'deadline' | 'nextContact';
 type DealsSortDirection = 'asc' | 'desc' | null;
+type DeadlineBadge = {
+  label: string;
+  className: string;
+};
 
 interface DealsListProps {
   sortedDeals: Deal[];
@@ -74,6 +78,37 @@ export const DealsList: React.FC<DealsListProps> = ({
   const lastHandledFocusNonceRef = useRef<number | null>(null);
 
   const selectedDealId = selectedDeal?.id ?? null;
+
+  const getDeadlineBadge = (value?: string | null): DeadlineBadge => {
+    if (!value) {
+      return {
+        label: 'Нет срока',
+        className: 'bg-slate-100 text-slate-600 border-slate-200',
+      };
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(value);
+    deadline.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return {
+        label: `Просрочено: ${formatDate(value)}`,
+        className: 'bg-rose-50 text-rose-700 border-rose-200',
+      };
+    }
+    if (diffDays <= 3) {
+      return {
+        label: `Скоро: ${formatDate(value)}`,
+        className: 'bg-orange-50 text-orange-700 border-orange-200',
+      };
+    }
+    return {
+      label: formatDate(value),
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    };
+  };
 
   useEffect(() => {
     if (!selectedDealId || !selectedRowRef.current || !selectedRowRef.current.isConnected) {
@@ -288,7 +323,7 @@ export const DealsList: React.FC<DealsListProps> = ({
       </div>
 
       <DataTableShell>
-        <div className="max-h-[380px] overflow-y-auto bg-white/95">
+        <div className="hidden max-h-[52vh] overflow-y-auto bg-white/95 md:block">
           <table className="deals-table min-w-full border-collapse text-left text-sm">
             <thead className={`sticky top-0 backdrop-blur ${TABLE_THEAD_CLASS}`}>
               <tr>
@@ -339,6 +374,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               {sortedDeals.length ? (
                 sortedDeals.map((deal) => {
                   const deadlineTone = getDeadlineTone(deal.expectedClose);
+                  const deadlineBadge = getDeadlineBadge(deal.expectedClose);
                   const isDeleted = Boolean(deal.deletedAt);
                   const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
                   const isSelected = selectedDeal?.id === deal.id;
@@ -489,14 +525,17 @@ export const DealsList: React.FC<DealsListProps> = ({
                         className={`${TABLE_CELL_CLASS_LG} text-sm font-semibold text-center ${deletedTextClass}`}
                       >
                         {deal.expectedClose ? (
-                          <span className={`${deadlineTone}`}>
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-1 text-xs ${deadlineBadge.className} ${deadlineTone}`}
+                            title={deadlineBadge.label}
+                          >
                             {formatDate(deal.expectedClose)}
                           </span>
                         ) : (
                           <span
-                            className={`text-xs font-semibold text-rose-600 ${deletedTextClass}`}
+                            className={`inline-flex rounded-full border px-2 py-1 text-xs ${deadlineBadge.className} ${deletedTextClass}`}
                           >
-                            Нет срока
+                            {deadlineBadge.label}
                           </span>
                         )}
                       </td>
@@ -518,6 +557,82 @@ export const DealsList: React.FC<DealsListProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+        <div className="divide-y divide-slate-200 bg-white md:hidden">
+          {sortedDeals.length ? (
+            sortedDeals.map((deal) => {
+              const deadlineBadge = getDeadlineBadge(deal.expectedClose);
+              const isSelected = selectedDeal?.id === deal.id;
+              const isPinned = Boolean(deal.isPinned);
+              const isDeleted = Boolean(deal.deletedAt);
+              return (
+                <button
+                  key={deal.id}
+                  type="button"
+                  onClick={() => {
+                    if (!isDealSelectionBlocked) {
+                      onSelectDeal(deal.id);
+                    }
+                  }}
+                  disabled={isDealSelectionBlocked}
+                  aria-label={`Открыть сделку ${deal.title}`}
+                  className={`block w-full border-l-4 px-4 py-4 text-left transition ${
+                    isSelected
+                      ? 'border-sky-600 bg-sky-50'
+                      : isPinned
+                        ? 'border-rose-500 bg-white'
+                        : 'border-transparent bg-white hover:border-sky-400 hover:bg-slate-50'
+                  } ${isDeleted ? 'opacity-60' : ''}`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words text-base font-semibold text-slate-900">
+                          {deal.title}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-600">{deal.clientName || '—'}</p>
+                      </div>
+                      {isPinned && (
+                        <span className="rounded-full bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">
+                          Закреплена
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-semibold uppercase tracking-wide text-slate-400">
+                          След. контакт
+                        </p>
+                        <p className="mt-1 font-semibold text-slate-900">
+                          {deal.nextContactDate ? formatDate(deal.nextContactDate) : 'Не назначено'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-semibold uppercase tracking-wide text-slate-400">
+                          Крайний срок
+                        </p>
+                        <span
+                          className={`mt-1 inline-flex rounded-full border px-2 py-1 font-semibold ${deadlineBadge.className}`}
+                        >
+                          {deadlineBadge.label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                      <span>Исполнитель: {deal.executorName || '—'}</span>
+                      {isDeleted && (
+                        <span className="font-semibold text-rose-700">
+                          Удалена: {formatDeletedAt(deal.deletedAt)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          ) : (
+            <div className="px-4 py-8 text-center text-sm text-slate-500">Сделки не найдены.</div>
+          )}
         </div>
       </DataTableShell>
 

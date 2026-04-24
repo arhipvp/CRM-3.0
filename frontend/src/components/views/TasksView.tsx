@@ -265,7 +265,15 @@ export const TasksView: React.FC<TasksViewProps> = ({
             role="status"
             aria-live="polite"
           >
-            {emptyStateMessage}
+            <div className="mx-auto max-w-md space-y-2">
+              <p className="font-semibold text-slate-900">{emptyStateMessage}</p>
+              {isTasksEmpty && (
+                <p>
+                  Задачи создаются из карточки сделки: выберите сделку, откройте вкладку
+                  &quot;Задачи&quot; и добавьте следующий шаг по клиенту.
+                </p>
+              )}
+            </div>
           </div>
           {isTasksEmpty && (
             <div className="flex flex-wrap justify-center gap-3">

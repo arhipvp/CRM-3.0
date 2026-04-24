@@ -59,6 +59,7 @@ export const useDealDetailsData = ({
 }: UseDealDetailsDataParams) => {
   const [dealTasksLoadingIds, setDealTasksLoadingIds] = useState<Set<string>>(() => new Set());
   const [dealQuotesLoadingIds, setDealQuotesLoadingIds] = useState<Set<string>>(() => new Set());
+  const [dealAccessMessage, setDealAccessMessage] = useState<string | null>(null);
 
   const dealsById = useMemo(() => {
     const map = new Map<string, Deal>();
@@ -89,6 +90,23 @@ export const useDealDetailsData = ({
   const isCacheFresh = useCallback(
     (loadedAt: number) => Date.now() - loadedAt < DEAL_DETAILS_CACHE_TTL_MS,
     [],
+  );
+
+  const handleDealDetailLoadError = useCallback(
+    (err: unknown, fallbackMessage: string) => {
+      if (err instanceof APIError && err.status === 403) {
+        clearSelectedDealFocus();
+        setDealAccessMessage('Нет доступа к выбранной сделке.');
+        return;
+      }
+      if (err instanceof APIError && err.status === 404) {
+        clearSelectedDealFocus();
+        setDealAccessMessage('Выбранная сделка не найдена.');
+        return;
+      }
+      setError(formatErrorMessage(err, fallbackMessage));
+    },
+    [clearSelectedDealFocus, setError],
   );
 
   const invalidateDealTasksCache = useCallback((dealId?: string | null) => {
@@ -212,7 +230,7 @@ export const useDealDetailsData = ({
           const dealPolicies = await existingPromise;
           applyDealPolicies(dealPolicies);
         } catch (err) {
-          setError(formatErrorMessage(err, 'Error loading policies for the deal'));
+          handleDealDetailLoadError(err, 'Error loading policies for the deal');
         }
         return;
       }
@@ -248,10 +266,10 @@ export const useDealDetailsData = ({
         const dealPolicies = await request;
         applyDealPolicies(dealPolicies);
       } catch (err) {
-        setError(formatErrorMessage(err, 'Error loading policies for the deal'));
+        handleDealDetailLoadError(err, 'Error loading policies for the deal');
       }
     },
-    [isCacheFresh, setError, updateAppData],
+    [handleDealDetailLoadError, isCacheFresh, updateAppData],
   );
 
   const loadDealPayments = useCallback(
@@ -303,7 +321,7 @@ export const useDealDetailsData = ({
           const dealPayments = await existingPromise;
           applyDealPayments(dealPayments);
         } catch (err) {
-          setError(formatErrorMessage(err, 'Error loading payments for the deal'));
+          handleDealDetailLoadError(err, 'Error loading payments for the deal');
         }
         return;
       }
@@ -339,10 +357,10 @@ export const useDealDetailsData = ({
         const dealPayments = await request;
         applyDealPayments(dealPayments);
       } catch (err) {
-        setError(formatErrorMessage(err, 'Error loading payments for the deal'));
+        handleDealDetailLoadError(err, 'Error loading payments for the deal');
       }
     },
-    [isCacheFresh, setError, updateAppData],
+    [handleDealDetailLoadError, isCacheFresh, updateAppData],
   );
 
   const markDealTasksLoading = useCallback((dealId: string) => {
@@ -531,15 +549,35 @@ export const useDealDetailsData = ({
       if (isDealSelectionBlocked) {
         return;
       }
+      setDealAccessMessage(null);
       selectDealById(dealId);
       if (!dealId || dealsById.has(dealId)) {
         return;
       }
       syncDealsByIds([dealId]).catch((err) => {
+        if (err instanceof APIError && err.status === 403) {
+          clearSelectedDealFocus();
+          setDealAccessMessage('Нет доступа к выбранной сделке.');
+          return;
+        }
+        if (err instanceof APIError && err.status === 404) {
+          clearSelectedDealFocus();
+          setDealAccessMessage('Выбранная сделка не найдена.');
+          return;
+        }
+        clearSelectedDealFocus();
+        setDealAccessMessage(formatErrorMessage(err, 'Не удалось загрузить сделку'));
         setError(formatErrorMessage(err, 'Не удалось загрузить сделку'));
       });
     },
-    [dealsById, isDealSelectionBlocked, selectDealById, setError, syncDealsByIds],
+    [
+      clearSelectedDealFocus,
+      dealsById,
+      isDealSelectionBlocked,
+      selectDealById,
+      setError,
+      syncDealsByIds,
+    ],
   );
 
   const handleOpenDealPreview = useCallback(
@@ -632,7 +670,7 @@ export const useDealDetailsData = ({
             tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...dealTasks],
           }));
         } catch (err) {
-          setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
+          handleDealDetailLoadError(err, 'Error loading tasks for the deal');
         } finally {
           unmarkDealTasksLoading(dealId);
         }
@@ -656,12 +694,18 @@ export const useDealDetailsData = ({
           tasks: [...prev.tasks.filter((task) => task.dealId !== dealId), ...dealTasks],
         }));
       } catch (err) {
-        setError(formatErrorMessage(err, 'Error loading tasks for the deal'));
+        handleDealDetailLoadError(err, 'Error loading tasks for the deal');
       } finally {
         unmarkDealTasksLoading(dealId);
       }
     },
-    [isCacheFresh, markDealTasksLoading, setError, unmarkDealTasksLoading, updateAppData],
+    [
+      handleDealDetailLoadError,
+      isCacheFresh,
+      markDealTasksLoading,
+      unmarkDealTasksLoading,
+      updateAppData,
+    ],
   );
 
   const loadDealQuotes = useCallback(
@@ -687,7 +731,7 @@ export const useDealDetailsData = ({
             ),
           }));
         } catch (err) {
-          setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
+          handleDealDetailLoadError(err, 'Error loading quotes for the deal');
         } finally {
           unmarkDealQuotesLoading(dealId);
         }
@@ -696,8 +740,9 @@ export const useDealDetailsData = ({
 
       const request = fetchQuotesByDeal(dealId, { showDeleted: true })
         .then((dealQuotes) => {
-          cacheDealQuotes(dealId, dealQuotes);
-          return dealQuotes;
+          const scopedQuotes = dealQuotes.filter((quote) => quote.dealId === dealId);
+          cacheDealQuotes(dealId, scopedQuotes);
+          return scopedQuotes;
         })
         .finally(() => {
           dealQuotesInFlightRef.current.delete(dealId);
@@ -713,16 +758,16 @@ export const useDealDetailsData = ({
           ),
         }));
       } catch (err) {
-        setError(formatErrorMessage(err, 'Error loading quotes for the deal'));
+        handleDealDetailLoadError(err, 'Error loading quotes for the deal');
       } finally {
         unmarkDealQuotesLoading(dealId);
       }
     },
     [
       cacheDealQuotes,
+      handleDealDetailLoadError,
       isCacheFresh,
       markDealQuotesLoading,
-      setError,
       unmarkDealQuotesLoading,
       updateAppData,
     ],
@@ -798,6 +843,8 @@ export const useDealDetailsData = ({
     handleRefreshSelectedDealPolicies,
     handleRefreshPreviewDealPolicies,
     registerProtectedCreatedDeal,
+    dealAccessMessage,
+    clearDealAccessMessage: () => setDealAccessMessage(null),
     isSelectedDealTasksLoading: effectiveSelectedDealId
       ? dealTasksLoadingIds.has(effectiveSelectedDealId)
       : false,

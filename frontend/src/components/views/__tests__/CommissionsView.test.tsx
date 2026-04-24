@@ -101,6 +101,35 @@ describe('CommissionsView', () => {
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
   });
 
+  it('hides remove bulk action until records are selected', async () => {
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <CommissionsView
+            payments={[]}
+            policies={[]}
+            statements={[
+              {
+                id: 'statement-1',
+                name: 'Пустая ведомость',
+                statementType: 'expense',
+                status: 'draft',
+                totalAmount: '0',
+                recordsCount: 0,
+                createdAt: '2026-03-06T10:00:00Z',
+                updatedAt: '2026-03-06T10:00:00Z',
+              },
+            ]}
+            hasCommissionsSnapshotLoaded
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findAllByText('Записей в ведомости пока нет')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Убрать из ведомости' })).not.toBeInTheDocument();
+  });
+
   it('shows statement amount controls and keeps amount sorting stable when toggling percent mode', async () => {
     const user = userEvent.setup();
     const onUpdateFinancialRecord = vi.fn().mockResolvedValue(undefined);

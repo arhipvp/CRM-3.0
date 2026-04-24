@@ -34,6 +34,8 @@ interface DealsViewProps {
   selectedDealId: string | null;
   isDealFocusCleared?: boolean;
   dealRowFocusRequest?: { dealId: string; nonce: number } | null;
+  dealAccessMessage?: string | null;
+  onClearDealAccessMessage?: () => void;
   onSelectDeal: (dealId: string) => void;
   onClearDealFocus?: () => void;
   onCloseDeal: (
@@ -126,6 +128,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
   selectedDealId,
   isDealFocusCleared = false,
   dealRowFocusRequest,
+  dealAccessMessage = null,
+  onClearDealAccessMessage,
   onSelectDeal,
   onClearDealFocus,
   onCloseDeal,
@@ -239,7 +243,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
             isLoadingMoreDeals={isLoadingMoreDeals}
             isRefreshingDealsList={isRefreshingDealsList}
             onLoadMoreDeals={onLoadMoreDeals}
-            onSelectDeal={handleSelectDeal}
+            onSelectDeal={(dealId) => {
+              onClearDealAccessMessage?.();
+              handleSelectDeal(dealId);
+            }}
             onPinDeal={onPinDeal}
             onUnpinDeal={onUnpinDeal}
             currentUser={currentUser}
@@ -300,6 +307,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onRestoreDeal={onRestoreDeal}
             onDealSelectionBlockedChange={handleDealSelectionBlockedChange}
             onClearDealFocus={onClearDealFocus}
+            accessMessage={dealAccessMessage}
+            onClearAccessMessage={onClearDealAccessMessage}
             isTasksLoading={isSelectedDealTasksLoading}
             isQuotesLoading={isSelectedDealQuotesLoading}
           />

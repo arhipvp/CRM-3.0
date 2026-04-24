@@ -410,7 +410,7 @@ describe('AppContent hotkeys integration', () => {
     expect(ensureFinanceDataLoadedMock).not.toHaveBeenCalled();
   });
 
-  it('loads quotes for the first auto-selected deal without explicit selectedDealId', async () => {
+  it('keeps deals route neutral without explicit selectedDealId', async () => {
     appDataMock.deals = [
       {
         id: 'deal-1',
@@ -427,10 +427,10 @@ describe('AppContent hotkeys integration', () => {
     renderAppContent('/deals');
 
     await waitFor(() => {
-      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
-      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
-      expect(fetchTasksByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('null');
     });
+    expect(fetchQuotesByDeal).not.toHaveBeenCalled();
+    expect(fetchTasksByDeal).not.toHaveBeenCalled();
   });
 
   it('does not render the removed hotkeys context top slot', async () => {
@@ -456,7 +456,7 @@ describe('AppContent hotkeys integration', () => {
     expect(screen.queryByTestId('top-slot')).not.toBeInTheDocument();
   });
 
-  it('loads quotes for the second deal after manual selection from auto-selected first deal', async () => {
+  it('loads quotes for a deal after manual selection from neutral deals route', async () => {
     appDataMock.deals = [
       {
         id: 'deal-1',
@@ -483,7 +483,7 @@ describe('AppContent hotkeys integration', () => {
     renderAppContent('/deals');
 
     await waitFor(() => {
-      expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('null');
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Select deal-2' }));
@@ -529,7 +529,7 @@ describe('AppContent hotkeys integration', () => {
     ];
     fetchQuotesByDealMock.mockResolvedValue([cachedQuote]);
 
-    renderAppContent('/deals');
+    renderAppContent('/deals?dealId=deal-1');
 
     await waitFor(() => {
       expect(fetchQuotesByDeal).toHaveBeenCalledWith('deal-1', { showDeleted: true });

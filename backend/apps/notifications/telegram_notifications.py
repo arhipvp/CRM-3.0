@@ -17,6 +17,14 @@ logger = logging.getLogger(__name__)
 
 _client: TelegramClient | None = None
 
+TASK_CREATED_PREFIX = "🟢 Новая задача:"
+TASK_COMPLETED_PREFIX = "✅ Задача выполнена:"
+DEAL_EVENT_PREFIX = "🔔"
+EXPECTED_CLOSE_PREFIX = "🔔 Внимание!"
+URGENT_PREFIX = "🚨"
+PAYMENT_DUE_PREFIX = "💸 Напоминание:"
+POLICY_EXPIRY_PREFIX = "🛡️ Напоминание:"
+
 
 def get_telegram_client() -> TelegramClient | None:
     global _client
@@ -145,7 +153,7 @@ def notify_task_created(task) -> None:
     deal_title = _format_deal_title(deal)
     deal_part = f" (сделка: {deal_title})" if deal_title else ""
     text = _append_link(
-        f"Новая задача: {task.title}{deal_part}", getattr(deal, "id", None)
+        f"{TASK_CREATED_PREFIX} {task.title}{deal_part}", getattr(deal, "id", None)
     )
     send_notification(
         user=assignee,
@@ -166,7 +174,8 @@ def notify_task_completed(task) -> None:
     deal_title = _format_deal_title(deal)
     deal_part = f" (сделка: {deal_title})" if deal_title else ""
     text = _append_link(
-        f"Задача выполнена: {task.title}{deal_part}", getattr(deal, "id", None)
+        f"{TASK_COMPLETED_PREFIX} {task.title}{deal_part}",
+        getattr(deal, "id", None),
     )
     send_notification(
         user=creator,
@@ -180,7 +189,9 @@ def notify_task_completed(task) -> None:
 
 
 def notify_deal_event(deal, message: str) -> None:
-    message_with_link = _append_link(message, getattr(deal, "id", None))
+    message_with_link = _append_link(
+        f"{DEAL_EVENT_PREFIX} {message}", getattr(deal, "id", None)
+    )
     for user in _get_deal_recipients(deal):
         send_notification(
             user=user,
@@ -210,9 +221,9 @@ def send_expected_close_reminders() -> None:
             formatted_date = _format_date(deal.expected_close)
             deal_title = _format_deal_title(deal)
             deal_part = f", сделка {deal_title}" if deal_title else ""
-            attention_prefix = "Внимание!"
+            attention_prefix = EXPECTED_CLOSE_PREFIX
             if delta_days < 3:
-                attention_prefix = f"❗ {attention_prefix}"
+                attention_prefix = f"{URGENT_PREFIX} Внимание!"
             text = _append_link(
                 (
                     f"{attention_prefix} Застраховать до {formatted_date}, "
@@ -249,9 +260,9 @@ def send_payment_due_reminders() -> None:
         if delta_days < 0 or delta_days > 5:
             continue
         for user in _get_deal_recipients(payment.deal):
-            attention_prefix = "Напоминание:"
+            attention_prefix = PAYMENT_DUE_PREFIX
             if delta_days < 3:
-                attention_prefix = f"❗ {attention_prefix}"
+                attention_prefix = f"{URGENT_PREFIX} Напоминание:"
             text = _append_link(
                 (
                     f"{attention_prefix} до оплаты платежа {payment.amount} руб. "
@@ -299,9 +310,9 @@ def send_policy_expiry_reminders() -> None:
             or ""
         )
         formatted_date = _format_date(policy.end_date)
-        attention_prefix = "Напоминание:"
+        attention_prefix = POLICY_EXPIRY_PREFIX
         if delta_days < 3:
-            attention_prefix = f"❗ {attention_prefix}"
+            attention_prefix = f"{URGENT_PREFIX} Напоминание:"
         client_part = f" Клиент: {client_name}" if client_name else ""
         text = _append_link(
             (

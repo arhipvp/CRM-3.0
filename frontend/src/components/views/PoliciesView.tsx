@@ -72,6 +72,7 @@ interface PoliciesViewProps {
   policiesHasMore?: boolean;
   isLoadingMorePolicies?: boolean;
   isPoliciesLoading?: boolean;
+  policiesError?: string | null;
   onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
   onAddFinancialRecord?: (values: AddFinancialRecordFormValues) => Promise<void>;
   onUpdateFinancialRecord?: (
@@ -93,6 +94,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policiesHasMore = false,
   isLoadingMorePolicies = false,
   isPoliciesLoading = false,
+  policiesError = null,
   onRefreshPoliciesList,
   onRequestEditPolicy,
   onDeleteFinancialRecord,
@@ -117,6 +119,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     expiringSoonCount: 0,
     expiringDays: 30,
   });
+  const [localPoliciesError, setLocalPoliciesError] = useState<string | null>(null);
+  const [kpiError, setKpiError] = useState<string | null>(null);
   const kpiRequestRef = useRef(0);
   const kpiAbortControllerRef = useRef<AbortController | null>(null);
   const { confirm, ConfirmDialogRenderer } = useConfirm();
@@ -178,7 +182,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     if (!onRefreshPoliciesList) {
       return;
     }
-    void onRefreshPoliciesList(serverFilters);
+    setLocalPoliciesError(null);
+    void onRefreshPoliciesList(serverFilters).catch((err) => {
+      setLocalPoliciesError(err instanceof Error ? err.message : 'Не удалось загрузить полисы');
+    });
   }, [onRefreshPoliciesList, serverFilters]);
 
   useEffect(() => {
@@ -192,6 +199,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       .then((payload) => {
         if (requestId === kpiRequestRef.current) {
           setKpi(payload);
+          setKpiError(null);
         }
       })
       .catch(() => {
@@ -200,6 +208,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         }
         if (requestId === kpiRequestRef.current) {
           setKpi((prev) => ({ ...prev, total: policies.length }));
+          setKpiError('Не удалось обновить показатели полисов.');
         }
       });
     return () => {
@@ -303,6 +312,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       return;
     }
     onDealSelect?.(dealId);
+  };
+
+  const combinedPoliciesError = policiesError ?? localPoliciesError;
+  const handleRefreshPolicies = () => {
+    setLocalPoliciesError(null);
+    void onRefreshPoliciesList?.(serverFilters).catch((err) => {
+      setLocalPoliciesError(err instanceof Error ? err.message : 'Не удалось загрузить полисы');
+    });
   };
 
   const closeMarkPaidPrompt = () => {
@@ -436,6 +453,21 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           layout="inline-wrap"
         />
         {isDebouncePending && <div className="text-xs text-slate-500">Применяю фильтр...</div>}
+        {kpiError && (
+          <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
+            {kpiError}
+          </div>
+        )}
+        {combinedPoliciesError && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>{combinedPoliciesError}</span>
+              <button type="button" className={BTN_SM_QUIET} onClick={handleRefreshPolicies}>
+                Повторить
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {policies.length ? (
@@ -792,8 +824,22 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           </table>
         </DataTableShell>
       ) : (
-        <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
-          {isPoliciesLoading ? 'Загрузка полисов...' : 'Нет полисов для отображения'}
+        <div className="app-panel-muted px-5 py-8 text-center text-sm text-slate-600">
+          <div className="mx-auto max-w-md space-y-3">
+            <p className="text-base font-semibold text-slate-900">
+              {isPoliciesLoading ? 'Загружаем полисы...' : 'Полисов по текущим условиям нет'}
+            </p>
+            <p>
+              {isPoliciesLoading
+                ? 'Список обновляется. Показатели и финансовые данные загружаются независимо.'
+                : 'Измените фильтры или обновите список, если данные должны быть доступны.'}
+            </p>
+            {!isPoliciesLoading && (
+              <button type="button" onClick={handleRefreshPolicies} className={BTN_SM_QUIET}>
+                Обновить
+              </button>
+            )}
+          </div>
         </div>
       )}
 

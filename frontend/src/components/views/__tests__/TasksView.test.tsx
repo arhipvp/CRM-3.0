@@ -102,4 +102,14 @@ describe('TasksView', () => {
       });
     });
   });
+
+  it('explains how to create tasks from an empty state', () => {
+    renderTasksView([]);
+
+    expect(
+      screen.getByText('Пока нет задач. Создайте задачу в карточке сделки.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Задачи создаются из карточки сделки/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Перейти к сделкам' })).toBeInTheDocument();
+  });
 });

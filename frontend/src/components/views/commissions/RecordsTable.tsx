@@ -169,27 +169,32 @@ export const RecordsTable = ({
             ) : (
               <span className="text-slate-500">Выберите ведомость, чтобы добавлять записи.</span>
             )}
-            {viewMode === 'statements' && selectedStatement && !isSelectedStatementPaid && (
-              <span className="ml-2 text-xs text-slate-500">
-                Чтобы убрать запись: выделите строку и нажмите &quot;Убрать из ведомости&quot;.
-              </span>
-            )}
+            {viewMode === 'statements' &&
+              selectedStatement &&
+              !isSelectedStatementPaid &&
+              selectedRecordIds.length > 0 && (
+                <span className="ml-2 text-xs text-slate-500">
+                  Чтобы убрать запись: выделите строку и нажмите &quot;Убрать из ведомости&quot;.
+                </span>
+              )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {viewMode === 'statements' ? (
-              <button
-                type="button"
-                onClick={() => void onRemoveSelected()}
-                className={BTN_SM_DANGER}
-                disabled={
-                  !selectedRecordIds.length ||
-                  !canRemoveSelectedAction ||
-                  isSelectedStatementPaid ||
-                  !selectedStatement
-                }
-              >
-                Убрать из ведомости
-              </button>
+              selectedRecordIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void onRemoveSelected()}
+                  className={BTN_SM_DANGER}
+                  disabled={
+                    !selectedRecordIds.length ||
+                    !canRemoveSelectedAction ||
+                    isSelectedStatementPaid ||
+                    !selectedStatement
+                  }
+                >
+                  Убрать из ведомости
+                </button>
+              )
             ) : (
               <button
                 type="button"

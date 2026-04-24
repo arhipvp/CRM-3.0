@@ -26,6 +26,7 @@ const renderDealsList = (params?: {
   onDealSearchSubmit?: (value?: string) => void;
   onRefreshDealsList?: () => Promise<void>;
   isRefreshingDealsList?: boolean;
+  onSelectDeal?: (dealId: string) => void;
 }) => {
   const selectedDeal = params?.selectedDeal ?? createDeal();
   const sortedDeals = params?.sortedDeals ?? [selectedDeal];
@@ -53,7 +54,7 @@ const renderDealsList = (params?: {
       isLoadingMoreDeals={false}
       isRefreshingDealsList={params?.isRefreshingDealsList ?? false}
       onLoadMoreDeals={vi.fn().mockResolvedValue(undefined)}
-      onSelectDeal={vi.fn()}
+      onSelectDeal={params?.onSelectDeal ?? vi.fn()}
       onPinDeal={vi.fn().mockResolvedValue(undefined)}
       onUnpinDeal={vi.fn().mockResolvedValue(undefined)}
       currentUser={null}
@@ -206,5 +207,20 @@ describe('DealsList dealRowFocusRequest', () => {
     });
 
     expect(screen.getByRole('button', { name: 'Обновляем...' })).toBeDisabled();
+  });
+
+  it('selects deal from the mobile card list', () => {
+    const onSelectDeal = vi.fn();
+    const selectedDeal = createDeal({ id: 'mobile-deal', title: 'Mobile Deal' });
+
+    renderDealsList({
+      selectedDeal,
+      sortedDeals: [selectedDeal],
+      onSelectDeal,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть сделку Mobile Deal' }));
+
+    expect(onSelectDeal).toHaveBeenCalledWith('mobile-deal');
   });
 });

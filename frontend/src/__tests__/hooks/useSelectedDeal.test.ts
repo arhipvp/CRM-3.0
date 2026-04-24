@@ -28,7 +28,7 @@ const users = [
 ];
 
 describe('computeSelectedDeal', () => {
-  it('resolves effective selected deal id from the first deal by default', () => {
+  it('does not resolve an effective selected deal id by default', () => {
     const deals = [createDeal('d1', '2025-12-01'), createDeal('d2', '2025-11-01')];
 
     expect(
@@ -37,7 +37,7 @@ describe('computeSelectedDeal', () => {
         selectedDealId: null,
         isDealFocusCleared: false,
       }),
-    ).toBe('d1');
+    ).toBeNull();
   });
 
   it('keeps deals order as provided', () => {
@@ -54,7 +54,7 @@ describe('computeSelectedDeal', () => {
     });
 
     expect(result.sortedDeals.map((deal) => deal.id)).toEqual(['d1', 'd2', 'd3']);
-    expect(result.selectedDeal?.id).toBe('d1');
+    expect(result.selectedDeal).toBeNull();
   });
 
   it('returns selected deal by id with associated client/user', () => {

@@ -28,11 +28,12 @@ describe('ClientsView', () => {
     const clients = [buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })];
     const deals = [buildDeal(), buildDeal({ id: 'deal-2', clientId: 'client-2' })];
 
-    render(<ClientsView clients={clients} deals={deals} />);
+    render(<ClientsView clients={clients} deals={deals} dealsTotalCount={42} />);
 
     expect(screen.getByText('Клиентов')).toBeInTheDocument();
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
     expect(screen.getByText('Активных сделок')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
     expect(screen.getByText('Иван Иванов')).toBeInTheDocument();
     expect(screen.getByText('Петр Петров')).toBeInTheDocument();
   });
@@ -65,8 +66,9 @@ describe('ClientsView', () => {
     );
 
     fireEvent.click(
-      screen.getByRole('button', { name: `Найти похожих клиентов для ${client.name}` }),
+      screen.getByRole('button', { name: `Дополнительные действия клиента ${client.name}` }),
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Объединить похожих' }));
     expect(onClientFindSimilar).toHaveBeenCalledWith(client);
   });
 });

@@ -19,7 +19,7 @@
 4. Заполнить секреты в `backend/.env`:
    - обязательно: `DJANGO_SECRET_KEY`
    - для AI: `OPENROUTER_API_KEY`
-   - для Telegram: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_INTERNAL_API_TOKEN`
+   - для Telegram: `TELEGRAM_BOT_TOKEN`
    - для Google Drive: `GOOGLE_DRIVE_*`
    - для mailcow: `MAILCOW_API_*`, `MAILCOW_IMAP_*`
 5. Подключить каталог с backup-данными:

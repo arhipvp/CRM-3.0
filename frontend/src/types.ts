@@ -26,6 +26,7 @@ export interface User {
   roles: string[];
   firstName?: string;
   lastName?: string;
+  isStaff?: boolean;
 }
 
 export interface Client {

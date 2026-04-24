@@ -11,17 +11,12 @@ interface UseSelectedDealArgs {
 }
 
 export const resolveEffectiveSelectedDealId = ({
-  deals,
   selectedDealId,
-  isDealFocusCleared = false,
 }: Pick<UseSelectedDealArgs, 'deals' | 'selectedDealId' | 'isDealFocusCleared'>): string | null => {
   if (selectedDealId) {
     return selectedDealId;
   }
-  if (isDealFocusCleared) {
-    return null;
-  }
-  return deals[0]?.id ?? null;
+  return null;
 };
 
 export interface SelectedDealResult {

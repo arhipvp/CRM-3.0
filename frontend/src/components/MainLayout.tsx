@@ -21,13 +21,13 @@ interface MainLayoutProps {
 }
 
 const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
-  { path: '/seller-dashboard', label: 'Дашборд продавца', icon: 'DB' },
-  { path: '/deals', label: 'Сделки', icon: 'DL' },
-  { path: '/clients', label: 'Клиенты', icon: 'CL' },
-  { path: '/policies', label: 'Полисы', icon: 'PL' },
-  { path: '/commissions', label: 'Доходы и расходы', icon: 'CM' },
-  { path: '/tasks', label: 'Задачи', icon: 'TS' },
-  { path: '/settings', label: 'Настройки', icon: 'ST' },
+  { path: '/seller-dashboard', label: 'Дашборд продавца', icon: '▦' },
+  { path: '/deals', label: 'Сделки', icon: '◆' },
+  { path: '/clients', label: 'Клиенты', icon: '◉' },
+  { path: '/policies', label: 'Полисы', icon: '▤' },
+  { path: '/commissions', label: 'Доходы и расходы', icon: '₽' },
+  { path: '/tasks', label: 'Задачи', icon: '✓' },
+  { path: '/settings', label: 'Настройки', icon: '⚙' },
 ];
 
 const HIDDEN_NAV_PATHS = new Set(['/knowledge', '/library']);
@@ -37,7 +37,7 @@ const NAV_LINK_BASE_CLASS =
 const NAV_LINK_ACTIVE_CLASS = 'bg-blue-50 text-blue-900 before:opacity-100';
 const NAV_LINK_IDLE_CLASS = 'text-slate-700 hover:bg-slate-100';
 const NAV_ICON_CLASS =
-  'inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--app-border)] bg-white text-[10px] font-bold text-slate-500';
+  'inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--app-border)] bg-white text-sm font-bold text-slate-500';
 const TOP_SLOT_CLASS =
   'rounded-2xl border border-blue-200/90 bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-white px-4 py-3 shadow-sm';
 
@@ -100,7 +100,9 @@ export function MainLayout({
                 <p className="text-xs text-slate-500">
                   {currentUser.roles && currentUser.roles.length > 0
                     ? currentUser.roles.join(', ')
-                    : 'Нет роли'}
+                    : currentUser.isStaff
+                      ? 'Администратор'
+                      : 'Нет роли'}
                 </p>
               </div>
               {onLogout && (

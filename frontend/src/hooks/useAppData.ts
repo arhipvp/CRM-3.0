@@ -91,6 +91,7 @@ export const useAppData = () => {
   const [policiesList, setPoliciesList] = useState<Policy[]>([]);
   const [policiesListNextPage, setPoliciesListNextPage] = useState<number | null>(null);
   const [isPoliciesListLoading, setIsPoliciesListLoading] = useState(false);
+  const [policiesListError, setPoliciesListError] = useState<string | null>(null);
   const [isLoadingMorePolicies, setIsLoadingMorePolicies] = useState(false);
   const [policiesFilters, setPoliciesFilters] = useState<FilterParams>({ ordering: '-start_date' });
   const policiesListRequestRef = useRef(0);
@@ -136,6 +137,7 @@ export const useAppData = () => {
     setPoliciesListNextPage(null);
     setIsPoliciesListLoading(false);
     setIsLoadingMorePolicies(false);
+    setPoliciesListError(null);
     setPoliciesFilters({ ordering: '-start_date' });
   }, []);
 
@@ -284,6 +286,7 @@ export const useAppData = () => {
   const refreshPoliciesList = useCallback(
     async (filters?: FilterParams) => {
       setIsPoliciesListLoading(true);
+      setPoliciesListError(null);
       setError(null);
       policiesListRequestRef.current += 1;
       const requestId = policiesListRequestRef.current;
@@ -312,12 +315,12 @@ export const useAppData = () => {
         setPoliciesListNextPage(payload.next ? 2 : null);
         setPoliciesFilters(resolvedFilters);
       } catch (err) {
-        setError(
-          formatErrorMessage(
-            err,
-            '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u043f\u043e\u043b\u0438\u0441\u043e\u0432',
-          ),
+        const message = formatErrorMessage(
+          err,
+          '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u043f\u043e\u043b\u0438\u0441\u043e\u0432',
         );
+        setPoliciesListError(message);
+        setError(message);
         throw err;
       } finally {
         if (policiesListRequestRef.current === requestId) {
@@ -579,6 +582,7 @@ export const useAppData = () => {
     dealsHasMore,
     dealsTotalCount,
     policiesList,
+    policiesListError,
     loadMorePolicies,
     policiesHasMore,
     isPoliciesListLoading,

@@ -251,7 +251,7 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Нет полисов для отображения')).toBeInTheDocument();
+    expect(screen.getByText('Полисов по текущим условиям нет')).toBeInTheDocument();
     await waitFor(() => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
     });
@@ -321,5 +321,35 @@ describe('PoliciesView', () => {
     });
 
     expect(screen.getByText('Всего').parentElement).toHaveTextContent('20');
+  });
+
+  it('shows list error and retry action', async () => {
+    const onRefreshPoliciesList = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Список временно недоступен'))
+      .mockResolvedValueOnce(undefined);
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView
+            policies={[]}
+            payments={[]}
+            onRequestEditPolicy={vi.fn()}
+            onRefreshPoliciesList={onRefreshPoliciesList}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Список временно недоступен')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+
+    await waitFor(() => {
+      expect(onRefreshPoliciesList).toHaveBeenCalledTimes(2);
+    });
   });
 });

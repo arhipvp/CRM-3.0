@@ -19,6 +19,7 @@ export const mapApiUser = (userData: CurrentUserResponse): User => ({
   roles: resolveRoleNames(userData),
   firstName: userData.first_name ?? undefined,
   lastName: userData.last_name ?? undefined,
+  isStaff: Boolean(userData.is_staff),
 });
 
 export const parseAmountValue = (value?: string | null) => {

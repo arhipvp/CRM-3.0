@@ -326,6 +326,7 @@ export const mapUser = (raw: Record<string, unknown>): User => {
     firstName: toOptionalString(raw.first_name ?? raw.firstName),
     lastName: toOptionalString(raw.last_name ?? raw.lastName),
     roles: userRoleEntries.length > 0 ? userRoleEntries : legacyRoles,
+    isStaff: Boolean(raw.is_staff ?? raw.isStaff),
   };
 };
 

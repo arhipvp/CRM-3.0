@@ -41,6 +41,8 @@ export interface AppRouteDealsActions {
   selectedDealId: string | null;
   isDealFocusCleared?: boolean;
   dealRowFocusRequest?: DealFocusRequest | null;
+  dealAccessMessage?: string | null;
+  onClearDealAccessMessage?: () => void;
   onSelectDeal: (dealId: string) => void;
   onClearDealFocus?: () => void;
   onDealPreview?: (dealId: string) => void;
@@ -158,6 +160,7 @@ export interface AppRouteLoadingState {
   policiesHasMore: boolean;
   isLoadingMorePolicies: boolean;
   isPoliciesListLoading: boolean;
+  policiesListError?: string | null;
   isCommissionsDataLoading: boolean;
   hasCommissionsSnapshotLoaded: boolean;
   isFinanceDataLoading: boolean;

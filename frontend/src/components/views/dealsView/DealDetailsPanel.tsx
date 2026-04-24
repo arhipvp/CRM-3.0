@@ -121,6 +121,8 @@ export interface DealDetailsPanelProps {
   onRestoreDeal: (dealId: string) => Promise<void>;
   onDealSelectionBlockedChange?: (blocked: boolean) => void;
   onClearDealFocus?: () => void;
+  accessMessage?: string | null;
+  onClearAccessMessage?: () => void;
   onRefreshDeal?: (dealId: string) => Promise<void>;
   isTasksLoading?: boolean;
   isQuotesLoading?: boolean;
@@ -180,6 +182,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onRestoreDeal,
   onDealSelectionBlockedChange,
   onClearDealFocus,
+  accessMessage,
+  onClearAccessMessage,
   onRefreshDeal,
   isTasksLoading = false,
   isQuotesLoading = false,
@@ -585,7 +589,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     [navigate, onClientEdit],
   );
 
-  const quotes = useMemo(() => selectedDeal?.quotes ?? [], [selectedDeal?.quotes]);
+  const quotes = useMemo(
+    () => selectedDeal?.quotes.filter((quote) => quote.dealId === selectedDeal.id) ?? [],
+    [selectedDeal?.id, selectedDeal?.quotes],
+  );
   const tasksCount = useMemo(
     () => relatedTasks.filter((task) => !task.deletedAt).length,
     [relatedTasks],
@@ -809,8 +816,34 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             </div>
           </div>
         ) : (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-6 text-sm text-slate-600">
-            Выберите сделку, чтобы увидеть подробности.
+          <div
+            className={`rounded-3xl border border-dashed p-6 text-sm ${
+              accessMessage
+                ? 'border-rose-300 bg-rose-50/80 text-rose-800'
+                : 'border-slate-300 bg-slate-50/80 text-slate-600'
+            }`}
+            role={accessMessage ? 'alert' : 'status'}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-base font-semibold text-slate-900">
+                  {accessMessage ? 'Сделка недоступна' : 'Выберите сделку'}
+                </p>
+                <p>
+                  {accessMessage ??
+                    'Откройте сделку из списка, чтобы увидеть контакты, задачи, полисы и историю.'}
+                </p>
+              </div>
+              {accessMessage && onClearAccessMessage && (
+                <button
+                  type="button"
+                  onClick={onClearAccessMessage}
+                  className="btn btn-sm btn-quiet"
+                >
+                  Понятно
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -77,6 +77,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               selectedDealId={dealsActions.selectedDealId}
               isDealFocusCleared={dealsActions.isDealFocusCleared}
               dealRowFocusRequest={dealsActions.dealRowFocusRequest}
+              dealAccessMessage={dealsActions.dealAccessMessage}
+              onClearDealAccessMessage={dealsActions.onClearDealAccessMessage}
               onSelectDeal={dealsActions.onSelectDeal}
               onClearDealFocus={dealsActions.onClearDealFocus}
               onCloseDeal={dealsActions.onCloseDeal}
@@ -149,6 +151,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
             <ClientsView
               clients={data.clients}
               deals={data.deals}
+              dealsTotalCount={loading.dealsTotalCount}
               onClientEdit={dealsActions.onClientEdit}
               onClientDelete={dealsActions.onClientDelete}
               onClientMerge={dealsActions.onClientMerge}
@@ -180,6 +183,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               policiesHasMore={loading.policiesHasMore}
               isLoadingMorePolicies={loading.isLoadingMorePolicies}
               isPoliciesLoading={loading.isPoliciesListLoading}
+              policiesError={loading.policiesListError}
             />
           </Suspense>
         }

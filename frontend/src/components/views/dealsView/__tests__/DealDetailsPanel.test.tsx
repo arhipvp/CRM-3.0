@@ -25,6 +25,9 @@ const { dealTimeTrackingState } = vi.hoisted(() => ({
 const { policiesTabPropsSpy } = vi.hoisted(() => ({
   policiesTabPropsSpy: vi.fn(),
 }));
+const { quotesTabPropsSpy } = vi.hoisted(() => ({
+  quotesTabPropsSpy: vi.fn(),
+}));
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
@@ -232,7 +235,10 @@ vi.mock('../tabs/PoliciesTab', () => ({
 }));
 
 vi.mock('../tabs/QuotesTab', () => ({
-  QuotesTab: () => <div data-testid="quotes-tab" />,
+  QuotesTab: (props: unknown) => {
+    quotesTabPropsSpy(props);
+    return <div data-testid="quotes-tab" />;
+  },
 }));
 
 vi.mock('../tabs/ChatTab', () => ({
@@ -287,6 +293,9 @@ vi.mock('../DealTabs', () => ({
       </button>
       <button type="button" onClick={() => onChange('policies')}>
         Open Policies
+      </button>
+      <button type="button" onClick={() => onChange('quotes')}>
+        Open Quotes
       </button>
       {loadingByTab?.files && <span data-testid="files-tab-loading">Loading Files</span>}
       {loadingByTab?.tasks && <span data-testid="tasks-tab-loading">Loading Tasks</span>}
@@ -352,6 +361,7 @@ describe('DealDetailsPanel', () => {
     dealTimeTrackingState.isPausedForConfirm = false;
     dealTimeTrackingState.continueTracking = vi.fn();
     policiesTabPropsSpy.mockReset();
+    quotesTabPropsSpy.mockReset();
   });
 
   it('checks mailbox, reloads notes before drive files and shows success message', async () => {
@@ -881,5 +891,102 @@ describe('DealDetailsPanel', () => {
 
     expect(screen.getByTestId('tasks-tab-loading')).toBeInTheDocument();
     expect(screen.getByTestId('quotes-tab-loading')).toBeInTheDocument();
+  });
+
+  it('passes only selected deal quotes to quotes tab', () => {
+    const dealWithMixedQuotes: Deal = {
+      ...selectedDeal,
+      quotes: [
+        {
+          id: 'quote-current',
+          dealId: selectedDeal.id,
+          sellerId: null,
+          sellerName: 'Менеджер',
+          insuranceCompanyId: 'company-1',
+          insuranceCompany: 'Компания 1',
+          insuranceTypeId: 'type-1',
+          insuranceType: 'Каско',
+          sumInsured: 1000000,
+          premium: 50000,
+          deductible: null,
+          officialDealer: false,
+          gap: false,
+          createdAt: '2026-01-01T00:00:00Z',
+          deletedAt: null,
+        },
+        {
+          id: 'quote-other',
+          dealId: secondDeal.id,
+          sellerId: null,
+          sellerName: 'Менеджер',
+          insuranceCompanyId: 'company-2',
+          insuranceCompany: 'Компания 2',
+          insuranceTypeId: 'type-1',
+          insuranceType: 'Каско',
+          sumInsured: 1000000,
+          premium: 60000,
+          deductible: null,
+          officialDealer: false,
+          gap: false,
+          createdAt: '2026-01-02T00:00:00Z',
+          deletedAt: null,
+        },
+      ],
+    };
+
+    render(
+      <DealDetailsPanel
+        deals={[dealWithMixedQuotes, secondDeal]}
+        clients={[]}
+        policies={[]}
+        payments={[]}
+        financialRecords={[]}
+        tasks={[]}
+        users={[currentUser]}
+        currentUser={currentUser}
+        sortedDeals={[dealWithMixedQuotes, secondDeal]}
+        selectedDeal={dealWithMixedQuotes}
+        selectedClient={null}
+        onSelectDeal={vi.fn()}
+        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
+        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
+        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
+        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onRequestAddPolicy={vi.fn()}
+        onRequestEditPolicy={vi.fn()}
+        onRequestAddClient={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onAddPayment={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDriveFolderCreated={vi.fn()}
+        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: dealWithMixedQuotes })}
+        onCheckDealMailbox={vi
+          .fn()
+          .mockResolvedValue({ deal: dealWithMixedQuotes, mailboxSync: {} })}
+        onFetchChatMessages={vi.fn().mockResolvedValue([])}
+        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
+        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
+        onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onCreateTask={vi.fn().mockResolvedValue(undefined)}
+        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
+        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Quotes' }));
+
+    const latestCall = quotesTabPropsSpy.mock.calls.at(-1)?.[0] as {
+      quotes?: Array<{ id: string }>;
+    };
+    expect(latestCall.quotes?.map((quote) => quote.id)).toEqual(['quote-current']);
   });
 });

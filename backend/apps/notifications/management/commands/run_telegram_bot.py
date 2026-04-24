@@ -1,9 +1,7 @@
 import logging
 import time
 
-from apps.common.drive import _get_oauth_settings
 from apps.notifications.models import TelegramProfile
-from apps.notifications.telegram_intake import TelegramIntakeService
 from apps.notifications.telegram_notifications import (
     get_or_create_settings,
     get_telegram_client,
@@ -17,6 +15,11 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+NOTIFICATIONS_ONLY_MESSAGE = (
+    "Бот используется только для уведомлений CRM и привязки Telegram. "
+    "Работа со сделками и документами через бот отключена."
+)
+
 
 class Command(BaseCommand):
     help = "Run Telegram bot long polling and reminders."
@@ -27,8 +30,6 @@ class Command(BaseCommand):
             self.stderr.write("TELEGRAM_BOT_TOKEN is not configured.")
             return
 
-        self._preflight_drive_configuration()
-        intake = TelegramIntakeService(client)
         self._sync_bot_commands(client)
         reminder_interval = getattr(settings, "TELEGRAM_REMINDER_INTERVAL", 300)
         last_reminder_run = 0.0
@@ -40,16 +41,10 @@ class Command(BaseCommand):
                 updates = client.get_updates(offset=offset)
                 for update in updates:
                     offset = update.get("update_id", 0) + 1
-                    self._handle_update(client=client, intake=intake, update=update)
-
-                try:
-                    intake.finalize_ready_batches()
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Telegram intake batch finalization failed: %s", exc)
+                    self._handle_update(client=client, update=update)
 
                 now = time.monotonic()
                 if now - last_reminder_run >= reminder_interval:
-                    intake.expire_stale_sessions()
                     send_expected_close_reminders()
                     send_payment_due_reminders()
                     send_policy_expiry_reminders()
@@ -65,14 +60,11 @@ class Command(BaseCommand):
         self,
         *,
         client,
-        intake: TelegramIntakeService,
         update: dict,
     ) -> None:
         callback_query = update.get("callback_query") or {}
         if callback_query:
-            self._handle_callback_query(
-                client=client, intake=intake, callback=callback_query
-            )
+            self._handle_callback_query(client=client, callback=callback_query)
             return
 
         message = update.get("message") or {}
@@ -98,81 +90,25 @@ class Command(BaseCommand):
         if text.startswith("/"):
             self._handle_command(
                 client=client,
-                intake=intake,
-                user=profile.user,
                 chat_id=int(chat_id),
                 text=text,
             )
             return
 
-        chat_type = str(chat.get("type") or "").lower()
-        if chat_type and chat_type != "private":
-            client.send_message(
-                int(chat_id),
-                "Intake пока поддерживается только в личном чате с ботом.",
-            )
-            return
-
-        result = intake.process_message(
-            user=profile.user,
-            update_id=int(update.get("update_id") or 0),
-            chat_id=int(chat_id),
-            message=message,
-        )
-        if not result.already_sent:
-            client.send_message(
-                int(chat_id), result.text, reply_markup=result.reply_markup
-            )
+        client.send_message(int(chat_id), NOTIFICATIONS_ONLY_MESSAGE)
 
     def _handle_command(
         self,
         *,
         client,
-        intake: TelegramIntakeService,
-        user,
         chat_id: int,
         text: str,
     ) -> None:
         command_raw = text.split(maxsplit=1)[0]
         command = command_raw.split("@")[0].lower()
-        args_text = text[len(command_raw) :].strip()
 
         if command == "/help":
-            client.send_message(chat_id, intake.build_help_message())
-            return
-        if command == "/pick":
-            try:
-                index = int(args_text)
-            except (TypeError, ValueError):
-                client.send_message(chat_id, "Используйте формат: /pick <номер>")
-                return
-            result = intake.process_pick(user=user, pick_index=index)
-            client.send_message(chat_id, result.text, reply_markup=result.reply_markup)
-            return
-        if command == "/create":
-            result = intake.process_create(user=user)
-            client.send_message(chat_id, result.text, reply_markup=result.reply_markup)
-            return
-        if command == "/find":
-            if not args_text:
-                result = intake.process_request_find(user=user)
-                client.send_message(
-                    chat_id, result.text, reply_markup=result.reply_markup
-                )
-                return
-            result = intake.process_find(user=user, query=args_text)
-            client.send_message(chat_id, result.text, reply_markup=result.reply_markup)
-            return
-        if command in {"/send_now", "/force_send"}:
-            result = intake.process_send_now(user=user)
-            if not result.already_sent:
-                client.send_message(
-                    chat_id, result.text, reply_markup=result.reply_markup
-                )
-            return
-        if command == "/cancel":
-            result = intake.process_cancel(user=user)
-            client.send_message(chat_id, result.text, reply_markup=result.reply_markup)
+            client.send_message(chat_id, self._build_help_message())
             return
         client.send_message(
             chat_id,
@@ -183,11 +119,9 @@ class Command(BaseCommand):
         self,
         *,
         client,
-        intake: TelegramIntakeService,
         callback: dict,
     ) -> None:
         callback_id = callback.get("id")
-        data = str(callback.get("data") or "").strip()
         message = callback.get("message") or {}
         chat = message.get("chat") or {}
         chat_id = chat.get("id")
@@ -206,13 +140,9 @@ class Command(BaseCommand):
             )
             return
 
-        result = intake.process_callback(user=profile.user, callback_data=data)
         if callback_id:
-            client.answer_callback_query(callback_id, result.text[:180])
-        if not result.already_sent:
-            client.send_message(
-                int(chat_id), result.text, reply_markup=result.reply_markup
-            )
+            client.answer_callback_query(callback_id, NOTIFICATIONS_ONLY_MESSAGE[:180])
+        client.send_message(int(chat_id), NOTIFICATIONS_ONLY_MESSAGE)
 
     def _get_profile_by_chat_id(self, chat_id: int) -> TelegramProfile | None:
         return (
@@ -258,64 +188,21 @@ class Command(BaseCommand):
         client.send_message(
             chat_id,
             "Telegram привязан. Включите уведомления в CRM.\n"
-            "Для работы с сообщениями используйте /help.",
+            "Бот будет присылать уведомления по вашим настройкам.",
         )
 
     def _sync_bot_commands(self, client) -> None:
         commands = [
             {"command": "help", "description": "Справка по командам"},
-            {"command": "pick", "description": "Выбрать сделку из списка"},
-            {"command": "find", "description": "Поиск сделки по тексту"},
-            {"command": "create", "description": "Создать новую сделку"},
-            {"command": "send_now", "description": "Завершить пакет и показать выбор"},
-            {"command": "cancel", "description": "Отменить текущий выбор"},
         ]
         if not client.set_my_commands(commands):
             logger.warning(
                 "Telegram commands sync failed; bot will continue without stop."
             )
 
-    def _preflight_drive_configuration(self) -> None:
-        internal_api_url = str(
-            getattr(settings, "TELEGRAM_INTERNAL_API_URL", "")
-        ).strip()
-        internal_api_token = str(
-            getattr(settings, "TELEGRAM_INTERNAL_API_TOKEN", "")
-        ).strip()
-        if internal_api_url:
-            if not internal_api_token:
-                logger.warning(
-                    "Telegram bot internal API mode enabled but TELEGRAM_INTERNAL_API_TOKEN is missing."
-                )
-            return
-
-        root_folder_id = str(
-            getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "")
-        ).strip()
-        oauth_client_id = str(
-            getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "")
-        ).strip()
-        oauth_client_secret = str(
-            getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", "")
-        ).strip()
-        oauth_refresh_token = _get_oauth_settings().get("refresh_token", "").strip()
-
-        warnings: list[str] = []
-        if not root_folder_id:
-            warnings.append("GOOGLE_DRIVE_ROOT_FOLDER_ID is missing")
-
-        oauth_ready = bool(
-            oauth_client_id and oauth_client_secret and oauth_refresh_token
+    def _build_help_message(self) -> str:
+        return (
+            "Команды Telegram-бота:\n"
+            "/help - справка\n\n"
+            f"{NOTIFICATIONS_ONLY_MESSAGE}"
         )
-
-        if not oauth_ready:
-            warnings.append(
-                "Google Drive OAuth requires GOOGLE_DRIVE_OAUTH_CLIENT_ID, "
-                "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET and GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN"
-            )
-
-        if warnings:
-            logger.warning(
-                "Telegram bot Drive preflight warning: %s",
-                "; ".join(warnings),
-            )

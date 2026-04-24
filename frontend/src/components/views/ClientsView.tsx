@@ -14,7 +14,7 @@ import {
 import { formatDateRu } from '../../utils/formatting';
 import { buildWhatsAppLink } from '../../utils/links';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { BTN_SM_DANGER, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 
 const PAGE_SIZE = 20;
@@ -26,6 +26,7 @@ interface ClientsViewProps {
   onClientDelete?: (client: Client) => void;
   onClientMerge?: (client: Client) => void;
   onClientFindSimilar?: (client: Client) => void;
+  dealsTotalCount?: number;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -35,10 +36,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onClientDelete,
   onClientMerge,
   onClientFindSimilar,
+  dealsTotalCount,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterParams>({});
   const [filesModalClient, setFilesModalClient] = useState<Client | null>(null);
+  const [actionsClientId, setActionsClientId] = useState<string | null>(null);
 
   const handleFilterChange = (newFilters: FilterParams) => {
     setFilters(newFilters);
@@ -96,9 +99,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   }, [filteredClients, paginatedClients.length]);
 
   const totals = {
-    active: deals.length,
+    active: dealsTotalCount ?? deals.length,
     clients: clients.length,
   };
+  const hasPartialDealsMetric = dealsTotalCount === undefined && deals.length > 0;
 
   const emptyClientsMessage = useMemo(() => {
     const searchTerm = (filters.search ?? '').trim();
@@ -131,7 +135,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           <p className="text-3xl font-semibold text-slate-900">{totals.clients}</p>
         </div>
         <div className="app-panel border-none p-5 shadow-none">
-          <p className="text-sm text-slate-500">Активных сделок</p>
+          <p className="text-sm text-slate-500">
+            {hasPartialDealsMetric ? 'Загружено сделок' : 'Активных сделок'}
+          </p>
           <p className="text-3xl font-semibold text-slate-900">{totals.active}</p>
         </div>
         <div className="app-panel border-none p-5 shadow-none">
@@ -168,7 +174,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <TableHeadCell align="right" className="min-w-[120px]">
                 Файлы
               </TableHeadCell>
-              <TableHeadCell align="right" className="min-w-[200px]">
+              <TableHeadCell align="right" className="min-w-[150px]">
                 Действия
               </TableHeadCell>
             </tr>
@@ -228,36 +234,61 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                             Редактировать
                           </button>
                         )}
-                        {onClientDelete && (
+                        <div className="relative">
                           <button
                             type="button"
-                            onClick={() => onClientDelete(client)}
-                            className={BTN_SM_DANGER}
-                            aria-label={`Удалить клиента ${client.name}`}
-                          >
-                            Удалить
-                          </button>
-                        )}
-                        {onClientMerge && (
-                          <button
-                            type="button"
-                            onClick={() => onClientMerge(client)}
-                            className={BTN_SM_QUIET}
-                            aria-label={`Объединить клиента ${client.name}`}
-                          >
-                            Объединить
-                          </button>
-                        )}
-                        {onClientFindSimilar && (
-                          <button
-                            type="button"
-                            onClick={() => onClientFindSimilar(client)}
+                            onClick={() =>
+                              setActionsClientId((current) =>
+                                current === client.id ? null : client.id,
+                              )
+                            }
                             className={BTN_SM_SECONDARY}
-                            aria-label={`Найти похожих клиентов для ${client.name}`}
+                            aria-expanded={actionsClientId === client.id}
+                            aria-label={`Дополнительные действия клиента ${client.name}`}
                           >
-                            Объединить похожих
+                            Ещё
                           </button>
-                        )}
+                          {actionsClientId === client.id && (
+                            <div className="absolute right-0 z-20 mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg">
+                              {onClientFindSimilar && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionsClientId(null);
+                                    onClientFindSimilar(client);
+                                  }}
+                                  className="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                >
+                                  Объединить похожих
+                                </button>
+                              )}
+                              {onClientMerge && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionsClientId(null);
+                                    onClientMerge(client);
+                                  }}
+                                  className="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                >
+                                  Объединить вручную
+                                </button>
+                              )}
+                              {onClientDelete && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionsClientId(null);
+                                    onClientDelete(client);
+                                  }}
+                                  className="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                                >
+                                  Удалить
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <span className="text-xs uppercase tracking-wide text-slate-400">-</span>
