@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 
 _client: TelegramClient | None = None
 
-TASK_CREATED_PREFIX = "🟢 Новая задача:"
-TASK_COMPLETED_PREFIX = "✅ Задача выполнена:"
-DEAL_EVENT_PREFIX = "🔔"
-EXPECTED_CLOSE_PREFIX = "🔔 Внимание!"
-URGENT_PREFIX = "🚨"
-PAYMENT_DUE_PREFIX = "💸 Напоминание:"
-POLICY_EXPIRY_PREFIX = "🛡️ Напоминание:"
+TASK_CREATED_PREFIX = "\U0001f7e2 Новая задача:"
+TASK_COMPLETED_PREFIX = "\u2705 Задача выполнена:"
+DEAL_EVENT_PREFIX = "\U0001f514"
+EXPECTED_CLOSE_PREFIX = "\U0001f514 Внимание!"
+URGENT_PREFIX = "\U0001f6a8"
+PAYMENT_DUE_PREFIX = "\U0001f4b8 Напоминание:"
+POLICY_EXPIRY_PREFIX = "\U0001f6e1\ufe0f Напоминание:"
 
 
 def get_telegram_client() -> TelegramClient | None:

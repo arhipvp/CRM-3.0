@@ -229,7 +229,7 @@ class TaskCompletionTelegramNotificationTests(TestCase):
         self.assertEqual(len(self.fake_tg.sent_messages), 1)
         completion_message = self.fake_tg.sent_messages[0]
         self.assertEqual(completion_message["chat_id"], 3001)
-        self.assertIn("✅", completion_message["text"])
+        self.assertIn("\u2705", completion_message["text"])
         self.assertIn("Задача выполнена", completion_message["text"])
         self.assertIn("Проверить договор", completion_message["text"])
         self.assertIn("Комментарий: Посчитал каско в Сбер.", completion_message["text"])
@@ -403,7 +403,7 @@ class TaskCompletionTelegramNotificationTests(TestCase):
 
         self.assertEqual(len(self.fake_tg.sent_messages), 1)
         self.assertEqual(self.fake_tg.sent_messages[0]["chat_id"], 3002)
-        self.assertIn("🟢", self.fake_tg.sent_messages[0]["text"])
+        self.assertIn("\U0001f7e2", self.fake_tg.sent_messages[0]["text"])
         self.assertIn("Новая задача", self.fake_tg.sent_messages[0]["text"])
         self.assertTrue(
             NotificationDelivery.objects.filter(
@@ -438,7 +438,9 @@ class TelegramReminderEmojiTests(TestCase):
         ) as send_notification_mock:
             send_expected_close_reminders()
 
-        self.assertIn("🔔 Внимание!", send_notification_mock.call_args.kwargs["text"])
+        self.assertIn(
+            "\U0001f514 Внимание!", send_notification_mock.call_args.kwargs["text"]
+        )
 
         send_notification_mock.reset_mock()
         self.deal.expected_close = today + timedelta(days=1)
@@ -449,7 +451,9 @@ class TelegramReminderEmojiTests(TestCase):
         ) as send_notification_mock:
             send_expected_close_reminders()
 
-        self.assertIn("🚨 Внимание!", send_notification_mock.call_args.kwargs["text"])
+        self.assertIn(
+            "\U0001f6a8 Внимание!", send_notification_mock.call_args.kwargs["text"]
+        )
 
     def test_payment_due_uses_regular_and_urgent_emoji(self):
         today = timezone.localdate()
@@ -465,7 +469,7 @@ class TelegramReminderEmojiTests(TestCase):
             send_payment_due_reminders()
 
         self.assertIn(
-            "💸 Напоминание:", send_notification_mock.call_args.kwargs["text"]
+            "\U0001f4b8 Напоминание:", send_notification_mock.call_args.kwargs["text"]
         )
 
         send_notification_mock.reset_mock()
@@ -478,7 +482,7 @@ class TelegramReminderEmojiTests(TestCase):
             send_payment_due_reminders()
 
         self.assertIn(
-            "🚨 Напоминание:", send_notification_mock.call_args.kwargs["text"]
+            "\U0001f6a8 Напоминание:", send_notification_mock.call_args.kwargs["text"]
         )
 
     def test_policy_expiry_uses_regular_and_urgent_emoji(self):
@@ -499,7 +503,10 @@ class TelegramReminderEmojiTests(TestCase):
         ) as send_notification_mock:
             send_policy_expiry_reminders()
 
-        self.assertIn("🛡️ Напоминание:", send_notification_mock.call_args.kwargs["text"])
+        self.assertIn(
+            "\U0001f6e1\ufe0f Напоминание:",
+            send_notification_mock.call_args.kwargs["text"],
+        )
 
         send_notification_mock.reset_mock()
         policy.end_date = today + timedelta(days=1)
@@ -511,7 +518,7 @@ class TelegramReminderEmojiTests(TestCase):
             send_policy_expiry_reminders()
 
         self.assertIn(
-            "🚨 Напоминание:", send_notification_mock.call_args.kwargs["text"]
+            "\U0001f6a8 Напоминание:", send_notification_mock.call_args.kwargs["text"]
         )
 
 

@@ -276,7 +276,7 @@ jobs:
           COVERAGE_FILE: coverage.domain
         run: |
           cd backend
-          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/deals/tests apps/chat/tests apps/notes/tests.py apps/tasks/tests.py apps/mailboxes/tests.py apps/documents/tests.py
+          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/deals/tests apps/chat/tests apps/notes/tests.py apps/tasks/tests apps/mailboxes/tests.py apps/documents/tests.py
 
       - name: Upload domain coverage data
         uses: actions/upload-artifact@v6
@@ -335,7 +335,7 @@ jobs:
           COVERAGE_FILE: coverage.finance
         run: |
           cd backend
-          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/policies/tests apps/finances/tests.py apps/notifications/tests.py
+          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= apps/policies/tests apps/finances/tests.py apps/notifications/tests
 
       - name: Upload finance coverage data
         uses: actions/upload-artifact@v6
