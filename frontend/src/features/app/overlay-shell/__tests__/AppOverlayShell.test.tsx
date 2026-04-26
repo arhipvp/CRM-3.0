@@ -114,9 +114,15 @@ const baseProps = {
   quickTaskDeal: {
     id: 'deal-1',
     title: 'Сделка 1',
-    executor: null,
+    executor: 'user-1',
   },
-  quickTaskUsers: [],
+  quickTaskUsers: [
+    {
+      id: 'user-1',
+      username: 'executor',
+      roles: [],
+    },
+  ],
   setClientMergeFieldOverrides: vi.fn(),
   setMergeSearch: vi.fn(),
   similarCandidates: [],
