@@ -66,6 +66,9 @@ export function AddTaskForm({
       if (!title.trim()) {
         throw new Error('Название задачи обязательно');
       }
+      if (!formData.assigneeId) {
+        throw new Error('Ответственный обязателен');
+      }
 
       await onSubmit(formData);
     } catch (err) {
@@ -109,7 +112,10 @@ export function AddTaskForm({
       <FormField
         label="Исполнитель"
         htmlFor="assigneeId"
-        hint={!task ? 'По умолчанию будет назначен исполнитель сделки.' : undefined}
+        required
+        hint={
+          !task ? 'Ответственный обязателен. Исполнитель сделки выбран автоматически.' : undefined
+        }
       >
         <select
           id="assigneeId"
@@ -117,9 +123,12 @@ export function AddTaskForm({
           value={formData.assigneeId ?? ''}
           onChange={handleChange}
           disabled={loading}
+          required
           className={FORM_INPUT_DISABLED}
         >
-          <option value="">Не назначен</option>
+          <option value="" disabled>
+            Выберите ответственного
+          </option>
           {users.map((user) => (
             <option key={user.id} value={user.id}>
               {user.username}

@@ -25,3 +25,18 @@ class TaskSerializer(serializers.ModelSerializer):
             "completed_by",
             "completed_at",
         )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is not None:
+            if "assignee" in attrs and attrs["assignee"] is None:
+                raise serializers.ValidationError(
+                    {"assignee": "Ответственный обязателен."}
+                )
+            return attrs
+
+        assignee = attrs.get("assignee")
+        deal = attrs.get("deal")
+        if assignee is None and not getattr(deal, "executor_id", None):
+            raise serializers.ValidationError({"assignee": "Ответственный обязателен."})
+        return attrs

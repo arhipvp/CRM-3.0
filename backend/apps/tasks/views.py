@@ -81,7 +81,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
         deal = serializer.validated_data.get("deal")
-        assignee_provided = "assignee" in serializer.validated_data
+        assignee = serializer.validated_data.get("assignee")
         completion_kwargs = {}
         status = serializer.validated_data.get("status")
         if status == Task.TaskStatus.DONE:
@@ -90,7 +90,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             completion_kwargs["completion_comment"] = str(
                 serializer.validated_data.get("completion_comment") or ""
             ).strip()
-        if not assignee_provided and deal and deal.executor:
+        if not assignee and deal and deal.executor:
             serializer.save(
                 created_by=user, assignee=deal.executor, **completion_kwargs
             )

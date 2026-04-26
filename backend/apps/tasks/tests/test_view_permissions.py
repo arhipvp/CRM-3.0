@@ -47,6 +47,88 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         self.authenticate(user)
         return self.api_client.delete(f"/api/v1/tasks/{self.task.id}/")
 
+    def test_create_task_requires_assignee_when_deal_has_no_executor(self):
+        deal_without_executor = Deal.objects.create(
+            title="Deal without executor",
+            client=self.deal.client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/tasks/",
+            {
+                "deal": str(deal_without_executor.id),
+                "title": "Task without assignee",
+                "priority": Task.PriorityChoices.NORMAL,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("assignee", response.data)
+
+    def test_create_task_uses_deal_executor_when_assignee_omitted(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/tasks/",
+            {
+                "deal": str(self.deal.id),
+                "title": "Task with fallback assignee",
+                "priority": Task.PriorityChoices.NORMAL,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_task = Task.objects.get(id=response.data["id"])
+        self.assertEqual(created_task.assignee_id, self.executor.id)
+
+    def test_create_task_uses_deal_executor_when_assignee_is_null(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/tasks/",
+            {
+                "deal": str(self.deal.id),
+                "title": "Task with null assignee",
+                "priority": Task.PriorityChoices.NORMAL,
+                "assignee": None,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_task = Task.objects.get(id=response.data["id"])
+        self.assertEqual(created_task.assignee_id, self.executor.id)
+
+    def test_update_task_rejects_clearing_assignee(self):
+        self.task.assignee = self.executor
+        self.task.save(update_fields=["assignee"])
+
+        self.authenticate(self.seller)
+        response = self.api_client.patch(
+            f"/api/v1/tasks/{self.task.id}/",
+            {"assignee": None},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("assignee", response.data)
+
+    def test_update_task_without_assignee_field_is_allowed(self):
+        self.authenticate(self.seller)
+        response = self.api_client.patch(
+            f"/api/v1/tasks/{self.task.id}/",
+            {"title": "Updated title"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.title, "Updated title")
+
     def test_seller_can_delete_task(self):
         response = self._delete_task(self.seller)
 
