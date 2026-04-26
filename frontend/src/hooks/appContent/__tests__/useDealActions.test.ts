@@ -39,9 +39,10 @@ vi.mock('../../../api', () => {
   };
 });
 
-import { mergeDeals } from '../../../api';
+import { mergeDeals, updateDeal } from '../../../api';
 
 const mergeDealsMock = vi.mocked(mergeDeals);
+const updateDealMock = vi.mocked(updateDeal);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -157,5 +158,27 @@ describe('useDealActions', () => {
 
     expect(params.addNotification).toHaveBeenCalledTimes(1);
     expect(params.addNotification).toHaveBeenCalledWith('Сделки объединены', 'success', 4000);
+  });
+
+  it('сохраняет загруженный объем списка при переносе сделки', async () => {
+    const params = createParams();
+    updateDealMock.mockResolvedValue(createDeal());
+    params.refreshDeals.mockResolvedValue([createDeal()]);
+
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handlePostponeDeal('deal-1', {
+        title: 'Deal 1',
+        clientId: 'client-1',
+        description: '',
+        nextContactDate: '2026-02-01',
+      });
+    });
+
+    expect(params.refreshDeals).toHaveBeenCalledWith(params.dealFilters, {
+      force: true,
+      preserveLoadedCount: true,
+    });
   });
 });

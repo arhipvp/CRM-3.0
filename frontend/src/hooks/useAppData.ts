@@ -67,6 +67,11 @@ const dataReducer = (state: AppDataState, action: AppDataAction): AppDataState =
 const hasFinancePayload = (payload: Partial<AppDataState>) =>
   'payments' in payload || 'financialRecords' in payload || 'statements' in payload;
 
+type RefreshDealsOptions = {
+  force?: boolean;
+  preserveLoadedCount?: boolean;
+};
+
 export const buildDealsCacheKey = (filters: FilterParams): string => {
   const normalized = Object.entries(filters ?? {})
     .filter(([, value]) => value !== undefined)
@@ -150,12 +155,15 @@ export const useAppData = () => {
   }, []);
 
   const refreshDeals = useCallback(
-    async (filters?: FilterParams, options?: { force?: boolean }) => {
+    async (filters?: FilterParams, options?: RefreshDealsOptions) => {
       dealsRequestRef.current += 1;
       const requestId = dealsRequestRef.current;
       const resolvedFilters = { ordering: 'next_contact_date', ...(filters ?? {}) };
       const cacheKey = buildDealsCacheKey(resolvedFilters);
       const force = options?.force ?? false;
+      const pageSize = options?.preserveLoadedCount
+        ? Math.max(DEALS_PAGE_SIZE, dataStateRef.current.deals.length)
+        : DEALS_PAGE_SIZE;
       if (!force) {
         const cached = dealsCacheRef.current.get(cacheKey);
         if (cached) {
@@ -173,7 +181,7 @@ export const useAppData = () => {
         {
           ...resolvedFilters,
           page: 1,
-          page_size: DEALS_PAGE_SIZE,
+          page_size: pageSize,
         },
         { embed: 'none' },
       );
@@ -181,7 +189,9 @@ export const useAppData = () => {
         return payload.results;
       }
       const results = payload.results;
-      const nextPage = payload.next ? 2 : null;
+      const nextPage = payload.next
+        ? Math.max(2, Math.floor(results.length / DEALS_PAGE_SIZE) + 1)
+        : null;
       dealsCacheRef.current.set(cacheKey, {
         results,
         nextPage,

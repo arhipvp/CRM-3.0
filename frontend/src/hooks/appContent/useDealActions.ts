@@ -266,7 +266,7 @@ export const useDealActions = ({
       setIsSyncing(true);
       try {
         await updateDeal(dealId, data);
-        await refreshDeals(dealFilters, { force: true });
+        await refreshDeals(dealFilters, { force: true, preserveLoadedCount: true });
         clearSelectedDealFocus();
       } catch (err) {
         if (previousSelection) {

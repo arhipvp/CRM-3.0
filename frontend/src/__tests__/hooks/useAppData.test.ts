@@ -107,6 +107,87 @@ describe('buildDealsCacheKey', () => {
 });
 
 describe('useAppData loading strategy', () => {
+  it('preserves loaded deals count when refreshing with preserveLoadedCount', async () => {
+    const createDeal = (index: number) => ({
+      id: `deal-${index}`,
+      title: `Deal ${index}`,
+      clientId: 'client-1',
+      status: 'open' as const,
+      createdAt: `2026-01-${String(Math.min(index, 28)).padStart(2, '0')}T00:00:00Z`,
+      quotes: [],
+      documents: [],
+    });
+    const createDeals = (from: number, to: number) =>
+      Array.from({ length: to - from + 1 }, (_, offset) => createDeal(from + offset));
+
+    mockedFetchDealsWithPagination
+      .mockResolvedValueOnce({
+        count: 60,
+        next: '/deals/?page=2',
+        previous: null,
+        results: createDeals(1, 20),
+      })
+      .mockResolvedValueOnce({
+        count: 60,
+        next: '/deals/?page=3',
+        previous: null,
+        results: createDeals(21, 40),
+      })
+      .mockResolvedValueOnce({
+        count: 60,
+        next: '/deals/?page=2',
+        previous: null,
+        results: createDeals(1, 40),
+      })
+      .mockResolvedValueOnce({
+        count: 60,
+        next: null,
+        previous: null,
+        results: createDeals(41, 60),
+      });
+
+    const { result } = renderHook(() => useAppData());
+
+    await act(async () => {
+      await result.current.refreshDeals();
+    });
+    await act(async () => {
+      await result.current.loadMoreDeals();
+    });
+
+    expect(result.current.dataState.deals).toHaveLength(40);
+
+    await act(async () => {
+      await result.current.refreshDeals(undefined, { force: true, preserveLoadedCount: true });
+    });
+
+    expect(mockedFetchDealsWithPagination).toHaveBeenNthCalledWith(
+      3,
+      {
+        ordering: 'next_contact_date',
+        page: 1,
+        page_size: 40,
+      },
+      { embed: 'none' },
+    );
+    expect(result.current.dataState.deals).toHaveLength(40);
+
+    await act(async () => {
+      await result.current.loadMoreDeals();
+    });
+
+    expect(mockedFetchDealsWithPagination).toHaveBeenNthCalledWith(
+      4,
+      {
+        ordering: 'next_contact_date',
+        page: 3,
+        page_size: 20,
+      },
+      { embed: 'none' },
+    );
+    expect(result.current.dataState.deals).toHaveLength(60);
+  });
+
   it('loadData does not request payments/records/statements/tasks on startup', async () => {
     const { result } = renderHook(() => useAppData());
 
