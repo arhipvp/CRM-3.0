@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import re
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Callable, List, Tuple
 
 import openai
+import pymupdf
 from django.conf import settings
 from docx import Document
 from PyPDF2 import PdfReader
@@ -38,6 +40,7 @@ else:
 NOTE_VALUE = "импортировано с помощью ИИ"
 
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x1F\x7F]")
+BAD_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 WHITESPACE_RE = re.compile(r"\s+")
 VIN_ANCHOR_RE = re.compile(
     r"(?:\bVIN\b|Идентификацион(?:ный|ного)\s+номер)", flags=re.IGNORECASE
@@ -260,6 +263,103 @@ VIN_CLARIFY_PROMPT = (
     "Если VIN не указан или ты не уверен, оставь 'vehicle_vin' пустым. "
     "Верни полный JSON по той же схеме."
 )
+VISION_USER_PROMPT = (
+    "Распознай страховой полис по изображениям страниц. "
+    "Если передано несколько файлов, считай их частями одного договора/полиса. "
+    "Верни JSON строго по схеме."
+)
+POLICY_TEXT_TERMS = (
+    "полис",
+    "страх",
+    "договор",
+    "осаго",
+    "каско",
+    "страхователь",
+    "страховщик",
+    "премия",
+    "транспорт",
+    "vin",
+    "policy",
+)
+
+
+def _bool_setting(name: str, default: bool) -> bool:
+    value = getattr(settings, name, default)
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def policy_vision_fallback_enabled() -> bool:
+    """Вернуть, включён ли vision-фолбэк распознавания полисов."""
+
+    return _bool_setting("POLICY_RECOGNITION_VISION_FALLBACK_ENABLED", True)
+
+
+def is_pdf_filename(filename: str) -> bool:
+    """Проверить, похож ли файл на PDF по имени."""
+
+    return (filename or "").lower().endswith(".pdf")
+
+
+def is_extracted_policy_text_poor(text: str) -> bool:
+    """Оценить, можно ли доверять текстовому слою документа."""
+
+    if not isinstance(text, str):
+        return True
+    stripped = text.strip()
+    if len(stripped) < 10:
+        return True
+
+    lowered = stripped.lower()
+    term_hits = sum(1 for term in POLICY_TEXT_TERMS if term in lowered)
+    if len(stripped) < 40 and term_hits == 0:
+        return True
+
+    bad_control_count = len(BAD_CONTROL_CHARS_RE.findall(stripped))
+    if bad_control_count / max(len(stripped), 1) > 0.01:
+        return True
+
+    cyrillic_count = len(re.findall(r"[а-яё]", lowered))
+    if term_hits == 0 and cyrillic_count / max(len(stripped), 1) < 0.03:
+        return True
+
+    return False
+
+
+def is_policy_recognition_result_poor(data: dict) -> bool:
+    """Оценить, достаточно ли полей вернул text-mode ИИ."""
+
+    if not isinstance(data, dict):
+        return True
+    if any(
+        str(data.get(key) or "").strip() for key in ("policyNumber", "policy_number")
+    ):
+        return False
+    policy = data.get("policy")
+    if not isinstance(policy, dict):
+        return True
+
+    key_fields = (
+        "policy_number",
+        "insurance_type",
+        "insurance_company",
+        "start_date",
+        "end_date",
+    )
+    vehicle_fields = ("vehicle_brand", "vehicle_model", "vehicle_vin")
+    filled_key_fields = sum(
+        1 for key in key_fields if str(policy.get(key) or "").strip()
+    )
+    has_vehicle = any(str(policy.get(key) or "").strip() for key in vehicle_fields)
+    payments = data.get("payments")
+    has_payment = any(
+        isinstance(payment, dict)
+        and str(payment.get("amount") or "").strip()
+        and str(payment.get("payment_date") or "").strip()
+        for payment in payments or []
+    )
+    return filled_key_fields < 2 and not has_vehicle and not has_payment
 
 
 def extract_text_from_bytes(content: bytes, filename: str) -> str:
@@ -355,6 +455,107 @@ class PolicyRecognitionError(ValueError):
     def __init__(self, message: str, transcript: str | None = None):
         super().__init__(message)
         self.transcript = transcript or ""
+
+
+def _to_data_uri(image_bytes: bytes, mime_type: str) -> str:
+    encoded = base64.b64encode(image_bytes).decode("utf-8")
+    return f"data:{mime_type};base64,{encoded}"
+
+
+def _render_pdf_pages_for_vision(
+    content: bytes,
+    filename: str,
+    *,
+    remaining_pages: int | None = None,
+) -> list[bytes]:
+    """Отрендерить страницы PDF в PNG для vision-модели."""
+
+    dpi = int(getattr(settings, "POLICY_RECOGNITION_PDF_RENDER_DPI", 180))
+    max_pages = int(getattr(settings, "POLICY_RECOGNITION_MAX_VISION_PAGES", 6))
+    if remaining_pages is not None:
+        max_pages = max(0, min(max_pages, remaining_pages))
+    if max_pages <= 0:
+        return []
+
+    images: list[bytes] = []
+    try:
+        with pymupdf.open(stream=content, filetype="pdf") as document:
+            for page in document:
+                if len(images) >= max_pages:
+                    break
+                pix = page.get_pixmap(dpi=dpi)
+                images.append(pix.tobytes("png"))
+    except Exception as exc:
+        raise PolicyRecognitionError(
+            f"Не удалось подготовить PDF для vision-распознавания: {filename}."
+        ) from exc
+    return images
+
+
+def _validate_policy_payload(data: dict) -> None:
+    if HAVE_JSONSCHEMA:
+        validate(instance=data, schema=POLICY_SCHEMA)
+    else:
+        _basic_policy_validate(data)
+
+
+def _parse_policy_answer(answer: str, source_text: str) -> dict:
+    extracted = _extract_json_from_answer(answer)
+    repaired = _repair_json_payload(extracted)
+    data = json.loads(repaired, strict=False)
+    data = _normalize_policy_payload(data)
+    data = _apply_vin_fail_soft(data, source_text)
+    _validate_policy_payload(data)
+    return data
+
+
+def _build_vision_messages(
+    files: list[dict[str, object]],
+    *,
+    extra_companies: List[str] | None = None,
+    extra_types: List[str] | None = None,
+) -> tuple[list[dict], str]:
+    max_pages = int(getattr(settings, "POLICY_RECOGNITION_MAX_VISION_PAGES", 6))
+    rendered_pages = 0
+    user_content: list[dict] = [{"type": "text", "text": VISION_USER_PROMPT}]
+    source_hint_parts: list[str] = []
+
+    for file_data in files:
+        filename = str(file_data.get("name") or "")
+        content = file_data.get("content")
+        source_text = str(file_data.get("text") or "")
+        if source_text:
+            source_hint_parts.append(f"Файл {filename}:\n{source_text}")
+        if not isinstance(content, bytes) or not is_pdf_filename(filename):
+            continue
+        remaining_pages = max_pages - rendered_pages
+        images = _render_pdf_pages_for_vision(
+            content,
+            filename,
+            remaining_pages=remaining_pages,
+        )
+        if not images:
+            continue
+        user_content.append({"type": "text", "text": f"Файл: {filename}"})
+        for image_bytes in images:
+            user_content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": _to_data_uri(image_bytes, "image/png")},
+                }
+            )
+        rendered_pages += len(images)
+        if rendered_pages >= max_pages:
+            break
+
+    if rendered_pages == 0:
+        raise PolicyRecognitionError("Нет PDF-страниц для vision-распознавания полиса.")
+
+    messages = [
+        {"role": "system", "content": _build_prompt(extra_companies, extra_types)},
+        {"role": "user", "content": user_content},
+    ]
+    return messages, "\n\n".join(source_hint_parts)
 
 
 def _extract_balanced_json(text: str) -> str:
@@ -944,15 +1145,7 @@ def recognize_policy_interactive(
         answer = _chat(messages, progress_cb=progress_cb, cancel_cb=cancel_cb)
         messages.append({"role": "assistant", "content": answer})
         try:
-            extracted = _extract_json_from_answer(answer)
-            repaired = _repair_json_payload(extracted)
-            data = json.loads(repaired, strict=False)
-            data = _normalize_policy_payload(data)
-            data = _apply_vin_fail_soft(data, text)
-            if HAVE_JSONSCHEMA:
-                validate(instance=data, schema=POLICY_SCHEMA)
-            else:
-                _basic_policy_validate(data)
+            data = _parse_policy_answer(answer, text)
         except json.JSONDecodeError as exc:
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)
@@ -1001,6 +1194,28 @@ def recognize_policy_from_text(
     return data, transcript
 
 
+def recognize_policy_from_pdf_images(
+    files: list[dict[str, object]],
+    *,
+    extra_companies: List[str] | None = None,
+    extra_types: List[str] | None = None,
+) -> Tuple[dict, str]:
+    """Распознать полис по PDF-страницам, отрендеренным как изображения."""
+
+    messages, source_text = _build_vision_messages(
+        files,
+        extra_companies=extra_companies,
+        extra_types=extra_types,
+    )
+    data, transcript, _ = recognize_policy_interactive(
+        source_text,
+        messages=messages,
+        extra_companies=extra_companies,
+        extra_types=extra_types,
+    )
+    return data, f"[vision fallback]\n{transcript}"
+
+
 def recognize_policy_from_bytes(
     content: bytes,
     *,
@@ -1010,7 +1225,57 @@ def recognize_policy_from_bytes(
 ) -> Tuple[dict, str]:
     """Распознать полис по содержимому файла."""
 
-    text = extract_text_from_bytes(content, filename)
+    text = ""
+    text_error: PolicyRecognitionError | None = None
+    text_result: tuple[dict, str] | None = None
+
+    try:
+        text = extract_text_from_bytes(content, filename)
+    except PolicyRecognitionError as exc:
+        text_error = exc
+
+    can_use_vision = (
+        policy_vision_fallback_enabled()
+        and is_pdf_filename(filename)
+        and isinstance(content, bytes)
+    )
+
+    if text_error is None and not is_extracted_policy_text_poor(text):
+        try:
+            data, transcript = recognize_policy_from_text(
+                text,
+                extra_companies=extra_companies,
+                extra_types=extra_types,
+            )
+            if not is_policy_recognition_result_poor(data) or not can_use_vision:
+                return data, transcript
+            text_result = (data, transcript)
+        except PolicyRecognitionError as exc:
+            text_error = exc
+
+    if can_use_vision:
+        try:
+            return recognize_policy_from_pdf_images(
+                [{"name": filename, "content": content, "text": text}],
+                extra_companies=extra_companies,
+                extra_types=extra_types,
+            )
+        except PolicyRecognitionError as vision_exc:
+            if text_result is not None:
+                logger.warning(
+                    "Vision fallback failed after weak text result: %s", vision_exc
+                )
+                return text_result
+            if text_error is not None:
+                raise PolicyRecognitionError(
+                    f"{text_error}; vision fallback: {vision_exc}",
+                    f"{text_error.transcript}\n\n{vision_exc.transcript}".strip(),
+                ) from vision_exc
+            raise
+
+    if text_error is not None:
+        raise text_error
+
     return recognize_policy_from_text(
         text, extra_companies=extra_companies, extra_types=extra_types
     )

@@ -30,6 +30,11 @@ from rest_framework.views import APIView
 from .ai_service import (
     PolicyRecognitionError,
     extract_text_from_bytes,
+    is_extracted_policy_text_poor,
+    is_pdf_filename,
+    is_policy_recognition_result_poor,
+    policy_vision_fallback_enabled,
+    recognize_policy_from_pdf_images,
     recognize_policy_from_text,
 )
 from .dashboard import get_month_bounds, parse_date_value
@@ -264,7 +269,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .distinct()
         )
 
-        downloaded_files: List[dict[str, str]] = []
+        downloaded_files: List[dict[str, object]] = []
         for file_id in file_ids:
             if file_id in seen:
                 continue
@@ -294,25 +299,31 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
                 continue
 
+            extracted_text = ""
             try:
                 extracted_text = extract_text_from_bytes(content, file_info["name"])
             except PolicyRecognitionError as exc:
-                results.append(
-                    {
-                        "fileId": file_id,
-                        "fileName": file_info["name"],
-                        "status": "error",
-                        "message": str(exc),
-                        "transcript": exc.transcript,
-                    }
-                )
-                continue
+                if not (
+                    policy_vision_fallback_enabled()
+                    and is_pdf_filename(file_info["name"])
+                ):
+                    results.append(
+                        {
+                            "fileId": file_id,
+                            "fileName": file_info["name"],
+                            "status": "error",
+                            "message": str(exc),
+                            "transcript": exc.transcript,
+                        }
+                    )
+                    continue
 
             downloaded_files.append(
                 {
                     "id": file_id,
                     "name": file_info["name"],
                     "text": extracted_text,
+                    "content": content,
                 }
             )
 
@@ -324,37 +335,102 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if not combined_text:
                 combined_text = downloaded_files[0]["text"]
 
+            can_use_vision = policy_vision_fallback_enabled() and any(
+                is_pdf_filename(str(file_data["name"]))
+                for file_data in downloaded_files
+            )
+            text_is_poor = any(
+                is_pdf_filename(str(file_data["name"]))
+                and is_extracted_policy_text_poor(str(file_data.get("text") or ""))
+                for file_data in downloaded_files
+            )
+            attempted_vision = False
+            used_vision = False
             try:
-                data, transcript = recognize_policy_from_text(
-                    combined_text,
-                    extra_companies=company_names,
-                    extra_types=type_names,
-                )
-            except PolicyRecognitionError as exc:
-                for file_data in downloaded_files:
-                    results.append(
-                        {
-                            "fileId": file_data["id"],
-                            "fileName": file_data["name"],
-                            "status": "error",
-                            "message": str(exc),
-                            "transcript": exc.transcript,
-                        }
+                if text_is_poor and can_use_vision:
+                    attempted_vision = True
+                    data, transcript = recognize_policy_from_pdf_images(
+                        downloaded_files,
+                        extra_companies=company_names,
+                        extra_types=type_names,
                     )
-                return Response({"results": results})
+                    used_vision = True
+                else:
+                    data, transcript = recognize_policy_from_text(
+                        str(combined_text),
+                        extra_companies=company_names,
+                        extra_types=type_names,
+                    )
+                    if is_policy_recognition_result_poor(data) and can_use_vision:
+                        attempted_vision = True
+                        data, transcript = recognize_policy_from_pdf_images(
+                            downloaded_files,
+                            extra_companies=company_names,
+                            extra_types=type_names,
+                        )
+                        used_vision = True
+            except PolicyRecognitionError as exc:
+                if can_use_vision and not attempted_vision:
+                    try:
+                        attempted_vision = True
+                        data, transcript = recognize_policy_from_pdf_images(
+                            downloaded_files,
+                            extra_companies=company_names,
+                            extra_types=type_names,
+                        )
+                        used_vision = True
+                    except PolicyRecognitionError as vision_exc:
+                        for file_data in downloaded_files:
+                            results.append(
+                                {
+                                    "fileId": file_data["id"],
+                                    "fileName": file_data["name"],
+                                    "status": "error",
+                                    "message": (
+                                        f"{exc}; vision fallback: {vision_exc}"
+                                    ),
+                                    "transcript": (
+                                        f"{exc.transcript}\n\n"
+                                        f"{vision_exc.transcript}"
+                                    ).strip(),
+                                }
+                            )
+                        return Response({"results": results})
+                else:
+                    for file_data in downloaded_files:
+                        results.append(
+                            {
+                                "fileId": file_data["id"],
+                                "fileName": file_data["name"],
+                                "status": "error",
+                                "message": str(exc),
+                                "transcript": exc.transcript,
+                            }
+                        )
+                    return Response({"results": results})
 
             primary_file_id = downloaded_files[0]["id"]
             for file_data in downloaded_files:
                 is_primary = file_data["id"] == primary_file_id
+                if is_primary and used_vision:
+                    message = (
+                        "Распознано через Vision ИИ "
+                        f"(1 запрос на {len(downloaded_files)} файлов)."
+                    )
+                elif is_primary:
+                    message = (
+                        f"Распознано (1 запрос на {len(downloaded_files)} файлов)."
+                    )
+                else:
+                    message = (
+                        "Файл использован в общем распознавании, результат см. "
+                        "в первом файле."
+                    )
                 payload = {
                     "fileId": file_data["id"],
                     "fileName": file_data["name"],
                     "status": "parsed",
-                    "message": (
-                        f"Распознано (1 запрос на {len(downloaded_files)} файлов)."
-                        if is_primary
-                        else "Файл использован в общем распознавании, результат см. в первом файле."
-                    ),
+                    "message": message,
                 }
                 if is_primary:
                     payload["transcript"] = transcript
