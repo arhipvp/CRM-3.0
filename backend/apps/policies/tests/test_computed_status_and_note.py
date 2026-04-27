@@ -165,6 +165,30 @@ class PolicyComputedStatusAndNoteTests(AuthenticatedAPITestCase):
         self.assertEqual(policy_data["renewed_by_number"], "POL-NEW")
         self.assertEqual(policy_data["computed_status"], "active")
 
+    def test_policy_renewal_can_be_changed_from_current_policy_side(self):
+        old_policy = self._create_policy("POL-UPDATE-OLD")
+        new_policy = self._create_policy("POL-UPDATE-NEW")
+
+        link_response = self.api_client.patch(
+            f"/api/v1/policies/{new_policy.id}/",
+            {"renews_policy": str(old_policy.id)},
+            format="json",
+        )
+
+        self.assertEqual(link_response.status_code, status.HTTP_200_OK)
+        old_policy.refresh_from_db()
+        self.assertEqual(old_policy.renewed_by_id, new_policy.id)
+
+        unlink_response = self.api_client.patch(
+            f"/api/v1/policies/{new_policy.id}/",
+            {"renews_policy": None},
+            format="json",
+        )
+
+        self.assertEqual(unlink_response.status_code, status.HTTP_200_OK)
+        old_policy.refresh_from_db()
+        self.assertIsNone(old_policy.renewed_by_id)
+
     def test_policy_renewal_validation_rejects_self_link_and_cycle(self):
         old_policy = self._create_policy("POL-CYCLE-OLD")
         new_policy = self._create_policy("POL-CYCLE-NEW")

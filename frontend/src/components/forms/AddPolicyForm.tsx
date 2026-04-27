@@ -479,18 +479,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   };
 
   const computedDefaultEndDate = startDate ? getDefaultEndDate(startDate) : '';
-  const renewalMode = isEditing ? 'renewedBy' : 'renews';
-  const renewalLabel = isEditing ? 'Продлён полисом' : 'Продлевает полис';
+  const renewalLabel = 'Продлевает полис';
   const renewalPolicyOptions = useMemo(() => {
     return dealPolicies
       .filter((policy) => {
         if (policy.id === currentPolicyId) {
           return false;
         }
-        if (isEditing) {
-          return true;
-        }
-        if (policy.isRenewed && policy.id !== renewsPolicyId) {
+        if (policy.isRenewed && (!currentPolicyId || policy.renewedById !== currentPolicyId)) {
           return false;
         }
         return true;
@@ -503,7 +499,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           label: [policy.number, company, endDateLabel].filter(Boolean).join(' · '),
         };
       });
-  }, [currentPolicyId, dealPolicies, isEditing, renewsPolicyId]);
+  }, [currentPolicyId, dealPolicies]);
   const policyDurationWarning =
     startDate && endDate && computedDefaultEndDate && endDate !== computedDefaultEndDate
       ? 'Срок полиса отличается от стандартного годового периода. Уточните даты, если это ожидаемо.'
@@ -741,8 +737,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         number: number.trim(),
         insuranceCompanyId,
         insuranceTypeId,
-        renewedById: isEditing ? renewedById || null : null,
-        renewsPolicyId: !isEditing ? renewsPolicyId || null : null,
+        renewedById: null,
+        renewsPolicyId: renewsPolicyId || null,
         isVehicle,
         brand: isVehicle ? brand.trim() || undefined : undefined,
         model: isVehicle ? model.trim() || undefined : undefined,
@@ -805,12 +801,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 onInsuranceTypeChange={setInsuranceTypeId}
                 types={types}
                 renewalLabel={renewalLabel}
-                renewalPolicyId={renewalMode === 'renewedBy' ? renewedById : renewsPolicyId}
+                renewalPolicyId={renewsPolicyId}
                 onRenewalPolicyChange={(value) => {
-                  if (renewalMode === 'renewedBy') {
-                    setRenewedById(value);
-                    return;
-                  }
                   setRenewsPolicyId(value);
                 }}
                 renewalPolicyOptions={renewalPolicyOptions}

@@ -79,6 +79,7 @@
 ## Ограничения данных
 - `Policy.end_date` не может быть раньше `start_date`.
 - `Policy.status = expired` требует заполненного `end_date`.
+- Продление полиса редактируется со стороны нового полиса: API получает `renews_policy`, а у предыдущего полиса сохраняется `renewed_by = новый полис`.
 - `Payment.amount` должен быть больше нуля.
 - `Payment.actual_date` не может быть раньше `scheduled_date`.
 - `Policy.number` уникален среди не удаленных записей (`policies_unique_active_number`).

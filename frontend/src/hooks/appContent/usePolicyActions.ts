@@ -555,7 +555,7 @@ export const usePolicyActions = ({
           endDate,
           clientId: selectedPolicyClientId,
           clientName: selectedPolicyClientName,
-          renewedById,
+          renewsPolicyId,
           payments: paymentDrafts = [],
         } = values;
 
@@ -664,7 +664,7 @@ export const usePolicyActions = ({
           startDate,
           endDate,
           clientId: resolvedPolicyClientId || currentPolicy.clientId,
-          renewedById: renewedById || null,
+          renewsPolicyId: renewsPolicyId || null,
         });
         updateAppData((prev) => ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),

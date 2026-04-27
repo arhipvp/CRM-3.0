@@ -138,7 +138,9 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
             onChange={(event) => onRenewalPolicyChange(event.target.value)}
             className="field field-input mt-2"
           >
-            <option value="">Не связано</option>
+            <option value="">
+              {renewalPolicyOptions.length ? 'Не связано' : 'Нет доступных полисов для продления'}
+            </option>
             {renewalPolicyOptions.map((policy) => (
               <option key={policy.id} value={policy.id}>
                 {policy.label}

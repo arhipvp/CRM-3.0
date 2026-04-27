@@ -361,7 +361,7 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(updateFinancialRecordMock).not.toHaveBeenCalled();
   });
 
-  it('передаёт renewedById при обновлении полиса', async () => {
+  it('передаёт renewsPolicyId при обновлении полиса', async () => {
     const policy = createPolicy();
     const { params } = createParams({ policy });
 
@@ -378,7 +378,7 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
       await result.current.handleUpdatePolicy(
         policy.id,
         createPolicyValues({
-          renewedById: 'policy-2',
+          renewsPolicyId: 'policy-2',
         }),
       );
     });
@@ -386,9 +386,10 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(updatePolicyMock).toHaveBeenCalledWith(
       policy.id,
       expect.objectContaining({
-        renewedById: 'policy-2',
+        renewsPolicyId: 'policy-2',
       }),
     );
+    expect(updatePolicyMock.mock.calls[0]?.[1]).not.toHaveProperty('renewedById');
   });
 });
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AddPolicyForm } from '../AddPolicyForm';
@@ -749,5 +749,93 @@ describe('AddPolicyForm', () => {
         }),
       );
     });
+  });
+
+  it('submits selected previous policy relation in edit mode', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AddPolicyForm
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        salesChannels={[]}
+        initialValues={{
+          ...buildInitialValues([
+            {
+              amount: '1000',
+              description: '',
+              scheduledDate: '2026-01-13',
+              actualDate: '',
+              incomes: [],
+              expenses: [],
+            },
+          ]),
+          renewsPolicyId: 'policy-old',
+        }}
+        isEditing
+        clients={[]}
+        dealPolicies={[buildPolicyOption()]}
+        currentPolicyId="policy-new"
+        onRequestAddClient={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Продлевает полис')).toHaveValue('policy-old');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          renewsPolicyId: 'policy-old',
+          renewedById: null,
+        }),
+      );
+    });
+  });
+
+  it('hides policies already renewed by another policy from renewal candidates', async () => {
+    render(
+      <AddPolicyForm
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+        salesChannels={[]}
+        initialValues={buildInitialValues([
+          {
+            amount: '1000',
+            description: '',
+            scheduledDate: '2026-01-13',
+            actualDate: '',
+            incomes: [],
+            expenses: [],
+          },
+        ])}
+        isEditing
+        clients={[]}
+        dealPolicies={[
+          buildPolicyOption({
+            id: 'policy-linked',
+            number: 'POL-LINKED',
+            isRenewed: true,
+            renewedById: 'policy-current',
+          }),
+          buildPolicyOption({
+            id: 'policy-renewed-by-other',
+            number: 'POL-OTHER',
+            isRenewed: true,
+            renewedById: 'policy-other-new',
+          }),
+        ]}
+        currentPolicyId="policy-current"
+        onRequestAddClient={vi.fn()}
+      />,
+    );
+
+    await act(async () => {});
+
+    expect(screen.getByRole('option', { name: /POL-LINKED/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /POL-OTHER/ })).not.toBeInTheDocument();
   });
 });

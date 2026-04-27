@@ -49,10 +49,11 @@ const buildPaymentDraft = (payment: Payment, financialRecords: FinancialRecord[]
   };
 };
 
-const buildPolicyFormValues = (
+export const buildPolicyFormValues = (
   policy: Policy,
   payments: Payment[],
   financialRecords: FinancialRecord[],
+  dealPolicies: Policy[],
 ): PolicyFormValues => ({
   number: policy.number,
   insuranceCompanyId: policy.insuranceCompanyId,
@@ -65,6 +66,7 @@ const buildPolicyFormValues = (
   note: policy.note,
   salesChannelId: policy.salesChannelId,
   renewedById: policy.renewedById ?? null,
+  renewsPolicyId: dealPolicies.find((candidate) => candidate.renewedById === policy.id)?.id ?? null,
   startDate: policy.startDate,
   endDate: policy.endDate,
   clientId: policy.clientId ?? policy.insuredClientId,
@@ -171,6 +173,14 @@ export const AppModals: React.FC<AppModalsProps> = ({
   setEditingQuote,
   confirm,
 }) => {
+  const createPolicyCandidates = React.useMemo(
+    () => policies.filter((policy) => policy.dealId === policyDealId),
+    [policies, policyDealId],
+  );
+  const editPolicyCandidates = React.useMemo(
+    () => policies.filter((policy) => policy.dealId === editingPolicy?.dealId),
+    [editingPolicy?.dealId, policies],
+  );
   const editingPolicyPayments = React.useMemo(
     () =>
       editingPolicy ? payments.filter((payment) => payment.policyId === editingPolicy.id) : [],
@@ -179,17 +189,14 @@ export const AppModals: React.FC<AppModalsProps> = ({
   const editingPolicyInitialValues = React.useMemo(
     () =>
       editingPolicy
-        ? buildPolicyFormValues(editingPolicy, editingPolicyPayments, financialRecords)
+        ? buildPolicyFormValues(
+            editingPolicy,
+            editingPolicyPayments,
+            financialRecords,
+            editPolicyCandidates,
+          )
         : undefined,
-    [editingPolicy, editingPolicyPayments, financialRecords],
-  );
-  const createPolicyCandidates = React.useMemo(
-    () => policies.filter((policy) => policy.dealId === policyDealId),
-    [policies, policyDealId],
-  );
-  const editPolicyCandidates = React.useMemo(
-    () => policies.filter((policy) => policy.dealId === editingPolicy?.dealId),
-    [editingPolicy?.dealId, policies],
+    [editPolicyCandidates, editingPolicy, editingPolicyPayments, financialRecords],
   );
   const [isAddPolicyDirty, setIsAddPolicyDirty] = React.useState(false);
   const [isEditPolicyDirty, setIsEditPolicyDirty] = React.useState(false);

@@ -278,25 +278,28 @@ interface PolicyUpdatePayload {
 }
 
 export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promise<Policy> {
+  const bodyPayload: Record<string, unknown> = {
+    number: data.number,
+    insurance_company: data.insuranceCompanyId,
+    insurance_type: data.insuranceTypeId,
+    is_vehicle: data.isVehicle,
+    brand: data.brand || '',
+    model: data.model || '',
+    vin: data.vin || '',
+    counterparty: data.counterparty || '',
+    note: data.note || '',
+    sales_channel: data.salesChannelId || null,
+    start_date: data.startDate || null,
+    end_date: data.endDate || null,
+    client: data.clientId || null,
+    renews_policy: data.renewsPolicyId || null,
+  };
+  if (data.renewedById !== undefined) {
+    bodyPayload.renewed_by = data.renewedById || null;
+  }
   const payload = await request<Record<string, unknown>>(`/policies/${id}/`, {
     method: 'PATCH',
-    body: JSON.stringify({
-      number: data.number,
-      insurance_company: data.insuranceCompanyId,
-      insurance_type: data.insuranceTypeId,
-      is_vehicle: data.isVehicle,
-      brand: data.brand || '',
-      model: data.model || '',
-      vin: data.vin || '',
-      counterparty: data.counterparty || '',
-      note: data.note || '',
-      sales_channel: data.salesChannelId || null,
-      start_date: data.startDate || null,
-      end_date: data.endDate || null,
-      client: data.clientId || null,
-      renewed_by: data.renewedById || null,
-      renews_policy: data.renewsPolicyId || null,
-    }),
+    body: JSON.stringify(bodyPayload),
   });
   return mapPolicy(payload);
 }
