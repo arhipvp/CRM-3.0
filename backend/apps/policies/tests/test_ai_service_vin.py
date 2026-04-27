@@ -4,141 +4,97 @@ import json
 from unittest.mock import patch
 
 from apps.policies.ai_service import (
-    _extract_vin_from_source_text,
+    _build_prompt,
     recognize_policy_interactive,
 )
 from django.test import SimpleTestCase
 
 
-class SourceVinExtractionTests(SimpleTestCase):
-    def test_extracts_vin_from_glued_token_after_anchor(self) -> None:
-        text = (
-            "Марка,модель Идентификационный номер Годвыпуска "
-            "PORSCHE PANAMERA WP0ZZZYAZSL0609212025353,5"
-        )
-        self.assertEqual(_extract_vin_from_source_text(text), "WP0ZZZYAZSL060921")
-
-    def test_extracts_vin_before_anchor_for_tabular_line(self) -> None:
-        text = (
-            "VOLKSWAGEN TOUAREG XW8ZZZ7PZGG001078 T002PK777 2015 249 "
-            "Марка,модель Идентификационный номер Государственный регистрационный знак"
-        )
-        self.assertEqual(_extract_vin_from_source_text(text), "XW8ZZZ7PZGG001078")
-
-    def test_picks_nearest_vin_when_multiple_candidates_around_anchor(self) -> None:
-        text = (
-            "AAAAAAAABBBBBBBBB далеко от поля "
-            "Идентификационный номер WP0ZZZYAZSL060921 "
-            "дополнительно XW8ZZZ7PZGG001078"
-        )
-        self.assertEqual(_extract_vin_from_source_text(text), "WP0ZZZYAZSL060921")
-
-    def test_ignores_tokens_without_vin_anchor(self) -> None:
-        text = "Случайная строка ABCDEFGH123456789 без явного поля номера кузова."
-        self.assertEqual(_extract_vin_from_source_text(text), "")
-
-
-class RecognizePolicyVinFailSoftTests(SimpleTestCase):
+class RecognizePolicyAiVerificationTests(SimpleTestCase):
     @staticmethod
-    def _build_answer(vin: str, brand: str = "PORSCHE", model: str = "PANAMERA") -> str:
+    def _build_answer(
+        vin: str,
+        *,
+        insurance_type: str = "ОСАГО",
+        start_date: str = "2025-09-19",
+        end_date: str = "2026-09-18",
+    ) -> str:
         payload = {
             "client_name": "Тестовый клиент",
             "policy": {
                 "policy_number": "SYS2884597919",
-                "insurance_type": "ОСАГО",
+                "insurance_type": insurance_type,
                 "insurance_company": "САО «ВСК»",
                 "contractor": "",
                 "sales_channel": "",
-                "start_date": "2025-09-19",
-                "end_date": "2026-09-18",
-                "vehicle_brand": brand,
-                "vehicle_model": model,
+                "start_date": start_date,
+                "end_date": end_date,
+                "vehicle_brand": "PORSCHE",
+                "vehicle_model": "PANAMERA",
                 "vehicle_vin": vin,
                 "note": "импортировано с помощью ИИ",
             },
             "payments": [
                 {
                     "amount": 3168,
-                    "payment_date": "2025-09-19",
-                    "actual_payment_date": "2025-09-19",
+                    "payment_date": start_date,
+                    "actual_payment_date": start_date,
                 }
             ],
         }
         return json.dumps(payload, ensure_ascii=False)
 
     @patch("apps.policies.ai_service._chat")
-    def test_recovers_vin_from_source_text_when_model_returns_short_vin(
-        self, chat_mock
-    ) -> None:
-        chat_mock.return_value = self._build_answer("WP0ZZZYAZSL06092")
+    def test_second_ai_pass_corrects_formal_vin_issue(self, chat_mock) -> None:
+        chat_mock.side_effect = [
+            self._build_answer("WP0ZZZYAZSL06092"),
+            self._build_answer("WP0ZZZYAZSL060921"),
+        ]
         text = (
             "Идентификационный номер WP0ZZZYAZSL0609212025353,5 "
             "Полис № SYS2884597919"
         )
 
-        data, _, _ = recognize_policy_interactive(text)
+        data, transcript, messages = recognize_policy_interactive(text)
 
         self.assertEqual(data["policy"]["vehicle_vin"], "WP0ZZZYAZSL060921")
-        self.assertEqual(chat_mock.call_count, 1)
+        self.assertEqual(chat_mock.call_count, 2)
+        verification_message = messages[-2]["content"]
+        self.assertIn("Формальные замечания CRM", verification_message)
+        self.assertIn("vehicle_vin", verification_message)
+        self.assertIn("САМОПРОВЕРКИ", transcript)
 
     @patch("apps.policies.ai_service._chat")
-    def test_clears_invalid_vin_when_source_text_has_no_valid_vin(
-        self, chat_mock
-    ) -> None:
-        chat_mock.return_value = self._build_answer(
-            "WP0ZZZYAZSL06092", brand="", model=""
-        )
-        text = "Текст документа без номера VIN и без идентификационного номера."
-
-        data, _, _ = recognize_policy_interactive(text)
-
-        self.assertEqual(data["policy"]["vehicle_vin"], "")
-        self.assertEqual(chat_mock.call_count, 1)
-
-    @patch("apps.policies.ai_service._chat")
-    def test_keeps_valid_model_vin_when_source_text_has_no_anchor(
-        self, chat_mock
-    ) -> None:
-        chat_mock.return_value = self._build_answer("WP0ZZZYAZSL060921")
-        text = "Документ без поля VIN, но с другими реквизитами."
-
-        data, _, _ = recognize_policy_interactive(text)
-
-        self.assertEqual(data["policy"]["vehicle_vin"], "WP0ZZZYAZSL060921")
-
-    @patch("apps.policies.ai_service._chat")
-    def test_repairs_broken_json_and_recovers_vin_from_source_text(
-        self, chat_mock
-    ) -> None:
-        chat_mock.return_value = """{
-  "client_name": "БЕЛОВ ДМИТРИЙ АНАТОЛЬЕВИЧ",
-  "policy": {
-    "policy_number": "SYS2942242418",
-    "insurance_type": "ОСАГО",
-    "insurance_company": "РЕСО-ГАРАНТИЯ",
-    "contractor": "",
-    "sales_channel": "",
-    "start_date": "2026-02-18",
-    "end_date": "2027-02-17",
-    "vehicle_brand": "VOLKSWAGEN",
-    "vehicle_model": "TOUAREG",
-    "vehicle_vin": "  ,
-    "note": "импортировано с помощью ИИ"
-  },
-  "payments": [
-    {
-      "amount": 5400,
-      "payment_date": "2026-02-18",
-      "actual_payment_date": "2026-02-18"
-    }
-  ]
-}"""
+    def test_dgo_type_comes_from_ai_using_catalog_descriptions(self, chat_mock) -> None:
+        chat_mock.side_effect = [
+            self._build_answer("", insurance_type=""),
+            self._build_answer("", insurance_type="ДГО/ДСАГО"),
+        ]
         text = (
-            "VOLKSWAGEN TOUAREG XW8ZZZ7PZGG001078 T002PK777 2015 249 "
-            "Марка,модель Идентификационный номер Государственный регистрационный знак"
+            "Полис РЕСОавто. Правила страхования гражданской ответственности "
+            "автовладельцев. Страховая сумма 1000000.00 руб."
         )
 
-        data, _, _ = recognize_policy_interactive(text)
+        data, _, _ = recognize_policy_interactive(
+            text,
+            extra_types=[
+                {
+                    "name": "ДГО/ДСАГО",
+                    "description": (
+                        "добровольная дополнительная гражданская ответственность "
+                        "автовладельца сверх ОСАГО"
+                    ),
+                },
+                {"name": "ОСАГО", "description": "обязательное страхование"},
+            ],
+        )
 
-        self.assertEqual(data["policy"]["vehicle_vin"], "XW8ZZZ7PZGG001078")
-        self.assertEqual(chat_mock.call_count, 1)
+        self.assertEqual(data["policy"]["insurance_type"], "ДГО/ДСАГО")
+        first_call_messages = chat_mock.call_args_list[0].args[0]
+        self.assertIn("ДГО/ДСАГО: добровольная", first_call_messages[0]["content"])
+
+    def test_prompt_adds_default_descriptions_for_known_type_names(self) -> None:
+        prompt = _build_prompt(extra_types=["ОСАГО", "ДГО/ДСАГО"])
+
+        self.assertIn("ОСАГО: обязательное страхование", prompt)
+        self.assertIn("ДГО/ДСАГО: добровольная дополнительная", prompt)

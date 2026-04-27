@@ -33,6 +33,7 @@ from .ai_service import (
     is_extracted_policy_text_poor,
     is_pdf_filename,
     is_policy_recognition_result_poor,
+    is_policy_text_likely_tabular,
     policy_vision_fallback_enabled,
     recognize_policy_from_pdf_images,
     recognize_policy_from_text,
@@ -258,14 +259,14 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             InsuranceCompany.objects.filter(name__isnull=False)
             .exclude(name__exact="")
             .order_by("name")
-            .values_list("name", flat=True)
+            .values("name", "description")
             .distinct()
         )
         type_names = list(
             InsuranceType.objects.filter(name__isnull=False)
             .exclude(name__exact="")
             .order_by("name")
-            .values_list("name", flat=True)
+            .values("name", "description")
             .distinct()
         )
 
@@ -341,7 +342,10 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
             text_is_poor = any(
                 is_pdf_filename(str(file_data["name"]))
-                and is_extracted_policy_text_poor(str(file_data.get("text") or ""))
+                and (
+                    is_extracted_policy_text_poor(str(file_data.get("text") or ""))
+                    or is_policy_text_likely_tabular(str(file_data.get("text") or ""))
+                )
                 for file_data in downloaded_files
             )
             attempted_vision = False

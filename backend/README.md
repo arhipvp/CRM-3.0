@@ -56,7 +56,8 @@ python manage.py runserver
 - Для env: `DJANGO_SECRET_KEY`, `DEBUG`, `DJANGO_DB_*`, JWT-параметры, CORS, `GOOGLE_DRIVE_*` (OAuth client id/secret, refresh token или token file, folder ids), `OPENAI_*`.
 - Для локального prod-like docker-контура используйте шаблон `backend/.env.example` и общий runbook: [../docs/local-prod-like-stack.md](../docs/local-prod-like-stack.md).
 - Для распознавания полисов из Word: `.docx` поддерживается через Python-библиотеку, а для `.doc` нужен установленный LibreOffice/headless converter (`soffice`). В Docker-образ backend он устанавливается автоматически.
-- Для PDF-полисов с плохим текстовым слоем включён vision-фолбэк через OpenRouter. Управление: `POLICY_RECOGNITION_VISION_FALLBACK_ENABLED`, `POLICY_RECOGNITION_PDF_RENDER_DPI`, `POLICY_RECOGNITION_MAX_VISION_PAGES`.
+- Распознавание полисов через OpenRouter выполняется в два AI-прохода: первичное извлечение JSON и самопроверка результата по исходному тексту/страницам с формальными замечаниями CRM. Для PDF-полисов с плохим или табличным текстовым слоем включён vision-фолбэк. Управление: `POLICY_RECOGNITION_VISION_FALLBACK_ENABLED`, `POLICY_RECOGNITION_PDF_RENDER_DPI`, `POLICY_RECOGNITION_MAX_VISION_PAGES`.
+- В промпт передаются названия и описания `InsuranceCompany`/`InsuranceType`; для точного выбора типов страхования поддерживайте заполненным `InsuranceType.description`. В Django admin для видов страхования есть фильтр пустых описаний и action `Заполнить стандартные AI-описания` для базовых категорий ОСАГО, КАСКО, ДГО/ДСАГО, GAP и авто-прочее.
 - Перед релизом обязательно `python manage.py check --deploy`.
 - `manage.py test` автоматически переключает backend на `config.test_settings`, чтобы локальные тесты не зависели от случайной Postgres-конфигурации.
 

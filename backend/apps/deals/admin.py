@@ -15,6 +15,9 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from import_export import resources
 
+from .insurance_type_descriptions import (
+    populate_missing_ai_insurance_type_descriptions,
+)
 from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 
 # ============ IMPORT/EXPORT RESOURCES ============
@@ -359,9 +362,49 @@ class InsuranceCompanyAdmin(SoftDeleteImportExportAdmin):
     search_help_text = "Поиск по названию и описанию"
 
 
+class InsuranceTypeDescriptionFilter(admin.SimpleListFilter):
+    title = "Описание"
+    parameter_name = "description_state"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("filled", "Заполнено"),
+            ("empty", "Пустое"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "filled":
+            return queryset.exclude(description="")
+        if self.value() == "empty":
+            return queryset.filter(description="")
+        return queryset
+
+
 @admin.register(InsuranceType)
 class InsuranceTypeAdmin(SoftDeleteImportExportAdmin):
     list_display = ("name", "description", "created_at")
     search_fields = ("name", "description")
     readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
     ordering = ("name",)
+    list_filter = (InsuranceTypeDescriptionFilter, ShowDeletedFilter)
+    search_help_text = "Поиск по названию и описанию"
+    actions = ["populate_ai_descriptions"]
+    fieldsets = (
+        ("Основная информация", {"fields": ("name", "description")}),
+        (
+            "Метаданные",
+            {
+                "fields": ("id", "created_at", "updated_at", "deleted_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def populate_ai_descriptions(self, request, queryset):
+        updated = populate_missing_ai_insurance_type_descriptions(queryset)
+        self.message_user(
+            request,
+            f"Заполнено стандартных AI-описаний: {updated}",
+        )
+
+    populate_ai_descriptions.short_description = "Заполнить стандартные AI-описания"

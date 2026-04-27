@@ -17,6 +17,7 @@ from typing import Callable, List, Tuple
 
 import openai
 import pymupdf
+from apps.deals.insurance_type_descriptions import AI_INSURANCE_TYPE_DESCRIPTIONS
 from django.conf import settings
 from docx import Document
 from PyPDF2 import PdfReader
@@ -42,13 +43,7 @@ NOTE_VALUE = "импортировано с помощью ИИ"
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x1F\x7F]")
 BAD_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 WHITESPACE_RE = re.compile(r"\s+")
-VIN_ANCHOR_RE = re.compile(
-    r"(?:\bVIN\b|Идентификацион(?:ный|ного)\s+номер)", flags=re.IGNORECASE
-)
-VIN_TOKEN_RE = re.compile(r"[A-Za-z0-9]{17,}")
-VIN_WINDOW_BEFORE = 180
-VIN_WINDOW_AFTER = 180
-
+CatalogEntry = str | dict[str, object]
 
 DEFAULT_PROMPT = """Ты — ассистент, отвечающий за импорт данных из страховых полисов в CRM.
 На основе переданного текста документов нужно сформировать один JSON строго по следующему шаблону:
@@ -135,24 +130,73 @@ payments
 
 
 def _build_prompt(
-    extra_companies: List[str] | None = None, extra_types: List[str] | None = None
+    extra_companies: List[CatalogEntry] | None = None,
+    extra_types: List[CatalogEntry] | None = None,
+    *,
+    mode: str = "extract",
 ) -> str:
     """Вернуть системный промпт для распознавания полисов."""
 
     prompt = getattr(settings, "AI_POLICY_PROMPT", "") or DEFAULT_PROMPT
+    if mode == "verify":
+        prompt += (
+            "\n\nРЕЖИМ САМОПРОВЕРКИ\n"
+            "Ты получишь исходный текст/страницы, черновой JSON и список формальных "
+            "замечаний от CRM. Сверь каждое поле с документом и верни один финальный "
+            "JSON по той же схеме. Исправляй только поля, которые можно подтвердить "
+            "по документу. Если поле нельзя подтвердить, оставь пустую строку. "
+            "Не добавляй пояснения вне JSON."
+        )
+    else:
+        prompt += (
+            "\n\nРЕЖИМ ИЗВЛЕЧЕНИЯ\n"
+            "Сначала извлеки черновой JSON. После этого CRM может отправить его "
+            "на отдельную ИИ-самопроверку вместе с формальными замечаниями."
+        )
     if extra_companies:
-        companies_line = ", ".join(extra_companies)
+        companies_line = _format_catalog_entries(extra_companies)
         prompt += (
             "\n\nСправочник CRM содержит следующие страховые компании: "
             f"{companies_line}. Используй точное название из этого списка."
         )
     if extra_types:
-        types_line = ", ".join(extra_types)
+        types_line = _format_catalog_entries(
+            extra_types,
+            default_descriptions=AI_INSURANCE_TYPE_DESCRIPTIONS,
+        )
         prompt += (
             "\n\nСправочник CRM содержит следующие виды страхования: "
-            f"{types_line}. Отображай значение только если оно есть в этом списке."
+            f"{types_line}. Описания являются подсказками для выбора. "
+            "Отображай значение только если оно есть в этом списке."
         )
     return prompt
+
+
+def _format_catalog_entries(
+    entries: List[CatalogEntry],
+    *,
+    default_descriptions: dict[str, str] | None = None,
+) -> str:
+    """Сформировать компактный список справочника для промпта."""
+
+    formatted: list[str] = []
+    seen: set[str] = set()
+    for entry in entries:
+        if isinstance(entry, dict):
+            name = _sanitize_text(entry.get("name"))
+            description = _sanitize_text(entry.get("description"))
+        else:
+            name = _sanitize_text(entry)
+            description = ""
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        description = description or (default_descriptions or {}).get(name, "")
+        if description:
+            formatted.append(f"{name}: {description}")
+        else:
+            formatted.append(name)
+    return "; ".join(formatted)
 
 
 def _log_conversation(label: str, messages: List[dict]) -> str:
@@ -257,12 +301,6 @@ POLICY_FUNCTION = {
     "parameters": POLICY_SCHEMA,
 }
 
-VIN_CLARIFY_PROMPT = (
-    "Документ относится к автополису, но VIN не был точно извлечён. "
-    "Пожалуйста, уточни VIN по тексту. "
-    "Если VIN не указан или ты не уверен, оставь 'vehicle_vin' пустым. "
-    "Верни полный JSON по той же схеме."
-)
 VISION_USER_PROMPT = (
     "Распознай страховой полис по изображениям страниц. "
     "Если передано несколько файлов, считай их частями одного договора/полиса. "
@@ -325,6 +363,22 @@ def is_extracted_policy_text_poor(text: str) -> bool:
         return True
 
     return False
+
+
+def is_policy_text_likely_tabular(text: str) -> bool:
+    """Оценить, похож ли текстовый слой PDF на склеенную таблицу."""
+
+    if not isinstance(text, str):
+        return False
+    lowered = text.lower()
+    table_terms = (
+        "марка,модель",
+        "идентификационный номер",
+        "государственный регистрационный знак",
+        "годвыпуска",
+        "мощность двигателя",
+    )
+    return sum(1 for term in table_terms if term in lowered) >= 2
 
 
 def is_policy_recognition_result_poor(data: dict) -> bool:
@@ -499,21 +553,21 @@ def _validate_policy_payload(data: dict) -> None:
         _basic_policy_validate(data)
 
 
-def _parse_policy_answer(answer: str, source_text: str) -> dict:
+def _parse_policy_answer(answer: str, *, validate_payload: bool = True) -> dict:
     extracted = _extract_json_from_answer(answer)
     repaired = _repair_json_payload(extracted)
     data = json.loads(repaired, strict=False)
     data = _normalize_policy_payload(data)
-    data = _apply_vin_fail_soft(data, source_text)
-    _validate_policy_payload(data)
+    if validate_payload:
+        _validate_policy_payload(data)
     return data
 
 
 def _build_vision_messages(
     files: list[dict[str, object]],
     *,
-    extra_companies: List[str] | None = None,
-    extra_types: List[str] | None = None,
+    extra_companies: List[CatalogEntry] | None = None,
+    extra_types: List[CatalogEntry] | None = None,
 ) -> tuple[list[dict], str]:
     max_pages = int(getattr(settings, "POLICY_RECOGNITION_MAX_VISION_PAGES", 6))
     rendered_pages = 0
@@ -552,7 +606,10 @@ def _build_vision_messages(
         raise PolicyRecognitionError("Нет PDF-страниц для vision-распознавания полиса.")
 
     messages = [
-        {"role": "system", "content": _build_prompt(extra_companies, extra_types)},
+        {
+            "role": "system",
+            "content": _build_prompt(extra_companies, extra_types, mode="extract"),
+        },
         {"role": "user", "content": user_content},
     ]
     return messages, "\n\n".join(source_hint_parts)
@@ -847,128 +904,6 @@ def _normalize_policy_payload(data: dict) -> dict:
     return data
 
 
-def _is_vehicle_policy(data: dict) -> bool:
-    """Определить, что полис относится к транспорту."""
-
-    if not isinstance(data, dict):
-        return False
-    policy = data.get("policy")
-    if not isinstance(policy, dict):
-        return False
-    for key in ("vehicle_brand", "vehicle_model", "vehicle_vin"):
-        value = policy.get(key)
-        if isinstance(value, str) and value.strip():
-            return True
-    return False
-
-
-def _extract_valid_vin(data: dict) -> str:
-    """Вытащить VIN, если он валиден."""
-
-    policy = data.get("policy") if isinstance(data, dict) else None
-    if not isinstance(policy, dict):
-        return ""
-    value = policy.get("vehicle_vin")
-    if not isinstance(value, str):
-        return ""
-    normalized = value.strip()
-    if not normalized:
-        return ""
-    if re.fullmatch(VIN_PATTERN, normalized):
-        return normalized
-    return ""
-
-
-def _extract_vin_from_source_text(text: str) -> str:
-    """Детерминированно извлечь VIN из исходного текста рядом с VIN-якорями."""
-
-    if not isinstance(text, str):
-        return ""
-    normalized_text = _sanitize_text(text)
-    if not normalized_text:
-        return ""
-
-    best_match: tuple[int, str] | None = None
-    for anchor_match in VIN_ANCHOR_RE.finditer(normalized_text):
-        anchor_start = anchor_match.start()
-        anchor_end = anchor_match.end()
-        window_start = max(0, anchor_start - VIN_WINDOW_BEFORE)
-        window_end = min(len(normalized_text), anchor_end + VIN_WINDOW_AFTER)
-        window = normalized_text[window_start:window_end]
-        candidates_found = 0
-
-        for token_match in VIN_TOKEN_RE.finditer(window):
-            token = token_match.group(0)
-            candidate = token[:17].strip().upper()
-            if not re.fullmatch(VIN_PATTERN, candidate):
-                continue
-            candidates_found += 1
-            token_abs_start = window_start + token_match.start()
-            token_abs_end = token_abs_start + len(candidate)
-            if token_abs_end <= anchor_start:
-                distance = anchor_start - token_abs_end
-            elif token_abs_start >= anchor_end:
-                distance = token_abs_start - anchor_end
-            else:
-                distance = 0
-            if best_match is None or distance < best_match[0]:
-                best_match = (distance, candidate)
-
-        logger.info(
-            "VIN anchor matched: anchor='%s' at [%s:%s], candidates=%s",
-            anchor_match.group(0),
-            anchor_start,
-            anchor_end,
-            candidates_found,
-        )
-    if best_match:
-        logger.info(
-            "VIN selected from source text: vin=%s distance_to_anchor=%s",
-            best_match[1],
-            best_match[0],
-        )
-        return best_match[1]
-    return ""
-
-
-def _apply_vin_fail_soft(data: dict, source_text: str) -> dict:
-    """Применить fail-soft для VIN до schema validation."""
-
-    if not isinstance(data, dict):
-        return data
-    policy = data.get("policy")
-    if not isinstance(policy, dict):
-        return data
-
-    raw_vin = policy.get("vehicle_vin")
-    normalized_vin = raw_vin.strip().upper() if isinstance(raw_vin, str) else ""
-    source_vin = _extract_vin_from_source_text(source_text)
-
-    if source_vin:
-        if normalized_vin and normalized_vin != source_vin:
-            logger.info(
-                "VIN override from source text: model_vin=%s source_vin=%s",
-                normalized_vin,
-                source_vin,
-            )
-        policy["vehicle_vin"] = source_vin
-        return data
-
-    if normalized_vin and not re.fullmatch(VIN_PATTERN, normalized_vin):
-        logger.warning(
-            "VIN fail-soft: invalid VIN cleared before validation: %s",
-            normalized_vin,
-        )
-        policy["vehicle_vin"] = ""
-        return data
-
-    if isinstance(raw_vin, str):
-        policy["vehicle_vin"] = normalized_vin
-    else:
-        policy["vehicle_vin"] = ""
-    return data
-
-
 def _build_retry_message_for_validation(exc: ValidationError) -> str:
     """Сформировать уточняющее сообщение для повторного запроса после ошибки валидации."""
 
@@ -983,57 +918,90 @@ def _build_retry_message_for_validation(exc: ValidationError) -> str:
     return REMINDER
 
 
-def _maybe_refine_vin(
-    data: dict,
-    messages: List[dict],
-    *,
-    progress_cb: Callable[[str, str], None] | None = None,
-    cancel_cb: Callable[[], bool] | None = None,
-) -> dict:
-    """Повторно уточнить VIN через ИИ, если полис автомобильный и VIN отсутствует."""
+def _collect_formal_issues(data: dict) -> list[str]:
+    """Собрать формальные замечания без извлечения значений из исходного текста."""
 
-    if not _is_vehicle_policy(data):
-        return data
-    if _extract_valid_vin(data):
-        return data
-
-    def _check_cancel() -> None:
-        if cancel_cb and cancel_cb():
-            logger.info("Cancelling VIN clarification")
-            raise InterruptedError("Распознавание VIN отменено")
-
-    _check_cancel()
-    if progress_cb:
-        progress_cb("user", VIN_CLARIFY_PROMPT)
-    messages.append({"role": "user", "content": VIN_CLARIFY_PROMPT})
-
-    try:
-        answer = _chat(messages, progress_cb=progress_cb, cancel_cb=cancel_cb)
-    except Exception:
-        logger.exception("Failed to clarify VIN via OpenRouter")
-        return data
-
-    messages.append({"role": "assistant", "content": answer})
-    try:
-        extracted = _extract_json_from_answer(answer)
-        repaired = _repair_json_payload(extracted)
-        refined = json.loads(repaired, strict=False)
-        refined = _normalize_policy_payload(refined)
-        if HAVE_JSONSCHEMA:
-            validate(instance=refined, schema=POLICY_SCHEMA)
-        else:
-            _basic_policy_validate(refined)
-    except Exception:
-        logger.warning("Не удалось разобрать ответ при уточнении VIN")
-        return data
-
-    refined_vin = _extract_valid_vin(refined)
-    if not refined_vin:
-        return data
+    issues: list[str] = []
+    if not isinstance(data, dict):
+        return ["Ответ должен быть объектом JSON."]
     policy = data.get("policy")
-    if isinstance(policy, dict):
-        policy["vehicle_vin"] = refined_vin
-    return data
+    if not isinstance(policy, dict):
+        issues.append("policy должен быть объектом JSON.")
+        return issues
+
+    required_policy_keys = (
+        "policy_number",
+        "insurance_type",
+        "insurance_company",
+        "contractor",
+        "sales_channel",
+        "start_date",
+        "end_date",
+        "vehicle_brand",
+        "vehicle_model",
+        "vehicle_vin",
+        "note",
+    )
+    for key in required_policy_keys:
+        if key not in policy:
+            issues.append(f"В policy отсутствует ключ {key!r}.")
+
+    if policy.get("note") != NOTE_VALUE:
+        issues.append(f"policy.note должен быть строго {NOTE_VALUE!r}.")
+    if str(policy.get("contractor") or "").strip():
+        issues.append("policy.contractor должен оставаться пустой строкой.")
+    for key in ("start_date", "end_date"):
+        value = policy.get(key)
+        if not isinstance(value, str) or not re.fullmatch(DATE_PATTERN, value):
+            issues.append(f"policy.{key} должен быть датой YYYY-MM-DD.")
+    vin = policy.get("vehicle_vin")
+    if vin and (
+        not isinstance(vin, str) or not re.fullmatch(VIN_PATTERN, str(vin).strip())
+    ):
+        issues.append(
+            "policy.vehicle_vin должен быть пустым или VIN из 17 латинских букв и цифр."
+        )
+
+    payments = data.get("payments")
+    if not isinstance(payments, list):
+        issues.append("payments должен быть массивом.")
+        return issues
+    for idx, payment in enumerate(payments):
+        if not isinstance(payment, dict):
+            issues.append(f"payments[{idx}] должен быть объектом.")
+            continue
+        amount = payment.get("amount")
+        if amount in ("", None):
+            issues.append(f"payments[{idx}].amount не должен быть пустым.")
+        elif not isinstance(amount, (int, float, str)):
+            issues.append(f"payments[{idx}].amount должен быть числом или строкой.")
+        for key in ("payment_date", "actual_payment_date"):
+            value = payment.get(key)
+            if not isinstance(value, str) or not re.fullmatch(DATE_PATTERN, value):
+                issues.append(f"payments[{idx}].{key} должен быть датой YYYY-MM-DD.")
+    return issues
+
+
+def _build_verification_message(
+    source_text: str,
+    draft_data: dict,
+    formal_issues: list[str],
+) -> str:
+    issues_text = "\n".join(f"- {issue}" for issue in formal_issues) or "- нет"
+    draft_json = json.dumps(draft_data, ensure_ascii=False, indent=2)
+    source = (
+        source_text.strip() or "Текстовый слой отсутствует; сверяй по изображениям."
+    )
+    return (
+        "Проверь черновой JSON распознавания полиса по исходному документу.\n\n"
+        "Формальные замечания CRM:\n"
+        f"{issues_text}\n\n"
+        "Черновой JSON:\n"
+        f"{draft_json}\n\n"
+        "Исходный текст документа:\n"
+        f"{source}\n\n"
+        "Верни только финальный JSON по схеме. Не объясняй изменения вне JSON."
+    )
 
 
 def _chat(
@@ -1114,8 +1082,8 @@ def recognize_policy_interactive(
     text: str,
     *,
     messages: List[dict] | None = None,
-    extra_companies: List[str] | None = None,
-    extra_types: List[str] | None = None,
+    extra_companies: List[CatalogEntry] | None = None,
+    extra_types: List[CatalogEntry] | None = None,
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
 ) -> Tuple[dict, str, List[dict]]:
@@ -1130,7 +1098,11 @@ def recognize_policy_interactive(
         messages = [
             {
                 "role": "system",
-                "content": _build_prompt(extra_companies, extra_types),
+                "content": _build_prompt(
+                    extra_companies,
+                    extra_types,
+                    mode="extract",
+                ),
             },
             {"role": "user", "content": text},
         ]
@@ -1145,7 +1117,7 @@ def recognize_policy_interactive(
         answer = _chat(messages, progress_cb=progress_cb, cancel_cb=cancel_cb)
         messages.append({"role": "assistant", "content": answer})
         try:
-            data = _parse_policy_answer(answer, text)
+            draft_data = _parse_policy_answer(answer, validate_payload=False)
         except json.JSONDecodeError as exc:
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)
@@ -1156,24 +1128,55 @@ def recognize_policy_interactive(
                 progress_cb("user", REMINDER)
             messages.append({"role": "user", "content": REMINDER})
             continue
+
+        formal_issues = _collect_formal_issues(draft_data)
+        verify_message = _build_verification_message(text, draft_data, formal_issues)
+        verify_messages = [
+            {
+                "role": "system",
+                "content": _build_prompt(
+                    extra_companies,
+                    extra_types,
+                    mode="verify",
+                ),
+            },
+            {"role": "user", "content": verify_message},
+        ]
+        if progress_cb:
+            progress_cb("user", verify_message)
+        _check_cancel()
+        verify_answer = _chat(
+            verify_messages,
+            progress_cb=progress_cb,
+            cancel_cb=cancel_cb,
+        )
+        messages.extend(verify_messages)
+        messages.append({"role": "assistant", "content": verify_answer})
+
+        try:
+            data = _parse_policy_answer(verify_answer, validate_payload=True)
+        except json.JSONDecodeError as exc:
+            if attempt == MAX_ATTEMPTS - 1:
+                transcript = _log_conversation("text", messages)
+                raise PolicyRecognitionError(
+                    f"Не удалось разобрать JSON самопроверки: {exc}", transcript
+                )
+            if progress_cb:
+                progress_cb("user", REMINDER)
+            messages.append({"role": "user", "content": REMINDER})
+            continue
         except ValidationError as exc:
             reminder_message = _build_retry_message_for_validation(exc)
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)
                 raise PolicyRecognitionError(
-                    f"Ошибка валидации схемы: {exc}", transcript
+                    f"Ошибка валидации схемы после самопроверки: {exc}", transcript
                 )
             if progress_cb:
                 progress_cb("user", reminder_message)
             messages.append({"role": "user", "content": reminder_message})
             continue
         _check_cancel()
-        data = _maybe_refine_vin(
-            data,
-            messages,
-            progress_cb=progress_cb,
-            cancel_cb=cancel_cb,
-        )
         transcript = _log_conversation("text", messages)
         return data, transcript, messages
 
@@ -1183,8 +1186,8 @@ def recognize_policy_interactive(
 def recognize_policy_from_text(
     text: str,
     *,
-    extra_companies: List[str] | None = None,
-    extra_types: List[str] | None = None,
+    extra_companies: List[CatalogEntry] | None = None,
+    extra_types: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по тексту."""
 
@@ -1197,8 +1200,8 @@ def recognize_policy_from_text(
 def recognize_policy_from_pdf_images(
     files: list[dict[str, object]],
     *,
-    extra_companies: List[str] | None = None,
-    extra_types: List[str] | None = None,
+    extra_companies: List[CatalogEntry] | None = None,
+    extra_types: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по PDF-страницам, отрендеренным как изображения."""
 
@@ -1220,8 +1223,8 @@ def recognize_policy_from_bytes(
     content: bytes,
     *,
     filename: str,
-    extra_companies: List[str] | None = None,
-    extra_types: List[str] | None = None,
+    extra_companies: List[CatalogEntry] | None = None,
+    extra_types: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по содержимому файла."""
 
@@ -1240,6 +1243,8 @@ def recognize_policy_from_bytes(
         and isinstance(content, bytes)
     )
 
+    text_needs_vision = is_policy_text_likely_tabular(text)
+
     if text_error is None and not is_extracted_policy_text_poor(text):
         try:
             data, transcript = recognize_policy_from_text(
@@ -1247,7 +1252,9 @@ def recognize_policy_from_bytes(
                 extra_companies=extra_companies,
                 extra_types=extra_types,
             )
-            if not is_policy_recognition_result_poor(data) or not can_use_vision:
+            if (
+                not text_needs_vision and not is_policy_recognition_result_poor(data)
+            ) or not can_use_vision:
                 return data, transcript
             text_result = (data, transcript)
         except PolicyRecognitionError as exc:
