@@ -210,6 +210,24 @@ describe('PoliciesTab', () => {
     expect(screen.getByText('Для сделки пока нет полисов.')).toBeInTheDocument();
   });
 
+  it('uploads policy files from the policies tab for automatic recognition', async () => {
+    const onUploadAndRecognizePolicyFiles = vi.fn().mockResolvedValue(undefined);
+    const { container } = setup({ onUploadAndRecognizePolicyFiles });
+    const input = container.querySelector('input[type="file"]');
+    const file = new File(['policy'], 'policy.pdf', { type: 'application/pdf' });
+
+    expect(screen.getByText('Файлы полиса')).toBeInTheDocument();
+    expect(input).not.toBeNull();
+
+    fireEvent.change(input!, {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => {
+      expect(onUploadAndRecognizePolicyFiles).toHaveBeenCalledWith([file]);
+    });
+  });
+
   it('marks payment as paid only after date selection and confirmation', async () => {
     const onMarkPaymentPaid = vi.fn().mockResolvedValue(undefined);
 

@@ -290,6 +290,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isFolderLoading,
     getDriveFileDepth,
     handleDriveFileUpload,
+    handleUploadAndRecognizePolicyFiles,
     toggleDriveFileSelection,
     toggleDriveSortDirection,
     handleRecognizePolicies,
@@ -750,6 +751,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     onMarkPaymentPaid,
                     onMarkFinancialRecordPaid,
                     onDealSelect: onSelectDeal,
+                    onUploadAndRecognizePolicyFiles: handleUploadAndRecognizePolicyFiles,
+                    policyRecognitionMessage: recognitionMessage,
+                    isRecognizingPolicyFiles: isRecognizing,
                     isLoading: isPoliciesRefreshing,
                   }}
                   quotesTabProps={{

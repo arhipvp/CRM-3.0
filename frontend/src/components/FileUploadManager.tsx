@@ -10,6 +10,7 @@ import {
 
 interface FileUploadManagerProps {
   onUpload: (file: File) => Promise<void>;
+  onUploadFiles?: (files: File[]) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -183,7 +184,7 @@ const collectFilesFromClipboardItems = async (items: ClipboardItem[]): Promise<F
   return dedupeFiles(files);
 };
 
-export function FileUploadManager({ onUpload, disabled }: FileUploadManagerProps) {
+export function FileUploadManager({ onUpload, onUploadFiles, disabled }: FileUploadManagerProps) {
   const [isUploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -240,9 +241,14 @@ export function FileUploadManager({ onUpload, disabled }: FileUploadManagerProps
         setUploadProgress((prev) => Math.min(prev + Math.random() * 30, 90));
       }, 200);
 
-      for (let index = 0; index < totalFiles; index += 1) {
-        await onUpload(files[index]);
-        setUploadProgress(Math.round(((index + 1) / totalFiles) * 100));
+      if (onUploadFiles) {
+        await onUploadFiles(files);
+        setUploadProgress(100);
+      } else {
+        for (let index = 0; index < totalFiles; index += 1) {
+          await onUpload(files[index]);
+          setUploadProgress(Math.round(((index + 1) / totalFiles) * 100));
+        }
       }
 
       if (progressInterval) {

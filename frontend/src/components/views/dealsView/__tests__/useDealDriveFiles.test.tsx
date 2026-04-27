@@ -20,11 +20,13 @@ import {
   fetchDealDriveFiles,
   recognizeDealPolicies,
   trashDealDriveFiles,
+  uploadDealDriveFile,
 } from '../../../../api';
 const downloadDealDriveFilesMock = vi.mocked(downloadDealDriveFiles);
 const fetchDealDriveFilesMock = vi.mocked(fetchDealDriveFiles);
 const recognizeDealPoliciesMock = vi.mocked(recognizeDealPolicies);
 const trashDealDriveFilesMock = vi.mocked(trashDealDriveFiles);
+const uploadDealDriveFileMock = vi.mocked(uploadDealDriveFile);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -51,6 +53,7 @@ const renderDriveHook = (
       parsed: Record<string, unknown>,
       fileName?: string | null,
       fileId?: string | null,
+      parsedFileIds?: string[],
     ) => void;
   },
 ) => {
@@ -251,11 +254,90 @@ describe('useDealDriveFiles', () => {
         parsedResult.data,
         parsedResult.fileName,
         parsedResult.fileId,
-        [parsedResult.fileId],
+        files.map((file) => file.id),
       );
     });
 
     expect(resultRef.current?.recognitionResults).toEqual([parsedResult]);
+  });
+
+  it('uploads policy files, recognizes uploaded ids and opens a policy draft', async () => {
+    const deal = createDeal();
+    const uploadedFiles = [
+      {
+        id: 'uploaded-1',
+        name: 'policy.pdf',
+        mimeType: 'application/pdf',
+        size: 1024,
+        createdAt: '2025-01-01T00:00:00Z',
+        modifiedAt: '2025-01-01T00:00:00Z',
+        webViewLink: 'https://drive.google.com/file',
+        isFolder: false,
+        parentId: null,
+      },
+      {
+        id: 'uploaded-2',
+        name: 'policy.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        size: 2048,
+        createdAt: '2025-01-01T00:00:00Z',
+        modifiedAt: '2025-01-01T00:00:00Z',
+        webViewLink: 'https://drive.google.com/file',
+        isFolder: false,
+        parentId: null,
+      },
+    ];
+    const parsedResult = {
+      fileId: uploadedFiles[0].id,
+      status: 'parsed' as const,
+      data: { policy: { policy_number: '123' } },
+      fileName: uploadedFiles[0].name,
+    };
+    uploadDealDriveFileMock
+      .mockResolvedValueOnce(uploadedFiles[0])
+      .mockResolvedValueOnce(uploadedFiles[1]);
+    fetchDealDriveFilesMock.mockResolvedValue({ files: uploadedFiles, folderId: null });
+    recognizeDealPoliciesMock.mockResolvedValueOnce({ results: [parsedResult] });
+    const onPolicyDraftReady = vi.fn();
+    const { resultRef } = renderDriveHook(deal, { onPolicyDraftReady });
+
+    await act(async () => {
+      await resultRef.current?.handleUploadAndRecognizePolicyFiles([
+        new File(['pdf'], 'policy.pdf', { type: 'application/pdf' }),
+        new File(['docx'], 'policy.docx', {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }),
+      ]);
+    });
+
+    expect(uploadDealDriveFileMock).toHaveBeenNthCalledWith(1, deal.id, expect.any(File), false);
+    expect(uploadDealDriveFileMock).toHaveBeenNthCalledWith(2, deal.id, expect.any(File), false);
+    expect(recognizeDealPoliciesMock).toHaveBeenCalledWith(
+      deal.id,
+      uploadedFiles.map((file) => file.id),
+    );
+    expect(onPolicyDraftReady).toHaveBeenCalledWith(
+      deal.id,
+      parsedResult.data,
+      parsedResult.fileName,
+      parsedResult.fileId,
+      uploadedFiles.map((file) => file.id),
+    );
+  });
+
+  it('rejects unsupported policy upload files before uploading', async () => {
+    const deal = createDeal();
+    const { resultRef } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.handleUploadAndRecognizePolicyFiles([
+        new File(['text'], 'notes.txt', { type: 'text/plain' }),
+      ]);
+    });
+
+    expect(resultRef.current?.recognitionMessage).toBe('Загрузите только файлы PDF, DOC или DOCX.');
+    expect(uploadDealDriveFileMock).not.toHaveBeenCalled();
+    expect(recognizeDealPoliciesMock).not.toHaveBeenCalled();
   });
 
   it('trashes a single file when confirmed', async () => {

@@ -26,6 +26,7 @@ import {
 import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { ColoredLabel } from '../../../common/ColoredLabel';
+import { FileUploadManager } from '../../../FileUploadManager';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -61,8 +62,11 @@ interface PoliciesTabProps {
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
+  onUploadAndRecognizePolicyFiles?: (files: File[]) => Promise<void>;
   onDealPreview?: (dealId: string) => void;
   onDealSelect?: (dealId: string) => void;
+  policyRecognitionMessage?: string | null;
+  isRecognizingPolicyFiles?: boolean;
   isLoading?: boolean;
 }
 
@@ -81,10 +85,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onRequestAddPolicy,
   onDeletePolicy,
   onRequestEditPolicy,
+  onUploadAndRecognizePolicyFiles,
   onMarkPaymentPaid,
   onMarkFinancialRecordPaid,
   onDealPreview,
   onDealSelect,
+  policyRecognitionMessage,
+  isRecognizingPolicyFiles = false,
   isLoading = false,
 }) => {
   const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
@@ -164,6 +171,43 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     <div className={PANEL_MUTED_TEXT}>{message}</div>
   );
 
+  const renderPolicyFileUpload = () => {
+    if (!onUploadAndRecognizePolicyFiles) {
+      return null;
+    }
+
+    const isUploadDisabled =
+      isRecognizingPolicyFiles || isLoading || Boolean(selectedDeal.deletedAt);
+
+    return (
+      <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Файлы полиса</p>
+            <p className="text-xs text-slate-500">
+              Загрузим в сделку, распознаем ИИ и откроем черновик полиса.
+            </p>
+          </div>
+          {isRecognizingPolicyFiles && (
+            <span className="text-xs font-semibold text-sky-700">Распознаем...</span>
+          )}
+        </div>
+        <FileUploadManager
+          onUpload={async (file) => {
+            await onUploadAndRecognizePolicyFiles([file]);
+          }}
+          onUploadFiles={onUploadAndRecognizePolicyFiles}
+          disabled={isUploadDisabled}
+        />
+        {policyRecognitionMessage && (
+          <p className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+            {policyRecognitionMessage}
+          </p>
+        )}
+      </div>
+    );
+  };
+
   const sortLabel = POLICY_SORT_LABELS[policySortKey] ?? policySortKey;
   const sortOrderSymbol = policySortOrder === 'asc' ? '↑' : '↓';
   const handleSortChange = (nextKey: PolicySortKey) => {
@@ -242,6 +286,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   if (!sortedPolicies.length) {
     return (
       <section className="app-panel p-4 shadow-none space-y-3">
+        {renderPolicyFileUpload()}
         {renderStatusMessage('Для сделки пока нет полисов.')}
         <button
           type="button"
@@ -293,6 +338,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           + Создать полис
         </button>
       </div>
+
+      {renderPolicyFileUpload()}
 
       <div className="overflow-x-auto">
         <table className="min-w-[1900px] w-full border-collapse text-left text-sm">

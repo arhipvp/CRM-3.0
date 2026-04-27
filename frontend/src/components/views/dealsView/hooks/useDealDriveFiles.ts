@@ -49,6 +49,22 @@ const normalizeParent = (files: DriveFile[], parentId: string | null): DriveFile
     parentId: file.parentId ?? parentId,
   }));
 
+const isRecognizablePolicyFile = (file: Pick<DriveFile, 'mimeType' | 'name'>): boolean => {
+  const mimeType = (file.mimeType ?? '').toLowerCase();
+  const normalizedName = (file.name ?? '').toLowerCase();
+  return (
+    mimeType === 'application/pdf' ||
+    mimeType === 'application/msword' ||
+    mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    normalizedName.endsWith('.pdf') ||
+    normalizedName.endsWith('.doc') ||
+    normalizedName.endsWith('.docx')
+  );
+};
+
+const isRecognizableUploadFile = (file: File): boolean =>
+  isRecognizablePolicyFile({ mimeType: file.type, name: file.name });
+
 export const useDealDriveFiles = ({
   selectedDeal,
   onDriveFolderCreated,
@@ -327,19 +343,37 @@ export const useDealDriveFiles = ({
     () =>
       selectedDriveFileIds.length > 0 &&
       selectedDriveFiles.length === selectedDriveFileIds.length &&
-      selectedDriveFiles.every((file) => {
-        const mimeType = (file.mimeType ?? '').toLowerCase();
-        const normalizedName = (file.name ?? '').toLowerCase();
-        return (
-          mimeType === 'application/pdf' ||
-          mimeType === 'application/msword' ||
-          mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-          normalizedName.endsWith('.pdf') ||
-          normalizedName.endsWith('.doc') ||
-          normalizedName.endsWith('.docx')
-        );
-      }),
+      selectedDriveFiles.every(isRecognizablePolicyFile),
     [selectedDriveFileIds, selectedDriveFiles],
+  );
+
+  const handleRecognitionResults = useCallback(
+    async (
+      currentDealId: string,
+      results: PolicyRecognitionResult[],
+      recognizedFileIds: string[],
+    ) => {
+      setRecognitionResults(results);
+      setSelectedDriveFileIds([]);
+      const parsedFileIds = results
+        .filter((result) => result.status === 'parsed' && result.fileId)
+        .map((result) => result.fileId!);
+      const parsed = results.find((result) => result.status === 'parsed' && result.data);
+      if (parsed && onPolicyDraftReady) {
+        const sourceFileIds = recognizedFileIds.length ? recognizedFileIds : parsedFileIds;
+        onPolicyDraftReady(
+          currentDealId,
+          parsed.data!,
+          parsed.fileName ?? null,
+          parsed.fileId ?? null,
+          sourceFileIds,
+        );
+      }
+      if (onRefreshPolicies) {
+        await onRefreshPolicies();
+      }
+    },
+    [onPolicyDraftReady, onRefreshPolicies],
   );
 
   const handleRecognizePolicies = useCallback(async () => {
@@ -368,24 +402,7 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
-      setRecognitionResults(results);
-      setSelectedDriveFileIds([]);
-      const parsedFileIds = results
-        .filter((result) => result.status === 'parsed' && result.fileId)
-        .map((result) => result.fileId!);
-      const parsed = results.find((result) => result.status === 'parsed' && result.data);
-      if (parsed && onPolicyDraftReady) {
-        onPolicyDraftReady(
-          currentDealId,
-          parsed.data!,
-          parsed.fileName ?? null,
-          parsed.fileId ?? null,
-          parsedFileIds,
-        );
-      }
-      if (onRefreshPolicies) {
-        await onRefreshPolicies();
-      }
+      await handleRecognitionResults(currentDealId, results, selectedDriveFileIds);
     } catch (error) {
       if (latestDealIdRef.current !== currentDealId) {
         return;
@@ -401,13 +418,64 @@ export const useDealDriveFiles = ({
         setRecognizing(false);
       }
     }
-  }, [
-    canRecognizeSelectedFiles,
-    onPolicyDraftReady,
-    onRefreshPolicies,
-    selectedDeal,
-    selectedDriveFileIds,
-  ]);
+  }, [canRecognizeSelectedFiles, handleRecognitionResults, selectedDeal, selectedDriveFileIds]);
+
+  const handleUploadAndRecognizePolicyFiles = useCallback(
+    async (files: File[]) => {
+      const deal = selectedDeal;
+      if (!deal) {
+        return;
+      }
+
+      if (!files.length) {
+        setRecognitionMessage('Выберите хотя бы один файл для распознавания.');
+        return;
+      }
+
+      if (!files.every(isRecognizableUploadFile)) {
+        setRecognitionMessage('Загрузите только файлы PDF, DOC или DOCX.');
+        return;
+      }
+
+      const currentDealId = deal.id;
+      const includeDeleted = Boolean(deal.deletedAt);
+      latestDealIdRef.current = currentDealId;
+      setRecognizing(true);
+      setRecognitionMessage(null);
+
+      try {
+        const uploadedFiles = await Promise.all(
+          files.map((file) => uploadDealDriveFile(currentDealId, file, includeDeleted)),
+        );
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+
+        await loadDriveFiles();
+        const uploadedFileIds = uploadedFiles.map((file) => file.id).filter(Boolean);
+        const { results } = await recognizeDealPolicies(currentDealId, uploadedFileIds);
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        await handleRecognitionResults(currentDealId, results, uploadedFileIds);
+      } catch (error) {
+        if (latestDealIdRef.current !== currentDealId) {
+          return;
+        }
+        console.error('Ошибка загрузки и распознавания полиса:', error);
+        setRecognitionMessage(
+          error instanceof Error
+            ? error.message
+            : 'Не удалось загрузить и распознать документы. Попробуйте ещё раз.',
+        );
+      } finally {
+        if (latestDealIdRef.current === currentDealId) {
+          setRecognizing(false);
+        }
+      }
+    },
+    [handleRecognitionResults, loadDriveFiles, selectedDeal],
+  );
 
   const handleTrashSelectedFiles = useCallback(async () => {
     const deal = selectedDeal;
@@ -649,6 +717,7 @@ export const useDealDriveFiles = ({
     isFolderLoading,
     getDriveFileDepth,
     handleDriveFileUpload,
+    handleUploadAndRecognizePolicyFiles,
     toggleDriveFileSelection,
     toggleDriveSortDirection,
     handleRecognizePolicies,
