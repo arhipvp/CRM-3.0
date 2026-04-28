@@ -15,7 +15,7 @@ interface UseDealDriveFilesParams {
   selectedDeal: Deal | null;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onConfirmAction?: (message: string) => Promise<boolean>;
-  onConfirmDeleteFile?: (fileName: string) => Promise<boolean>;
+  onConfirmDeleteFile?: (fileName: string, isFolder: boolean) => Promise<boolean>;
   onRefreshPolicies?: () => Promise<void>;
   onPolicyDraftReady?: (
     dealId: string,
@@ -312,7 +312,7 @@ export const useDealDriveFiles = ({
     setSelectedDriveFileIds((prev) => {
       const filtered = prev.filter((id) => {
         const file = fileMap.get(id);
-        return Boolean(file && !file.isFolder);
+        return Boolean(file);
       });
       return filtered.length === prev.length ? prev : filtered;
     });
@@ -321,7 +321,7 @@ export const useDealDriveFiles = ({
   const toggleDriveFileSelection = useCallback(
     (fileId: string) => {
       const target = sortedDriveFiles.find((file) => file.id === fileId);
-      if (!target || target.isFolder) {
+      if (!target) {
         return;
       }
       setSelectedDriveFileIds((prev) =>
@@ -484,11 +484,11 @@ export const useDealDriveFiles = ({
     }
 
     if (!selectedDriveFileIds.length) {
-      setTrashMessage('Выберите хотя бы один файл для удаления.');
+      setTrashMessage('Выберите хотя бы один элемент для удаления.');
       return;
     }
 
-    const confirmText = `Удалить выбранные файлы (${selectedDriveFileIds.length})?`;
+    const confirmText = `Удалить выбранные элементы (${selectedDriveFileIds.length})?`;
     const confirmed = onConfirmAction ? await onConfirmAction(confirmText) : true;
     if (!confirmed) {
       return;
@@ -522,10 +522,12 @@ export const useDealDriveFiles = ({
   const handleTrashDriveFile = useCallback(
     async (file: DriveFile) => {
       const deal = selectedDeal;
-      if (!deal || file.isFolder) {
+      if (!deal) {
         return;
       }
-      const confirmed = onConfirmDeleteFile ? await onConfirmDeleteFile(file.name) : true;
+      const confirmed = onConfirmDeleteFile
+        ? await onConfirmDeleteFile(file.name, file.isFolder)
+        : true;
       if (!confirmed) {
         return;
       }

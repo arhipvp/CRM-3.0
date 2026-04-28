@@ -93,7 +93,7 @@ export const DriveFilesTable: React.FC<DriveFilesTableProps> = ({
                           disabled={!canSelect}
                           onChange={() => onToggleSelection?.(file.id)}
                           className="check rounded-sm"
-                          aria-label={`Выбрать файл: ${file.name}`}
+                          aria-label={`Выбрать ${file.isFolder ? 'папку' : 'файл'}: ${file.name}`}
                         />
                       ) : (
                         <span className="block h-4 w-4" aria-hidden="true" />

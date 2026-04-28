@@ -46,7 +46,7 @@ const renderDriveHook = (
   deal: Deal | null,
   options?: {
     onDriveFolderCreated?: (dealId: string, folderId: string) => void;
-    onConfirmDeleteFile?: (fileName: string) => Promise<boolean>;
+    onConfirmDeleteFile?: (fileName: string, isFolder: boolean) => Promise<boolean>;
     onRefreshPolicies?: () => Promise<void>;
     onPolicyDraftReady?: (
       dealId: string,
@@ -112,7 +112,7 @@ describe('useDealDriveFiles', () => {
     expect(onDriveFolderCreated).toHaveBeenCalledWith(deal.id, folderId);
   });
 
-  it('loads folder children lazily and ignores folder selection', async () => {
+  it('loads folder children lazily and allows folder selection', async () => {
     const deal = createDeal();
     const folder = {
       id: 'folder-1',
@@ -152,7 +152,7 @@ describe('useDealDriveFiles', () => {
       resultRef.current?.toggleDriveFileSelection(folder.id);
     });
 
-    expect(resultRef.current?.selectedDriveFileIds).toEqual([]);
+    expect(resultRef.current?.selectedDriveFileIds).toEqual([folder.id]);
 
     await act(async () => {
       resultRef.current?.toggleFolderExpanded(folder.id);
@@ -368,9 +368,73 @@ describe('useDealDriveFiles', () => {
       await resultRef.current?.handleTrashDriveFile(file);
     });
 
-    expect(onConfirmDeleteFile).toHaveBeenCalledWith(file.name);
+    expect(onConfirmDeleteFile).toHaveBeenCalledWith(file.name, false);
     expect(trashDealDriveFilesMock).toHaveBeenCalledWith(deal.id, [file.id], false);
     expect(fetchDealDriveFilesMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('trashes an empty folder when confirmed', async () => {
+    const deal = createDeal();
+    const folder = {
+      id: 'folder-1',
+      name: 'Папка',
+      mimeType: 'application/vnd.google-apps.folder',
+      size: null,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/folder',
+      isFolder: true,
+      parentId: null,
+    };
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [folder], folderId: null });
+    trashDealDriveFilesMock.mockResolvedValue({
+      movedFileIds: [folder.id],
+      trashFolderId: 'trash-1',
+    });
+    const onConfirmDeleteFile = vi.fn().mockResolvedValue(true);
+    const { resultRef } = renderDriveHook(deal, { onConfirmDeleteFile });
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+    await act(async () => {
+      await resultRef.current?.handleTrashDriveFile(folder);
+    });
+
+    expect(onConfirmDeleteFile).toHaveBeenCalledWith(folder.name, true);
+    expect(trashDealDriveFilesMock).toHaveBeenCalledWith(deal.id, [folder.id], false);
+    expect(fetchDealDriveFilesMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not recognize a selected folder', async () => {
+    const deal = createDeal();
+    const folder = {
+      id: 'folder-1',
+      name: 'Папка',
+      mimeType: 'application/vnd.google-apps.folder',
+      size: null,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/folder',
+      isFolder: true,
+      parentId: null,
+    };
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [folder], folderId: null });
+    const { resultRef } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+    act(() => {
+      resultRef.current?.toggleDriveFileSelection(folder.id);
+    });
+    await act(async () => {
+      await resultRef.current?.handleRecognizePolicies();
+    });
+
+    expect(resultRef.current?.canRecognizeSelectedFiles).toBe(false);
+    expect(resultRef.current?.recognitionMessage).toBe('Выберите только файлы PDF, DOC или DOCX.');
+    expect(recognizeDealPoliciesMock).not.toHaveBeenCalled();
   });
 
   it('does not trash a single file when deletion is canceled', async () => {
@@ -393,7 +457,7 @@ describe('useDealDriveFiles', () => {
       await resultRef.current?.handleTrashDriveFile(file);
     });
 
-    expect(onConfirmDeleteFile).toHaveBeenCalledWith(file.name);
+    expect(onConfirmDeleteFile).toHaveBeenCalledWith(file.name, false);
     expect(trashDealDriveFilesMock).not.toHaveBeenCalled();
   });
 

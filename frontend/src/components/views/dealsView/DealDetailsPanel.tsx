@@ -304,7 +304,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     selectedDeal,
     onDriveFolderCreated,
     onConfirmAction: async (message) => confirm(confirmTexts.deleteDriveFiles(message)),
-    onConfirmDeleteFile: async (name) => confirm(confirmTexts.deleteDriveFile(name)),
+    onConfirmDeleteFile: async (name, isFolder) =>
+      confirm(isFolder ? confirmTexts.deleteDriveFolder(name) : confirmTexts.deleteDriveFile(name)),
     onRefreshPolicies,
     onPolicyDraftReady,
   });

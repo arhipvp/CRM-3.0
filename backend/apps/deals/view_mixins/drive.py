@@ -230,16 +230,35 @@ class DealDriveMixin:
 
                 drive_file_map = build_drive_file_tree_map(folder_id)
                 missing_file_ids = [
-                    file_id
-                    for file_id in file_ids
-                    if file_id not in drive_file_map
-                    or drive_file_map[file_id]["is_folder"]
+                    file_id for file_id in file_ids if file_id not in drive_file_map
                 ]
                 if missing_file_ids:
                     return Response(
                         {
-                            "detail": "Файлы не найдены или это папки.",
+                            "detail": "Файлы или папки не найдены.",
                             "missing_file_ids": missing_file_ids,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                selected_folder_ids = [
+                    file_id
+                    for file_id in file_ids
+                    if drive_file_map[file_id]["is_folder"]
+                ]
+                non_empty_folder_ids = [
+                    folder_id
+                    for folder_id in selected_folder_ids
+                    if any(
+                        item.get("parent_id") == folder_id
+                        for item in drive_file_map.values()
+                    )
+                ]
+                if non_empty_folder_ids:
+                    return Response(
+                        {
+                            "detail": "Можно удалить только пустые папки.",
+                            "non_empty_folder_ids": non_empty_folder_ids,
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )

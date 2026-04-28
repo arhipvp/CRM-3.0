@@ -323,6 +323,28 @@ describe('FilesTab', () => {
     );
   });
 
+  it('calls delete handler for a folder row', () => {
+    const handleTrashDriveFile = vi.fn().mockResolvedValue(undefined);
+    renderWithProviders({
+      handleTrashDriveFile,
+      sortedDriveFiles: [
+        {
+          id: 'folder-1',
+          name: 'Empty folder',
+          mimeType: 'application/vnd.google-apps.folder',
+          isFolder: true,
+          size: null,
+        },
+      ],
+    });
+
+    const deleteButtons = screen.getAllByRole('button', { name: 'Удалить' });
+    fireEvent.click(deleteButtons[1]);
+    expect(handleTrashDriveFile).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'folder-1', name: 'Empty folder', isFolder: true }),
+    );
+  });
+
   it('calls preview download and delete actions for current file', async () => {
     const handleDownloadDriveFiles = vi.fn().mockResolvedValue(undefined);
     const handleTrashDriveFile = vi.fn().mockResolvedValue(undefined);

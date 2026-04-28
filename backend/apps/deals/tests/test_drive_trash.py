@@ -148,6 +148,126 @@ class DealDriveTrashTests(AuthenticatedAPITestCase):
         ensure_trash_mock.assert_called_once_with("deal-folder")
         move_mock.assert_called_once_with("nested-file", "trash-folder")
 
+    def test_seller_can_trash_empty_folder(self):
+        self.authenticate(self.seller)
+
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+        file_map = {
+            "empty-folder": {
+                "id": "empty-folder",
+                "is_folder": True,
+                "parent_id": "deal-folder",
+            }
+        }
+
+        with (
+            patch(
+                "apps.deals.view_mixins.drive.build_drive_file_tree_map",
+                return_value=file_map,
+            ) as tree_mock,
+            patch(
+                "apps.deals.view_mixins.drive.ensure_trash_folder",
+                return_value="trash-folder",
+            ) as ensure_trash_mock,
+            patch(
+                "apps.deals.view_mixins.drive.move_drive_file_to_folder"
+            ) as move_mock,
+        ):
+            response = self.api_client.delete(
+                f"/api/v1/deals/{self.deal.id}/drive-files/",
+                {"file_ids": ["empty-folder"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["moved_file_ids"], ["empty-folder"])
+        tree_mock.assert_called_once_with("deal-folder")
+        ensure_trash_mock.assert_called_once_with("deal-folder")
+        move_mock.assert_called_once_with("empty-folder", "trash-folder")
+
+    def test_returns_400_when_folder_is_not_empty(self):
+        self.authenticate(self.seller)
+
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+        file_map = {
+            "folder-1": {
+                "id": "folder-1",
+                "is_folder": True,
+                "parent_id": "deal-folder",
+            },
+            "nested-file": {
+                "id": "nested-file",
+                "is_folder": False,
+                "parent_id": "folder-1",
+            },
+        }
+
+        with (
+            patch(
+                "apps.deals.view_mixins.drive.build_drive_file_tree_map",
+                return_value=file_map,
+            ),
+            patch(
+                "apps.deals.view_mixins.drive.ensure_trash_folder"
+            ) as ensure_trash_mock,
+            patch(
+                "apps.deals.view_mixins.drive.move_drive_file_to_folder"
+            ) as move_mock,
+        ):
+            response = self.api_client.delete(
+                f"/api/v1/deals/{self.deal.id}/drive-files/",
+                {"file_ids": ["folder-1"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["non_empty_folder_ids"], ["folder-1"])
+        ensure_trash_mock.assert_not_called()
+        move_mock.assert_not_called()
+
+    def test_seller_can_trash_file_and_empty_folder_together(self):
+        self.authenticate(self.seller)
+
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+        file_map = {
+            "file-1": {
+                "id": "file-1",
+                "is_folder": False,
+                "parent_id": "deal-folder",
+            },
+            "empty-folder": {
+                "id": "empty-folder",
+                "is_folder": True,
+                "parent_id": "deal-folder",
+            },
+        }
+
+        with (
+            patch(
+                "apps.deals.view_mixins.drive.build_drive_file_tree_map",
+                return_value=file_map,
+            ),
+            patch(
+                "apps.deals.view_mixins.drive.ensure_trash_folder",
+                return_value="trash-folder",
+            ),
+            patch(
+                "apps.deals.view_mixins.drive.move_drive_file_to_folder"
+            ) as move_mock,
+        ):
+            response = self.api_client.delete(
+                f"/api/v1/deals/{self.deal.id}/drive-files/",
+                {"file_ids": ["file-1", "empty-folder"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["moved_file_ids"], ["file-1", "empty-folder"])
+        move_mock.assert_has_calls(
+            [call("file-1", "trash-folder"), call("empty-folder", "trash-folder")],
+            any_order=False,
+        )
+
     def test_seller_can_trash_file_for_closed_deal_when_show_closed_flag_is_set(self):
         self.authenticate(self.seller)
 

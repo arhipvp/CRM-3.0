@@ -668,7 +668,7 @@ export function FilesTab({
         </button>
         <p className={SECTION_META_TEXT}>
           {selectedDriveFileIds.length
-            ? `${selectedDriveFileIds.length} файл${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
+            ? `${selectedDriveFileIds.length} элемент${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
             : 'Выберите файлы для распознавания.'}
         </p>
       </div>
@@ -711,6 +711,7 @@ export function FilesTab({
             isSelectionDisabled={() =>
               isDriveLoading || isTrashing || isDownloading || isRecognizing
             }
+            isFolderRowSelectable
             expandedFolderIds={expandedFolderIds}
             onToggleFolder={toggleFolderExpanded}
             isFolderLoading={isFolderLoading}
@@ -771,14 +772,12 @@ export function FilesTab({
                     Переименовать
                   </ActionLinkButton>
                 )}
-                {!file.isFolder && (
-                  <ActionLinkButton
-                    onClick={() => handleTrashDriveFile(file)}
-                    disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
-                  >
-                    Удалить
-                  </ActionLinkButton>
-                )}
+                <ActionLinkButton
+                  onClick={() => handleTrashDriveFile(file)}
+                  disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
+                >
+                  Удалить
+                </ActionLinkButton>
               </div>
             )}
             emptyMessage="Папка пуста."
