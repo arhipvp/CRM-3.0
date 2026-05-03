@@ -365,6 +365,9 @@ export interface Policy {
   brand?: string;
   model?: string;
   vin?: string;
+  deductible?: number | null;
+  officialDealer?: boolean | null;
+  gap?: boolean | null;
   counterparty?: string;
   note?: string;
   salesChannel?: string;

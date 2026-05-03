@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { fetchInsuranceTypes } from '../../../api';
 import { AddPolicyForm } from '../AddPolicyForm';
 import type { Policy } from '../../../types';
 import type { PolicyFormValues } from '../addPolicy/types';
@@ -206,6 +207,58 @@ describe('AddPolicyForm', () => {
     });
 
     expect(scheduledDates).toEqual(['2026-01-13', '2026-04-13', '2026-07-12', '2026-10-10']);
+  });
+
+  it('shows CASCO parameters and submits tri-state values for CASCO policies', async () => {
+    vi.mocked(fetchInsuranceTypes).mockResolvedValueOnce([
+      {
+        id: 'type-1',
+        name: 'Каско',
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+    ]);
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    renderForm(
+      {
+        ...buildInitialValues([
+          {
+            amount: '1000',
+            description: '',
+            scheduledDate: '2026-01-13',
+            actualDate: '',
+            incomes: [],
+            expenses: [],
+          },
+        ]),
+        deductible: 0,
+        officialDealer: null,
+        gap: null,
+      },
+      { onSubmit },
+    );
+
+    const deductibleInput = await screen.findByLabelText('Франшиза, ₽');
+    fireEvent.change(deductibleInput, { target: { value: '15000' } });
+    fireEvent.change(screen.getByLabelText('Официальный дилер'), {
+      target: { value: 'true' },
+    });
+    fireEvent.change(screen.getByLabelText('Риск GAP'), { target: { value: 'false' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deductible: 15000,
+          officialDealer: true,
+          gap: false,
+        }),
+      );
+    });
   });
 
   it('computes the first payment warning using the earliest scheduled date instead of raw array order', async () => {

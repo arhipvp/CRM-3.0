@@ -59,6 +59,10 @@ const normalizeTypeForComparison = (value: string) =>
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]/gu, '')
     .trim();
+const isCascoTypeName = (value?: string | null) => {
+  const normalized = normalizeTypeForComparison(value ?? '');
+  return normalized.includes('каско') || normalized.includes('casco');
+};
 
 const createPaymentDraftWithDefaults = ({
   incomeNote,
@@ -98,6 +102,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [vin, setVin] = useState('');
+  const [deductible, setDeductible] = useState('0');
+  const [officialDealer, setOfficialDealer] = useState<boolean | null>(null);
+  const [gap, setGap] = useState<boolean | null>(null);
   const [counterparty, setCounterparty] = useState('');
   const [note, setNote] = useState('');
   const [counterpartyTouched, setCounterpartyTouched] = useState(false);
@@ -158,6 +165,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [hasManualEndDate, setHasManualEndDate] = useState(false);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
   const [types, setTypes] = useState<InsuranceType[]>([]);
+  const selectedInsuranceType = useMemo(
+    () => types.find((type) => type.id === insuranceTypeId),
+    [insuranceTypeId, types],
+  );
+  const shouldShowCascoFields = isCascoTypeName(
+    selectedInsuranceType?.name || initialInsuranceTypeName,
+  );
   const [vehicleBrands, setVehicleBrands] = useState<string[]>([]);
   const [vehicleModels, setVehicleModels] = useState<string[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -208,6 +222,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         brand,
         model,
         vin,
+        deductible,
+        officialDealer,
+        gap,
         counterparty,
         note,
         salesChannelId,
@@ -227,6 +244,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       brand,
       model,
       vin,
+      deductible,
+      officialDealer,
+      gap,
       counterparty,
       note,
       salesChannelId,
@@ -259,6 +279,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         brand: string;
         model: string;
         vin: string;
+        deductible: string;
+        officialDealer: boolean | null;
+        gap: boolean | null;
         counterparty: string;
         note: string;
         salesChannelId: string;
@@ -324,6 +347,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setBrand(initialFormState.brand || '');
     setModel(initialFormState.model || '');
     setVin(initialFormState.vin || '');
+    setDeductible(initialFormState.deductible || '0');
+    setOfficialDealer(initialFormState.officialDealer ?? null);
+    setGap(initialFormState.gap ?? null);
     setCounterparty(initialFormState.counterparty || '');
     setNote(initialFormState.note || '');
     setSalesChannelId(initialFormState.salesChannelId || '');
@@ -388,6 +414,15 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setInsuranceTypeId(match.id);
     }
   }, [initialInsuranceTypeName, types]);
+
+  useEffect(() => {
+    if (!insuranceTypeId || !selectedInsuranceType || shouldShowCascoFields) {
+      return;
+    }
+    setDeductible('0');
+    setOfficialDealer(null);
+    setGap(null);
+  }, [insuranceTypeId, selectedInsuranceType, shouldShowCascoFields]);
 
   useEffect(() => {
     let isMounted = true;
@@ -718,6 +753,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       setError('VIN должен состоять из 17 латинских букв и цифр.');
       return;
     }
+    const normalizedDeductible = deductible.trim() ? Number(deductible) : 0;
+    if (
+      shouldShowCascoFields &&
+      (!Number.isFinite(normalizedDeductible) || normalizedDeductible < 0)
+    ) {
+      setError('Франшиза должна быть неотрицательным числом.');
+      return;
+    }
 
     setError(null);
     setSubmitting(true);
@@ -743,6 +786,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         brand: isVehicle ? brand.trim() || undefined : undefined,
         model: isVehicle ? model.trim() || undefined : undefined,
         vin: isVehicle ? normalizedVin : undefined,
+        deductible: shouldShowCascoFields ? normalizedDeductible : 0,
+        officialDealer: shouldShowCascoFields ? officialDealer : null,
+        gap: shouldShowCascoFields ? gap : null,
         counterparty: counterparty.trim() || undefined,
         note: note.trim() || undefined,
         salesChannelId: salesChannelId || undefined,
@@ -843,6 +889,13 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 onVinChange={setVin}
                 vehicleBrands={vehicleBrands}
                 vehicleModels={vehicleModels}
+                showCascoFields={shouldShowCascoFields}
+                deductible={deductible}
+                onDeductibleChange={setDeductible}
+                officialDealer={officialDealer}
+                onOfficialDealerChange={setOfficialDealer}
+                gap={gap}
+                onGapChange={setGap}
               />
               <div className="space-y-2">
                 <label className="app-label" htmlFor="policy-note-input">

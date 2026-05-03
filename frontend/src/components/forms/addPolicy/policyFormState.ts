@@ -17,6 +17,9 @@ interface PolicyFormSnapshotInput {
   brand: string;
   model: string;
   vin: string;
+  deductible: string;
+  officialDealer: boolean | null;
+  gap: boolean | null;
   counterparty: string;
   note: string;
   salesChannelId: string;
@@ -57,6 +60,9 @@ export const buildPolicyFormSnapshot = (input: PolicyFormSnapshotInput) =>
     brand: input.brand,
     model: input.model,
     vin: input.vin,
+    deductible: input.deductible,
+    officialDealer: input.officialDealer,
+    gap: input.gap,
     counterparty: input.counterparty,
     note: input.note,
     salesChannelId: input.salesChannelId,
@@ -132,6 +138,12 @@ export const buildInitialPolicyFormSnapshot = ({
       brand: initialValues.brand ?? '',
       model: initialValues.model ?? '',
       vin: initialValues.vin ?? '',
+      deductible:
+        initialValues.deductible !== undefined && initialValues.deductible !== null
+          ? String(initialValues.deductible)
+          : '0',
+      officialDealer: initialValues.officialDealer ?? null,
+      gap: initialValues.gap ?? null,
       counterparty: initialValues.counterparty ?? '',
       note: initialValues.note ?? '',
       salesChannelId: initialValues.salesChannelId ?? '',
@@ -166,6 +178,9 @@ export const buildInitialPolicyFormSnapshot = ({
     brand: '',
     model: '',
     vin: '',
+    deductible: '0',
+    officialDealer: null,
+    gap: null,
     counterparty: defaultCounterparty ?? '',
     note: '',
     salesChannelId: '',

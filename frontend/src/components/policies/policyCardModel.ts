@@ -8,6 +8,18 @@ const fallback = (value?: string | null, empty = POLICY_PLACEHOLDER) =>
 const describeCount = (count: number, one: string, many: string) =>
   count === 1 ? `${count} ${one}` : `${count} ${many}`;
 
+const isCascoTypeName = (value?: string | null) => {
+  const normalized = (value ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  return normalized.includes('каско') || normalized.includes('casco');
+};
+
+const formatNullableBoolean = (value?: boolean | null) => {
+  if (value === null || value === undefined) {
+    return POLICY_PLACEHOLDER;
+  }
+  return value ? 'Да' : 'Нет';
+};
+
 export interface PolicyCardModel {
   number: string;
   startDate: string;
@@ -20,6 +32,10 @@ export interface PolicyCardModel {
   brand: string;
   model: string;
   vin: string;
+  deductible: string;
+  officialDealer: string;
+  gap: string;
+  hasCascoDetails: boolean;
   note: string;
   paymentsCount: number;
   paymentsCountLabel: string;
@@ -29,6 +45,10 @@ export interface PolicyCardModel {
 
 export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): PolicyCardModel => {
   const paymentsCount = payments.length;
+  const isCasco = isCascoTypeName(policy.insuranceType);
+  const hasCascoDetails = isCasco
+    ? policy.deductible != null || policy.officialDealer != null || policy.gap != null
+    : false;
   return {
     number: fallback(policy.number),
     startDate: formatDate(policy.startDate),
@@ -41,6 +61,10 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     brand: fallback(policy.brand),
     model: fallback(policy.model),
     vin: fallback(policy.vin),
+    deductible: formatCurrency(String(policy.deductible ?? 0)),
+    officialDealer: formatNullableBoolean(policy.officialDealer),
+    gap: formatNullableBoolean(policy.gap),
+    hasCascoDetails,
     note: fallback(policy.note, 'Без примечания'),
     paymentsCount,
     paymentsCountLabel: describeCount(paymentsCount, 'запись', 'записей'),

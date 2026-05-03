@@ -259,6 +259,16 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
           {renderTruncatedCompany(POLICY_TEXT.fields.company, model.insuranceCompany)}
           {renderTruncatedText(POLICY_TEXT.fields.channel, model.salesChannel)}
         </div>
+        {model.hasCascoDetails && (
+          <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 sm:grid-cols-3">
+            <LabelValuePair label={POLICY_TEXT.fields.deductible} value={model.deductible} />
+            <LabelValuePair
+              label={POLICY_TEXT.fields.officialDealer}
+              value={model.officialDealer}
+            />
+            <LabelValuePair label={POLICY_TEXT.fields.gap} value={model.gap} />
+          </div>
+        )}
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 whitespace-pre-wrap break-words">
           {model.note}
         </div>

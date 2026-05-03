@@ -32,6 +32,9 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
                 "vehicle_brand": "PORSCHE",
                 "vehicle_model": "PANAMERA",
                 "vehicle_vin": vin,
+                "deductible": 0,
+                "official_dealer": "",
+                "gap": False,
                 "note": "импортировано с помощью ИИ",
             },
             "payments": [

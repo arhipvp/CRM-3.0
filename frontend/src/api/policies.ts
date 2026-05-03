@@ -46,6 +46,9 @@ export async function createPolicy(data: {
   brand?: string;
   model?: string;
   vin?: string;
+  deductible?: number | null;
+  officialDealer?: boolean | null;
+  gap?: boolean | null;
   counterparty?: string;
   note?: string;
   salesChannelId?: string;
@@ -63,6 +66,9 @@ export async function createPolicy(data: {
     brand: data.brand || '',
     model: data.model || '',
     vin: data.vin || '',
+    deductible: data.deductible ?? 0,
+    official_dealer: data.officialDealer ?? null,
+    gap: data.gap ?? null,
     counterparty: data.counterparty || '',
     note: data.note || '',
     sales_channel: data.salesChannelId || null,
@@ -267,6 +273,9 @@ interface PolicyUpdatePayload {
   brand?: string;
   model?: string;
   vin?: string;
+  deductible?: number | null;
+  officialDealer?: boolean | null;
+  gap?: boolean | null;
   counterparty?: string;
   note?: string;
   salesChannelId?: string;
@@ -286,6 +295,9 @@ export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promi
     brand: data.brand || '',
     model: data.model || '',
     vin: data.vin || '',
+    deductible: data.deductible ?? 0,
+    official_dealer: data.officialDealer ?? null,
+    gap: data.gap ?? null,
     counterparty: data.counterparty || '',
     note: data.note || '',
     sales_channel: data.salesChannelId || null,

@@ -347,6 +347,14 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   brand: toOptionalString(raw.brand),
   model: toOptionalString(raw.model),
   vin: toOptionalString(raw.vin),
+  deductible: toNullableNumber(raw.deductible),
+  officialDealer:
+    raw.official_dealer === undefined && raw.officialDealer === undefined
+      ? null
+      : raw.official_dealer === null || raw.officialDealer === null
+        ? null
+        : Boolean(raw.official_dealer ?? raw.officialDealer),
+  gap: raw.gap === undefined ? null : raw.gap === null ? null : Boolean(raw.gap),
   counterparty: toOptionalString(raw.counterparty),
   note: toOptionalString(raw.note),
   salesChannel: toOptionalString(raw.sales_channel_name ?? raw.sales_channel),

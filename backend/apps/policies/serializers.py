@@ -9,6 +9,12 @@ VIN_PATTERN = re.compile(r"^[A-Za-z0-9]{17}$")
 
 
 class PolicySerializer(serializers.ModelSerializer):
+    deductible = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        coerce_to_string=False,
+    )
     insurance_company_name = serializers.CharField(
         source="insurance_company.name", read_only=True
     )
@@ -81,6 +87,9 @@ class PolicySerializer(serializers.ModelSerializer):
             "brand",
             "model",
             "vin",
+            "deductible",
+            "official_dealer",
+            "gap",
             "counterparty",
             "note",
             "sales_channel",

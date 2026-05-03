@@ -10,6 +10,9 @@ describe('buildPolicyDraftFromRecognition', () => {
         vehicle_brand: 'BMW',
         vehicle_model: 'X4',
         vehicle_vin: 'X4XXW194500P58881',
+        deductible: '30 000 ₽',
+        official_dealer: '',
+        gap: false,
       },
       payments: [
         {
@@ -27,6 +30,9 @@ describe('buildPolicyDraftFromRecognition', () => {
     expect(draft.brand).toBe('BMW');
     expect(draft.model).toBe('X4');
     expect(draft.vin).toBe('X4XXW194500P58881');
+    expect(draft.deductible).toBe(30000);
+    expect(draft.officialDealer).toBeNull();
+    expect(draft.gap).toBe(false);
     expect(draft.payments).toHaveLength(1);
     expect(draft.payments[0]).toMatchObject({
       amount: '5400',

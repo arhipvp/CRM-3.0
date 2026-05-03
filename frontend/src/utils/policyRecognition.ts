@@ -49,9 +49,19 @@ const parseBooleanValue = (value?: unknown): boolean => {
   }
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
-    return ['1', 'true', 'yes', 'vehicle', 'car'].includes(normalized);
+    return ['1', 'true', 'yes', 'да', 'есть', 'vehicle', 'car'].includes(normalized);
   }
   return false;
+};
+
+const parseNullableBooleanValue = (value?: unknown): boolean | null => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value === 'string' && !value.trim()) {
+    return null;
+  }
+  return parseBooleanValue(value);
 };
 
 const normalizePaymentAmount = (value?: unknown): string => {
@@ -151,6 +161,9 @@ export const buildPolicyDraftFromRecognition = (
   const vehicleVin = normalizeStringValue(
     pickRecognitionValue(parsed, policyData, ['vin', 'vehicle_vin', 'vehicleIdentificationNumber']),
   );
+  const deductible = normalizePaymentAmount(
+    pickRecognitionValue(parsed, policyData, ['deductible', 'franchise']),
+  );
   const hasVehicleInfo = Boolean(vehicleBrand || vehicleModel || vehicleVin);
   return {
     number: normalizeStringValue(
@@ -165,6 +178,11 @@ export const buildPolicyDraftFromRecognition = (
     brand: vehicleBrand,
     model: vehicleModel,
     vin: vehicleVin,
+    deductible: deductible ? Number(deductible) : 0,
+    officialDealer: parseNullableBooleanValue(
+      pickRecognitionValue(parsed, policyData, ['official_dealer', 'officialDealer']),
+    ),
+    gap: parseBooleanValue(pickRecognitionValue(parsed, policyData, ['gap'])),
     counterparty: normalizeStringValue(
       pickRecognitionValue(parsed, policyData, ['counterparty', 'contractor', 'seller']),
     ),

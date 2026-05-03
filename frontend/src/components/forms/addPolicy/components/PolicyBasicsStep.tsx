@@ -42,6 +42,13 @@ interface PolicyBasicsStepProps {
   onVinChange: (value: string) => void;
   vehicleBrands: string[];
   vehicleModels: string[];
+  showCascoFields: boolean;
+  deductible: string;
+  onDeductibleChange: (value: string) => void;
+  officialDealer: boolean | null;
+  onOfficialDealerChange: (value: boolean | null) => void;
+  gap: boolean | null;
+  onGapChange: (value: boolean | null) => void;
 }
 
 export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
@@ -79,7 +86,18 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
   onVinChange,
   vehicleBrands,
   vehicleModels,
+  showCascoFields,
+  deductible,
+  onDeductibleChange,
+  officialDealer,
+  onOfficialDealerChange,
+  gap,
+  onGapChange,
 }) => {
+  const booleanToSelectValue = (value: boolean | null) =>
+    value === null ? '' : value ? 'true' : 'false';
+  const selectValueToBoolean = (value: string) => (value === '' ? null : value === 'true');
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -272,6 +290,55 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
               className="field field-input mt-2"
               placeholder="Номер шасси (17 символов)"
             />
+          </div>
+        </div>
+      )}
+
+      {showCascoFields && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div>
+            <label className="app-label" htmlFor="policy-deductible-input">
+              Франшиза, ₽
+            </label>
+            <input
+              id="policy-deductible-input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={deductible}
+              onChange={(event) => onDeductibleChange(event.target.value)}
+              className="field field-input mt-2"
+            />
+          </div>
+          <div>
+            <label className="app-label" htmlFor="policy-official-dealer-select">
+              Официальный дилер
+            </label>
+            <select
+              id="policy-official-dealer-select"
+              value={booleanToSelectValue(officialDealer)}
+              onChange={(event) => onOfficialDealerChange(selectValueToBoolean(event.target.value))}
+              className="field field-input mt-2"
+            >
+              <option value="">Не указано</option>
+              <option value="true">Да</option>
+              <option value="false">Нет</option>
+            </select>
+          </div>
+          <div>
+            <label className="app-label" htmlFor="policy-gap-select">
+              Риск GAP
+            </label>
+            <select
+              id="policy-gap-select"
+              value={booleanToSelectValue(gap)}
+              onChange={(event) => onGapChange(selectValueToBoolean(event.target.value))}
+              className="field field-input mt-2"
+            >
+              <option value="">Не указано</option>
+              <option value="true">Да</option>
+              <option value="false">Нет</option>
+            </select>
           </div>
         </div>
       )}

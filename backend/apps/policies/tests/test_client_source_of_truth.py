@@ -93,6 +93,42 @@ class PolicyClientSourceOfTruthTests(AuthenticatedAPITestCase):
         policy.refresh_from_db()
         self.assertEqual(policy.client_id, self.client_b.id)
 
+    def test_create_and_update_casco_parameters(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/policies/",
+            self._payload(
+                number="POL-CASCO-FIELDS",
+                deductible=15000,
+                official_dealer=True,
+                gap=False,
+            ),
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["deductible"], 15000.0)
+        self.assertIs(response.data["official_dealer"], True)
+        self.assertIs(response.data["gap"], False)
+
+        policy = Policy.objects.get(id=response.data["id"])
+        self.assertEqual(str(policy.deductible), "15000.00")
+        self.assertIs(policy.official_dealer, True)
+        self.assertIs(policy.gap, False)
+
+        update_response = self.api_client.patch(
+            f"/api/v1/policies/{policy.id}/",
+            {
+                "deductible": 0,
+                "official_dealer": None,
+                "gap": True,
+            },
+            format="json",
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_response.data["deductible"], 0.0)
+        self.assertIsNone(update_response.data["official_dealer"])
+        self.assertIs(update_response.data["gap"], True)
+
     def test_migration_syncs_client_from_insured_for_conflicts(self):
         policy = Policy.objects.create(
             number="POL-MIGRATION-SYNC",

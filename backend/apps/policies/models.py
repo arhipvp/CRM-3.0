@@ -82,6 +82,27 @@ class Policy(SoftDeleteModel):
         blank=True,
         help_text="Vehicle VIN (17 characters)",
     )
+    deductible = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        blank=True,
+        help_text="Франшиза",
+    )
+    official_dealer = models.BooleanField(
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name="Официальный дилер",
+        help_text="Официальный дилер (да/нет)",
+    )
+    gap = models.BooleanField(
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name="GAP",
+        help_text="Риск GAP (да/нет)",
+    )
 
     counterparty = models.CharField(
         max_length=255,

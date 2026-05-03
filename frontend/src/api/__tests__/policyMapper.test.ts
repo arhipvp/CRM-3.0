@@ -19,6 +19,9 @@ describe('mapPolicy', () => {
       renewed_by_number: 'POL-2',
       is_renewed: true,
       note: 'Important note',
+      deductible: '15000.00',
+      official_dealer: null,
+      gap: false,
       created_at: '2026-01-01T00:00:00Z',
     });
 
@@ -27,5 +30,8 @@ describe('mapPolicy', () => {
     expect(mapped.renewedById).toBe('p2');
     expect(mapped.renewedByNumber).toBe('POL-2');
     expect(mapped.isRenewed).toBe(true);
+    expect(mapped.deductible).toBe(15000);
+    expect(mapped.officialDealer).toBeNull();
+    expect(mapped.gap).toBe(false);
   });
 });

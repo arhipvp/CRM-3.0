@@ -21,6 +21,9 @@ class PolicyResource(resources.ModelResource):
             "brand",
             "model",
             "vin",
+            "deductible",
+            "official_dealer",
+            "gap",
             "sales_channel",
             "status",
             "start_date",
@@ -68,6 +71,8 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         "insurance_type",
         "insurance_company",
         "is_vehicle",
+        "official_dealer",
+        "gap",
         "sales_channel",
         "status",
         "start_date",
@@ -112,7 +117,17 @@ class PolicyAdmin(SoftDeleteImportExportAdmin):
         ),
         (
             "Детали транспорта",
-            {"fields": ("is_vehicle", "brand", "model", "vin")},
+            {
+                "fields": (
+                    "is_vehicle",
+                    "brand",
+                    "model",
+                    "vin",
+                    "deductible",
+                    "official_dealer",
+                    "gap",
+                )
+            },
         ),
         ("Срок действия", {"fields": ("start_date", "end_date")}),
         ("Статус удаления", {"fields": ("deleted_at",)}),
