@@ -132,89 +132,35 @@ class PolicyComputedStatusAndNoteTests(AuthenticatedAPITestCase):
         self.assertEqual(kpi_filtered.status_code, status.HTTP_200_OK)
         self.assertEqual(kpi_filtered.data["total"], 1)
 
-    def test_policy_can_be_marked_as_renewed_from_new_policy_side(self):
-        old_policy = self._create_policy(
-            "POL-OLD",
-            end_date=timezone.localdate() + timedelta(days=5),
-        )
+    def test_policy_renewal_flag_can_be_changed_and_filtered(self):
+        renewed_policy = self._create_policy("POL-RENEWED", is_renewed=True)
+        active_policy = self._create_policy("POL-NOT-RENEWED")
 
-        response = self.api_client.post(
-            "/api/v1/policies/",
-            self._policy_payload(
-                "POL-NEW",
-                end_date=(timezone.localdate() + timedelta(days=370)).isoformat(),
-                renews_policy=str(old_policy.id),
-            ),
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        old_policy.refresh_from_db()
-        self.assertIsNotNone(old_policy.renewed_by_id)
-        self.assertEqual(old_policy.renewed_by.number, "POL-NEW")
-
-        list_response = self.api_client.get("/api/v1/policies/")
+        list_response = self.api_client.get("/api/v1/policies/?is_renewed=true")
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        policy_data = next(
-            item
-            for item in list_response.data.get("results", [])
-            if item["number"] == "POL-OLD"
-        )
-        self.assertTrue(policy_data["is_renewed"])
-        self.assertEqual(str(policy_data["renewed_by"]), str(old_policy.renewed_by_id))
-        self.assertEqual(policy_data["renewed_by_number"], "POL-NEW")
-        self.assertEqual(policy_data["computed_status"], "active")
+        numbers = {item["number"] for item in list_response.data.get("results", [])}
+        self.assertEqual(numbers, {"POL-RENEWED"})
 
-    def test_policy_renewal_can_be_changed_from_current_policy_side(self):
-        old_policy = self._create_policy("POL-UPDATE-OLD")
-        new_policy = self._create_policy("POL-UPDATE-NEW")
-
-        link_response = self.api_client.patch(
-            f"/api/v1/policies/{new_policy.id}/",
-            {"renews_policy": str(old_policy.id)},
+        patch_response = self.api_client.patch(
+            f"/api/v1/policies/{active_policy.id}/",
+            {"is_renewed": True},
             format="json",
         )
 
-        self.assertEqual(link_response.status_code, status.HTTP_200_OK)
-        old_policy.refresh_from_db()
-        self.assertEqual(old_policy.renewed_by_id, new_policy.id)
+        self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        active_policy.refresh_from_db()
+        self.assertTrue(active_policy.is_renewed)
+        self.assertTrue(patch_response.data["is_renewed"])
 
-        unlink_response = self.api_client.patch(
-            f"/api/v1/policies/{new_policy.id}/",
-            {"renews_policy": None},
+        unrenew_response = self.api_client.patch(
+            f"/api/v1/policies/{renewed_policy.id}/",
+            {"is_renewed": False},
             format="json",
         )
 
-        self.assertEqual(unlink_response.status_code, status.HTTP_200_OK)
-        old_policy.refresh_from_db()
-        self.assertIsNone(old_policy.renewed_by_id)
-
-    def test_policy_renewal_validation_rejects_self_link_and_cycle(self):
-        old_policy = self._create_policy("POL-CYCLE-OLD")
-        new_policy = self._create_policy("POL-CYCLE-NEW")
-
-        self_response = self.api_client.patch(
-            f"/api/v1/policies/{old_policy.id}/",
-            {"renewed_by": str(old_policy.id)},
-            format="json",
-        )
-        self.assertEqual(self_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("renewed_by", self_response.data)
-
-        first_link = self.api_client.patch(
-            f"/api/v1/policies/{old_policy.id}/",
-            {"renewed_by": str(new_policy.id)},
-            format="json",
-        )
-        self.assertEqual(first_link.status_code, status.HTTP_200_OK)
-
-        cycle_response = self.api_client.patch(
-            f"/api/v1/policies/{new_policy.id}/",
-            {"renewed_by": str(old_policy.id)},
-            format="json",
-        )
-        self.assertEqual(cycle_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("renewed_by", cycle_response.data)
+        self.assertEqual(unrenew_response.status_code, status.HTTP_200_OK)
+        renewed_policy.refresh_from_db()
+        self.assertFalse(renewed_policy.is_renewed)
 
     def test_kpi_excludes_renewed_policies_from_expiring_soon(self):
         today = timezone.localdate()
@@ -225,16 +171,11 @@ class PolicyComputedStatusAndNoteTests(AuthenticatedAPITestCase):
         renewed_policy = self._create_policy(
             "POL-KPI-RENEWED",
             end_date=today + timedelta(days=2),
+            is_renewed=True,
         )
-        successor_policy = self._create_policy(
-            "POL-KPI-SUCCESSOR",
-            end_date=today + timedelta(days=365),
-        )
-        renewed_policy.renewed_by = successor_policy
-        renewed_policy.save(update_fields=["renewed_by", "updated_at"])
 
         response = self.api_client.get("/api/v1/policies/kpi/?expiring_days=10")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["expiring_soon_count"], 1)
-        self.assertEqual(active_policy.renewed_by_id, None)
+        self.assertFalse(active_policy.is_renewed)

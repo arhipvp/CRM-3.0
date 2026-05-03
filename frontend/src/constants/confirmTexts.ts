@@ -97,4 +97,16 @@ export const confirmTexts = {
     confirmText: 'Проставить дату',
     tone: 'primary',
   }),
+  markPolicyAsRenewed: (policyNumber: string): ConfirmDialogOptions => ({
+    title: 'Отметить полис продлённым',
+    message: `Отметить полис ${policyNumber} как продлённый? После этого он будет скрыт из списка по умолчанию.`,
+    confirmText: 'Отметить',
+    tone: 'primary',
+  }),
+  markPolicyAsNotRenewed: (policyNumber: string): ConfirmDialogOptions => ({
+    title: 'Вернуть полис в активные',
+    message: `Снять отметку продления с полиса ${policyNumber}? Полис снова будет виден в списке по умолчанию.`,
+    confirmText: 'Вернуть',
+    tone: 'primary',
+  }),
 };

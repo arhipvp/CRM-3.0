@@ -38,14 +38,21 @@ vi.mock('../../../api', () => {
     updateFinancialRecord: vi.fn(),
     updatePayment: vi.fn(),
     updatePolicy: vi.fn(),
+    updatePolicyRenewed: vi.fn(),
   };
 });
 
-import { deleteFinancialRecord, updateFinancialRecord, updatePolicy } from '../../../api';
+import {
+  deleteFinancialRecord,
+  updateFinancialRecord,
+  updatePolicy,
+  updatePolicyRenewed,
+} from '../../../api';
 
 const deleteFinancialRecordMock = vi.mocked(deleteFinancialRecord);
 const updateFinancialRecordMock = vi.mocked(updateFinancialRecord);
 const updatePolicyMock = vi.mocked(updatePolicy);
+const updatePolicyRenewedMock = vi.mocked(updatePolicyRenewed);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -361,35 +368,23 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(updateFinancialRecordMock).not.toHaveBeenCalled();
   });
 
-  it('передаёт renewsPolicyId при обновлении полиса', async () => {
+  it('updates policy renewed flag through a lightweight patch', async () => {
     const policy = createPolicy();
     const { params } = createParams({ policy });
 
-    updatePolicyMock.mockResolvedValue({
+    updatePolicyRenewedMock.mockResolvedValue({
       ...policy,
-      renewedById: 'policy-2',
-      renewedByNumber: 'POL-2',
       isRenewed: true,
     });
 
     const { result } = renderHook(() => usePolicyActions(params));
 
     await act(async () => {
-      await result.current.handleUpdatePolicy(
-        policy.id,
-        createPolicyValues({
-          renewsPolicyId: 'policy-2',
-        }),
-      );
+      await result.current.handleUpdatePolicyRenewed(policy.id, true);
     });
 
-    expect(updatePolicyMock).toHaveBeenCalledWith(
-      policy.id,
-      expect.objectContaining({
-        renewsPolicyId: 'policy-2',
-      }),
-    );
-    expect(updatePolicyMock.mock.calls[0]?.[1]).not.toHaveProperty('renewedById');
+    expect(updatePolicyRenewedMock).toHaveBeenCalledWith(policy.id, true);
+    expect(updatePolicyMock).not.toHaveBeenCalled();
   });
 });
 

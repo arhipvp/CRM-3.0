@@ -1,6 +1,7 @@
 # Domain invariants
 
 ## Статусы/типы (фиксированные)
+
 - `Task.status`: `todo`, `in_progress`, `done`, `overdue`, `canceled`.
 - `Task.priority`: `low`, `normal`, `high`, `urgent`.
 - `Document.status`: `draft`, `pending`, `completed`, `error`.
@@ -8,11 +9,12 @@
 - `Statement.status`: `draft`, `paid`.
 
 ## Статусы/типы (нефиксированные)
+
 - `Deal.status`: свободный текст, не нормализован.
 - `Policy.status`: свободный текст, не нормализован.
 
-
 ## Инвентаризация статусов и источников правды (backend/frontend)
+
 - `Deal.status`
   - Backend: `backend/apps/deals/models.py` (строка), default `open`.
   - Backend поведение: `backend/apps/deals/views.py` закрытие/открытие допускает только `won`/`lost`, `reopen` возвращает `open`, `CLOSED_STATUSES = {"won", "lost"}`.
@@ -46,9 +48,8 @@
   - Frontend типы: `frontend/src/types.ts` допускает `parsed`, `error`, `exists`.
   - Gap: `exists` в backend не встречается.
 
-
-
 ## Контракт статусов (target)
+
 - `Deal.status`:
   - `open` — активная сделка.
   - `on_hold` — приостановлена, но не закрыта.
@@ -64,6 +65,7 @@
   - Если `end_date` < today, UI может отображать `expired` независимо от значения поля.
 
 ## План миграции статусов (Deal/Policy)
+
 1. Зафиксировать финальные названия enum (например, `canceled` vs `cancelled`) и описания.
 2. Backend: добавить TextChoices/валидацию в моделях и сериализаторах; на запись принимать legacy значения и маппить в новый enum.
 3. Backend: написать миграцию данных — нормализовать значения (`open`, `on_hold`, `won`, `lost`, `active`, `inactive`, `expired`, `canceled`) с учетом регистра и синонимов.
@@ -71,15 +73,17 @@
 5. После 1-2 релизов: удалить поддержку legacy-значений и упростить маппинг.
 
 ## Связи и каскады
+
 - Удаление сделки удаляет связанные полисы, платежи, задачи (мягкое удаление через `SoftDeleteModel`).
 - Удаление полиса удаляет связанные платежи (мягкое удаление).
 - Удаление платежа удаляет связанные финансовые записи.
 - Удаление ведомости отвязывает финансовые записи (`statement = null`).
 
 ## Ограничения данных
+
 - `Policy.end_date` не может быть раньше `start_date`.
 - `Policy.status = expired` требует заполненного `end_date`.
-- Продление полиса редактируется со стороны нового полиса: API получает `renews_policy`, а у предыдущего полиса сохраняется `renewed_by = новый полис`.
+- Продление полиса хранится простым флагом `Policy.is_renewed`; связь с новым полисом не ведётся.
 - `Payment.amount` должен быть больше нуля.
 - `Payment.actual_date` не может быть раньше `scheduled_date`.
 - `Policy.number` уникален среди не удаленных записей (`policies_unique_active_number`).
@@ -88,7 +92,9 @@
 - `NotificationDelivery` уникален по (`user`, `event_type`, `object_type`, `object_id`, `trigger_date`).
 
 ## Автозаполнение и согласование
+
 - `Policy.save()` подтягивает `client` и `insured_client` из `Deal`, если не заданы.
 
 ## Замечания
+
 - Нет централизованного источника правды для статусов сделок/полисов между backend и frontend.

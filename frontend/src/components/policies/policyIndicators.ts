@@ -83,19 +83,15 @@ export const getPolicyComputedStatusBadge = (status?: string): PolicyComputedSta
 
 export const getPolicyRenewalBadge = ({
   isRenewed,
-  renewedByNumber,
 }: {
   isRenewed?: boolean;
-  renewedByNumber?: string | null;
 }): PolicyRenewalBadge | null => {
   if (!isRenewed) {
     return null;
   }
   return {
-    label: 'Продлённый',
+    label: 'Продлён',
     tone: 'sky',
-    tooltip: renewedByNumber
-      ? `Продлён полисом ${renewedByNumber}`
-      : 'Этот полис продлён новым полисом',
+    tooltip: 'Полис отмечен как продлённый',
   };
 };

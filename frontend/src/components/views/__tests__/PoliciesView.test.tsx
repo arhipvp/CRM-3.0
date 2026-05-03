@@ -49,8 +49,6 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   salesChannel: overrides.salesChannel ?? '',
   driveFolderId: overrides.driveFolderId ?? null,
   note: overrides.note ?? '',
-  renewedById: overrides.renewedById ?? null,
-  renewedByNumber: overrides.renewedByNumber ?? null,
   isRenewed: overrides.isRenewed ?? false,
 });
 
@@ -193,8 +191,6 @@ describe('PoliciesView', () => {
             policies={[
               buildPolicy({
                 isRenewed: true,
-                renewedById: 'policy-2',
-                renewedByNumber: 'POL-2',
               }),
             ]}
             payments={[]}
@@ -204,7 +200,7 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Продлённый')).toHaveAttribute('title', 'Продлён полисом POL-2');
+    expect(screen.getByText('Продлён')).toHaveAttribute('title', 'Полис отмечен как продлённый');
     await waitFor(() => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
     });

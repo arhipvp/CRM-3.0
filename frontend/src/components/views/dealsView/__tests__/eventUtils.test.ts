@@ -65,7 +65,7 @@ describe('eventUtils', () => {
 
   it('skips renewed policies when building expiration events', () => {
     const events = buildDealEvents({
-      policies: [{ ...samplePolicy, isRenewed: true, renewedByNumber: 'NEW-1' }],
+      policies: [{ ...samplePolicy, isRenewed: true }],
       payments: [],
     });
 

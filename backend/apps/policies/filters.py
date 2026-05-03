@@ -81,6 +81,9 @@ class PolicyFilterSet(django_filters.FilterSet):
     is_vehicle = django_filters.BooleanFilter(
         field_name="is_vehicle", label="Vehicle policy"
     )
+    is_renewed = django_filters.BooleanFilter(
+        field_name="is_renewed", label="Renewed policy"
+    )
 
     class Meta:
         model = Policy
@@ -91,6 +94,7 @@ class PolicyFilterSet(django_filters.FilterSet):
             "computed_status",
             "deal",
             "is_vehicle",
+            "is_renewed",
             "sales_channel",
             "note",
             "start_date_from",

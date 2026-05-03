@@ -65,8 +65,6 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   createdAt: overrides.createdAt ?? '2026-03-19T00:00:00Z',
   updatedAt: overrides.updatedAt ?? '2026-03-19T00:00:00Z',
   isRenewed: overrides.isRenewed ?? false,
-  renewedById: overrides.renewedById ?? null,
-  renewedByNumber: overrides.renewedByNumber ?? null,
 });
 
 const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
@@ -83,22 +81,16 @@ const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
 });
 
 describe('buildPolicyFormValues', () => {
-  it('prefills the previous policy renewed by the edited policy', () => {
+  it('builds policy edit values without renewal relation fields', () => {
     const editedPolicy = buildPolicy({ id: 'policy-new', number: 'POL-NEW' });
-    const previousPolicy = buildPolicy({
-      id: 'policy-old',
-      number: 'POL-OLD',
-      isRenewed: true,
-      renewedById: editedPolicy.id,
-    });
 
     const values = buildPolicyFormValues(
       editedPolicy,
       [buildPayment({ policyId: editedPolicy.id })],
       [],
-      [editedPolicy, previousPolicy],
     );
 
-    expect(values.renewsPolicyId).toBe(previousPolicy.id);
+    expect(values).not.toHaveProperty('renewsPolicyId');
+    expect(values).not.toHaveProperty('renewedById');
   });
 });

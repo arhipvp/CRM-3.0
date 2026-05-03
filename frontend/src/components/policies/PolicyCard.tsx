@@ -120,9 +120,8 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
     () =>
       getPolicyRenewalBadge({
         isRenewed: policy.isRenewed,
-        renewedByNumber: policy.renewedByNumber,
       }),
-    [policy.isRenewed, policy.renewedByNumber],
+    [policy.isRenewed],
   );
   const renderTruncatedText = (label: string, value: string) => (
     <LabelValuePair

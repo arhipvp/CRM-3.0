@@ -6,7 +6,7 @@ import {
   fetchVehicleBrands,
   fetchVehicleModels,
 } from '../../api';
-import type { Client, InsuranceCompany, InsuranceType, Policy, SalesChannel } from '../../types';
+import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
 import type { FinancialRecordDraft } from './addPolicy/types';
 import {
   createEmptyRecord,
@@ -46,8 +46,6 @@ interface AddPolicyFormProps {
   defaultCounterparty?: string;
   executorName?: string | null;
   clients: Client[];
-  dealPolicies?: Policy[];
-  currentPolicyId?: string | null;
   onRequestAddClient: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
 }
@@ -88,16 +86,12 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   defaultCounterparty,
   executorName,
   clients,
-  dealPolicies = [],
-  currentPolicyId = null,
   onRequestAddClient,
   onDirtyChange,
 }) => {
   const [number, setNumber] = useState('');
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
   const [insuranceTypeId, setInsuranceTypeId] = useState('');
-  const [renewedById, setRenewedById] = useState('');
-  const [renewsPolicyId, setRenewsPolicyId] = useState('');
   const [isVehicle, setIsVehicle] = useState(false);
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
@@ -216,8 +210,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         number,
         insuranceCompanyId,
         insuranceTypeId,
-        renewedById,
-        renewsPolicyId,
         isVehicle,
         brand,
         model,
@@ -238,8 +230,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
       number,
       insuranceCompanyId,
       insuranceTypeId,
-      renewedById,
-      renewsPolicyId,
       isVehicle,
       brand,
       model,
@@ -273,8 +263,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         number: string;
         insuranceCompanyId: string;
         insuranceTypeId: string;
-        renewedById: string;
-        renewsPolicyId: string;
         isVehicle: boolean;
         brand: string;
         model: string;
@@ -341,8 +329,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     setNumber(initialFormState.number || '');
     setInsuranceCompanyId(initialFormState.insuranceCompanyId || '');
     setInsuranceTypeId(initialFormState.insuranceTypeId || '');
-    setRenewedById(initialFormState.renewedById || '');
-    setRenewsPolicyId(initialFormState.renewsPolicyId || '');
     setIsVehicle(initialFormState.isVehicle);
     setBrand(initialFormState.brand || '');
     setModel(initialFormState.model || '');
@@ -514,27 +500,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   };
 
   const computedDefaultEndDate = startDate ? getDefaultEndDate(startDate) : '';
-  const renewalLabel = 'Продлевает полис';
-  const renewalPolicyOptions = useMemo(() => {
-    return dealPolicies
-      .filter((policy) => {
-        if (policy.id === currentPolicyId) {
-          return false;
-        }
-        if (policy.isRenewed && (!currentPolicyId || policy.renewedById !== currentPolicyId)) {
-          return false;
-        }
-        return true;
-      })
-      .map((policy) => {
-        const company = policy.insuranceCompany?.trim();
-        const endDateLabel = policy.endDate ? `до ${policy.endDate}` : 'без даты окончания';
-        return {
-          id: policy.id,
-          label: [policy.number, company, endDateLabel].filter(Boolean).join(' · '),
-        };
-      });
-  }, [currentPolicyId, dealPolicies]);
   const policyDurationWarning =
     startDate && endDate && computedDefaultEndDate && endDate !== computedDefaultEndDate
       ? 'Срок полиса отличается от стандартного годового периода. Уточните даты, если это ожидаемо.'
@@ -780,8 +745,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         number: number.trim(),
         insuranceCompanyId,
         insuranceTypeId,
-        renewedById: null,
-        renewsPolicyId: renewsPolicyId || null,
         isVehicle,
         brand: isVehicle ? brand.trim() || undefined : undefined,
         model: isVehicle ? model.trim() || undefined : undefined,
@@ -846,12 +809,6 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
                 insuranceTypeId={insuranceTypeId}
                 onInsuranceTypeChange={setInsuranceTypeId}
                 types={types}
-                renewalLabel={renewalLabel}
-                renewalPolicyId={renewsPolicyId}
-                onRenewalPolicyChange={(value) => {
-                  setRenewsPolicyId(value);
-                }}
-                renewalPolicyOptions={renewalPolicyOptions}
                 salesChannelId={salesChannelId}
                 onSalesChannelChange={setSalesChannelId}
                 salesChannels={salesChannels}

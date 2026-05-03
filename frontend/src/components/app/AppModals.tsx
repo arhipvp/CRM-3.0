@@ -93,7 +93,6 @@ export const AppModals: React.FC<AppModalsProps> = ({
   modal,
   setModal,
   clients,
-  policies = [],
   users,
   openClientModal,
   closeClientModal,
@@ -129,14 +128,6 @@ export const AppModals: React.FC<AppModalsProps> = ({
   setEditingQuote,
   confirm,
 }) => {
-  const createPolicyCandidates = React.useMemo(
-    () => policies.filter((policy) => policy.dealId === policyDealId),
-    [policies, policyDealId],
-  );
-  const editPolicyCandidates = React.useMemo(
-    () => policies.filter((policy) => policy.dealId === editingPolicy?.dealId),
-    [editingPolicy?.dealId, policies],
-  );
   const editingPolicyPayments = React.useMemo(
     () =>
       editingPolicy ? payments.filter((payment) => payment.policyId === editingPolicy.id) : [],
@@ -145,14 +136,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
   const editingPolicyInitialValues = React.useMemo(
     () =>
       editingPolicy
-        ? buildPolicyFormValues(
-            editingPolicy,
-            editingPolicyPayments,
-            financialRecords,
-            editPolicyCandidates,
-          )
+        ? buildPolicyFormValues(editingPolicy, editingPolicyPayments, financialRecords)
         : undefined,
-    [editPolicyCandidates, editingPolicy, editingPolicyPayments, financialRecords],
+    [editingPolicy, editingPolicyPayments, financialRecords],
   );
   const [isAddPolicyDirty, setIsAddPolicyDirty] = React.useState(false);
   const [isEditPolicyDirty, setIsEditPolicyDirty] = React.useState(false);
@@ -282,7 +268,6 @@ export const AppModals: React.FC<AppModalsProps> = ({
             defaultCounterparty={policyDefaultCounterparty}
             executorName={policyDealExecutorName}
             clients={clients}
-            dealPolicies={createPolicyCandidates}
             onRequestAddClient={() => openClientModal()}
             onDirtyChange={setIsAddPolicyDirty}
             onSubmit={(values) => handleAddPolicy(policyDealId, values)}
@@ -314,8 +299,6 @@ export const AppModals: React.FC<AppModalsProps> = ({
             initialInsuranceTypeName={editingPolicy.insuranceType}
             executorName={editingPolicyExecutorName}
             clients={clients}
-            dealPolicies={editPolicyCandidates}
-            currentPolicyId={editingPolicy.id}
             onRequestAddClient={() => openClientModal()}
             onDirtyChange={setIsEditPolicyDirty}
             onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}

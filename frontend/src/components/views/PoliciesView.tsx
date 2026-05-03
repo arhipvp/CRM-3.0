@@ -511,7 +511,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 const expiryBadge = getPolicyExpiryBadge(policy.endDate);
                 const renewalBadge = getPolicyRenewalBadge({
                   isRenewed: policy.isRenewed,
-                  renewedByNumber: policy.renewedByNumber,
                 });
                 const notePreview = getPolicyNotePreview(policy.note);
                 const rowSpan = Math.max(ledgerRows.length, 1);

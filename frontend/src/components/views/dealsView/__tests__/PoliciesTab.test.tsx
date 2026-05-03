@@ -43,8 +43,6 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   salesChannel: overrides.salesChannel ?? '',
   driveFolderId: overrides.driveFolderId ?? null,
   note: overrides.note ?? '',
-  renewedById: overrides.renewedById ?? null,
-  renewedByNumber: overrides.renewedByNumber ?? null,
   isRenewed: overrides.isRenewed ?? false,
 });
 
@@ -83,6 +81,7 @@ const setup = (overrides: Partial<React.ComponentProps<typeof PoliciesTab>> = {}
       onDeletePayment={vi.fn().mockResolvedValue(undefined)}
       onRequestAddPolicy={vi.fn()}
       onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+      onUpdatePolicyRenewed={vi.fn().mockResolvedValue(undefined)}
       onRequestEditPolicy={vi.fn()}
       {...overrides}
     />,
@@ -196,13 +195,42 @@ describe('PoliciesTab', () => {
       sortedPolicies: [
         buildPolicy({
           isRenewed: true,
-          renewedById: 'policy-2',
-          renewedByNumber: 'POL-2',
         }),
       ],
     });
 
-    expect(screen.getByText('Продлённый')).toHaveAttribute('title', 'Продлён полисом POL-2');
+    expect(screen.queryByText('POL-1')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Показать продлённые'));
+
+    expect(screen.getByText('Продлён')).toHaveAttribute('title', 'Полис отмечен как продлённый');
+  });
+
+  it('marks policy as renewed only after confirmation', async () => {
+    const onUpdatePolicyRenewed = vi.fn().mockResolvedValue(undefined);
+    setup({ onUpdatePolicyRenewed });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Отметить продлённым' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Отметить' }));
+
+    await waitFor(() => {
+      expect(onUpdatePolicyRenewed).toHaveBeenCalledWith('policy-1', true);
+    });
+  });
+
+  it('returns renewed policy to active list only after confirmation', async () => {
+    const onUpdatePolicyRenewed = vi.fn().mockResolvedValue(undefined);
+    setup({
+      onUpdatePolicyRenewed,
+      sortedPolicies: [buildPolicy({ isRenewed: true })],
+    });
+
+    fireEvent.click(screen.getByLabelText('Показать продлённые'));
+    fireEvent.click(screen.getByRole('button', { name: 'Вернуть в активные' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Вернуть' }));
+
+    await waitFor(() => {
+      expect(onUpdatePolicyRenewed).toHaveBeenCalledWith('policy-1', false);
+    });
   });
 
   it('shows empty fallback when deal has no policies', () => {

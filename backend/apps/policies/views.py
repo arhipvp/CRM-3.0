@@ -103,7 +103,6 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "insurance_company",
                 "insurance_type",
                 "sales_channel",
-                "renewed_by",
             )
             .prefetch_related(
                 Prefetch(
@@ -167,7 +166,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "expiring_soon_count": queryset.filter(
                 has_unpaid_record=False,
                 has_unpaid_payment=False,
-                renewed_by__isnull=True,
+                is_renewed=False,
                 end_date__isnull=False,
                 end_date__gte=today,
                 end_date__lte=expiring_to,

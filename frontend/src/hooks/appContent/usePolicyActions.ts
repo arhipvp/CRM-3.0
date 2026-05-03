@@ -14,6 +14,7 @@ import {
   updateFinancialRecord,
   updatePayment,
   updatePolicy,
+  updatePolicyRenewed,
 } from '../../api';
 import type { FilterParams } from '../../api';
 import type { ModalType } from '../../components/app/types';
@@ -280,7 +281,6 @@ export const usePolicyActions = ({
         salesChannelId,
         clientId: selectedPolicyClientId,
         clientName: selectedPolicyClientName,
-        renewsPolicyId,
         counterparty,
         note,
         payments: paymentDrafts = [],
@@ -343,7 +343,6 @@ export const usePolicyActions = ({
           note,
           startDate,
           endDate,
-          renewsPolicyId: renewsPolicyId || null,
           sourceFileId,
           sourceFileIds: sourceFileIds.length ? sourceFileIds : undefined,
         });
@@ -564,7 +563,6 @@ export const usePolicyActions = ({
           endDate,
           clientId: selectedPolicyClientId,
           clientName: selectedPolicyClientName,
-          renewsPolicyId,
           payments: paymentDrafts = [],
         } = values;
 
@@ -676,7 +674,6 @@ export const usePolicyActions = ({
           startDate,
           endDate,
           clientId: resolvedPolicyClientId || currentPolicy.clientId,
-          renewsPolicyId: renewsPolicyId || null,
         });
         updateAppData((prev) => ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
@@ -995,6 +992,39 @@ export const usePolicyActions = ({
     ],
   );
 
+  const handleUpdatePolicyRenewed = useCallback(
+    async (policyId: string, isRenewed: boolean) => {
+      const targetPolicy = policies.find((policy) => policy.id === policyId);
+      const targetDealId = targetPolicy?.dealId ?? null;
+      setIsSyncing(true);
+      invalidateDealsCache();
+      invalidateDealPoliciesCache(targetDealId);
+      try {
+        const updated = await updatePolicyRenewed(policyId, isRenewed);
+        updateAppData((prev) => ({
+          policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
+        }));
+        if (targetDealId) {
+          await loadDealPolicies(targetDealId, { force: true });
+        }
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Не удалось обновить признак продления полиса'));
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [
+      invalidateDealPoliciesCache,
+      invalidateDealsCache,
+      loadDealPolicies,
+      policies,
+      setError,
+      setIsSyncing,
+      updateAppData,
+    ],
+  );
+
   return {
     policyDealId,
     policyPrefill,
@@ -1008,6 +1038,7 @@ export const usePolicyActions = ({
     handleRequestEditPolicy,
     handleAddPolicy,
     handleUpdatePolicy,
+    handleUpdatePolicyRenewed,
     handleDeletePolicy,
     policyDealExecutorName: policyDealId
       ? (dealsById.get(policyDealId)?.executorName ?? null)

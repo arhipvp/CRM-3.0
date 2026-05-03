@@ -66,6 +66,7 @@ export interface AppRouteDealsActions {
   onPendingDealClientConsumed: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onUpdatePolicyRenewed?: (policyId: string, isRenewed: boolean) => Promise<void>;
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onCreateDealMailbox: (dealId: string) => Promise<DealMailboxCreateResult>;
   onCheckDealMailbox: (dealId: string) => Promise<DealMailboxSyncResult>;

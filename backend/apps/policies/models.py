@@ -128,13 +128,9 @@ class Policy(SoftDeleteModel):
         blank=True,
         help_text="Policy end date",
     )
-    renewed_by = models.ForeignKey(
-        "self",
-        related_name="renewed_policies",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        help_text="Policy that renews this policy.",
+    is_renewed = models.BooleanField(
+        default=False,
+        help_text="True when the policy has been renewed.",
     )
 
     status = models.CharField(
@@ -180,10 +176,6 @@ class Policy(SoftDeleteModel):
         client_name = self.client.name if self.client else None
         client_suffix = f" - {client_name}" if client_name else ""
         return f"Policy {self.number} ({type_name} - {company}){client_suffix}"
-
-    @property
-    def is_renewed(self) -> bool:
-        return self.renewed_by_id is not None
 
     def save(self, *args, **kwargs):
         deal_client_id = getattr(self.deal, "client_id", None)

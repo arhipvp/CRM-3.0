@@ -61,6 +61,7 @@ interface PoliciesTabProps {
   onMarkFinancialRecordPaid?: (recordId: string, paidDate: string) => Promise<void>;
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onUpdatePolicyRenewed: (policyId: string, isRenewed: boolean) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
   onUploadAndRecognizePolicyFiles?: (files: File[]) => Promise<void>;
   onDealPreview?: (dealId: string) => void;
@@ -84,6 +85,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onDeletePayment,
   onRequestAddPolicy,
   onDeletePolicy,
+  onUpdatePolicyRenewed,
   onRequestEditPolicy,
   onUploadAndRecognizePolicyFiles,
   onMarkPaymentPaid,
@@ -96,6 +98,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 }) => {
   const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
   const [showUnpaidRecordsOnly, setShowUnpaidRecordsOnly] = useState(false);
+  const [showRenewedPolicies, setShowRenewedPolicies] = useState(false);
   const [paymentToMarkPaid, setPaymentToMarkPaid] = useState<Payment | null>(null);
   const [paymentPaidDate, setPaymentPaidDate] = useState('');
   const [paymentPaidDateError, setPaymentPaidDateError] = useState<string | null>(null);
@@ -124,11 +127,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   );
 
   const visiblePolicies = useMemo(() => {
-    const shouldFilterUnpaid = showUnpaidPaymentsOnly || showUnpaidRecordsOnly;
-    if (!shouldFilterUnpaid) {
-      return sortedPolicies;
-    }
     return sortedPolicies.filter((policy) => {
+      if (!showRenewedPolicies && policy.isRenewed) {
+        return false;
+      }
+      const shouldFilterUnpaid = showUnpaidPaymentsOnly || showUnpaidRecordsOnly;
+      if (!shouldFilterUnpaid) {
+        return true;
+      }
       const hasUnpaidPayments = policyHasUnpaidPayments(policy.id, paymentsByPolicyMap);
       const hasUnpaidRecords = policyHasUnpaidRecords(
         policy.id,
@@ -142,6 +148,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   }, [
     allFinancialRecords,
     paymentsByPolicyMap,
+    showRenewedPolicies,
     showUnpaidPaymentsOnly,
     showUnpaidRecordsOnly,
     sortedPolicies,
@@ -225,6 +232,18 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       return;
     }
     onDealSelect?.(dealId);
+  };
+
+  const handleUpdatePolicyRenewed = async (policy: Policy, isRenewed: boolean) => {
+    const confirmed = await confirm(
+      isRenewed
+        ? confirmTexts.markPolicyAsRenewed(policy.number)
+        : confirmTexts.markPolicyAsNotRenewed(policy.number),
+    );
+    if (!confirmed) {
+      return;
+    }
+    await onUpdatePolicyRenewed(policy.id, isRenewed);
   };
 
   const closeMarkPaidPrompt = () => {
@@ -328,6 +347,15 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
             />
             Только с неоплаченными записями
           </label>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="check"
+              checked={showRenewedPolicies}
+              onChange={(event) => setShowRenewedPolicies(event.target.checked)}
+            />
+            Показать продлённые
+          </label>
         </div>
 
         <button
@@ -341,320 +369,249 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
       {renderPolicyFileUpload()}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-[1900px] w-full border-collapse text-left text-sm">
-          <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-            <tr>
-              <th className="px-3 py-2 border border-slate-300">
-                <button
-                  type="button"
-                  onClick={() => handleSortChange('number')}
-                  className="w-full text-left"
-                >
-                  Номер полиса
-                </button>
-              </th>
-              <th className="px-3 py-2 border border-slate-300">Основные данные</th>
-              <th className="px-3 py-2 border border-slate-300 w-[6%]">
-                <button
-                  type="button"
-                  onClick={() => handleSortChange('startDate')}
-                  className="w-full text-left"
-                >
-                  Начало
-                </button>
-              </th>
-              <th className="px-3 py-2 border border-slate-300 w-[6%]">
-                <button
-                  type="button"
-                  onClick={() => handleSortChange('endDate')}
-                  className="w-full text-left"
-                >
-                  Конец
-                </button>
-              </th>
-              <th className="px-3 py-2 border border-slate-300">Платеж</th>
-              <th className="px-3 py-2 border border-slate-300">Финансовые записи</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
-            {visiblePolicies.map((policy) => {
-              const payments = paymentsByPolicyMap.get(policy.id) ?? [];
-              const ledgerRows = buildPolicyLedgerRows(policy, payments, 'Без комментария');
-              const model = buildPolicyCardModel(policy, payments);
-              const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
-              const expiryBadge = getPolicyExpiryBadge(policy.endDate);
-              const renewalBadge = getPolicyRenewalBadge({
-                isRenewed: policy.isRenewed,
-                renewedByNumber: policy.renewedByNumber,
-              });
-              const notePreview = getPolicyNotePreview(policy.note);
-              const rowSpan = Math.max(ledgerRows.length, 1);
-              const firstLedgerRow = ledgerRows[0];
-              const insuranceCompany = (model.insuranceCompany ?? '').trim();
-              const insuranceType = (model.insuranceType ?? '').trim();
-              const salesChannel = (model.salesChannel ?? '').trim();
-              const metaTitle = [insuranceCompany, insuranceType, salesChannel]
-                .filter(Boolean)
-                .join(', ');
-              const hasMeta = Boolean(metaTitle);
-              const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
-              const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
+      {!visiblePolicies.length && (
+        <div className={PANEL_MUTED_TEXT}>
+          {showRenewedPolicies || showUnpaidPaymentsOnly || showUnpaidRecordsOnly
+            ? 'Нет полисов под выбранные фильтры.'
+            : 'Продлённые полисы скрыты. Включите фильтр, чтобы посмотреть их.'}
+        </div>
+      )}
 
-              return (
-                <Fragment key={policy.id}>
-                  <tr key={`${policy.id}-head`} className="hover:bg-slate-50 transition-colors">
-                    <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
-                      <p className="text-xl font-bold text-slate-900 leading-tight">
-                        {model.number}
-                      </p>
-                    </td>
-                    <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
-                      <div className="space-y-1.5">
-                        <p className="text-sm font-semibold text-slate-900">{model.client}</p>
-                        {policy.dealId ? (
-                          canOpenDeal ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDeal(policy.dealId)}
-                              className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
-                            >
-                              {dealTitle}
-                            </button>
-                          ) : (
-                            <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
-                          )
-                        ) : null}
-                        {hasMeta ? (
-                          <p className="text-sm text-slate-700 truncate" title={metaTitle}>
-                            {insuranceCompany ? (
-                              <>
-                                <ColoredLabel
-                                  value={insuranceCompany}
-                                  showDot
-                                  className="text-sm"
-                                />
-                                {(insuranceType || salesChannel) && ', '}
-                              </>
-                            ) : null}
-                            {insuranceType}
-                            {insuranceType && salesChannel ? ', ' : null}
-                            {salesChannel}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-slate-700">—</p>
-                        )}
-                        <p
-                          className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
-                          title={notePreview.fullText}
-                        >
-                          {notePreview.preview}
+      {visiblePolicies.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="min-w-[1900px] w-full border-collapse text-left text-sm">
+            <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <tr>
+                <th className="px-3 py-2 border border-slate-300">
+                  <button
+                    type="button"
+                    onClick={() => handleSortChange('number')}
+                    className="w-full text-left"
+                  >
+                    Номер полиса
+                  </button>
+                </th>
+                <th className="px-3 py-2 border border-slate-300">Основные данные</th>
+                <th className="px-3 py-2 border border-slate-300 w-[6%]">
+                  <button
+                    type="button"
+                    onClick={() => handleSortChange('startDate')}
+                    className="w-full text-left"
+                  >
+                    Начало
+                  </button>
+                </th>
+                <th className="px-3 py-2 border border-slate-300 w-[6%]">
+                  <button
+                    type="button"
+                    onClick={() => handleSortChange('endDate')}
+                    className="w-full text-left"
+                  >
+                    Конец
+                  </button>
+                </th>
+                <th className="px-3 py-2 border border-slate-300">Платеж</th>
+                <th className="px-3 py-2 border border-slate-300">Финансовые записи</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {visiblePolicies.map((policy) => {
+                const payments = paymentsByPolicyMap.get(policy.id) ?? [];
+                const ledgerRows = buildPolicyLedgerRows(policy, payments, 'Без комментария');
+                const model = buildPolicyCardModel(policy, payments);
+                const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
+                const expiryBadge = getPolicyExpiryBadge(policy.endDate);
+                const renewalBadge = getPolicyRenewalBadge({
+                  isRenewed: policy.isRenewed,
+                });
+                const notePreview = getPolicyNotePreview(policy.note);
+                const rowSpan = Math.max(ledgerRows.length, 1);
+                const firstLedgerRow = ledgerRows[0];
+                const insuranceCompany = (model.insuranceCompany ?? '').trim();
+                const insuranceType = (model.insuranceType ?? '').trim();
+                const salesChannel = (model.salesChannel ?? '').trim();
+                const metaTitle = [insuranceCompany, insuranceType, salesChannel]
+                  .filter(Boolean)
+                  .join(', ');
+                const hasMeta = Boolean(metaTitle);
+                const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
+                const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
+
+                return (
+                  <Fragment key={policy.id}>
+                    <tr key={`${policy.id}-head`} className="hover:bg-slate-50 transition-colors">
+                      <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
+                        <p className="text-xl font-bold text-slate-900 leading-tight">
+                          {model.number}
                         </p>
-                        <div className="flex flex-wrap gap-1">
-                          {computedStatusBadge && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
-                              }`}
-                              title={computedStatusBadge.tooltip}
-                            >
-                              {computedStatusBadge.label}
-                            </span>
-                          )}
-                          {expiryBadge && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
-                                expiryBadge.tone,
-                              )}`}
-                            >
-                              {expiryBadge.label}
-                            </span>
-                          )}
-                          {renewalBadge && (
-                            <span
-                              className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
-                              title={renewalBadge.tooltip}
-                            >
-                              {renewalBadge.label}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => onRequestEditPolicy(policy)}
-                            className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                          >
-                            Редактировать
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingPaymentId('new');
-                              setCreatingPaymentPolicyId(policy.id);
-                            }}
-                            className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                          >
-                            + Платеж
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                            className="btn btn-danger btn-sm rounded-xl h-7 px-2 text-[11px]"
-                          >
-                            Удалить
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                    <td
-                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
-                      rowSpan={rowSpan}
-                    >
-                      {model.startDate}
-                    </td>
-                    <td
-                      className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
-                      rowSpan={rowSpan}
-                    >
-                      {model.endDate}
-                    </td>
-                    <td className="px-3 py-2 border border-slate-300 align-top">
-                      {firstLedgerRow ? (
-                        <div className="space-y-1">
-                          <div
-                            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
-                            title={firstLedgerRow.line.text}
-                          >
-                            <span className="truncate">{firstLedgerRow.line.dateText}</span>
-                            <span className="font-semibold whitespace-nowrap">
-                              {firstLedgerRow.line.amountText}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
+                      </td>
+                      <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-semibold text-slate-900">{model.client}</p>
+                          {policy.dealId ? (
+                            canOpenDeal ? (
                               <button
                                 type="button"
-                                onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                onClick={() => handleOpenDeal(policy.dealId)}
+                                className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
                               >
-                                Проставить оплату
+                                {dealTitle}
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onDeletePayment(firstLedgerRow.payment.id).catch(() => undefined)
-                              }
-                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                              disabled={firstLedgerRow.payment.canDelete === false}
-                              title={
-                                firstLedgerRow.payment.canDelete === false
-                                  ? 'Сначала удалите оплаченные финансовые записи'
-                                  : 'Удалить платёж'
-                              }
-                            >
-                              Удалить платёж
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2 border border-slate-300 align-top">
-                      {firstLedgerRow?.records.length ? (
-                        <div className="space-y-1">
-                          {firstLedgerRow.records.map((recordRow) => (
-                            <div
-                              key={recordRow.record.id}
-                              className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordRow.state]}`}
-                              title={recordRow.line.text}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate">{recordRow.line.dateText}</span>
-                                <span className="font-semibold whitespace-nowrap">
-                                  {recordRow.line.amountText}
-                                </span>
-                              </div>
-                              <p className="truncate">{recordRow.line.comment}</p>
-                              {!recordRow.record.statementId && !recordRow.record.date ? (
-                                <div className="flex flex-wrap gap-1 pt-1">
-                                  {onMarkFinancialRecordPaid ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => openMarkRecordPaidPrompt(recordRow.record.id)}
-                                      className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                                    >
-                                      Проставить оплату
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onDeleteFinancialRecord(recordRow.record.id).catch(
-                                        () => undefined,
-                                      )
-                                    }
-                                    className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                                  >
-                                    Удалить запись
-                                  </button>
-                                </div>
+                            ) : (
+                              <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
+                            )
+                          ) : null}
+                          {hasMeta ? (
+                            <p className="text-sm text-slate-700 truncate" title={metaTitle}>
+                              {insuranceCompany ? (
+                                <>
+                                  <ColoredLabel
+                                    value={insuranceCompany}
+                                    showDot
+                                    className="text-sm"
+                                  />
+                                  {(insuranceType || salesChannel) && ', '}
+                                </>
                               ) : null}
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </td>
-                  </tr>
-                  {ledgerRows.slice(1).map((ledgerRow) => (
-                    <tr
-                      key={`${policy.id}-${ledgerRow.payment.id}`}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-3 py-2 border border-slate-300 align-top">
-                        <div className="space-y-1">
-                          <div
-                            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
-                            title={ledgerRow.line.text}
+                              {insuranceType}
+                              {insuranceType && salesChannel ? ', ' : null}
+                              {salesChannel}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-slate-700">—</p>
+                          )}
+                          <p
+                            className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
+                            title={notePreview.fullText}
                           >
-                            <span className="truncate">{ledgerRow.line.dateText}</span>
-                            <span className="font-semibold whitespace-nowrap">
-                              {ledgerRow.line.amountText}
-                            </span>
-                          </div>
+                            {notePreview.preview}
+                          </p>
                           <div className="flex flex-wrap gap-1">
-                            {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
-                              <button
-                                type="button"
-                                onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                            {computedStatusBadge && (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                  POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
+                                }`}
+                                title={computedStatusBadge.tooltip}
                               >
-                                Проставить оплату
-                              </button>
+                                {computedStatusBadge.label}
+                              </span>
                             )}
+                            {expiryBadge && (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
+                                  expiryBadge.tone,
+                                )}`}
+                              >
+                                {expiryBadge.label}
+                              </span>
+                            )}
+                            {renewalBadge && (
+                              <span
+                                className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
+                                title={renewalBadge.tooltip}
+                              >
+                                {renewalBadge.label}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => onRequestEditPolicy(policy)}
+                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                            >
+                              Редактировать
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingPaymentId('new');
+                                setCreatingPaymentPolicyId(policy.id);
+                              }}
+                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                            >
+                              + Платеж
+                            </button>
                             <button
                               type="button"
                               onClick={() =>
-                                onDeletePayment(ledgerRow.payment.id).catch(() => undefined)
+                                handleUpdatePolicyRenewed(policy, !policy.isRenewed).catch(
+                                  () => undefined,
+                                )
                               }
                               className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                              disabled={ledgerRow.payment.canDelete === false}
-                              title={
-                                ledgerRow.payment.canDelete === false
-                                  ? 'Сначала удалите оплаченные финансовые записи'
-                                  : 'Удалить платёж'
-                              }
                             >
-                              Удалить платёж
+                              {policy.isRenewed ? 'Вернуть в активные' : 'Отметить продлённым'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
+                              className="btn btn-danger btn-sm rounded-xl h-7 px-2 text-[11px]"
+                            >
+                              Удалить
                             </button>
                           </div>
                         </div>
                       </td>
+                      <td
+                        className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
+                        rowSpan={rowSpan}
+                      >
+                        {model.startDate}
+                      </td>
+                      <td
+                        className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
+                        rowSpan={rowSpan}
+                      >
+                        {model.endDate}
+                      </td>
                       <td className="px-3 py-2 border border-slate-300 align-top">
-                        {ledgerRow.records.length ? (
+                        {firstLedgerRow ? (
                           <div className="space-y-1">
-                            {ledgerRow.records.map((recordRow) => (
+                            <div
+                              className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
+                              title={firstLedgerRow.line.text}
+                            >
+                              <span className="truncate">{firstLedgerRow.line.dateText}</span>
+                              <span className="font-semibold whitespace-nowrap">
+                                {firstLedgerRow.line.amountText}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
+                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                >
+                                  Проставить оплату
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onDeletePayment(firstLedgerRow.payment.id).catch(() => undefined)
+                                }
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                disabled={firstLedgerRow.payment.canDelete === false}
+                                title={
+                                  firstLedgerRow.payment.canDelete === false
+                                    ? 'Сначала удалите оплаченные финансовые записи'
+                                    : 'Удалить платёж'
+                                }
+                              >
+                                Удалить платёж
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2 border border-slate-300 align-top">
+                        {firstLedgerRow?.records.length ? (
+                          <div className="space-y-1">
+                            {firstLedgerRow.records.map((recordRow) => (
                               <div
                                 key={recordRow.record.id}
                                 className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordRow.state]}`}
@@ -699,13 +656,106 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         ) : null}
                       </td>
                     </tr>
-                  ))}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    {ledgerRows.slice(1).map((ledgerRow) => (
+                      <tr
+                        key={`${policy.id}-${ledgerRow.payment.id}`}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-3 py-2 border border-slate-300 align-top">
+                          <div className="space-y-1">
+                            <div
+                              className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
+                              title={ledgerRow.line.text}
+                            >
+                              <span className="truncate">{ledgerRow.line.dateText}</span>
+                              <span className="font-semibold whitespace-nowrap">
+                                {ledgerRow.line.amountText}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
+                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                >
+                                  Проставить оплату
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onDeletePayment(ledgerRow.payment.id).catch(() => undefined)
+                                }
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                disabled={ledgerRow.payment.canDelete === false}
+                                title={
+                                  ledgerRow.payment.canDelete === false
+                                    ? 'Сначала удалите оплаченные финансовые записи'
+                                    : 'Удалить платёж'
+                                }
+                              >
+                                Удалить платёж
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 border border-slate-300 align-top">
+                          {ledgerRow.records.length ? (
+                            <div className="space-y-1">
+                              {ledgerRow.records.map((recordRow) => (
+                                <div
+                                  key={recordRow.record.id}
+                                  className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordRow.state]}`}
+                                  title={recordRow.line.text}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="truncate">{recordRow.line.dateText}</span>
+                                    <span className="font-semibold whitespace-nowrap">
+                                      {recordRow.line.amountText}
+                                    </span>
+                                  </div>
+                                  <p className="truncate">{recordRow.line.comment}</p>
+                                  {!recordRow.record.statementId && !recordRow.record.date ? (
+                                    <div className="flex flex-wrap gap-1 pt-1">
+                                      {onMarkFinancialRecordPaid ? (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            openMarkRecordPaidPrompt(recordRow.record.id)
+                                          }
+                                          className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                        >
+                                          Проставить оплату
+                                        </button>
+                                      ) : null}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          onDeleteFinancialRecord(recordRow.record.id).catch(
+                                            () => undefined,
+                                          )
+                                        }
+                                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                      >
+                                        Удалить запись
+                                      </button>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
       <PromptDialog
         isOpen={Boolean(paymentToMarkPaid)}
         title="Проставить дату оплаты"

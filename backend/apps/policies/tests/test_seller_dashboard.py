@@ -290,17 +290,8 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
             insurance_type=self.insurance_type,
             start_date=today - timedelta(days=30),
             end_date=today + timedelta(days=4),
+            is_renewed=True,
         )
-        successor_policy = Policy.objects.create(
-            number="POLICY-SUCCESSOR",
-            deal=self.deal,
-            insurance_company=self.company,
-            insurance_type=self.insurance_type,
-            start_date=today + timedelta(days=5),
-            end_date=today + timedelta(days=370),
-        )
-        expiring_policy.renewed_by = successor_policy
-        expiring_policy.save(update_fields=["renewed_by", "updated_at"])
 
         response = self.api_client.get(
             "/api/v1/dashboard/seller/",

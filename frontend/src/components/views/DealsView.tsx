@@ -58,6 +58,7 @@ interface DealsViewProps {
   onPendingDealClientConsumed: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onUpdatePolicyRenewed?: (policyId: string, isRenewed: boolean) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
   onPolicyDraftReady?: (
     dealId: string,
@@ -149,6 +150,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onPendingDealClientConsumed,
   onDeleteQuote,
   onDeletePolicy,
+  onUpdatePolicyRenewed = async () => undefined,
   onRefreshPolicies,
   onPolicyDraftReady,
   onAddPayment,
@@ -283,6 +285,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onPendingDealClientConsumed={onPendingDealClientConsumed}
             onDeleteQuote={onDeleteQuote}
             onDeletePolicy={onDeletePolicy}
+            onUpdatePolicyRenewed={onUpdatePolicyRenewed}
             onRefreshPolicies={onRefreshPolicies}
             onPolicyDraftReady={onPolicyDraftReady}
             onAddPayment={onAddPayment}

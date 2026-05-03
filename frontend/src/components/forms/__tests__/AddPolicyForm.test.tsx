@@ -1,11 +1,10 @@
 import React from 'react';
 import type { ComponentProps } from 'react';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { fetchInsuranceTypes } from '../../../api';
 import { AddPolicyForm } from '../AddPolicyForm';
-import type { Policy } from '../../../types';
 import type { PolicyFormValues } from '../addPolicy/types';
 
 vi.mock('../../../api', () => ({
@@ -23,25 +22,6 @@ const buildInitialValues = (payments: PolicyFormValues['payments']): PolicyFormV
   startDate: '2026-01-13',
   endDate: '2027-01-12',
   payments,
-});
-
-const buildPolicyOption = (overrides: Partial<Policy> = {}): Policy => ({
-  id: overrides.id ?? 'policy-old',
-  number: overrides.number ?? 'POL-OLD',
-  insuranceCompanyId: overrides.insuranceCompanyId ?? 'company-1',
-  insuranceCompany: overrides.insuranceCompany ?? 'Ингосстрах',
-  insuranceTypeId: overrides.insuranceTypeId ?? 'type-1',
-  insuranceType: overrides.insuranceType ?? 'Каско',
-  dealId: overrides.dealId ?? 'deal-1',
-  isVehicle: overrides.isVehicle ?? false,
-  status: overrides.status ?? 'active',
-  startDate: overrides.startDate ?? '2025-01-01',
-  endDate: overrides.endDate ?? '2026-01-01',
-  createdAt: overrides.createdAt ?? new Date().toISOString(),
-  updatedAt: overrides.updatedAt ?? new Date().toISOString(),
-  isRenewed: overrides.isRenewed ?? false,
-  renewedById: overrides.renewedById ?? null,
-  renewedByNumber: overrides.renewedByNumber ?? null,
 });
 
 const renderForm = (
@@ -763,48 +743,7 @@ describe('AddPolicyForm', () => {
     });
   });
 
-  it('submits selected renewed policy relation in create mode', async () => {
-    const onSubmit = vi.fn().mockResolvedValue(undefined);
-
-    render(
-      <AddPolicyForm
-        onSubmit={onSubmit}
-        onCancel={vi.fn()}
-        salesChannels={[]}
-        initialValues={buildInitialValues([
-          {
-            amount: '1000',
-            description: '',
-            scheduledDate: '2026-01-13',
-            actualDate: '',
-            incomes: [],
-            expenses: [],
-          },
-        ])}
-        clients={[]}
-        dealPolicies={[buildPolicyOption()]}
-        onRequestAddClient={vi.fn()}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText('Продлевает полис'), {
-      target: { value: 'policy-old' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
-
-    await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          renewsPolicyId: 'policy-old',
-          renewedById: null,
-        }),
-      );
-    });
-  });
-
-  it('submits selected previous policy relation in edit mode', async () => {
+  it('does not render renewal relation selector in edit mode', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -823,17 +762,14 @@ describe('AddPolicyForm', () => {
               expenses: [],
             },
           ]),
-          renewsPolicyId: 'policy-old',
         }}
         isEditing
         clients={[]}
-        dealPolicies={[buildPolicyOption()]}
-        currentPolicyId="policy-new"
         onRequestAddClient={vi.fn()}
       />,
     );
 
-    expect(screen.getByLabelText('Продлевает полис')).toHaveValue('policy-old');
+    expect(screen.queryByLabelText('Продлевает полис')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
     fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
@@ -841,54 +777,11 @@ describe('AddPolicyForm', () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          renewsPolicyId: 'policy-old',
-          renewedById: null,
+        expect.not.objectContaining({
+          renewsPolicyId: expect.anything(),
+          renewedById: expect.anything(),
         }),
       );
     });
-  });
-
-  it('hides policies already renewed by another policy from renewal candidates', async () => {
-    render(
-      <AddPolicyForm
-        onSubmit={vi.fn().mockResolvedValue(undefined)}
-        onCancel={vi.fn()}
-        salesChannels={[]}
-        initialValues={buildInitialValues([
-          {
-            amount: '1000',
-            description: '',
-            scheduledDate: '2026-01-13',
-            actualDate: '',
-            incomes: [],
-            expenses: [],
-          },
-        ])}
-        isEditing
-        clients={[]}
-        dealPolicies={[
-          buildPolicyOption({
-            id: 'policy-linked',
-            number: 'POL-LINKED',
-            isRenewed: true,
-            renewedById: 'policy-current',
-          }),
-          buildPolicyOption({
-            id: 'policy-renewed-by-other',
-            number: 'POL-OTHER',
-            isRenewed: true,
-            renewedById: 'policy-other-new',
-          }),
-        ]}
-        currentPolicyId="policy-current"
-        onRequestAddClient={vi.fn()}
-      />,
-    );
-
-    await act(async () => {});
-
-    expect(screen.getByRole('option', { name: /POL-LINKED/ })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /POL-OTHER/ })).not.toBeInTheDocument();
   });
 });

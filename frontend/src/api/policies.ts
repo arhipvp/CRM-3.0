@@ -41,7 +41,6 @@ export async function createPolicy(data: {
   insuranceCompanyId: string;
   insuranceTypeId: string;
   clientId?: string;
-  renewsPolicyId?: string | null;
   isVehicle: boolean;
   brand?: string;
   model?: string;
@@ -75,7 +74,6 @@ export async function createPolicy(data: {
     start_date: data.startDate || null,
     end_date: data.endDate || null,
     client: data.clientId || null,
-    renews_policy: data.renewsPolicyId || null,
   };
   if (data.sourceFileId) {
     bodyPayload.source_file_id = data.sourceFileId;
@@ -282,8 +280,6 @@ interface PolicyUpdatePayload {
   startDate?: string | null;
   endDate?: string | null;
   clientId?: string;
-  renewedById?: string | null;
-  renewsPolicyId?: string | null;
 }
 
 export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promise<Policy> {
@@ -304,14 +300,18 @@ export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promi
     start_date: data.startDate || null,
     end_date: data.endDate || null,
     client: data.clientId || null,
-    renews_policy: data.renewsPolicyId || null,
   };
-  if (data.renewedById !== undefined) {
-    bodyPayload.renewed_by = data.renewedById || null;
-  }
   const payload = await request<Record<string, unknown>>(`/policies/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(bodyPayload),
+  });
+  return mapPolicy(payload);
+}
+
+export async function updatePolicyRenewed(id: string, isRenewed: boolean): Promise<Policy> {
+  const payload = await request<Record<string, unknown>>(`/policies/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_renewed: isRenewed }),
   });
   return mapPolicy(payload);
 }

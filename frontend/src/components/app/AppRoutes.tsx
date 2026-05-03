@@ -97,6 +97,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               onPendingDealClientConsumed={dealsActions.onPendingDealClientConsumed}
               onDeleteQuote={dealsActions.onDeleteQuote}
               onDeletePolicy={dealsActions.onDeletePolicy}
+              onUpdatePolicyRenewed={dealsActions.onUpdatePolicyRenewed}
               onAddPayment={financeActions.onAddPayment}
               onUpdatePayment={financeActions.onUpdatePayment}
               onAddFinancialRecord={financeActions.onAddFinancialRecord}

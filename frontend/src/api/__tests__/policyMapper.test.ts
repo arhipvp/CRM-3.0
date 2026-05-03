@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { mapPolicy } from '../mappers';
 
 describe('mapPolicy', () => {
-  it('maps note, renewal fields and computed status', () => {
+  it('maps note, renewal flag and computed status', () => {
     const mapped = mapPolicy({
       id: 'p1',
       number: 'POL-1',
@@ -15,8 +15,6 @@ describe('mapPolicy', () => {
       is_vehicle: false,
       status: 'active',
       computed_status: 'problem',
-      renewed_by: 'p2',
-      renewed_by_number: 'POL-2',
       is_renewed: true,
       note: 'Important note',
       deductible: '15000.00',
@@ -27,8 +25,6 @@ describe('mapPolicy', () => {
 
     expect(mapped.note).toBe('Important note');
     expect(mapped.computedStatus).toBe('problem');
-    expect(mapped.renewedById).toBe('p2');
-    expect(mapped.renewedByNumber).toBe('POL-2');
     expect(mapped.isRenewed).toBe(true);
     expect(mapped.deductible).toBe(15000);
     expect(mapped.officialDealer).toBeNull();

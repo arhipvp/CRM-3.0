@@ -23,7 +23,6 @@ export const buildPolicyFormValues = (
   policy: Policy,
   payments: Payment[],
   financialRecords: FinancialRecord[],
-  dealPolicies: Policy[],
 ): PolicyFormValues => ({
   number: policy.number,
   insuranceCompanyId: policy.insuranceCompanyId,
@@ -38,8 +37,6 @@ export const buildPolicyFormValues = (
   counterparty: policy.counterparty,
   note: policy.note,
   salesChannelId: policy.salesChannelId,
-  renewedById: policy.renewedById ?? null,
-  renewsPolicyId: dealPolicies.find((candidate) => candidate.renewedById === policy.id)?.id ?? null,
   startDate: policy.startDate,
   endDate: policy.endDate,
   clientId: policy.clientId ?? policy.insuredClientId,
