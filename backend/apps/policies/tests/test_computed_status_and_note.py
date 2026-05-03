@@ -168,7 +168,7 @@ class PolicyComputedStatusAndNoteTests(AuthenticatedAPITestCase):
             "POL-KPI-ACTIVE",
             end_date=today + timedelta(days=3),
         )
-        renewed_policy = self._create_policy(
+        self._create_policy(
             "POL-KPI-RENEWED",
             end_date=today + timedelta(days=2),
             is_renewed=True,

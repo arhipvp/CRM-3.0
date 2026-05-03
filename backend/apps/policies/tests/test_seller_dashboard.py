@@ -283,7 +283,7 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
 
     def test_dashboard_excludes_renewed_policy_expirations(self):
         today = timezone.localdate()
-        expiring_policy = Policy.objects.create(
+        Policy.objects.create(
             number="POLICY-EXPIRING",
             deal=self.deal,
             insurance_company=self.company,
