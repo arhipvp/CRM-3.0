@@ -14,7 +14,7 @@ class PolicyClientSourceOfTruthTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
         self.seller = User.objects.create_user(
-            username="policy-seller", password="pass"
+            username="policy-seller", password="pass"  # pragma: allowlist secret
         )
         self.client_a = Client.objects.create(name="Client A")
         self.client_b = Client.objects.create(name="Client B")
