@@ -116,3 +116,17 @@ class ClientSimilarSerializer(serializers.Serializer):
         default=False,
         help_text="Включать ли самого клиента в список кандидатов.",
     )
+
+
+class ClientDuplicateHintsSerializer(serializers.Serializer):
+    client_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        max_length=500,
+        help_text="Список ID клиентов для пакетной проверки дублей.",
+    )
+
+    def validate_client_ids(self, value):
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError("Список клиентов содержит дубликаты.")
+        return value

@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Client, Payment, Policy } from '../../types';
+import { Client, ClientDuplicateHint, Payment, Policy } from '../../types';
 import { useRef } from 'react';
 import { fetchPoliciesKPI, FilterParams } from '../../api';
 import { confirmTexts } from '../../constants/confirmTexts';
@@ -32,6 +32,7 @@ import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET } from '../common/buttonStyles';
 import { ColoredLabel } from '../common/ColoredLabel';
+import { ClientNameIndicators } from '../clients/ClientNameIndicators';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -64,9 +65,12 @@ interface PoliciesViewProps {
   policies: Policy[];
   payments: Payment[];
   clients?: Client[];
+  clientDuplicateHints?: Record<string, ClientDuplicateHint>;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
   onClientEdit?: (client: Client) => void;
+  onClientFindSimilar?: (client: Client) => void;
+  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
   onRequestEditPolicy?: (policy: Policy) => void;
   onLoadMorePolicies?: () => Promise<void>;
   policiesHasMore?: boolean;
@@ -88,8 +92,12 @@ interface PoliciesViewProps {
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policies,
   payments,
+  clients = [],
+  clientDuplicateHints = {},
   onDealSelect,
   onDealPreview,
+  onClientFindSimilar,
+  onClientNormalizeName,
   onLoadMorePolicies,
   policiesHasMore = false,
   isLoadingMorePolicies = false,
@@ -124,6 +132,11 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const kpiRequestRef = useRef(0);
   const kpiAbortControllerRef = useRef<AbortController | null>(null);
   const { confirm, ConfirmDialogRenderer } = useConfirm();
+  const clientsById = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients.forEach((client) => map.set(client.id, client));
+    return map;
+  }, [clients]);
 
   const rawSearch = (filters.search ?? '').trim();
   const debouncedSearch = useDebouncedValue(rawSearch, 450);
@@ -524,6 +537,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 const hasMeta = Boolean(metaTitle);
                 const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
                 const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
+                const policyClient = policy.clientId ? clientsById.get(policy.clientId) : null;
 
                 return (
                   <React.Fragment key={policy.id}>
@@ -536,7 +550,17 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                       </td>
                       <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         <div className="space-y-1.5">
-                          <p className="text-sm font-semibold text-slate-900">{model.client}</p>
+                          <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                            <ClientNameIndicators
+                              client={policyClient}
+                              hint={
+                                policyClient ? clientDuplicateHints[policyClient.id] : undefined
+                              }
+                              onFindSimilar={onClientFindSimilar}
+                              onNormalizeName={onClientNormalizeName}
+                            />
+                            <span>{model.client}</span>
+                          </p>
                           {policy.dealId ? (
                             canOpenDeal ? (
                               <button

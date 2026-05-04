@@ -2,15 +2,28 @@
 
 import logging
 
+from django.db import DatabaseError
+from django.db.models.signals import post_delete, post_save, pre_save
+from django.dispatch import receiver
+
 from apps.common.audit_helpers import serialize_model_fields, store_old_values
 from apps.common.drive import DriveError, ensure_client_folder
 from apps.users.models import AuditLog
-from django.db.models.signals import post_delete, post_save, pre_save
-from django.dispatch import receiver
 
 from .models import Client
 
 logger = logging.getLogger(__name__)
+
+
+def _create_audit_log(**kwargs):
+    try:
+        AuditLog.objects.create(**kwargs)
+    except DatabaseError:
+        logger.exception(
+            "Failed to write client audit log for %s %s",
+            kwargs.get("object_type"),
+            kwargs.get("object_id"),
+        )
 
 
 @receiver(pre_save, sender=Client)
@@ -54,7 +67,7 @@ def log_client_change(sender, instance, created, **kwargs):
         "soft_delete": f"Удалён клиент '{instance.name}'",
     }
 
-    AuditLog.objects.create(
+    _create_audit_log(
         actor=actor,
         object_type="client",
         object_id=str(instance.id),
@@ -86,7 +99,7 @@ def log_client_delete(sender, instance, **kwargs):
 
     actor = getattr(instance, "_audit_actor", None)
 
-    AuditLog.objects.create(
+    _create_audit_log(
         actor=actor,
         object_type="client",
         object_id=str(instance.id),

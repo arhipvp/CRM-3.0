@@ -62,7 +62,9 @@ export const ClientMergeModal: React.FC<ClientMergeModalProps> = ({
       className="space-y-5"
     >
       <p className="text-sm text-slate-600">
-        Выберите клиентов, которые будут объединены в «{targetClient.name}».
+        {mergeStep === 'preview'
+          ? `Проверьте, какие данные будут перенесены в «${targetClient.name}».`
+          : `Выберите клиентов, которые будут объединены в «${targetClient.name}».`}
       </p>
       {mergeStep === 'select' && (
         <>
@@ -88,6 +90,11 @@ export const ClientMergeModal: React.FC<ClientMergeModalProps> = ({
                   />
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{client.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {[client.phone || '', client.email || '', client.birthDate || '']
+                        .filter(Boolean)
+                        .join(' · ') || 'Контакты не заполнены'}
+                    </p>
                   </div>
                 </label>
               ))
@@ -108,6 +115,18 @@ export const ClientMergeModal: React.FC<ClientMergeModalProps> = ({
             <p>Сделок к переносу: {String(mergePreview.movedCounts?.deals ?? 0)}</p>
             <p>Полисов к переносу: {String(mergePreview.movedCounts?.policies_unique ?? 0)}</p>
           </div>
+          {mergePreview.canonicalProfile.candidates && (
+            <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 md:grid-cols-3">
+              <p>ФИО: {(mergePreview.canonicalProfile.candidates.names ?? []).join(', ') || '—'}</p>
+              <p>
+                Телефоны:{' '}
+                {(mergePreview.canonicalProfile.candidates.phones ?? []).join(', ') || '—'}
+              </p>
+              <p>
+                Email: {(mergePreview.canonicalProfile.candidates.emails ?? []).join(', ') || '—'}
+              </p>
+            </div>
+          )}
           {Array.isArray(mergePreview.warnings) && mergePreview.warnings.length > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
@@ -189,18 +208,20 @@ export const ClientMergeModal: React.FC<ClientMergeModalProps> = ({
         submitClassName={`${BTN_PRIMARY} rounded-xl`}
         cancelClassName={`${BTN_SECONDARY} rounded-xl`}
       />
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => {
-            void onPreview();
-          }}
-          disabled={isPreviewLoading || !mergeSources.length}
-          className={`${BTN_SECONDARY} rounded-xl`}
-        >
-          {isPreviewLoading ? 'Готовим предпросмотр...' : 'Предпросмотр объединения'}
-        </button>
-      </div>
+      {mergeStep === 'select' && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              void onPreview();
+            }}
+            disabled={isPreviewLoading || !mergeSources.length}
+            className={`${BTN_SECONDARY} rounded-xl`}
+          >
+            {isPreviewLoading ? 'Готовим предпросмотр...' : 'Предпросмотр объединения'}
+          </button>
+        </div>
+      )}
     </form>
   </FormModal>
 );

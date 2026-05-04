@@ -44,7 +44,7 @@ type AppOverlayShellProps = {
   handleClientMergePreview: () => Promise<void>;
   handleCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   handleDeleteClient: () => Promise<void>;
-  handleMergeFromSimilar: (sourceClientId: string) => void;
+  handleMergeFromSimilar: (sourceClientId: string) => void | Promise<void>;
   handleMergeSubmit: () => Promise<void>;
   handleUpdateClient: (values: {
     name: string;

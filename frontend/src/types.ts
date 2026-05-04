@@ -42,6 +42,16 @@ export interface Client {
   driveFolderId?: string | null;
 }
 
+export interface ClientDuplicateHint {
+  clientId: string;
+  candidateCount: number;
+  maxScore: number;
+  confidence: 'high' | 'medium' | 'low';
+  reasons: string[];
+  needsNameNormalization: boolean;
+  normalizedName: string;
+}
+
 export interface Quote {
   id: string;
   dealId: string;
@@ -289,6 +299,11 @@ export interface ClientSimilarityCandidate {
   confidence: 'high' | 'medium' | 'low';
   reasons: string[];
   matchedFields: Record<string, boolean>;
+  relationCounts?: {
+    deals?: number;
+    policies?: number;
+    insuredPolicies?: number;
+  };
 }
 
 export interface ClientSimilarResponse {

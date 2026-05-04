@@ -8,6 +8,7 @@ import type {
   ActivityLog,
   ChatMessage,
   Client,
+  ClientDuplicateHint,
   Deal,
   FinancialRecord,
   Payment,
@@ -23,6 +24,7 @@ export type DealFocusRequest = { dealId: string; nonce: number };
 export interface AppRouteDataBundle {
   deals: Deal[];
   clients: Client[];
+  clientDuplicateHints: Record<string, ClientDuplicateHint>;
   policies: Policy[];
   policiesList: Policy[];
   payments: Payment[];
@@ -38,6 +40,7 @@ export interface AppRouteDealsActions {
   onClientDelete: (client: Client) => void;
   onClientMerge: (client: Client) => void;
   onClientFindSimilar: (client: Client) => void;
+  onClientNormalizeName: (client: Client, normalizedName: string) => Promise<void>;
   selectedDealId: string | null;
   isDealFocusCleared?: boolean;
   dealRowFocusRequest?: DealFocusRequest | null;

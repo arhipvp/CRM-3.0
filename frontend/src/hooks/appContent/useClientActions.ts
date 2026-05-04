@@ -404,14 +404,54 @@ export const useClientActions = ({
   );
 
   const handleMergeFromSimilar = useCallback(
-    (candidateClientId: string) => {
+    async (candidateClientId: string) => {
       if (!similarTargetClient) {
         return;
       }
       closeSimilarClientsModal();
-      handleClientMergeRequest(similarTargetClient, [candidateClientId]);
+      const sourceClientIds = [candidateClientId];
+      setMergeClientTargetId(similarTargetClient.id);
+      setMergeSources(sourceClientIds);
+      setMergeSearch('');
+      setMergeError(null);
+      setClientMergePreview(null);
+      setIsClientMergePreviewConfirmed(false);
+      setClientMergeStep('preview');
+      setClientMergeFieldOverrides({
+        name: similarTargetClient.name ?? '',
+        phone: similarTargetClient.phone ?? '',
+        email: similarTargetClient.email ?? '',
+        notes: similarTargetClient.notes ?? '',
+      });
+      setIsClientMergePreviewLoading(true);
+      try {
+        const preview = await previewClientMerge({
+          targetClientId: similarTargetClient.id,
+          sourceClientIds,
+          includeDeleted: true,
+        });
+        setClientMergePreview(preview);
+        setClientMergeFieldOverrides((prev) => ({
+          name: prev.name || preview.canonicalProfile.name || '',
+          phone: prev.phone || preview.canonicalProfile.phone || '',
+          email: prev.email || preview.canonicalProfile.email || '',
+          notes: prev.notes || preview.canonicalProfile.notes || '',
+        }));
+        setIsClientMergePreviewConfirmed(true);
+      } catch (err) {
+        const message =
+          err instanceof APIError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Не удалось получить предпросмотр объединения';
+        setMergeError(message);
+        setIsClientMergePreviewConfirmed(false);
+      } finally {
+        setIsClientMergePreviewLoading(false);
+      }
     },
-    [closeSimilarClientsModal, handleClientMergeRequest, similarTargetClient],
+    [closeSimilarClientsModal, similarTargetClient],
   );
 
   return {

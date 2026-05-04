@@ -1,8 +1,3 @@
-from apps.clients.services import ClientMergeService, ClientSimilarityService
-from apps.common.drive import DriveError, ensure_client_folder
-from apps.common.permissions import EditProtectedMixin
-from apps.common.services import manage_drive_files
-from apps.users.models import AuditLog
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -10,9 +5,20 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
+from apps.clients.services import (
+    ClientMergeService,
+    ClientSimilarityService,
+    normalize_client_name,
+)
+from apps.common.drive import DriveError, ensure_client_folder
+from apps.common.permissions import EditProtectedMixin
+from apps.common.services import manage_drive_files
+from apps.users.models import AuditLog
+
 from .filters import ClientFilterSet
 from .models import Client
 from .serializers import (
+    ClientDuplicateHintsSerializer,
     ClientMergePreviewSerializer,
     ClientMergeSerializer,
     ClientSerializer,
@@ -196,13 +202,15 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         candidates_payload = []
         for item in result["candidates"]:
+            candidate = item["client"]
             candidates_payload.append(
                 {
-                    "client": ClientSerializer(item["client"]).data,
+                    "client": ClientSerializer(candidate).data,
                     "score": item["score"],
                     "confidence": item["confidence"],
                     "reasons": item["reasons"],
                     "matched_fields": item["matched_fields"],
+                    "relation_counts": self._client_relation_counts(candidate),
                 }
             )
 
@@ -213,6 +221,59 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "meta": result["meta"],
             }
         )
+
+    @action(detail=False, methods=["post"], url_path="duplicate-hints")
+    def duplicate_hints(self, request):
+        serializer = ClientDuplicateHintsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        client_ids = [str(value) for value in serializer.validated_data["client_ids"]]
+        queryset = self.get_queryset()
+        clients = list(queryset.filter(id__in=client_ids))
+        clients_by_id = {str(client.id): client for client in clients}
+        missing = [
+            client_id for client_id in client_ids if client_id not in clients_by_id
+        ]
+        if missing:
+            raise ValidationError(
+                {"client_ids": f"Клиенты не найдены: {', '.join(missing)}"}
+            )
+
+        hints = ClientSimilarityService().build_duplicate_hints(
+            clients=[clients_by_id[client_id] for client_id in client_ids],
+            queryset=queryset,
+        )
+        return Response({"results": hints})
+
+    @action(detail=True, methods=["post"], url_path="normalize-name")
+    def normalize_name(self, request, pk=None):
+        client = self.get_object()
+        if not self._can_modify(request.user, client):
+            raise PermissionDenied(
+                "Только администратор или владелец может нормализовать имя клиента."
+            )
+        normalized_name = normalize_client_name(client.name)
+        if not normalized_name:
+            raise ValidationError(
+                {"name": "Итоговое имя клиента не может быть пустым."}
+            )
+
+        old_name = client.name
+        if old_name != normalized_name:
+            actor = (
+                request.user if request.user and request.user.is_authenticated else None
+            )
+            client._audit_actor = actor
+            client.name = normalized_name
+            client.save(update_fields=["name", "updated_at"])
+
+        return Response(ClientSerializer(client).data)
+
+    def _client_relation_counts(self, client: Client) -> dict:
+        return {
+            "deals": client.deals.count(),
+            "policies": client.policies.count(),
+            "insured_policies": client.insured_policies.count(),
+        }
 
     def _resolve_merge_clients(self, data):
         target_id = str(data["target_client_id"])

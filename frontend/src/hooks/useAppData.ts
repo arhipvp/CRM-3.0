@@ -146,6 +146,10 @@ export const useAppData = () => {
     setPoliciesFilters({ ordering: '-start_date' });
   }, []);
 
+  const updatePoliciesList = useCallback((updater: (prev: Policy[]) => Policy[]) => {
+    setPoliciesList((prev) => updater(prev));
+  }, []);
+
   const updateAppData = useCallback((updater: (prev: AppDataState) => Partial<AppDataState>) => {
     const preview = updater(dataStateRef.current);
     if (hasFinancePayload(preview)) {
@@ -584,6 +588,7 @@ export const useAppData = () => {
     refreshPolicies,
     refreshPoliciesList,
     policiesFilters,
+    updatePoliciesList,
     updateAppData,
     setAppData,
     resetPoliciesState,

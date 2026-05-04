@@ -1,29 +1,36 @@
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { useNotification } from '../../../contexts/NotificationContext';
-import type { Client, Deal } from '../../../types';
+import type { Client, ClientDuplicateHint, Deal } from '../../../types';
 import { copyToClipboard } from '../../../utils/clipboard';
 import { buildTelegramLink, buildWhatsAppLink } from '../../../utils/links';
+import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
 
 interface DealHeaderProps {
   deal: Deal;
   clientDisplayName: string;
   client?: Client | null;
+  clientDuplicateHint?: ClientDuplicateHint;
   clientPhone?: string;
   sellerDisplayName: string;
   executorDisplayName: string;
   myTrackedTimeLabel?: string;
   onClientEdit?: (client: Client) => void;
+  onClientFindSimilar?: (client: Client) => void;
+  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
 }
 
 export const DealHeader: React.FC<DealHeaderProps> = ({
   deal,
   clientDisplayName,
   client,
+  clientDuplicateHint,
   clientPhone,
   sellerDisplayName,
   executorDisplayName,
   myTrackedTimeLabel,
   onClientEdit,
+  onClientFindSimilar,
+  onClientNormalizeName,
 }) => {
   const { addNotification } = useNotification();
   const whatsAppLink = buildWhatsAppLink(clientPhone);
@@ -70,6 +77,12 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
             Контактное лицо
           </span>
           <span className="inline-flex items-center gap-2 font-semibold text-slate-900">
+            <ClientNameIndicators
+              client={client}
+              hint={clientDuplicateHint}
+              onFindSimilar={onClientFindSimilar}
+              onNormalizeName={onClientNormalizeName}
+            />
             {clientDisplayName}
             {clientNote && (
               <span className="text-xs font-semibold text-rose-600">- {clientNote}</span>

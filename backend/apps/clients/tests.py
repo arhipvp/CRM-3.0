@@ -1,17 +1,24 @@
 from unittest.mock import patch
 
+from django.contrib.auth.models import User
+from django.db import ProgrammingError
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework.test import APIRequestFactory, force_authenticate
+
 from apps.clients.models import Client
 from apps.clients.serializers import ClientSerializer
-from apps.clients.services import ClientMergeService, ClientSimilarityService
+from apps.clients.services import (
+    ClientMergeService,
+    ClientSimilarityService,
+    normalize_client_name,
+)
 from apps.clients.views import ClientViewSet
 from apps.common.drive import DriveError
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.policies.models import Policy
-from django.contrib.auth.models import User
-from django.test import TestCase
-from django.utils import timezone
-from rest_framework.test import APIRequestFactory, force_authenticate
+from apps.users.models import AuditLog
 
 
 class ClientOwnershipTests(TestCase):
@@ -312,9 +319,58 @@ class ClientSimilarityServiceTests(TestCase):
         )
         self.assertGreaterEqual(candidate_entry["score"], 55)
 
+    def test_match_short_name_to_full_name(self):
+        candidate = Client.objects.create(
+            name="ИВАНОВ ИВАН ИВАНОВИЧ",
+            phone="",
+            email="",
+            birth_date=None,
+            created_by=self.owner,
+        )
+        short_target = Client.objects.create(
+            name="Иванов Иван",
+            phone="",
+            email="",
+            birth_date=None,
+            created_by=self.owner,
+        )
+        result = self.service.find_similar(
+            target_client=short_target,
+            queryset=Client.objects.alive(),
+            limit=50,
+        )
+        candidate_entry = next(
+            item for item in result["candidates"] if item["client"].id == candidate.id
+        )
+        self.assertIn("same_surname_name", candidate_entry["reasons"])
+        self.assertIn("short_full_name_match", candidate_entry["reasons"])
+
+    def test_name_matching_ignores_case_and_yo(self):
+        candidate = Client.objects.create(
+            name="Сиделева Алевтина Юрьевна",
+            phone="",
+            email="",
+            created_by=self.owner,
+        )
+        target = Client.objects.create(
+            name="СИДЕЛЁВА АЛЕВТИНА ЮРЬЕВНА",
+            phone="",
+            email="",
+            created_by=self.owner,
+        )
+        result = self.service.find_similar(
+            target_client=target,
+            queryset=Client.objects.alive(),
+            limit=50,
+        )
+        candidate_entry = next(
+            item for item in result["candidates"] if item["client"].id == candidate.id
+        )
+        self.assertIn("same_full_name", candidate_entry["reasons"])
+
     def test_no_false_positive_for_name_only(self):
         Client.objects.create(
-            name="Иванов Иван",
+            name="Иван",
             phone="",
             email="",
             birth_date=None,
@@ -326,6 +382,12 @@ class ClientSimilarityServiceTests(TestCase):
             limit=50,
         )
         self.assertEqual(result["candidates"], [])
+
+    def test_normalize_client_name_title_cases_russian_words(self):
+        self.assertEqual(
+            normalize_client_name("  САЖКО   ВАСИЛИЙ АЛЕКСАНДРОВИЧ "),
+            "Сажко Василий Александрович",
+        )
 
 
 class ClientSimilarityAPITests(AuthenticatedAPITestCase):
@@ -365,6 +427,7 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
         self.assertIn("score", first)
         self.assertIn("reasons", first)
         self.assertIn("same_phone", first["reasons"])
+        self.assertIn("relation_counts", first)
 
     def test_similar_endpoint_allows_other_authenticated_users(self):
         self.authenticate(self.other)
@@ -389,6 +452,66 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("target_client_id", response.data)
+
+    def test_duplicate_hints_endpoint_returns_batch_hints(self):
+        self.authenticate(self.owner)
+        response = self.api_client.post(
+            "/api/v1/clients/duplicate-hints/",
+            {
+                "client_ids": [str(self.target.id), str(self.candidate.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        hints = response.data["results"]
+        target_hint = hints[str(self.target.id)]
+        self.assertGreaterEqual(target_hint["candidate_count"], 1)
+        self.assertGreaterEqual(target_hint["max_score"], 70)
+        self.assertIn("same_phone", target_hint["reasons"])
+
+    def test_normalize_name_endpoint_updates_client_and_audit_log(self):
+        self.authenticate(self.owner)
+        client = Client.objects.create(
+            name="САЖКО ВАСИЛИЙ АЛЕКСАНДРОВИЧ",
+            created_by=self.owner,
+        )
+        response = self.api_client.post(
+            f"/api/v1/clients/{client.id}/normalize-name/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        client.refresh_from_db()
+        self.assertEqual(client.name, "Сажко Василий Александрович")
+        self.assertTrue(
+            AuditLog.objects.filter(
+                object_type="client",
+                object_id=str(client.id),
+                action="update",
+                actor=self.owner,
+            ).exists()
+        )
+
+    def test_normalize_name_endpoint_survives_audit_log_failure(self):
+        self.authenticate(self.owner)
+        client = Client.objects.create(
+            name="САЖКО ВАСИЛИЙ АЛЕКСАНДРОВИЧ",
+            created_by=self.owner,
+        )
+
+        with patch("apps.clients.signals.AuditLog.objects.create") as create_audit_log:
+            create_audit_log.side_effect = ProgrammingError(
+                "audit table is unavailable"
+            )
+            response = self.api_client.post(
+                f"/api/v1/clients/{client.id}/normalize-name/",
+                {},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        client.refresh_from_db()
+        self.assertEqual(client.name, "Сажко Василий Александрович")
 
 
 class ClientReadAccessAPITests(AuthenticatedAPITestCase):

@@ -5,6 +5,7 @@ import {
   ChatMessage,
   Deal,
   Client,
+  ClientDuplicateHint,
   FinancialRecord,
   Payment,
   Policy,
@@ -24,7 +25,10 @@ import { useSelectedDeal } from '../../hooks/useSelectedDeal';
 interface DealsViewProps {
   deals: Deal[];
   clients: Client[];
+  clientDuplicateHints: Record<string, ClientDuplicateHint>;
   onClientEdit?: (client: Client) => void;
+  onClientFindSimilar?: (client: Client) => void;
+  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
   policies: Policy[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
@@ -119,7 +123,10 @@ interface DealsViewProps {
 export const DealsView: React.FC<DealsViewProps> = ({
   deals,
   clients,
+  clientDuplicateHints,
   onClientEdit,
+  onClientFindSimilar,
+  onClientNormalizeName,
   policies,
   payments,
   financialRecords,
@@ -253,6 +260,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onUnpinDeal={onUnpinDeal}
             currentUser={currentUser}
             isDealSelectionBlocked={isDealSelectionBlocked}
+            clients={clients}
+            clientDuplicateHints={clientDuplicateHints}
+            onClientFindSimilar={onClientFindSimilar}
+            onClientNormalizeName={onClientNormalizeName}
           />
           <DealDetailsPanel
             deals={deals}
@@ -267,8 +278,13 @@ export const DealsView: React.FC<DealsViewProps> = ({
             sortedDeals={sortedDeals}
             selectedDeal={selectedDeal}
             selectedClient={selectedClient}
+            clientDuplicateHint={
+              selectedClient ? clientDuplicateHints[selectedClient.id] : undefined
+            }
             sellerUser={sellerUser}
             executorUser={executorUser}
+            onClientFindSimilar={onClientFindSimilar}
+            onClientNormalizeName={onClientNormalizeName}
             onSelectDeal={handleSelectDeal}
             onCloseDeal={onCloseDeal}
             onReopenDeal={onReopenDeal}

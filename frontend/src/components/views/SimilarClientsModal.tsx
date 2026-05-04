@@ -17,6 +17,8 @@ interface SimilarClientsModalProps {
 const REASON_LABELS: Record<string, string> = {
   same_phone: 'Совпадает телефон',
   same_email: 'Совпадает email',
+  same_surname_name: 'Совпадают фамилия и имя',
+  short_full_name_match: 'У одного клиента нет отчества',
   name_patronymic_birthdate_match: 'Совпадают имя + отчество + дата рождения',
   same_full_name: 'Совпадает полное ФИО',
   same_birth_date_only: 'Совпадает дата рождения',
@@ -61,51 +63,54 @@ export const SimilarClientsModal: React.FC<SimilarClientsModalProps> = ({
           <p className="text-sm text-slate-500">Похожих клиентов не найдено.</p>
         )}
         {!isLoading && !error && candidates.length > 0 && (
-          <div className="max-h-[60vh] overflow-auto rounded-xl border border-slate-200">
-            <table className="min-w-full border-collapse text-left text-sm">
-              <thead className="bg-slate-100 text-slate-600">
-                <tr>
-                  <th className="px-3 py-2">Клиент</th>
-                  <th className="px-3 py-2">Телефон</th>
-                  <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">Дата рождения</th>
-                  <th className="px-3 py-2 text-right">Score</th>
-                  <th className="px-3 py-2">Confidence</th>
-                  <th className="px-3 py-2">Причины</th>
-                  <th className="px-3 py-2 text-right">Действие</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                {candidates.map((item) => (
-                  <tr key={item.client.id} className="border-t border-slate-100 align-top">
-                    <td className="px-3 py-2 font-semibold text-slate-900">{item.client.name}</td>
-                    <td className="px-3 py-2 text-slate-700">{item.client.phone || '-'}</td>
-                    <td className="px-3 py-2 text-slate-700">{item.client.email || '-'}</td>
-                    <td className="px-3 py-2 text-slate-700">
-                      {formatDateRu(item.client.birthDate)}
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold text-slate-900">
-                      {item.score}
-                    </td>
-                    <td className="px-3 py-2 text-slate-700">
-                      {CONFIDENCE_LABELS[item.confidence]}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-slate-600">
-                      {item.reasons.map(mapReasonLabel).join(', ')}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        className={BTN_SM_SECONDARY}
-                        onClick={() => onMerge(item.client.id)}
-                      >
-                        Объединить
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+            {candidates.map((item) => (
+              <article
+                key={item.client.id}
+                className="rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-sm"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0 space-y-2">
+                    <div>
+                      <p className="break-words font-semibold text-slate-900">{item.client.name}</p>
+                      <p className="text-xs text-slate-500">
+                        Score {item.score} · {CONFIDENCE_LABELS[item.confidence]}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                      <p>
+                        <span className="font-semibold text-slate-700">Телефон:</span>{' '}
+                        {item.client.phone || '-'}
+                      </p>
+                      <p className="break-words">
+                        <span className="font-semibold text-slate-700">Email:</span>{' '}
+                        {item.client.email || '-'}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-slate-700">Дата рождения:</span>{' '}
+                        {formatDateRu(item.client.birthDate)}
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-xs text-slate-600">
+                      <p className="break-words">{item.reasons.map(mapReasonLabel).join(', ')}</p>
+                      {item.relationCounts && (
+                        <p className="text-[11px] text-slate-500">
+                          Сделок: {item.relationCounts.deals ?? 0}, полисов:{' '}
+                          {item.relationCounts.policies ?? 0}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={`${BTN_SM_SECONDARY} shrink-0 self-start`}
+                    onClick={() => onMerge(item.client.id)}
+                  >
+                    Объединить
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </div>

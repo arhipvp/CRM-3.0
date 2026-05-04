@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { fetchDealHistory, clearTokens } from './api';
+import { fetchDealHistory, clearTokens, normalizeClientName } from './api';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppShell } from './components/app/AppShell';
 import { AppShortcutsController } from './components/app/AppShortcutsController';
@@ -23,6 +23,7 @@ import { useAppData } from './hooks/useAppData';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDealFilters } from './hooks/useDealFilters';
 import { useConfirm } from './hooks/useConfirm';
+import { useClientDuplicateHints } from './hooks/useClientDuplicateHints';
 import { resolveEffectiveSelectedDealId } from './hooks/useSelectedDeal';
 import { useClientActions } from './hooks/appContent/useClientActions';
 import { useDealActions } from './hooks/appContent/useDealActions';
@@ -64,6 +65,7 @@ const AppContent: React.FC = () => {
     invalidateDealsCache,
     refreshPolicies,
     refreshPoliciesList,
+    updatePoliciesList,
     updateAppData,
     setAppData,
     resetPoliciesState,
@@ -108,6 +110,7 @@ const AppContent: React.FC = () => {
     tasks,
     users,
   } = dataState;
+  const clientDuplicateHints = useClientDuplicateHints(clients);
 
   const {
     isClientModalOverlayOpen,
@@ -284,6 +287,49 @@ const AppContent: React.FC = () => {
   const openClientCreateModal = useCallback(() => {
     openClientModal();
   }, [openClientModal]);
+
+  const handleNormalizeClientName = useCallback(
+    async (client: Client, normalizedName: string) => {
+      const confirmed = await confirm({
+        title: 'Нормализовать ФИО?',
+        message: `Заменить "${client.name}" на "${normalizedName}"?`,
+        confirmText: 'Нормализовать',
+        cancelText: 'Отмена',
+        tone: 'primary',
+      });
+      if (!confirmed) {
+        return;
+      }
+      try {
+        const updated = await normalizeClientName(client.id);
+        updateAppData((prev) => ({
+          clients: prev.clients.map((item) => (item.id === updated.id ? updated : item)),
+          deals: prev.deals.map((deal) =>
+            deal.clientId === updated.id ? { ...deal, clientName: updated.name } : deal,
+          ),
+          policies: prev.policies.map((policy) => ({
+            ...policy,
+            clientName: policy.clientId === updated.id ? updated.name : policy.clientName,
+            insuredClientName:
+              policy.insuredClientId === updated.id ? updated.name : policy.insuredClientName,
+          })),
+        }));
+        updatePoliciesList((prev) =>
+          prev.map((policy) => ({
+            ...policy,
+            clientName: policy.clientId === updated.id ? updated.name : policy.clientName,
+            insuredClientName:
+              policy.insuredClientId === updated.id ? updated.name : policy.insuredClientName,
+          })),
+        );
+        addNotification('ФИО клиента нормализовано', 'success', 3000);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Не удалось нормализовать ФИО клиента');
+        throw err;
+      }
+    },
+    [addNotification, confirm, setError, updateAppData, updatePoliciesList],
+  );
 
   const adjustPaymentsTotals = useCallback(
     <T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null }>(
@@ -501,6 +547,7 @@ const AppContent: React.FC = () => {
     () => ({
       deals,
       clients,
+      clientDuplicateHints,
       policies,
       policiesList,
       payments,
@@ -513,6 +560,7 @@ const AppContent: React.FC = () => {
     [
       deals,
       clients,
+      clientDuplicateHints,
       policies,
       policiesList,
       payments,
@@ -530,6 +578,7 @@ const AppContent: React.FC = () => {
       onClientDelete: handleClientDeleteRequest,
       onClientMerge: handleClientMergeRequest,
       onClientFindSimilar: handleClientFindSimilarRequest,
+      onClientNormalizeName: handleNormalizeClientName,
       selectedDealId: effectiveSelectedDealId,
       isDealFocusCleared: dealPreview.isDealFocusCleared,
       dealRowFocusRequest: dealPreview.dealRowFocusRequest,
@@ -586,6 +635,7 @@ const AppContent: React.FC = () => {
       handleClientEditRequest,
       handleClientFindSimilarRequest,
       handleClientMergeRequest,
+      handleNormalizeClientName,
       handleCloseDeal,
       handleCreateDealMailbox,
       handleCreateTask,

@@ -5,6 +5,7 @@ import {
   ActivityLog,
   ChatMessage,
   Client,
+  ClientDuplicateHint,
   Deal,
   FinancialRecord,
   Payment,
@@ -54,6 +55,8 @@ export interface DealDetailsPanelProps {
   deals: Deal[];
   clients: Client[];
   onClientEdit?: (client: Client) => void;
+  onClientFindSimilar?: (client: Client) => void;
+  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
   policies: Policy[];
   payments: Payment[];
   financialRecords: FinancialRecord[];
@@ -63,6 +66,7 @@ export interface DealDetailsPanelProps {
   sortedDeals: Deal[];
   selectedDeal: Deal | null;
   selectedClient: Client | null;
+  clientDuplicateHint?: ClientDuplicateHint;
   sellerUser?: User;
   executorUser?: User;
   onSelectDeal: (dealId: string) => void;
@@ -133,6 +137,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   deals,
   clients,
   onClientEdit,
+  onClientFindSimilar,
+  onClientNormalizeName,
   policies,
   payments,
   financialRecords,
@@ -142,6 +148,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   sortedDeals,
   selectedDeal,
   selectedClient,
+  clientDuplicateHint,
   sellerUser,
   executorUser,
   onSelectDeal,
@@ -632,11 +639,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 deal={selectedDeal}
                 clientDisplayName={selectedClientDisplayName}
                 client={selectedClient}
+                clientDuplicateHint={clientDuplicateHint}
                 clientPhone={selectedClient?.phone}
                 sellerDisplayName={sellerDisplayName}
                 executorDisplayName={executorDisplayName}
                 myTrackedTimeLabel={myTotalLabel}
                 onClientEdit={onClientEdit}
+                onClientFindSimilar={onClientFindSimilar}
+                onClientNormalizeName={onClientNormalizeName}
               />
               <DealActions
                 isSelectedDealDeleted={isSelectedDealDeleted}

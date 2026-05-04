@@ -3,6 +3,7 @@ import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from '.
 import { mapClient, mapUser } from './mappers';
 import type {
   Client,
+  ClientDuplicateHint,
   ClientMergePreviewResponse,
   ClientMergeResponse,
   ClientSimilarResponse,
@@ -147,6 +148,62 @@ export async function deleteClient(id: string): Promise<void> {
   await request(`/clients/${id}/`, {
     method: 'DELETE',
   });
+}
+
+function mapDuplicateHint(raw: Record<string, unknown>): ClientDuplicateHint {
+  const confidenceRaw = raw.confidence;
+  const confidence: ClientDuplicateHint['confidence'] =
+    confidenceRaw === 'high' || confidenceRaw === 'medium' || confidenceRaw === 'low'
+      ? confidenceRaw
+      : 'low';
+  return {
+    clientId: String(raw.client_id ?? raw.clientId ?? ''),
+    candidateCount: Number(raw.candidate_count ?? raw.candidateCount ?? 0),
+    maxScore: Number(raw.max_score ?? raw.maxScore ?? 0),
+    confidence,
+    reasons: Array.isArray(raw.reasons) ? raw.reasons.map((value) => String(value)) : [],
+    needsNameNormalization: Boolean(
+      raw.needs_name_normalization ?? raw.needsNameNormalization ?? false,
+    ),
+    normalizedName: String(raw.normalized_name ?? raw.normalizedName ?? ''),
+  };
+}
+
+export async function fetchClientDuplicateHints(
+  clientIds: string[],
+): Promise<Record<string, ClientDuplicateHint>> {
+  if (!clientIds.length) {
+    return {};
+  }
+  const payload = await request<Record<string, unknown>>('/clients/duplicate-hints/', {
+    method: 'POST',
+    body: JSON.stringify({
+      client_ids: clientIds,
+    }),
+  });
+  const resultsRaw =
+    payload.results && typeof payload.results === 'object'
+      ? (payload.results as Record<string, unknown>)
+      : {};
+  return Object.fromEntries(
+    Object.entries(resultsRaw)
+      .map(([clientId, value]) => {
+        if (!value || typeof value !== 'object') {
+          return null;
+        }
+        const hint = mapDuplicateHint(value as Record<string, unknown>);
+        return [clientId, hint] as const;
+      })
+      .filter((entry): entry is readonly [string, ClientDuplicateHint] => entry !== null),
+  );
+}
+
+export async function normalizeClientName(id: string): Promise<Client> {
+  const payload = await request<Record<string, unknown>>(`/clients/${id}/normalize-name/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return mapClient(payload);
 }
 
 export async function mergeClients(data: {
@@ -303,6 +360,18 @@ export async function fetchSimilarClients(data: {
             candidate.matched_fields && typeof candidate.matched_fields === 'object'
               ? (candidate.matched_fields as Record<string, boolean>)
               : {},
+          relationCounts:
+            candidate.relation_counts && typeof candidate.relation_counts === 'object'
+              ? {
+                  deals: Number((candidate.relation_counts as Record<string, unknown>).deals ?? 0),
+                  policies: Number(
+                    (candidate.relation_counts as Record<string, unknown>).policies ?? 0,
+                  ),
+                  insuredPolicies: Number(
+                    (candidate.relation_counts as Record<string, unknown>).insured_policies ?? 0,
+                  ),
+                }
+              : undefined,
         };
       })
       .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null),

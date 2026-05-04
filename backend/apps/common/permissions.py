@@ -18,6 +18,8 @@ class EditProtectedMixin:
     def _is_admin(self, user):
         if not user or not user.is_authenticated:
             return False
+        if getattr(user, "is_superuser", False):
+            return True
         return UserRole.objects.filter(user=user, role__name="Admin").exists()
 
     def _get_owner_id(self, instance):

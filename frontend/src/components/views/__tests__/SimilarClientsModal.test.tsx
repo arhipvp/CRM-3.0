@@ -48,7 +48,7 @@ describe('SimilarClientsModal', () => {
     );
 
     expect(screen.getByText(/Совпадает телефон/)).toBeInTheDocument();
-    expect(screen.getByText('85')).toBeInTheDocument();
+    expect(screen.getByText(/Score 85/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Объединить' }));
     expect(onMerge).toHaveBeenCalledWith('candidate-1');
   });

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { Deal, User } from '../../../types';
+import type { Client, ClientDuplicateHint, Deal, User } from '../../../types';
+import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
 import { BTN_SM_QUIET } from '../../common/buttonStyles';
 
 import { ColoredLabel } from '../../common/ColoredLabel';
@@ -76,6 +77,10 @@ interface DealsListProps {
   onUnpinDeal: (dealId: string) => Promise<void>;
   currentUser: User | null;
   isDealSelectionBlocked?: boolean;
+  clients?: Client[];
+  clientDuplicateHints?: Record<string, ClientDuplicateHint>;
+  onClientFindSimilar?: (client: Client) => void;
+  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
 }
 
 export const DealsList: React.FC<DealsListProps> = ({
@@ -105,6 +110,10 @@ export const DealsList: React.FC<DealsListProps> = ({
   onUnpinDeal,
   currentUser,
   isDealSelectionBlocked = false,
+  clients = [],
+  clientDuplicateHints = {},
+  onClientFindSimilar,
+  onClientNormalizeName,
 }) => {
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
@@ -112,6 +121,11 @@ export const DealsList: React.FC<DealsListProps> = ({
   const [dealsListHeight, setDealsListHeight] = useState(DEFAULT_DEALS_LIST_HEIGHT);
 
   const selectedDealId = selectedDeal?.id ?? null;
+  const clientsById = React.useMemo(() => {
+    const map = new Map<string, Client>();
+    clients.forEach((client) => map.set(client.id, client));
+    return map;
+  }, [clients]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -470,6 +484,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   const isSelected = selectedDeal?.id === deal.id;
                   const isPinned = Boolean(deal.isPinned);
                   const activeDealsCount = deal.clientActiveDealsCount;
+                  const dealClient = clientsById.get(deal.clientId) ?? null;
                   const canPin =
                     Boolean(currentUser) &&
                     (currentUser?.roles?.includes('Admin') || deal.seller === currentUser?.id);
@@ -571,8 +586,14 @@ export const DealsList: React.FC<DealsListProps> = ({
                         className={`${TABLE_CELL_CLASS_LG} text-sm text-slate-900 ${deletedTextClass}`}
                       >
                         {deal.clientName ? (
-                          <span className={deletedTextClass}>
-                            {deal.clientName}
+                          <span className={`inline-flex items-center gap-2 ${deletedTextClass}`}>
+                            <ClientNameIndicators
+                              client={dealClient}
+                              hint={dealClient ? clientDuplicateHints[dealClient.id] : undefined}
+                              onFindSimilar={onClientFindSimilar}
+                              onNormalizeName={onClientNormalizeName}
+                            />
+                            <span>{deal.clientName}</span>
                             {activeDealsCount !== undefined && (
                               <>
                                 {' '}
@@ -664,6 +685,7 @@ export const DealsList: React.FC<DealsListProps> = ({
               const isSelected = selectedDeal?.id === deal.id;
               const isPinned = Boolean(deal.isPinned);
               const isDeleted = Boolean(deal.deletedAt);
+              const dealClient = clientsById.get(deal.clientId) ?? null;
               return (
                 <button
                   key={deal.id}
@@ -689,7 +711,15 @@ export const DealsList: React.FC<DealsListProps> = ({
                         <p className="break-words text-base font-semibold text-slate-900">
                           {deal.title}
                         </p>
-                        <p className="mt-1 text-sm text-slate-600">{deal.clientName || '—'}</p>
+                        <p className="mt-1 inline-flex items-center gap-2 text-sm text-slate-600">
+                          <ClientNameIndicators
+                            client={dealClient}
+                            hint={dealClient ? clientDuplicateHints[dealClient.id] : undefined}
+                            onFindSimilar={onClientFindSimilar}
+                            onNormalizeName={onClientNormalizeName}
+                          />
+                          <span>{deal.clientName || '—'}</span>
+                        </p>
                       </div>
                       {isPinned && (
                         <span className="rounded-full bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700">

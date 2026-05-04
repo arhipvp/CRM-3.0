@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Client, Deal } from '../../types';
+import { Client, ClientDuplicateHint, Deal } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { Pagination } from '../Pagination';
 import { FilterParams } from '../../api';
@@ -16,6 +16,7 @@ import { buildWhatsAppLink } from '../../utils/links';
 import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { EmptyTableState } from '../common/table/EmptyTableState';
+import { ClientNameIndicators } from '../clients/ClientNameIndicators';
 
 const PAGE_SIZE = 20;
 
@@ -26,6 +27,8 @@ interface ClientsViewProps {
   onClientDelete?: (client: Client) => void;
   onClientMerge?: (client: Client) => void;
   onClientFindSimilar?: (client: Client) => void;
+  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
+  clientDuplicateHints?: Record<string, ClientDuplicateHint>;
   dealsTotalCount?: number;
 }
 
@@ -36,6 +39,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onClientDelete,
   onClientMerge,
   onClientFindSimilar,
+  onClientNormalizeName,
+  clientDuplicateHints = {},
   dealsTotalCount,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -186,7 +191,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               return (
                 <tr key={client.id} className={`${TABLE_ROW_CLASS} hover:bg-blue-50/60`}>
                   <td className={TABLE_CELL_CLASS_LG}>
-                    <p className="text-base font-semibold text-slate-900">{client.name}</p>
+                    <div className="flex items-center gap-2">
+                      <ClientNameIndicators
+                        client={client}
+                        hint={clientDuplicateHints[client.id]}
+                        onFindSimilar={onClientFindSimilar}
+                        onNormalizeName={onClientNormalizeName}
+                      />
+                      <p className="text-base font-semibold text-slate-900">{client.name}</p>
+                    </div>
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-slate-700`}>
                     {client.phone && whatsAppLink ? (

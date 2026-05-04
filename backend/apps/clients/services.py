@@ -5,6 +5,10 @@ import re
 import time
 from typing import Sequence
 
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+
 from apps.common.drive import (
     DriveConfigurationError,
     DriveError,
@@ -17,9 +21,6 @@ from apps.common.drive import (
 from apps.deals.models import Deal
 from apps.policies.models import Policy
 from apps.users.models import User
-from django.db import transaction
-from django.db.models import Q
-from django.utils import timezone
 
 from .models import Client
 
@@ -29,7 +30,21 @@ _DRIVE_RETRY_DELAY_SECONDS = 0.5
 
 
 def _normalize_phone(value: str) -> str:
-    return re.sub(r"\D+", "", value or "")
+    digits = re.sub(r"\D+", "", value or "")
+    if len(digits) == 11 and digits.startswith("8"):
+        return f"7{digits[1:]}"
+    return digits
+
+
+def normalize_client_name(value: str | None) -> str:
+    """Return a human-readable title-cased client name."""
+    compacted = " ".join((value or "").split()).strip()
+
+    def normalize_word(match: re.Match) -> str:
+        word = match.group(0)
+        return word[:1].upper() + word[1:].lower()
+
+    return re.sub(r"[A-Za-zА-Яа-яЁё]+", normalize_word, compacted)
 
 
 def _retry_drive_operation(action, *, description: str):
@@ -359,6 +374,8 @@ class ClientSimilarityService:
 
     SAME_PHONE_SCORE = 70
     SAME_EMAIL_SCORE = 70
+    SAME_SURNAME_NAME_SCORE = 45
+    SHORT_FULL_NAME_SCORE = 10
     NAME_PATRONYMIC_BIRTHDATE_SCORE = 55
     SAME_FULL_NAME_SCORE = 25
     SAME_BIRTH_DATE_ONLY_SCORE = 10
@@ -370,7 +387,13 @@ class ClientSimilarityService:
 
     @staticmethod
     def _normalize_name(value: str | None) -> str:
-        return " ".join((value or "").split()).strip().lower()
+        return (
+            " ".join((value or "").split())
+            .strip()
+            .replace("Ё", "Е")
+            .replace("ё", "е")
+            .lower()
+        )
 
     @staticmethod
     def _name_tokens(value: str | None) -> list[str]:
@@ -387,6 +410,16 @@ class ClientSimilarityService:
         if len(tokens) == 2:
             return tokens[0], tokens[1]
         return "", ""
+
+    @staticmethod
+    def _surname_name_key(tokens: list[str]) -> tuple[str, str]:
+        if len(tokens) >= 2:
+            return tokens[0], tokens[1]
+        return "", ""
+
+    @staticmethod
+    def needs_name_normalization(client: Client) -> bool:
+        return bool((client.name or "") != normalize_client_name(client.name))
 
     @staticmethod
     def _confidence(score: int) -> str:
@@ -479,6 +512,25 @@ class ClientSimilarityService:
             reasons.append("same_full_name")
             matched_fields["full_name"] = True
 
+        target_surname, target_given = self._surname_name_key(target_tokens)
+        candidate_surname, candidate_given = self._surname_name_key(candidate_tokens)
+        same_surname_name = bool(
+            target_surname
+            and target_given
+            and target_surname == candidate_surname
+            and target_given == candidate_given
+        )
+        if same_surname_name:
+            score += self.SAME_SURNAME_NAME_SCORE
+            reasons.append("same_surname_name")
+            matched_fields["surname_name"] = True
+            if len(target_tokens) != len(candidate_tokens) and (
+                len(target_tokens) == 2 or len(candidate_tokens) == 2
+            ):
+                score += self.SHORT_FULL_NAME_SCORE
+                reasons.append("short_full_name_match")
+                matched_fields["missing_patronymic"] = True
+
         if (not target_phone and not target_email) or (
             not candidate_phone and not candidate_email
         ):
@@ -538,3 +590,38 @@ class ClientSimilarityService:
                 "scoring_version": self.SCORE_VERSION,
             },
         }
+
+    def build_duplicate_hints(
+        self,
+        *,
+        clients: Sequence[Client],
+        queryset,
+        limit_per_client: int = 50,
+    ) -> dict[str, dict]:
+        hints: dict[str, dict] = {}
+        for client in clients:
+            result = self.find_similar(
+                target_client=client,
+                queryset=queryset,
+                limit=limit_per_client,
+                include_self=False,
+            )
+            candidates = result["candidates"]
+            reasons: list[str] = []
+            seen_reasons: set[str] = set()
+            for item in candidates:
+                for reason in item["reasons"]:
+                    if reason not in seen_reasons:
+                        seen_reasons.add(reason)
+                        reasons.append(reason)
+            max_score = max([item["score"] for item in candidates], default=0)
+            hints[str(client.id)] = {
+                "client_id": str(client.id),
+                "candidate_count": len(candidates),
+                "max_score": max_score,
+                "confidence": self._confidence(max_score),
+                "reasons": reasons,
+                "needs_name_normalization": self.needs_name_normalization(client),
+                "normalized_name": normalize_client_name(client.name),
+            }
+        return hints

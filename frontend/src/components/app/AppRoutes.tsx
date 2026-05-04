@@ -67,6 +67,9 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
             <DealsView
               deals={data.deals}
               clients={data.clients}
+              clientDuplicateHints={data.clientDuplicateHints}
+              onClientFindSimilar={dealsActions.onClientFindSimilar}
+              onClientNormalizeName={dealsActions.onClientNormalizeName}
               onClientEdit={dealsActions.onClientEdit}
               policies={data.policies}
               payments={data.payments}
@@ -151,12 +154,14 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           <Suspense fallback={<RouteSkeleton />}>
             <ClientsView
               clients={data.clients}
+              clientDuplicateHints={data.clientDuplicateHints}
               deals={data.deals}
               dealsTotalCount={loading.dealsTotalCount}
               onClientEdit={dealsActions.onClientEdit}
               onClientDelete={dealsActions.onClientDelete}
               onClientMerge={dealsActions.onClientMerge}
               onClientFindSimilar={dealsActions.onClientFindSimilar}
+              onClientNormalizeName={dealsActions.onClientNormalizeName}
             />
           </Suspense>
         }
@@ -168,10 +173,13 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
             <PoliciesView
               policies={data.policiesList}
               clients={data.clients}
+              clientDuplicateHints={data.clientDuplicateHints}
               payments={data.payments}
               onDealSelect={dealsActions.onSelectDeal}
               onDealPreview={dealsActions.onDealPreview}
               onClientEdit={dealsActions.onClientEdit}
+              onClientFindSimilar={dealsActions.onClientFindSimilar}
+              onClientNormalizeName={dealsActions.onClientNormalizeName}
               onRequestEditPolicy={dealsActions.onRequestEditPolicy}
               onAddFinancialRecord={financeActions.onAddFinancialRecord}
               onUpdateFinancialRecord={financeActions.onUpdateFinancialRecord}
