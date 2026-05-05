@@ -21,7 +21,7 @@ export function useClientDuplicateHints(clients: Client[]) {
 
   useEffect(() => {
     if (!clientIds.length) {
-      setHints({});
+      setHints((currentHints) => (Object.keys(currentHints).length ? {} : currentHints));
       return;
     }
     requestRef.current += 1;

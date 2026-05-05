@@ -5,10 +5,6 @@ import re
 import time
 from typing import Sequence
 
-from django.db import transaction
-from django.db.models import Q
-from django.utils import timezone
-
 from apps.common.drive import (
     DriveConfigurationError,
     DriveError,
@@ -21,6 +17,9 @@ from apps.common.drive import (
 from apps.deals.models import Deal
 from apps.policies.models import Policy
 from apps.users.models import User
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
 
 from .models import Client
 

@@ -1,11 +1,5 @@
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
-from django.db import ProgrammingError
-from django.test import TestCase
-from django.utils import timezone
-from rest_framework.test import APIRequestFactory, force_authenticate
-
 from apps.clients.models import Client
 from apps.clients.serializers import ClientSerializer
 from apps.clients.services import (
@@ -19,6 +13,11 @@ from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.policies.models import Policy
 from apps.users.models import AuditLog
+from django.contrib.auth.models import User
+from django.db import ProgrammingError
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 
 class ClientOwnershipTests(TestCase):

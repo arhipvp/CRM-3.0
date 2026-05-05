@@ -1,10 +1,3 @@
-from django.contrib.auth.models import AnonymousUser
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.response import Response
-
 from apps.clients.services import (
     ClientMergeService,
     ClientSimilarityService,
@@ -14,6 +7,12 @@ from apps.common.drive import DriveError, ensure_client_folder
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.users.models import AuditLog
+from django.contrib.auth.models import AnonymousUser
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
 
 from .filters import ClientFilterSet
 from .models import Client
