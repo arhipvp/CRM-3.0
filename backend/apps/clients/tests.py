@@ -144,6 +144,98 @@ class ClientMergeServiceTests(TestCase):
         self.assertEqual(self.target.name, original_name)
         self.assertEqual(self.source_deal.client_id, self.source.id)
 
+    def test_merge_preview_uses_longest_name_by_default(self):
+        target = Client.objects.create(name="Зотова Марина", created_by=self.owner)
+        source = Client.objects.create(
+            name="Зотова Марина Николаевна",
+            created_by=self.owner,
+        )
+
+        preview = ClientMergeService(
+            target_client=target,
+            source_clients=[source],
+        ).build_preview()
+
+        self.assertEqual(
+            preview["canonical_profile"]["name"],
+            "Зотова Марина Николаевна",
+        )
+
+    def test_merge_preview_keeps_target_name_when_lengths_match(self):
+        target = Client.objects.create(name="Петров Анна", created_by=self.owner)
+        source = Client.objects.create(name="Иванов Олег", created_by=self.owner)
+
+        preview = ClientMergeService(
+            target_client=target,
+            source_clients=[source],
+        ).build_preview()
+
+        self.assertEqual(preview["canonical_profile"]["name"], "Петров Анна")
+
+    def test_merge_preview_deduplicates_phone_formats_and_keeps_alternatives_in_notes(
+        self,
+    ):
+        target = Client.objects.create(
+            name="Зотова Марина",
+            phone="+7 926 569-34-60",
+            email="target@example.com",
+            notes="Основная заметка",
+            created_by=self.owner,
+        )
+        same_phone_source = Client.objects.create(
+            name="Зотова Марина Николаевна",
+            phone="+79265693460",
+            email="target@example.com",
+            created_by=self.owner,
+        )
+        alternative_source = Client.objects.create(
+            name="Зотова М.",
+            phone="8 (926) 000-11-22",
+            email="source@example.com",
+            created_by=self.owner,
+        )
+
+        preview = ClientMergeService(
+            target_client=target,
+            source_clients=[same_phone_source, alternative_source],
+        ).build_preview()
+
+        canonical_profile = preview["canonical_profile"]
+        self.assertEqual(canonical_profile["phone"], "+7 926 569-34-60")
+        self.assertEqual(canonical_profile["email"], "target@example.com")
+        self.assertEqual(
+            canonical_profile["candidates"]["phones"],
+            ["+7 926 569-34-60", "8 (926) 000-11-22"],
+        )
+        self.assertIn("Телефоны у дублей отличаются", " ".join(preview["warnings"]))
+        self.assertNotIn("+79265693460", canonical_profile["notes"])
+        self.assertIn("Основная заметка", canonical_profile["notes"])
+        self.assertIn("8 (926) 000-11-22", canonical_profile["notes"])
+        self.assertIn("source@example.com", canonical_profile["notes"])
+
+    def test_merge_preview_does_not_warn_for_same_phone_in_different_formats(self):
+        target = Client.objects.create(
+            name="Зотова Марина",
+            phone="+7 926 569-34-60",
+            created_by=self.owner,
+        )
+        source = Client.objects.create(
+            name="Зотова Марина Николаевна",
+            phone="8 (926) 569-34-60",
+            created_by=self.owner,
+        )
+
+        preview = ClientMergeService(
+            target_client=target,
+            source_clients=[source],
+        ).build_preview()
+
+        self.assertEqual(
+            preview["canonical_profile"]["candidates"]["phones"],
+            ["+7 926 569-34-60"],
+        )
+        self.assertNotIn("Телефоны у дублей отличаются", " ".join(preview["warnings"]))
+
 
 class ClientMergeAPITests(AuthenticatedAPITestCase):
     def setUp(self):

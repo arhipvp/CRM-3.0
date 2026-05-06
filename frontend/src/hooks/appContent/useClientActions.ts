@@ -252,11 +252,11 @@ export const useClientActions = ({
         includeDeleted: true,
       });
       setClientMergePreview(preview);
-      setClientMergeFieldOverrides((prev) => ({
-        name: prev.name || preview.canonicalProfile.name || '',
-        phone: prev.phone || preview.canonicalProfile.phone || '',
-        email: prev.email || preview.canonicalProfile.email || '',
-        notes: prev.notes || preview.canonicalProfile.notes || '',
+      setClientMergeFieldOverrides(() => ({
+        name: preview.canonicalProfile.name || '',
+        phone: preview.canonicalProfile.phone || '',
+        email: preview.canonicalProfile.email || '',
+        notes: preview.canonicalProfile.notes || '',
       }));
       setIsClientMergePreviewConfirmed(true);
       setClientMergeStep('preview');
@@ -431,11 +431,11 @@ export const useClientActions = ({
           includeDeleted: true,
         });
         setClientMergePreview(preview);
-        setClientMergeFieldOverrides((prev) => ({
-          name: prev.name || preview.canonicalProfile.name || '',
-          phone: prev.phone || preview.canonicalProfile.phone || '',
-          email: prev.email || preview.canonicalProfile.email || '',
-          notes: prev.notes || preview.canonicalProfile.notes || '',
+        setClientMergeFieldOverrides(() => ({
+          name: preview.canonicalProfile.name || '',
+          phone: preview.canonicalProfile.phone || '',
+          email: preview.canonicalProfile.email || '',
+          notes: preview.canonicalProfile.notes || '',
         }));
         setIsClientMergePreviewConfirmed(true);
       } catch (err) {

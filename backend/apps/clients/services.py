@@ -46,6 +46,10 @@ def normalize_client_name(value: str | None) -> str:
     return re.sub(r"[A-Za-zА-Яа-яЁё]+", normalize_word, compacted)
 
 
+def _compact_text(value: str | None) -> str:
+    return " ".join((value or "").split()).strip()
+
+
 def _retry_drive_operation(action, *, description: str):
     last_error: DriveError | None = None
     for attempt in range(1, _DRIVE_RETRY_ATTEMPTS + 1):
@@ -110,6 +114,69 @@ class ClientMergeService:
     def _normalized(self, value: str | None) -> str:
         return " ".join((value or "").split()).strip().lower()
 
+    def _canonical_name(self) -> str:
+        target_name = _compact_text(self.target_client.name)
+        best_name = target_name
+        best_length = len(target_name)
+        for source in self.source_clients:
+            source_name = _compact_text(source.name)
+            if len(source_name) > best_length:
+                best_name = source_name
+                best_length = len(source_name)
+        return best_name
+
+    def _deduped_display_values(self, values: list[str], normalize) -> list[str]:
+        display_values: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            display_value = _compact_text(value)
+            if not display_value:
+                continue
+            normalized = normalize(display_value)
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            display_values.append(display_value)
+        return sorted(display_values)
+
+    def _alternative_contact_notes(self) -> str:
+        target_phone = _normalize_phone(self.target_client.phone or "")
+        target_email = (self.target_client.email or "").strip().lower()
+        seen_phones = {target_phone} if target_phone else set()
+        seen_emails = {target_email} if target_email else set()
+        lines: list[str] = []
+
+        for source in self.source_clients:
+            source_name = _compact_text(source.name) or str(source.id)
+            source_phone = _compact_text(source.phone)
+            normalized_phone = _normalize_phone(source_phone)
+            if (
+                source_phone
+                and normalized_phone
+                and normalized_phone not in seen_phones
+            ):
+                seen_phones.add(normalized_phone)
+                lines.append(f"- Телефон: {source_phone} ({source_name})")
+
+            source_email = _compact_text(source.email)
+            normalized_email = source_email.lower()
+            if (
+                source_email
+                and normalized_email
+                and normalized_email not in seen_emails
+            ):
+                seen_emails.add(normalized_email)
+                lines.append(f"- Email: {source_email} ({source_name})")
+
+        if not lines:
+            return self.target_client.notes or ""
+
+        base_notes = (self.target_client.notes or "").rstrip()
+        contact_block = "\n".join(["Контакты из объединённых клиентов:", *lines])
+        return (
+            f"{base_notes}\n\n{contact_block}".strip() if base_notes else contact_block
+        )
+
     def build_preview(self) -> dict:
         source_ids = [client.id for client in self.source_clients]
         deal_manager = self._deal_manager()
@@ -132,10 +199,8 @@ class ClientMergeService:
         )
 
         warnings: list[str] = []
-        candidate_names = {
-            (client.name or "").strip()
-            for client in [self.target_client, *self.source_clients]
-        }
+        merge_clients = [self.target_client, *self.source_clients]
+        candidate_names = {_compact_text(client.name) for client in merge_clients}
         normalized_names = {
             self._normalized(value) for value in candidate_names if value
         }
@@ -144,19 +209,18 @@ class ClientMergeService:
                 "Обнаружены разные варианты ФИО. Проверьте итоговое имя в предпросмотре."
             )
 
-        phones = {
-            _normalize_phone(client.phone or "")
-            for client in [self.target_client, *self.source_clients]
-            if client.phone
-        }
+        phone_values = [client.phone or "" for client in merge_clients]
+        phone_candidates = self._deduped_display_values(phone_values, _normalize_phone)
+        phones = {_normalize_phone(value) for value in phone_candidates if value}
         if len(phones) > 1:
             warnings.append("Телефоны у дублей отличаются. Проверьте итоговый телефон.")
 
-        emails = {
-            (client.email or "").strip().lower()
-            for client in [self.target_client, *self.source_clients]
-            if client.email
-        }
+        email_values = [client.email or "" for client in merge_clients]
+        email_candidates = self._deduped_display_values(
+            email_values,
+            lambda value: value.strip().lower(),
+        )
+        emails = {value.strip().lower() for value in email_candidates if value}
         if len(emails) > 1:
             warnings.append("Email у дублей отличается. Проверьте итоговый email.")
 
@@ -217,14 +281,14 @@ class ClientMergeService:
                 ],
             },
             "canonical_profile": {
-                "name": (self.target_client.name or "").strip(),
+                "name": self._canonical_name(),
                 "phone": self.target_client.phone or "",
                 "email": self.target_client.email,
-                "notes": self.target_client.notes or "",
+                "notes": self._alternative_contact_notes(),
                 "candidates": {
                     "names": sorted([value for value in candidate_names if value]),
-                    "phones": sorted([value for value in phones if value]),
-                    "emails": sorted([value for value in emails if value]),
+                    "phones": phone_candidates,
+                    "emails": email_candidates,
                 },
             },
             "drive_plan": drive_plan,
