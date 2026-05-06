@@ -604,6 +604,92 @@ class ClientSimilarityServiceTests(TestCase):
             "Сажко Василий Александрович",
         )
 
+    def test_duplicate_hints_batch_matches_phone_email_and_name(self):
+        phone_target = Client.objects.create(
+            name="Телефон Таргет",
+            phone="+7 (926) 111-22-33",
+            email="phone-target@example.com",
+            created_by=self.owner,
+        )
+        phone_candidate = Client.objects.create(
+            name="Телефон Кандидат",
+            phone="89261112233",
+            email="phone-candidate@example.com",
+            created_by=self.owner,
+        )
+        email_target = Client.objects.create(
+            name="Email Target",
+            phone="+79990000001",
+            email="MixedCase@example.com",
+            created_by=self.owner,
+        )
+        Client.objects.create(
+            name="Email Candidate",
+            phone="+79990000002",
+            email="mixedcase@EXAMPLE.com",
+            created_by=self.owner,
+        )
+        name_target = Client.objects.create(
+            name="Сидоров Алексей",
+            phone="",
+            email="",
+            created_by=self.owner,
+        )
+        Client.objects.create(
+            name="Сидоров Алексей Петрович",
+            phone="",
+            email="",
+            created_by=self.owner,
+        )
+
+        hints = self.service.build_duplicate_hints(
+            clients=[phone_target, email_target, name_target],
+            queryset=Client.objects.alive(),
+        )
+
+        phone_hint = hints[str(phone_target.id)]
+        self.assertGreaterEqual(phone_hint["candidate_count"], 1)
+        self.assertIn("same_phone", phone_hint["reasons"])
+        self.assertNotEqual(str(phone_candidate.id), phone_hint["client_id"])
+
+        email_hint = hints[str(email_target.id)]
+        self.assertGreaterEqual(email_hint["candidate_count"], 1)
+        self.assertIn("same_email", email_hint["reasons"])
+
+        name_hint = hints[str(name_target.id)]
+        self.assertGreaterEqual(name_hint["candidate_count"], 1)
+        self.assertIn("same_surname_name", name_hint["reasons"])
+
+    def test_duplicate_hints_does_not_call_find_similar_per_client(self):
+        clients = [
+            Client.objects.create(
+                name=f"Пакет Клиент {index}",
+                phone=f"+7999000{index:04d}",
+                email=f"batch-{index}@example.com",
+                created_by=self.owner,
+            )
+            for index in range(12)
+        ]
+        Client.objects.create(
+            name="Пакет Дубль",
+            phone=clients[0].phone,
+            email="batch-duplicate@example.com",
+            created_by=self.owner,
+        )
+
+        with patch.object(
+            self.service,
+            "find_similar",
+            side_effect=AssertionError("duplicate hints must not call find_similar"),
+        ):
+            with self.assertNumQueries(1):
+                hints = self.service.build_duplicate_hints(
+                    clients=clients,
+                    queryset=Client.objects.alive(),
+                )
+
+        self.assertIn("same_phone", hints[str(clients[0].id)]["reasons"])
+
 
 class ClientSimilarityAPITests(AuthenticatedAPITestCase):
     def setUp(self):
@@ -683,6 +769,60 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
         self.assertGreaterEqual(target_hint["candidate_count"], 1)
         self.assertGreaterEqual(target_hint["max_score"], 70)
         self.assertIn("same_phone", target_hint["reasons"])
+
+    def test_duplicate_hints_endpoint_returns_email_name_and_normalization_hints(self):
+        self.authenticate(self.owner)
+        email_target = Client.objects.create(
+            name="Email Target",
+            phone="+79990000001",
+            email="SAME@example.com",
+            created_by=self.owner,
+        )
+        Client.objects.create(
+            name="Email Candidate",
+            phone="+79990000002",
+            email="same@EXAMPLE.com",
+            created_by=self.owner,
+        )
+        name_target = Client.objects.create(
+            name="Сидоров Алексей",
+            phone="",
+            email="",
+            created_by=self.owner,
+        )
+        Client.objects.create(
+            name="Сидоров Алексей Петрович",
+            phone="",
+            email="",
+            created_by=self.owner,
+        )
+        unique_client = Client.objects.create(
+            name="САЖКО ВАСИЛИЙ АЛЕКСАНДРОВИЧ",
+            phone="+79990000003",
+            email="unique@example.com",
+            created_by=self.owner,
+        )
+
+        response = self.api_client.post(
+            "/api/v1/clients/duplicate-hints/",
+            {
+                "client_ids": [
+                    str(email_target.id),
+                    str(name_target.id),
+                    str(unique_client.id),
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        hints = response.data["results"]
+        self.assertIn("same_email", hints[str(email_target.id)]["reasons"])
+        self.assertIn("same_surname_name", hints[str(name_target.id)]["reasons"])
+        unique_hint = hints[str(unique_client.id)]
+        self.assertEqual(unique_hint["candidate_count"], 0)
+        self.assertTrue(unique_hint["needs_name_normalization"])
+        self.assertEqual(unique_hint["normalized_name"], "Сажко Василий Александрович")
 
     def test_normalize_name_endpoint_updates_client_and_audit_log(self):
         self.authenticate(self.owner)

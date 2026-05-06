@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections import defaultdict
 from typing import Sequence
 
 from apps.common.drive import (
@@ -521,6 +522,30 @@ class ClientSimilarityService:
             return tokens[0], tokens[1]
         return "", ""
 
+    def _duplicate_hint_index_keys(self, client: Client) -> list[tuple[str, object]]:
+        keys: list[tuple[str, object]] = []
+
+        phone = _normalize_phone(client.phone)
+        if phone:
+            keys.append(("phone", phone))
+
+        email = self._normalize_email(client.email)
+        if email:
+            keys.append(("email", email))
+
+        if client.birth_date:
+            keys.append(("birth_date", client.birth_date))
+
+        normalized_name = self._normalize_name(client.name)
+        if normalized_name:
+            keys.append(("full_name", normalized_name))
+
+        surname_name = self._surname_name_key(self._name_tokens(client.name))
+        if surname_name[0] and surname_name[1]:
+            keys.append(("surname_name", surname_name))
+
+        return keys
+
     @staticmethod
     def needs_name_normalization(client: Client) -> bool:
         return bool((client.name or "") != normalize_client_name(client.name))
@@ -702,15 +727,58 @@ class ClientSimilarityService:
         queryset,
         limit_per_client: int = 50,
     ) -> dict[str, dict]:
+        candidate_pool = list(
+            queryset.only(
+                "id",
+                "name",
+                "phone",
+                "email",
+                "birth_date",
+                "notes",
+                "created_at",
+                "updated_at",
+                "drive_folder_id",
+            )
+        )
+        candidate_indexes: dict[tuple[str, object], list[Client]] = defaultdict(list)
+        for candidate in candidate_pool:
+            for key in self._duplicate_hint_index_keys(candidate):
+                candidate_indexes[key].append(candidate)
+
         hints: dict[str, dict] = {}
         for client in clients:
-            result = self.find_similar(
-                target_client=client,
-                queryset=queryset,
-                limit=limit_per_client,
-                include_self=False,
+            candidate_ids: set[str] = set()
+            candidate_matches: list[Client] = []
+            for key in self._duplicate_hint_index_keys(client):
+                for candidate in candidate_indexes.get(key, []):
+                    candidate_id = str(candidate.id)
+                    if candidate.id == client.id or candidate_id in candidate_ids:
+                        continue
+                    candidate_ids.add(candidate_id)
+                    candidate_matches.append(candidate)
+
+            candidates = []
+            for candidate in candidate_matches:
+                score_result = self._score_pair(client, candidate)
+                if score_result["score"] <= 0:
+                    continue
+                candidates.append(
+                    {
+                        "client": candidate,
+                        "score": score_result["score"],
+                        "confidence": score_result["confidence"],
+                        "reasons": score_result["reasons"],
+                        "matched_fields": score_result["matched_fields"],
+                    }
+                )
+
+            candidates.sort(
+                key=lambda item: (
+                    -int(item["score"]),
+                    str(getattr(item["client"], "name", "")).lower(),
+                )
             )
-            candidates = result["candidates"]
+            candidates = candidates[:limit_per_client]
             reasons: list[str] = []
             seen_reasons: set[str] = set()
             for item in candidates:
