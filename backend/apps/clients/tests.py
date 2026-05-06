@@ -236,6 +236,30 @@ class ClientMergeServiceTests(TestCase):
         )
         self.assertNotIn("Телефоны у дублей отличаются", " ".join(preview["warnings"]))
 
+    def test_merge_preview_uses_source_contact_when_target_contact_is_empty(self):
+        target = Client.objects.create(
+            name="Зотова Марина",
+            phone="",
+            email=None,
+            created_by=self.owner,
+        )
+        source = Client.objects.create(
+            name="Зотова Марина Николаевна",
+            phone="+7 919 774 8683",
+            email="zotovamarina90@yandex.ru",
+            created_by=self.owner,
+        )
+
+        preview = ClientMergeService(
+            target_client=target,
+            source_clients=[source],
+        ).build_preview()
+
+        canonical_profile = preview["canonical_profile"]
+        self.assertEqual(canonical_profile["phone"], "+7 919 774 8683")
+        self.assertEqual(canonical_profile["email"], "zotovamarina90@yandex.ru")
+        self.assertNotIn("zotovamarina90@yandex.ru", canonical_profile["notes"])
+
 
 class ClientMergeAPITests(AuthenticatedAPITestCase):
     def setUp(self):

@@ -139,11 +139,28 @@ class ClientMergeService:
             display_values.append(display_value)
         return sorted(display_values)
 
-    def _alternative_contact_notes(self) -> str:
-        target_phone = _normalize_phone(self.target_client.phone or "")
-        target_email = (self.target_client.email or "").strip().lower()
-        seen_phones = {target_phone} if target_phone else set()
-        seen_emails = {target_email} if target_email else set()
+    def _canonical_contact(
+        self, target_value: str | None, candidates: list[str]
+    ) -> str:
+        target_display = _compact_text(target_value)
+        if target_display:
+            return target_display
+        return candidates[0] if candidates else ""
+
+    def _alternative_contact_notes(
+        self,
+        *,
+        canonical_phone: str,
+        canonical_email: str,
+    ) -> str:
+        canonical_phone_normalized = _normalize_phone(canonical_phone)
+        canonical_email_normalized = canonical_email.strip().lower()
+        seen_phones = (
+            {canonical_phone_normalized} if canonical_phone_normalized else set()
+        )
+        seen_emails = (
+            {canonical_email_normalized} if canonical_email_normalized else set()
+        )
         lines: list[str] = []
 
         for source in self.source_clients:
@@ -224,6 +241,15 @@ class ClientMergeService:
         if len(emails) > 1:
             warnings.append("Email у дублей отличается. Проверьте итоговый email.")
 
+        canonical_phone = self._canonical_contact(
+            self.target_client.phone,
+            phone_candidates,
+        )
+        canonical_email = self._canonical_contact(
+            self.target_client.email,
+            email_candidates,
+        )
+
         drive_plan: list[dict] = []
         for source in self.source_clients:
             drive_plan.append(
@@ -282,9 +308,12 @@ class ClientMergeService:
             },
             "canonical_profile": {
                 "name": self._canonical_name(),
-                "phone": self.target_client.phone or "",
-                "email": self.target_client.email,
-                "notes": self._alternative_contact_notes(),
+                "phone": canonical_phone,
+                "email": canonical_email or None,
+                "notes": self._alternative_contact_notes(
+                    canonical_phone=canonical_phone,
+                    canonical_email=canonical_email,
+                ),
                 "candidates": {
                     "names": sorted([value for value in candidate_names if value]),
                     "phones": phone_candidates,
