@@ -25,10 +25,11 @@ vi.mock('../../../api', () => {
   };
 });
 
-import { fetchSimilarClients, previewClientMerge } from '../../../api';
+import { fetchSimilarClients, mergeClients, previewClientMerge } from '../../../api';
 
 const previewClientMergeMock = vi.mocked(previewClientMerge);
 const fetchSimilarClientsMock = vi.mocked(fetchSimilarClients);
+const mergeClientsMock = vi.mocked(mergeClients);
 
 const createClient = (overrides: Partial<Client>): Client => ({
   id: 'client-1',
@@ -80,17 +81,24 @@ const previewResponse = {
   warnings: [],
 };
 
-const renderClientActions = () =>
-  renderHook(() =>
-    useClientActions({
-      clients: [targetClient, sourceClient],
-      setModal: vi.fn(),
-      setIsSyncing: vi.fn(),
-      setError: vi.fn(),
-      updateAppData: vi.fn(),
-      addNotification: vi.fn(),
-    }),
-  );
+type ClientActionsOptions = Parameters<typeof useClientActions>[0];
+
+const renderClientActions = (overrides: Partial<ClientActionsOptions> = {}) => {
+  const props: ClientActionsOptions = {
+    clients: [targetClient, sourceClient],
+    setModal: vi.fn(),
+    setIsSyncing: vi.fn(),
+    setError: vi.fn(),
+    updateAppData: vi.fn(),
+    addNotification: vi.fn(),
+    ...overrides,
+  };
+
+  return {
+    ...renderHook(() => useClientActions(props)),
+    props,
+  };
+};
 
 describe('useClientActions', () => {
   beforeEach(() => {
@@ -105,6 +113,14 @@ describe('useClientActions', () => {
         returned: 0,
         scoringVersion: 'test',
       },
+    });
+    mergeClientsMock.mockReset();
+    mergeClientsMock.mockResolvedValue({
+      targetClient,
+      mergedClientIds: [sourceClient.id],
+      movedCounts: {},
+      warnings: [],
+      details: {},
     });
   });
 
@@ -143,5 +159,34 @@ describe('useClientActions', () => {
     });
     expect(result.current.clientMergeFieldOverrides.name).toBe('Зотова Марина Николаевна');
     expect(result.current.clientMergeFieldOverrides.notes).toContain('source@example.com');
+  });
+
+  it('shows merge warnings as non-blocking notifications', async () => {
+    const addNotification = vi.fn();
+    const { result } = renderClientActions({ addNotification });
+    mergeClientsMock.mockResolvedValueOnce({
+      targetClient,
+      mergedClientIds: [sourceClient.id],
+      movedCounts: {},
+      warnings: ['Содержимое Drive перенесено, но исходную папку не удалось удалить.'],
+      details: {},
+    });
+
+    act(() => {
+      result.current.handleClientMergeRequest(targetClient, [sourceClient.id]);
+    });
+    await act(async () => {
+      await result.current.handleClientMergePreview();
+    });
+    await act(async () => {
+      await result.current.handleMergeSubmit();
+    });
+
+    expect(addNotification).toHaveBeenCalledWith('Клиенты объединены', 'success', 4000);
+    expect(addNotification).toHaveBeenCalledWith(
+      'Содержимое Drive перенесено, но исходную папку не удалось удалить.',
+      'warning',
+      8000,
+    );
   });
 });

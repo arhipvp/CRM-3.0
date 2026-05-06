@@ -104,6 +104,7 @@ class ClientMergeService:
         self.actor = actor
         self.include_deleted = include_deleted
         self.field_overrides = field_overrides or {}
+        self._warnings: list[str] = []
 
     def _deal_manager(self):
         return Deal.objects.with_deleted() if self.include_deleted else Deal.objects
@@ -368,12 +369,23 @@ class ClientMergeService:
                         ),
                         description=f"move client folder contents from {source.pk}",
                     )
-                    _retry_drive_operation(
-                        lambda source_folder_id=source.drive_folder_id: delete_drive_folder(
-                            source_folder_id
-                        ),
-                        description=f"delete client folder for {source.pk}",
-                    )
+                    try:
+                        delete_drive_folder(source.drive_folder_id)
+                    except DriveError as exc:
+                        warning = (
+                            "Содержимое Drive перенесено, но исходную папку "
+                            "не удалось удалить из-за прав доступа."
+                        )
+                        logger.warning(
+                            "Unable to delete source client Drive folder after merge "
+                            "content transfer. source_client_id=%s source_folder_id=%s "
+                            "error=%s",
+                            source.pk,
+                            source.drive_folder_id,
+                            exc,
+                        )
+                        if warning not in self._warnings:
+                            self._warnings.append(warning)
         except DriveError as exc:
             if _is_drive_configuration_error(exc):
                 logger.info(
@@ -445,7 +457,7 @@ class ClientMergeService:
             "target_client": self.target_client,
             "merged_client_ids": merged_ids,
             "moved_counts": moved_counts,
-            "warnings": [],
+            "warnings": list(self._warnings),
             "details": {
                 "include_deleted": self.include_deleted,
                 "field_overrides": self.field_overrides,

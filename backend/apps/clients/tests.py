@@ -144,6 +144,106 @@ class ClientMergeServiceTests(TestCase):
         self.assertEqual(self.target.name, original_name)
         self.assertEqual(self.source_deal.client_id, self.source.id)
 
+    def test_merge_continues_when_source_drive_folder_delete_fails(self):
+        self.target.drive_folder_id = "target-folder"
+        self.target.save(update_fields=["drive_folder_id"])
+        self.source.drive_folder_id = "source-folder"
+        self.source.save(update_fields=["drive_folder_id"])
+
+        with (
+            patch("apps.clients.services.is_drive_oauth_configured", return_value=True),
+            patch(
+                "apps.clients.services.ensure_client_folder",
+                return_value=self.target.drive_folder_id,
+            ),
+            patch("apps.clients.services.ensure_deal_folder"),
+            patch("apps.clients.services.move_drive_folder_contents"),
+            patch(
+                "apps.clients.services.delete_drive_folder",
+                side_effect=DriveError("insufficient permissions"),
+            ),
+        ):
+            result = ClientMergeService(
+                target_client=self.target,
+                source_clients=[self.source],
+                include_deleted=True,
+                field_overrides={"name": "Иванов Иван Иванович"},
+            ).merge()
+
+        moved_deal = Deal.objects.with_deleted().get(pk=self.source_deal.pk)
+        moved_policy = Policy.objects.with_deleted().get(pk=self.source_policy.pk)
+        deleted_source = Client.objects.with_deleted().get(pk=self.source.pk)
+        self.assertEqual(moved_deal.client_id, self.target.id)
+        self.assertEqual(moved_policy.client_id, self.target.id)
+        self.assertEqual(moved_policy.insured_client_id, self.target.id)
+        self.assertIsNotNone(deleted_source.deleted_at)
+        self.assertEqual(result["merged_client_ids"], [str(self.source.id)])
+        self.assertIn("Содержимое Drive перенесено", " ".join(result["warnings"]))
+
+    def test_merge_aborts_when_drive_contents_move_fails(self):
+        original_name = self.target.name
+        self.target.drive_folder_id = "target-folder"
+        self.target.save(update_fields=["drive_folder_id"])
+        self.source.drive_folder_id = "source-folder"
+        self.source.save(update_fields=["drive_folder_id"])
+
+        with (
+            patch("apps.clients.services.is_drive_oauth_configured", return_value=True),
+            patch(
+                "apps.clients.services.ensure_client_folder",
+                return_value=self.target.drive_folder_id,
+            ),
+            patch("apps.clients.services.ensure_deal_folder"),
+            patch(
+                "apps.clients.services.move_drive_folder_contents",
+                side_effect=DriveError("move failed"),
+            ),
+            patch("apps.clients.services.delete_drive_folder") as delete_drive_folder,
+        ):
+            with self.assertRaises(DriveError):
+                ClientMergeService(
+                    target_client=self.target,
+                    source_clients=[self.source],
+                    include_deleted=True,
+                    field_overrides={"name": "Новое имя"},
+                ).merge()
+
+        self.target.refresh_from_db()
+        self.source_deal.refresh_from_db()
+        self.source_policy.refresh_from_db()
+        self.source.refresh_from_db()
+        self.assertEqual(self.target.name, original_name)
+        self.assertEqual(self.source_deal.client_id, self.source.id)
+        self.assertEqual(self.source_policy.client_id, self.source.id)
+        self.assertIsNone(self.source.deleted_at)
+        delete_drive_folder.assert_not_called()
+
+    def test_merge_skips_drive_when_oauth_is_not_configured(self):
+        self.source.drive_folder_id = "source-folder"
+        self.source.save(update_fields=["drive_folder_id"])
+
+        with (
+            patch(
+                "apps.clients.services.is_drive_oauth_configured", return_value=False
+            ),
+            patch("apps.clients.services.ensure_client_folder") as ensure_client_folder,
+            patch("apps.clients.services.move_drive_folder_contents") as move_contents,
+            patch("apps.clients.services.delete_drive_folder") as delete_drive_folder,
+        ):
+            result = ClientMergeService(
+                target_client=self.target,
+                source_clients=[self.source],
+                include_deleted=True,
+                field_overrides={"name": "Иванов Иван Иванович"},
+            ).merge()
+
+        moved_deal = Deal.objects.with_deleted().get(pk=self.source_deal.pk)
+        self.assertEqual(moved_deal.client_id, self.target.id)
+        self.assertEqual(result["warnings"], [])
+        ensure_client_folder.assert_not_called()
+        move_contents.assert_not_called()
+        delete_drive_folder.assert_not_called()
+
     def test_merge_preview_uses_longest_name_by_default(self):
         target = Client.objects.create(name="Зотова Марина", created_by=self.owner)
         source = Client.objects.create(

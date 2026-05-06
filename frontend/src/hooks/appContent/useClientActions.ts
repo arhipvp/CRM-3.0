@@ -340,6 +340,9 @@ export const useClientActions = ({
         }),
       }));
       addNotification('Клиенты объединены', 'success', 4000);
+      if (result.warnings?.length) {
+        addNotification(result.warnings.join('\n'), 'warning', 8000);
+      }
       closeMergeModal();
       setError(null);
     } catch (err) {
