@@ -324,6 +324,29 @@ export interface ClientMergeResponse {
   details?: Record<string, unknown>;
 }
 
+export type ClientMergeSessionState =
+  | 'moving_drive'
+  | 'ready_to_finalize'
+  | 'succeeded'
+  | 'failed'
+  | 'canceled';
+
+export interface ClientMergeSessionStatus {
+  id: string;
+  status: ClientMergeSessionState;
+  targetClientId: string;
+  sourceClientIds: string[];
+  movedItems: number;
+  totalItems: number;
+  retryable: boolean;
+  failedItem?: Record<string, unknown> | null;
+  lastError: string;
+  warnings: string[];
+  result?: Record<string, unknown> | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface ClientMergePreviewResponse {
   targetClientId: string;
   sourceClientIds: string[];

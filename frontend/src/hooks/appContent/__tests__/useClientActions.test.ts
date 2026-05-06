@@ -18,18 +18,32 @@ vi.mock('../../../api', () => {
     APIError,
     createClient: vi.fn(),
     deleteClient: vi.fn(),
+    fetchClientMergeSession: vi.fn(),
+    finalizeClientMerge: vi.fn(),
     fetchSimilarClients: vi.fn(),
-    mergeClients: vi.fn(),
     previewClientMerge: vi.fn(),
+    retryClientMerge: vi.fn(),
+    startClientMerge: vi.fn(),
+    stepClientMerge: vi.fn(),
     updateClient: vi.fn(),
   };
 });
 
-import { fetchSimilarClients, mergeClients, previewClientMerge } from '../../../api';
+import {
+  fetchSimilarClients,
+  finalizeClientMerge,
+  previewClientMerge,
+  retryClientMerge,
+  startClientMerge,
+  stepClientMerge,
+} from '../../../api';
 
 const previewClientMergeMock = vi.mocked(previewClientMerge);
 const fetchSimilarClientsMock = vi.mocked(fetchSimilarClients);
-const mergeClientsMock = vi.mocked(mergeClients);
+const startClientMergeMock = vi.mocked(startClientMerge);
+const stepClientMergeMock = vi.mocked(stepClientMerge);
+const retryClientMergeMock = vi.mocked(retryClientMerge);
+const finalizeClientMergeMock = vi.mocked(finalizeClientMerge);
 
 const createClient = (overrides: Partial<Client>): Client => ({
   id: 'client-1',
@@ -81,6 +95,22 @@ const previewResponse = {
   warnings: [],
 };
 
+const mergeSession = {
+  id: 'session-1',
+  status: 'ready_to_finalize' as const,
+  targetClientId: targetClient.id,
+  sourceClientIds: [sourceClient.id],
+  movedItems: 0,
+  totalItems: 0,
+  retryable: false,
+  failedItem: null,
+  lastError: '',
+  warnings: [],
+  result: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+};
+
 type ClientActionsOptions = Parameters<typeof useClientActions>[0];
 
 const renderClientActions = (overrides: Partial<ClientActionsOptions> = {}) => {
@@ -114,8 +144,13 @@ describe('useClientActions', () => {
         scoringVersion: 'test',
       },
     });
-    mergeClientsMock.mockReset();
-    mergeClientsMock.mockResolvedValue({
+    window.localStorage.clear();
+    startClientMergeMock.mockReset();
+    startClientMergeMock.mockResolvedValue(mergeSession);
+    stepClientMergeMock.mockReset();
+    retryClientMergeMock.mockReset();
+    finalizeClientMergeMock.mockReset();
+    finalizeClientMergeMock.mockResolvedValue({
       targetClient,
       mergedClientIds: [sourceClient.id],
       movedCounts: {},
@@ -164,7 +199,7 @@ describe('useClientActions', () => {
   it('shows merge warnings as non-blocking notifications', async () => {
     const addNotification = vi.fn();
     const { result } = renderClientActions({ addNotification });
-    mergeClientsMock.mockResolvedValueOnce({
+    finalizeClientMergeMock.mockResolvedValueOnce({
       targetClient,
       mergedClientIds: [sourceClient.id],
       movedCounts: {},
@@ -188,5 +223,54 @@ describe('useClientActions', () => {
       'warning',
       8000,
     );
+  });
+
+  it('stops on retryable drive failure and continues the same session on retry', async () => {
+    const addNotification = vi.fn();
+    const { result } = renderClientActions({ addNotification });
+    startClientMergeMock.mockResolvedValueOnce({
+      ...mergeSession,
+      status: 'moving_drive',
+      movedItems: 0,
+      totalItems: 1,
+    });
+    stepClientMergeMock.mockResolvedValueOnce({
+      ...mergeSession,
+      status: 'failed',
+      movedItems: 0,
+      totalItems: 1,
+      retryable: true,
+      lastError: 'Google Drive не ответил.',
+    });
+    retryClientMergeMock.mockResolvedValueOnce({
+      ...mergeSession,
+      status: 'ready_to_finalize',
+      movedItems: 1,
+      totalItems: 1,
+      retryable: false,
+      lastError: '',
+    });
+
+    act(() => {
+      result.current.handleClientMergeRequest(targetClient, [sourceClient.id]);
+    });
+    await act(async () => {
+      await result.current.handleClientMergePreview();
+    });
+    await act(async () => {
+      await result.current.handleMergeSubmit();
+    });
+
+    expect(result.current.clientMergeSession?.status).toBe('failed');
+    expect(result.current.mergeError).toBe('Google Drive не ответил.');
+    expect(finalizeClientMergeMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.handleClientMergeRetry();
+    });
+
+    expect(retryClientMergeMock).toHaveBeenCalledWith('session-1');
+    expect(finalizeClientMergeMock).toHaveBeenCalledWith('session-1');
+    expect(addNotification).toHaveBeenCalledWith('Клиенты объединены', 'success', 4000);
   });
 });

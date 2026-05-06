@@ -6,6 +6,7 @@ import type {
   ClientDuplicateHint,
   ClientMergePreviewResponse,
   ClientMergeResponse,
+  ClientMergeSessionStatus,
   ClientSimilarResponse,
   User,
 } from '../types';
@@ -229,6 +230,23 @@ export async function mergeClients(data: {
     }),
   });
 
+  return mapClientMergeResponse(payload);
+}
+
+type ClientMergePayload = {
+  targetClientId: string;
+  sourceClientIds: string[];
+  includeDeleted?: boolean;
+  previewSnapshotId?: string;
+  fieldOverrides?: {
+    name?: string;
+    phone?: string;
+    email?: string | null;
+    notes?: string;
+  };
+};
+
+function mapClientMergeResponse(payload: Record<string, unknown>): ClientMergeResponse {
   const targetRaw = payload.target_client as Record<string, unknown> | undefined;
   const movedCountsRaw = payload.moved_counts as Record<string, number> | undefined;
 
@@ -248,6 +266,88 @@ export async function mergeClients(data: {
         ? (payload.details as Record<string, unknown>)
         : {},
   };
+}
+
+function mapClientMergeSession(payload: Record<string, unknown>): ClientMergeSessionStatus {
+  const failedItem =
+    payload.failed_item && typeof payload.failed_item === 'object'
+      ? (payload.failed_item as Record<string, unknown>)
+      : null;
+  const result =
+    payload.result && typeof payload.result === 'object'
+      ? (payload.result as Record<string, unknown>)
+      : null;
+
+  return {
+    id: String(payload.id ?? ''),
+    status: String(payload.status ?? 'failed') as ClientMergeSessionStatus['status'],
+    targetClientId: String(payload.target_client_id ?? ''),
+    sourceClientIds: Array.isArray(payload.source_client_ids)
+      ? payload.source_client_ids.map((value) => String(value))
+      : [],
+    movedItems: Number(payload.moved_items ?? 0),
+    totalItems: Number(payload.total_items ?? 0),
+    retryable: Boolean(payload.retryable),
+    failedItem,
+    lastError: String(payload.last_error ?? ''),
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map((value) => String(value)) : [],
+    result,
+    createdAt: payload.created_at ? String(payload.created_at) : null,
+    updatedAt: payload.updated_at ? String(payload.updated_at) : null,
+  };
+}
+
+function serializeClientMergePayload(data: ClientMergePayload): Record<string, unknown> {
+  return {
+    target_client_id: data.targetClientId,
+    source_client_ids: data.sourceClientIds,
+    include_deleted: data.includeDeleted ?? true,
+    ...(data.previewSnapshotId ? { preview_snapshot_id: data.previewSnapshotId } : {}),
+    ...(data.fieldOverrides ? { field_overrides: data.fieldOverrides } : {}),
+  };
+}
+
+export async function startClientMerge(
+  data: ClientMergePayload,
+): Promise<ClientMergeSessionStatus> {
+  const payload = await request<Record<string, unknown>>('/clients/merge/start/', {
+    method: 'POST',
+    body: JSON.stringify(serializeClientMergePayload(data)),
+  });
+  return mapClientMergeSession(payload);
+}
+
+export async function fetchClientMergeSession(
+  sessionId: string,
+): Promise<ClientMergeSessionStatus> {
+  const payload = await request<Record<string, unknown>>(`/clients/merge/${sessionId}/`, {
+    method: 'GET',
+  });
+  return mapClientMergeSession(payload);
+}
+
+export async function stepClientMerge(sessionId: string): Promise<ClientMergeSessionStatus> {
+  const payload = await request<Record<string, unknown>>(`/clients/merge/${sessionId}/step/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return mapClientMergeSession(payload);
+}
+
+export async function retryClientMerge(sessionId: string): Promise<ClientMergeSessionStatus> {
+  const payload = await request<Record<string, unknown>>(`/clients/merge/${sessionId}/retry/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return mapClientMergeSession(payload);
+}
+
+export async function finalizeClientMerge(sessionId: string): Promise<ClientMergeResponse> {
+  const payload = await request<Record<string, unknown>>(`/clients/merge/${sessionId}/finalize/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return mapClientMergeResponse(payload);
 }
 
 export async function previewClientMerge(data: {

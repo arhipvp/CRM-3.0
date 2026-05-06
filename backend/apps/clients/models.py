@@ -1,6 +1,9 @@
-﻿from apps.common.models import SoftDeleteModel
+import uuid
+
+from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Client(SoftDeleteModel):
@@ -37,3 +40,63 @@ class Client(SoftDeleteModel):
 
     def __str__(self) -> str:
         return self.name
+
+
+class ClientMergeSession(models.Model):
+    class Status(models.TextChoices):
+        MOVING_DRIVE = "moving_drive", "Moving Drive"
+        READY_TO_FINALIZE = "ready_to_finalize", "Ready to finalize"
+        SUCCEEDED = "succeeded", "Succeeded"
+        FAILED = "failed", "Failed"
+        CANCELED = "canceled", "Canceled"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    target_client_id = models.UUIDField(db_index=True)
+    source_client_ids = models.JSONField(default=list)
+    include_deleted = models.BooleanField(default=True)
+    preview_snapshot_id = models.CharField(max_length=255, blank=True, default="")
+    field_overrides = models.JSONField(default=dict, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="client_merge_sessions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=Status.choices,
+        default=Status.MOVING_DRIVE,
+        db_index=True,
+    )
+    drive_items = models.JSONField(default=list, blank=True)
+    moved_items = models.PositiveIntegerField(default=0)
+    total_items = models.PositiveIntegerField(default=0)
+    retryable = models.BooleanField(default=False)
+    failed_item = models.JSONField(default=dict, blank=True)
+    last_error = models.TextField(blank=True, default="")
+    warnings = models.JSONField(default=list, blank=True)
+    result = models.JSONField(default=dict, blank=True)
+    log = models.JSONField(default=list, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["requested_by", "-created_at"]),
+            models.Index(fields=["status", "-updated_at"]),
+        ]
+
+    def append_log(self, message: str, *, level: str = "info") -> None:
+        entries = list(self.log or [])
+        entries.append(
+            {
+                "timestamp": timezone.now().isoformat(),
+                "level": level,
+                "message": message,
+            }
+        )
+        self.log = entries

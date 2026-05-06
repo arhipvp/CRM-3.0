@@ -934,6 +934,44 @@ def move_drive_file_to_folder(file_id: str, target_folder_id: str) -> None:
         raise DriveOperationError("Unable to move Drive file.") from exc
 
 
+def move_drive_item_between_folders(
+    file_id: str, source_folder_id: str, target_folder_id: str
+) -> None:
+    """Move one Drive file or folder from a known source folder into target."""
+
+    if not file_id or not source_folder_id or not target_folder_id:
+        raise DriveOperationError(
+            "File ID, source folder and target folder are required."
+        )
+
+    try:
+
+        def _move(service):
+            metadata = (
+                service.files()
+                .get(fileId=file_id, fields="parents", supportsAllDrives=True)
+                .execute()
+            )
+            parents = metadata.get("parents") or []
+            if target_folder_id in parents and source_folder_id not in parents:
+                return True
+
+            update_kwargs: dict[str, Any] = {
+                "fileId": file_id,
+                "addParents": target_folder_id,
+                "fields": "id",
+                "supportsAllDrives": True,
+            }
+            if source_folder_id in parents:
+                update_kwargs["removeParents"] = source_folder_id
+            service.files().update(**update_kwargs).execute()
+            return True
+
+        _run_with_drive_service("move_drive_item_between_folders", _move)
+    except Exception as exc:
+        raise DriveOperationError("Unable to move Drive item.") from exc
+
+
 def rename_drive_file(file_id: str, new_name: str) -> DriveFileInfo:
     """Rename a Drive file and return updated metadata."""
 

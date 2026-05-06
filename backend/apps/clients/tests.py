@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from apps.clients.models import Client
+from apps.clients.models import Client, ClientMergeSession
 from apps.clients.serializers import ClientSerializer
 from apps.clients.services import (
     ClientMergeService,
@@ -600,6 +600,227 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+
+    @patch("apps.clients.services.is_drive_oauth_configured", return_value=False)
+    def test_merge_start_without_drive_config_does_not_change_db(self, mock_drive):
+        response = self.api_client.post(
+            "/api/v1/clients/merge/start/",
+            {
+                "target_client_id": str(self.target.id),
+                "source_client_ids": [str(self.source.id)],
+                "include_deleted": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.data["status"], ClientMergeSession.Status.READY_TO_FINALIZE
+        )
+        self.assertEqual(response.data["total_items"], 0)
+        self.source.refresh_from_db()
+        self.source_deal.refresh_from_db()
+        self.assertIsNone(self.source.deleted_at)
+        self.assertEqual(self.source_deal.client_id, self.source.id)
+        mock_drive.assert_called_once()
+
+    def test_merge_step_moves_one_drive_item_and_updates_progress(self):
+        session = ClientMergeSession.objects.create(
+            target_client_id=self.target.id,
+            source_client_ids=[str(self.source.id)],
+            include_deleted=True,
+            requested_by=self.owner,
+            status=ClientMergeSession.Status.MOVING_DRIVE,
+            total_items=2,
+            drive_items=[
+                {
+                    "id": "drive-item-1",
+                    "name": "deal folder",
+                    "source_client_id": str(self.source.id),
+                    "source_folder_id": "source-folder",
+                    "target_folder_id": "target-folder",
+                    "status": "pending",
+                    "error": "",
+                },
+                {
+                    "id": "drive-item-2",
+                    "name": "policy",
+                    "source_client_id": str(self.source.id),
+                    "source_folder_id": "source-folder",
+                    "target_folder_id": "target-folder",
+                    "status": "pending",
+                    "error": "",
+                },
+            ],
+        )
+
+        with patch(
+            "apps.clients.services.move_drive_item_between_folders"
+        ) as move_mock:
+            response = self.api_client.post(
+                f"/api/v1/clients/merge/{session.id}/step/",
+                {},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["status"], ClientMergeSession.Status.MOVING_DRIVE
+        )
+        self.assertEqual(response.data["moved_items"], 1)
+        move_mock.assert_called_once_with(
+            "drive-item-1", "source-folder", "target-folder"
+        )
+        session.refresh_from_db()
+        self.assertEqual(session.drive_items[0]["status"], "moved")
+        self.source_deal.refresh_from_db()
+        self.assertEqual(self.source_deal.client_id, self.source.id)
+
+    def test_merge_step_drive_error_is_retryable_and_keeps_db_unchanged(self):
+        session = ClientMergeSession.objects.create(
+            target_client_id=self.target.id,
+            source_client_ids=[str(self.source.id)],
+            include_deleted=True,
+            requested_by=self.owner,
+            status=ClientMergeSession.Status.MOVING_DRIVE,
+            total_items=1,
+            drive_items=[
+                {
+                    "id": "drive-item-timeout",
+                    "name": "deal folder",
+                    "source_client_id": str(self.source.id),
+                    "source_folder_id": "source-folder",
+                    "target_folder_id": "target-folder",
+                    "status": "pending",
+                    "error": "",
+                }
+            ],
+        )
+
+        with patch(
+            "apps.clients.services.move_drive_item_between_folders",
+            side_effect=DriveError("timeout"),
+        ):
+            response = self.api_client.post(
+                f"/api/v1/clients/merge/{session.id}/step/",
+                {},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], ClientMergeSession.Status.FAILED)
+        self.assertTrue(response.data["retryable"])
+        self.assertEqual(response.data["moved_items"], 0)
+        self.assertIn("частично", response.data["last_error"])
+        self.source.refresh_from_db()
+        self.source_deal.refresh_from_db()
+        self.assertIsNone(self.source.deleted_at)
+        self.assertEqual(self.source_deal.client_id, self.source.id)
+
+    def test_merge_retry_continues_failed_item_without_duplication(self):
+        session = ClientMergeSession.objects.create(
+            target_client_id=self.target.id,
+            source_client_ids=[str(self.source.id)],
+            include_deleted=True,
+            requested_by=self.owner,
+            status=ClientMergeSession.Status.FAILED,
+            total_items=2,
+            moved_items=1,
+            retryable=True,
+            failed_item={"id": "drive-item-2"},
+            last_error="timeout",
+            drive_items=[
+                {
+                    "id": "drive-item-1",
+                    "name": "already moved",
+                    "source_client_id": str(self.source.id),
+                    "source_folder_id": "source-folder",
+                    "target_folder_id": "target-folder",
+                    "status": "moved",
+                    "error": "",
+                },
+                {
+                    "id": "drive-item-2",
+                    "name": "retry me",
+                    "source_client_id": str(self.source.id),
+                    "source_folder_id": "source-folder",
+                    "target_folder_id": "target-folder",
+                    "status": "failed",
+                    "error": "timeout",
+                },
+            ],
+        )
+
+        with patch(
+            "apps.clients.services.move_drive_item_between_folders"
+        ) as move_mock:
+            response = self.api_client.post(
+                f"/api/v1/clients/merge/{session.id}/retry/",
+                {},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["status"], ClientMergeSession.Status.READY_TO_FINALIZE
+        )
+        self.assertEqual(response.data["moved_items"], 2)
+        move_mock.assert_called_once_with(
+            "drive-item-2", "source-folder", "target-folder"
+        )
+
+    def test_merge_finalize_rejected_before_drive_transfer_is_complete(self):
+        session = ClientMergeSession.objects.create(
+            target_client_id=self.target.id,
+            source_client_ids=[str(self.source.id)],
+            include_deleted=True,
+            requested_by=self.owner,
+            status=ClientMergeSession.Status.MOVING_DRIVE,
+            total_items=1,
+        )
+
+        response = self.api_client.post(
+            f"/api/v1/clients/merge/{session.id}/finalize/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Drive перенос", str(response.data["detail"]))
+
+    def test_merge_finalize_applies_db_merge_after_drive_ready(self):
+        session = ClientMergeSession.objects.create(
+            target_client_id=self.target.id,
+            source_client_ids=[str(self.source.id)],
+            include_deleted=True,
+            requested_by=self.owner,
+            status=ClientMergeSession.Status.READY_TO_FINALIZE,
+            total_items=1,
+            moved_items=1,
+            field_overrides={"name": "Иванов Иван Иванович"},
+        )
+
+        with patch("apps.clients.services.delete_drive_folder") as delete_mock:
+            response = self.api_client.post(
+                f"/api/v1/clients/merge/{session.id}/finalize/",
+                {},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["merged_client_ids"], [str(self.source.id)])
+        self.target.refresh_from_db()
+        self.source.refresh_from_db()
+        self.source_deal.refresh_from_db()
+        self.source_policy.refresh_from_db()
+        session.refresh_from_db()
+        self.assertEqual(self.target.name, "Иванов Иван Иванович")
+        self.assertIsNotNone(self.source.deleted_at)
+        self.assertEqual(self.source_deal.client_id, self.target.id)
+        self.assertEqual(self.source_policy.client_id, self.target.id)
+        self.assertEqual(self.source_policy.insured_client_id, self.target.id)
+        self.assertEqual(session.status, ClientMergeSession.Status.SUCCEEDED)
+        delete_mock.assert_not_called()
 
     def test_create_client_persists_counterparty_flag(self):
         response = self.api_client.post(

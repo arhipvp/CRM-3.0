@@ -10,6 +10,7 @@ import { Modal } from '../../../components/Modal';
 import type {
   Client,
   ClientMergePreviewResponse,
+  ClientMergeSessionStatus,
   ClientSimilarityCandidate,
   User,
 } from '../../../types';
@@ -44,6 +45,7 @@ type AppOverlayShellProps = {
   handleClientMergePreview: () => Promise<void>;
   handleCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   handleDeleteClient: () => Promise<void>;
+  handleClientMergeRetry: () => Promise<void>;
   handleMergeFromSimilar: (sourceClientId: string) => void | Promise<void>;
   handleMergeSubmit: () => Promise<void>;
   handleUpdateClient: (values: {
@@ -83,6 +85,7 @@ type AppOverlayShellProps = {
   toggleMergeSource: (sourceId: string) => void;
   clientMergeFieldOverrides: ClientMergeFieldOverrides;
   clientMergePreview: ClientMergePreviewResponse | null;
+  clientMergeSession: ClientMergeSessionStatus | null;
   clientMergeStep: ClientMergeStep;
 };
 
@@ -103,6 +106,7 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
   confirmDialogRenderer,
   editingClient,
   handleClientMergePreview,
+  handleClientMergeRetry,
   handleCreateTask,
   handleDeleteClient,
   handleMergeFromSimilar,
@@ -133,6 +137,7 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
   toggleMergeSource,
   clientMergeFieldOverrides,
   clientMergePreview,
+  clientMergeSession,
   clientMergeStep,
 }) => (
   <>
@@ -222,6 +227,7 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
           mergeSources={mergeSources}
           mergeStep={clientMergeStep}
           mergePreview={clientMergePreview}
+          mergeSession={clientMergeSession}
           mergeError={mergeError}
           isMergingClients={isMergingClients}
           isPreviewLoading={isClientMergePreviewLoading}
@@ -229,6 +235,7 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
           fieldOverrides={clientMergeFieldOverrides}
           onClose={closeMergeModal}
           onSubmit={handleMergeSubmit}
+          onRetry={handleClientMergeRetry}
           onPreview={handleClientMergePreview}
           onToggleSource={toggleMergeSource}
           onSearchChange={setMergeSearch}

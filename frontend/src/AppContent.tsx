@@ -136,6 +136,7 @@ const AppContent: React.FC = () => {
     clientMergeStep,
     clientMergeFieldOverrides,
     setClientMergeFieldOverrides,
+    clientMergeSession,
     similarTargetClient,
     openClientModal,
     closeClientModal,
@@ -152,6 +153,7 @@ const AppContent: React.FC = () => {
     closeMergeModal,
     handleClientMergePreview,
     handleMergeSubmit,
+    handleClientMergeRetry,
     handleMergeFromSimilar,
   } = useClientActions({
     clients,
@@ -954,6 +956,7 @@ const AppContent: React.FC = () => {
         handleCreateTask={handleCreateTask}
         handleDeleteClient={handleDeleteClient}
         handleMergeFromSimilar={handleMergeFromSimilar}
+        handleClientMergeRetry={handleClientMergeRetry}
         handleMergeSubmit={handleMergeSubmit}
         handleUpdateClient={handleUpdateClient}
         isClientMergePreviewConfirmed={isClientMergePreviewConfirmed}
@@ -981,6 +984,7 @@ const AppContent: React.FC = () => {
         toggleMergeSource={toggleMergeSource}
         clientMergeFieldOverrides={clientMergeFieldOverrides}
         clientMergePreview={clientMergePreview}
+        clientMergeSession={clientMergeSession}
         clientMergeStep={clientMergeStep}
       />
     </AppShell>

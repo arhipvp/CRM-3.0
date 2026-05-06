@@ -1,5 +1,6 @@
 from apps.clients.services import (
     ClientMergeService,
+    ClientMergeSessionService,
     ClientSimilarityService,
     normalize_client_name,
 )
@@ -16,7 +17,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from .filters import ClientFilterSet
-from .models import Client
+from .models import Client, ClientMergeSession
 from .serializers import (
     ClientDuplicateHintsSerializer,
     ClientMergePreviewSerializer,
@@ -159,6 +160,114 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=["post"], url_path="merge/start")
+    def merge_start(self, request):
+        serializer = ClientMergeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target_client, source_clients = self._resolve_merge_clients(
+            serializer.validated_data
+        )
+        for client in (target_client, *source_clients):
+            if not self._can_merge_client(request.user, client):
+                raise PermissionDenied(CLIENT_MERGE_PERMISSION_MESSAGE)
+
+        actor = request.user if request.user and request.user.is_authenticated else None
+        try:
+            session = ClientMergeSessionService.start(
+                target_client=target_client,
+                source_clients=source_clients,
+                actor=actor,
+                include_deleted=serializer.validated_data.get("include_deleted", True),
+                field_overrides=serializer.validated_data.get("field_overrides") or {},
+                preview_snapshot_id=serializer.validated_data.get(
+                    "preview_snapshot_id", ""
+                ),
+            )
+        except ValueError as exc:
+            raise ValidationError({"field_overrides": str(exc)}) from exc
+        except DriveError as exc:
+            return Response(
+                {
+                    "detail": str(exc),
+                    "warning": (
+                        "Ошибка Google Drive: не удалось подготовить пошаговое "
+                        "объединение."
+                    ),
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response(
+            ClientMergeSessionService(session).serialize(),
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"merge/(?P<session_id>[0-9a-f-]{36})",
+    )
+    def merge_session(self, request, session_id=None):
+        session = self._get_merge_session(request.user, session_id)
+        return Response(ClientMergeSessionService(session).serialize())
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"merge/(?P<session_id>[0-9a-f-]{36})/step",
+    )
+    def merge_step(self, request, session_id=None):
+        session = self._get_merge_session(request.user, session_id)
+        session = ClientMergeSessionService(session).step()
+        return Response(ClientMergeSessionService(session).serialize())
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"merge/(?P<session_id>[0-9a-f-]{36})/retry",
+    )
+    def merge_retry(self, request, session_id=None):
+        session = self._get_merge_session(request.user, session_id)
+        session = ClientMergeSessionService(session).retry()
+        return Response(ClientMergeSessionService(session).serialize())
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"merge/(?P<session_id>[0-9a-f-]{36})/finalize",
+    )
+    def merge_finalize(self, request, session_id=None):
+        session = self._get_merge_session(request.user, session_id)
+        target_client, source_clients = self._resolve_merge_clients(
+            {
+                "target_client_id": session.target_client_id,
+                "source_client_ids": session.source_client_ids,
+            }
+        )
+        for client in (target_client, *source_clients):
+            if not self._can_merge_client(request.user, client):
+                raise PermissionDenied(CLIENT_MERGE_PERMISSION_MESSAGE)
+
+        actor = request.user if request.user and request.user.is_authenticated else None
+        try:
+            merge_result = ClientMergeSessionService(session).finalize(
+                target_client=target_client,
+                source_clients=source_clients,
+                actor=actor,
+            )
+        except ValueError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        self._write_merge_audit(
+            actor=actor,
+            target_client=target_client,
+            source_clients=source_clients,
+            merge_result=merge_result,
+            preview_snapshot_id=session.preview_snapshot_id,
+            field_overrides=session.field_overrides or {},
+            include_deleted=session.include_deleted,
+        )
+        return Response(self._merge_response_payload(target_client, merge_result))
+
     @action(detail=False, methods=["post"], url_path="merge/preview")
     def merge_preview(self, request):
         serializer = ClientMergePreviewSerializer(data=request.data)
@@ -268,6 +377,66 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             client.save(update_fields=["name", "updated_at"])
 
         return Response(ClientSerializer(client).data)
+
+    def _get_merge_session(self, user, session_id) -> ClientMergeSession:
+        session = ClientMergeSession.objects.filter(id=session_id).first()
+        if not session:
+            raise ValidationError({"detail": "Сессия объединения не найдена."})
+        if self._is_admin(user):
+            return session
+        if (
+            user
+            and user.is_authenticated
+            and session.requested_by_id
+            and session.requested_by_id == user.id
+        ):
+            return session
+        raise PermissionDenied("Сессия объединения недоступна.")
+
+    def _write_merge_audit(
+        self,
+        *,
+        actor,
+        target_client: Client,
+        source_clients: list[Client],
+        merge_result: dict,
+        preview_snapshot_id: str,
+        field_overrides: dict,
+        include_deleted: bool,
+    ) -> None:
+        source_names = sorted({client.name for client in source_clients if client.name})
+        AuditLog.objects.create(
+            actor=actor,
+            object_type="client",
+            object_id=str(target_client.id),
+            object_name=target_client.name,
+            action="merge",
+            description=(
+                f"Объединены клиенты ({', '.join(source_names)}) в '{target_client.name}'"
+                if source_names
+                else f"Объединены клиенты в '{target_client.name}'"
+            ),
+            new_value={
+                "merged_clients": merge_result["merged_client_ids"],
+                "moved_counts": merge_result["moved_counts"],
+                "preview_snapshot_id": preview_snapshot_id or None,
+                "field_overrides": field_overrides,
+                "include_deleted": include_deleted,
+            },
+        )
+
+    def _merge_response_payload(
+        self, target_client: Client, merge_result: dict
+    ) -> dict:
+        refreshed_target = Client.objects.filter(pk=target_client.pk).first()
+        response_target = refreshed_target or target_client
+        return {
+            "target_client": ClientSerializer(response_target).data,
+            "merged_client_ids": merge_result["merged_client_ids"],
+            "moved_counts": merge_result["moved_counts"],
+            "warnings": merge_result.get("warnings", []),
+            "details": merge_result.get("details", {}),
+        }
 
     def _client_relation_counts(self, client: Client) -> dict:
         return {

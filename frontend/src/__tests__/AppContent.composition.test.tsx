@@ -161,6 +161,7 @@ vi.mock('../hooks/appContent/useClientActions', () => ({
     clientMergeStep: 'select',
     clientMergeFieldOverrides: { name: '', phone: '', email: '', notes: '' },
     setClientMergeFieldOverrides: vi.fn(),
+    clientMergeSession: null,
     similarTargetClient: null,
     openClientModal: vi.fn(),
     closeClientModal: vi.fn(),
@@ -177,6 +178,7 @@ vi.mock('../hooks/appContent/useClientActions', () => ({
     closeMergeModal: vi.fn(),
     handleClientMergePreview: vi.fn(),
     handleMergeSubmit: vi.fn(),
+    handleClientMergeRetry: vi.fn(),
     handleMergeFromSimilar: vi.fn(),
   }),
 }));

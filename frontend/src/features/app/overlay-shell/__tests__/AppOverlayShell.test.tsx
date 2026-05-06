@@ -79,6 +79,7 @@ const baseProps = {
     updatedAt: '',
   },
   handleClientMergePreview: vi.fn().mockResolvedValue(undefined),
+  handleClientMergeRetry: vi.fn().mockResolvedValue(undefined),
   handleCreateTask: vi.fn().mockResolvedValue(undefined),
   handleDeleteClient: vi.fn().mockResolvedValue(undefined),
   handleMergeFromSimilar: vi.fn(),
@@ -142,6 +143,7 @@ const baseProps = {
     notes: '',
   },
   clientMergePreview: null,
+  clientMergeSession: null,
   clientMergeStep: 'select' as const,
 };
 

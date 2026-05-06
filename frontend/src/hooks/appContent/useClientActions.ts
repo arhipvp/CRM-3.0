@@ -1,17 +1,27 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   APIError,
   createClient,
   deleteClient,
+  finalizeClientMerge,
+  fetchClientMergeSession,
   fetchSimilarClients,
-  mergeClients,
   previewClientMerge,
+  retryClientMerge,
+  startClientMerge,
+  stepClientMerge,
   updateClient,
 } from '../../api';
 import type { ModalType } from '../../components/app/types';
 import type { NotificationContextType } from '../../contexts/NotificationTypes';
-import type { Client, ClientMergePreviewResponse, ClientSimilarityCandidate } from '../../types';
+import type {
+  Client,
+  ClientMergePreviewResponse,
+  ClientMergeResponse,
+  ClientMergeSessionStatus,
+  ClientSimilarityCandidate,
+} from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import type { useAppData } from '../useAppData';
 
@@ -42,6 +52,8 @@ const EMPTY_CLIENT_MERGE_FIELDS = {
   email: '',
   notes: '',
 };
+
+const CLIENT_MERGE_SESSION_STORAGE_KEY = 'crm3.clientMerge.activeSessionId';
 
 export const useClientActions = ({
   clients,
@@ -74,6 +86,9 @@ export const useClientActions = ({
   const [clientMergeFieldOverrides, setClientMergeFieldOverrides] = useState({
     ...EMPTY_CLIENT_MERGE_FIELDS,
   });
+  const [clientMergeSession, setClientMergeSession] = useState<ClientMergeSessionStatus | null>(
+    null,
+  );
 
   const openClientModal = useCallback(
     (afterModal: ModalType | null = null) => {
@@ -176,6 +191,7 @@ export const useClientActions = ({
       setClientMergePreview(null);
       setIsClientMergePreviewConfirmed(false);
       setClientMergeStep('select');
+      setClientMergeSession(null);
       setClientMergeFieldOverrides({
         name: client.name ?? '',
         phone: client.phone ?? '',
@@ -222,6 +238,7 @@ export const useClientActions = ({
     setClientMergePreview(null);
     setIsClientMergePreviewConfirmed(false);
     setClientMergeStep('select');
+    setClientMergeSession(null);
   }, []);
 
   const closeMergeModal = useCallback(() => {
@@ -233,6 +250,8 @@ export const useClientActions = ({
     setIsClientMergePreviewConfirmed(false);
     setClientMergeStep('select');
     setClientMergeFieldOverrides({ ...EMPTY_CLIENT_MERGE_FIELDS });
+    setClientMergeSession(null);
+    window.localStorage.removeItem(CLIENT_MERGE_SESSION_STORAGE_KEY);
   }, []);
 
   const handleClientMergePreview = useCallback(async () => {
@@ -274,38 +293,8 @@ export const useClientActions = ({
     }
   }, [mergeClientTargetId, mergeSources]);
 
-  const handleMergeSubmit = useCallback(async () => {
-    if (!mergeClientTargetId) {
-      return;
-    }
-    if (!mergeSources.length) {
-      setMergeError('Выберите клиентов для объединения.');
-      return;
-    }
-    if (!isClientMergePreviewConfirmed || !clientMergePreview) {
-      setMergeError('Сначала выполните предпросмотр объединения.');
-      return;
-    }
-    if (!clientMergeFieldOverrides.name.trim()) {
-      setMergeError('Укажите итоговое ФИО клиента.');
-      return;
-    }
-    setIsSyncing(true);
-    setIsMergingClients(true);
-    try {
-      const previewSnapshotId = String(clientMergePreview.previewSnapshotId ?? '');
-      const result = await mergeClients({
-        targetClientId: mergeClientTargetId,
-        sourceClientIds: mergeSources,
-        includeDeleted: true,
-        previewSnapshotId,
-        fieldOverrides: {
-          name: clientMergeFieldOverrides.name,
-          phone: clientMergeFieldOverrides.phone,
-          email: clientMergeFieldOverrides.email || null,
-          notes: clientMergeFieldOverrides.notes,
-        },
-      });
+  const applyClientMergeResult = useCallback(
+    (result: ClientMergeResponse) => {
       const mergedIds = new Set(result.mergedClientIds);
       updateAppData((prev) => ({
         clients: prev.clients
@@ -343,8 +332,129 @@ export const useClientActions = ({
       if (result.warnings?.length) {
         addNotification(result.warnings.join('\n'), 'warning', 8000);
       }
+      window.localStorage.removeItem(CLIENT_MERGE_SESSION_STORAGE_KEY);
       closeMergeModal();
       setError(null);
+    },
+    [addNotification, closeMergeModal, setError, updateAppData],
+  );
+
+  const continueClientMergeSession = useCallback(
+    async (initialSession: ClientMergeSessionStatus) => {
+      let session = initialSession;
+      setClientMergeSession(session);
+      setMergeError(null);
+
+      while (session.status === 'moving_drive') {
+        session = await stepClientMerge(session.id);
+        setClientMergeSession(session);
+      }
+
+      if (session.status === 'failed') {
+        const message =
+          session.lastError ||
+          (session.retryable
+            ? 'Google Drive временно не ответил. Нажмите «Повторить», чтобы продолжить.'
+            : 'Не удалось перенести документы Google Drive.');
+        setMergeError(message);
+        return;
+      }
+
+      if (session.status === 'ready_to_finalize') {
+        setMergeError(null);
+        const result = await finalizeClientMerge(session.id);
+        applyClientMergeResult(result);
+      }
+    },
+    [applyClientMergeResult],
+  );
+
+  useEffect(() => {
+    if (!mergeClientTargetId || clientMergeSession) {
+      return;
+    }
+    const sessionId = window.localStorage.getItem(CLIENT_MERGE_SESSION_STORAGE_KEY);
+    if (!sessionId) {
+      return;
+    }
+
+    let isActive = true;
+    void (async () => {
+      try {
+        const session = await fetchClientMergeSession(sessionId);
+        if (!isActive) {
+          return;
+        }
+        if (
+          session.targetClientId !== mergeClientTargetId ||
+          session.status === 'succeeded' ||
+          session.status === 'canceled'
+        ) {
+          window.localStorage.removeItem(CLIENT_MERGE_SESSION_STORAGE_KEY);
+          return;
+        }
+        setMergeSources(session.sourceClientIds);
+        setClientMergeStep('preview');
+        setClientMergeSession(session);
+        if (session.status === 'failed') {
+          setMergeError(
+            session.lastError ||
+              'Перенос документов остановлен. Нажмите «Повторить», чтобы продолжить.',
+          );
+          return;
+        }
+        setIsSyncing(true);
+        setIsMergingClients(true);
+        await continueClientMergeSession(session);
+      } catch {
+        window.localStorage.removeItem(CLIENT_MERGE_SESSION_STORAGE_KEY);
+      } finally {
+        if (isActive) {
+          setIsSyncing(false);
+          setIsMergingClients(false);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [clientMergeSession, continueClientMergeSession, mergeClientTargetId, setIsSyncing]);
+
+  const handleMergeSubmit = useCallback(async () => {
+    if (!mergeClientTargetId) {
+      return;
+    }
+    if (!mergeSources.length) {
+      setMergeError('Выберите клиентов для объединения.');
+      return;
+    }
+    if (!isClientMergePreviewConfirmed || !clientMergePreview) {
+      setMergeError('Сначала выполните предпросмотр объединения.');
+      return;
+    }
+    if (!clientMergeFieldOverrides.name.trim()) {
+      setMergeError('Укажите итоговое ФИО клиента.');
+      return;
+    }
+    setIsSyncing(true);
+    setIsMergingClients(true);
+    try {
+      const previewSnapshotId = String(clientMergePreview.previewSnapshotId ?? '');
+      const session = await startClientMerge({
+        targetClientId: mergeClientTargetId,
+        sourceClientIds: mergeSources,
+        includeDeleted: true,
+        previewSnapshotId,
+        fieldOverrides: {
+          name: clientMergeFieldOverrides.name,
+          phone: clientMergeFieldOverrides.phone,
+          email: clientMergeFieldOverrides.email || null,
+          notes: clientMergeFieldOverrides.notes,
+        },
+      });
+      window.localStorage.setItem(CLIENT_MERGE_SESSION_STORAGE_KEY, session.id);
+      await continueClientMergeSession(session);
     } catch (err) {
       const message =
         err instanceof APIError
@@ -366,12 +476,41 @@ export const useClientActions = ({
     clientMergeFieldOverrides.phone,
     clientMergePreview,
     closeMergeModal,
+    continueClientMergeSession,
     isClientMergePreviewConfirmed,
     mergeClientTargetId,
     mergeSources,
     setIsSyncing,
     setError,
-    updateAppData,
+  ]);
+
+  const handleClientMergeRetry = useCallback(async () => {
+    if (!clientMergeSession?.id || !clientMergeSession.retryable) {
+      return;
+    }
+    setIsSyncing(true);
+    setIsMergingClients(true);
+    try {
+      const session = await retryClientMerge(clientMergeSession.id);
+      await continueClientMergeSession(session);
+    } catch (err) {
+      const message =
+        err instanceof APIError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Ошибка при продолжении объединения клиентов';
+      setMergeError(message);
+      throw err;
+    } finally {
+      setIsSyncing(false);
+      setIsMergingClients(false);
+    }
+  }, [
+    clientMergeSession?.id,
+    clientMergeSession?.retryable,
+    continueClientMergeSession,
+    setIsSyncing,
   ]);
 
   const mergeCandidates = useMemo(() => {
@@ -420,6 +559,7 @@ export const useClientActions = ({
       setClientMergePreview(null);
       setIsClientMergePreviewConfirmed(false);
       setClientMergeStep('preview');
+      setClientMergeSession(null);
       setClientMergeFieldOverrides({
         name: similarTargetClient.name ?? '',
         phone: similarTargetClient.phone ?? '',
@@ -481,6 +621,7 @@ export const useClientActions = ({
     clientMergeStep,
     clientMergeFieldOverrides,
     setClientMergeFieldOverrides,
+    clientMergeSession,
     similarTargetClient,
     openClientModal,
     closeClientModal,
@@ -497,6 +638,7 @@ export const useClientActions = ({
     closeMergeModal,
     handleClientMergePreview,
     handleMergeSubmit,
+    handleClientMergeRetry,
     handleMergeFromSimilar,
   };
 };

@@ -13,7 +13,9 @@ from apps.common.drive import (
     ensure_client_folder,
     ensure_deal_folder,
     is_drive_oauth_configured,
+    list_drive_folder_contents,
     move_drive_folder_contents,
+    move_drive_item_between_folders,
 )
 from apps.deals.models import Deal
 from apps.policies.models import Policy
@@ -22,7 +24,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import Client
+from .models import Client, ClientMergeSession
 
 logger = logging.getLogger(__name__)
 _DRIVE_RETRY_ATTEMPTS = 3
@@ -395,7 +397,7 @@ class ClientMergeService:
                 return
             raise
 
-    def merge(self) -> dict:
+    def merge(self, *, sync_drive: bool = True) -> dict:
         self._apply_field_overrides()
 
         deal_manager = self._deal_manager()
@@ -410,8 +412,9 @@ class ClientMergeService:
                 str(item) for item in source_deal_ids
             ]
 
-        # Drive-first: если здесь упадём, в БД изменений не будет.
-        self._prepare_drive_folders(source_deal_ids_by_client)
+        if sync_drive:
+            # Drive-first: если здесь упадём, в БД изменений не будет.
+            self._prepare_drive_folders(source_deal_ids_by_client)
 
         merged_ids: list[str] = []
         with transaction.atomic():
@@ -472,6 +475,251 @@ class ClientMergeService:
                 lambda deal=deal: ensure_deal_folder(deal),
                 description=f"ensure deal folder for {deal.pk}",
             )
+
+
+class ClientMergeSessionService:
+    DRIVE_SKIPPED_WARNING = "Google Drive не настроен. Объединение будет выполнено без переноса папок Drive."
+    DRIVE_STEP_ERROR = (
+        "Google Drive не ответил. Документы перенесены частично: "
+        "{moved} из {total}. Можно повторить с текущего места."
+    )
+
+    def __init__(self, session: ClientMergeSession):
+        self.session = session
+
+    @classmethod
+    def start(
+        cls,
+        *,
+        target_client: Client,
+        source_clients: Sequence[Client],
+        actor: User | None,
+        include_deleted: bool,
+        field_overrides: dict,
+        preview_snapshot_id: str = "",
+    ) -> ClientMergeSession:
+        session = ClientMergeSession(
+            target_client_id=target_client.id,
+            source_client_ids=[str(client.id) for client in source_clients],
+            include_deleted=include_deleted,
+            preview_snapshot_id=preview_snapshot_id,
+            field_overrides=field_overrides,
+            requested_by=actor,
+            started_at=timezone.now(),
+        )
+
+        warnings: list[str] = []
+        drive_items: list[dict] = []
+        if not is_drive_oauth_configured():
+            warnings.append(cls.DRIVE_SKIPPED_WARNING)
+        else:
+            target_folder_id = _retry_drive_operation(
+                lambda: ensure_client_folder(target_client),
+                description=f"ensure client folder for merge session {target_client.pk}",
+            )
+            for source in source_clients:
+                if not source.drive_folder_id or not target_folder_id:
+                    continue
+                for item in list_drive_folder_contents(source.drive_folder_id):
+                    drive_items.append(
+                        {
+                            "id": item["id"],
+                            "name": item.get("name", ""),
+                            "source_client_id": str(source.id),
+                            "source_folder_id": source.drive_folder_id,
+                            "target_folder_id": target_folder_id,
+                            "status": "pending",
+                            "error": "",
+                        }
+                    )
+
+        session.drive_items = drive_items
+        session.total_items = len(drive_items)
+        session.moved_items = 0
+        session.warnings = warnings
+        session.status = (
+            ClientMergeSession.Status.READY_TO_FINALIZE
+            if not drive_items
+            else ClientMergeSession.Status.MOVING_DRIVE
+        )
+        session.append_log(
+            f"Merge session started. Drive items: {session.total_items}.",
+            level="info",
+        )
+        session.save()
+        return session
+
+    def serialize(self) -> dict:
+        return {
+            "id": str(self.session.id),
+            "status": self.session.status,
+            "target_client_id": str(self.session.target_client_id),
+            "source_client_ids": [
+                str(value) for value in self.session.source_client_ids
+            ],
+            "moved_items": self.session.moved_items,
+            "total_items": self.session.total_items,
+            "retryable": self.session.retryable,
+            "failed_item": self.session.failed_item or None,
+            "last_error": self.session.last_error,
+            "warnings": list(self.session.warnings or []),
+            "result": self.session.result or None,
+            "created_at": (
+                self.session.created_at.isoformat() if self.session.created_at else None
+            ),
+            "updated_at": (
+                self.session.updated_at.isoformat() if self.session.updated_at else None
+            ),
+        }
+
+    def _next_item_index(self) -> int | None:
+        for index, item in enumerate(self.session.drive_items or []):
+            if item.get("status") not in {"moved", "skipped"}:
+                return index
+        return None
+
+    def _mark_ready_if_done(self) -> None:
+        self.session.moved_items = sum(
+            1
+            for item in self.session.drive_items or []
+            if item.get("status") in {"moved", "skipped"}
+        )
+        if self.session.moved_items >= self.session.total_items:
+            self.session.status = ClientMergeSession.Status.READY_TO_FINALIZE
+            self.session.retryable = False
+            self.session.failed_item = {}
+            self.session.last_error = ""
+            self.session.append_log(
+                "Drive transfer is ready to finalize.", level="info"
+            )
+
+    def step(self) -> ClientMergeSession:
+        if (
+            self.session.status == ClientMergeSession.Status.FAILED
+            and self.session.retryable
+        ):
+            self.session.status = ClientMergeSession.Status.MOVING_DRIVE
+        if self.session.status != ClientMergeSession.Status.MOVING_DRIVE:
+            return self.session
+
+        item_index = self._next_item_index()
+        if item_index is None:
+            self._mark_ready_if_done()
+            self.session.save()
+            return self.session
+
+        items = list(self.session.drive_items or [])
+        item = dict(items[item_index])
+        try:
+            move_drive_item_between_folders(
+                str(item["id"]),
+                str(item["source_folder_id"]),
+                str(item["target_folder_id"]),
+            )
+        except DriveError as exc:
+            item["status"] = "failed"
+            item["error"] = str(exc)
+            items[item_index] = item
+            self.session.drive_items = items
+            self.session.status = ClientMergeSession.Status.FAILED
+            self.session.retryable = True
+            self.session.failed_item = item
+            self.session.last_error = self.DRIVE_STEP_ERROR.format(
+                moved=self.session.moved_items,
+                total=self.session.total_items,
+            )
+            self.session.append_log(self.session.last_error, level="warning")
+            self.session.save()
+            return self.session
+
+        item["status"] = "moved"
+        item["error"] = ""
+        items[item_index] = item
+        self.session.drive_items = items
+        self.session.retryable = False
+        self.session.failed_item = {}
+        self.session.last_error = ""
+        self._mark_ready_if_done()
+        self.session.save()
+        return self.session
+
+    def retry(self) -> ClientMergeSession:
+        if self.session.status != ClientMergeSession.Status.FAILED:
+            return self.session
+        if not self.session.retryable:
+            return self.session
+        items = []
+        failed_id = str((self.session.failed_item or {}).get("id") or "")
+        for item in self.session.drive_items or []:
+            current = dict(item)
+            if failed_id and str(current.get("id")) == failed_id:
+                current["status"] = "pending"
+                current["error"] = ""
+            items.append(current)
+        self.session.drive_items = items
+        self.session.status = ClientMergeSession.Status.MOVING_DRIVE
+        self.session.retryable = False
+        self.session.failed_item = {}
+        self.session.last_error = ""
+        self.session.append_log("Retrying failed Drive item.", level="info")
+        self.session.save()
+        return self.step()
+
+    def finalize(
+        self,
+        *,
+        target_client: Client,
+        source_clients: Sequence[Client],
+        actor: User | None,
+    ) -> dict:
+        if self.session.status != ClientMergeSession.Status.READY_TO_FINALIZE:
+            raise ValueError("Drive перенос ещё не завершён.")
+        merge_result = ClientMergeService(
+            target_client=target_client,
+            source_clients=source_clients,
+            actor=actor,
+            include_deleted=self.session.include_deleted,
+            field_overrides=self.session.field_overrides or {},
+        ).merge(sync_drive=False)
+
+        warnings = list(self.session.warnings or [])
+        for source in source_clients:
+            if not source.drive_folder_id:
+                continue
+            try:
+                delete_drive_folder(source.drive_folder_id)
+            except DriveError as exc:
+                warning = (
+                    "Содержимое Drive перенесено, но исходную папку "
+                    "не удалось удалить из-за прав доступа."
+                )
+                logger.warning(
+                    "Unable to delete source client Drive folder after stepped merge. "
+                    "source_client_id=%s source_folder_id=%s error=%s",
+                    source.pk,
+                    source.drive_folder_id,
+                    exc,
+                )
+                if warning not in warnings:
+                    warnings.append(warning)
+
+        merge_result["warnings"] = [*merge_result.get("warnings", []), *warnings]
+        self.session.status = ClientMergeSession.Status.SUCCEEDED
+        self.session.retryable = False
+        self.session.failed_item = {}
+        self.session.last_error = ""
+        self.session.warnings = merge_result.get("warnings", [])
+        self.session.result = {
+            "target_client_id": str(merge_result["target_client"].id),
+            "merged_client_ids": merge_result["merged_client_ids"],
+            "moved_counts": merge_result["moved_counts"],
+            "warnings": merge_result.get("warnings", []),
+            "details": merge_result.get("details", {}),
+        }
+        self.session.finished_at = timezone.now()
+        self.session.append_log("Merge finalized successfully.", level="info")
+        self.session.save()
+        return merge_result
 
 
 class ClientSimilarityService:
