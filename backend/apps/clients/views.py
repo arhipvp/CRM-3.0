@@ -6,6 +6,7 @@ from apps.clients.services import (
 from apps.common.drive import DriveError, ensure_client_folder
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
+from apps.deals.models import Deal
 from apps.users.models import AuditLog
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import status, viewsets
@@ -22,6 +23,11 @@ from .serializers import (
     ClientMergeSerializer,
     ClientSerializer,
     ClientSimilarSerializer,
+)
+
+CLIENT_MERGE_PERMISSION_MESSAGE = (
+    "Только администратор, владелец клиента или продавец связанной сделки "
+    "может объединять клиентов."
 )
 
 
@@ -92,10 +98,8 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         )
 
         for client in (target_client, *source_clients):
-            if not self._can_modify(request.user, client):
-                raise PermissionDenied(
-                    "Только администратор или владелец может объединять клиентов."
-                )
+            if not self._can_merge_client(request.user, client):
+                raise PermissionDenied(CLIENT_MERGE_PERMISSION_MESSAGE)
 
         actor = request.user if request.user and request.user.is_authenticated else None
         include_deleted = serializer.validated_data.get("include_deleted", True)
@@ -164,10 +168,8 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         )
 
         for client in (target_client, *source_clients):
-            if not self._can_modify(request.user, client):
-                raise PermissionDenied(
-                    "Только администратор или владелец может объединять клиентов."
-                )
+            if not self._can_merge_client(request.user, client):
+                raise PermissionDenied(CLIENT_MERGE_PERMISSION_MESSAGE)
 
         include_deleted = serializer.validated_data.get("include_deleted", True)
         preview = ClientMergeService(
@@ -273,6 +275,13 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "policies": client.policies.count(),
             "insured_policies": client.insured_policies.count(),
         }
+
+    def _can_merge_client(self, user, client: Client) -> bool:
+        if self._can_modify(user, client):
+            return True
+        if not user or not user.is_authenticated:
+            return False
+        return Deal.objects.alive().filter(client=client, seller=user).exists()
 
     def _resolve_merge_clients(self, data):
         target_id = str(data["target_client_id"])

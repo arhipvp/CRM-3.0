@@ -433,6 +433,163 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 403)
+        self.assertIn("продавец связанной сделки", str(response.data["detail"]))
+
+    def test_merge_preview_allows_seller_of_related_deals_without_client_ownership(
+        self,
+    ):
+        seller = User.objects.create_user(username="deal-seller", password="pass")
+        creator = User.objects.create_user(username="client-creator", password="pass")
+        target = Client.objects.create(name="Музыченко Григорий", created_by=creator)
+        source = Client.objects.create(
+            name="Музыченко Григорий Вадимович", created_by=creator
+        )
+        Deal.objects.create(
+            title="Target deal",
+            client=target,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+        Deal.objects.create(
+            title="Source deal",
+            client=source,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.post(
+            "/api/v1/clients/merge/preview/",
+            {
+                "target_client_id": str(target.id),
+                "source_client_ids": [str(source.id)],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["moved_counts"]["deals"], 1)
+
+    def test_merge_allows_seller_of_related_deals_without_client_ownership(self):
+        seller = User.objects.create_user(username="deal-seller-merge", password="pass")
+        creator = User.objects.create_user(username="client-creator-merge")
+        target = Client.objects.create(name="Музыченко Григорий", created_by=creator)
+        source = Client.objects.create(
+            name="Музыченко Григорий Вадимович", created_by=creator
+        )
+        Deal.objects.create(
+            title="Target deal",
+            client=target,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+        source_deal = Deal.objects.create(
+            title="Source deal",
+            client=source,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+        source_policy = Policy.objects.create(
+            number="PL-SELLER-001",
+            deal=source_deal,
+            client=source,
+            insured_client=source,
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.post(
+            "/api/v1/clients/merge/",
+            {
+                "target_client_id": str(target.id),
+                "source_client_ids": [str(source.id)],
+                "include_deleted": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["merged_client_ids"], [str(source.id)])
+        source.refresh_from_db()
+        source_deal.refresh_from_db()
+        source_policy.refresh_from_db()
+        self.assertIsNotNone(source.deleted_at)
+        self.assertEqual(source_deal.client_id, target.id)
+        self.assertEqual(source_policy.client_id, target.id)
+        self.assertEqual(source_policy.insured_client_id, target.id)
+
+    def test_merge_preview_requires_seller_access_for_each_client(self):
+        seller = User.objects.create_user(
+            username="target-only-seller", password="pass"
+        )
+        creator = User.objects.create_user(username="target-only-creator")
+        target = Client.objects.create(name="Target", created_by=creator)
+        source = Client.objects.create(name="Source", created_by=creator)
+        Deal.objects.create(
+            title="Target deal",
+            client=target,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.post(
+            "/api/v1/clients/merge/preview/",
+            {
+                "target_client_id": str(target.id),
+                "source_client_ids": [str(source.id)],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("продавец связанной сделки", str(response.data["detail"]))
+
+    def test_merge_preview_allows_superuser(self):
+        admin = User.objects.create_superuser(
+            username="merge-admin",
+            email="merge-admin@example.com",
+            password="pass",
+        )
+        target = Client.objects.create(name="Admin target", created_by=self.other)
+        source = Client.objects.create(name="Admin source", created_by=self.other)
+
+        self.authenticate(admin)
+        response = self.api_client.post(
+            "/api/v1/clients/merge/preview/",
+            {
+                "target_client_id": str(target.id),
+                "source_client_ids": [str(source.id)],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_normalize_name_still_requires_client_owner_or_admin(self):
+        seller = User.objects.create_user(username="normalize-seller", password="pass")
+        creator = User.objects.create_user(username="normalize-creator")
+        client = Client.objects.create(name="МУЗЫЧЕНКО ГРИГОРИЙ", created_by=creator)
+        Deal.objects.create(
+            title="Seller deal",
+            client=client,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.post(
+            f"/api/v1/clients/{client.id}/normalize-name/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     def test_create_client_persists_counterparty_flag(self):
         response = self.api_client.post(
