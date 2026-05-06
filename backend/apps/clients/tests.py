@@ -438,8 +438,12 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
     def test_merge_preview_allows_seller_of_related_deals_without_client_ownership(
         self,
     ):
-        seller = User.objects.create_user(username="deal-seller", password="pass")
-        creator = User.objects.create_user(username="client-creator", password="pass")
+        seller = User.objects.create_user(
+            username="deal-seller", password="pass"  # pragma: allowlist secret
+        )
+        creator = User.objects.create_user(
+            username="client-creator", password="pass"  # pragma: allowlist secret
+        )
         target = Client.objects.create(name="Музыченко Григорий", created_by=creator)
         source = Client.objects.create(
             name="Музыченко Григорий Вадимович", created_by=creator
@@ -473,7 +477,10 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         self.assertEqual(response.data["moved_counts"]["deals"], 1)
 
     def test_merge_allows_seller_of_related_deals_without_client_ownership(self):
-        seller = User.objects.create_user(username="deal-seller-merge", password="pass")
+        seller = User.objects.create_user(
+            username="deal-seller-merge",
+            password="pass",  # pragma: allowlist secret
+        )
         creator = User.objects.create_user(username="client-creator-merge")
         target = Client.objects.create(name="Музыченко Григорий", created_by=creator)
         source = Client.objects.create(
@@ -523,7 +530,8 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
 
     def test_merge_preview_requires_seller_access_for_each_client(self):
         seller = User.objects.create_user(
-            username="target-only-seller", password="pass"
+            username="target-only-seller",
+            password="pass",  # pragma: allowlist secret
         )
         creator = User.objects.create_user(username="target-only-creator")
         target = Client.objects.create(name="Target", created_by=creator)
@@ -553,7 +561,7 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         admin = User.objects.create_superuser(
             username="merge-admin",
             email="merge-admin@example.com",
-            password="pass",
+            password="pass",  # pragma: allowlist secret
         )
         target = Client.objects.create(name="Admin target", created_by=self.other)
         source = Client.objects.create(name="Admin source", created_by=self.other)
@@ -571,7 +579,9 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_normalize_name_still_requires_client_owner_or_admin(self):
-        seller = User.objects.create_user(username="normalize-seller", password="pass")
+        seller = User.objects.create_user(
+            username="normalize-seller", password="pass"  # pragma: allowlist secret
+        )
         creator = User.objects.create_user(username="normalize-creator")
         client = Client.objects.create(name="МУЗЫЧЕНКО ГРИГОРИЙ", created_by=creator)
         Deal.objects.create(
