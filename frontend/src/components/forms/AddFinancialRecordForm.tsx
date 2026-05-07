@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FinancialRecord } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { DateInput } from '../common/forms/DateInput';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -170,8 +171,7 @@ export function AddFinancialRecordForm({
         />
       </FormField>
       <FormField label="Дата" htmlFor="date">
-        <input
-          type="date"
+        <DateInput
           id="date"
           name="date"
           value={formData.date || ''}

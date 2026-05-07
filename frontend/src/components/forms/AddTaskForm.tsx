@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Task, TaskPriority, TaskStatus, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { DateInput } from '../common/forms/DateInput';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -155,8 +156,7 @@ export function AddTaskForm({
         </FormField>
 
         <FormField label="Срок выполнения" htmlFor="dueAt">
-          <input
-            type="date"
+          <DateInput
             id="dueAt"
             name="dueAt"
             value={formData.dueAt || ''}

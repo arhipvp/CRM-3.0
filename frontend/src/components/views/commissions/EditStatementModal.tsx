@@ -2,6 +2,7 @@ import React from 'react';
 
 import type { Statement } from '../../../types';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
+import { DateInput } from '../../common/forms/DateInput';
 import { FormActions } from '../../common/forms/FormActions';
 import { FormField } from '../../common/forms/FormField';
 import { FormSection } from '../../common/forms/FormSection';
@@ -87,9 +88,8 @@ export const EditStatementModal: React.FC<EditStatementModalProps> = ({
             htmlFor="editStatementPaidAt"
             hint="Ведомость считается выплаченной, когда указана дата выплаты. После этого редактирование и удаление будут недоступны, а всем записям будет проставлена дата."
           >
-            <input
+            <DateInput
               id="editStatementPaidAt"
-              type="date"
               value={form.paidAt}
               onChange={(event) =>
                 onFormChange((prev) => ({ ...prev, paidAt: event.target.value }))

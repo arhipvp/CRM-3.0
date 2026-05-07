@@ -1,6 +1,7 @@
 import React, { useId } from 'react';
 
 import { BTN_PRIMARY, BTN_SECONDARY } from '../buttonStyles';
+import { DateInput } from '../forms/DateInput';
 import { FormActions } from '../forms/FormActions';
 import { FormError } from '../forms/FormError';
 import { FormField } from '../forms/FormField';
@@ -60,10 +61,9 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
         <FormError message={error} />
         <FormField label={label} htmlFor={fieldId} required={required}>
           {inputType === 'date' ? (
-            <input
+            <DateInput
               id={fieldId}
               aria-label={label}
-              type="date"
               value={value}
               onChange={(event) => onChange(event.target.value)}
               className="field field-input"

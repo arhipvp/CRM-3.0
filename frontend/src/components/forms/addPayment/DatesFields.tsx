@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { DateInput } from '../../common/forms/DateInput';
+
 interface DatesFieldsProps {
   scheduledDate: string | null | undefined;
   actualDate: string | null | undefined;
@@ -18,8 +20,7 @@ export const DatesFields: React.FC<DatesFieldsProps> = ({
       <label htmlFor="scheduledDate" className="app-label">
         Плановая дата
       </label>
-      <input
-        type="date"
+      <DateInput
         id="scheduledDate"
         name="scheduledDate"
         value={scheduledDate || ''}
@@ -32,8 +33,7 @@ export const DatesFields: React.FC<DatesFieldsProps> = ({
       <label htmlFor="actualDate" className="app-label">
         Фактическая дата
       </label>
-      <input
-        type="date"
+      <DateInput
         id="actualDate"
         name="actualDate"
         value={actualDate || ''}

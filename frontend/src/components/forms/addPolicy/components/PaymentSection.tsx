@@ -1,6 +1,7 @@
 import React from 'react';
 import { FinancialRecordInputs } from './FinancialRecordInputs';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
+import { DateInput } from '../../../common/forms/DateInput';
 import { LINK_ACTION_XS } from '../../../common/uiClassNames';
 import type { PaymentIssue } from '../paymentIssues';
 
@@ -168,8 +169,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                   Ключевая
                 </span>
               </div>
-              <input
-                type="date"
+              <DateInput
                 value={payment.scheduledDate || ''}
                 onChange={(e) => onFieldChange(paymentIndex, 'scheduledDate', e.target.value)}
                 data-payment-field="scheduled-date"
@@ -188,8 +188,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                 </label>
                 <p className="mt-1 text-[11px] text-sky-700">Когда платёж реально поступил</p>
               </div>
-              <input
-                type="date"
+              <DateInput
                 value={payment.actualDate || ''}
                 onChange={(e) => onFieldChange(paymentIndex, 'actualDate', e.target.value)}
                 data-payment-field="actual-date"

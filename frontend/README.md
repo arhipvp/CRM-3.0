@@ -53,6 +53,7 @@ npm run test         # Vitest с Testing Library и setupTests
 - Prompt-потоки: вместо `window.prompt` используйте `src/components/common/modal/PromptDialog.tsx`.
 - Малые action-кнопки: используйте константы из `src/components/common/buttonStyles.ts` (`BTN_SM_PRIMARY`, `BTN_SM_SECONDARY`, `BTN_SM_DANGER`, `BTN_SM_QUIET`, а также `BTN_OUTLINE`/`BTN_SUCCESS`).
 - Form input классы: используйте `FORM_INPUT_DISABLED` и `FORM_TEXTAREA_DISABLED` из `src/components/common/forms/formClassNames.ts`.
+- Date-поля: используйте `src/components/common/forms/DateInput.tsx`, чтобы вставка дат из буфера работала одинаково во всех формах.
 - Частые UI-классы: используйте `src/components/common/uiClassNames.ts` (`LINK_ACTION_XS`, `PANEL_MUTED_TEXT`, `STATUS_*`) вместо локальных строковых дублей.
 - Статус/ошибки: используйте `src/components/common/InlineAlert.tsx` вместо ручных `app-alert app-alert-*`.
 - Формы и таблицы: опирайтесь на примитивы из `src/components/common/forms/*` и `src/components/common/table/*` (`DataTableShell`, `EmptyTableState`, `DriveFilesTable`) вместо локальных JSX-паттернов.

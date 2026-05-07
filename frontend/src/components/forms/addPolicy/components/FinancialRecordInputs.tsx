@@ -1,4 +1,5 @@
 import React from 'react';
+import { DateInput } from '../../../common/forms/DateInput';
 import type { FinancialRecordDraft } from '../types';
 
 interface FinancialRecordInputsProps {
@@ -66,8 +67,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
               Фактическая дата
             </label>
             <p className="mt-1 text-[11px] text-sky-700">Дата поступления или списания</p>
-            <input
-              type="date"
+            <DateInput
               value={record.date || ''}
               onChange={(e) =>
                 onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)

@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { DateInput } from '../../../common/forms/DateInput';
 import { PaymentSection } from './PaymentSection';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
 import type { PaymentDraftOrderEntry } from '../paymentDraftOrdering';
@@ -138,8 +139,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className="app-label">Дата начала</label>
-          <input
-            type="date"
+          <DateInput
             value={startDate}
             onChange={(event) => onStartDateChange(event.target.value)}
             className="field field-input mt-2"
@@ -147,8 +147,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
         </div>
         <div>
           <label className="app-label">Дата окончания</label>
-          <input
-            type="date"
+          <DateInput
             value={endDate}
             onChange={(event) => onEndDateChange(event.target.value)}
             className="field field-input mt-2"

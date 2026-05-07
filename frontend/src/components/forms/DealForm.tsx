@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Client, User } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { getUserColor } from '../../utils/userColor';
+import { DateInput } from '../common/forms/DateInput';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -557,8 +558,7 @@ export const DealForm: React.FC<DealFormProps> = ({
 
       {showNextContactField && (
         <FormField label={nextContactLabel}>
-          <input
-            type="date"
+          <DateInput
             value={nextContactDate}
             onChange={(event) => setNextContactDate(event.target.value)}
             className="field field-input"
@@ -580,8 +580,7 @@ export const DealForm: React.FC<DealFormProps> = ({
       )}
 
       <FormField label={expectedCloseLabel ?? 'Крайний срок'} required={expectedCloseRequired}>
-        <input
-          type="date"
+        <DateInput
           value={expectedClose}
           onChange={(event) => setExpectedClose(event.target.value)}
           className="field field-input"

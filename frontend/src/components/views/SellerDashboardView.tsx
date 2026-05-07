@@ -6,6 +6,7 @@ import type {
 } from '../../types';
 import { formatCurrencyRu, formatDateRu, RU_LOCALE } from '../../utils/formatting';
 import { BTN_SM_PRIMARY } from '../common/buttonStyles';
+import { DateInput } from '../common/forms/DateInput';
 import {
   useSellerDashboardController,
   type SellerDashboardFinancialSort,
@@ -933,9 +934,8 @@ export const SellerDashboardView: React.FC = () => {
             <label className="app-label" htmlFor="sellerDashboardStart">
               Дата начала
             </label>
-            <input
+            <DateInput
               id="sellerDashboardStart"
-              type="date"
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
               className="field field-input"
@@ -945,9 +945,8 @@ export const SellerDashboardView: React.FC = () => {
             <label className="app-label" htmlFor="sellerDashboardEnd">
               Дата окончания
             </label>
-            <input
+            <DateInput
               id="sellerDashboardEnd"
-              type="date"
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
               className="field field-input"

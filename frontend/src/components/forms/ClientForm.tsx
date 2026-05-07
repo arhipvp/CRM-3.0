@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BTN_PRIMARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { DateInput } from '../common/forms/DateInput';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -110,8 +111,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
       </FormField>
 
       <FormField label="Дата рождения">
-        <input
-          type="date"
+        <DateInput
           value={birthDate ?? ''}
           onChange={(event) => setBirthDate(event.target.value)}
           className="field field-input"

@@ -2,6 +2,7 @@ import React from 'react';
 import type { Deal } from '../../../types';
 import type { Client, DealSimilarityCandidate, User } from '../../../types';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
+import { DateInput } from '../../common/forms/DateInput';
 import { Modal } from '../../Modal';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
 import type { DealEvent } from './eventUtils';
@@ -75,8 +76,7 @@ export const DealDelayModal: React.FC<DealDelayModalProps> = ({
 
       <div className="space-y-2">
         <p className="app-label">Следующий контакт</p>
-        <input
-          type="date"
+        <DateInput
           value={nextContactValue ?? ''}
           onChange={(event) => onNextContactChange(event.target.value)}
           disabled={!selectedEvent || isSchedulingDelay || isLeadDaysLoading}

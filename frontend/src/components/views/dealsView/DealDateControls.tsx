@@ -1,5 +1,6 @@
 import React from 'react';
 import { BTN_SM_QUIET } from '../../common/buttonStyles';
+import { DateInput } from '../../common/forms/DateInput';
 
 interface QuickOption {
   label: string;
@@ -33,8 +34,7 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
     <div>
       <p className="text-xs uppercase tracking-wide text-slate-400">Следующий контакт</p>
       <div className="mt-1 max-w-[220px] flex flex-col gap-2">
-        <input
-          type="date"
+        <DateInput
           value={nextContactValue}
           onChange={(event) => onNextContactChange(event.target.value)}
           onBlur={() => onNextContactBlur(nextContactValue)}
@@ -58,8 +58,7 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
       <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
         Застраховать до
       </p>
-      <input
-        type="date"
+      <DateInput
         value={expectedCloseValue}
         onChange={(event) => onExpectedCloseChange(event.target.value)}
         onBlur={(event) => onExpectedCloseBlur(event.target.value)}
