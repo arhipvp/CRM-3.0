@@ -114,3 +114,82 @@ class DealUpdatePermissionsTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         deal_ids = self._extract_deal_ids(response)
         self.assertIn(str(self.deal.id), deal_ids)
+
+    def test_user_assigned_to_active_tasks_sees_related_deal(self):
+        observer = User.objects.create_user(username="active_task_observer")
+        self.token_for(observer)
+
+        for task_status in (
+            Task.TaskStatus.TODO,
+            Task.TaskStatus.IN_PROGRESS,
+            Task.TaskStatus.OVERDUE,
+        ):
+            Task.objects.with_deleted().filter(deal=self.deal).delete()
+            Task.objects.create(
+                title=f"Task {task_status}",
+                deal=self.deal,
+                assignee=observer,
+                status=task_status,
+            )
+
+            self.authenticate(observer)
+            response = self.api_client.get("/api/v1/deals/", format="json")
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertIn(str(self.deal.id), self._extract_deal_ids(response))
+
+    def test_user_assigned_only_to_completed_or_canceled_task_does_not_see_deal(self):
+        observer = User.objects.create_user(username="completed_task_observer")
+        self.token_for(observer)
+
+        for task_status in (Task.TaskStatus.DONE, Task.TaskStatus.CANCELED):
+            Task.objects.with_deleted().filter(deal=self.deal).delete()
+            Task.objects.create(
+                title=f"Task {task_status}",
+                deal=self.deal,
+                assignee=observer,
+                status=task_status,
+            )
+
+            self.authenticate(observer)
+            response = self.api_client.get("/api/v1/deals/", format="json")
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertNotIn(str(self.deal.id), self._extract_deal_ids(response))
+
+    def test_soft_deleted_task_assignment_does_not_show_deal(self):
+        observer = User.objects.create_user(username="deleted_task_observer")
+        self.token_for(observer)
+        task = Task.objects.create(
+            title="Deleted task",
+            deal=self.deal,
+            assignee=observer,
+            status=Task.TaskStatus.TODO,
+        )
+        task.delete()
+
+        self.authenticate(observer)
+        response = self.api_client.get("/api/v1/deals/", format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn(str(self.deal.id), self._extract_deal_ids(response))
+
+    def test_other_visibility_rules_still_show_deal_with_completed_task(self):
+        visible_user = User.objects.create_user(username="visible_completed_task")
+        self.token_for(visible_user)
+        self.deal.executor = self.other_user
+        self.deal.save(update_fields=["executor"])
+        self.deal.visible_users.add(visible_user)
+        Task.objects.create(
+            title="Completed task",
+            deal=self.deal,
+            assignee=visible_user,
+            status=Task.TaskStatus.DONE,
+        )
+
+        for user in (self.seller, self.other_user, visible_user):
+            self.authenticate(user)
+            response = self.api_client.get("/api/v1/deals/", format="json")
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertIn(str(self.deal.id), self._extract_deal_ids(response))

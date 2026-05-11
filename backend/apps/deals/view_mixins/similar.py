@@ -1,8 +1,7 @@
 from apps.deals.models import Deal
-from apps.deals.permissions import is_admin_user
+from apps.deals.permissions import build_deal_visibility_q, is_admin_user
 from apps.deals.serializers import DealSimilarSerializer
 from apps.deals.services import DealSimilarityService
-from django.db.models import Q
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -86,10 +85,4 @@ class DealSimilarityMixin:
         if is_admin_user(user):
             return queryset
 
-        access_filter = (
-            Q(seller=user)
-            | Q(executor=user)
-            | Q(tasks__assignee=user)
-            | Q(visible_users=user)
-        )
-        return queryset.filter(access_filter).distinct()
+        return queryset.filter(build_deal_visibility_q(user)).distinct()

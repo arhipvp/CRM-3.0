@@ -1,5 +1,12 @@
+from apps.tasks.models import Task
 from apps.users.models import UserRole
 from django.db.models import Q
+
+ACTIVE_TASK_VISIBILITY_STATUSES = (
+    Task.TaskStatus.TODO,
+    Task.TaskStatus.IN_PROGRESS,
+    Task.TaskStatus.OVERDUE,
+)
 
 
 def is_admin_user(user) -> bool:
@@ -31,11 +38,18 @@ def can_manage_deal_mailbox(user, deal) -> bool:
 def build_deal_visibility_q(user, *, prefix: str = "") -> Q:
     if not user or not user.is_authenticated:
         return Q(pk__in=[])
+    active_task_assignee_filter = Q(
+        **{
+            f"{prefix}tasks__assignee": user,
+            f"{prefix}tasks__deleted_at__isnull": True,
+            f"{prefix}tasks__status__in": ACTIVE_TASK_VISIBILITY_STATUSES,
+        }
+    )
     return (
         Q(**{f"{prefix}seller": user})
         | Q(**{f"{prefix}executor": user})
         | Q(**{f"{prefix}visible_users": user})
-        | Q(**{f"{prefix}tasks__assignee": user})
+        | active_task_assignee_filter
     )
 
 

@@ -6,6 +6,7 @@ from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.deals.services import DealSimilarityService
 from apps.finances.models import Payment
 from apps.policies.models import Policy
+from apps.tasks.models import Task
 from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework import status
@@ -221,6 +222,65 @@ class DealSimilarityAPITestCase(AuthenticatedAPITestCase):
         response = self._post(self.other, {"target_deal_id": str(self.target.id)})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("target_deal_id", response.data)
+
+    def test_similar_uses_only_active_task_assignments_for_visibility(self):
+        self.target.visible_users.add(self.other)
+        active_task_candidate = Deal.objects.create(
+            title="Ипотека active task",
+            description="Похожая сделка REF123456",
+            client=self.client_obj,
+            seller=self.seller,
+            status=Deal.DealStatus.OPEN,
+            stage_name="initial",
+        )
+        done_task_candidate = Deal.objects.create(
+            title="Ипотека done task",
+            description="Похожая сделка REF123456",
+            client=self.client_obj,
+            seller=self.seller,
+            status=Deal.DealStatus.OPEN,
+            stage_name="initial",
+        )
+        canceled_task_candidate = Deal.objects.create(
+            title="Ипотека canceled task",
+            description="Похожая сделка REF123456",
+            client=self.client_obj,
+            seller=self.seller,
+            status=Deal.DealStatus.OPEN,
+            stage_name="initial",
+        )
+        Task.objects.create(
+            title="Active",
+            deal=active_task_candidate,
+            assignee=self.other,
+            status=Task.TaskStatus.IN_PROGRESS,
+        )
+        Task.objects.create(
+            title="Done",
+            deal=done_task_candidate,
+            assignee=self.other,
+            status=Task.TaskStatus.DONE,
+        )
+        Task.objects.create(
+            title="Canceled",
+            deal=canceled_task_candidate,
+            assignee=self.other,
+            status=Task.TaskStatus.CANCELED,
+        )
+
+        response = self._post(
+            self.other,
+            {
+                "target_deal_id": str(self.target.id),
+                "limit": 20,
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        candidate_ids = {item["deal"]["id"] for item in response.data["candidates"]}
+        self.assertIn(str(active_task_candidate.id), candidate_ids)
+        self.assertNotIn(str(done_task_candidate.id), candidate_ids)
+        self.assertNotIn(str(canceled_task_candidate.id), candidate_ids)
 
     def test_empty_candidates_returns_valid_meta(self):
         unique_client = Client.objects.create(name="Unique")

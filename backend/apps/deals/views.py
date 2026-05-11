@@ -199,13 +199,7 @@ class DealViewSet(
         ).exclude(status__in=CLOSED_STATUSES)
 
         if user and user.is_authenticated and not is_admin_user(user):
-            access_filter = (
-                Q(seller=user)
-                | Q(executor=user)
-                | Q(tasks__assignee=user)
-                | Q(visible_users=user)
-            )
-            queryset = queryset.filter(access_filter)
+            queryset = queryset.filter(build_deal_visibility_q(user))
 
         return (
             queryset.values("client_id")
