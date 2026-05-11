@@ -46,6 +46,7 @@ type AppOverlayShellProps = {
   handleCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   handleDeleteClient: () => Promise<void>;
   handleClientMergeRetry: () => Promise<void>;
+  handleExcludeClientSimilarity: (candidateClientId: string) => void | Promise<void>;
   handleMergeFromSimilar: (sourceClientId: string) => void | Promise<void>;
   handleMergeSubmit: () => Promise<void>;
   handleUpdateClient: (values: {
@@ -109,6 +110,7 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
   handleClientMergeRetry,
   handleCreateTask,
   handleDeleteClient,
+  handleExcludeClientSimilarity,
   handleMergeFromSimilar,
   handleMergeSubmit,
   handleUpdateClient,
@@ -217,6 +219,7 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
         isLoading={isSimilarClientsLoading}
         error={similarClientsError}
         onClose={closeSimilarClientsModal}
+        onExclude={handleExcludeClientSimilarity}
         onMerge={handleMergeFromSimilar}
       />
       {mergeTargetClient && (

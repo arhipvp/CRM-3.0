@@ -35,6 +35,7 @@ const candidate: ClientSimilarityCandidate = {
 describe('SimilarClientsModal', () => {
   it('renders candidates with reasons and handles merge action', () => {
     const onMerge = vi.fn();
+    const onExclude = vi.fn();
     render(
       <SimilarClientsModal
         isOpen
@@ -44,11 +45,14 @@ describe('SimilarClientsModal', () => {
         error={null}
         onClose={() => undefined}
         onMerge={onMerge}
+        onExclude={onExclude}
       />,
     );
 
     expect(screen.getByText(/Совпадает телефон/)).toBeInTheDocument();
     expect(screen.getByText(/Score 85/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Это разные' }));
+    expect(onExclude).toHaveBeenCalledWith('candidate-1');
     fireEvent.click(screen.getByRole('button', { name: 'Объединить' }));
     expect(onMerge).toHaveBeenCalledWith('candidate-1');
   });

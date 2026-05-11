@@ -118,6 +118,22 @@ class ClientSimilarSerializer(serializers.Serializer):
     )
 
 
+class ClientSimilarityExclusionSerializer(serializers.Serializer):
+    target_client_id = serializers.UUIDField(
+        help_text="ID клиента, для которого скрывается ложный дубль."
+    )
+    candidate_client_id = serializers.UUIDField(
+        help_text="ID кандидата, который точно является другим клиентом."
+    )
+
+    def validate(self, attrs):
+        if attrs["target_client_id"] == attrs["candidate_client_id"]:
+            raise serializers.ValidationError(
+                "Клиент не может быть отмечен как отличающийся от самого себя."
+            )
+        return attrs
+
+
 class ClientDuplicateHintsSerializer(serializers.Serializer):
     client_ids = serializers.ListField(
         child=serializers.UUIDField(),

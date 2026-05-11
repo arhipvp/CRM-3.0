@@ -179,6 +179,7 @@ vi.mock('../hooks/appContent/useClientActions', () => ({
     handleClientMergePreview: vi.fn(),
     handleMergeSubmit: vi.fn(),
     handleClientMergeRetry: vi.fn(),
+    handleExcludeClientSimilarity: vi.fn(),
     handleMergeFromSimilar: vi.fn(),
   }),
 }));

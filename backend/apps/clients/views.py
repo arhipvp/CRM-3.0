@@ -17,12 +17,13 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from .filters import ClientFilterSet
-from .models import Client, ClientMergeSession
+from .models import Client, ClientMergeSession, ClientSimilarityExclusion
 from .serializers import (
     ClientDuplicateHintsSerializer,
     ClientMergePreviewSerializer,
     ClientMergeSerializer,
     ClientSerializer,
+    ClientSimilarityExclusionSerializer,
     ClientSimilarSerializer,
 )
 
@@ -353,6 +354,56 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             queryset=queryset,
         )
         return Response({"results": hints})
+
+    @action(detail=False, methods=["post"], url_path="similarity-exclusions")
+    def similarity_exclusions(self, request):
+        serializer = ClientSimilarityExclusionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target_client_id = str(serializer.validated_data["target_client_id"])
+        candidate_client_id = str(serializer.validated_data["candidate_client_id"])
+
+        queryset = self.get_queryset()
+        clients = list(queryset.filter(id__in=[target_client_id, candidate_client_id]))
+        clients_by_id = {str(client.id): client for client in clients}
+        missing = [
+            client_id
+            for client_id in [target_client_id, candidate_client_id]
+            if client_id not in clients_by_id
+        ]
+        if missing:
+            raise ValidationError(
+                {"detail": f"Клиенты не найдены: {', '.join(missing)}"}
+            )
+
+        for client in clients_by_id.values():
+            if not self._can_merge_client(request.user, client):
+                raise PermissionDenied(CLIENT_MERGE_PERMISSION_MESSAGE)
+
+        first_client_id, second_client_id = ClientSimilarityExclusion.ordered_pair(
+            target_client_id,
+            candidate_client_id,
+        )
+        exclusion, _ = ClientSimilarityExclusion.objects.get_or_create(
+            first_client_id=first_client_id,
+            second_client_id=second_client_id,
+            defaults={
+                "created_by": (
+                    request.user
+                    if request.user and request.user.is_authenticated
+                    else None
+                )
+            },
+        )
+
+        return Response(
+            {
+                "id": str(exclusion.id),
+                "first_client_id": str(exclusion.first_client_id),
+                "second_client_id": str(exclusion.second_client_id),
+                "created_at": exclusion.created_at.isoformat(),
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=True, methods=["post"], url_path="normalize-name")
     def normalize_name(self, request, pk=None):

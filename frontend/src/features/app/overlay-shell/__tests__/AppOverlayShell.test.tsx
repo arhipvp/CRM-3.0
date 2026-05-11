@@ -82,6 +82,7 @@ const baseProps = {
   handleClientMergeRetry: vi.fn().mockResolvedValue(undefined),
   handleCreateTask: vi.fn().mockResolvedValue(undefined),
   handleDeleteClient: vi.fn().mockResolvedValue(undefined),
+  handleExcludeClientSimilarity: vi.fn(),
   handleMergeFromSimilar: vi.fn(),
   handleMergeSubmit: vi.fn().mockResolvedValue(undefined),
   handleUpdateClient: vi.fn().mockResolvedValue(undefined),

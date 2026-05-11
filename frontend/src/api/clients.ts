@@ -7,6 +7,7 @@ import type {
   ClientMergePreviewResponse,
   ClientMergeResponse,
   ClientMergeSessionStatus,
+  ClientSimilarityExclusion,
   ClientSimilarResponse,
   User,
 } from '../types';
@@ -480,5 +481,25 @@ export async function fetchSimilarClients(data: {
       returned: Number(metaRaw.returned ?? 0),
       scoringVersion: String(metaRaw.scoring_version ?? 'v1'),
     },
+  };
+}
+
+export async function excludeClientSimilarity(data: {
+  targetClientId: string;
+  candidateClientId: string;
+}): Promise<ClientSimilarityExclusion> {
+  const payload = await request<Record<string, unknown>>('/clients/similarity-exclusions/', {
+    method: 'POST',
+    body: JSON.stringify({
+      target_client_id: data.targetClientId,
+      candidate_client_id: data.candidateClientId,
+    }),
+  });
+
+  return {
+    id: String(payload.id ?? ''),
+    firstClientId: String(payload.first_client_id ?? payload.firstClientId ?? ''),
+    secondClientId: String(payload.second_client_id ?? payload.secondClientId ?? ''),
+    createdAt: String(payload.created_at ?? payload.createdAt ?? ''),
   };
 }

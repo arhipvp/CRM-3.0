@@ -18,6 +18,7 @@ vi.mock('../../../api', () => {
     APIError,
     createClient: vi.fn(),
     deleteClient: vi.fn(),
+    excludeClientSimilarity: vi.fn(),
     fetchClientMergeSession: vi.fn(),
     finalizeClientMerge: vi.fn(),
     fetchSimilarClients: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('../../../api', () => {
 });
 
 import {
+  excludeClientSimilarity,
   fetchSimilarClients,
   finalizeClientMerge,
   previewClientMerge,
@@ -39,6 +41,7 @@ import {
 } from '../../../api';
 
 const previewClientMergeMock = vi.mocked(previewClientMerge);
+const excludeClientSimilarityMock = vi.mocked(excludeClientSimilarity);
 const fetchSimilarClientsMock = vi.mocked(fetchSimilarClients);
 const startClientMergeMock = vi.mocked(startClientMerge);
 const stepClientMergeMock = vi.mocked(stepClientMerge);
@@ -144,6 +147,13 @@ describe('useClientActions', () => {
         scoringVersion: 'test',
       },
     });
+    excludeClientSimilarityMock.mockReset();
+    excludeClientSimilarityMock.mockResolvedValue({
+      id: 'exclusion-1',
+      firstClientId: sourceClient.id,
+      secondClientId: targetClient.id,
+      createdAt: '2026-01-01T00:00:00Z',
+    });
     window.localStorage.clear();
     startClientMergeMock.mockReset();
     startClientMergeMock.mockResolvedValue(mergeSession);
@@ -194,6 +204,46 @@ describe('useClientActions', () => {
     });
     expect(result.current.clientMergeFieldOverrides.name).toBe('Зотова Марина Николаевна');
     expect(result.current.clientMergeFieldOverrides.notes).toContain('source@example.com');
+  });
+
+  it('removes excluded candidate from similar clients modal', async () => {
+    const addNotification = vi.fn();
+    const updateAppData = vi.fn();
+    fetchSimilarClientsMock.mockResolvedValue({
+      targetClient,
+      candidates: [
+        {
+          client: sourceClient,
+          score: 85,
+          confidence: 'high',
+          reasons: ['same_phone'],
+          matchedFields: { phone: true },
+        },
+      ],
+      meta: {
+        totalChecked: 1,
+        returned: 1,
+        scoringVersion: 'test',
+      },
+    });
+    const { result } = renderClientActions({ addNotification, updateAppData });
+
+    await act(async () => {
+      await result.current.handleClientFindSimilarRequest(targetClient);
+    });
+    expect(result.current.similarCandidates).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.handleExcludeClientSimilarity(sourceClient.id);
+    });
+
+    expect(excludeClientSimilarityMock).toHaveBeenCalledWith({
+      targetClientId: targetClient.id,
+      candidateClientId: sourceClient.id,
+    });
+    expect(result.current.similarCandidates).toHaveLength(0);
+    expect(updateAppData).toHaveBeenCalled();
+    expect(addNotification).toHaveBeenCalledWith('Совпадение скрыто', 'success', 3000);
   });
 
   it('shows merge warnings as non-blocking notifications', async () => {

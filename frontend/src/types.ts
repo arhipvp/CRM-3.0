@@ -316,6 +316,13 @@ export interface ClientSimilarResponse {
   };
 }
 
+export interface ClientSimilarityExclusion {
+  id: string;
+  firstClientId: string;
+  secondClientId: string;
+  createdAt: string;
+}
+
 export interface ClientMergeResponse {
   targetClient: Client;
   mergedClientIds: string[];

@@ -4,6 +4,7 @@ import {
   APIError,
   createClient,
   deleteClient,
+  excludeClientSimilarity,
   finalizeClientMerge,
   fetchClientMergeSession,
   fetchSimilarClients,
@@ -545,6 +546,29 @@ export const useClientActions = ({
     [clients, similarClientTargetId],
   );
 
+  const handleExcludeClientSimilarity = useCallback(
+    async (candidateClientId: string) => {
+      if (!similarTargetClient) {
+        return;
+      }
+      try {
+        await excludeClientSimilarity({
+          targetClientId: similarTargetClient.id,
+          candidateClientId,
+        });
+        setSimilarCandidates((prev) => prev.filter((item) => item.client.id !== candidateClientId));
+        updateAppData((prev) => ({
+          ...prev,
+          clients: [...prev.clients],
+        }));
+        addNotification('Совпадение скрыто', 'success', 3000);
+      } catch (err) {
+        setSimilarClientsError(formatErrorMessage(err, 'Не удалось скрыть совпадение.'));
+      }
+    },
+    [addNotification, similarTargetClient, updateAppData],
+  );
+
   const handleMergeFromSimilar = useCallback(
     async (candidateClientId: string) => {
       if (!similarTargetClient) {
@@ -639,6 +663,7 @@ export const useClientActions = ({
     handleClientMergePreview,
     handleMergeSubmit,
     handleClientMergeRetry,
+    handleExcludeClientSimilarity,
     handleMergeFromSimilar,
   };
 };

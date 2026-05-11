@@ -154,6 +154,7 @@ const AppContent: React.FC = () => {
     handleClientMergePreview,
     handleMergeSubmit,
     handleClientMergeRetry,
+    handleExcludeClientSimilarity,
     handleMergeFromSimilar,
   } = useClientActions({
     clients,
@@ -955,6 +956,7 @@ const AppContent: React.FC = () => {
         handleClientMergePreview={handleClientMergePreview}
         handleCreateTask={handleCreateTask}
         handleDeleteClient={handleDeleteClient}
+        handleExcludeClientSimilarity={handleExcludeClientSimilarity}
         handleMergeFromSimilar={handleMergeFromSimilar}
         handleClientMergeRetry={handleClientMergeRetry}
         handleMergeSubmit={handleMergeSubmit}

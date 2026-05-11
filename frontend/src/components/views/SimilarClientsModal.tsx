@@ -12,6 +12,7 @@ interface SimilarClientsModalProps {
   error: string | null;
   onClose: () => void;
   onMerge: (candidateClientId: string) => void;
+  onExclude: (candidateClientId: string) => void | Promise<void>;
 }
 
 const REASON_LABELS: Record<string, string> = {
@@ -41,6 +42,7 @@ export const SimilarClientsModal: React.FC<SimilarClientsModalProps> = ({
   error,
   onClose,
   onMerge,
+  onExclude,
 }) => {
   if (!isOpen || !targetClient) {
     return null;
@@ -101,13 +103,24 @@ export const SimilarClientsModal: React.FC<SimilarClientsModalProps> = ({
                       )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className={`${BTN_SM_SECONDARY} shrink-0 self-start`}
-                    onClick={() => onMerge(item.client.id)}
-                  >
-                    Объединить
-                  </button>
+                  <div className="flex shrink-0 flex-wrap gap-2 self-start md:justify-end">
+                    <button
+                      type="button"
+                      className={BTN_SM_SECONDARY}
+                      onClick={() => {
+                        void onExclude(item.client.id);
+                      }}
+                    >
+                      Это разные
+                    </button>
+                    <button
+                      type="button"
+                      className={BTN_SM_SECONDARY}
+                      onClick={() => onMerge(item.client.id)}
+                    >
+                      Объединить
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

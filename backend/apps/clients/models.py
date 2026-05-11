@@ -42,6 +42,67 @@ class Client(SoftDeleteModel):
         return self.name
 
 
+class ClientSimilarityExclusion(models.Model):
+    """Pair of clients marked as definitely different."""
+
+    first_client = models.ForeignKey(
+        Client,
+        related_name="similarity_exclusions_as_first",
+        on_delete=models.CASCADE,
+    )
+    second_client = models.ForeignKey(
+        Client,
+        related_name="similarity_exclusions_as_second",
+        on_delete=models.CASCADE,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="client_similarity_exclusions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["first_client", "second_client"],
+                name="unique_client_similarity_exclusion_pair",
+            ),
+            models.CheckConstraint(
+                check=~models.Q(first_client=models.F("second_client")),
+                name="client_similarity_exclusion_distinct_clients",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["first_client", "second_client"]),
+            models.Index(fields=["second_client", "first_client"]),
+        ]
+
+    @staticmethod
+    def ordered_pair(first_client_id, second_client_id) -> tuple[str, str]:
+        first = str(first_client_id)
+        second = str(second_client_id)
+        if first == second:
+            raise ValueError("Clients in similarity exclusion must be different.")
+        return (first, second) if first < second else (second, first)
+
+    def save(self, *args, **kwargs):
+        first_id, second_id = self.ordered_pair(
+            self.first_client_id,
+            self.second_client_id,
+        )
+        self.first_client_id = first_id
+        self.second_client_id = second_id
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.first_client_id} != {self.second_client_id}"
+
+
 class ClientMergeSession(models.Model):
     class Status(models.TextChoices):
         MOVING_DRIVE = "moving_drive", "Moving Drive"

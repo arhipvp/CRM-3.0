@@ -24,7 +24,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import Client, ClientMergeSession
+from .models import Client, ClientMergeSession, ClientSimilarityExclusion
 
 logger = logging.getLogger(__name__)
 _DRIVE_RETRY_ATTEMPTS = 3
@@ -795,6 +795,19 @@ class ClientSimilarityService:
         return keys
 
     @staticmethod
+    def _pair_key(first_client_id, second_client_id) -> tuple[str, str]:
+        return ClientSimilarityExclusion.ordered_pair(first_client_id, second_client_id)
+
+    @classmethod
+    def _excluded_pairs(cls, client_ids: set[str]) -> set[tuple[str, str]]:
+        if not client_ids:
+            return set()
+        rows = ClientSimilarityExclusion.objects.filter(
+            Q(first_client_id__in=client_ids) | Q(second_client_id__in=client_ids)
+        ).values_list("first_client_id", "second_client_id")
+        return {cls._pair_key(first_id, second_id) for first_id, second_id in rows}
+
+    @staticmethod
     def needs_name_normalization(client: Client) -> bool:
         return bool((client.name or "") != normalize_client_name(client.name))
 
@@ -936,9 +949,15 @@ class ClientSimilarityService:
             base_queryset = base_queryset.exclude(pk=target_client.pk)
         candidates_queryset = self._candidate_window(target_client, base_queryset)
         candidates = list(candidates_queryset)
+        target_id = str(target_client.id)
+        excluded_pairs = self._excluded_pairs(
+            {target_id, *[str(candidate.id) for candidate in candidates]}
+        )
 
         scored = []
         for candidate in candidates:
+            if self._pair_key(target_id, candidate.id) in excluded_pairs:
+                continue
             score_result = self._score_pair(target_client, candidate)
             if score_result["score"] <= 0:
                 continue
@@ -988,6 +1007,10 @@ class ClientSimilarityService:
                 "drive_folder_id",
             )
         )
+        excluded_pairs = self._excluded_pairs(
+            {str(client.id) for client in clients}
+            | {str(candidate.id) for candidate in candidate_pool}
+        )
         candidate_indexes: dict[tuple[str, object], list[Client]] = defaultdict(list)
         for candidate in candidate_pool:
             for key in self._duplicate_hint_index_keys(candidate):
@@ -1001,6 +1024,8 @@ class ClientSimilarityService:
                 for candidate in candidate_indexes.get(key, []):
                     candidate_id = str(candidate.id)
                     if candidate.id == client.id or candidate_id in candidate_ids:
+                        continue
+                    if self._pair_key(client.id, candidate.id) in excluded_pairs:
                         continue
                     candidate_ids.add(candidate_id)
                     candidate_matches.append(candidate)

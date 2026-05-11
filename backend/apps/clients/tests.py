@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from apps.clients.models import Client, ClientMergeSession
+from apps.clients.models import Client, ClientMergeSession, ClientSimilarityExclusion
 from apps.clients.serializers import ClientSerializer
 from apps.clients.services import (
     ClientMergeService,
@@ -992,6 +992,28 @@ class ClientSimilarityServiceTests(TestCase):
             "Сажко Василий Александрович",
         )
 
+    def test_find_similar_ignores_excluded_pair(self):
+        candidate = Client.objects.create(
+            name="Петров Петр Петрович",
+            phone="79991112233",
+            email="other@example.com",
+            created_by=self.owner,
+        )
+        ClientSimilarityExclusion.objects.create(
+            first_client=self.target,
+            second_client=candidate,
+            created_by=self.owner,
+        )
+
+        result = self.service.find_similar(
+            target_client=self.target,
+            queryset=Client.objects.alive(),
+            limit=50,
+        )
+
+        candidate_ids = {item["client"].id for item in result["candidates"]}
+        self.assertNotIn(candidate.id, candidate_ids)
+
     def test_duplicate_hints_batch_matches_phone_email_and_name(self):
         phone_target = Client.objects.create(
             name="Телефон Таргет",
@@ -1048,6 +1070,29 @@ class ClientSimilarityServiceTests(TestCase):
         self.assertGreaterEqual(name_hint["candidate_count"], 1)
         self.assertIn("same_surname_name", name_hint["reasons"])
 
+    def test_duplicate_hints_ignores_excluded_pair(self):
+        candidate = Client.objects.create(
+            name="Телефон Кандидат",
+            phone="79991112233",
+            email="candidate@example.com",
+            created_by=self.owner,
+        )
+        ClientSimilarityExclusion.objects.create(
+            first_client=candidate,
+            second_client=self.target,
+            created_by=self.owner,
+        )
+
+        hints = self.service.build_duplicate_hints(
+            clients=[self.target],
+            queryset=Client.objects.alive(),
+        )
+
+        hint = hints[str(self.target.id)]
+        self.assertEqual(hint["candidate_count"], 0)
+        self.assertEqual(hint["max_score"], 0)
+        self.assertNotIn("same_phone", hint["reasons"])
+
     def test_duplicate_hints_does_not_call_find_similar_per_client(self):
         clients = [
             Client.objects.create(
@@ -1070,7 +1115,7 @@ class ClientSimilarityServiceTests(TestCase):
             "find_similar",
             side_effect=AssertionError("duplicate hints must not call find_similar"),
         ):
-            with self.assertNumQueries(1):
+            with self.assertNumQueries(2):
                 hints = self.service.build_duplicate_hints(
                     clients=clients,
                     queryset=Client.objects.alive(),
@@ -1157,6 +1202,71 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
         self.assertGreaterEqual(target_hint["candidate_count"], 1)
         self.assertGreaterEqual(target_hint["max_score"], 70)
         self.assertIn("same_phone", target_hint["reasons"])
+
+    def test_similarity_exclusion_endpoint_is_idempotent(self):
+        self.authenticate(self.owner)
+        payload = {
+            "target_client_id": str(self.target.id),
+            "candidate_client_id": str(self.candidate.id),
+        }
+
+        first_response = self.api_client.post(
+            "/api/v1/clients/similarity-exclusions/",
+            payload,
+            format="json",
+        )
+        second_response = self.api_client.post(
+            "/api/v1/clients/similarity-exclusions/",
+            {
+                "target_client_id": str(self.candidate.id),
+                "candidate_client_id": str(self.target.id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(first_response.data["id"], second_response.data["id"])
+        self.assertEqual(ClientSimilarityExclusion.objects.count(), 1)
+
+        hints_response = self.api_client.post(
+            "/api/v1/clients/duplicate-hints/",
+            {
+                "client_ids": [str(self.target.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(hints_response.status_code, 200)
+        self.assertEqual(
+            hints_response.data["results"][str(self.target.id)]["candidate_count"],
+            0,
+        )
+
+    def test_similarity_exclusion_endpoint_rejects_same_client(self):
+        self.authenticate(self.owner)
+        response = self.api_client.post(
+            "/api/v1/clients/similarity-exclusions/",
+            {
+                "target_client_id": str(self.target.id),
+                "candidate_client_id": str(self.target.id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_similarity_exclusion_endpoint_requires_merge_access_to_both_clients(self):
+        self.authenticate(self.other)
+        response = self.api_client.post(
+            "/api/v1/clients/similarity-exclusions/",
+            {
+                "target_client_id": str(self.target.id),
+                "candidate_client_id": str(self.candidate.id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     def test_duplicate_hints_endpoint_returns_email_name_and_normalization_hints(self):
         self.authenticate(self.owner)
