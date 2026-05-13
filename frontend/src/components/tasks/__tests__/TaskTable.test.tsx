@@ -88,4 +88,15 @@ describe('TaskTable', () => {
 
     expect(onMarkTaskDone).toHaveBeenCalledWith('task-1', 'Готово, отправлено клиенту');
   });
+
+  it('opens the related deal from an explicit transition button', async () => {
+    const user = userEvent.setup();
+    const onDealClick = vi.fn();
+
+    render(<TaskTable tasks={[buildTask()]} onDealClick={onDealClick} />);
+
+    await user.click(screen.getByRole('button', { name: 'Перейти в сделку Сделка 1' }));
+
+    expect(onDealClick).toHaveBeenCalledWith('deal-1');
+  });
 });

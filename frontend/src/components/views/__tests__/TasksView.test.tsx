@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Task } from '../../../types';
@@ -33,6 +33,12 @@ const renderTasksView = (tasks: Task[], onRefreshTasks = vi.fn()) =>
       <TasksView tasks={tasks} currentUser={null} onRefreshTasks={onRefreshTasks} />
     </MemoryRouter>,
   );
+
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return <span data-testid="location">{`${location.pathname}${location.search}`}</span>;
+};
 
 describe('TasksView', () => {
   it('sorts urgent tasks first and then by nearest due date by default', () => {
@@ -111,5 +117,29 @@ describe('TasksView', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Задачи создаются из карточки сделки/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Перейти к сделкам' })).toBeInTheDocument();
+  });
+
+  it('navigates to the related deal without opening a preview', () => {
+    const onDealSelect = vi.fn();
+    const onDealPreview = vi.fn();
+    const propsWithLegacyPreviewCallback = {
+      tasks: [buildTask()],
+      currentUser: null,
+      onDealSelect,
+      onDealPreview,
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/tasks']}>
+        <TasksView {...propsWithLegacyPreviewCallback} />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Перейти в сделку Сделка' }));
+
+    expect(onDealSelect).toHaveBeenCalledWith('deal-1');
+    expect(onDealPreview).not.toHaveBeenCalled();
+    expect(screen.getByTestId('location')).toHaveTextContent('/deals?dealId=deal-1');
   });
 });

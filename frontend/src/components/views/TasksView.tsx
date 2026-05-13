@@ -83,7 +83,6 @@ interface TasksViewProps {
     ordering?: string;
   }) => Promise<void>;
   onDealSelect?: (dealId: string) => void;
-  onDealPreview?: (dealId: string) => void;
 }
 
 export const TasksView: React.FC<TasksViewProps> = ({
@@ -92,7 +91,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
   isLoading = false,
   onRefreshTasks,
   onDealSelect,
-  onDealPreview,
 }) => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>(DEFAULT_TASKS_FILTERS);
@@ -103,14 +101,10 @@ export const TasksView: React.FC<TasksViewProps> = ({
       if (!dealId) {
         return;
       }
-      if (onDealPreview) {
-        onDealPreview(dealId);
-        return;
-      }
       onDealSelect?.(dealId);
-      navigate('/deals');
+      navigate(`/deals?dealId=${encodeURIComponent(dealId)}`);
     },
-    [navigate, onDealPreview, onDealSelect],
+    [navigate, onDealSelect],
   );
 
   useEffect(() => {

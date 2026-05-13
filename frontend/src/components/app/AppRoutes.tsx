@@ -231,7 +231,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               isLoading={loading.isTasksLoading}
               onRefreshTasks={loading.onRefreshTasks}
               onDealSelect={dealsActions.onSelectDeal}
-              onDealPreview={dealsActions.onDealPreview}
             />
           </Suspense>
         }

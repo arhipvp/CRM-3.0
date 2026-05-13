@@ -214,13 +214,19 @@ export function TaskTable({
                   {showDealColumn && (
                     <td className={`${TABLE_CELL_CLASS_SM} align-top text-xs`}>
                       {task.dealId ? (
-                        <button
-                          type="button"
-                          className="link-action text-left"
-                          onClick={() => handleDealClick(task)}
-                        >
-                          {task.dealTitle || task.dealId}
-                        </button>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-medium text-slate-700">
+                            {task.dealTitle || task.dealId}
+                          </span>
+                          <button
+                            type="button"
+                            className="link-action text-left text-[11px] font-semibold"
+                            onClick={() => handleDealClick(task)}
+                            aria-label={`Перейти в сделку ${task.dealTitle || task.dealId}`}
+                          >
+                            Перейти
+                          </button>
+                        </div>
                       ) : (
                         '-'
                       )}
