@@ -1,3 +1,5 @@
+import uuid
+
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
@@ -16,6 +18,7 @@ class DealSearchByIdTests(AuthenticatedAPITestCase):
             phone="+7 (900) 000-00-01",
         )
         self.target_deal = Deal.objects.create(
+            id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
             title="Ипотека",
             description="Заявка по ипотеке",
             client=self.client_obj,
@@ -24,9 +27,23 @@ class DealSearchByIdTests(AuthenticatedAPITestCase):
             stage_name="initial",
         )
         self.other_deal = Deal.objects.create(
+            id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
             title="КАСКО",
             description="Автострахование",
             client=self.client_obj,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        self.formatted_phone_client = Client.objects.create(
+            name="Петр Петров",
+            phone="+7 (901) 234-45-01",
+        )
+        self.formatted_phone_deal = Deal.objects.create(
+            id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+            title="ОСАГО",
+            description="Полис для теста телефона",
+            client=self.formatted_phone_client,
             seller=self.seller,
             status="open",
             stage_name="initial",
@@ -110,3 +127,37 @@ class DealSearchByIdTests(AuthenticatedAPITestCase):
         self.assertIn(str(self.target_deal.id), upper_ids)
         self.assertNotIn(str(self.other_deal.id), lower_ids)
         self.assertNotIn(str(self.other_deal.id), upper_ids)
+
+    def test_search_finds_deal_by_last_phone_digits(self):
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"search": "0001"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        deal_ids = self._extract_ids(response)
+        self.assertIn(str(self.target_deal.id), deal_ids)
+        self.assertNotIn(str(self.formatted_phone_deal.id), deal_ids)
+
+    def test_search_finds_deal_by_phone_digits_across_formatting(self):
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"search": "4501"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        deal_ids = self._extract_ids(response)
+        self.assertIn(str(self.formatted_phone_deal.id), deal_ids)
+        self.assertNotIn(str(self.target_deal.id), deal_ids)
+
+    def test_search_ignores_short_phone_digit_fragments(self):
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"search": "45"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._extract_ids(response), [])

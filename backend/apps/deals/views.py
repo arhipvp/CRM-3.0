@@ -32,6 +32,7 @@ from django.db.models import (
 from django.db.models.functions import Cast, Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -88,13 +89,13 @@ class DealViewSet(
     viewsets.ModelViewSet,
 ):
     serializer_class = DealSerializer
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = DealFilterSet
     search_fields = [
         "id_text",
         "title",
         "description",
         "client__name",
-        "client__phone",
         "client__email",
         "client__notes",
         "notes__body",
