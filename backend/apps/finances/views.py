@@ -1,5 +1,6 @@
 import re
 import zipfile
+from decimal import ROUND_HALF_UP, Decimal
 from io import BytesIO
 
 from apps.common.drive import (
@@ -79,6 +80,11 @@ class StatementDriveDownloadSerializer(serializers.Serializer):
 
 class StatementMarkPaidSerializer(serializers.Serializer):
     paid_at = serializers.DateField(required=False, allow_null=True)
+
+
+class StatementApplyAmountSerializer(serializers.Serializer):
+    mode = serializers.ChoiceField(choices=("rub", "percent"))
+    value = serializers.DecimalField(max_digits=12, decimal_places=4)
 
 
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -286,6 +292,62 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if not user_has_deal_access(self.request.user, deal, allow_executor=False):
                 raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
 
+    def _records_with_paid_balance(self, statement):
+        paid_balance_subquery = (
+            FinancialRecord.objects.filter(
+                payment_id=OuterRef("payment_id"),
+                date__isnull=False,
+                deleted_at__isnull=True,
+            )
+            .order_by()
+            .values("payment_id")
+            .annotate(total=Sum("amount"))
+            .values("total")[:1]
+        )
+        return (
+            FinancialRecord.objects.filter(statement=statement, deleted_at__isnull=True)
+            .select_related(
+                "payment",
+                "payment__policy",
+                "payment__policy__insurance_type",
+                "payment__policy__sales_channel",
+                "payment__deal",
+                "payment__deal__client",
+            )
+            .prefetch_related(
+                Prefetch(
+                    "payment__financial_records",
+                    queryset=FinancialRecord.objects.filter(
+                        date__isnull=False,
+                        deleted_at__isnull=True,
+                    )
+                    .only("id", "amount", "date", "payment_id")
+                    .order_by("-date", "-amount", "id"),
+                    to_attr="paid_records",
+                )
+            )
+            .annotate(
+                payment_paid_balance=Coalesce(
+                    Subquery(
+                        paid_balance_subquery,
+                        output_field=DecimalField(max_digits=12, decimal_places=2),
+                    ),
+                    0,
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            )
+            .order_by("created_at", "id")
+        )
+
+    def _normalize_statement_amount(self, record, amount):
+        record_type = record.record_type
+        if record_type not in FinancialRecord.RecordType.values:
+            record_type = FinancialRecord.infer_record_type_from_amount(record.amount)
+        return FinancialRecord.normalize_amount_for_record_type(record_type, amount)
+
+    def _quantize_money(self, value):
+        return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
     def _create_download_response(
         self,
         content: bytes,
@@ -342,6 +404,66 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         self._validate_record_access(records)
         records.update(statement=None)
         return Response({"removed": records.count()})
+
+    @action(detail=True, methods=["post"], url_path="apply-amount")
+    def apply_amount(self, request, *args, **kwargs):
+        statement = self.get_object()
+        if statement.paid_at:
+            raise ValidationError("Нельзя изменять выплаченную ведомость.")
+
+        serializer = StatementApplyAmountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        mode = serializer.validated_data["mode"]
+        value = abs(serializer.validated_data["value"])
+
+        records = list(self._records_with_paid_balance(statement))
+        self._validate_record_access(records)
+
+        updated_records = []
+        unchanged = 0
+        skipped_reasons = {"zero_balance": 0}
+
+        for record in records:
+            if mode == "percent":
+                base = abs(getattr(record, "payment_paid_balance", Decimal("0")) or 0)
+                if base <= 0:
+                    skipped_reasons["zero_balance"] += 1
+                    continue
+                absolute_amount = self._quantize_money((base * value) / Decimal("100"))
+            else:
+                absolute_amount = self._quantize_money(value)
+
+            next_amount = self._normalize_statement_amount(record, absolute_amount)
+            if self._quantize_money(record.amount) == next_amount:
+                unchanged += 1
+                continue
+
+            record.amount = next_amount
+            record.updated_at = timezone.now()
+            updated_records.append(record)
+
+        with transaction.atomic():
+            if updated_records:
+                FinancialRecord.objects.bulk_update(
+                    updated_records, ["amount", "updated_at"]
+                )
+                statement.updated_at = timezone.now()
+                statement.save(update_fields=["updated_at"])
+
+        response_records = list(self._records_with_paid_balance(statement))
+        payload = {
+            "updated": len(updated_records),
+            "unchanged": unchanged,
+            "skipped": sum(skipped_reasons.values()),
+            "skipped_reasons": skipped_reasons,
+            "records": FinancialRecordSerializer(
+                response_records, many=True, context={"request": request}
+            ).data,
+            "statement": StatementSerializer(
+                statement, context={"request": request}
+            ).data,
+        }
+        return Response(payload)
 
     @action(detail=True, methods=["post"], url_path="mark-paid")
     def mark_paid(self, request, *args, **kwargs):

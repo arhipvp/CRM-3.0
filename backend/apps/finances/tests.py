@@ -652,6 +652,152 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.assertEqual(statement.paid_at, paid_at)
         self.assertEqual(self.income_record.date, paid_at)
 
+    def test_apply_amount_rub_updates_all_statement_records(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Draft Sheet",
+            statement_type="expense",
+            created_by=self.seller,
+        )
+        self.expense_record.statement = statement
+        self.zero_expense_record.statement = statement
+        self.expense_record.save(update_fields=["statement"])
+        self.zero_expense_record.save(update_fields=["statement"])
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/apply-amount/",
+            {"mode": "rub", "value": "150"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["updated"], 2)
+        self.assertEqual(payload["unchanged"], 0)
+        self.assertEqual(payload["skipped"], 0)
+        self.expense_record.refresh_from_db()
+        self.zero_expense_record.refresh_from_db()
+        self.assertEqual(self.expense_record.amount, Decimal("-150.00"))
+        self.assertEqual(self.zero_expense_record.amount, Decimal("-150.00"))
+
+    def test_apply_amount_percent_uses_payment_paid_balance_and_skips_zero_balance(
+        self,
+    ):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Percent Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        second_payment = Payment.objects.create(
+            deal=self.deal, amount=Decimal("2000.00"), description="Second"
+        )
+        first_record = FinancialRecord.objects.create(
+            payment=self.payment, amount=Decimal("10.00"), statement=statement
+        )
+        second_record = FinancialRecord.objects.create(
+            payment=second_payment, amount=Decimal("20.00"), statement=statement
+        )
+        zero_balance_record = FinancialRecord.objects.create(
+            payment=Payment.objects.create(
+                deal=self.deal, amount=Decimal("500.00"), description="No balance"
+            ),
+            amount=Decimal("30.00"),
+            statement=statement,
+        )
+        FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("1000.00"),
+            date=timezone.now().date(),
+        )
+        FinancialRecord.objects.create(
+            payment=second_payment,
+            amount=Decimal("2500.00"),
+            date=timezone.now().date(),
+        )
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/apply-amount/",
+            {"mode": "percent", "value": "10"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["updated"], 2)
+        self.assertEqual(payload["unchanged"], 0)
+        self.assertEqual(payload["skipped"], 1)
+        self.assertEqual(payload["skipped_reasons"]["zero_balance"], 1)
+        first_record.refresh_from_db()
+        second_record.refresh_from_db()
+        zero_balance_record.refresh_from_db()
+        self.assertEqual(first_record.amount, Decimal("100.00"))
+        self.assertEqual(second_record.amount, Decimal("250.00"))
+        self.assertEqual(zero_balance_record.amount, Decimal("30.00"))
+
+    def test_apply_amount_reports_unchanged_without_touching_record_updated_at(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Unchanged Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.amount = Decimal("150.00")
+        self.income_record.save(update_fields=["statement", "amount"])
+        before_updated_at = self.income_record.updated_at
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/apply-amount/",
+            {"mode": "rub", "value": "150"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["updated"], 0)
+        self.assertEqual(payload["unchanged"], 1)
+        self.income_record.refresh_from_db()
+        self.assertEqual(self.income_record.amount, Decimal("150.00"))
+        self.assertEqual(self.income_record.updated_at, before_updated_at)
+
+    def test_cannot_apply_amount_to_paid_statement(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Paid Sheet",
+            statement_type="income",
+            paid_at=timezone.now().date(),
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/apply-amount/",
+            {"mode": "rub", "value": "150"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_executor_cannot_apply_amount_to_statement_records(self):
+        self.authenticate(self.executor)
+        statement = Statement.objects.create(
+            name="Seller Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/apply-amount/",
+            {"mode": "rub", "value": "150"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_seller_sees_statement_listed_via_policy_deal_link(self):
         self.authenticate(self.seller)
         policy = Policy.objects.create(number="POLICY-LIST-SELLER", deal=self.deal)

@@ -378,6 +378,7 @@ const AppContent: React.FC = () => {
     handleUpdateFinanceStatement,
     handleDeleteFinanceStatement,
     handleRemoveFinanceStatementRecords,
+    handleApplyFinanceStatementAmount,
   } = useFinanceActions({
     payments,
     financialRecordModal,
@@ -690,10 +691,12 @@ const AppContent: React.FC = () => {
       onDeleteFinanceStatement: handleDeleteFinanceStatement,
       onRemoveFinanceStatementRecords: handleRemoveFinanceStatementRecords,
       onUpdateFinanceStatement: handleUpdateFinanceStatement,
+      onApplyFinanceStatementAmount: handleApplyFinanceStatementAmount,
     }),
     [
       handleAddFinancialRecord,
       handleAddPayment,
+      handleApplyFinanceStatementAmount,
       handleCreateFinanceStatement,
       handleDeleteFinanceStatement,
       handleDeleteFinancialRecord,

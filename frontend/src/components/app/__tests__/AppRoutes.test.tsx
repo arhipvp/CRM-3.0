@@ -122,6 +122,14 @@ const createProps = (): AppRoutesProps => ({
     onCreateFinanceStatement: vi.fn(async () => createStatementStub()),
     onDeleteFinanceStatement: noopAsync,
     onRemoveFinanceStatementRecords: noopAsync,
+    onApplyFinanceStatementAmount: vi.fn(async () => ({
+      updated: 0,
+      unchanged: 0,
+      skipped: 0,
+      skippedReasons: {},
+      records: [],
+      statement: createStatementStub(),
+    })),
     onUpdateFinanceStatement: vi.fn(async () => createStatementStub()),
   },
   filters: {

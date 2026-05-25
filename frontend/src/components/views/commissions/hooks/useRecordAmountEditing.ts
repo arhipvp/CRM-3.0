@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 import type { AddFinancialRecordFormValues } from '../../../forms/AddFinancialRecordForm';
 import type { IncomeExpenseRow } from '../RecordsTable';
+import type { StatementAmountApplyMode, StatementAmountApplyResult } from '../../../../types';
 
 type AmountDraft = { mode: 'rub' | 'percent'; value: string };
 
@@ -10,6 +11,10 @@ interface UseRecordAmountEditingArgs {
     recordId: string,
     values: AddFinancialRecordFormValues,
   ) => Promise<void>;
+  onApplyStatementAmount?: (
+    statementId: string,
+    values: { mode: StatementAmountApplyMode; value: string },
+  ) => Promise<StatementAmountApplyResult | void>;
   isRowAmountLocked?: (row: IncomeExpenseRow) => boolean;
 }
 
@@ -17,6 +22,7 @@ const normalizeAbsoluteAmount = (value: number) => value.toFixed(2).replace(/\.?
 
 export const useRecordAmountEditing = ({
   onUpdateFinancialRecord,
+  onApplyStatementAmount,
   isRowAmountLocked,
 }: UseRecordAmountEditingArgs) => {
   const [amountDrafts, setAmountDrafts] = useState<Record<string, AmountDraft>>({});
@@ -183,58 +189,37 @@ export const useRecordAmountEditing = ({
   }, []);
 
   const applyStatementAmountToRows = useCallback(
-    async (rows: IncomeExpenseRow[]) => {
-      if (!onUpdateFinancialRecord || isApplyingStatementAmount) {
+    async (statementId: string | undefined, rows: IncomeExpenseRow[]) => {
+      if (!onApplyStatementAmount || !statementId || isApplyingStatementAmount) {
         return;
       }
       const candidates = rows.filter((row) => !isRowAmountLocked?.(row));
       if (!candidates.length) {
         return;
       }
-
-      const updates = candidates
-        .map((row) => {
-          const absoluteAmount = getAbsoluteAmountFromDraft(row, statementAmountDraft);
-          if (absoluteAmount === null) {
-            return null;
-          }
-          return {
-            row,
-            values: buildRecordUpdateValues(row, absoluteAmount),
-          };
-        })
-        .filter((item): item is { row: IncomeExpenseRow; values: AddFinancialRecordFormValues } =>
-          Boolean(item),
-        );
-
-      if (!updates.length) {
+      if (!statementAmountDraft.value.trim()) {
         return;
       }
 
       setIsApplyingStatementAmount(true);
       try {
-        for (const update of updates) {
-          await onUpdateFinancialRecord(update.row.recordId, update.values);
-        }
+        await onApplyStatementAmount(statementId, {
+          mode: statementAmountDraft.mode,
+          value: statementAmountDraft.value,
+        });
         setAmountDrafts((prev) => {
           const next = { ...prev };
-          updates.forEach(({ row }) => {
+          candidates.forEach((row) => {
             delete next[row.recordId];
           });
           return next;
         });
+        setStatementAmountDraft((prev) => ({ ...prev, value: '' }));
       } finally {
         setIsApplyingStatementAmount(false);
       }
     },
-    [
-      buildRecordUpdateValues,
-      getAbsoluteAmountFromDraft,
-      isApplyingStatementAmount,
-      isRowAmountLocked,
-      onUpdateFinancialRecord,
-      statementAmountDraft,
-    ],
+    [isApplyingStatementAmount, isRowAmountLocked, onApplyStatementAmount, statementAmountDraft],
   );
 
   return {

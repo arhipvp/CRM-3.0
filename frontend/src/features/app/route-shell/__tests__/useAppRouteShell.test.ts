@@ -23,6 +23,8 @@ describe('useAppRouteShell', () => {
         undefined) as unknown as AppRouteFinanceActions['onCreateFinanceStatement'],
       onUpdateFinanceStatement: (async () =>
         undefined) as unknown as AppRouteFinanceActions['onUpdateFinanceStatement'],
+      onApplyFinanceStatementAmount: (async () =>
+        undefined) as unknown as AppRouteFinanceActions['onApplyFinanceStatementAmount'],
     };
 
     const bindings: AppRouteShellResult = {
@@ -98,6 +100,7 @@ describe('useAppRouteShell', () => {
         onCreateFinanceStatement: noopFinanceAction.onCreateFinanceStatement,
         onDeleteFinanceStatement: async () => undefined,
         onRemoveFinanceStatementRecords: async () => undefined,
+        onApplyFinanceStatementAmount: noopFinanceAction.onApplyFinanceStatementAmount,
         onUpdateFinanceStatement: noopFinanceAction.onUpdateFinanceStatement,
       },
       routeLoading: {

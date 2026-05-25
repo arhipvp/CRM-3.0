@@ -70,7 +70,7 @@ describe('useRecordAmountEditing', () => {
   });
 
   it('applies the same ruble amount to all unlocked rows in the statement', async () => {
-    const onUpdateFinancialRecord = vi.fn().mockResolvedValue(undefined);
+    const onApplyStatementAmount = vi.fn().mockResolvedValue(undefined);
     const rows = [
       buildRow({ recordId: 'record-1', recordAmount: 50, paymentPaidBalance: 1000 }),
       buildRow({ recordId: 'record-2', recordAmount: -70, paymentPaidBalance: 2000 }),
@@ -78,7 +78,7 @@ describe('useRecordAmountEditing', () => {
     ];
     const { result } = renderHook(() =>
       useRecordAmountEditing({
-        onUpdateFinancialRecord,
+        onApplyStatementAmount,
         isRowAmountLocked: (row) => row.recordId === 'record-3',
       }),
     );
@@ -88,31 +88,26 @@ describe('useRecordAmountEditing', () => {
     });
 
     await act(async () => {
-      await result.current.applyStatementAmountToRows(rows);
+      await result.current.applyStatementAmountToRows('statement-1', rows);
     });
 
-    expect(onUpdateFinancialRecord).toHaveBeenCalledTimes(2);
-    expect(onUpdateFinancialRecord).toHaveBeenNthCalledWith(
-      1,
-      'record-1',
-      expect.objectContaining({ amount: '150', recordType: 'income' }),
-    );
-    expect(onUpdateFinancialRecord).toHaveBeenNthCalledWith(
-      2,
-      'record-2',
-      expect.objectContaining({ amount: '150', recordType: 'expense' }),
-    );
+    expect(onApplyStatementAmount).toHaveBeenCalledTimes(1);
+    expect(onApplyStatementAmount).toHaveBeenCalledWith('statement-1', {
+      mode: 'rub',
+      value: '150',
+    });
+    expect(result.current.statementAmountDraft.value).toBe('');
   });
 
-  it('applies percent amount relative to each row saldo', async () => {
-    const onUpdateFinancialRecord = vi.fn().mockResolvedValue(undefined);
+  it('sends percent mode to the statement bulk endpoint', async () => {
+    const onApplyStatementAmount = vi.fn().mockResolvedValue(undefined);
     const rows = [
       buildRow({ recordId: 'record-1', recordAmount: 50, paymentPaidBalance: 1000 }),
       buildRow({ recordId: 'record-2', recordAmount: 70, paymentPaidBalance: 2500 }),
     ];
     const { result } = renderHook(() =>
       useRecordAmountEditing({
-        onUpdateFinancialRecord,
+        onApplyStatementAmount,
       }),
     );
 
@@ -122,20 +117,14 @@ describe('useRecordAmountEditing', () => {
     });
 
     await act(async () => {
-      await result.current.applyStatementAmountToRows(rows);
+      await result.current.applyStatementAmountToRows('statement-1', rows);
     });
 
-    expect(onUpdateFinancialRecord).toHaveBeenCalledTimes(2);
-    expect(onUpdateFinancialRecord).toHaveBeenNthCalledWith(
-      1,
-      'record-1',
-      expect.objectContaining({ amount: '100' }),
-    );
-    expect(onUpdateFinancialRecord).toHaveBeenNthCalledWith(
-      2,
-      'record-2',
-      expect.objectContaining({ amount: '250' }),
-    );
+    expect(onApplyStatementAmount).toHaveBeenCalledTimes(1);
+    expect(onApplyStatementAmount).toHaveBeenCalledWith('statement-1', {
+      mode: 'percent',
+      value: '10',
+    });
   });
 
   it('preserves expense type for zero-amount expense rows during update', async () => {

@@ -15,6 +15,8 @@ import type {
   Policy,
   Quote,
   Statement,
+  StatementAmountApplyMode,
+  StatementAmountApplyResult,
   Task,
   User,
 } from '../../types';
@@ -120,6 +122,10 @@ export interface AppRouteFinanceActions {
   }) => Promise<Statement>;
   onDeleteFinanceStatement: (statementId: string) => Promise<void>;
   onRemoveFinanceStatementRecords: (statementId: string, recordIds: string[]) => Promise<void>;
+  onApplyFinanceStatementAmount: (
+    statementId: string,
+    values: { mode: StatementAmountApplyMode; value: string },
+  ) => Promise<StatementAmountApplyResult>;
   onUpdateFinanceStatement: (
     statementId: string,
     values: Partial<{

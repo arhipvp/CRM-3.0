@@ -1,7 +1,13 @@
 ﻿import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapFinancialRecord, mapPayment, mapStatement } from './mappers';
-import type { FinancialRecord, Payment, Statement } from '../types';
+import type {
+  FinancialRecord,
+  Payment,
+  Statement,
+  StatementAmountApplyMode,
+  StatementAmountApplyResult,
+} from '../types';
 
 const FINANCE_PAGE_SIZE = 200;
 
@@ -256,6 +262,41 @@ export async function removeFinanceStatementRecords(
     method: 'POST',
     body: JSON.stringify({ record_ids: recordIds }),
   });
+}
+
+export async function applyFinanceStatementAmount(
+  id: string,
+  data: { mode: StatementAmountApplyMode; value: string },
+): Promise<StatementAmountApplyResult> {
+  const payload = await request<Record<string, unknown>>(
+    `/finance_statements/${id}/apply-amount/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        mode: data.mode,
+        value: data.value,
+      }),
+    },
+  );
+  const skippedReasons = (payload.skipped_reasons ?? payload.skippedReasons ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const rawRecords = Array.isArray(payload.records) ? payload.records : [];
+  const rawStatement =
+    typeof payload.statement === 'object' && payload.statement !== null
+      ? (payload.statement as Record<string, unknown>)
+      : {};
+  return {
+    updated: Number(payload.updated ?? 0),
+    unchanged: Number(payload.unchanged ?? 0),
+    skipped: Number(payload.skipped ?? 0),
+    skippedReasons: {
+      zeroBalance: Number(skippedReasons.zero_balance ?? skippedReasons.zeroBalance ?? 0),
+    },
+    records: rawRecords.map((record) => mapFinancialRecord(record as Record<string, unknown>)),
+    statement: mapStatement(rawStatement),
+  };
 }
 
 export async function markFinanceStatementPaid(

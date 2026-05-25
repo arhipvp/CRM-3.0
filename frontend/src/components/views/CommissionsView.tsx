@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { Payment, Policy, Statement } from '../../types';
+import type {
+  Payment,
+  Policy,
+  Statement,
+  StatementAmountApplyMode,
+  StatementAmountApplyResult,
+} from '../../types';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
@@ -39,6 +45,10 @@ interface CommissionsViewProps {
   ) => Promise<void>;
   onDeleteStatement?: (statementId: string) => Promise<void>;
   onRemoveStatementRecords?: (statementId: string, recordIds: string[]) => Promise<void>;
+  onApplyStatementAmount?: (
+    statementId: string,
+    values: { mode: StatementAmountApplyMode; value: string },
+  ) => Promise<StatementAmountApplyResult>;
   onCreateStatement?: (values: {
     name: string;
     statementType: Statement['statementType'];
@@ -89,6 +99,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateFinancialRecord,
   onDeleteStatement,
   onRemoveStatementRecords,
+  onApplyStatementAmount,
   onCreateStatement,
   onUpdateStatement,
 }) => {
@@ -182,6 +193,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   } = useRecordAmountEditing({
     onUpdateFinancialRecord: async (recordId, values) => {
       await onUpdateFinancialRecord?.(recordId, values);
+      await onRefreshStatements?.();
+      if (viewMode === 'statements') {
+        await loadStatementRecords();
+      }
+    },
+    onApplyStatementAmount: async (statementId, values) => {
+      await onApplyStatementAmount?.(statementId, values);
       await onRefreshStatements?.();
       if (viewMode === 'statements') {
         await loadStatementRecords();
@@ -379,7 +397,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       onToggleRecordAmountMode={toggleRecordAmountMode}
       onStatementAmountChange={handleStatementAmountChange}
       onToggleStatementAmountMode={toggleStatementAmountMode}
-      onApplyStatementAmount={() => applyStatementAmountToRows(filteredRows)}
+      onApplyStatementAmount={() => applyStatementAmountToRows(selectedStatement?.id, filteredRows)}
     />
   );
 

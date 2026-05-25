@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import {
+  applyFinanceStatementAmount,
   createFinanceStatement,
   createFinancialRecord,
   createPayment,
@@ -17,7 +18,13 @@ import type { AddPaymentFormValues } from '../../components/forms/AddPaymentForm
 import { confirmTexts } from '../../constants/confirmTexts';
 import type { NotificationContextType } from '../../contexts/NotificationTypes';
 import type { FinancialRecordModalState, PaymentModalState } from '../../types';
-import type { FinancialRecord, Payment, Statement } from '../../types';
+import type {
+  FinancialRecord,
+  Payment,
+  Statement,
+  StatementAmountApplyMode,
+  StatementAmountApplyResult,
+} from '../../types';
 import { parseAmountValue } from '../../utils/appContent';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import type { useAppData } from '../useAppData';
@@ -81,6 +88,52 @@ const applyStatementAggregates = (items: Statement[], records: FinancialRecord[]
       recordsCount: aggregate.count,
       totalAmount: aggregate.total.toFixed(2),
     };
+  });
+};
+
+const mergeFinancialRecords = (
+  currentRecords: FinancialRecord[],
+  incomingRecords: FinancialRecord[],
+) => {
+  if (!incomingRecords.length) {
+    return currentRecords;
+  }
+  const incomingById = new Map(incomingRecords.map((record) => [record.id, record]));
+  const existingIds = new Set(currentRecords.map((record) => record.id));
+  const merged = currentRecords.map((record) => incomingById.get(record.id) ?? record);
+  incomingRecords.forEach((record) => {
+    if (!existingIds.has(record.id)) {
+      merged.push(record);
+    }
+  });
+  return merged;
+};
+
+const mergePaymentFinancialRecords = (payments: Payment[], incomingRecords: FinancialRecord[]) => {
+  if (!incomingRecords.length) {
+    return payments;
+  }
+  const incomingById = new Map(incomingRecords.map((record) => [record.id, record]));
+  const incomingByPaymentId = new Map<string, FinancialRecord[]>();
+  incomingRecords.forEach((record) => {
+    const records = incomingByPaymentId.get(record.paymentId) ?? [];
+    records.push(record);
+    incomingByPaymentId.set(record.paymentId, records);
+  });
+  return payments.map((payment) => {
+    const paymentIncoming = incomingByPaymentId.get(payment.id) ?? [];
+    if (!paymentIncoming.length) {
+      return payment;
+    }
+    const currentRecords = payment.financialRecords ?? [];
+    const existingIds = new Set(currentRecords.map((record) => record.id));
+    const financialRecords = currentRecords.map((record) => incomingById.get(record.id) ?? record);
+    paymentIncoming.forEach((record) => {
+      if (!existingIds.has(record.id)) {
+        financialRecords.push(record);
+      }
+    });
+    return { ...payment, financialRecords };
   });
 };
 
@@ -629,6 +682,41 @@ export const useFinanceActions = ({
     [addNotification, setError, updateAppData],
   );
 
+  const handleApplyFinanceStatementAmount = useCallback(
+    async (
+      statementId: string,
+      values: { mode: StatementAmountApplyMode; value: string },
+    ): Promise<StatementAmountApplyResult> => {
+      try {
+        const result = await applyFinanceStatementAmount(statementId, values);
+        updateAppData((prev) => {
+          const financialRecords = mergeFinancialRecords(prev.financialRecords, result.records);
+          const payments = mergePaymentFinancialRecords(prev.payments, result.records);
+          let statements = (prev.statements ?? []).map((statement) =>
+            statement.id === result.statement.id ? result.statement : statement,
+          );
+          statements = applyStatementAggregates(statements, financialRecords);
+          return { financialRecords, payments, statements };
+        });
+
+        if (result.skipped > 0) {
+          addNotification(
+            `Обновлено ${result.updated}, пропущено ${result.skipped} без сальдо`,
+            'warning',
+            5000,
+          );
+        } else {
+          addNotification(`Суммы ведомости обновлены: ${result.updated}`, 'success', 4000);
+        }
+        return result;
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при обновлении сумм ведомости'));
+        throw err;
+      }
+    },
+    [addNotification, setError, updateAppData],
+  );
+
   return {
     handleAddPayment,
     handleUpdatePayment,
@@ -642,5 +730,6 @@ export const useFinanceActions = ({
     handleUpdateFinanceStatement,
     handleDeleteFinanceStatement,
     handleRemoveFinanceStatementRecords,
+    handleApplyFinanceStatementAmount,
   };
 };

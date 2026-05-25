@@ -508,6 +508,19 @@ export interface Statement {
   deletedAt?: string | null;
 }
 
+export type StatementAmountApplyMode = 'rub' | 'percent';
+
+export interface StatementAmountApplyResult {
+  updated: number;
+  unchanged: number;
+  skipped: number;
+  skippedReasons: {
+    zeroBalance?: number;
+  };
+  records: FinancialRecord[];
+  statement: Statement;
+}
+
 export type FinancialRecordCreationContext = {
   paymentId: string;
   recordType: 'income' | 'expense';

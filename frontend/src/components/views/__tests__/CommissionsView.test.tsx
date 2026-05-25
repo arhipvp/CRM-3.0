@@ -133,6 +133,23 @@ describe('CommissionsView', () => {
   it('shows statement amount controls and keeps amount sorting stable when toggling percent mode', async () => {
     const user = userEvent.setup();
     const onUpdateFinancialRecord = vi.fn().mockResolvedValue(undefined);
+    const onApplyStatementAmount = vi.fn().mockResolvedValue({
+      updated: 2,
+      unchanged: 0,
+      skipped: 0,
+      skippedReasons: {},
+      records: [],
+      statement: {
+        id: 'statement-1',
+        name: 'Алиса',
+        statementType: 'expense',
+        status: 'draft',
+        totalAmount: '300',
+        recordsCount: 2,
+        createdAt: '2026-03-06T10:00:00Z',
+        updatedAt: '2026-03-06T10:00:00Z',
+      },
+    });
     mockedFetchStatementFinancialRecords.mockResolvedValueOnce([
       {
         id: 'record-1',
@@ -201,6 +218,7 @@ describe('CommissionsView', () => {
             ]}
             hasCommissionsSnapshotLoaded
             onUpdateFinancialRecord={onUpdateFinancialRecord}
+            onApplyStatementAmount={onApplyStatementAmount}
           />
         </NotificationProvider>
       </MemoryRouter>,
@@ -228,16 +246,11 @@ describe('CommissionsView', () => {
     await user.type(statementAmountInput, '10');
     await user.click(screen.getAllByRole('button', { name: 'Применить ко всей ведомости' })[0]);
 
-    expect(onUpdateFinancialRecord).toHaveBeenCalledTimes(2);
-    expect(onUpdateFinancialRecord).toHaveBeenNthCalledWith(
-      1,
-      'record-2',
-      expect.objectContaining({ amount: '200' }),
-    );
-    expect(onUpdateFinancialRecord).toHaveBeenNthCalledWith(
-      2,
-      'record-1',
-      expect.objectContaining({ amount: '100' }),
-    );
+    expect(onUpdateFinancialRecord).not.toHaveBeenCalled();
+    expect(onApplyStatementAmount).toHaveBeenCalledTimes(1);
+    expect(onApplyStatementAmount).toHaveBeenCalledWith('statement-1', {
+      mode: 'percent',
+      value: '10',
+    });
   }, 10000);
 }, 20000);

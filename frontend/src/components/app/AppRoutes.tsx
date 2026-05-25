@@ -216,6 +216,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               onDeleteStatement={financeActions.onDeleteFinanceStatement}
               onUpdateStatement={financeActions.onUpdateFinanceStatement}
               onRemoveStatementRecords={financeActions.onRemoveFinanceStatementRecords}
+              onApplyStatementAmount={financeActions.onApplyFinanceStatementAmount}
             />
           </Suspense>
         }
