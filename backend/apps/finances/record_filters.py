@@ -25,7 +25,7 @@ def apply_financial_record_filters(queryset, params):
     deal_id = params.get("deal")
     if deal_id:
         queryset = queryset.filter(
-            Q(payment__deal_id=deal_id) | Q(payment__policy__deal_id=deal_id)
+            Q(payment__policy__deal_id=deal_id) | Q(payment__deal_id=deal_id)
         ).distinct()
 
     policy_id = params.get("policy")

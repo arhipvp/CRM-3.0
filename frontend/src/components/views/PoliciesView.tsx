@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Client, ClientDuplicateHint, Payment, Policy } from '../../types';
+import { Client, ClientDuplicateHint, Deal, Payment, Policy } from '../../types';
 import { useRef } from 'react';
 import { fetchPoliciesKPI, FilterParams } from '../../api';
 import { confirmTexts } from '../../constants/confirmTexts';
@@ -33,6 +33,7 @@ import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET } from '../common/buttonStyles';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { ClientNameIndicators } from '../clients/ClientNameIndicators';
+import { PolicyMoveDialog } from '../policies/PolicyMoveDialog';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -63,6 +64,7 @@ const POLICY_SORT_OPTIONS = [
 
 interface PoliciesViewProps {
   policies: Policy[];
+  deals?: Deal[];
   payments: Payment[];
   clients?: Client[];
   clientDuplicateHints?: Record<string, ClientDuplicateHint>;
@@ -72,6 +74,7 @@ interface PoliciesViewProps {
   onClientFindSimilar?: (client: Client) => void;
   onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
   onRequestEditPolicy?: (policy: Policy) => void;
+  onMovePolicy?: (policyId: string, targetDealId: string) => Promise<void>;
   onLoadMorePolicies?: () => Promise<void>;
   policiesHasMore?: boolean;
   isLoadingMorePolicies?: boolean;
@@ -91,6 +94,7 @@ interface PoliciesViewProps {
 
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policies,
+  deals = [],
   payments,
   clients = [],
   clientDuplicateHints = {},
@@ -105,6 +109,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policiesError = null,
   onRefreshPoliciesList,
   onRequestEditPolicy,
+  onMovePolicy,
   onDeleteFinancialRecord,
   onDeletePayment,
   onMarkPaymentPaid,
@@ -120,6 +125,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const [recordToMarkPaidId, setRecordToMarkPaidId] = useState<string | null>(null);
   const [recordPaidDate, setRecordPaidDate] = useState('');
   const [recordPaidDateError, setRecordPaidDateError] = useState<string | null>(null);
+  const [policyToMove, setPolicyToMove] = useState<Policy | null>(null);
+  const [isMovingPolicy, setIsMovingPolicy] = useState(false);
   const [kpi, setKpi] = useState({
     total: 0,
     problemCount: 0,
@@ -391,6 +398,19 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     closeMarkRecordPaidPrompt();
   };
 
+  const handleConfirmMovePolicy = async (policyId: string, targetDealId: string) => {
+    if (!onMovePolicy) {
+      return;
+    }
+    setIsMovingPolicy(true);
+    try {
+      await onMovePolicy(policyId, targetDealId);
+      setPolicyToMove(null);
+    } finally {
+      setIsMovingPolicy(false);
+    }
+  };
+
   return (
     <section aria-labelledby="policiesViewHeading" className="app-panel p-3 shadow-none space-y-2">
       <h1 id="policiesViewHeading" className="sr-only">
@@ -627,16 +647,27 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             )}
                           </div>
                           <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                          {onRequestEditPolicy && (
-                            <button
-                              type="button"
-                              onClick={() => onRequestEditPolicy(policy)}
-                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
-                              aria-label={`Редактировать полис ${model.number}`}
-                            >
-                              Редактировать
-                            </button>
-                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {onRequestEditPolicy && (
+                              <button
+                                type="button"
+                                onClick={() => onRequestEditPolicy(policy)}
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                aria-label={`Редактировать полис ${model.number}`}
+                              >
+                                Редактировать
+                              </button>
+                            )}
+                            {onMovePolicy && (
+                              <button
+                                type="button"
+                                onClick={() => setPolicyToMove(policy)}
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              >
+                                Перенести
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td
@@ -919,6 +950,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         inputType="date"
       />
       <ConfirmDialogRenderer />
+      <PolicyMoveDialog
+        isOpen={Boolean(policyToMove)}
+        policy={policyToMove}
+        deals={deals}
+        isSubmitting={isMovingPolicy}
+        onCancel={() => setPolicyToMove(null)}
+        onConfirm={handleConfirmMovePolicy}
+      />
     </section>
   );
 };

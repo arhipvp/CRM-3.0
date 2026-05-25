@@ -14,12 +14,14 @@ def is_admin_user(user) -> bool:
 def get_deal_from_payment(payment):
     if not payment:
         return None
+    policy = getattr(payment, "policy", None)
+    if policy:
+        policy_deal = getattr(policy, "deal", None)
+        if policy_deal:
+            return policy_deal
     deal = getattr(payment, "deal", None)
     if deal:
         return deal
-    policy = getattr(payment, "policy", None)
-    if policy:
-        return getattr(policy, "deal", None)
     return None
 
 

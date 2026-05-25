@@ -11,6 +11,7 @@ import {
   deletePayment,
   deletePolicy,
   fetchDeal,
+  movePolicy,
   updateFinancialRecord,
   updatePayment,
   updatePolicy,
@@ -992,6 +993,75 @@ export const usePolicyActions = ({
     ],
   );
 
+  const handleMovePolicy = useCallback(
+    async (policyId: string, targetDealId: string) => {
+      const targetPolicy = policies.find((policy) => policy.id === policyId);
+      if (!targetPolicy) {
+        throw new Error('Не удалось найти полис для переноса.');
+      }
+      const sourceDealId = targetPolicy.dealId;
+      if (sourceDealId === targetDealId) {
+        throw new Error('Полис уже находится в выбранной сделке.');
+      }
+
+      setIsSyncing(true);
+      invalidateDealsCache();
+      invalidateDealPoliciesCache(sourceDealId);
+      invalidateDealPoliciesCache(targetDealId);
+      try {
+        const updated = await movePolicy(policyId, targetDealId);
+        const targetDeal = dealsById.get(targetDealId);
+        updateAppData((prev) => ({
+          policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
+          payments: prev.payments.map((payment) =>
+            payment.policyId === policyId
+              ? {
+                  ...payment,
+                  dealId: targetDealId,
+                  dealTitle: targetDeal?.title ?? updated.dealTitle ?? payment.dealTitle,
+                  dealClientName:
+                    targetDeal?.clientName ?? updated.clientName ?? payment.dealClientName,
+                }
+              : payment,
+          ),
+          financialRecords: prev.financialRecords.map((record) =>
+            record.policyId === policyId
+              ? {
+                  ...record,
+                  dealId: targetDealId,
+                  dealTitle: targetDeal?.title ?? updated.dealTitle ?? record.dealTitle,
+                  dealClientName:
+                    targetDeal?.clientName ?? updated.clientName ?? record.dealClientName,
+                }
+              : record,
+          ),
+        }));
+        await syncDealsByIds([sourceDealId, targetDealId]);
+        await Promise.all(
+          [sourceDealId, targetDealId]
+            .filter((dealId): dealId is string => Boolean(dealId))
+            .map((dealId) => loadDealPolicies(dealId, { force: true })),
+        );
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Не удалось перенести полис'));
+        throw err;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [
+      dealsById,
+      invalidateDealPoliciesCache,
+      invalidateDealsCache,
+      loadDealPolicies,
+      policies,
+      setError,
+      setIsSyncing,
+      syncDealsByIds,
+      updateAppData,
+    ],
+  );
+
   const handleUpdatePolicyRenewed = useCallback(
     async (policyId: string, isRenewed: boolean) => {
       const targetPolicy = policies.find((policy) => policy.id === policyId);
@@ -1040,6 +1110,7 @@ export const usePolicyActions = ({
     handleUpdatePolicy,
     handleUpdatePolicyRenewed,
     handleDeletePolicy,
+    handleMovePolicy,
     policyDealExecutorName: policyDealId
       ? (dealsById.get(policyDealId)?.executorName ?? null)
       : null,

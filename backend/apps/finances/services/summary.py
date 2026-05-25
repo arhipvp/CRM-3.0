@@ -12,7 +12,10 @@ def build_finance_summary_payload(*, user) -> dict:
     records_queryset = FinancialRecord.objects.filter(deleted_at__isnull=True)
     if not is_admin and user.is_authenticated:
         records_queryset = records_queryset.filter(
-            Q(payment__deal__seller=user) | Q(payment__deal__executor=user)
+            Q(payment__policy__deal__seller=user)
+            | Q(payment__policy__deal__executor=user)
+            | Q(payment__deal__seller=user)
+            | Q(payment__deal__executor=user)
         )
 
     incomes_total = (
@@ -30,7 +33,10 @@ def build_finance_summary_payload(*, user) -> dict:
     )
     if not is_admin and user.is_authenticated:
         payments_queryset = payments_queryset.filter(
-            Q(deal__seller=user) | Q(deal__executor=user)
+            Q(policy__deal__seller=user)
+            | Q(policy__deal__executor=user)
+            | Q(deal__seller=user)
+            | Q(deal__executor=user)
         )
 
     planned_payments = payments_queryset.select_related("policy").order_by(

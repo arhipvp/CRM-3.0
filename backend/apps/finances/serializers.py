@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 from .models import FinancialRecord, Payment, Statement
+from .permissions import get_deal_from_payment
 
 READABLE_RECORD_TYPES = {
     FinancialRecord.RecordType.INCOME: FinancialRecord.RecordType.INCOME.label,
@@ -168,15 +169,9 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
     payment_scheduled_date = serializers.DateField(
         source="payment.scheduled_date", read_only=True, allow_null=True
     )
-    deal_id = serializers.CharField(
-        source="payment.deal_id", read_only=True, allow_null=True
-    )
-    deal_title = serializers.CharField(
-        source="payment.deal.title", read_only=True, allow_null=True
-    )
-    deal_client_name = serializers.CharField(
-        source="payment.deal.client.name", read_only=True, allow_null=True
-    )
+    deal_id = serializers.SerializerMethodField()
+    deal_title = serializers.SerializerMethodField()
+    deal_client_name = serializers.SerializerMethodField()
     policy_id = serializers.CharField(
         source="payment.policy_id", read_only=True, allow_null=True
     )
@@ -238,6 +233,19 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
             FinancialRecord.RecordType.INCOME.label,
         )
 
+    def get_deal_id(self, obj):
+        deal = get_deal_from_payment(getattr(obj, "payment", None))
+        return str(deal.id) if deal else None
+
+    def get_deal_title(self, obj):
+        deal = get_deal_from_payment(getattr(obj, "payment", None))
+        return getattr(deal, "title", None) if deal else None
+
+    def get_deal_client_name(self, obj):
+        deal = get_deal_from_payment(getattr(obj, "payment", None))
+        client = getattr(deal, "client", None) if deal else None
+        return getattr(client, "name", None) if client else None
+
     def validate(self, attrs):
         raw_record_type = self.initial_data.get(
             "record_type",
@@ -273,12 +281,8 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    deal_title = serializers.CharField(
-        source="deal.title", read_only=True, allow_null=True
-    )
-    deal_client_name = serializers.CharField(
-        source="deal.client.name", read_only=True, allow_null=True
-    )
+    deal_title = serializers.SerializerMethodField()
+    deal_client_name = serializers.SerializerMethodField()
     policy_number = serializers.CharField(
         source="policy.number", read_only=True, allow_null=True
     )
@@ -298,12 +302,36 @@ class PaymentSerializer(serializers.ModelSerializer):
         """Проверка возможности удаления платежа"""
         return obj.can_delete()
 
+    def get_deal_title(self, obj):
+        deal = get_deal_from_payment(obj)
+        return getattr(deal, "title", None) if deal else None
+
+    def get_deal_client_name(self, obj):
+        deal = get_deal_from_payment(obj)
+        client = getattr(deal, "client", None) if deal else None
+        return getattr(client, "name", None) if client else None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        deal = get_deal_from_payment(instance)
+        data["deal"] = str(deal.id) if deal else None
+        return data
+
     def validate(self, attrs):
         amount = attrs.get("amount") or getattr(self.instance, "amount", None)
+        policy = attrs.get("policy") or getattr(self.instance, "policy", None)
+        input_deal = attrs.get("deal") if "deal" in attrs else None
 
         errors = {}
+        if not policy:
+            errors["policy"] = "Укажите полис для платежа."
+        elif input_deal and input_deal.pk != policy.deal_id:
+            errors["deal"] = "Сделка платежа должна совпадать со сделкой полиса."
         if amount is not None and amount <= 0:
             errors["amount"] = "Amount must be greater than zero."
         if errors:
             raise serializers.ValidationError(errors)
+
+        if policy:
+            attrs["deal"] = policy.deal
         return attrs

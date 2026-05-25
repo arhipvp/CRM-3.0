@@ -35,6 +35,7 @@ vi.mock('../../../api', () => {
     deletePayment: vi.fn(),
     deletePolicy: vi.fn(),
     fetchDeal: vi.fn(),
+    movePolicy: vi.fn(),
     updateFinancialRecord: vi.fn(),
     updatePayment: vi.fn(),
     updatePolicy: vi.fn(),
@@ -44,12 +45,14 @@ vi.mock('../../../api', () => {
 
 import {
   deleteFinancialRecord,
+  movePolicy,
   updateFinancialRecord,
   updatePolicy,
   updatePolicyRenewed,
 } from '../../../api';
 
 const deleteFinancialRecordMock = vi.mocked(deleteFinancialRecord);
+const movePolicyMock = vi.mocked(movePolicy);
 const updateFinancialRecordMock = vi.mocked(updateFinancialRecord);
 const updatePolicyMock = vi.mocked(updatePolicy);
 const updatePolicyRenewedMock = vi.mocked(updatePolicyRenewed);
@@ -153,7 +156,7 @@ const createParams = ({
     users: User[];
   } = {
     clients: [],
-    deals: [createDeal({ id: policy.dealId })],
+    deals: [createDeal({ id: policy.dealId }), createDeal({ id: 'deal-2', title: 'Новая сделка' })],
     policies: [policy],
     salesChannels: [],
     payments,
@@ -166,7 +169,10 @@ const createParams = ({
   return {
     params: {
       clients: [],
-      dealsById: new Map<string, Deal>([[policy.dealId, createDeal({ id: policy.dealId })]]),
+      dealsById: new Map<string, Deal>([
+        [policy.dealId, createDeal({ id: policy.dealId })],
+        ['deal-2', createDeal({ id: 'deal-2', title: 'Новая сделка' })],
+      ]),
       policies: [policy],
       payments,
       statements,
@@ -385,6 +391,33 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
 
     expect(updatePolicyRenewedMock).toHaveBeenCalledWith(policy.id, true);
     expect(updatePolicyMock).not.toHaveBeenCalled();
+  });
+
+  it('moves policy and refreshes both affected deals', async () => {
+    const policy = createPolicy();
+    const payment = createPayment({ policyId: policy.id, dealId: policy.dealId });
+    const { params, appState } = createParams({ policy, payments: [payment] });
+    const movedPolicy = {
+      ...policy,
+      dealId: 'deal-2',
+      dealTitle: 'Новая сделка',
+    };
+    movePolicyMock.mockResolvedValue(movedPolicy);
+
+    const { result } = renderHook(() => usePolicyActions(params));
+
+    await act(async () => {
+      await result.current.handleMovePolicy(policy.id, 'deal-2');
+    });
+
+    expect(movePolicyMock).toHaveBeenCalledWith(policy.id, 'deal-2');
+    expect(params.invalidateDealPoliciesCache).toHaveBeenCalledWith(policy.dealId);
+    expect(params.invalidateDealPoliciesCache).toHaveBeenCalledWith('deal-2');
+    expect(params.syncDealsByIds).toHaveBeenCalledWith([policy.dealId, 'deal-2']);
+    expect(params.loadDealPolicies).toHaveBeenCalledWith(policy.dealId, { force: true });
+    expect(params.loadDealPolicies).toHaveBeenCalledWith('deal-2', { force: true });
+    expect(appState.policies[0].dealId).toBe('deal-2');
+    expect(appState.payments[0].dealId).toBe('deal-2');
   });
 });
 

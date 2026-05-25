@@ -316,6 +316,14 @@ export async function updatePolicyRenewed(id: string, isRenewed: boolean): Promi
   return mapPolicy(payload);
 }
 
+export async function movePolicy(id: string, targetDealId: string): Promise<Policy> {
+  const payload = await request<Record<string, unknown>>(`/policies/${id}/move/`, {
+    method: 'POST',
+    body: JSON.stringify({ deal: targetDealId }),
+  });
+  return mapPolicy(payload);
+}
+
 export async function fetchPoliciesKPI(
   filters?: FilterParams,
   options?: RequestInit,

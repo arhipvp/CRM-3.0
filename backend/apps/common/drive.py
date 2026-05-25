@@ -693,6 +693,20 @@ def ensure_policy_folder(policy) -> Optional[str]:
     return folder_id
 
 
+def ensure_policy_folder_for_deal(policy, deal) -> Optional[str]:
+    """Ensure a Policy folder exists inside the provided deal without saving policy."""
+
+    if not deal:
+        raise DriveConfigurationError("Policy target deal is required.")
+
+    deal_folder = ensure_deal_folder(deal)
+    if not deal_folder:
+        return None
+
+    name = _format_folder_name(policy.number or "policy", "policy")
+    return _ensure_folder(name, deal_folder)
+
+
 def ensure_statement_folder(statement) -> Optional[str]:
     """Ensure a Statement folder exists inside the statements root folder."""
 

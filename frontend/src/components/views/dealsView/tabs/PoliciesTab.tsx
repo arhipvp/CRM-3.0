@@ -27,6 +27,7 @@ import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/but
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { FileUploadManager } from '../../../FileUploadManager';
+import { PolicyMoveDialog } from '../../../policies/PolicyMoveDialog';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -41,6 +42,7 @@ const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
 
 interface PoliciesTabProps {
   selectedDeal: Deal | null;
+  deals?: Deal[];
   sortedPolicies: Policy[];
   relatedPayments: Payment[];
   clients: Client[];
@@ -61,6 +63,7 @@ interface PoliciesTabProps {
   onMarkFinancialRecordPaid?: (recordId: string, paidDate: string) => Promise<void>;
   onRequestAddPolicy: (dealId: string) => void;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onMovePolicy?: (policyId: string, targetDealId: string) => Promise<void>;
   onUpdatePolicyRenewed: (policyId: string, isRenewed: boolean) => Promise<void>;
   onRequestEditPolicy: (policy: Policy) => void;
   onUploadAndRecognizePolicyFiles?: (files: File[]) => Promise<void>;
@@ -73,6 +76,7 @@ interface PoliciesTabProps {
 
 export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   selectedDeal,
+  deals = [],
   sortedPolicies,
   relatedPayments,
   policySortKey,
@@ -85,6 +89,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onDeletePayment,
   onRequestAddPolicy,
   onDeletePolicy,
+  onMovePolicy,
   onUpdatePolicyRenewed,
   onRequestEditPolicy,
   onUploadAndRecognizePolicyFiles,
@@ -105,6 +110,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   const [recordToMarkPaidId, setRecordToMarkPaidId] = useState<string | null>(null);
   const [recordPaidDate, setRecordPaidDate] = useState('');
   const [recordPaidDateError, setRecordPaidDateError] = useState<string | null>(null);
+  const [policyToMove, setPolicyToMove] = useState<Policy | null>(null);
+  const [isMovingPolicy, setIsMovingPolicy] = useState(false);
   const { confirm, ConfirmDialogRenderer } = useConfirm();
 
   const paymentsByPolicyMap = useMemo(() => {
@@ -300,6 +307,19 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     }
     await onMarkFinancialRecordPaid(recordToMarkPaidId, recordPaidDate);
     closeMarkRecordPaidPrompt();
+  };
+
+  const handleConfirmMovePolicy = async (policyId: string, targetDealId: string) => {
+    if (!onMovePolicy) {
+      return;
+    }
+    setIsMovingPolicy(true);
+    try {
+      await onMovePolicy(policyId, targetDealId);
+      setPolicyToMove(null);
+    } finally {
+      setIsMovingPolicy(false);
+    }
   };
 
   if (!sortedPolicies.length) {
@@ -524,6 +544,15 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             >
                               Редактировать
                             </button>
+                            {onMovePolicy && (
+                              <button
+                                type="button"
+                                onClick={() => setPolicyToMove(policy)}
+                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              >
+                                Перенести
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => {
@@ -795,6 +824,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
         inputType="date"
       />
       <ConfirmDialogRenderer />
+      <PolicyMoveDialog
+        isOpen={Boolean(policyToMove)}
+        policy={policyToMove}
+        deals={deals}
+        isSubmitting={isMovingPolicy}
+        onCancel={() => setPolicyToMove(null)}
+        onConfirm={handleConfirmMovePolicy}
+      />
     </section>
   );
 };

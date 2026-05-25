@@ -92,6 +92,7 @@ export interface DealDetailsPanelProps {
   onPendingDealClientConsumed?: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
+  onMovePolicy?: (policyId: string, targetDealId: string) => Promise<void>;
   onUpdatePolicyRenewed?: (policyId: string, isRenewed: boolean) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
   onPolicyDraftReady?: (
@@ -166,6 +167,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onPendingDealClientConsumed,
   onDeleteQuote,
   onDeletePolicy,
+  onMovePolicy = async () => undefined,
   onUpdatePolicyRenewed = async () => undefined,
   onRefreshPolicies,
   onPolicyDraftReady,
@@ -744,6 +746,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   }}
                   policiesTabProps={{
                     selectedDeal,
+                    deals,
                     sortedPolicies,
                     policySortKey,
                     policySortOrder,
@@ -751,6 +754,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     setPolicySortOrder,
                     onRequestAddPolicy,
                     onDeletePolicy,
+                    onMovePolicy,
                     onUpdatePolicyRenewed,
                     onRequestEditPolicy,
                     relatedPayments,

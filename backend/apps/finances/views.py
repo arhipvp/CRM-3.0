@@ -120,6 +120,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             FinancialRecord.objects.select_related(
                 "payment",
                 "payment__policy",
+                "payment__policy__deal",
+                "payment__policy__deal__client",
                 "payment__policy__insurance_type",
                 "payment__policy__sales_channel",
                 "payment__deal",
@@ -186,8 +188,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if not is_admin:
             # Остальные видят только записи для своих сделок (где user = seller или executor)
             queryset = queryset.filter(
-                build_deal_visibility_q(user, prefix="payment__deal__")
-                | build_deal_visibility_q(user, prefix="payment__policy__deal__")
+                build_deal_visibility_q(user, prefix="payment__policy__deal__")
+                | build_deal_visibility_q(user, prefix="payment__deal__")
             ).distinct()
 
         queryset = apply_financial_record_filters(queryset, self.request.query_params)
@@ -200,6 +202,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 | Q(payment__policy__insured_client__name__icontains=search_term)
                 | Q(payment__policy__insurance_type__name__icontains=search_term)
                 | Q(payment__policy__sales_channel__name__icontains=search_term)
+                | Q(payment__policy__deal__title__icontains=search_term)
+                | Q(payment__policy__deal__client__name__icontains=search_term)
                 | Q(payment__deal__title__icontains=search_term)
                 | Q(payment__deal__client__name__icontains=search_term)
                 | Q(payment__description__icontains=search_term)
@@ -266,7 +270,10 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         user = self.request.user
         queryset = (
             Statement.objects.prefetch_related(
-                "records", "records__payment", "records__payment__deal"
+                "records",
+                "records__payment",
+                "records__payment__policy__deal",
+                "records__payment__deal",
             )
             .all()
             .order_by("-created_at")
@@ -309,6 +316,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .select_related(
                 "payment",
                 "payment__policy",
+                "payment__policy__deal",
+                "payment__policy__deal__client",
                 "payment__policy__insurance_type",
                 "payment__policy__sales_channel",
                 "payment__deal",
@@ -523,6 +532,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .select_related(
                 "payment",
                 "payment__policy",
+                "payment__policy__deal",
+                "payment__policy__deal__client",
                 "payment__policy__insurance_type",
                 "payment__policy__sales_channel",
                 "payment__deal",
@@ -537,6 +548,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             Payment.objects.filter(id__in=payment_ids)
             .select_related(
                 "policy",
+                "policy__deal",
+                "policy__deal__client",
                 "policy__insurance_type",
                 "policy__sales_channel",
                 "deal",
@@ -896,7 +909,7 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     serializer_class = PaymentSerializer
     filterset_class = PaymentFilterSet
-    search_fields = ["description", "deal__title"]
+    search_fields = ["description", "policy__deal__title", "deal__title"]
     ordering_fields = [
         "created_at",
         "updated_at",
@@ -909,7 +922,7 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = (
-            Payment.objects.select_related("policy", "deal")
+            Payment.objects.select_related("policy", "policy__deal", "deal")
             .prefetch_related("financial_records")
             .all()
             .order_by("-scheduled_date")
@@ -925,14 +938,15 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if not is_admin:
             # Остальные видят только платежи для своих сделок (где user = seller или executor)
             queryset = queryset.filter(
-                build_deal_visibility_q(user, prefix="deal__")
-                | build_deal_visibility_q(user, prefix="policy__deal__")
+                build_deal_visibility_q(user, prefix="policy__deal__")
+                | build_deal_visibility_q(user, prefix="deal__")
             ).distinct()
 
         return queryset
 
     def perform_create(self, serializer):
-        deal = serializer.validated_data.get("deal")
+        policy = serializer.validated_data.get("policy")
+        deal = getattr(policy, "deal", None)
         if not user_has_deal_access(self.request.user, deal):
             raise PermissionDenied("Нет доступа к сделке.")
         serializer.save()

@@ -90,7 +90,8 @@ def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
         return [
             str(pk)
             for pk in FinancialRecord.objects.with_deleted()
-            .filter(payment__deal=deal)
+            .filter(Q(payment__policy__deal=deal) | Q(payment__deal=deal))
+            .distinct()
             .values_list("id", flat=True)
         ]
 
@@ -108,7 +109,8 @@ def collect_related_ids(deal: Deal) -> dict[str, list[str]]:
         "payment": _prefetched_ids(
             "_history_payments",
             Payment.objects.with_deleted()
-            .filter(deal=deal)
+            .filter(Q(policy__deal=deal) | Q(deal=deal))
+            .distinct()
             .values_list("id", flat=True),
         ),
         "financial_record": _financial_record_ids(),

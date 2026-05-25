@@ -7,7 +7,7 @@ from unittest.mock import patch
 from apps.clients.models import Client
 from apps.common.drive import ensure_statement_folder
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
-from apps.deals.models import Deal
+from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.finances.models import FinancialRecord, Payment, Statement
 from apps.policies.models import Policy
 from apps.tasks.models import Task
@@ -65,6 +65,15 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             deal=self.deal,
             assignee=self.task_assignee,
         )
+        self.insurance_company = InsuranceCompany.objects.create(name="Finance IC")
+        self.insurance_type = InsuranceType.objects.create(name="Finance Type")
+        self.policy = Policy.objects.create(
+            number="FIN-POL-001",
+            deal=self.deal,
+            client=client,
+            insurance_company=self.insurance_company,
+            insurance_type=self.insurance_type,
+        )
 
         admin_role, _ = Role.objects.get_or_create(
             name="Admin", defaults={"description": "Системный администратор"}
@@ -77,7 +86,10 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         UserRole.objects.create(user=self.localized_admin, role=localized_admin_role)
 
         self.payment = Payment.objects.create(
-            deal=self.deal, amount=Decimal("1000.00"), description="Initial"
+            policy=self.policy,
+            deal=self.deal,
+            amount=Decimal("1000.00"),
+            description="Initial",
         )
         self.fin_record = FinancialRecord.objects.create(
             payment=self.payment, amount=Decimal("100"), description="Calc"
@@ -93,7 +105,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             "/api/v1/payments/",
             {
                 "amount": "1500.00",
-                "deal": str(self.deal.id),
+                "policy": str(self.policy.id),
             },
             format="json",
         )
@@ -105,7 +117,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             "/api/v1/payments/",
             {
                 "amount": "2000.00",
-                "deal": str(self.deal.id),
+                "policy": str(self.policy.id),
             },
             format="json",
         )
@@ -117,7 +129,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             "/api/v1/payments/",
             {
                 "amount": "2000.00",
-                "deal": str(self.deal.id),
+                "policy": str(self.policy.id),
             },
             format="json",
         )
@@ -337,8 +349,8 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         self.assertEqual(
             record["payment_scheduled_date"], self.payment.scheduled_date.isoformat()
         )
-        self.assertIsNone(record["policy_id"])
-        self.assertIsNone(record["policy_number"])
+        self.assertEqual(record["policy_id"], str(self.policy.id))
+        self.assertEqual(record["policy_number"], self.policy.number)
         self.assertIsNone(record["sales_channel_name"])
 
     def test_financial_record_search_still_works_with_enriched_fields(self):

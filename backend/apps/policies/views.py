@@ -8,13 +8,18 @@ from apps.common.drive import (
     download_drive_file,
     ensure_deal_folder,
     ensure_policy_folder,
+    ensure_policy_folder_for_deal,
     move_drive_file_to_folder,
+    move_drive_folder_to_parent,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
+from apps.deals.permissions import build_deal_visibility_q
+from apps.finances.models import Payment
 from apps.notes.models import Note
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.db.models import DecimalField, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -64,6 +69,10 @@ class PolicyRecognitionSerializer(serializers.Serializer):
         allow_empty=False,
         required=True,
     )
+
+
+class PolicyMoveSerializer(serializers.Serializer):
+    deal = serializers.UUIDField(required=True)
 
 
 class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -465,6 +474,68 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def _can_modify(self, user, instance):
         deal = getattr(instance, "deal", None)
         return user_can_modify_deal(user, deal)
+
+    def _get_move_target_deal(self, user, target_deal_id):
+        queryset = Deal.objects.filter(pk=target_deal_id, deleted_at__isnull=True)
+        if not user_is_admin(user):
+            queryset = queryset.filter(build_deal_visibility_q(user)).distinct()
+        return queryset.first()
+
+    @action(detail=True, methods=["post"], url_path="move")
+    def move(self, request, pk=None):
+        policy = self.get_object()
+        source_deal = policy.deal
+        user = request.user
+
+        if not user or not user.is_authenticated:
+            raise PermissionDenied("Нет доступа к сделке.")
+
+        if not user_is_admin(user) and source_deal.seller_id != user.id:
+            raise PermissionDenied(
+                "Только продавец исходной сделки может перенести полис."
+            )
+
+        serializer = PolicyMoveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target_deal = self._get_move_target_deal(
+            user, serializer.validated_data["deal"]
+        )
+        if not target_deal:
+            return Response(
+                {"detail": "Целевая сделка не найдена или недоступна."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if target_deal.pk == source_deal.pk:
+            raise DRFValidationError(
+                {"deal": "Полис уже находится в выбранной сделке."}
+            )
+
+        try:
+            if policy.drive_folder_id:
+                target_folder_id = ensure_deal_folder(target_deal)
+                if not target_folder_id:
+                    raise DriveError("Папка целевой сделки не найдена.")
+                move_drive_folder_to_parent(policy.drive_folder_id, target_folder_id)
+                policy_folder_id = policy.drive_folder_id
+            else:
+                policy_folder_id = ensure_policy_folder_for_deal(policy, target_deal)
+        except DriveError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        with transaction.atomic():
+            policy.deal = target_deal
+            if policy_folder_id:
+                policy.drive_folder_id = policy_folder_id
+            policy.save(update_fields=["deal", "drive_folder_id", "updated_at"])
+            Payment.objects.filter(policy=policy, deleted_at__isnull=True).update(
+                deal=target_deal
+            )
+
+        policy = self.get_queryset().get(pk=policy.pk)
+        return Response(self.get_serializer(policy).data)
 
     def _serialize_latest_issuance(self, policy: Policy, request) -> Response:
         execution = get_latest_execution(policy)

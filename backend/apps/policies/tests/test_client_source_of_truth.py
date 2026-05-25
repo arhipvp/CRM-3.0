@@ -1,4 +1,5 @@
 import importlib
+from types import SimpleNamespace
 
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
@@ -144,8 +145,8 @@ class PolicyClientSourceOfTruthTests(AuthenticatedAPITestCase):
         migration_module = importlib.import_module(
             "apps.policies.migrations.0015_sync_client_from_insured_legacy"
         )
-        with connection.schema_editor() as schema_editor:
-            migration_module.sync_client_from_insured(django_apps, schema_editor)
+        schema_editor = SimpleNamespace(connection=connection)
+        migration_module.sync_client_from_insured(django_apps, schema_editor)
 
         policy.refresh_from_db()
         self.assertEqual(policy.client_id, self.client_b.id)
