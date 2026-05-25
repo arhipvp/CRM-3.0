@@ -16,6 +16,7 @@ interface CreateStatementModalProps {
     counterparty: string;
     comment: string;
   };
+  error?: string | null;
   onClose: () => void;
   onSubmit: () => void;
   onFormChange: (
@@ -37,6 +38,7 @@ export const CreateStatementModal: React.FC<CreateStatementModalProps> = ({
   isOpen,
   isSubmitting,
   form,
+  error,
   onClose,
   onSubmit,
   onFormChange,
@@ -115,6 +117,7 @@ export const CreateStatementModal: React.FC<CreateStatementModalProps> = ({
             />
           </FormField>
         </FormSection>
+        {error && <p className="app-alert app-alert-danger mt-4">{error}</p>}
         <FormActions
           onCancel={onClose}
           isSubmitting={isSubmitting}

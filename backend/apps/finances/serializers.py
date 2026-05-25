@@ -48,7 +48,28 @@ class StatementSerializer(serializers.ModelSerializer):
         )
         return total
 
+    def _validate_unique_name(self, attrs):
+        raw_name = attrs.get("name", getattr(self.instance, "name", ""))
+        clean_name = " ".join((raw_name or "").split())
+        if not clean_name:
+            raise serializers.ValidationError({"name": "Укажите название ведомости."})
+
+        normalized_name = Statement.normalize_name(clean_name)
+        queryset = Statement.objects.filter(
+            deleted_at__isnull=True,
+            name_normalized=normalized_name,
+        )
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(
+                {"name": "Ведомость с таким названием уже существует."}
+            )
+
+        attrs["name"] = clean_name
+
     def validate(self, attrs):
+        self._validate_unique_name(attrs)
         record_ids = attrs.get("record_ids")
         statement_type = attrs.get("statement_type") or getattr(
             self.instance, "statement_type", None

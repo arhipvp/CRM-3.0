@@ -5,6 +5,7 @@ from io import BytesIO
 from unittest.mock import patch
 
 from apps.clients.models import Client
+from apps.common.drive import ensure_statement_folder
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment, Statement
@@ -544,6 +545,96 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_cannot_create_statement_with_duplicate_name(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {"name": "Duplicate Sheet", "statement_type": "income"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        duplicate = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {"name": "Duplicate Sheet", "statement_type": "expense"},
+            format="json",
+        )
+
+        self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("таким названием", str(duplicate.data.get("name")))
+
+    def test_statement_duplicate_name_is_case_and_space_insensitive(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {"name": "  Alice   Sheet  ", "statement_type": "income"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        duplicate = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {"name": "alice sheet", "statement_type": "income"},
+            format="json",
+        )
+
+        self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_can_update_statement_without_changing_name(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Stable Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+
+        response = self.api_client.patch(
+            f"/api/v1/finance_statements/{statement.id}/",
+            {"comment": "Updated"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_cannot_rename_statement_to_duplicate_name(self):
+        self.authenticate(self.seller)
+        Statement.objects.create(
+            name="Taken Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        statement = Statement.objects.create(
+            name="Editable Sheet",
+            statement_type="expense",
+            created_by=self.seller,
+        )
+
+        response = self.api_client.patch(
+            f"/api/v1/finance_statements/{statement.id}/",
+            {"name": "taken   sheet"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("таким названием", str(response.data.get("name")))
+
+    def test_soft_deleted_statement_name_can_be_reused(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Reusable Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        statement.delete()
+
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {"name": "Reusable Sheet", "statement_type": "expense"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_cannot_edit_record_in_paid_statement(self):
         self.authenticate(self.seller)
         statement = Statement.objects.create(
@@ -1000,6 +1091,32 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
             str(ws.cell(row=2, column=header_index["Сумма, ₽"]).value),
         )
         workbook.close()
+
+    def test_statement_drive_folder_is_created_even_when_name_exists(self):
+        with patch(
+            "apps.finances.signals.ensure_statement_folder",
+            side_effect=lambda instance: instance.drive_folder_id,
+        ):
+            statement = Statement.objects.create(
+                name="Drive Statement",
+                statement_type="income",
+                created_by=self.seller,
+            )
+
+        with (
+            self.settings(GOOGLE_DRIVE_ROOT_FOLDER_ID="root-folder"),
+            patch("apps.common.drive._ensure_folder", return_value="statements-root"),
+            patch("apps.common.drive._find_folder", return_value={"id": "existing"}),
+            patch(
+                "apps.common.drive._make_folder", return_value="new-folder"
+            ) as make_folder,
+        ):
+            folder_id = ensure_statement_folder(statement)
+
+        self.assertEqual(folder_id, "new-folder")
+        make_folder.assert_called_once_with("Drive Statement", "statements-root")
+        statement.refresh_from_db()
+        self.assertEqual(statement.drive_folder_id, "new-folder")
 
 
 class FinancialRecordFilterTests(AuthenticatedAPITestCase):

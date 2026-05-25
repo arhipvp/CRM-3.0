@@ -66,6 +66,8 @@ export const useStatementsManager = ({
     counterparty: '',
     comment: '',
   });
+  const [statementFormError, setStatementFormError] = useState<string | null>(null);
+  const [editStatementFormError, setEditStatementFormError] = useState<string | null>(null);
   const [isStatementExporting, setIsStatementExporting] = useState(false);
   const [statementExportError, setStatementExportError] = useState<string | null>(null);
 
@@ -73,6 +75,12 @@ export const useStatementsManager = ({
     setStatementExportError(null);
     setIsStatementExporting(false);
   }, [selectedStatementId]);
+
+  useEffect(() => {
+    if (!isStatementModalOpen) {
+      setStatementFormError(null);
+    }
+  }, [isStatementModalOpen]);
 
   const handleExportStatement = useCallback(async () => {
     if (!selectedStatement) {
@@ -108,6 +116,7 @@ export const useStatementsManager = ({
       return;
     }
     setIsStatementCreating(true);
+    setStatementFormError(null);
     try {
       const created = await onCreateStatement({
         name: statementForm.name.trim(),
@@ -124,6 +133,8 @@ export const useStatementsManager = ({
       });
       setSelectedStatementId(created.id);
       resetSelection();
+    } catch (error) {
+      setStatementFormError(formatErrorMessage(error, 'Не удалось создать ведомость.'));
     } finally {
       setIsStatementCreating(false);
     }
@@ -136,6 +147,7 @@ export const useStatementsManager = ({
   ]);
 
   const handleEditStatementOpen = useCallback((statement: Statement) => {
+    setEditStatementFormError(null);
     setEditingStatement(statement);
     setEditStatementForm({
       name: statement.name ?? '',
@@ -150,6 +162,7 @@ export const useStatementsManager = ({
     if (!editingStatement || !onUpdateStatement) {
       return;
     }
+    setEditStatementFormError(null);
     const existingPaidAt = editingStatement.paidAt ?? '';
     const nextPaidAt = editStatementForm.paidAt ?? '';
     const isSettingPaidAtNow = Boolean(nextPaidAt) && !existingPaidAt;
@@ -159,14 +172,18 @@ export const useStatementsManager = ({
         return;
       }
     }
-    await onUpdateStatement(editingStatement.id, {
-      name: editStatementForm.name.trim(),
-      statementType: editStatementForm.statementType,
-      counterparty: editStatementForm.counterparty.trim(),
-      comment: editStatementForm.comment.trim(),
-      paidAt: editStatementForm.paidAt || null,
-    });
-    setEditingStatement(null);
+    try {
+      await onUpdateStatement(editingStatement.id, {
+        name: editStatementForm.name.trim(),
+        statementType: editStatementForm.statementType,
+        counterparty: editStatementForm.counterparty.trim(),
+        comment: editStatementForm.comment.trim(),
+        paidAt: editStatementForm.paidAt || null,
+      });
+      setEditingStatement(null);
+    } catch (error) {
+      setEditStatementFormError(formatErrorMessage(error, 'Не удалось сохранить ведомость.'));
+    }
   }, [confirm, editStatementForm, editingStatement, onUpdateStatement]);
 
   const handleDeleteStatementConfirm = useCallback(async () => {
@@ -183,11 +200,13 @@ export const useStatementsManager = ({
     isStatementCreating,
     statementForm,
     setStatementForm,
+    statementFormError,
     handleCreateStatement,
     editingStatement,
     setEditingStatement,
     editStatementForm,
     setEditStatementForm,
+    editStatementFormError,
     handleEditStatementOpen,
     handleEditStatementSubmit,
     deletingStatement,

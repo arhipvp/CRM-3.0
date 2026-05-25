@@ -1,4 +1,6 @@
-﻿from apps.common.models import SoftDeleteModel
+﻿import re
+
+from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -85,6 +87,12 @@ class Statement(SoftDeleteModel):
     )
 
     name = models.CharField(max_length=255, help_text="Название")
+    name_normalized = models.CharField(
+        max_length=255,
+        editable=False,
+        db_index=True,
+        help_text="Нормализованное название для проверки уникальности",
+    )
     statement_type = models.CharField(
         max_length=20, choices=TYPE_CHOICES, help_text="Тип ведомости"
     )
@@ -125,9 +133,28 @@ class Statement(SoftDeleteModel):
             models.Index(fields=["statement_type"]),
             models.Index(fields=["status"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name_normalized"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="uniq_active_statement_normalized_name",
+            )
+        ]
+
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        return re.sub(r"\s+", " ", (value or "").strip()).casefold()
 
     def __str__(self) -> str:
         return f"Ведомость {self.name}"
+
+    def save(self, *args, **kwargs):
+        self.name = re.sub(r"\s+", " ", (self.name or "").strip())
+        self.name_normalized = self.normalize_name(self.name)
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "name" in update_fields:
+            kwargs["update_fields"] = set(update_fields) | {"name_normalized"}
+        super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """Мягкое удаление: отвязать записи от ведомости."""

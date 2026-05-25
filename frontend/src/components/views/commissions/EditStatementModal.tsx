@@ -17,6 +17,7 @@ interface EditStatementModalProps {
     comment: string;
     paidAt: string;
   };
+  error?: string | null;
   onClose: () => void;
   onSubmit: () => void;
   onFormChange: (
@@ -39,6 +40,7 @@ interface EditStatementModalProps {
 export const EditStatementModal: React.FC<EditStatementModalProps> = ({
   isOpen,
   form,
+  error,
   onClose,
   onSubmit,
   onFormChange,
@@ -119,6 +121,7 @@ export const EditStatementModal: React.FC<EditStatementModalProps> = ({
             />
           </FormField>
         </FormSection>
+        {error && <p className="app-alert app-alert-danger mt-4">{error}</p>}
         <FormActions
           onCancel={onClose}
           submitLabel="Сохранить"

@@ -704,6 +704,21 @@ def ensure_statement_folder(statement) -> Optional[str]:
     name = _format_folder_name(statement.name or "statement", "statement")
     folder_id = getattr(statement, "drive_folder_id", None)
     if folder_id:
+        duplicate_owner_exists = (
+            statement.__class__.objects.filter(
+                deleted_at__isnull=True,
+                drive_folder_id=folder_id,
+            )
+            .exclude(pk=statement.pk)
+            .exists()
+        )
+        if duplicate_owner_exists:
+            logger.warning(
+                "Drive folder is linked to multiple active statements. "
+                "statement=%s folder_id=%s",
+                statement.pk,
+                folder_id,
+            )
         metadata = _get_folder_metadata(folder_id)
         if metadata:
             if metadata.get("name") != name:
@@ -725,7 +740,7 @@ def ensure_statement_folder(statement) -> Optional[str]:
             return folder_id
         folder_id = None
 
-    folder_id = _ensure_folder(name, statements_root)
+    folder_id = _make_folder(name, statements_root)
     _update_instance_folder(statement, folder_id)
     return folder_id
 

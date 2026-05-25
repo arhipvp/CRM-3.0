@@ -310,11 +310,13 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     isStatementCreating,
     statementForm,
     setStatementForm,
+    statementFormError,
     handleCreateStatement,
     editingStatement,
     setEditingStatement,
     editStatementForm,
     setEditStatementForm,
+    editStatementFormError,
     handleEditStatementOpen,
     handleEditStatementSubmit,
     deletingStatement,
@@ -819,6 +821,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
         isOpen={isStatementModalOpen}
         isSubmitting={isStatementCreating}
         form={statementForm}
+        error={statementFormError}
         onClose={() => setStatementModalOpen(false)}
         onSubmit={handleCreateStatement}
         onFormChange={setStatementForm}
@@ -826,6 +829,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       <EditStatementModal
         isOpen={Boolean(editingStatement)}
         form={editStatementForm}
+        error={editStatementFormError}
         onClose={() => setEditingStatement(null)}
         onSubmit={handleEditStatementSubmit}
         onFormChange={setEditStatementForm}
