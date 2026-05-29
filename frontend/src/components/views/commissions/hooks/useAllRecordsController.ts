@@ -85,6 +85,13 @@ const saveBlob = (blob: Blob, filename: string) => {
   window.URL.revokeObjectURL(url);
 };
 
+const buildFiltersCacheKey = (filters: FilterParams) =>
+  JSON.stringify(
+    Object.entries(filters)
+      .filter(([, value]) => value !== undefined && value !== '')
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey)),
+  );
+
 export const useAllRecordsController = ({
   viewMode,
   statementsById,
@@ -141,6 +148,7 @@ export const useAllRecordsController = ({
   const allRecordsPageRef = useRef(1);
   const allRecordsRequestRef = useRef(0);
   const allRecordsAbortControllerRef = useRef<AbortController | null>(null);
+  const loadedFirstPageFiltersKeyRef = useRef<string | null>(null);
 
   const applyAllRecordsSearch = useCallback(
     (nextSearch?: string) => {
@@ -349,6 +357,7 @@ export const useAllRecordsController = ({
       const controller = new AbortController();
       allRecordsAbortControllerRef.current = controller;
       const filters = buildAllRecordsFilters();
+      const filtersKey = buildFiltersCacheKey(filters);
       const nextPage = mode === 'more' ? allRecordsPageRef.current + 1 : 1;
       if (mode === 'reset') {
         setIsAllRecordsLoading(true);
@@ -371,6 +380,9 @@ export const useAllRecordsController = ({
         setAllRecordsTotalCount(payload.count || 0);
         setAllRecordsHasMore(Boolean(payload.next));
         allRecordsPageRef.current = nextPage;
+        if (mode === 'reset') {
+          loadedFirstPageFiltersKeyRef.current = filtersKey;
+        }
         setAllRecords((prev) =>
           mode === 'more' ? [...prev, ...payload.results] : payload.results,
         );
@@ -416,8 +428,12 @@ export const useAllRecordsController = ({
     if (viewMode !== 'all') {
       return;
     }
+    const filtersKey = buildFiltersCacheKey(buildAllRecordsFilters());
+    if (loadedFirstPageFiltersKeyRef.current === filtersKey) {
+      return;
+    }
     void loadAllRecords('reset');
-  }, [loadAllRecords, viewMode]);
+  }, [buildAllRecordsFilters, loadAllRecords, viewMode]);
 
   useEffect(() => {
     return () => {

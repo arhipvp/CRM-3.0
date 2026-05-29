@@ -94,7 +94,7 @@ describe('useAppBootstrapNavigation', () => {
     await waitFor(() => {
       expect(ensureCommissionsDataLoaded).toHaveBeenCalledTimes(1);
       expect(ensureFinanceDataLoaded).not.toHaveBeenCalled();
-      expect(refreshPolicies).toHaveBeenCalledTimes(1);
+      expect(refreshPolicies).not.toHaveBeenCalled();
     });
   });
 });

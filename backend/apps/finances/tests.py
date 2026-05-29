@@ -989,6 +989,48 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
             by_id[str(statement.id)]["paid_at"], statement.paid_at.isoformat()
         )
 
+    def test_statement_list_totals_ignore_soft_deleted_records(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Statement totals",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        active_income = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("125.50"),
+            description="Active income",
+            statement=statement,
+        )
+        active_expense = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("-25.50"),
+            description="Active expense",
+            statement=statement,
+        )
+        deleted_record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("900.00"),
+            description="Deleted income",
+            statement=statement,
+        )
+        deleted_record.delete()
+
+        response = self.api_client.get("/api/v1/finance_statements/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json().get("results", response.json())
+        by_id = {item["id"]: item for item in results}
+        self.assertIn(str(statement.id), by_id)
+        self.assertEqual(by_id[str(statement.id)]["records_count"], 2)
+        self.assertEqual(
+            Decimal(str(by_id[str(statement.id)]["total_amount"])), Decimal("100.00")
+        )
+        active_income.refresh_from_db()
+        active_expense.refresh_from_db()
+        self.assertEqual(active_income.statement_id, statement.id)
+        self.assertEqual(active_expense.statement_id, statement.id)
+
     def test_export_xlsx_creates_drive_file(self):
         self.authenticate(self.seller)
         fixed_now = timezone.make_aware(

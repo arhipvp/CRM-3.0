@@ -32,7 +32,6 @@ export const useAppBootstrapNavigation = ({
   isTasksRoute,
   locationSearch,
   navigate,
-  refreshPolicies,
   selectDealById,
   setError,
 }: UseAppBootstrapNavigationArgs) => {
@@ -76,9 +75,6 @@ export const useAppBootstrapNavigation = ({
       ensureCommissionsDataLoaded().catch((err) => {
         setError(formatErrorMessage(err, 'Ошибка при загрузке данных ведомостей'));
       });
-      refreshPolicies().catch((err) => {
-        setError(formatErrorMessage(err, 'Ошибка при загрузке данных для раздела комиссий'));
-      });
       return;
     }
     if (isPoliciesRoute) {
@@ -92,7 +88,6 @@ export const useAppBootstrapNavigation = ({
     isAuthenticated,
     isCommissionsRoute,
     isPoliciesRoute,
-    refreshPolicies,
     setError,
   ]);
 

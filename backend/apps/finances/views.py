@@ -19,6 +19,7 @@ from apps.deals.permissions import build_deal_visibility_q
 from django.db import transaction
 from django.db.models import (
     Case,
+    Count,
     DateField,
     DecimalField,
     F,
@@ -441,8 +442,32 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        active_records = FinancialRecord.objects.filter(
+            statement=OuterRef("pk"),
+            deleted_at__isnull=True,
+        ).values("statement")
         queryset = (
-            Statement.objects.prefetch_related(
+            Statement.objects.annotate(
+                records_count=Coalesce(
+                    Subquery(
+                        active_records.annotate(total=Count("id")).values("total")[:1],
+                        output_field=IntegerField(),
+                    ),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                total_amount=Coalesce(
+                    Subquery(
+                        active_records.annotate(total=Sum("amount")).values("total")[
+                            :1
+                        ],
+                        output_field=DecimalField(max_digits=12, decimal_places=2),
+                    ),
+                    Value(0),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
+            )
+            .prefetch_related(
                 "records",
                 "records__payment",
                 "records__payment__policy__deal",

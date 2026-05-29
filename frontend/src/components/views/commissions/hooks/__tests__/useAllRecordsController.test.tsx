@@ -52,6 +52,46 @@ describe('useAllRecordsController', () => {
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
   });
 
+  it('reuses the first all-records page when switching tabs without filter changes', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'record-1',
+          payment: 'payment-1',
+          amount: '100',
+          record_type: 'income',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+    } as never);
+
+    const { rerender } = renderHook(
+      ({ viewMode }: { viewMode: 'all' | 'statements' }) =>
+        useAllRecordsController({
+          viewMode,
+          statementsById: new Map(),
+        }),
+      { initialProps: { viewMode: 'all' } },
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    rerender({ viewMode: 'statements' });
+    rerender({ viewMode: 'all' });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenCalledTimes(1);
+  });
+
   it('does not apply typed search until search is submitted', async () => {
     mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
 

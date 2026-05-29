@@ -24,7 +24,7 @@ class StatementSerializer(serializers.ModelSerializer):
         required=False,
         write_only=True,
     )
-    records_count = serializers.IntegerField(source="records.count", read_only=True)
+    records_count = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
 
     class Meta:
@@ -41,6 +41,9 @@ class StatementSerializer(serializers.ModelSerializer):
         )
 
     def get_total_amount(self, obj):
+        annotated_total = getattr(obj, "total_amount", None)
+        if annotated_total is not None:
+            return annotated_total
         total = (
             obj.records.filter(deleted_at__isnull=True).aggregate(total=Sum("amount"))[
                 "total"
@@ -48,6 +51,12 @@ class StatementSerializer(serializers.ModelSerializer):
             or 0
         )
         return total
+
+    def get_records_count(self, obj):
+        annotated_count = getattr(obj, "records_count", None)
+        if annotated_count is not None:
+            return annotated_count
+        return obj.records.filter(deleted_at__isnull=True).count()
 
     def _validate_unique_name(self, attrs):
         raw_name = attrs.get("name", getattr(self.instance, "name", ""))
