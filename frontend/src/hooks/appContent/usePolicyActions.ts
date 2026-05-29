@@ -11,6 +11,7 @@ import {
   deletePayment,
   deletePolicy,
   fetchDeal,
+  fetchPayments,
   movePolicy,
   updateFinancialRecord,
   updatePayment,
@@ -175,12 +176,38 @@ export const usePolicyActions = ({
   );
 
   const handleRequestEditPolicy = useCallback(
-    (policy: Policy) => {
+    async (policy: Policy) => {
       setModal(null);
       closePolicyModal();
+      setIsSyncing(true);
+      try {
+        const hydratedPayments = await fetchPayments({ policy: policy.id });
+        const hydratedRecords = hydratedPayments.flatMap(
+          (payment) => payment.financialRecords ?? [],
+        );
+        updateAppData((prev) => {
+          const hydratedPaymentIds = new Set(hydratedPayments.map((payment) => payment.id));
+          const hydratedRecordIds = new Set(hydratedRecords.map((record) => record.id));
+          return {
+            payments: [
+              ...hydratedPayments,
+              ...prev.payments.filter((payment) => !hydratedPaymentIds.has(payment.id)),
+            ],
+            financialRecords: [
+              ...hydratedRecords,
+              ...prev.financialRecords.filter((record) => !hydratedRecordIds.has(record.id)),
+            ],
+          };
+        });
+      } catch (error) {
+        setError(formatErrorMessage(error, 'Не удалось загрузить платежи полиса.'));
+        throw error;
+      } finally {
+        setIsSyncing(false);
+      }
       setEditingPolicy(policy);
     },
-    [closePolicyModal, setModal],
+    [closePolicyModal, setError, setIsSyncing, setModal, updateAppData],
   );
 
   const handleAddPolicy = useCallback(

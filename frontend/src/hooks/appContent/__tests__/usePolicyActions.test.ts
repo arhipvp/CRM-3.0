@@ -35,6 +35,7 @@ vi.mock('../../../api', () => {
     deletePayment: vi.fn(),
     deletePolicy: vi.fn(),
     fetchDeal: vi.fn(),
+    fetchPayments: vi.fn(),
     movePolicy: vi.fn(),
     updateFinancialRecord: vi.fn(),
     updatePayment: vi.fn(),
@@ -45,6 +46,7 @@ vi.mock('../../../api', () => {
 
 import {
   deleteFinancialRecord,
+  fetchPayments,
   movePolicy,
   updateFinancialRecord,
   updatePolicy,
@@ -52,6 +54,7 @@ import {
 } from '../../../api';
 
 const deleteFinancialRecordMock = vi.mocked(deleteFinancialRecord);
+const fetchPaymentsMock = vi.mocked(fetchPayments);
 const movePolicyMock = vi.mocked(movePolicy);
 const updateFinancialRecordMock = vi.mocked(updateFinancialRecord);
 const updatePolicyMock = vi.mocked(updatePolicy);
@@ -200,6 +203,30 @@ const createParams = ({
 describe('usePolicyActions.handleUpdatePolicy', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    fetchPaymentsMock.mockResolvedValue([]);
+  });
+
+  it('дозагружает платежи полиса перед открытием формы редактирования', async () => {
+    const policy = createPolicy();
+    const record = createFinancialRecord({ id: 'record-hydrated', paymentId: 'payment-hydrated' });
+    const hydratedPayment = createPayment({
+      id: 'payment-hydrated',
+      financialRecords: [record],
+    });
+    const { params, appState } = createParams({ policy, payments: [] });
+    fetchPaymentsMock.mockResolvedValueOnce([hydratedPayment]);
+
+    const { result } = renderHook(() => usePolicyActions(params));
+
+    await act(async () => {
+      await result.current.handleRequestEditPolicy(policy);
+    });
+
+    expect(fetchPaymentsMock).toHaveBeenCalledWith({ policy: policy.id });
+    expect(appState.payments).toEqual([hydratedPayment]);
+    expect(appState.financialRecords).toEqual([record]);
+    expect(result.current.editingPolicy).toEqual(policy);
+    expect(params.setError).not.toHaveBeenCalled();
   });
 
   it('удаляет расход и не считает неизменённую запись из оплаченной ведомости изменённой', async () => {

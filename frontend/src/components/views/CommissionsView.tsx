@@ -297,15 +297,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
       setPolicyEditError(null);
       const existingPolicy = policiesById.get(policyId);
-      if (existingPolicy) {
-        onRequestEditPolicy(existingPolicy);
-        return;
-      }
-
       setEditingPolicyRecordId(row.recordId);
       try {
-        const policy = await fetchPolicy(policyId);
-        onRequestEditPolicy(policy);
+        const policy = existingPolicy ?? (await fetchPolicy(policyId));
+        await onRequestEditPolicy(policy);
       } catch (error) {
         setPolicyEditError(
           formatErrorMessage(error, 'Не удалось открыть полис для редактирования.'),
