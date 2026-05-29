@@ -9,7 +9,7 @@ import { TableHeadCell } from '../../common/TableHeadCell';
 import { TABLE_CELL_CLASS_SM, TABLE_ROW_CLASS, TABLE_THEAD_CLASS } from '../../common/tableStyles';
 import { PolicyNumberButton } from '../../policies/PolicyNumberButton';
 
-export type AllRecordsSortKey = 'none' | 'payment' | 'saldo' | 'comment' | 'amount';
+export type AllRecordsSortKey = 'none' | 'payment' | 'paymentDate' | 'saldo' | 'comment' | 'amount';
 export type AmountDraft = { mode: 'rub' | 'percent'; value: string };
 export type StatementAmountDraft = AmountDraft;
 export type IncomeExpenseKind = 'income' | 'expense';
@@ -245,19 +245,36 @@ export const RecordsTable = ({
                   }
                 />
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[22%] min-w-0">
+              <TableHeadCell padding="sm" className="w-[20%] min-w-0">
                 Клиент / сделка
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[12%] min-w-0">
+              <TableHeadCell padding="sm" className="w-[11%] min-w-0">
                 Номер полиса
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[12%] min-w-0">
+              <TableHeadCell padding="sm" className="w-[11%] min-w-0">
                 Тип полиса
               </TableHeadCell>
               <TableHeadCell padding="sm" className="w-[9%] min-w-0">
                 Канал продаж
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[14%] min-w-0" align="right">
+              <TableHeadCell padding="sm" className="w-[10%] min-w-0" align="right">
+                {viewMode === 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => onToggleAllRecordsSort('paymentDate')}
+                    aria-label={`Сортировать по дате платежа, текущий порядок ${getAllRecordsSortLabel('paymentDate')}`}
+                    className={`${SORT_BUTTON_BASE_CLASS} justify-end`}
+                  >
+                    <span className={SORT_LABEL_CLASS}>Дата платежа</span>
+                    <span className={SORT_LABEL_CLASS}>
+                      {getAllRecordsSortIndicator('paymentDate')}
+                    </span>
+                  </button>
+                ) : (
+                  <span className={SORT_LABEL_CLASS}>Дата платежа</span>
+                )}
+              </TableHeadCell>
+              <TableHeadCell padding="sm" className="w-[12%] min-w-0" align="right">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -274,7 +291,7 @@ export const RecordsTable = ({
                   <span className={SORT_LABEL_CLASS}>Платеж</span>
                 )}
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[15%] min-w-0" align="right">
+              <TableHeadCell padding="sm" className="w-[13%] min-w-0" align="right">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -289,7 +306,7 @@ export const RecordsTable = ({
                   <span className={SORT_LABEL_CLASS}>Сальдо</span>
                 )}
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[16%] min-w-0">
+              <TableHeadCell padding="sm" className="w-[15%] min-w-0">
                 {viewMode === 'all' ? (
                   <button
                     type="button"
@@ -540,6 +557,9 @@ export const RecordsTable = ({
                     {salesChannelLabel}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-right text-slate-700`}>
+                    <p className="text-sm font-semibold">{paymentScheduledDate || '—'}</p>
+                  </td>
+                  <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-right text-slate-700`}>
                     <p className="text-sm font-semibold">
                       {formatCurrencyRu(Number(payment.amount))}
                     </p>
@@ -653,7 +673,7 @@ export const RecordsTable = ({
               );
             })}
             {!filteredRows.length && (
-              <EmptyTableState colSpan={9}>
+              <EmptyTableState colSpan={10}>
                 {viewMode === 'all' && isAllRecordsLoading
                   ? 'Загрузка записей...'
                   : viewMode === 'statements' && isStatementRecordsLoading

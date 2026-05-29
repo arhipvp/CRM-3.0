@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type {
   Payment,
   Policy,
+  SalesChannel,
   Statement,
   StatementAmountApplyMode,
   StatementAmountApplyResult,
@@ -33,6 +34,7 @@ interface CommissionsViewProps {
   payments: Payment[];
   policies: Policy[];
   statements: Statement[];
+  salesChannels: SalesChannel[];
   isLoading?: boolean;
   hasCommissionsSnapshotLoaded?: boolean;
   onRefreshStatements?: () => Promise<void>;
@@ -91,6 +93,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   payments,
   policies,
   statements,
+  salesChannels,
   isLoading = false,
   hasCommissionsSnapshotLoaded = false,
   onRefreshStatements,
@@ -134,6 +137,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     setShowPaidRecords,
     showZeroSaldo,
     setShowZeroSaldo,
+    salesChannelFilter,
+    setSalesChannelFilter,
+    paymentScheduledDateFrom,
+    setPaymentScheduledDateFrom,
+    paymentScheduledDateTo,
+    setPaymentScheduledDateTo,
+    activeAllRecordsFilterCount,
+    canResetAllRecordsFilters,
+    resetAllRecordsFilters,
+    isAllRecordsExporting,
+    allRecordsExportError,
+    exportAllRecords,
     recordTypeFilter,
     setRecordTypeFilter,
     targetStatementId,
@@ -798,6 +813,19 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             onToggleShowPaidRecords={setShowPaidRecords}
             showZeroSaldo={showZeroSaldo}
             onToggleShowZeroSaldo={setShowZeroSaldo}
+            salesChannelFilter={salesChannelFilter}
+            onSalesChannelFilterChange={setSalesChannelFilter}
+            salesChannels={salesChannels}
+            paymentScheduledDateFrom={paymentScheduledDateFrom}
+            onPaymentScheduledDateFromChange={setPaymentScheduledDateFrom}
+            paymentScheduledDateTo={paymentScheduledDateTo}
+            onPaymentScheduledDateToChange={setPaymentScheduledDateTo}
+            activeAllRecordsFilterCount={activeAllRecordsFilterCount}
+            canResetAllRecordsFilters={canResetAllRecordsFilters}
+            onResetAllRecordsFilters={resetAllRecordsFilters}
+            isAllRecordsExporting={isAllRecordsExporting}
+            allRecordsExportError={allRecordsExportError}
+            onExportAllRecords={exportAllRecords}
             recordTypeFilter={recordTypeFilter}
             onRecordTypeFilterChange={setRecordTypeFilter}
             isRecordTypeLocked={isRecordTypeLocked}

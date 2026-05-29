@@ -20,6 +20,19 @@ const renderPanel = (overrides: Partial<ComponentProps<typeof AllRecordsPanel>> 
     onToggleShowPaidRecords: vi.fn(),
     showZeroSaldo: false,
     onToggleShowZeroSaldo: vi.fn(),
+    salesChannelFilter: '',
+    onSalesChannelFilterChange: vi.fn(),
+    salesChannels: [],
+    paymentScheduledDateFrom: '',
+    onPaymentScheduledDateFromChange: vi.fn(),
+    paymentScheduledDateTo: '',
+    onPaymentScheduledDateToChange: vi.fn(),
+    activeAllRecordsFilterCount: 0,
+    canResetAllRecordsFilters: false,
+    onResetAllRecordsFilters: vi.fn(),
+    isAllRecordsExporting: false,
+    allRecordsExportError: null,
+    onExportAllRecords: vi.fn(),
     recordTypeFilter: 'all',
     onRecordTypeFilterChange: vi.fn(),
     isRecordTypeLocked: false,
@@ -60,6 +73,56 @@ describe('AllRecordsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Обновить' }));
 
     expect(onRetryLoad).toHaveBeenCalledTimes(1);
+  });
+
+  it('changes sales channel and payment date filters', () => {
+    const onSalesChannelFilterChange = vi.fn();
+    const onPaymentScheduledDateFromChange = vi.fn();
+    const onPaymentScheduledDateToChange = vi.fn();
+
+    renderPanel({
+      salesChannels: [
+        {
+          id: 'channel-1',
+          name: 'Марьинских',
+          description: '',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ],
+      onSalesChannelFilterChange,
+      onPaymentScheduledDateFromChange,
+      onPaymentScheduledDateToChange,
+    });
+
+    fireEvent.change(screen.getByDisplayValue('Все каналы продаж'), {
+      target: { value: 'channel-1' },
+    });
+    fireEvent.change(screen.getByLabelText('Дата платежа от'), {
+      target: { value: '2026-03-01' },
+    });
+    fireEvent.change(screen.getByLabelText('Дата платежа до'), {
+      target: { value: '2026-03-31' },
+    });
+
+    expect(onSalesChannelFilterChange).toHaveBeenCalledWith('channel-1');
+    expect(onPaymentScheduledDateFromChange).toHaveBeenCalledWith('2026-03-01');
+    expect(onPaymentScheduledDateToChange).toHaveBeenCalledWith('2026-03-31');
+  });
+
+  it('resets filters and shows active filters count', () => {
+    const onResetAllRecordsFilters = vi.fn();
+
+    renderPanel({
+      activeAllRecordsFilterCount: 2,
+      canResetAllRecordsFilters: true,
+      onResetAllRecordsFilters,
+    });
+
+    expect(screen.getByText('Активных фильтров: 2')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Сбросить фильтры' }));
+
+    expect(onResetAllRecordsFilters).toHaveBeenCalledTimes(1);
   });
 
   it('disables search controls while records are loading', () => {

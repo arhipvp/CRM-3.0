@@ -105,6 +105,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         "payment_paid_balance",
         "payment_is_paid",
         "payment_sort_date",
+        "payment_scheduled_date",
+        "payment_scheduled_date_is_null",
         "record_comment_sort",
     ]
     ordering = ["-created_at"]
@@ -124,6 +126,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         )
         queryset = (
             FinancialRecord.objects.select_related(
+                "statement",
                 "payment",
                 "payment__policy",
                 "payment__policy__deal",
@@ -158,6 +161,12 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 F("payment__actual_date"),
                 F("payment__scheduled_date"),
                 output_field=DateField(),
+            ),
+            payment_scheduled_date=F("payment__scheduled_date"),
+            payment_scheduled_date_is_null=Case(
+                When(payment__scheduled_date__isnull=True, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
             ),
             payment_paid_balance=Coalesce(
                 Subquery(
@@ -219,6 +228,164 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
         return queryset
+
+    @action(detail=False, methods=["get"], url_path="export-xlsx")
+    def export_xlsx(self, request, *args, **kwargs):
+        records = list(self.filter_queryset(self.get_queryset()))
+
+        def format_date(value) -> str:
+            if not value:
+                return "—"
+            if hasattr(value, "strftime"):
+                return value.strftime("%d.%m.%Y")
+            return str(value)
+
+        def format_money(value) -> str:
+            try:
+                return f"{float(value):,.2f} ₽".replace(",", " ")
+            except Exception:
+                return f"{value} ₽"
+
+        workbook = Workbook()
+        ws = workbook.active
+        ws.title = "Финансовые записи"
+
+        headers = [
+            "Клиент / сделка",
+            "Номер полиса",
+            "Тип полиса",
+            "Канал продаж",
+            "Дата платежа",
+            "Платеж, ₽",
+            "Сальдо, ₽",
+            "Примечание",
+            "Сумма, ₽",
+        ]
+        header_font = Font(bold=True, color="1F2937")
+        header_fill = PatternFill("solid", fgColor="F8FAFC")
+        wrap_top = Alignment(wrap_text=True, vertical="top")
+        currency_number_format = "# ##0.00 [$₽-419]"
+
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = wrap_top
+
+        ws.freeze_panes = "A2"
+        for column, width in {
+            "A": 36,
+            "B": 18,
+            "C": 20,
+            "D": 20,
+            "E": 16,
+            "F": 22,
+            "G": 16,
+            "H": 32,
+            "I": 16,
+        }.items():
+            ws.column_dimensions[column].width = width
+
+        for record in records:
+            payment = getattr(record, "payment", None)
+            policy = getattr(payment, "policy", None) if payment else None
+            deal = get_deal_from_payment(payment)
+            statement = getattr(record, "statement", None)
+
+            deal_title = getattr(deal, "title", None) or "-"
+            deal_client_name = (
+                getattr(getattr(deal, "client", None), "name", None) or "-"
+            )
+            policy_number = (
+                getattr(policy, "number", None)
+                or getattr(payment, "policy_number", None)
+                or "-"
+            )
+            policy_type = (
+                getattr(getattr(policy, "insurance_type", None), "name", None) or "-"
+            )
+            sales_channel = (
+                getattr(getattr(policy, "sales_channel", None), "name", None) or "-"
+            )
+            policy_client_name = (
+                getattr(getattr(policy, "client", None), "name", None)
+                or getattr(getattr(policy, "insured_client", None), "name", None)
+                or deal_client_name
+                or "-"
+            )
+
+            payment_amount = getattr(payment, "amount", None)
+            payment_actual = getattr(payment, "actual_date", None)
+            payment_scheduled = getattr(payment, "scheduled_date", None)
+            payment_cell = (
+                f"{format_money(payment_amount)}\n"
+                + (
+                    f"Оплачен: {format_date(payment_actual)}"
+                    if payment_actual
+                    else f"Не оплачен (план: {format_date(payment_scheduled)})"
+                )
+                if payment_amount is not None
+                else "—"
+            )
+
+            paid_records = getattr(payment, "paid_records", []) if payment else []
+            saldo_value = (
+                sum((paid_record.amount for paid_record in paid_records), 0)
+                if paid_records
+                else 0
+            )
+            comment_parts = [
+                (record.note or "").strip(),
+                (record.description or "").strip(),
+                (record.source or "").strip(),
+            ]
+            comment_parts = [part for part in comment_parts if part]
+            comment_cell = comment_parts[0] if comment_parts else "—"
+            if len(comment_parts) > 1:
+                comment_cell = f"{comment_cell}\n" + " · ".join(comment_parts[1:])
+            if statement:
+                if statement.paid_at:
+                    comment_cell += f"\nВедомость от {format_date(statement.paid_at)}: {statement.name}"
+                else:
+                    comment_cell += f"\nВедомость: {statement.name}"
+
+            client_cell = f"{policy_client_name}\n{deal_title}\nКонтакт по сделке: {deal_client_name}"
+            ws.append(
+                [
+                    client_cell,
+                    policy_number,
+                    policy_type,
+                    sales_channel,
+                    format_date(payment_scheduled),
+                    payment_cell,
+                    saldo_value,
+                    comment_cell,
+                    abs(record.amount),
+                ]
+            )
+
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.alignment = wrap_top
+            row[6].number_format = currency_number_format
+            row[8].number_format = currency_number_format
+
+        buffer = BytesIO()
+        workbook.save(buffer)
+        buffer.seek(0)
+
+        now = timezone.localtime(timezone.now())
+        filename = f"financial_records_{now.strftime('%d_%m_%Y_%H_%M_%S')}.xlsx"
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
+        )
+        response["Content-Disposition"] = (
+            f"attachment; filename*=UTF-8''{iri_to_uri(filename)}"
+        )
+        return response
 
     def _can_modify(self, user, instance):
         payment = getattr(instance, "payment", None)
@@ -517,6 +684,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "Номер полиса",
             "Тип полиса",
             "Канал продаж",
+            "Дата платежа",
             "Платеж, ₽",
             "Доходы / расходы",
             "Сальдо, ₽",
@@ -542,11 +710,12 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         ws.column_dimensions["B"].width = 18
         ws.column_dimensions["C"].width = 20
         ws.column_dimensions["D"].width = 20
-        ws.column_dimensions["E"].width = 22
-        ws.column_dimensions["F"].width = 28
-        ws.column_dimensions["G"].width = 16
-        ws.column_dimensions["H"].width = 28
-        ws.column_dimensions["I"].width = 16
+        ws.column_dimensions["E"].width = 16
+        ws.column_dimensions["F"].width = 22
+        ws.column_dimensions["G"].width = 28
+        ws.column_dimensions["H"].width = 16
+        ws.column_dimensions["I"].width = 28
+        ws.column_dimensions["J"].width = 16
 
         for record in records:
             payment = payments_by_id.get(record.payment_id)
@@ -631,6 +800,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     policy_number,
                     policy_type,
                     sales_channel,
+                    format_date(payment_scheduled),
                     payment_cell,
                     operations_cell,
                     saldo_value,
@@ -642,8 +812,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         for row in ws.iter_rows(min_row=2):
             for cell in row:
                 cell.alignment = wrap_top
-            row[6].number_format = currency_number_format
-            row[8].number_format = currency_number_format
+            row[7].number_format = currency_number_format
+            row[9].number_format = currency_number_format
 
         buffer = BytesIO()
         workbook.save(buffer)

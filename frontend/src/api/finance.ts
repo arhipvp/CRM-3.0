@@ -1,4 +1,4 @@
-﻿import { request } from './request';
+import { request, requestBlobWithHeaders } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
 import { mapFinancialRecord, mapPayment, mapStatement } from './mappers';
 import type {
@@ -10,6 +10,25 @@ import type {
 } from '../types';
 
 const FINANCE_PAGE_SIZE = 200;
+
+function extractFilename(contentDisposition: string | null): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+  const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].trim());
+    } catch {
+      return utfMatch[1].trim();
+    }
+  }
+  const asciiMatch = contentDisposition.match(/filename=([^;]+)/i);
+  if (!asciiMatch?.[1]) {
+    return null;
+  }
+  return asciiMatch[1].trim().replace(/^"|"$/g, '');
+}
 
 async function fetchAllPages<T>(
   path: string,
@@ -143,6 +162,16 @@ export async function fetchFinancialRecordsWithPagination(
   };
 }
 
+export async function exportFinancialRecordsXlsx(
+  filters?: FilterParams,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const qs = buildQueryString(filters);
+  const { blob, headers } = await requestBlobWithHeaders(`/financial_records/export-xlsx/${qs}`);
+  return {
+    blob,
+    filename: extractFilename(headers.get('Content-Disposition')),
+  };
+}
 export async function createFinancialRecord(data: {
   paymentId: string;
   amount: number;

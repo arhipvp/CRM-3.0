@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import type { Statement } from '../../../types';
+import type { SalesChannel, Statement } from '../../../types';
 import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../common/buttonStyles';
 import { InlineAlert } from '../../common/InlineAlert';
 import {
@@ -27,6 +27,19 @@ interface AllRecordsPanelProps {
   onToggleShowPaidRecords: (nextValue: boolean) => void;
   showZeroSaldo: boolean;
   onToggleShowZeroSaldo: (nextValue: boolean) => void;
+  salesChannelFilter: string;
+  onSalesChannelFilterChange: (channelId: string) => void;
+  salesChannels: SalesChannel[];
+  paymentScheduledDateFrom: string;
+  onPaymentScheduledDateFromChange: (value: string) => void;
+  paymentScheduledDateTo: string;
+  onPaymentScheduledDateToChange: (value: string) => void;
+  activeAllRecordsFilterCount: number;
+  canResetAllRecordsFilters: boolean;
+  onResetAllRecordsFilters: () => void;
+  isAllRecordsExporting: boolean;
+  allRecordsExportError: string | null;
+  onExportAllRecords: () => Promise<void> | void;
   recordTypeFilter: 'all' | 'income' | 'expense';
   onRecordTypeFilterChange: (nextValue: 'all' | 'income' | 'expense') => void;
   isRecordTypeLocked: boolean;
@@ -119,6 +132,19 @@ export function AllRecordsPanel({
   onToggleShowPaidRecords,
   showZeroSaldo,
   onToggleShowZeroSaldo,
+  salesChannelFilter,
+  onSalesChannelFilterChange,
+  salesChannels,
+  paymentScheduledDateFrom,
+  onPaymentScheduledDateFromChange,
+  paymentScheduledDateTo,
+  onPaymentScheduledDateToChange,
+  activeAllRecordsFilterCount,
+  canResetAllRecordsFilters,
+  onResetAllRecordsFilters,
+  isAllRecordsExporting,
+  allRecordsExportError,
+  onExportAllRecords,
   recordTypeFilter,
   onRecordTypeFilterChange,
   isRecordTypeLocked,
@@ -193,10 +219,10 @@ export function AllRecordsPanel({
           </form>
         </div>
       </div>
-      {allRecordsError && (
+      {(allRecordsError || allRecordsExportError) && (
         <div className="border-b border-slate-200 bg-white px-4 py-3">
           <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
-            <span>{allRecordsError}</span>
+            <span>{allRecordsError || allRecordsExportError}</span>
             <button
               type="button"
               onClick={onRetryLoad}
@@ -259,6 +285,57 @@ export function AllRecordsPanel({
               Все
             </RecordTypeButton>
           </div>
+          <select
+            value={salesChannelFilter}
+            onChange={(event) => onSalesChannelFilterChange(event.target.value)}
+            className="field field-input h-10 min-w-[220px] text-sm"
+          >
+            <option value="">Все каналы продаж</option>
+            {salesChannels.map((channel) => (
+              <option key={channel.id} value={channel.id}>
+                {normalizeText(channel.name)}
+              </option>
+            ))}
+          </select>
+          <label className="flex min-w-[170px] flex-col gap-1 text-[11px] font-semibold text-slate-500">
+            Дата платежа от
+            <input
+              type="date"
+              value={paymentScheduledDateFrom}
+              onChange={(event) => onPaymentScheduledDateFromChange(event.target.value)}
+              className="field field-input h-10 text-sm font-normal text-slate-700"
+            />
+          </label>
+          <label className="flex min-w-[170px] flex-col gap-1 text-[11px] font-semibold text-slate-500">
+            Дата платежа до
+            <input
+              type="date"
+              value={paymentScheduledDateTo}
+              onChange={(event) => onPaymentScheduledDateToChange(event.target.value)}
+              className="field field-input h-10 text-sm font-normal text-slate-700"
+            />
+          </label>
+          <button
+            type="button"
+            className={BTN_SM_SECONDARY}
+            onClick={onResetAllRecordsFilters}
+            disabled={!canResetAllRecordsFilters}
+          >
+            Сбросить фильтры
+          </button>
+          <button
+            type="button"
+            className={BTN_SM_QUIET}
+            onClick={() => void onExportAllRecords()}
+            disabled={isAllRecordsExporting || isAllRecordsLoading}
+          >
+            {isAllRecordsExporting ? 'Выгружаем...' : 'Экспорт XLSX'}
+          </button>
+          {activeAllRecordsFilterCount > 0 && (
+            <span className={SECTION_META_TEXT}>
+              Активных фильтров: {activeAllRecordsFilterCount}
+            </span>
+          )}
           <select
             value={targetStatementId}
             onChange={(event) => onTargetStatementChange(event.target.value)}

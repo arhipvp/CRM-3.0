@@ -14,6 +14,7 @@ import type {
   Payment,
   Policy,
   Quote,
+  SalesChannel,
   Statement,
   StatementAmountApplyMode,
   StatementAmountApplyResult,
@@ -32,6 +33,7 @@ export interface AppRouteDataBundle {
   payments: Payment[];
   financialRecords: FinancialRecord[];
   statements: Statement[];
+  salesChannels: SalesChannel[];
   tasks: Task[];
   users: User[];
   currentUser: User | null;

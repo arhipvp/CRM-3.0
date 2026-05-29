@@ -34,6 +34,7 @@ const deferred = <T,>() => {
 describe('useAllRecordsController', () => {
   beforeEach(() => {
     mockedFetchFinancialRecordsWithPagination.mockReset();
+    window.history.replaceState(null, '', '/');
   });
 
   it('does not load records until all-records mode is active', async () => {
@@ -131,6 +132,40 @@ describe('useAllRecordsController', () => {
 
     expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
       expect.objectContaining({ page: 1, search: 'гриша' }),
+      expect.any(Object),
+    );
+  });
+
+  it('sends sales channel, payment date range, and payment date ordering to server filters', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+
+    const { result } = renderHook(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.setSalesChannelFilter('channel-1');
+      result.current.setPaymentScheduledDateFrom('2026-03-01');
+      result.current.setPaymentScheduledDateTo('2026-03-31');
+      result.current.toggleAllRecordsSort('paymentDate');
+      await Promise.resolve();
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        page: 1,
+        sales_channel: 'channel-1',
+        payment_scheduled_date_from: '2026-03-01',
+        payment_scheduled_date_to: '2026-03-31',
+        ordering: 'payment_scheduled_date_is_null,payment_scheduled_date,-created_at',
+      }),
       expect.any(Object),
     );
   });

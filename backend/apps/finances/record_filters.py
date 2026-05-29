@@ -32,6 +32,18 @@ def apply_financial_record_filters(queryset, params):
     if policy_id:
         queryset = queryset.filter(payment__policy_id=policy_id)
 
+    sales_channel_id = params.get("sales_channel")
+    if sales_channel_id:
+        queryset = queryset.filter(payment__policy__sales_channel_id=sales_channel_id)
+
+    scheduled_date_from = params.get("payment_scheduled_date_from")
+    if scheduled_date_from:
+        queryset = queryset.filter(payment__scheduled_date__gte=scheduled_date_from)
+
+    scheduled_date_to = params.get("payment_scheduled_date_to")
+    if scheduled_date_to:
+        queryset = queryset.filter(payment__scheduled_date__lte=scheduled_date_to)
+
     statement_id = params.get("statement")
     if statement_id:
         queryset = queryset.filter(statement_id=statement_id)

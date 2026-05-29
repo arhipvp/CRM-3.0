@@ -1,5 +1,5 @@
 import zipfile
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from io import BytesIO
 from unittest.mock import patch
@@ -7,7 +7,7 @@ from unittest.mock import patch
 from apps.clients.models import Client
 from apps.common.drive import ensure_statement_folder
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
-from apps.deals.models import Deal, InsuranceCompany, InsuranceType
+from apps.deals.models import Deal, InsuranceCompany, InsuranceType, SalesChannel
 from apps.finances.models import FinancialRecord, Payment, Statement
 from apps.policies.models import Policy
 from apps.tasks.models import Task
@@ -1220,6 +1220,80 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         results = self._extract_results(response)
         self.assertEqual([item["id"] for item in results], [str(self.policy_record.id)])
 
+    def test_filter_by_sales_channel(self):
+        target_channel = SalesChannel.objects.create(name="Target channel")
+        other_channel = SalesChannel.objects.create(name="Other channel")
+        other_policy = Policy.objects.create(number="OTHER-CHANNEL", deal=self.deal)
+        self.policy.sales_channel = target_channel
+        self.policy.save(update_fields=["sales_channel", "updated_at"])
+        other_policy.sales_channel = other_channel
+        other_policy.save(update_fields=["sales_channel", "updated_at"])
+        other_payment = Payment.objects.create(
+            policy=other_policy,
+            amount=Decimal("900.00"),
+            description="Other channel payment",
+        )
+        other_record = FinancialRecord.objects.create(
+            payment=other_payment,
+            amount=Decimal("90.00"),
+            note="Other channel note",
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"sales_channel": str(target_channel.id)},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        record_ids = {item["id"] for item in results}
+        self.assertIn(str(self.policy_record.id), record_ids)
+        self.assertNotIn(str(other_record.id), record_ids)
+        self.assertNotIn(str(self.income_record.id), record_ids)
+
+    def test_filter_by_payment_scheduled_date_range(self):
+        early_payment = Payment.objects.create(
+            policy=self.policy,
+            amount=Decimal("900.00"),
+            scheduled_date=date(2026, 3, 1),
+        )
+        target_payment = Payment.objects.create(
+            policy=self.policy,
+            amount=Decimal("950.00"),
+            scheduled_date=date(2026, 3, 15),
+        )
+        late_payment = Payment.objects.create(
+            policy=self.policy,
+            amount=Decimal("990.00"),
+            scheduled_date=date(2026, 4, 1),
+        )
+        early_record = FinancialRecord.objects.create(
+            payment=early_payment, amount=Decimal("10.00")
+        )
+        target_record = FinancialRecord.objects.create(
+            payment=target_payment, amount=Decimal("20.00")
+        )
+        late_record = FinancialRecord.objects.create(
+            payment=late_payment, amount=Decimal("30.00")
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {
+                "payment_scheduled_date_from": "2026-03-10",
+                "payment_scheduled_date_to": "2026-03-20",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = self._extract_results(response)
+        record_ids = {item["id"] for item in results}
+        self.assertIn(str(target_record.id), record_ids)
+        self.assertNotIn(str(early_record.id), record_ids)
+        self.assertNotIn(str(late_record.id), record_ids)
+
     def test_filter_by_deal_includes_policy_linked_records(self):
         self.authenticate(self.seller)
         response = self.api_client.get(
@@ -1396,6 +1470,98 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
             returned_ids.index(str(paid_record.id)),
             returned_ids.index(str(unpaid_record.id)),
         )
+
+    def test_ordering_by_payment_scheduled_date_ignores_actual_date(self):
+        older_scheduled_payment = Payment.objects.create(
+            policy=self.policy,
+            amount=Decimal("1000.00"),
+            scheduled_date=date(2026, 3, 1),
+            actual_date=date(2026, 5, 1),
+        )
+        newer_scheduled_payment = Payment.objects.create(
+            policy=self.policy,
+            amount=Decimal("1000.00"),
+            scheduled_date=date(2026, 4, 1),
+            actual_date=date(2026, 1, 1),
+        )
+        no_date_payment = Payment.objects.create(
+            policy=self.policy,
+            amount=Decimal("1000.00"),
+        )
+        older_record = FinancialRecord.objects.create(
+            payment=older_scheduled_payment, amount=Decimal("10.00")
+        )
+        newer_record = FinancialRecord.objects.create(
+            payment=newer_scheduled_payment, amount=Decimal("20.00")
+        )
+        no_date_record = FinancialRecord.objects.create(
+            payment=no_date_payment, amount=Decimal("30.00")
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {
+                "payment_scheduled_date_from": "2026-01-01",
+                "ordering": "payment_scheduled_date_is_null,payment_scheduled_date",
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = [item["id"] for item in self._extract_results(response)]
+        self.assertLess(
+            returned_ids.index(str(older_record.id)),
+            returned_ids.index(str(newer_record.id)),
+        )
+
+        response_desc = self.api_client.get(
+            "/api/v1/financial_records/",
+            {
+                "ordering": (
+                    "payment_scheduled_date_is_null,"
+                    "-payment_scheduled_date,-created_at"
+                ),
+            },
+        )
+        self.assertEqual(response_desc.status_code, status.HTTP_200_OK)
+        returned_ids_desc = [
+            item["id"] for item in self._extract_results(response_desc)
+        ]
+        self.assertLess(
+            returned_ids_desc.index(str(newer_record.id)),
+            returned_ids_desc.index(str(older_record.id)),
+        )
+        self.assertLess(
+            returned_ids_desc.index(str(older_record.id)),
+            returned_ids_desc.index(str(no_date_record.id)),
+        )
+
+    def test_export_xlsx_uses_filters_and_includes_payment_scheduled_date(self):
+        channel = SalesChannel.objects.create(name="Export channel")
+        self.policy.sales_channel = channel
+        self.policy.save(update_fields=["sales_channel", "updated_at"])
+        self.policy_payment.scheduled_date = date(2026, 3, 15)
+        self.policy_payment.save(update_fields=["scheduled_date", "updated_at"])
+
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/export-xlsx/",
+            {"sales_channel": str(channel.id)},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        workbook = load_workbook(BytesIO(response.content))
+        sheet = workbook.active
+        headers = [cell.value for cell in sheet[1]]
+        self.assertIn("Дата платежа", headers)
+        scheduled_date_column = headers.index("Дата платежа") + 1
+        policy_number_column = headers.index("Номер полиса") + 1
+
+        rows = list(sheet.iter_rows(min_row=2, values_only=True))
+        policy_numbers = {row[policy_number_column - 1] for row in rows}
+        scheduled_dates = {row[scheduled_date_column - 1] for row in rows}
+        self.assertIn("FILTER-POLICY", policy_numbers)
+        self.assertNotIn("-", policy_numbers)
+        self.assertIn("15.03.2026", scheduled_dates)
 
 
 class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):

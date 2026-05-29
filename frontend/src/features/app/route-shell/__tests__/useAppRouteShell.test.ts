@@ -36,6 +36,7 @@ describe('useAppRouteShell', () => {
         payments: [],
         financialRecords: [],
         statements: [],
+        salesChannels: [],
         tasks: [],
         users: [],
         currentUser: null,

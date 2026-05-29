@@ -39,6 +39,7 @@ describe('CommissionsView', () => {
             payments={[]}
             policies={[]}
             statements={[]}
+            salesChannels={[]}
             isLoading
             hasCommissionsSnapshotLoaded={false}
           />
@@ -87,6 +88,7 @@ describe('CommissionsView', () => {
                 updatedAt: '2026-03-06T10:00:00Z',
               },
             ]}
+            salesChannels={[]}
             hasCommissionsSnapshotLoaded
           />
         </NotificationProvider>
@@ -120,6 +122,7 @@ describe('CommissionsView', () => {
                 updatedAt: '2026-03-06T10:00:00Z',
               },
             ]}
+            salesChannels={[]}
             hasCommissionsSnapshotLoaded
           />
         </NotificationProvider>
@@ -216,6 +219,7 @@ describe('CommissionsView', () => {
                 updatedAt: '2026-03-06T10:00:00Z',
               },
             ]}
+            salesChannels={[]}
             hasCommissionsSnapshotLoaded
             onUpdateFinancialRecord={onUpdateFinancialRecord}
             onApplyStatementAmount={onApplyStatementAmount}

@@ -71,6 +71,7 @@ const createProps = (): AppRoutesProps => ({
     payments: [],
     financialRecords: [],
     statements: [],
+    salesChannels: [],
     tasks: [],
     users: [],
     currentUser: null,

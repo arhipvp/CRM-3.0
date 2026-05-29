@@ -208,6 +208,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               payments={data.payments}
               policies={data.policies}
               statements={data.statements}
+              salesChannels={data.salesChannels}
               isLoading={shouldBlockCommissionsView}
               hasCommissionsSnapshotLoaded={loading.hasCommissionsSnapshotLoaded}
               onRefreshStatements={loading.onRefreshCommissionsSnapshot}
