@@ -3,8 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchFinancialRecordsWithPagination, fetchStatementFinancialRecords } from '../../../api';
+import {
+  fetchFinancialRecordsWithPagination,
+  fetchPolicy,
+  fetchStatementFinancialRecords,
+} from '../../../api';
 import { NotificationProvider } from '../../../contexts/NotificationProvider';
+import type { FinancialRecord, Policy } from '../../../types';
 import { CommissionsView } from '../CommissionsView';
 
 vi.mock('../../../api', async () => {
@@ -13,11 +18,46 @@ vi.mock('../../../api', async () => {
     ...actual,
     fetchStatementFinancialRecords: vi.fn(),
     fetchFinancialRecordsWithPagination: vi.fn(),
+    fetchPolicy: vi.fn(),
   };
 });
 
 const mockedFetchStatementFinancialRecords = vi.mocked(fetchStatementFinancialRecords);
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
+const mockedFetchPolicy = vi.mocked(fetchPolicy);
+
+const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
+  id: 'policy-1',
+  number: 'SYS123456',
+  insuranceCompanyId: 'company-1',
+  insuranceCompany: 'Страховая',
+  insuranceTypeId: 'type-1',
+  insuranceType: 'ОСАГО',
+  dealId: 'deal-1',
+  isVehicle: false,
+  status: 'active',
+  createdAt: '2026-03-06T10:00:00Z',
+  ...overrides,
+});
+
+const buildFinancialRecord = (overrides: Partial<FinancialRecord> = {}): FinancialRecord => ({
+  id: 'record-policy-1',
+  paymentId: 'payment-policy-1',
+  paymentAmount: '10000',
+  paymentScheduledDate: '2026-03-15',
+  dealTitle: 'Сделка с полисом',
+  dealClientName: 'Клиент полиса',
+  policyId: 'policy-1',
+  policyNumber: 'SYS123456',
+  policyClientName: 'Клиент полиса',
+  paymentPaidBalance: '0',
+  amount: '1000',
+  date: '2026-03-15',
+  recordType: 'Доход',
+  createdAt: '2026-03-06T10:00:00Z',
+  updatedAt: '2026-03-06T10:00:00Z',
+  ...overrides,
+});
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -28,6 +68,7 @@ beforeEach(() => {
     previous: null,
     results: [],
   });
+  mockedFetchPolicy.mockResolvedValue(buildPolicy());
 });
 
 describe('CommissionsView', () => {
@@ -257,4 +298,76 @@ describe('CommissionsView', () => {
       value: '10',
     });
   }, 10000);
+
+  it('opens policy edit modal from all records using a policy already in local state', async () => {
+    const user = userEvent.setup();
+    const policy = buildPolicy();
+    const onRequestEditPolicy = vi.fn();
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [buildFinancialRecord()],
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <CommissionsView
+            payments={[]}
+            policies={[policy]}
+            statements={[]}
+            salesChannels={[]}
+            hasCommissionsSnapshotLoaded
+            onRequestEditPolicy={onRequestEditPolicy}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Все финансовые записи' }));
+    await user.click(await screen.findByRole('button', { name: 'Редактировать полис SYS123456' }));
+
+    expect(mockedFetchPolicy).not.toHaveBeenCalled();
+    expect(onRequestEditPolicy).toHaveBeenCalledWith(policy);
+  });
+
+  it('fetches policy before opening edit modal when it is missing from local state', async () => {
+    const user = userEvent.setup();
+    const fetchedPolicy = buildPolicy({ id: 'policy-2', number: 'SYS654321' });
+    const onRequestEditPolicy = vi.fn();
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        buildFinancialRecord({
+          policyId: 'policy-2',
+          policyNumber: 'SYS654321',
+        }),
+      ],
+    });
+    mockedFetchPolicy.mockResolvedValueOnce(fetchedPolicy);
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <CommissionsView
+            payments={[]}
+            policies={[]}
+            statements={[]}
+            salesChannels={[]}
+            hasCommissionsSnapshotLoaded
+            onRequestEditPolicy={onRequestEditPolicy}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Все финансовые записи' }));
+    await user.click(await screen.findByRole('button', { name: 'Редактировать полис SYS654321' }));
+
+    expect(mockedFetchPolicy).toHaveBeenCalledWith('policy-2');
+    expect(onRequestEditPolicy).toHaveBeenCalledWith(fetchedPolicy);
+  });
 }, 20000);

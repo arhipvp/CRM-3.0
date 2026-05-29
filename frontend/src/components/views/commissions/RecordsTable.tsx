@@ -7,7 +7,6 @@ import { DataTableShell } from '../../common/table/DataTableShell';
 import { EmptyTableState } from '../../common/table/EmptyTableState';
 import { TableHeadCell } from '../../common/TableHeadCell';
 import { TABLE_CELL_CLASS_SM, TABLE_ROW_CLASS, TABLE_THEAD_CLASS } from '../../common/tableStyles';
-import { PolicyNumberButton } from '../../policies/PolicyNumberButton';
 
 export type AllRecordsSortKey = 'none' | 'payment' | 'paymentDate' | 'saldo' | 'comment' | 'amount';
 export type AmountDraft = { mode: 'rub' | 'percent'; value: string };
@@ -73,6 +72,8 @@ interface RecordsTableProps {
   onToggleRecordSelection: (row: IncomeExpenseRow) => void;
   onOpenDeal: (dealId: string) => void;
   onDealSelect?: (dealId: string) => void;
+  onRequestEditPolicy?: (row: IncomeExpenseRow) => Promise<void> | void;
+  editingPolicyRecordId?: string | null;
   onToggleAllRecordsSort: (key: AllRecordsSortKey) => void;
   getAllRecordsSortLabel: (key: AllRecordsSortKey) => string;
   getAllRecordsSortIndicator: (key: AllRecordsSortKey) => string;
@@ -119,6 +120,8 @@ export const RecordsTable = ({
   onToggleRecordSelection,
   onOpenDeal,
   onDealSelect,
+  onRequestEditPolicy,
+  editingPolicyRecordId = null,
   onToggleAllRecordsSort,
   getAllRecordsSortLabel,
   getAllRecordsSortIndicator,
@@ -452,6 +455,10 @@ export const RecordsTable = ({
                   ? formatDateRu(payment.scheduledDate)
                   : null;
               const dealId = row.dealId ?? payment.dealId;
+              const canEditPolicy = Boolean(
+                onRequestEditPolicy && rowPolicyId && policyNumber !== '-',
+              );
+              const isOpeningPolicy = editingPolicyRecordId === row.recordId;
               const isPaymentPaid = Boolean(row.paymentActualDate ?? payment.actualDate);
               const recordAmount = row.recordAmount;
               const isIncome = row.recordKind === 'income';
@@ -539,11 +546,20 @@ export const RecordsTable = ({
                     </p>
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700`}>
-                    <PolicyNumberButton
-                      value={policyNumber === '-' ? '' : policyNumber}
-                      placeholder="-"
-                      className="link-action text-left"
-                    />
+                    {canEditPolicy ? (
+                      <button
+                        type="button"
+                        onClick={() => void onRequestEditPolicy?.(row)}
+                        disabled={isOpeningPolicy}
+                        className="link-action text-left disabled:cursor-wait disabled:opacity-60"
+                        title={isOpeningPolicy ? 'Открываем полис...' : 'Редактировать полис'}
+                        aria-label={`Редактировать полис ${policyNumber}`}
+                      >
+                        {policyNumber}
+                      </button>
+                    ) : (
+                      <span>{policyNumber}</span>
+                    )}
                   </td>
                   <td
                     lang="ru"

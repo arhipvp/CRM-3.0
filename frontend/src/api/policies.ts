@@ -22,6 +22,11 @@ export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
   return unwrapList<Record<string, unknown>>(payload).map(mapPolicy);
 }
 
+export async function fetchPolicy(id: string): Promise<Policy> {
+  const payload = await request<Record<string, unknown>>(`/policies/${id}/`);
+  return mapPolicy(payload);
+}
+
 export async function fetchPoliciesWithPagination(
   filters?: FilterParams,
 ): Promise<PaginatedResponse<Policy>> {

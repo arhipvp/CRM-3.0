@@ -9,17 +9,19 @@ import type {
   StatementAmountApplyMode,
   StatementAmountApplyResult,
 } from '../../types';
+import { fetchPolicy } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
+import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { useConfirm } from '../../hooks/useConfirm';
 import { CreateStatementModal } from './commissions/CreateStatementModal';
 import { DeleteStatementModal } from './commissions/DeleteStatementModal';
 import { EditStatementModal } from './commissions/EditStatementModal';
 import { AllRecordsPanel } from './commissions/AllRecordsPanel';
-import { RecordsTable } from './commissions/RecordsTable';
+import { RecordsTable, type IncomeExpenseRow } from './commissions/RecordsTable';
 import { StatementFilesTab } from './commissions/StatementFilesTab';
 import { useAllRecordsController } from './commissions/hooks/useAllRecordsController';
 import { useCommissionsRows } from './commissions/hooks/useCommissionsRows';
@@ -99,6 +101,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onRefreshStatements,
   onDealSelect,
   onDealPreview,
+  onRequestEditPolicy,
   onUpdateFinancialRecord,
   onDeleteStatement,
   onRemoveStatementRecords,
@@ -112,6 +115,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   const [viewMode, setViewMode] = useState<'all' | 'statements'>('statements');
   const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
   const [showPaidStatements, setShowPaidStatements] = useState(false);
+  const [editingPolicyRecordId, setEditingPolicyRecordId] = useState<string | null>(null);
+  const [policyEditError, setPolicyEditError] = useState<string | null>(null);
 
   const policiesById = useMemo(
     () => new Map(policies.map((policy) => [policy.id, policy])),
@@ -283,6 +288,35 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     [navigate, onDealPreview, onDealSelect],
   );
 
+  const handleEditPolicyFromRecord = useCallback(
+    async (row: IncomeExpenseRow) => {
+      const policyId = row.policyId ?? row.payment.policyId;
+      if (!onRequestEditPolicy || !policyId) {
+        return;
+      }
+
+      setPolicyEditError(null);
+      const existingPolicy = policiesById.get(policyId);
+      if (existingPolicy) {
+        onRequestEditPolicy(existingPolicy);
+        return;
+      }
+
+      setEditingPolicyRecordId(row.recordId);
+      try {
+        const policy = await fetchPolicy(policyId);
+        onRequestEditPolicy(policy);
+      } catch (error) {
+        setPolicyEditError(
+          formatErrorMessage(error, 'Не удалось открыть полис для редактирования.'),
+        );
+      } finally {
+        setEditingPolicyRecordId(null);
+      }
+    },
+    [onRequestEditPolicy, policiesById],
+  );
+
   const {
     selectedRecordIds,
     selectableRecordIds,
@@ -401,6 +435,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       onToggleRecordSelection={toggleRecordSelection}
       onOpenDeal={handleOpenDeal}
       onDealSelect={onDealSelect}
+      onRequestEditPolicy={onRequestEditPolicy ? handleEditPolicyFromRecord : undefined}
+      editingPolicyRecordId={editingPolicyRecordId}
       onToggleAllRecordsSort={toggleAllRecordsSort}
       getAllRecordsSortLabel={getAllRecordsSortLabel}
       getAllRecordsSortIndicator={getAllRecordsSortIndicator}
@@ -796,6 +832,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           className="outline-none"
           hidden={viewMode !== 'all'}
         >
+          {policyEditError && (
+            <p className={`px-4 pt-3 ${STATUS_TEXT_DANGER_XS}`}>{policyEditError}</p>
+          )}
           <AllRecordsPanel
             allRecordsSearchInput={allRecordsSearchInput}
             onSearchChange={setAllRecordsSearchInput}

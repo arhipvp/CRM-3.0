@@ -1,11 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { NotificationProvider } from '../../../../contexts/NotificationProvider';
 import type { IncomeExpenseRow } from '../RecordsTable';
 import { RecordsTable } from '../RecordsTable';
 
-const buildRow = (): IncomeExpenseRow => ({
+const buildRow = (overrides: Partial<IncomeExpenseRow> = {}): IncomeExpenseRow => ({
   key: 'payment-1-record-1',
   payment: {
     id: 'payment-1',
@@ -20,55 +19,67 @@ const buildRow = (): IncomeExpenseRow => ({
   recordKind: 'income',
   recordAmount: 1500,
   paymentScheduledDate: '2026-03-15',
+  policyId: 'policy-1',
+  policyNumber: 'SYS123456',
   recordDate: null,
+  ...overrides,
 });
 
-const renderTable = (onToggleAllRecordsSort = vi.fn()) => {
+const renderTable = ({
+  row = buildRow(),
+  onToggleAllRecordsSort = vi.fn(),
+  onRequestEditPolicy,
+}: {
+  row?: IncomeExpenseRow;
+  onToggleAllRecordsSort?: (
+    key: 'none' | 'payment' | 'paymentDate' | 'saldo' | 'comment' | 'amount',
+  ) => void;
+  onRequestEditPolicy?: (row: IncomeExpenseRow) => void;
+} = {}) => {
   render(
-    <NotificationProvider>
-      <RecordsTable
-        isAttachStatementPaid={false}
-        isSelectedStatementPaid={false}
-        viewMode="all"
-        selectedRecordIds={[]}
-        selectableRecordIds={[]}
-        allSelectableSelected={false}
-        selectAllRef={{ current: null }}
-        filteredRows={[buildRow()]}
-        policiesById={new Map()}
-        statementsById={new Map()}
-        amountDrafts={{}}
-        statementAmountDraft={{ mode: 'rub', value: '' }}
-        isApplyingStatementAmount={false}
-        isAllRecordsLoading={false}
-        isStatementRecordsLoading={false}
-        isRecordAmountEditable={false}
-        canAttachSelectedAction={false}
-        canRemoveSelectedAction={false}
-        normalizeText={(value) => value ?? ''}
-        canAttachRow={() => true}
-        onAttachSelected={vi.fn()}
-        onRemoveSelected={vi.fn()}
-        onResetSelection={vi.fn()}
-        onToggleSelectAll={vi.fn()}
-        onToggleRecordSelection={vi.fn()}
-        onOpenDeal={vi.fn()}
-        onToggleAllRecordsSort={onToggleAllRecordsSort}
-        getAllRecordsSortLabel={() => 'не сортируется'}
-        getAllRecordsSortIndicator={() => '↕'}
-        onToggleAmountSort={vi.fn()}
-        getAmountSortLabel={() => 'не сортируется'}
-        getAmountSortIndicator={() => '↕'}
-        getPercentFromSaldo={() => '0'}
-        getAbsoluteSaldoBase={() => 0}
-        onRecordAmountChange={vi.fn()}
-        onRecordAmountBlur={vi.fn()}
-        onToggleRecordAmountMode={vi.fn()}
-        onStatementAmountChange={vi.fn()}
-        onToggleStatementAmountMode={vi.fn()}
-        onApplyStatementAmount={vi.fn()}
-      />
-    </NotificationProvider>,
+    <RecordsTable
+      isAttachStatementPaid={false}
+      isSelectedStatementPaid={false}
+      viewMode="all"
+      selectedRecordIds={[]}
+      selectableRecordIds={[]}
+      allSelectableSelected={false}
+      selectAllRef={{ current: null }}
+      filteredRows={[row]}
+      policiesById={new Map()}
+      statementsById={new Map()}
+      amountDrafts={{}}
+      statementAmountDraft={{ mode: 'rub', value: '' }}
+      isApplyingStatementAmount={false}
+      isAllRecordsLoading={false}
+      isStatementRecordsLoading={false}
+      isRecordAmountEditable={false}
+      canAttachSelectedAction={false}
+      canRemoveSelectedAction={false}
+      normalizeText={(value) => value ?? ''}
+      canAttachRow={() => true}
+      onAttachSelected={vi.fn()}
+      onRemoveSelected={vi.fn()}
+      onResetSelection={vi.fn()}
+      onToggleSelectAll={vi.fn()}
+      onToggleRecordSelection={vi.fn()}
+      onOpenDeal={vi.fn()}
+      onRequestEditPolicy={onRequestEditPolicy}
+      onToggleAllRecordsSort={onToggleAllRecordsSort}
+      getAllRecordsSortLabel={() => 'не сортируется'}
+      getAllRecordsSortIndicator={() => '↕'}
+      onToggleAmountSort={vi.fn()}
+      getAmountSortLabel={() => 'не сортируется'}
+      getAmountSortIndicator={() => '↕'}
+      getPercentFromSaldo={() => '0'}
+      getAbsoluteSaldoBase={() => 0}
+      onRecordAmountChange={vi.fn()}
+      onRecordAmountBlur={vi.fn()}
+      onToggleRecordAmountMode={vi.fn()}
+      onStatementAmountChange={vi.fn()}
+      onToggleStatementAmountMode={vi.fn()}
+      onApplyStatementAmount={vi.fn()}
+    />,
   );
 };
 
@@ -76,11 +87,37 @@ describe('RecordsTable', () => {
   it('renders scheduled payment date and toggles scheduled date sorting', () => {
     const onToggleAllRecordsSort = vi.fn();
 
-    renderTable(onToggleAllRecordsSort);
+    renderTable({ onToggleAllRecordsSort });
 
     expect(screen.getByText('15.03.2026')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Сортировать по дате платежа/i }));
 
     expect(onToggleAllRecordsSort).toHaveBeenCalledWith('paymentDate');
+  });
+
+  it('opens policy edit handler from policy number instead of copy action', () => {
+    const onRequestEditPolicy = vi.fn();
+
+    renderTable({ onRequestEditPolicy });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Редактировать полис SYS123456' }));
+
+    expect(onRequestEditPolicy).toHaveBeenCalledWith(
+      expect.objectContaining({ policyId: 'policy-1', policyNumber: 'SYS123456' }),
+    );
+  });
+
+  it('renders policy number as plain text when row has no policy id', () => {
+    const onRequestEditPolicy = vi.fn();
+
+    renderTable({
+      row: buildRow({ policyId: null, policyNumber: 'WITHOUT-ID' }),
+      onRequestEditPolicy,
+    });
+
+    expect(screen.getByText('WITHOUT-ID')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Редактировать полис WITHOUT-ID' }),
+    ).not.toBeInTheDocument();
   });
 });
