@@ -1,7 +1,7 @@
 import re
 from decimal import ROUND_HALF_UP, Decimal
 
-from django.db.models import DecimalField, OuterRef, Prefetch, Subquery, Sum, Value
+from django.db.models import DecimalField, OuterRef, Prefetch, Subquery, Sum
 from django.db.models.functions import Coalesce
 
 from ..models import FinancialRecord
