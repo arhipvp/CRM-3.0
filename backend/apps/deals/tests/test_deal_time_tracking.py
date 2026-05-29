@@ -53,7 +53,9 @@ class DealTimeTrackingTests(AuthenticatedAPITestCase):
 
     def test_first_tick_counts_then_duplicate_does_not(self):
         fixed_now = datetime(2026, 2, 20, 12, 0, 5, tzinfo=timezone.utc)
-        with patch("apps.deals.views.timezone.now", return_value=fixed_now):
+        with patch(
+            "apps.deals.time_tracking_service.timezone.now", return_value=fixed_now
+        ):
             response_first = self.api_client.post(
                 f"/api/v1/deals/{self.deal.id}/time-track/tick/",
                 {},
@@ -79,7 +81,9 @@ class DealTimeTrackingTests(AuthenticatedAPITestCase):
 
     def test_tick_for_other_deal_in_same_bucket_is_blocked(self):
         fixed_now = datetime(2026, 2, 20, 12, 0, 8, tzinfo=timezone.utc)
-        with patch("apps.deals.views.timezone.now", return_value=fixed_now):
+        with patch(
+            "apps.deals.time_tracking_service.timezone.now", return_value=fixed_now
+        ):
             response_first = self.api_client.post(
                 f"/api/v1/deals/{self.deal.id}/time-track/tick/",
                 {},
@@ -102,13 +106,17 @@ class DealTimeTrackingTests(AuthenticatedAPITestCase):
     def test_next_bucket_counts(self):
         first_now = datetime(2026, 2, 20, 12, 0, 1, tzinfo=timezone.utc)
         second_now = datetime(2026, 2, 20, 12, 0, 11, tzinfo=timezone.utc)
-        with patch("apps.deals.views.timezone.now", return_value=first_now):
+        with patch(
+            "apps.deals.time_tracking_service.timezone.now", return_value=first_now
+        ):
             self.api_client.post(
                 f"/api/v1/deals/{self.deal.id}/time-track/tick/",
                 {},
                 format="json",
             )
-        with patch("apps.deals.views.timezone.now", return_value=second_now):
+        with patch(
+            "apps.deals.time_tracking_service.timezone.now", return_value=second_now
+        ):
             response = self.api_client.post(
                 f"/api/v1/deals/{self.deal.id}/time-track/tick/",
                 {},

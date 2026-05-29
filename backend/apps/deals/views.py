@@ -1,6 +1,3 @@
-from datetime import datetime
-from datetime import timezone as dt_timezone
-
 from apps.common.pagination import DealPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
 from apps.mailboxes.mailcow_client import MailcowClient, MailcowError
@@ -14,7 +11,6 @@ from apps.mailboxes.services import (
 )
 from apps.users.models import AuditLog
 from django.conf import settings
-from django.db import IntegrityError
 from django.db.models import (
     BooleanField,
     CharField,
@@ -31,7 +27,6 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast, Coalesce
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -43,7 +38,6 @@ from .lifecycle_service import close_deal, reopen_deal
 from .models import (
     Deal,
     DealPin,
-    DealTimeTick,
     InsuranceCompany,
     InsuranceType,
     Quote,
@@ -65,6 +59,10 @@ from .serializers import (
     InsuranceTypeSerializer,
     QuoteSerializer,
     SalesChannelSerializer,
+)
+from .time_tracking_service import (
+    build_time_tracking_summary,
+    record_time_tracking_tick,
 )
 from .view_mixins import (
     DealDocumentRecognitionMixin,
@@ -121,51 +119,6 @@ class DealViewSet(
     pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
     _allowed_embed_fields = {"quotes", "documents", "policies"}
-
-    @staticmethod
-    def _time_tracking_tick_seconds() -> int:
-        return max(5, int(getattr(settings, "DEAL_TIME_TRACKING_TICK_SECONDS", 10)))
-
-    @classmethod
-    def _time_tracking_confirm_interval_seconds(cls) -> int:
-        return max(
-            cls._time_tracking_tick_seconds(),
-            int(
-                getattr(
-                    settings,
-                    "DEAL_TIME_TRACKING_CONFIRM_INTERVAL_SECONDS",
-                    600,
-                )
-            ),
-        )
-
-    @staticmethod
-    def _time_tracking_enabled() -> bool:
-        return bool(getattr(settings, "DEAL_TIME_TRACKING_ENABLED", True))
-
-    @classmethod
-    def _bucket_start(cls, now):
-        tick_seconds = cls._time_tracking_tick_seconds()
-        current = int(now.timestamp())
-        floored = current - (current % tick_seconds)
-        return datetime.fromtimestamp(floored, tz=dt_timezone.utc)
-
-    @staticmethod
-    def _format_hms(total_seconds: int) -> str:
-        total = max(int(total_seconds), 0)
-        hours, remainder = divmod(total, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
-    @staticmethod
-    def _my_total_seconds(user, deal) -> int:
-        total = (
-            DealTimeTick.objects.filter(user=user, deal=deal).aggregate(
-                total=Coalesce(Sum("seconds"), Value(0), output_field=IntegerField())
-            )["total"]
-            or 0
-        )
-        return int(total)
 
     def _annotate_queryset(self, queryset, user=None):
         queryset = queryset.annotate(
@@ -291,82 +244,12 @@ class DealViewSet(
     @action(detail=True, methods=["get"], url_path="time-track/summary")
     def time_track_summary(self, request, pk=None):
         deal = self.get_object()
-        tick_seconds = self._time_tracking_tick_seconds()
-        confirm_interval_seconds = self._time_tracking_confirm_interval_seconds()
-        enabled = self._time_tracking_enabled()
-        my_total_seconds = self._my_total_seconds(request.user, deal)
-        return Response(
-            {
-                "enabled": enabled,
-                "tick_seconds": tick_seconds,
-                "confirm_interval_seconds": confirm_interval_seconds,
-                "my_total_seconds": my_total_seconds,
-                "my_total_human": self._format_hms(my_total_seconds),
-            }
-        )
+        return Response(build_time_tracking_summary(request.user, deal))
 
     @action(detail=True, methods=["post"], url_path="time-track/tick")
     def time_track_tick(self, request, pk=None):
         deal = self.get_object()
-        tick_seconds = self._time_tracking_tick_seconds()
-        confirm_interval_seconds = self._time_tracking_confirm_interval_seconds()
-        enabled = self._time_tracking_enabled()
-        if not enabled:
-            my_total_seconds = self._my_total_seconds(request.user, deal)
-            return Response(
-                {
-                    "enabled": False,
-                    "tick_seconds": tick_seconds,
-                    "confirm_interval_seconds": confirm_interval_seconds,
-                    "counted": False,
-                    "bucket_start": None,
-                    "my_total_seconds": my_total_seconds,
-                    "reason": "disabled",
-                }
-            )
-
-        now = timezone.now()
-        bucket_start = self._bucket_start(now)
-
-        try:
-            tick, created = DealTimeTick.objects.get_or_create(
-                user=request.user,
-                bucket_start=bucket_start,
-                defaults={
-                    "deal": deal,
-                    "seconds": tick_seconds,
-                    "source": "deal_details_panel",
-                },
-            )
-        except IntegrityError:
-            tick = DealTimeTick.objects.filter(
-                user=request.user,
-                bucket_start=bucket_start,
-            ).first()
-            created = False
-
-        if created:
-            counted = True
-            reason = None
-        elif tick and tick.deal_id == deal.id:
-            counted = False
-            reason = "duplicate"
-        else:
-            counted = False
-            reason = "bucket_taken_by_other_deal"
-
-        my_total_seconds = self._my_total_seconds(request.user, deal)
-        payload = {
-            "enabled": True,
-            "tick_seconds": tick_seconds,
-            "confirm_interval_seconds": confirm_interval_seconds,
-            "counted": counted,
-            "bucket_start": bucket_start,
-            "my_total_seconds": my_total_seconds,
-        }
-        if reason:
-            payload["reason"] = reason
-        return Response(payload)
+        return Response(record_time_tracking_tick(request.user, deal))
 
     def _pinned_ids(self, user):
         if not user or not user.is_authenticated:

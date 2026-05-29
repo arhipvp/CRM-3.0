@@ -1,6 +1,5 @@
-import re
 import zipfile
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from io import BytesIO
 
 from apps.common.drive import (
@@ -58,6 +57,13 @@ from .serializers import (
     StatementSerializer,
 )
 from .services import build_finance_summary_payload
+from .services.statements import (
+    ensure_unique_zip_path,
+    normalize_statement_amount,
+    quantize_money,
+    records_with_paid_balance,
+    sanitize_drive_filename,
+)
 
 
 class StatementDriveTrashSerializer(serializers.Serializer):
@@ -299,64 +305,6 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             if not user_has_deal_access(self.request.user, deal, allow_executor=False):
                 raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
 
-    def _records_with_paid_balance(self, statement):
-        paid_balance_subquery = (
-            FinancialRecord.objects.filter(
-                payment_id=OuterRef("payment_id"),
-                date__isnull=False,
-                deleted_at__isnull=True,
-            )
-            .order_by()
-            .values("payment_id")
-            .annotate(total=Sum("amount"))
-            .values("total")[:1]
-        )
-        return (
-            FinancialRecord.objects.filter(statement=statement, deleted_at__isnull=True)
-            .select_related(
-                "payment",
-                "payment__policy",
-                "payment__policy__deal",
-                "payment__policy__deal__client",
-                "payment__policy__insurance_type",
-                "payment__policy__sales_channel",
-                "payment__deal",
-                "payment__deal__client",
-            )
-            .prefetch_related(
-                Prefetch(
-                    "payment__financial_records",
-                    queryset=FinancialRecord.objects.filter(
-                        date__isnull=False,
-                        deleted_at__isnull=True,
-                    )
-                    .only("id", "amount", "date", "payment_id")
-                    .order_by("-date", "-amount", "id"),
-                    to_attr="paid_records",
-                )
-            )
-            .annotate(
-                payment_paid_balance=Coalesce(
-                    Subquery(
-                        paid_balance_subquery,
-                        output_field=DecimalField(max_digits=12, decimal_places=2),
-                    ),
-                    0,
-                    output_field=DecimalField(max_digits=12, decimal_places=2),
-                )
-            )
-            .order_by("created_at", "id")
-        )
-
-    def _normalize_statement_amount(self, record, amount):
-        record_type = record.record_type
-        if record_type not in FinancialRecord.RecordType.values:
-            record_type = FinancialRecord.infer_record_type_from_amount(record.amount)
-        return FinancialRecord.normalize_amount_for_record_type(record_type, amount)
-
-    def _quantize_money(self, value):
-        return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
     def _create_download_response(
         self,
         content: bytes,
@@ -370,20 +318,6 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             f"attachment; filename=\"{safe_name}\"; filename*=UTF-8''{iri_to_uri(raw_name)}"
         )
         return response
-
-    def _ensure_unique_zip_path(self, path: str, seen: set[str]) -> str:
-        if path not in seen:
-            seen.add(path)
-            return path
-
-        suffix = 1
-        base, dot, ext = path.partition(".")
-        while True:
-            candidate = f"{base} ({suffix}){dot}{ext}" if ext else f"{base} ({suffix})"
-            if candidate not in seen:
-                seen.add(candidate)
-                return candidate
-            suffix += 1
 
     def perform_update(self, serializer):
         record_ids = serializer.validated_data.get("record_ids") or []
@@ -425,7 +359,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         mode = serializer.validated_data["mode"]
         value = abs(serializer.validated_data["value"])
 
-        records = list(self._records_with_paid_balance(statement))
+        records = list(records_with_paid_balance(statement))
         self._validate_record_access(records)
 
         updated_records = []
@@ -438,12 +372,12 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 if base <= 0:
                     skipped_reasons["zero_balance"] += 1
                     continue
-                absolute_amount = self._quantize_money((base * value) / Decimal("100"))
+                absolute_amount = quantize_money((base * value) / Decimal("100"))
             else:
-                absolute_amount = self._quantize_money(value)
+                absolute_amount = quantize_money(value)
 
-            next_amount = self._normalize_statement_amount(record, absolute_amount)
-            if self._quantize_money(record.amount) == next_amount:
+            next_amount = normalize_statement_amount(record, absolute_amount)
+            if quantize_money(record.amount) == next_amount:
                 unchanged += 1
                 continue
 
@@ -459,7 +393,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 statement.updated_at = timezone.now()
                 statement.save(update_fields=["updated_at"])
 
-        response_records = list(self._records_with_paid_balance(statement))
+        response_records = list(records_with_paid_balance(statement))
         payload = {
             "updated": len(updated_records),
             "unchanged": unchanged,
@@ -500,14 +434,6 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         payload = StatementSerializer(statement, context={"request": request}).data
         return Response(payload)
 
-    def _sanitize_drive_filename(self, value: str) -> str:
-        # Keep Cyrillic, but remove characters forbidden for Windows filenames
-        # (and generally problematic across clients).
-        clean = (value or "").strip() or "Ведомость"
-        clean = re.sub(r'[\\\\/:*?"<>|]+', "_", clean)
-        clean = re.sub(r"\\s+", " ", clean).strip()
-        return clean[:120] if len(clean) > 120 else clean
-
     @action(detail=True, methods=["post"], url_path="export-xlsx")
     def export_xlsx(self, request, *args, **kwargs):
         statement = self.get_object()
@@ -524,7 +450,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         now = timezone.localtime(timezone.now())
         ts = now.strftime("%d_%m_%Y_%H_%M_%S")
-        base_name = self._sanitize_drive_filename(statement.name or "Ведомость")
+        base_name = sanitize_drive_filename(statement.name or "Ведомость")
         filename = f"{base_name}_{ts}.xlsx"
 
         records_qs = (
@@ -885,7 +811,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 seen_paths: set[str] = set()
                 for item in selected_items:
                     content = download_drive_file(item["id"])
-                    zip_path = self._ensure_unique_zip_path(
+                    zip_path = ensure_unique_zip_path(
                         item["name"] or "file", seen_paths
                     )
                     zip_file.writestr(zip_path, content)

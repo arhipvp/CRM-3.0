@@ -29,17 +29,15 @@ import type {
   SalesChannel,
   Statement,
 } from '../../types';
-import { formatAmountValue, matchSalesChannel, parseAmountValue } from '../../utils/appContent';
-import {
-  buildCommissionIncomeNote,
-  shouldAutofillCommissionNote,
-} from '../../utils/financialRecordNotes';
+import { parseAmountValue } from '../../utils/appContent';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
-import { parseNumericAmount } from '../../utils/parseNumericAmount';
 import {
-  buildPolicyDraftFromRecognition,
-  normalizeStringValue,
-} from '../../utils/policyRecognition';
+  buildPolicyRecognitionDraft,
+  formatPolicyAmount,
+  hasFinancialRecordDraftChanges,
+  parsePolicyAmount,
+  parsePolicyRecordAmount,
+} from './policyActionHelpers';
 import type { useAppData } from '../useAppData';
 
 type UpdateAppData = ReturnType<typeof useAppData>['updateAppData'];
@@ -74,42 +72,6 @@ interface UsePolicyActionsParams {
     paidDelta: number,
   ) => T[];
 }
-
-type FinancialRecordUpdateDraft = {
-  amount: number;
-  date: string | null;
-  description: string;
-  source: string;
-  note: string;
-};
-
-const normalizeFinancialRecordText = (value?: string | null) => (value ?? '').trim();
-
-const buildFinancialRecordUpdateDraft = (
-  record: Pick<FinancialRecord, 'amount' | 'date' | 'description' | 'source' | 'note'>,
-): FinancialRecordUpdateDraft => ({
-  amount: Number.isFinite(parseNumericAmount(record.amount ?? ''))
-    ? parseNumericAmount(record.amount ?? '')
-    : 0,
-  date: record.date ?? null,
-  description: normalizeFinancialRecordText(record.description),
-  source: normalizeFinancialRecordText(record.source),
-  note: normalizeFinancialRecordText(record.note),
-});
-
-const hasFinancialRecordDraftChanges = (
-  existing: Pick<FinancialRecord, 'amount' | 'date' | 'description' | 'source' | 'note'>,
-  next: FinancialRecordUpdateDraft,
-) => {
-  const normalizedExisting = buildFinancialRecordUpdateDraft(existing);
-  return (
-    normalizedExisting.amount !== next.amount ||
-    normalizedExisting.date !== next.date ||
-    normalizedExisting.description !== next.description ||
-    normalizedExisting.source !== next.source ||
-    normalizedExisting.note !== next.note
-  );
-};
 
 export const usePolicyActions = ({
   clients,
@@ -180,63 +142,23 @@ export const usePolicyActions = ({
       if (!parsed) {
         return;
       }
-      const draft = buildPolicyDraftFromRecognition(parsed);
-      const policyObj = (parsed.policy ?? {}) as Record<string, unknown>;
-      const recognizedSalesChannel = normalizeStringValue(
-        policyObj.sales_channel ??
-          policyObj.sales_channel_name ??
-          policyObj.salesChannel ??
-          policyObj.salesChannelName,
-      );
-      const matchedChannel = matchSalesChannel(salesChannels, recognizedSalesChannel);
-      const commissionNote = buildCommissionIncomeNote(matchedChannel?.name);
-      const paymentsWithNotes = draft.payments.map((payment) => ({
-        ...payment,
-        incomes: payment.incomes.map((income) =>
-          shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
-        ),
-      }));
-
-      const recognizedPolicyClientName = normalizeStringValue(
-        parsed.insured_client_name ??
-          parsed.client_name ??
-          policyObj.insured_client_name ??
-          policyObj.client_name ??
-          policyObj.client ??
-          policyObj.insured_client ??
-          policyObj.contractor,
-      );
-      const matchedPolicyClient = recognizedPolicyClientName?.length
-        ? clients.find(
-            (client) => client.name.toLowerCase() === recognizedPolicyClientName.toLowerCase(),
-          )
-        : undefined;
-
-      const values = {
-        ...draft,
-        salesChannelId: matchedChannel?.id,
-        payments: paymentsWithNotes,
-        clientId: matchedPolicyClient?.id ?? undefined,
-        clientName: matchedPolicyClient?.name ?? (recognizedPolicyClientName || undefined),
-      };
-      const recognizedInsuranceType = normalizeStringValue(
-        policyObj.insurance_type ??
-          policyObj.insuranceType ??
-          parsed.insurance_type ??
-          parsed.insuranceType,
-      );
+      const draft = buildPolicyRecognitionDraft({
+        parsed,
+        clients,
+        salesChannels,
+        fileId,
+        parsedFileIds,
+      });
+      if (!draft) {
+        return;
+      }
       setPolicyDealId(dealId);
       setPolicyDefaultCounterparty(undefined);
-      const resolvedFileIds = parsedFileIds?.length
-        ? Array.from(new Set(parsedFileIds.filter((id): id is string => Boolean(id))))
-        : fileId
-          ? [fileId]
-          : [];
-      setPolicySourceFileIds(resolvedFileIds);
+      setPolicySourceFileIds(draft.sourceFileIds);
       setPolicyPrefill({
-        values,
-        insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
-        insuranceTypeName: recognizedInsuranceType,
+        values: draft.values,
+        insuranceCompanyName: draft.insuranceCompanyName,
+        insuranceTypeName: draft.insuranceTypeName,
       });
     },
     [clients, salesChannels],
@@ -348,10 +270,6 @@ export const usePolicyActions = ({
           sourceFileIds: sourceFileIds.length ? sourceFileIds : undefined,
         });
         updateAppData((prev) => ({ policies: [created, ...prev.policies] }));
-        const parsePolicyAmount = (value?: string | null) => {
-          const parsed = parseNumericAmount(value ?? '');
-          return Number.isFinite(parsed) ? parsed : 0;
-        };
         let policyPaymentsTotal = parsePolicyAmount(created.paymentsTotal);
         let policyPaymentsPaid = parsePolicyAmount(created.paymentsPaid);
         const syncPolicyTotals = () => {
@@ -360,8 +278,8 @@ export const usePolicyActions = ({
               policy.id === created.id
                 ? {
                     ...policy,
-                    paymentsTotal: formatAmountValue(policyPaymentsTotal),
-                    paymentsPaid: formatAmountValue(policyPaymentsPaid),
+                    paymentsTotal: formatPolicyAmount(policyPaymentsTotal),
+                    paymentsPaid: formatPolicyAmount(policyPaymentsPaid),
                   }
                 : policy,
             ),
@@ -376,7 +294,7 @@ export const usePolicyActions = ({
 
         try {
           for (const paymentDraft of paymentsToProcess) {
-            const amount = parseNumericAmount(paymentDraft.amount);
+            const amount = parsePolicyAmount(paymentDraft.amount);
             if (!Number.isFinite(amount) || amount < 0) {
               continue;
             }
@@ -393,7 +311,7 @@ export const usePolicyActions = ({
             const createdRecords: FinancialRecord[] = [];
 
             for (const income of paymentDraft.incomes) {
-              const incomeAmount = parseNumericAmount(income.amount);
+              const incomeAmount = parsePolicyAmount(income.amount);
               if (!Number.isFinite(incomeAmount) || incomeAmount < 0) {
                 continue;
               }
@@ -411,7 +329,7 @@ export const usePolicyActions = ({
             }
 
             for (const expense of paymentDraft.expenses) {
-              const expenseAmount = parseNumericAmount(expense.amount);
+              const expenseAmount = parsePolicyAmount(expense.amount);
               if (!Number.isFinite(expenseAmount) || expenseAmount < 0) {
                 continue;
               }
@@ -680,20 +598,6 @@ export const usePolicyActions = ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
         }));
 
-        const parsePaymentAmount = (value?: string | null) => {
-          const parsed = parseNumericAmount(value ?? '');
-          return Number.isFinite(parsed) ? parsed : 0;
-        };
-
-        const parseRecordAmount = (value: string | null | undefined, sign: 1 | -1) => {
-          const parsed = parseNumericAmount(value ?? '');
-          if (!Number.isFinite(parsed)) {
-            return parsed;
-          }
-          const abs = Math.abs(parsed);
-          return sign === -1 ? -abs : abs;
-        };
-
         const affectedDealIds = new Set<string>();
         if (currentPolicy.dealId) {
           affectedDealIds.add(currentPolicy.dealId);
@@ -719,7 +623,7 @@ export const usePolicyActions = ({
         }
 
         for (const draft of paymentDrafts) {
-          const draftAmount = parsePaymentAmount(draft.amount);
+          const draftAmount = parsePolicyAmount(draft.amount);
           const draftScheduled = draft.scheduledDate ? draft.scheduledDate : null;
           const draftActual = draft.actualDate ? draft.actualDate : null;
           const draftDescription = draft.description ?? '';
@@ -828,7 +732,10 @@ export const usePolicyActions = ({
             recordDraft: (typeof draft.incomes)[number],
             recordType: 'income' | 'expense',
           ) => {
-            const amount = parseRecordAmount(recordDraft.amount, recordType === 'expense' ? -1 : 1);
+            const amount = parsePolicyRecordAmount(
+              recordDraft.amount,
+              recordType === 'expense' ? -1 : 1,
+            );
             if (!Number.isFinite(amount)) {
               return;
             }
