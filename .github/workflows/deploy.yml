@@ -158,9 +158,10 @@ jobs:
           git -c fetch.recurseSubmodules=false fetch --no-recurse-submodules origin "${BRANCH}" --quiet
 
           # Ensure checkout cannot be blocked by local edits to tracked files
-          # (untracked files like .env.production must remain untouched).
+          # or by files left behind by the former mailcow submodule.
+          # Ignored runtime files like .env.production and mailcow.conf remain untouched.
           git reset --hard --quiet
-          git checkout "${COMMIT_SHA}"
+          git checkout --force "${COMMIT_SHA}"
 
           if [ ! -f .env.production ]; then
             echo "Missing .env.production on server. Configure secrets via SSH before deploy."

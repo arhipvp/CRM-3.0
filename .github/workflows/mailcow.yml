@@ -101,7 +101,7 @@ jobs:
           echo "Fetching ${BRANCH}..."
           git -c fetch.recurseSubmodules=false fetch --no-recurse-submodules origin "${BRANCH}" --quiet
           git reset --hard --quiet
-          git checkout "${COMMIT_SHA}"
+          git checkout --force "${COMMIT_SHA}"
 
           if [ ! -d mailcow ]; then
             echo "No mailcow/ directory in repo on server. Skipping."
