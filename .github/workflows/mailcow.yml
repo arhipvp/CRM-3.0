@@ -61,7 +61,7 @@ jobs:
           MAILCOW_IMAP_MASTER_PASS: ${{ secrets.MAILCOW_IMAP_MASTER_PASS }}
           MAILCOW_PROJECT_NAME: ${{ secrets.MAILCOW_PROJECT_NAME }}
           MAILCOW_ADDITIONAL_SERVER_NAMES: ${{ secrets.MAILCOW_ADDITIONAL_SERVER_NAMES }}
-        run: |
+        run: | # pragma: allowlist secret
           BRANCH="${BRANCH:-master}"
           COMMIT_SHA="${COMMIT_SHA:-${{ github.sha }}}"
           VPS_PORT="${VPS_PORT:-22}"
