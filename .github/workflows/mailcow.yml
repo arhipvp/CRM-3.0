@@ -99,7 +99,7 @@ jobs:
           cd "${VPS_PATH}"
 
           echo "Fetching ${BRANCH}..."
-          git fetch origin "${BRANCH}" --quiet
+          git -c fetch.recurseSubmodules=false fetch --no-recurse-submodules origin "${BRANCH}" --quiet
           git reset --hard --quiet
           git checkout "${COMMIT_SHA}"
 

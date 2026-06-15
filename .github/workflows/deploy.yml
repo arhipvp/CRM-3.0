@@ -155,7 +155,7 @@ jobs:
           echo "MARK: cd ok, pwd=$(pwd)"
 
           echo "Fetching ${BRANCH}..."
-          git fetch origin "${BRANCH}" --quiet
+          git -c fetch.recurseSubmodules=false fetch --no-recurse-submodules origin "${BRANCH}" --quiet
 
           # Ensure checkout cannot be blocked by local edits to tracked files
           # (untracked files like .env.production must remain untouched).
