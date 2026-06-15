@@ -58,6 +58,13 @@ npm run test         # Vitest с Testing Library и setupTests
 - Статус/ошибки: используйте `src/components/common/InlineAlert.tsx` вместо ручных `app-alert app-alert-*`.
 - Формы и таблицы: опирайтесь на примитивы из `src/components/common/forms/*` и `src/components/common/table/*` (`DataTableShell`, `EmptyTableState`, `DriveFilesTable`) вместо локальных JSX-паттернов.
 
+## Адаптивный layout
+
+- На desktop боковая панель имеет ширину 240 px и сворачивается до 80 px кнопкой в шапке панели.
+- Выбранное состояние сохраняется в `localStorage` под ключом `crm.sidebar.collapsed`.
+- На мобильных ширинах используется горизонтальная навигация с полными подписями независимо от desktop-настройки.
+- Основные таблицы рассчитаны на рабочее разрешение 1920×1200; на меньших экранах локальная горизонтальная прокрутка остаётся защитным поведением.
+
 ## Docker и CI
 
 - `frontend/Dockerfile` собирает образ на Node 20, выполняет `npm ci`, делает production build и в финальной стадии отдаёт bundle через nginx.

@@ -399,10 +399,13 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
       {visiblePolicies.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="min-w-[1900px] w-full border-collapse text-left text-sm">
+          <table
+            className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0"
+            aria-label="Полисы сделки"
+          >
             <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
               <tr>
-                <th className="px-3 py-2 border border-slate-300">
+                <th className="w-[13%] border border-slate-300 px-3 py-2">
                   <button
                     type="button"
                     onClick={() => handleSortChange('number')}
@@ -411,8 +414,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     Номер полиса
                   </button>
                 </th>
-                <th className="px-3 py-2 border border-slate-300">Основные данные</th>
-                <th className="px-3 py-2 border border-slate-300 w-[6%]">
+                <th className="w-[25%] border border-slate-300 px-3 py-2">Основные данные</th>
+                <th className="w-[8%] border border-slate-300 px-3 py-2">
                   <button
                     type="button"
                     onClick={() => handleSortChange('startDate')}
@@ -421,7 +424,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     Начало
                   </button>
                 </th>
-                <th className="px-3 py-2 border border-slate-300 w-[6%]">
+                <th className="w-[8%] border border-slate-300 px-3 py-2">
                   <button
                     type="button"
                     onClick={() => handleSortChange('endDate')}
@@ -430,8 +433,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     Конец
                   </button>
                 </th>
-                <th className="px-3 py-2 border border-slate-300">Платеж</th>
-                <th className="px-3 py-2 border border-slate-300">Финансовые записи</th>
+                <th className="w-[20%] border border-slate-300 px-3 py-2">Платеж</th>
+                <th className="w-[26%] border border-slate-300 px-3 py-2">Финансовые записи</th>
               </tr>
             </thead>
             <tbody className="bg-white">

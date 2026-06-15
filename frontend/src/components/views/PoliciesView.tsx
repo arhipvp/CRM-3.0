@@ -506,24 +506,24 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       {policies.length ? (
         <DataTableShell>
           <table
-            className="deals-table min-w-[1900px] w-full table-fixed border-collapse text-left text-sm"
+            className="deals-table w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0"
             aria-label="Список полисов"
           >
             <thead className={TABLE_THEAD_CLASS}>
               <tr>
-                <TableHeadCell padding="sm" className="w-[14%]">
+                <TableHeadCell padding="sm" className="w-[13%]">
                   Номер полиса
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[26%]">
+                <TableHeadCell padding="sm" className="w-[25%]">
                   Основные данные
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[6%]">
+                <TableHeadCell padding="sm" className="w-[8%]">
                   Начало
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[6%]">
+                <TableHeadCell padding="sm" className="w-[8%]">
                   Конец
                 </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[18%]">
+                <TableHeadCell padding="sm" className="w-[20%]">
                   Платеж
                 </TableHeadCell>
                 <TableHeadCell padding="sm" className="w-[26%]">

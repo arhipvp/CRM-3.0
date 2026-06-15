@@ -146,6 +146,9 @@ describe('PoliciesTab', () => {
     expect(screen.getByText('Платеж')).toBeInTheDocument();
     expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
     expect(screen.queryByText('Оплачено / План')).toBeNull();
+    const policiesTable = screen.getByRole('table', { name: 'Полисы сделки' });
+    expect(policiesTable).not.toHaveClass('min-w-[1900px]');
+    expect(policiesTable).toHaveClass('min-w-[1100px]', 'xl:min-w-0');
 
     const statusBadge = screen.getByText('Есть неоплаченные записи');
     expect(statusBadge).toHaveAttribute(

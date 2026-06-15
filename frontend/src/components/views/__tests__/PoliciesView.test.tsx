@@ -142,8 +142,11 @@ describe('PoliciesView', () => {
     expect(screen.getByText('Платеж')).toBeInTheDocument();
     expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
     expect(screen.queryByText('Оплачено / План')).toBeNull();
-    expect(screen.getByText('Начало').className).toContain('w-[6%]');
-    expect(screen.getByText('Конец').className).toContain('w-[6%]');
+    expect(screen.getByText('Начало').className).toContain('w-[8%]');
+    expect(screen.getByText('Конец').className).toContain('w-[8%]');
+    const policiesTable = screen.getByRole('table', { name: 'Список полисов' });
+    expect(policiesTable).not.toHaveClass('min-w-[1900px]');
+    expect(policiesTable).toHaveClass('min-w-[1100px]', 'xl:min-w-0');
 
     const statusBadge = screen.getByTitle(
       'Есть финансовые записи без даты оплаты по платежам полиса',
