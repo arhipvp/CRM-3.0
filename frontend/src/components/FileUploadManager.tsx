@@ -12,6 +12,7 @@ interface FileUploadManagerProps {
   onUpload: (file: File) => Promise<void>;
   onUploadFiles?: (files: File[]) => Promise<void>;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 type DataTransferItemWithEntry = DataTransferItem & {
@@ -184,7 +185,12 @@ const collectFilesFromClipboardItems = async (items: ClipboardItem[]): Promise<F
   return dedupeFiles(files);
 };
 
-export function FileUploadManager({ onUpload, onUploadFiles, disabled }: FileUploadManagerProps) {
+export function FileUploadManager({
+  onUpload,
+  onUploadFiles,
+  disabled,
+  compact = false,
+}: FileUploadManagerProps) {
   const [isUploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -362,7 +368,8 @@ export function FileUploadManager({ onUpload, onUploadFiles, disabled }: FileUpl
   };
 
   const dropAreaClasses = [
-    'border-2 border-dashed rounded-2xl p-6 transition-colors duration-200',
+    'border-2 border-dashed rounded-2xl transition-colors duration-200',
+    compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6',
     isDragActive ? 'border-sky-500 bg-slate-50' : 'border-slate-300 bg-slate-50',
     isUploading ? 'opacity-80' : 'hover:border-slate-400 hover:bg-slate-100',
   ].join(' ');
@@ -392,7 +399,7 @@ export function FileUploadManager({ onUpload, onUploadFiles, disabled }: FileUpl
             ref={fileInputRef}
           />
           <div className="text-center">
-            <p className="text-3xl mb-2" aria-hidden="true">
+            <p className={`${compact ? 'mb-1 text-2xl' : 'mb-2 text-3xl'}`} aria-hidden="true">
               📎
             </p>
             <p className="text-sm font-medium text-slate-700">

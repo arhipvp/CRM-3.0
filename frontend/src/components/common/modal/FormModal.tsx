@@ -16,6 +16,7 @@ interface FormModalProps {
   hideCloseButton?: boolean;
   panelClassName?: string;
   bodyClassName?: string;
+  bodyScrollable?: boolean;
 }
 
 export const FormModal: React.FC<FormModalProps> = ({
@@ -30,6 +31,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   hideCloseButton,
   panelClassName,
   bodyClassName,
+  bodyScrollable,
 }) => {
   if (!isOpen) {
     return null;
@@ -46,6 +48,7 @@ export const FormModal: React.FC<FormModalProps> = ({
       hideCloseButton={hideCloseButton}
       panelClassName={panelClassName}
       bodyClassName={bodyClassName}
+      bodyScrollable={bodyScrollable}
     >
       {children}
     </Modal>

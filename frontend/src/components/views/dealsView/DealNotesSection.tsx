@@ -444,9 +444,9 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
 
       {isCreateModalOpen && (
         <Modal title="Новая заметка" onClose={() => setIsCreateModalOpen(false)} size="md">
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <textarea
-              rows={5}
+              rows={4}
               value={noteDraft}
               onChange={(event) => onSetDraft(event.target.value)}
               onPaste={handleDraftPaste}
@@ -499,6 +499,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
             <FileUploadManager
               onUpload={onAttachNoteFile}
               disabled={notesAction === 'create' || noteAttachmentsUploading}
+              compact
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-center gap-2 text-xs text-slate-600">

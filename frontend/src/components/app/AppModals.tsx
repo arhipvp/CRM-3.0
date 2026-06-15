@@ -258,6 +258,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
           closeOnOverlayClick={false}
           panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
           bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
+          bodyScrollable={false}
         >
           <AddPolicyForm
             salesChannels={salesChannels}
@@ -290,6 +291,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
           closeOnOverlayClick={false}
           panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
           bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
+          bodyScrollable={false}
         >
           <AddPolicyForm
             salesChannels={salesChannels}

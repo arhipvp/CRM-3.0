@@ -56,4 +56,37 @@ describe('Modal', () => {
     expect(dialog.className).toContain('custom-panel');
     expect(screen.getByText('Body').parentElement?.className).toContain('custom-body');
   });
+
+  it('constrains the panel to the viewport and scrolls the body', () => {
+    render(
+      <Modal title="Responsive modal" onClose={vi.fn()}>
+        <div>Long body</div>
+      </Modal>,
+    );
+
+    const dialog = screen.getByRole('dialog');
+    const body = screen.getByText('Long body').parentElement;
+    const header = screen.getByRole('heading', { name: 'Responsive modal' }).parentElement;
+
+    expect(dialog.className).toContain('flex');
+    expect(dialog.className).toContain('max-h-[calc(100dvh-1rem)]');
+    expect(dialog.className).toContain('overflow-hidden');
+    expect(header?.className).toContain('shrink-0');
+    expect(body?.className).toContain('min-h-0');
+    expect(body?.className).toContain('flex-1');
+    expect(body?.className).toContain('overflow-y-auto');
+  });
+
+  it('allows nested forms to manage their own scrolling', () => {
+    render(
+      <Modal title="Nested scroll modal" onClose={vi.fn()} bodyScrollable={false}>
+        <div>Nested form</div>
+      </Modal>,
+    );
+
+    const body = screen.getByText('Nested form').parentElement;
+
+    expect(body?.className).toContain('overflow-hidden');
+    expect(body?.className).not.toContain('overflow-y-auto');
+  });
 });

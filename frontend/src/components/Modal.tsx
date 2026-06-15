@@ -20,6 +20,7 @@ interface ModalProps {
   zIndex?: number;
   panelClassName?: string;
   bodyClassName?: string;
+  bodyScrollable?: boolean;
 }
 
 export function Modal({
@@ -33,6 +34,7 @@ export function Modal({
   zIndex = 40,
   panelClassName = '',
   bodyClassName = '',
+  bodyScrollable = true,
 }: ModalProps) {
   const titleId = useId();
   const sizeClass = MODAL_SIZE_TO_CLASS[size];
@@ -54,7 +56,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden bg-black/40 p-2 sm:p-4"
       style={{ zIndex }}
       onClick={() => {
         if (closeOnOverlayClick) {
@@ -63,14 +65,14 @@ export function Modal({
       }}
     >
       <div
-        className={`w-full rounded-2xl border border-slate-200 bg-white shadow-2xl ${sizeClass} ${panelClassName}`}
+        className={`flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
+          <h2 id={titleId} className="min-w-0 break-words text-lg font-semibold text-slate-900">
             {title}
           </h2>
           {!hideCloseButton && (
@@ -79,7 +81,13 @@ export function Modal({
             </button>
           )}
         </div>
-        <div className={`p-5 ${bodyClassName}`}>{children}</div>
+        <div
+          className={`min-h-0 min-w-0 flex-1 p-4 sm:p-5 ${
+            bodyScrollable ? 'overflow-y-auto' : 'overflow-hidden'
+          } ${bodyClassName}`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
