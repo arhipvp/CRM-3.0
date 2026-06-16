@@ -8,18 +8,14 @@ from apps.common.drive import (
     download_drive_file,
     ensure_deal_folder,
     ensure_policy_folder,
-    ensure_policy_folder_for_deal,
-    move_drive_file_to_folder,
-    move_drive_folder_to_parent,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType
 from apps.deals.permissions import build_deal_visibility_q
 from apps.finances.models import Payment
-from apps.notes.models import Note
+from apps.finances.serializers import PaymentSerializer
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import transaction
 from django.db.models import DecimalField, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -55,7 +51,19 @@ from .issuance import (
 )
 from .models import Policy, PolicyIssuanceExecution
 from .permissions import user_can_modify_deal, user_is_admin
-from .serializers import PolicyIssuanceExecutionStatusSerializer, PolicySerializer
+from .serializers import (
+    PolicyDraftSerializer,
+    PolicyIssuanceExecutionStatusSerializer,
+    PolicySerializer,
+)
+from .services.delete import delete_policy_with_rules
+from .services.files import (
+    detach_source_files_from_notes,
+    move_recognized_files_to_policy_folder,
+    normalize_source_file_ids,
+)
+from .services.finance import apply_policy_draft
+from .services.move import move_policy_to_deal
 from .status import STATUS_VALUES, with_computed_status_flags
 
 logger = logging.getLogger(__name__)
@@ -218,6 +226,40 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 {"detail": str(exc)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+
+    def _draft_response(self, policy: Policy, payments: list[Payment], request):
+        return Response(
+            {
+                "policy": PolicySerializer(policy, context={"request": request}).data,
+                "payments": PaymentSerializer(
+                    payments,
+                    many=True,
+                    context={"request": request},
+                ).data,
+            }
+        )
+
+    @action(detail=False, methods=["post"], url_path="draft")
+    def draft_create(self, request):
+        serializer = PolicyDraftSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        policy, payments = apply_policy_draft(
+            user=request.user,
+            data=serializer.validated_data.copy(),
+        )
+        return self._draft_response(policy, payments, request)
+
+    @action(detail=True, methods=["patch", "put"], url_path="draft")
+    def draft_update(self, request, pk=None):
+        policy = self.get_object()
+        serializer = PolicyDraftSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        policy, payments = apply_policy_draft(
+            user=request.user,
+            policy=policy,
+            data=serializer.validated_data.copy(),
+        )
+        return self._draft_response(policy, payments, request)
 
     @action(detail=False, methods=["post"], url_path="recognize")
     def recognize(self, request):
@@ -511,27 +553,11 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
 
         try:
-            if policy.drive_folder_id:
-                target_folder_id = ensure_deal_folder(target_deal)
-                if not target_folder_id:
-                    raise DriveError("Папка целевой сделки не найдена.")
-                move_drive_folder_to_parent(policy.drive_folder_id, target_folder_id)
-                policy_folder_id = policy.drive_folder_id
-            else:
-                policy_folder_id = ensure_policy_folder_for_deal(policy, target_deal)
+            move_policy_to_deal(policy, target_deal, user)
         except DriveError as exc:
             return Response(
                 {"detail": str(exc)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        with transaction.atomic():
-            policy.deal = target_deal
-            if policy_folder_id:
-                policy.drive_folder_id = policy_folder_id
-            policy.save(update_fields=["deal", "drive_folder_id", "updated_at"])
-            Payment.objects.filter(policy=policy, deleted_at__isnull=True).update(
-                deal=target_deal
             )
 
         policy = self.get_queryset().get(pk=policy.pk)
@@ -549,41 +575,6 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         )
         return Response(serializer.data)
 
-    def _move_recognized_file_to_folder(self, policy: Policy, file_id: str) -> None:
-        if not file_id:
-            return
-        try:
-            folder_id = ensure_policy_folder(policy)
-            if not folder_id:
-                return
-            move_drive_file_to_folder(file_id, folder_id)
-        except DriveError:
-            logger.exception(
-                "Failed to move recognized Drive file %s into policy folder", file_id
-            )
-
-    def _detach_source_files_from_notes(self, deal: Deal, file_ids: list[str]) -> None:
-        if not deal or not file_ids:
-            return
-
-        target_ids = {
-            str(file_id).strip() for file_id in file_ids if str(file_id).strip()
-        }
-        if not target_ids:
-            return
-
-        notes = Note.objects.with_deleted().filter(deal=deal).exclude(attachments=[])
-        for note in notes:
-            attachments = note.attachments or []
-            filtered_attachments = [
-                item
-                for item in attachments
-                if str((item or {}).get("id") or "").strip() not in target_ids
-            ]
-            if len(filtered_attachments) != len(attachments):
-                note.attachments = filtered_attachments
-                note.save(update_fields=["attachments", "updated_at"])
-
     def perform_create(self, serializer):
         deal = serializer.validated_data.get("deal")
         user = self.request.user
@@ -595,49 +586,15 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             raise PermissionDenied("Только продавец сделки может добавлять полис.")
 
         source_file_id = serializer.validated_data.pop("source_file_id", None)
-        if isinstance(source_file_id, str):
-            source_file_id = source_file_id.strip()
         source_file_ids = serializer.validated_data.pop("source_file_ids", []) or []
-        normalized_file_ids = []
-        if isinstance(source_file_ids, list):
-            for file_id in source_file_ids:
-                if isinstance(file_id, str):
-                    cleaned = file_id.strip()
-                    if cleaned:
-                        normalized_file_ids.append(cleaned)
-        if source_file_id:
-            normalized_file_ids.append(source_file_id)
+        normalized_file_ids = normalize_source_file_ids(source_file_id, source_file_ids)
         policy = serializer.save()
-        moved_file_ids = set()
-        for file_id in normalized_file_ids:
-            if file_id and file_id not in moved_file_ids:
-                self._move_recognized_file_to_folder(policy, file_id)
-                moved_file_ids.add(file_id)
-        self._detach_source_files_from_notes(deal, normalized_file_ids)
+        if normalized_file_ids:
+            move_recognized_files_to_policy_folder(policy, normalized_file_ids)
+            detach_source_files_from_notes(deal, normalized_file_ids)
 
     def perform_destroy(self, instance):
-        paid_payments = instance.payments.filter(
-            actual_date__isnull=False,
-            deleted_at__isnull=True,
-        )
-        if paid_payments.exists():
-            raise DRFValidationError(
-                {"detail": "Нельзя удалить полис: есть оплаченные платежи."}
-            )
-
-        paid_records = instance.payments.filter(
-            deleted_at__isnull=True,
-            financial_records__date__isnull=False,
-            financial_records__deleted_at__isnull=True,
-        )
-        if paid_records.exists():
-            raise DRFValidationError(
-                {"detail": "Нельзя удалить полис: есть оплаченные финансовые записи."}
-            )
-        try:
-            instance.delete()
-        except DjangoValidationError as exc:
-            raise DRFValidationError(exc.messages) from exc
+        delete_policy_with_rules(instance)
 
     @action(detail=True, methods=["get"], url_path="sber-issuance")
     def sber_issuance_status(self, request, pk=None):

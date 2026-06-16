@@ -10,6 +10,7 @@ import type {
   Client,
   ClientDuplicateHint,
   Deal,
+  DealTimelineEvent,
   FinancialRecord,
   Payment,
   Policy,
@@ -82,6 +83,7 @@ export interface AppRouteDealsActions {
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
+  onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;

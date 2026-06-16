@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { fetchDealHistory, clearTokens, normalizeClientName } from './api';
+import { fetchDealEvents, fetchDealHistory, clearTokens, normalizeClientName } from './api';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppShell } from './components/app/AppShell';
 import { AppShortcutsController } from './components/app/AppShortcutsController';
@@ -620,6 +620,7 @@ const AppContent: React.FC = () => {
       onSendChatMessage: handleSendChatMessage,
       onDeleteChatMessage: handleDeleteChatMessage,
       onFetchDealHistory: fetchDealHistory,
+      onFetchDealEvents: fetchDealEvents,
       onCreateTask: handleCreateTask,
       onUpdateTask: handleUpdateTask,
       onRefreshPolicies: handleRefreshSelectedDealPolicies,
@@ -891,6 +892,7 @@ const AppContent: React.FC = () => {
       onSendChatMessage: handleSendChatMessage,
       onDeleteChatMessage: handleDeleteChatMessage,
       onFetchDealHistory: fetchDealHistory,
+      onFetchDealEvents: fetchDealEvents,
       onCreateTask: handleCreateTask,
       onUpdateTask: handleUpdateTask,
       onDeleteTask: handleDeleteTask,

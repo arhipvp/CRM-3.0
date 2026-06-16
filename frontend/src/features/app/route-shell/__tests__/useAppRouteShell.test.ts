@@ -71,6 +71,7 @@ describe('useAppRouteShell', () => {
         onSendChatMessage: noopDealsAction.onSendChatMessage,
         onDeleteChatMessage: async () => undefined,
         onFetchDealHistory: async () => [],
+        onFetchDealEvents: async () => [],
         onCreateTask: async () => undefined,
         onUpdateTask: async () => undefined,
         onDeleteTask: async () => undefined,

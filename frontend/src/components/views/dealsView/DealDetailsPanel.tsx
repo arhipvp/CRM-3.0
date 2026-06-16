@@ -7,6 +7,7 @@ import {
   Client,
   ClientDuplicateHint,
   Deal,
+  DealTimelineEvent,
   FinancialRecord,
   Payment,
   Policy,
@@ -120,6 +121,7 @@ export interface DealDetailsPanelProps {
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
+  onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
@@ -186,6 +188,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onSendChatMessage,
   onDeleteChatMessage,
   onFetchDealHistory,
+  onFetchDealEvents,
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
@@ -500,8 +503,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     activityLogs,
     isActivityLoading,
     activityError,
+    dealTimelineEvents,
+    isDealEventsLoading,
+    dealEventsError,
     loadChatMessages,
-    loadActivityLogs,
+    loadDealEvents,
     handleChatSendMessage,
     handleChatDelete,
   } = useDealCommunication({
@@ -512,6 +518,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     onSendChatMessage,
     onDeleteChatMessage,
     onFetchDealHistory,
+    onFetchDealEvents,
   });
 
   const {
@@ -562,9 +569,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       await loadChatMessages();
     }
     if (activeTab === 'history') {
-      await loadActivityLogs();
+      await loadDealEvents();
     }
-  }, [activeTab, handleRefreshDeal, loadActivityLogs, loadChatMessages]);
+  }, [activeTab, handleRefreshDeal, loadChatMessages, loadDealEvents]);
 
   useEffect(() => {
     if (isDelayModalOpen) {
@@ -615,6 +622,20 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const chatCount = chatMessages.length;
   const filesCount = sortedDriveFiles.length;
   const selectedClientDisplayName = selectedClient?.name || selectedDeal?.clientName || '—';
+  const expectedCloseReasons = useMemo(() => {
+    if (!selectedDeal?.expectedClose) {
+      return [];
+    }
+    const matchingDate = dealTimelineEvents.filter(
+      (event) =>
+        event.eventDate === selectedDeal.expectedClose &&
+        ['policy_expiration', 'payment_due', 'manual_expected_close'].includes(event.eventType),
+    );
+    if (matchingDate.length > 0) {
+      return matchingDate;
+    }
+    return dealTimelineEvents.filter((event) => event.eventType === 'manual_expected_close');
+  }, [dealTimelineEvents, selectedDeal?.expectedClose]);
 
   return (
     <>
@@ -684,6 +705,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               onExpectedCloseChange={handleExpectedCloseChange}
               onExpectedCloseBlur={handleExpectedCloseBlur}
               onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
+              expectedCloseReasons={expectedCloseReasons}
+              isExpectedCloseReasonsLoading={isDealEventsLoading}
             />
             <div>
               <DealTabs
@@ -695,6 +718,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   policies: policiesCount,
                   chat: chatCount,
                   files: filesCount,
+                  history: dealTimelineEvents.length,
                 }}
                 loadingByTab={{
                   tasks: isTasksLoading,
@@ -702,7 +726,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   policies: isPoliciesRefreshing,
                   chat: isChatLoading,
                   files: isDriveLoading,
-                  history: isActivityLoading,
+                  history: isDealEventsLoading,
                 }}
               />
               <div
@@ -832,6 +856,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     activityError,
                     activityLogs,
                     isActivityLoading,
+                    dealEventsError,
+                    dealTimelineEvents,
+                    isDealEventsLoading,
                   }}
                 />
               </div>

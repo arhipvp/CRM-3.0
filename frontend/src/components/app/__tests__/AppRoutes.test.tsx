@@ -106,6 +106,7 @@ const createProps = (): AppRoutesProps => ({
     onSendChatMessage: vi.fn(async () => createChatMessageStub()),
     onDeleteChatMessage: vi.fn(async () => undefined),
     onFetchDealHistory: vi.fn(async () => []),
+    onFetchDealEvents: vi.fn(async () => []),
     onCreateTask: vi.fn(async () => undefined),
     onUpdateTask: vi.fn(async () => undefined),
     onDeleteTask: vi.fn(async () => undefined),

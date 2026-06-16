@@ -1,5 +1,7 @@
 import re
 
+from apps.clients.models import Client
+from apps.deals.models import Deal, InsuranceCompany, InsuranceType, SalesChannel
 from rest_framework import serializers
 
 from .models import Policy, PolicyIssuanceExecution
@@ -214,6 +216,97 @@ class PolicySerializer(serializers.ModelSerializer):
 
         if errors:
             raise serializers.ValidationError(errors)
+        return attrs
+
+
+class PolicyDraftFinancialRecordSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    date = serializers.DateField(required=False, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+    source = serializers.CharField(required=False, allow_blank=True, default="")
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class PolicyDraftPaymentSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+    scheduled_date = serializers.DateField(required=False, allow_null=True)
+    actual_date = serializers.DateField(required=False, allow_null=True)
+    incomes = PolicyDraftFinancialRecordSerializer(
+        many=True, required=False, default=list
+    )
+    expenses = PolicyDraftFinancialRecordSerializer(
+        many=True, required=False, default=list
+    )
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than zero.")
+        return value
+
+
+class PolicyDraftSerializer(serializers.Serializer):
+    deal = serializers.PrimaryKeyRelatedField(
+        queryset=Deal.objects.filter(deleted_at__isnull=True),
+        required=False,
+    )
+    number = serializers.CharField()
+    insurance_company = serializers.PrimaryKeyRelatedField(
+        queryset=InsuranceCompany.objects.all()
+    )
+    insurance_type = serializers.PrimaryKeyRelatedField(
+        queryset=InsuranceType.objects.all()
+    )
+    client = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.filter(deleted_at__isnull=True),
+        required=False,
+        allow_null=True,
+    )
+    client_name = serializers.CharField(required=False, allow_blank=True)
+    is_vehicle = serializers.BooleanField(required=False, default=False)
+    brand = serializers.CharField(required=False, allow_blank=True, default="")
+    model = serializers.CharField(required=False, allow_blank=True, default="")
+    vin = serializers.CharField(required=False, allow_blank=True, default="")
+    deductible = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False, default=0
+    )
+    official_dealer = serializers.BooleanField(required=False, allow_null=True)
+    gap = serializers.BooleanField(required=False, allow_null=True)
+    counterparty = serializers.CharField(required=False, allow_blank=True, default="")
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+    sales_channel = serializers.PrimaryKeyRelatedField(
+        queryset=SalesChannel.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    start_date = serializers.DateField(required=False, allow_null=True)
+    end_date = serializers.DateField(required=False, allow_null=True)
+    source_file_id = serializers.CharField(required=False, allow_blank=True)
+    source_file_ids = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+    )
+    payments = PolicyDraftPaymentSerializer(many=True, required=False, default=list)
+
+    def validate_vin(self, value: str) -> str:
+        return PolicySerializer().validate_vin(value)
+
+    def validate_number(self, value: str) -> str:
+        return PolicySerializer().validate_number(value)
+
+    def validate_note(self, value: str) -> str:
+        return PolicySerializer().validate_note(value)
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date")
+        end_date = attrs.get("end_date")
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError(
+                {"end_date": "End date cannot be earlier than start date."}
+            )
         return attrs
 
 

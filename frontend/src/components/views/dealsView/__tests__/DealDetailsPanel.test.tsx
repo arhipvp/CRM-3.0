@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+﻿import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import type { Deal, User } from '../../../../types';
@@ -189,8 +189,12 @@ vi.mock('../hooks/useDealCommunication', () => ({
     activityLogs: [],
     isActivityLoading: false,
     activityError: null,
+    dealTimelineEvents: [],
+    isDealEventsLoading: false,
+    dealEventsError: null,
     loadChatMessages: vi.fn().mockResolvedValue(undefined),
     loadActivityLogs: vi.fn().mockResolvedValue(undefined),
+    loadDealEvents: vi.fn().mockResolvedValue(undefined),
     handleChatSendMessage: vi.fn(),
     handleChatDelete: vi.fn(),
   }),
@@ -251,8 +255,8 @@ vi.mock('../DealDetailsModals', () => ({
   DealSimilarModal: () => null,
 }));
 
-vi.mock('../../ActivityTimeline', () => ({
-  ActivityTimeline: () => <div data-testid="activity-timeline" />,
+vi.mock('../../DealEventTimeline', () => ({
+  DealEventTimeline: () => <div data-testid="deal-event-timeline" />,
 }));
 
 vi.mock('../../financialRecords/FinancialRecordModal', () => ({
@@ -413,6 +417,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -493,6 +498,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -557,6 +563,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -615,6 +622,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -676,6 +684,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -728,6 +737,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -817,6 +827,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -879,6 +890,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}
@@ -974,6 +986,7 @@ describe('DealDetailsPanel', () => {
         onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
         onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
         onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
         onCreateTask={vi.fn().mockResolvedValue(undefined)}
         onUpdateTask={vi.fn().mockResolvedValue(undefined)}
         onDeleteTask={vi.fn().mockResolvedValue(undefined)}

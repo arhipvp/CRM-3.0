@@ -11,7 +11,7 @@
 ## Статусы/типы (нефиксированные)
 
 - `Deal.status`: свободный текст, не нормализован.
-- `Policy.status`: свободный текст, не нормализован.
+- `Policy.status`: legacy-поле, не является бизнес-истиной в новых потоках.
 
 ## Инвентаризация статусов и источников правды (backend/frontend)
 
@@ -30,8 +30,8 @@
   - Backend: `backend/apps/policies/models.py` (строка), default `active`.
   - Backend админ: `backend/apps/policies/admin.py` использует `active`/`inactive` действия; бейдж вычисляет активность по датам, не по `status`.
   - Backend фильтры: `backend/apps/policies/filters.py` упоминает `active`, `expired`, `cancelled` (описание), но без enum.
-  - Frontend типы: `frontend/src/types.ts` — `status: string`; `frontend/src/types/index.ts` — `status?: string`.
-  - Frontend маппинг: `frontend/src/api/mappers.ts` пропускает строку как есть (без нормализации).
+  - Backend draft-сохранение: `POST /api/v1/policies/draft/` и `PATCH /api/v1/policies/<id>/draft/` не принимают и не меняют `status`.
+  - Frontend маппинг: `frontend/src/api/mappers.ts` сохраняет поле для совместимости, но формы и новые действия не отправляют его.
 - `Task.status`
   - Backend: enum `TaskStatus` в `backend/apps/tasks/models.py` (`todo`, `in_progress`, `done`, `overdue`, `canceled`).
   - Frontend типы: `frontend/src/types.ts` — `TaskStatus` с тем же набором.
@@ -58,11 +58,9 @@
   - Закрытые статусы: `won`, `lost`.
   - Переходы: `open` <-> `on_hold`, `open|on_hold` -> `won|lost`, `won|lost` -> `open` (reopen).
 - `Policy.status`:
-  - `active` — действует.
-  - `inactive` — временно не активен (ручной статус).
-  - `expired` — срок действия истек (может вычисляться по `end_date`).
-  - `canceled` — отменен (ручной статус).
-  - Если `end_date` < today, UI может отображать `expired` независимо от значения поля.
+  - Legacy-значение в БД и старом CRUD API.
+  - Новая бизнес-истина для UI: computed status (`problem`, `due`, `expired`, `active`) плюс флаг `Policy.is_renewed`.
+  - Если `end_date` < today, UI может отображать `expired` независимо от legacy-значения поля.
 
 ## План миграции статусов (Deal/Policy)
 
@@ -85,7 +83,7 @@
 ## Ограничения данных
 
 - `Policy.end_date` не может быть раньше `start_date`.
-- `Policy.status = expired` требует заполненного `end_date`.
+- `Policy.status = expired` требует заполненного `end_date` только в legacy CRUD serializer flow; draft endpoint не использует `status`.
 - Продление полиса хранится простым флагом `Policy.is_renewed`; связь с новым полисом не ведётся.
 - `Payment.policy` обязателен для API-создания и API-обновления платежа.
 - `Payment.amount` должен быть больше нуля.

@@ -52,4 +52,40 @@ describe('DealDateControls', () => {
     fireEvent.blur(screen.getByDisplayValue('2024-02-10'));
     expect(baseProps.onExpectedCloseBlur).toHaveBeenCalledWith('2024-02-10');
   });
+
+  it('shows expected close reason when provided', () => {
+    render(
+      <DealDateControls
+        {...baseProps}
+        expectedCloseReasons={[
+          {
+            id: 'policy-expiration-policy-1',
+            deal: 'deal-1',
+            eventType: 'policy_expiration',
+            eventTypeDisplay: 'Окончание полиса',
+            eventDate: '2024-02-10',
+            title: 'Окончание полиса',
+            description: 'полис POL-777',
+            sourceType: 'policy',
+            sourceId: 'policy-1',
+            actor: null,
+            actorUsername: null,
+            actorDisplayName: null,
+            metadata: { policy_number: 'POL-777' },
+            createdAt: '2024-01-01T10:00:00Z',
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('Почему эта дата')).toBeInTheDocument();
+    expect(screen.getByText('Окончание полиса')).toBeInTheDocument();
+    expect(screen.getByText(/полис POL-777/)).toBeInTheDocument();
+  });
+
+  it('shows unknown reason fallback', () => {
+    render(<DealDateControls {...baseProps} expectedCloseReasons={[]} />);
+
+    expect(screen.getByText('Причина не определена')).toBeInTheDocument();
+  });
 });

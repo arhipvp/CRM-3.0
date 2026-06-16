@@ -1,9 +1,10 @@
 import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
-import { mapActivityLog, mapDeal, mapQuote } from './mappers';
+import { mapActivityLog, mapDeal, mapDealTimelineEvent, mapQuote } from './mappers';
 import type {
   ActivityLog,
   Deal,
+  DealTimelineEvent,
   DealMergeResponse,
   DealMergePreviewResponse,
   DealSimilarityCandidate,
@@ -202,6 +203,18 @@ export async function fetchDealHistory(
     return [];
   }
   return payload.map(mapActivityLog);
+}
+
+export async function fetchDealEvents(
+  dealId: string,
+  includeDeleted = false,
+): Promise<DealTimelineEvent[]> {
+  const suffix = includeDeleted ? '?show_deleted=1' : '';
+  const payload = await request(`/deals/${dealId}/events/${suffix}`);
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+  return payload.map(mapDealTimelineEvent);
 }
 
 export async function createQuote(data: {

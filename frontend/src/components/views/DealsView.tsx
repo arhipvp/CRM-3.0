@@ -4,6 +4,7 @@ import {
   ActivityLog,
   ChatMessage,
   Deal,
+  DealTimelineEvent,
   Client,
   ClientDuplicateHint,
   FinancialRecord,
@@ -89,6 +90,7 @@ interface DealsViewProps {
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
+  onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
@@ -177,6 +179,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onSendChatMessage,
   onDeleteChatMessage,
   onFetchDealHistory,
+  onFetchDealEvents,
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
@@ -322,6 +325,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onSendChatMessage={onSendChatMessage}
             onDeleteChatMessage={onDeleteChatMessage}
             onFetchDealHistory={onFetchDealHistory}
+            onFetchDealEvents={onFetchDealEvents}
             onCreateTask={onCreateTask}
             onUpdateTask={onUpdateTask}
             onDeleteTask={onDeleteTask}

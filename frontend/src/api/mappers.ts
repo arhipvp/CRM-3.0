@@ -4,6 +4,8 @@
   ChatMessage,
   Client,
   Deal,
+  DealTimelineEvent,
+  DealTimelineEventType,
   DealStatus,
   DriveFile,
   FinancialRecord,
@@ -54,6 +56,18 @@ const ACTIVITY_ACTION_TYPES: ActivityActionType[] = [
   'comment_added',
   'custom',
 ];
+const DEAL_TIMELINE_EVENT_TYPES: DealTimelineEventType[] = [
+  'manual_expected_close',
+  'manual_next_contact',
+  'payment_due',
+  'policy_expiration',
+  'deal_updated',
+  'task_created',
+  'task_completed',
+  'policy_created',
+  'quote_created',
+  'file_uploaded',
+];
 const FINANCIAL_RECORD_TYPES: FinancialRecordType[] = ['Доход', 'Расход'];
 const POLICY_COMPUTED_STATUSES = ['problem', 'due', 'expired', 'active'] as const;
 
@@ -87,6 +101,8 @@ const resolvePolicyStatus = (value: unknown): PolicyStatus =>
   resolveStringUnion(value, POLICY_STATUSES, 'active');
 const resolveActivityActionType = (value: unknown): ActivityActionType =>
   resolveStringUnion(value, ACTIVITY_ACTION_TYPES, 'custom');
+const resolveDealTimelineEventType = (value: unknown): DealTimelineEventType =>
+  resolveStringUnion(value, DEAL_TIMELINE_EVENT_TYPES, 'deal_updated');
 const resolveFinancialRecordType = (value: unknown): FinancialRecordType | undefined =>
   resolveOptionalStringUnion(value, FINANCIAL_RECORD_TYPES);
 
@@ -511,6 +527,26 @@ export const mapActivityLog = (raw: Record<string, unknown>): ActivityLog => ({
   objectType: toOptionalString(raw.object_type),
   objectName: toOptionalString(raw.object_name),
   createdAt: toStringValue(raw.created_at),
+});
+
+export const mapDealTimelineEvent = (raw: Record<string, unknown>): DealTimelineEvent => ({
+  id: toStringValue(raw.id),
+  deal: toStringValue(raw.deal),
+  eventType: resolveDealTimelineEventType(raw.event_type ?? raw.eventType),
+  eventTypeDisplay: toStringValue(raw.event_type_display ?? raw.eventTypeDisplay),
+  eventDate: toNullableString(raw.event_date ?? raw.eventDate),
+  title: toStringValue(raw.title),
+  description: toOptionalString(raw.description) ?? '',
+  sourceType: toStringValue(raw.source_type ?? raw.sourceType ?? ''),
+  sourceId: toStringValue(raw.source_id ?? raw.sourceId ?? ''),
+  actor: toNullableString(raw.actor),
+  actorUsername: toNullableString(raw.actor_username ?? raw.actorUsername),
+  actorDisplayName: toNullableString(raw.actor_display_name ?? raw.actorDisplayName),
+  metadata:
+    raw.metadata && typeof raw.metadata === 'object'
+      ? (raw.metadata as Record<string, unknown>)
+      : {},
+  createdAt: toStringValue(raw.created_at ?? raw.createdAt),
 });
 
 export const mapNote = (raw: Record<string, unknown>): Note => ({

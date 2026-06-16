@@ -60,12 +60,13 @@ class PolicySourceFilesDetachTests(AuthenticatedAPITestCase):
         }
 
         with patch(
-            "apps.policies.views.PolicyViewSet._move_recognized_file_to_folder"
+            "apps.policies.views.move_recognized_files_to_policy_folder"
         ) as mocked_move:
             response = self.api_client.post("/api/v1/policies/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(mocked_move.call_count, 2)
+        mocked_move.assert_called_once()
+        self.assertEqual(mocked_move.call_args[0][1], [source_id, second_source_id])
 
         first_note.refresh_from_db()
         second_note.refresh_from_db()
@@ -95,13 +96,13 @@ class PolicySourceFilesDetachTests(AuthenticatedAPITestCase):
         }
 
         with patch(
-            "apps.policies.views.PolicyViewSet._move_recognized_file_to_folder"
+            "apps.policies.views.move_recognized_files_to_policy_folder"
         ) as mocked_move:
             response = self.api_client.post("/api/v1/policies/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(mocked_move.call_count, 1)
-        self.assertEqual(mocked_move.call_args[0][1], source_id)
+        mocked_move.assert_called_once()
+        self.assertEqual(mocked_move.call_args[0][1], [source_id])
 
         note.refresh_from_db()
         self.assertEqual(len(note.attachments), 1)
@@ -127,12 +128,13 @@ class PolicySourceFilesDetachTests(AuthenticatedAPITestCase):
         }
 
         with patch(
-            "apps.policies.views.PolicyViewSet._move_recognized_file_to_folder"
+            "apps.policies.views.move_recognized_files_to_policy_folder"
         ) as mocked_move:
             response = self.api_client.post("/api/v1/policies/", payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(mocked_move.call_count, 1)
+        mocked_move.assert_called_once()
+        self.assertEqual(mocked_move.call_args[0][1], [source_id])
 
         note.refresh_from_db()
         self.assertEqual(note.attachments, [])
@@ -159,7 +161,7 @@ class PolicySourceFilesDetachTests(AuthenticatedAPITestCase):
         }
 
         with patch(
-            "apps.policies.views.PolicyViewSet._move_recognized_file_to_folder"
+            "apps.policies.views.move_recognized_files_to_policy_folder"
         ) as mocked_move:
             response = self.api_client.post("/api/v1/policies/", payload, format="json")
 

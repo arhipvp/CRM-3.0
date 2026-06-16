@@ -33,10 +33,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from .event_service import create_manual_date_event, get_deal_events
 from .filters import DealFilterSet
 from .lifecycle_service import close_deal, reopen_deal
 from .models import (
     Deal,
+    DealEvent,
     DealPin,
     InsuranceCompany,
     InsuranceType,
@@ -54,6 +56,7 @@ from .permissions import (
 from .query_flags import parse_bool_flag
 from .search import build_search_query
 from .serializers import (
+    DealEventSerializer,
     DealSerializer,
     InsuranceCompanySerializer,
     InsuranceTypeSerializer,
@@ -251,6 +254,12 @@ class DealViewSet(
         deal = self.get_object()
         return Response(record_time_tracking_tick(request.user, deal))
 
+    @action(detail=True, methods=["get"], url_path="events")
+    def events(self, request, pk=None):
+        deal = self.get_object()
+        serializer = DealEventSerializer(get_deal_events(deal), many=True)
+        return Response(serializer.data)
+
     def _pinned_ids(self, user):
         if not user or not user.is_authenticated:
             return []
@@ -368,23 +377,21 @@ class DealViewSet(
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
+        previous_expected_close = instance.expected_close
+        previous_next_contact_date = instance.next_contact_date
         previous_ids = set(instance.visible_users.values_list("id", flat=True))
         self._reject_viewer_update(request, instance)
         response = self._reject_when_no_seller(request.user, instance)
         if response:
             return response
         response = super().update(request, *args, **kwargs)
-        self._log_viewer_changes(instance, previous_ids)
-        return response
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        previous_ids = set(instance.visible_users.values_list("id", flat=True))
-        self._reject_viewer_update(request, instance)
-        response = self._reject_when_no_seller(request.user, instance)
-        if response:
-            return response
-        response = super().partial_update(request, *args, **kwargs)
+        instance.refresh_from_db(fields=["expected_close", "next_contact_date"])
+        self._log_manual_date_events(
+            instance,
+            request,
+            previous_expected_close=previous_expected_close,
+            previous_next_contact_date=previous_next_contact_date,
+        )
         self._log_viewer_changes(instance, previous_ids)
         return response
 
@@ -413,6 +420,40 @@ class DealViewSet(
         raise PermissionDenied(
             "Изменять список наблюдателей может только продавец сделки или администратор."
         )
+
+    def _log_manual_date_events(
+        self,
+        deal: Deal,
+        request,
+        *,
+        previous_expected_close,
+        previous_next_contact_date,
+    ):
+        actor = request.user if request.user and request.user.is_authenticated else None
+        if (
+            "expected_close" in request.data
+            and previous_expected_close != deal.expected_close
+        ):
+            create_manual_date_event(
+                deal=deal,
+                event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+                event_date=deal.expected_close,
+                actor=actor,
+                old_value=previous_expected_close,
+                new_value=deal.expected_close,
+            )
+        if (
+            "next_contact_date" in request.data
+            and previous_next_contact_date != deal.next_contact_date
+        ):
+            create_manual_date_event(
+                deal=deal,
+                event_type=DealEvent.EventType.MANUAL_NEXT_CONTACT,
+                event_date=deal.next_contact_date,
+                actor=actor,
+                old_value=previous_next_contact_date,
+                new_value=deal.next_contact_date,
+            )
 
     def _log_viewer_changes(self, deal: Deal, previous_ids=None):
         if not deal:

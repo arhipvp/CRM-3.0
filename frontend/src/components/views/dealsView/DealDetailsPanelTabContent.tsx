@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { ActivityTimeline } from '../../ActivityTimeline';
+import { DealEventTimeline } from '../../DealEventTimeline';
 import { InlineAlert } from '../../common/InlineAlert';
 import { DealNotesSection } from './DealNotesSection';
 import { ChatTab } from './tabs/ChatTab';
@@ -20,8 +20,11 @@ interface DealDetailsPanelTabContentProps {
   chatTabProps: React.ComponentProps<typeof ChatTab>;
   activityProps: {
     activityError: string | null;
-    activityLogs: React.ComponentProps<typeof ActivityTimeline>['activities'];
+    activityLogs: unknown[];
     isActivityLoading: boolean;
+    dealEventsError: string | null;
+    dealTimelineEvents: React.ComponentProps<typeof DealEventTimeline>['events'];
+    isDealEventsLoading: boolean;
   };
 }
 
@@ -56,12 +59,16 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
       return (
         <section className="app-panel space-y-4 border-none p-6 shadow-none">
           <div className="flex items-center justify-between">
-            <p className="app-label">История</p>
+            <p className="app-label">Лента</p>
           </div>
-          {activityProps.activityError && <InlineAlert>{activityProps.activityError}</InlineAlert>}
-          <ActivityTimeline
-            activities={activityProps.activityLogs}
-            isLoading={activityProps.isActivityLoading}
+          {(activityProps.dealEventsError || activityProps.activityError) && (
+            <InlineAlert>
+              {activityProps.dealEventsError ?? activityProps.activityError}
+            </InlineAlert>
+          )}
+          <DealEventTimeline
+            events={activityProps.dealTimelineEvents}
+            isLoading={activityProps.isDealEventsLoading}
           />
         </section>
       );

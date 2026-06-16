@@ -117,6 +117,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               onSendChatMessage={dealsActions.onSendChatMessage}
               onDeleteChatMessage={dealsActions.onDeleteChatMessage}
               onFetchDealHistory={dealsActions.onFetchDealHistory}
+              onFetchDealEvents={dealsActions.onFetchDealEvents}
               onCreateTask={dealsActions.onCreateTask}
               onUpdateTask={dealsActions.onUpdateTask}
               onDeleteTask={dealsActions.onDeleteTask}

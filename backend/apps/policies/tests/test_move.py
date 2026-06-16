@@ -51,10 +51,12 @@ class PolicyMoveTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.policies.views.ensure_deal_folder",
+                "apps.policies.services.move.ensure_deal_folder",
                 return_value="target-deal-folder",
             ) as ensure_deal_folder,
-            patch("apps.policies.views.move_drive_folder_to_parent") as move_folder,
+            patch(
+                "apps.policies.services.move.move_drive_folder_to_parent"
+            ) as move_folder,
         ):
             response = self.api_client.post(
                 f"/api/v1/policies/{self.policy.id}/move/",
@@ -77,7 +79,7 @@ class PolicyMoveTests(AuthenticatedAPITestCase):
         self.authenticate(self.seller)
 
         with patch(
-            "apps.policies.views.ensure_deal_folder",
+            "apps.policies.services.move.ensure_deal_folder",
             side_effect=DriveOperationError("Drive unavailable"),
         ):
             response = self.api_client.post(

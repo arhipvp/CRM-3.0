@@ -309,6 +309,23 @@ class DealSerializer(serializers.ModelSerializer):
         return normalized
 
 
+class DealEventSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    deal = serializers.CharField()
+    event_type = serializers.CharField()
+    event_type_display = serializers.CharField()
+    event_date = serializers.DateField(allow_null=True)
+    title = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    source_type = serializers.CharField(allow_blank=True)
+    source_id = serializers.CharField(allow_blank=True)
+    actor = serializers.CharField(allow_null=True)
+    actor_username = serializers.CharField(allow_null=True)
+    actor_display_name = serializers.CharField(allow_null=True)
+    metadata = serializers.DictField()
+    created_at = serializers.DateTimeField()
+
+
 class DealMergeSerializer(serializers.Serializer):
     """Валидация данных для объединения сделок."""
 

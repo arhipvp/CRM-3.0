@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { ActivityLog, ChatMessage } from '../../../../types';
+import type { ActivityLog, ChatMessage, DealTimelineEvent } from '../../../../types';
 import type { DealTabId } from '../helpers';
 
 interface UseDealCommunicationArgs {
@@ -11,6 +11,7 @@ interface UseDealCommunicationArgs {
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
+  onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
 }
 
 export const useDealCommunication = ({
@@ -21,15 +22,21 @@ export const useDealCommunication = ({
   onSendChatMessage,
   onDeleteChatMessage,
   onFetchDealHistory,
+  onFetchDealEvents,
 }: UseDealCommunicationArgs) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [isActivityLoading, setIsActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [dealTimelineEvents, setDealTimelineEvents] = useState<DealTimelineEvent[]>([]);
+  const [isDealEventsLoading, setIsDealEventsLoading] = useState(false);
+  const [dealEventsError, setDealEventsError] = useState<string | null>(null);
 
   useEffect(() => {
     setChatMessages([]);
+    setDealTimelineEvents([]);
+    setDealEventsError(null);
   }, [selectedDealId]);
 
   const loadChatMessages = useCallback(async () => {
@@ -102,11 +109,36 @@ export const useDealCommunication = ({
     }
   }, [onFetchDealHistory, selectedDealDeletedAt, selectedDealId]);
 
+  const loadDealEvents = useCallback(async () => {
+    if (!selectedDealId) {
+      return;
+    }
+
+    setDealEventsError(null);
+    setIsDealEventsLoading(true);
+    try {
+      const events = await onFetchDealEvents(selectedDealId, Boolean(selectedDealDeletedAt));
+      setDealTimelineEvents(events);
+    } catch (err) {
+      console.error('Ошибка загрузки ленты:', err);
+      setDealEventsError('Не удалось загрузить ленту.');
+    } finally {
+      setIsDealEventsLoading(false);
+    }
+  }, [onFetchDealEvents, selectedDealDeletedAt, selectedDealId]);
+
+  useEffect(() => {
+    if (!selectedDealId) {
+      return;
+    }
+    void loadDealEvents();
+  }, [loadDealEvents, selectedDealId]);
+
   useEffect(() => {
     if (activeTab === 'history') {
-      void loadActivityLogs();
+      void loadDealEvents();
     }
-  }, [activeTab, loadActivityLogs]);
+  }, [activeTab, loadDealEvents]);
 
   return {
     chatMessages,
@@ -114,8 +146,12 @@ export const useDealCommunication = ({
     activityLogs,
     isActivityLoading,
     activityError,
+    dealTimelineEvents,
+    isDealEventsLoading,
+    dealEventsError,
     loadChatMessages,
     loadActivityLogs,
+    loadDealEvents,
     handleChatSendMessage,
     handleChatDelete,
   };

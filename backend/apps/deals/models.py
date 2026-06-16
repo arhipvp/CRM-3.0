@@ -238,6 +238,55 @@ class DealTimeTick(models.Model):
         ]
 
 
+class DealEvent(models.Model):
+    class EventType(models.TextChoices):
+        MANUAL_EXPECTED_CLOSE = "manual_expected_close", "Дата страхования вручную"
+        MANUAL_NEXT_CONTACT = "manual_next_contact", "Следующий контакт вручную"
+        PAYMENT_DUE = "payment_due", "Очередной платеж"
+        POLICY_EXPIRATION = "policy_expiration", "Окончание полиса"
+        DEAL_UPDATED = "deal_updated", "Сделка изменена"
+        TASK_CREATED = "task_created", "Задача создана"
+        TASK_COMPLETED = "task_completed", "Задача завершена"
+        POLICY_CREATED = "policy_created", "Полис создан"
+        QUOTE_CREATED = "quote_created", "Расчет создан"
+        FILE_UPLOADED = "file_uploaded", "Файл загружен"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    deal = models.ForeignKey(
+        "deals.Deal",
+        related_name="events",
+        on_delete=models.CASCADE,
+    )
+    event_type = models.CharField(max_length=64, choices=EventType.choices)
+    event_date = models.DateField(null=True, blank=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    source_type = models.CharField(max_length=64, blank=True)
+    source_id = models.CharField(max_length=255, blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="deal_events",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-event_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["deal", "-event_date", "-created_at"]),
+            models.Index(fields=["event_type", "-created_at"]),
+            models.Index(fields=["source_type", "source_id"]),
+        ]
+        verbose_name = "Событие сделки"
+        verbose_name_plural = "События сделок"
+
+    def __str__(self) -> str:
+        return f"{self.get_event_type_display()} — {self.deal}"
+
+
 class Quote(SoftDeleteModel):
     """Расчет страхового продукта, подготовленный по сделке."""
 

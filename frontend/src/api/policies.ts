@@ -1,4 +1,5 @@
 import type {
+  Payment,
   PoliciesKPI,
   Policy,
   PolicyRecognitionResult,
@@ -14,7 +15,7 @@ import {
   toStringValue,
   unwrapList,
 } from './helpers';
-import { mapPolicy } from './mappers';
+import { mapPayment, mapPolicy } from './mappers';
 
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
   const qs = buildQueryString(filters);
@@ -91,6 +92,130 @@ export async function createPolicy(data: {
     body: JSON.stringify(bodyPayload),
   });
   return mapPolicy(payload);
+}
+
+interface PolicyDraftFinancialRecordPayload {
+  id?: string;
+  amount: string | number;
+  date?: string | null;
+  description?: string;
+  source?: string;
+  note?: string;
+}
+
+interface PolicyDraftPaymentPayload {
+  id?: string;
+  amount: string | number;
+  description?: string;
+  scheduledDate?: string | null;
+  actualDate?: string | null;
+  incomes?: PolicyDraftFinancialRecordPayload[];
+  expenses?: PolicyDraftFinancialRecordPayload[];
+}
+
+interface PolicyDraftPayload {
+  dealId?: string;
+  number: string;
+  insuranceCompanyId: string;
+  insuranceTypeId: string;
+  clientId?: string;
+  clientName?: string;
+  isVehicle: boolean;
+  brand?: string;
+  model?: string;
+  vin?: string;
+  deductible?: number | null;
+  officialDealer?: boolean | null;
+  gap?: boolean | null;
+  counterparty?: string;
+  note?: string;
+  salesChannelId?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  sourceFileId?: string | null;
+  sourceFileIds?: string[];
+  payments?: PolicyDraftPaymentPayload[];
+}
+
+export interface PolicyDraftSaveResult {
+  policy: Policy;
+  payments: Payment[];
+}
+
+const mapDraftRecord = (record: PolicyDraftFinancialRecordPayload) => ({
+  id: record.id,
+  amount: record.amount,
+  date: record.date || null,
+  description: record.description || '',
+  source: record.source || '',
+  note: record.note || '',
+});
+
+const buildPolicyDraftBody = (data: PolicyDraftPayload): Record<string, unknown> => {
+  const bodyPayload: Record<string, unknown> = {
+    number: data.number,
+    insurance_company: data.insuranceCompanyId,
+    insurance_type: data.insuranceTypeId,
+    is_vehicle: data.isVehicle,
+    brand: data.brand || '',
+    model: data.model || '',
+    vin: data.vin || '',
+    deductible: data.deductible ?? 0,
+    official_dealer: data.officialDealer ?? null,
+    gap: data.gap ?? null,
+    counterparty: data.counterparty || '',
+    note: data.note || '',
+    sales_channel: data.salesChannelId || null,
+    start_date: data.startDate || null,
+    end_date: data.endDate || null,
+    client: data.clientId || null,
+    client_name: data.clientName || '',
+    payments: (data.payments ?? []).map((payment) => ({
+      id: payment.id,
+      amount: payment.amount,
+      description: payment.description || '',
+      scheduled_date: payment.scheduledDate || null,
+      actual_date: payment.actualDate || null,
+      incomes: (payment.incomes ?? []).map(mapDraftRecord),
+      expenses: (payment.expenses ?? []).map(mapDraftRecord),
+    })),
+  };
+  if (data.dealId) {
+    bodyPayload.deal = data.dealId;
+  }
+  if (data.sourceFileId) {
+    bodyPayload.source_file_id = data.sourceFileId;
+  }
+  if (data.sourceFileIds && data.sourceFileIds.length) {
+    bodyPayload.source_file_ids = data.sourceFileIds;
+  }
+  return bodyPayload;
+};
+
+const mapPolicyDraftSaveResult = (payload: Record<string, unknown>): PolicyDraftSaveResult => ({
+  policy: mapPolicy((payload.policy ?? payload) as Record<string, unknown>),
+  payments: Array.isArray(payload.payments)
+    ? (payload.payments as Record<string, unknown>[]).map(mapPayment)
+    : [],
+});
+
+export async function createPolicyDraft(data: PolicyDraftPayload): Promise<PolicyDraftSaveResult> {
+  const payload = await request<Record<string, unknown>>('/policies/draft/', {
+    method: 'POST',
+    body: JSON.stringify(buildPolicyDraftBody(data)),
+  });
+  return mapPolicyDraftSaveResult(payload);
+}
+
+export async function updatePolicyDraft(
+  id: string,
+  data: PolicyDraftPayload,
+): Promise<PolicyDraftSaveResult> {
+  const payload = await request<Record<string, unknown>>(`/policies/${id}/draft/`, {
+    method: 'PATCH',
+    body: JSON.stringify(buildPolicyDraftBody(data)),
+  });
+  return mapPolicyDraftSaveResult(payload);
 }
 
 export async function deletePolicy(id: string): Promise<void> {

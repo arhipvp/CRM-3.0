@@ -1,4 +1,5 @@
 import React from 'react';
+import type { DealTimelineEvent } from '../../../types';
 import { BTN_SM_QUIET } from '../../common/buttonStyles';
 import { DateInput } from '../../common/forms/DateInput';
 
@@ -17,6 +18,8 @@ interface DealDateControlsProps {
   onExpectedCloseChange: (value: string) => void;
   onExpectedCloseBlur: (value: string) => void;
   onQuickShift: (days: number) => void;
+  expectedCloseReasons?: DealTimelineEvent[];
+  isExpectedCloseReasonsLoading?: boolean;
 }
 
 export const DealDateControls: React.FC<DealDateControlsProps> = ({
@@ -29,6 +32,8 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
   onExpectedCloseChange,
   onExpectedCloseBlur,
   onQuickShift,
+  expectedCloseReasons = [],
+  isExpectedCloseReasonsLoading = false,
 }) => (
   <div className="mt-6 grid gap-4 md:grid-cols-2">
     <div>
@@ -58,12 +63,35 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
       <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
         Застраховать до
       </p>
-      <DateInput
-        value={expectedCloseValue}
-        onChange={(event) => onExpectedCloseChange(event.target.value)}
-        onBlur={(event) => onExpectedCloseBlur(event.target.value)}
-        className="field field-input mt-1 max-w-[220px] font-semibold text-slate-900"
-      />
+      <div className="mt-1 flex flex-col gap-2">
+        <DateInput
+          value={expectedCloseValue}
+          onChange={(event) => onExpectedCloseChange(event.target.value)}
+          onBlur={(event) => onExpectedCloseBlur(event.target.value)}
+          className="field field-input max-w-[220px] font-semibold text-slate-900"
+        />
+        <div className="max-w-[360px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Почему эта дата
+          </p>
+          {isExpectedCloseReasonsLoading ? (
+            <div className="mt-2 h-3 w-3/4 animate-pulse rounded bg-slate-200" />
+          ) : expectedCloseReasons.length > 0 ? (
+            <div className="mt-2 space-y-1.5">
+              {expectedCloseReasons.slice(0, 3).map((event) => (
+                <div key={event.id} className="min-w-0 text-xs leading-5">
+                  <span className="font-medium text-slate-800">{event.title}</span>
+                  {event.description && (
+                    <span className="text-slate-500"> · {event.description}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">Причина не определена</p>
+          )}
+        </div>
+      </div>
     </div>
   </div>
 );

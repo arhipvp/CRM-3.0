@@ -11,12 +11,14 @@
 
 - `frontend/src/AppContent.tsx` больше не является primary hotspot: файл сведен к thin-root composition, а основной риск перенесён в feature-shell contracts.
 - Часть чистой логики финансов и полисов вынесена из appContent hooks в `frontend/src/hooks/appContent/*Helpers.ts`; при новых правках сначала ищи существующий helper, а не добавляй вычисления обратно в hook.
+- Сохранение формы полиса больше не orchestrated hotspot во frontend: `usePolicyActions` вызывает draft endpoints, а атомарная операция policy+payments+financial records живёт в `backend/apps/policies/services/finance.py`.
+- Перенос, Drive-файлы и правила удаления полисов вынесены из `backend/apps/policies/views.py` в `backend/apps/policies/services/{move,files,delete}.py`; viewset должен оставаться HTTP/permissions/serializer слоем.
 - Time tracking сделок вынесен из `backend/apps/deals/views.py` в `backend/apps/deals/time_tracking_service.py`; viewset должен оставаться HTTP-обвязкой.
 - Часть правил ведомостей и Drive-именования вынесена из `backend/apps/finances/views.py` в `backend/apps/finances/services/statements.py`.
 
 ## Medium
 
-- Статусы и enum'ы: часть статусов свободный текст (`Deal.status`, `Policy.status`), часть фиксированная (Tasks/Document/Statement). Риск рассинхрона между backend и frontend.
+- Статусы и enum'ы: часть статусов свободный текст (`Deal.status`), часть фиксированная (Tasks/Document/Statement). `Policy.status` оставлен legacy-полем, новые потоки должны опираться на computed status и `is_renewed`.
 - Soft delete и каскады (`Deal.delete`, `Policy.delete`, `Payment.delete`): поведенческие зависимости на уровне моделей.
 - Финансы (`Payment`, `FinancialRecord`, `Statement`): правила удаления/привязки и вычислений распределены по слоям.
 

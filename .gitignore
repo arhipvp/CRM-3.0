@@ -75,6 +75,7 @@ postgres-data/
 
 # Misc local workspaces
 frontend_example/
+mailcow.pre-pull-backup-*/
 .claude/settings.local.json
 tools/sber_issuance/local/
 tools/sber_issuance/.local_runs/

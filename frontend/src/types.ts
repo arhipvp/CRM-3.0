@@ -632,6 +632,35 @@ export interface ActivityLog {
   objectName?: string | null;
 }
 
+export type DealTimelineEventType =
+  | 'manual_expected_close'
+  | 'manual_next_contact'
+  | 'payment_due'
+  | 'policy_expiration'
+  | 'deal_updated'
+  | 'task_created'
+  | 'task_completed'
+  | 'policy_created'
+  | 'quote_created'
+  | 'file_uploaded';
+
+export interface DealTimelineEvent {
+  id: string;
+  deal: string;
+  eventType: DealTimelineEventType;
+  eventTypeDisplay: string;
+  eventDate?: string | null;
+  title: string;
+  description: string;
+  sourceType: string;
+  sourceId: string;
+  actor?: string | null;
+  actorUsername?: string | null;
+  actorDisplayName?: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface ChecklistItem {
   label: string;
   done: boolean;

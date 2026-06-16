@@ -30,6 +30,7 @@ vi.mock('../../../api', () => {
     createClient: vi.fn(),
     createFinancialRecord: vi.fn(),
     createPayment: vi.fn(),
+    createPolicyDraft: vi.fn(),
     createPolicy: vi.fn(),
     deleteFinancialRecord: vi.fn(),
     deletePayment: vi.fn(),
@@ -39,24 +40,37 @@ vi.mock('../../../api', () => {
     movePolicy: vi.fn(),
     updateFinancialRecord: vi.fn(),
     updatePayment: vi.fn(),
+    updatePolicyDraft: vi.fn(),
     updatePolicy: vi.fn(),
     updatePolicyRenewed: vi.fn(),
   };
 });
 
 import {
+  createFinancialRecord as createFinancialRecordApi,
+  createPayment as createPaymentApi,
+  createPolicy as createPolicyApi,
+  createPolicyDraft,
   deleteFinancialRecord,
   fetchPayments,
   movePolicy,
+  updatePayment as updatePaymentApi,
+  updatePolicyDraft,
   updateFinancialRecord,
   updatePolicy,
   updatePolicyRenewed,
 } from '../../../api';
 
+const createFinancialRecordMock = vi.mocked(createFinancialRecordApi);
+const createPaymentMock = vi.mocked(createPaymentApi);
+const createPolicyMock = vi.mocked(createPolicyApi);
+const createPolicyDraftMock = vi.mocked(createPolicyDraft);
 const deleteFinancialRecordMock = vi.mocked(deleteFinancialRecord);
 const fetchPaymentsMock = vi.mocked(fetchPayments);
 const movePolicyMock = vi.mocked(movePolicy);
+const updatePaymentMock = vi.mocked(updatePaymentApi);
 const updateFinancialRecordMock = vi.mocked(updateFinancialRecord);
+const updatePolicyDraftMock = vi.mocked(updatePolicyDraft);
 const updatePolicyMock = vi.mocked(updatePolicy);
 const updatePolicyRenewedMock = vi.mocked(updatePolicyRenewed);
 
@@ -229,176 +243,109 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(params.setError).not.toHaveBeenCalled();
   });
 
-  it('удаляет расход и не считает неизменённую запись из оплаченной ведомости изменённой', async () => {
-    const paidRecord = createFinancialRecord({
-      id: 'record-paid',
-      statementId: 'statement-1',
-      amount: '-1500',
-      description: 'Расход исполнителю',
-      note: 'Комиссия',
-    });
-    const removedRecord = createFinancialRecord({
-      id: 'record-delete',
-      amount: '-500',
-      description: 'Удаляемый расход',
-      note: 'Удалить',
-    });
-    const payment = createPayment({
-      financialRecords: [paidRecord, removedRecord],
-    });
+  it('creates policy through draft endpoint instead of sequential payment APIs', async () => {
     const policy = createPolicy();
-    const { params } = createParams({
-      policy,
-      payments: [payment],
-      statements: [createStatement()],
-    });
-
-    updatePolicyMock.mockResolvedValue(policy);
-    deleteFinancialRecordMock.mockResolvedValue(undefined);
+    const record = createFinancialRecord({ id: 'record-created' });
+    const payment = createPayment({ id: 'payment-created', financialRecords: [record] });
+    const { params, appState } = createParams({ policy });
+    createPolicyDraftMock.mockResolvedValue({ policy, payments: [payment] });
 
     const { result } = renderHook(() => usePolicyActions(params));
 
     await act(async () => {
-      await result.current.handleUpdatePolicy(
-        policy.id,
+      await result.current.handleAddPolicy(
+        policy.dealId,
         createPolicyValues({
           payments: [
             {
-              id: payment.id,
-              amount: payment.amount,
-              description: payment.description,
-              scheduledDate: payment.scheduledDate ?? '',
-              actualDate: payment.actualDate ?? '',
-              incomes: [],
-              expenses: [
-                {
-                  id: paidRecord.id,
-                  amount: '1500',
-                  date: paidRecord.date ?? '',
-                  description: paidRecord.description ?? '',
-                  source: paidRecord.source ?? '',
-                  note: paidRecord.note ?? '',
-                },
-              ],
+              amount: '10000',
+              description: 'Платёж',
+              scheduledDate: '2025-01-10',
+              actualDate: '2025-01-10',
+              incomes: [{ amount: '1000', description: 'Доход' }],
+              expenses: [],
             },
           ],
         }),
       );
     });
 
-    expect(deleteFinancialRecordMock).toHaveBeenCalledTimes(1);
-    expect(deleteFinancialRecordMock).toHaveBeenCalledWith('record-delete');
-    expect(updateFinancialRecordMock).not.toHaveBeenCalled();
+    expect(createPolicyDraftMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dealId: policy.dealId,
+        number: 'POL-1',
+        payments: expect.any(Array),
+      }),
+    );
+    expect(createPolicyMock).not.toHaveBeenCalled();
+    expect(createPaymentMock).not.toHaveBeenCalled();
+    expect(createFinancialRecordMock).not.toHaveBeenCalled();
+    expect(appState.policies[0]).toEqual(policy);
+    expect(appState.payments[0]).toEqual(payment);
+    expect(appState.financialRecords[0]).toEqual(record);
     expect(params.setError).not.toHaveBeenCalled();
   });
 
-  it('сохраняет полис без ошибки, если запись в оплаченной ведомости не менялась', async () => {
-    const paidRecord = createFinancialRecord({
-      id: 'record-paid',
-      statementId: 'statement-1',
-      amount: '-1500',
-      description: 'Расход исполнителю',
-      note: 'Комиссия',
-    });
-    const payment = createPayment({
-      financialRecords: [paidRecord],
-    });
+  it('updates policy through draft endpoint instead of local payment orchestration', async () => {
+    const existingPayment = createPayment();
     const policy = createPolicy();
-    const { params } = createParams({
+    const updatedPolicy = createPolicy({ number: 'POL-UPDATED' });
+    const updatedPayment = createPayment({
+      id: existingPayment.id,
+      amount: '12000',
+      financialRecords: [createFinancialRecord({ id: 'record-updated' })],
+    });
+    const { params, appState } = createParams({
       policy,
-      payments: [payment],
+      payments: [existingPayment],
       statements: [createStatement()],
     });
-
-    updatePolicyMock.mockResolvedValue(policy);
+    updatePolicyDraftMock.mockResolvedValue({
+      policy: updatedPolicy,
+      payments: [updatedPayment],
+    });
 
     const { result } = renderHook(() => usePolicyActions(params));
 
     await act(async () => {
       await result.current.handleUpdatePolicy(
         policy.id,
-        createPolicyValues({
-          payments: [
-            {
-              id: payment.id,
-              amount: payment.amount,
-              description: payment.description,
-              scheduledDate: payment.scheduledDate ?? '',
-              actualDate: payment.actualDate ?? '',
-              incomes: [],
-              expenses: [
-                {
-                  id: paidRecord.id,
-                  amount: '1500',
-                  date: paidRecord.date ?? '',
-                  description: paidRecord.description ?? '',
-                  source: paidRecord.source ?? '',
-                  note: paidRecord.note ?? '',
-                },
-              ],
-            },
-          ],
-        }),
+        createPolicyValues({ number: updatedPolicy.number }),
       );
     });
 
+    expect(updatePolicyDraftMock).toHaveBeenCalledWith(
+      policy.id,
+      expect.objectContaining({ number: updatedPolicy.number }),
+    );
+    expect(updatePolicyMock).not.toHaveBeenCalled();
+    expect(updatePaymentMock).not.toHaveBeenCalled();
     expect(updateFinancialRecordMock).not.toHaveBeenCalled();
+    expect(updateFinancialRecordMock).not.toHaveBeenCalled();
+    expect(deleteFinancialRecordMock).not.toHaveBeenCalled();
+    expect(appState.policies[0]).toEqual(updatedPolicy);
+    expect(appState.payments[0]).toEqual(updatedPayment);
     expect(params.setError).not.toHaveBeenCalled();
   });
 
-  it('по-прежнему блокирует реальное изменение записи в оплаченной ведомости', async () => {
-    const paidRecord = createFinancialRecord({
-      id: 'record-paid',
-      statementId: 'statement-1',
-      amount: '-1500',
-      description: 'Расход исполнителю',
-      note: 'Комиссия',
-    });
-    const payment = createPayment({
-      financialRecords: [paidRecord],
-    });
+  it('shows backend draft validation message without duplicating local finance rules', async () => {
     const policy = createPolicy();
-    const { params } = createParams({
-      policy,
-      payments: [payment],
-      statements: [createStatement()],
-    });
-
-    updatePolicyMock.mockResolvedValue(policy);
+    const { params } = createParams({ policy });
+    updatePolicyDraftMock.mockRejectedValue(
+      new Error('Нельзя изменять записи в выплаченной ведомости.'),
+    );
 
     const { result } = renderHook(() => usePolicyActions(params));
 
     await expect(
       act(async () => {
-        await result.current.handleUpdatePolicy(
-          policy.id,
-          createPolicyValues({
-            payments: [
-              {
-                id: payment.id,
-                amount: payment.amount,
-                description: payment.description,
-                scheduledDate: payment.scheduledDate ?? '',
-                actualDate: payment.actualDate ?? '',
-                incomes: [],
-                expenses: [
-                  {
-                    id: paidRecord.id,
-                    amount: '1500',
-                    date: paidRecord.date ?? '',
-                    description: 'Изменённый расход',
-                    source: paidRecord.source ?? '',
-                    note: paidRecord.note ?? '',
-                  },
-                ],
-              },
-            ],
-          }),
-        );
+        await result.current.handleUpdatePolicy(policy.id, createPolicyValues());
       }),
     ).rejects.toThrow('Нельзя изменять записи в выплаченной ведомости.');
 
+    expect(updatePolicyDraftMock).toHaveBeenCalled();
     expect(updateFinancialRecordMock).not.toHaveBeenCalled();
+    expect(params.setError).toHaveBeenCalledWith('Нельзя изменять записи в выплаченной ведомости.');
   });
 
   it('updates policy renewed flag through a lightweight patch', async () => {
