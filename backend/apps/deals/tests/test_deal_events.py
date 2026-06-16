@@ -12,7 +12,9 @@ from rest_framework import status
 class DealEventsAPITests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
-        self.user = User.objects.create_user(username="seller", password="pass")
+        self.user = User.objects.create_user(
+            username="seller", password="pass"  # pragma: allowlist secret
+        )
         self.client_record = Client.objects.create(name="Events Client")
         self.deal = Deal.objects.create(
             title="Events Deal",

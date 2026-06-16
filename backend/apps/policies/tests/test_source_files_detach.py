@@ -12,7 +12,7 @@ class PolicySourceFilesDetachTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
         self.seller = User.objects.create_user(
-            username="seller_detach", password="pass"
+            username="seller_detach", password="pass"  # pragma: allowlist secret
         )
         self.client_obj = Client.objects.create(name="Detach Client")
         self.deal = Deal.objects.create(
