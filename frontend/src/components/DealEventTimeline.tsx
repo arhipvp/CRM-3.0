@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { DealTimelineEvent } from '../types';
 import { ColoredLabel } from './common/ColoredLabel';
@@ -28,18 +28,6 @@ const eventIcon: Record<DealTimelineEvent['eventType'], string> = {
   file_uploaded: '⤒',
 };
 
-const eventColorClass: Partial<Record<DealTimelineEvent['eventType'], string>> = {
-  manual: 'bg-emerald-600 text-white',
-  manual_expected_close: 'bg-sky-600 text-white',
-  manual_next_contact: 'bg-slate-600 text-white',
-  payment_due: 'bg-pink-500 text-white',
-  policy_expiration: 'bg-violet-500 text-white',
-  task_completed: 'bg-emerald-500 text-white',
-  policy_created: 'bg-indigo-500 text-white',
-  quote_created: 'bg-amber-500 text-white',
-  file_uploaded: 'bg-cyan-600 text-white',
-};
-
 const formatDateTime = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -54,6 +42,148 @@ const formatDateTime = (value: string) => {
   }).format(parsed);
 };
 
+const parseEventDate = (value: string) => {
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+  return new Date(value);
+};
+
+const formatEventDate = (value: string) => {
+  const parsed = parseEventDate(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed);
+};
+
+const startOfLocalDay = (value: Date) => {
+  const normalized = new Date(value);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
+const getDayDiff = (value?: string | null) => {
+  if (!value) {
+    return null;
+  }
+  const parsed = parseEventDate(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  const today = startOfLocalDay(new Date());
+  const eventDate = startOfLocalDay(parsed);
+  return Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+};
+
+const getCreatedAtTime = (event: DealTimelineEvent) => {
+  const parsed = new Date(event.createdAt);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+};
+
+const sortEventsByDateCloseness = (events: DealTimelineEvent[]) =>
+  [...events].sort((left, right) => {
+    const leftDiff = getDayDiff(left.eventDate);
+    const rightDiff = getDayDiff(right.eventDate);
+
+    if (leftDiff === null && rightDiff === null) {
+      return getCreatedAtTime(right) - getCreatedAtTime(left);
+    }
+    if (leftDiff === null) {
+      return 1;
+    }
+    if (rightDiff === null) {
+      return -1;
+    }
+
+    const absoluteDiff = Math.abs(leftDiff) - Math.abs(rightDiff);
+    if (absoluteDiff !== 0) {
+      return absoluteDiff;
+    }
+
+    if (leftDiff >= 0 && rightDiff < 0) {
+      return -1;
+    }
+    if (leftDiff < 0 && rightDiff >= 0) {
+      return 1;
+    }
+
+    return leftDiff - rightDiff || getCreatedAtTime(right) - getCreatedAtTime(left);
+  });
+
+const getEventUrgencyClasses = (event: DealTimelineEvent) => {
+  const diffDays = getDayDiff(event.eventDate);
+
+  if (diffDays === null) {
+    return {
+      marker: 'border border-slate-200 bg-slate-100 text-slate-500',
+      dateBadge: 'border-slate-200 bg-slate-50 text-slate-500',
+      title: 'text-slate-900',
+      body: 'text-slate-700',
+      meta: 'text-slate-400',
+      connector: 'bg-slate-200',
+      row: '',
+      isPast: false,
+    };
+  }
+
+  if (diffDays < 0) {
+    return {
+      marker: 'border border-slate-200 bg-slate-100 text-slate-400',
+      dateBadge: 'border-slate-200 bg-slate-50 text-slate-400',
+      title: 'text-slate-500',
+      body: 'text-slate-500',
+      meta: 'text-slate-400',
+      connector: 'bg-slate-100',
+      row: 'opacity-75',
+      isPast: true,
+    };
+  }
+
+  if (diffDays <= 0) {
+    return {
+      marker: 'bg-rose-600 text-white',
+      dateBadge: 'border-rose-200 bg-rose-50 text-rose-700',
+      title: 'text-slate-900',
+      body: 'text-slate-700',
+      meta: 'text-rose-700',
+      connector: 'bg-rose-100',
+      row: '',
+      isPast: false,
+    };
+  }
+
+  if (diffDays <= 3) {
+    return {
+      marker: 'bg-orange-500 text-white',
+      dateBadge: 'border-orange-200 bg-orange-50 text-orange-700',
+      title: 'text-slate-900',
+      body: 'text-slate-700',
+      meta: 'text-orange-700',
+      connector: 'bg-orange-100',
+      row: '',
+      isPast: false,
+    };
+  }
+
+  return {
+    marker: 'bg-emerald-500 text-white',
+    dateBadge: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    title: 'text-slate-900',
+    body: 'text-slate-700',
+    meta: 'text-emerald-700',
+    connector: 'bg-emerald-100',
+    row: '',
+    isPast: false,
+  };
+};
+
 export function DealEventTimeline({
   events,
   isLoading = false,
@@ -66,6 +196,7 @@ export function DealEventTimeline({
   const [actionError, setActionError] = useState<string | null>(null);
   const [savingEventId, setSavingEventId] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const sortedEvents = useMemo(() => sortEventsByDateCloseness(events), [events]);
 
   const startEditing = (event: DealTimelineEvent) => {
     setEditingEventId(event.id);
@@ -152,22 +283,27 @@ export function DealEventTimeline({
           {actionError}
         </div>
       )}
-      {events.map((event, index) => {
-        const isLast = index === events.length - 1;
-        const markerClass = eventColorClass[event.eventType] ?? 'bg-slate-500 text-white';
+      {sortedEvents.map((event, index) => {
+        const isLast = index === sortedEvents.length - 1;
+        const urgency = getEventUrgencyClasses(event);
         const canManage =
           event.eventType === 'manual' && onUpdateManualEvent && onDeleteManualEvent;
         const isEditing = editingEventId === event.id;
         return (
-          <div key={event.id} className="relative flex gap-4">
+          <div
+            key={event.id}
+            className={`relative flex gap-4 ${urgency.row}`}
+            data-testid={`deal-event-row-${event.id}`}
+          >
             <div className="relative flex h-full w-10 flex-col items-center">
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm ${markerClass}`}
+                className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm ${urgency.marker}`}
                 aria-hidden="true"
+                data-testid={`deal-event-marker-${event.id}`}
               >
                 <span className="text-base leading-none">{eventIcon[event.eventType]}</span>
               </div>
-              {!isLast && <div className="mt-2 h-full w-px flex-1 bg-slate-200" />}
+              {!isLast && <div className={`mt-2 h-full w-px flex-1 ${urgency.connector}`} />}
             </div>
 
             <div className="min-w-0 flex-1 pt-1">
@@ -181,20 +317,20 @@ export function DealEventTimeline({
                     aria-label="Причина события"
                   />
                 ) : (
-                  <span className="text-sm font-semibold text-slate-900">{event.title}</span>
+                  <span className={`text-sm font-semibold ${urgency.title}`}>{event.title}</span>
                 )}
                 {event.actorDisplayName && (
-                  <span className="text-xs text-slate-600">
+                  <span className={`text-xs ${urgency.meta}`}>
                     •{' '}
                     <ColoredLabel
                       value={event.actorDisplayName}
                       fallback="—"
                       showDot={false}
-                      className="text-slate-600"
+                      className={urgency.meta}
                     />
                   </span>
                 )}
-                <span className="ml-auto text-xs text-slate-400">
+                <span className={`ml-auto text-xs ${urgency.meta}`}>
                   {formatDateTime(event.createdAt)}
                 </span>
               </div>
@@ -221,10 +357,19 @@ export function DealEventTimeline({
                 </div>
               )}
               {!isEditing && event.description && (
-                <p className="mt-2 text-sm leading-relaxed text-slate-700">{event.description}</p>
+                <p className={`mt-2 text-sm leading-relaxed ${urgency.body}`}>
+                  {event.description}
+                </p>
               )}
               {!isEditing && event.eventDate && (
-                <p className="mt-1 text-xs text-slate-400">Дата события: {event.eventDate}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${urgency.dateBadge}`}
+                    data-testid={`deal-event-date-${event.id}`}
+                  >
+                    {urgency.isPast ? 'Прошло' : 'Дата события'}: {formatEventDate(event.eventDate)}
+                  </span>
+                </div>
               )}
               {canManage && !isEditing && (
                 <div className="mt-2 flex flex-wrap gap-2">

@@ -51,7 +51,19 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
   const [manualEventDate, setManualEventDate] = React.useState(getTodayInputValue);
   const [manualEventReason, setManualEventReason] = React.useState('');
   const [manualEventError, setManualEventError] = React.useState<string | null>(null);
+  const [isManualEventFormOpen, setIsManualEventFormOpen] = React.useState(false);
   const [isManualEventSaving, setIsManualEventSaving] = React.useState(false);
+
+  const resetManualEventForm = () => {
+    setManualEventDate(getTodayInputValue());
+    setManualEventReason('');
+    setManualEventError(null);
+  };
+
+  const handleManualEventCancel = () => {
+    resetManualEventForm();
+    setIsManualEventFormOpen(false);
+  };
 
   const handleManualEventSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -68,7 +80,8 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
         eventDate: manualEventDate,
         reason,
       });
-      setManualEventReason('');
+      resetManualEventForm();
+      setIsManualEventFormOpen(false);
     } catch (err) {
       console.error('Ошибка создания события сделки:', err);
       setManualEventError('Не удалось добавить событие.');
@@ -99,36 +112,65 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
         <section className="app-panel space-y-4 border-none p-6 shadow-none">
           <div className="flex items-center justify-between">
             <p className="app-label">Лента</p>
+            {!isManualEventFormOpen && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  setManualEventError(null);
+                  setIsManualEventFormOpen(true);
+                }}
+              >
+                Добавить событие
+              </button>
+            )}
           </div>
           {(activityProps.dealEventsError || manualEventError) && (
             <InlineAlert>{activityProps.dealEventsError ?? manualEventError}</InlineAlert>
           )}
-          <form className="app-panel-muted space-y-3 p-4" onSubmit={handleManualEventSubmit}>
-            <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)_auto] md:items-end">
-              <label className="space-y-1 text-sm font-medium text-slate-700">
-                <span>Дата</span>
-                <input
-                  type="date"
-                  className="input"
-                  value={manualEventDate}
-                  onChange={(event) => setManualEventDate(event.target.value)}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium text-slate-700">
-                <span>Причина</span>
-                <input
-                  type="text"
-                  className="input"
-                  value={manualEventReason}
-                  onChange={(event) => setManualEventReason(event.target.value)}
-                  placeholder="Предположительно купит квартиру, предложить застраховать"
-                />
-              </label>
-              <button type="submit" className="btn btn-primary" disabled={isManualEventSaving}>
-                {isManualEventSaving ? 'Добавляем…' : 'Добавить'}
-              </button>
-            </div>
-          </form>
+          {isManualEventFormOpen && (
+            <form className="app-panel-muted space-y-4 p-4" onSubmit={handleManualEventSubmit}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Новое событие</p>
+                  <p className="text-xs text-slate-500">
+                    Добавьте дату и причину, чтобы событие появилось в ленте сделки.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-quiet"
+                  onClick={handleManualEventCancel}
+                >
+                  Отмена
+                </button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)_auto] md:items-end">
+                <label className="space-y-1 text-sm font-medium text-slate-700">
+                  <span>Дата</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={manualEventDate}
+                    onChange={(event) => setManualEventDate(event.target.value)}
+                  />
+                </label>
+                <label className="space-y-1 text-sm font-medium text-slate-700">
+                  <span>Причина</span>
+                  <input
+                    type="text"
+                    className="input"
+                    value={manualEventReason}
+                    onChange={(event) => setManualEventReason(event.target.value)}
+                    placeholder="Например: предположительно купит квартиру, предложить застраховать"
+                  />
+                </label>
+                <button type="submit" className="btn btn-primary" disabled={isManualEventSaving}>
+                  {isManualEventSaving ? 'Добавляем…' : 'Добавить'}
+                </button>
+              </div>
+            </form>
+          )}
           <DealEventTimeline
             events={activityProps.dealTimelineEvents}
             isLoading={activityProps.isDealEventsLoading}

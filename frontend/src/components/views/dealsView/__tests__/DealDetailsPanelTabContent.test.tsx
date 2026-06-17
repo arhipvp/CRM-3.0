@@ -30,6 +30,9 @@ describe('DealDetailsPanelTabContent', () => {
       />,
     );
 
+    expect(screen.queryByLabelText('Дата')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Добавить событие'));
+
     fireEvent.change(screen.getByLabelText('Дата'), {
       target: { value: '2027-06-16' },
     });
@@ -47,6 +50,45 @@ describe('DealDetailsPanelTabContent', () => {
       });
     });
 
-    expect(screen.getByLabelText('Причина')).toHaveValue('');
+    expect(screen.queryByLabelText('Причина')).not.toBeInTheDocument();
+    expect(screen.getByText('Добавить событие')).toBeInTheDocument();
+  });
+
+  it('collapses manual event form and clears validation error on cancel', () => {
+    render(
+      <DealDetailsPanelTabContent
+        activeTab="events"
+        notesSectionProps={{} as never}
+        tasksTabProps={{} as never}
+        policiesTabProps={{} as never}
+        quotesTabProps={{} as never}
+        filesTabProps={{} as never}
+        chatTabProps={{} as never}
+        activityProps={{
+          activityError: null,
+          activityLogs: [],
+          isActivityLoading: false,
+          dealEventsError: null,
+          dealTimelineEvents: [],
+          isDealEventsLoading: false,
+          onCreateManualEvent: vi.fn().mockResolvedValue(undefined),
+          onUpdateManualEvent: vi.fn().mockResolvedValue(undefined),
+          onDeleteManualEvent: vi.fn().mockResolvedValue(undefined),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Добавить событие'));
+    fireEvent.change(screen.getByLabelText('Причина'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByText('Добавить'));
+
+    expect(screen.getByText('Укажите дату и причину события.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Отмена'));
+
+    expect(screen.queryByLabelText('Дата')).not.toBeInTheDocument();
+    expect(screen.queryByText('Укажите дату и причину события.')).not.toBeInTheDocument();
   });
 });

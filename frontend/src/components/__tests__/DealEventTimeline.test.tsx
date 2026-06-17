@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DealEventTimeline } from '../DealEventTimeline';
 import type { DealTimelineEvent } from '../../types';
@@ -39,6 +39,10 @@ const policyEvent: DealTimelineEvent = {
 };
 
 describe('DealEventTimeline', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('allows editing and deleting manual events only', async () => {
     const onUpdateManualEvent = vi.fn().mockResolvedValue(undefined);
     const onDeleteManualEvent = vi.fn().mockResolvedValue(undefined);
@@ -76,5 +80,96 @@ describe('DealEventTimeline', () => {
     await waitFor(() => {
       expect(onDeleteManualEvent).toHaveBeenCalledWith('deal-event-event-1');
     });
+  });
+
+  it('sorts dated events by closeness and places undated events after them', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 17, 12, 0, 0));
+    const todayEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'today',
+      eventDate: '2026-06-17',
+      title: 'Сегодня',
+    };
+    const tomorrowEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'tomorrow',
+      eventDate: '2026-06-18',
+      title: 'Завтра',
+    };
+    const yesterdayEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'yesterday',
+      eventDate: '2026-06-16',
+      title: 'Вчера',
+    };
+    const farEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'far',
+      eventDate: '2026-07-20',
+      title: 'Далеко',
+    };
+    const undatedEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'undated',
+      eventDate: null,
+      title: 'Без даты',
+    };
+
+    const { container } = render(
+      <DealEventTimeline
+        events={[farEvent, undatedEvent, yesterdayEvent, tomorrowEvent, todayEvent]}
+      />,
+    );
+
+    const rows = Array.from(container.querySelectorAll('[data-testid^="deal-event-row-"]'));
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Сегодня'),
+      expect.stringContaining('Завтра'),
+      expect.stringContaining('Вчера'),
+      expect.stringContaining('Далеко'),
+      expect.stringContaining('Без даты'),
+    ]);
+  });
+
+  it('uses muted styling for past events and deadline colors for upcoming events', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 17, 12, 0, 0));
+    const pastEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'past',
+      eventDate: '2026-06-16',
+      title: 'Прошедшее',
+    };
+    const todayEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'today',
+      eventDate: '2026-06-17',
+      title: 'Сегодня',
+    };
+    const soonEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'soon',
+      eventDate: '2026-06-20',
+      title: 'Скоро',
+    };
+    const laterEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'later',
+      eventDate: '2026-06-25',
+      title: 'Позже',
+    };
+
+    render(<DealEventTimeline events={[laterEvent, soonEvent, todayEvent, pastEvent]} />);
+
+    expect(screen.getByTestId('deal-event-row-past')).toHaveClass('opacity-75');
+    expect(screen.getByTestId('deal-event-marker-past')).toHaveClass('bg-slate-100');
+    expect(screen.getByTestId('deal-event-date-past')).toHaveClass('text-slate-400');
+    expect(screen.getByTestId('deal-event-marker-today')).toHaveClass('bg-rose-600');
+    expect(screen.getByTestId('deal-event-date-today')).toHaveClass('text-rose-700');
+    expect(screen.getByTestId('deal-event-marker-soon')).toHaveClass('bg-orange-500');
+    expect(screen.getByTestId('deal-event-date-soon')).toHaveClass('text-orange-700');
+    expect(screen.getByTestId('deal-event-marker-later')).toHaveClass('bg-emerald-500');
+    expect(screen.getByTestId('deal-event-date-later')).toHaveClass('text-emerald-700');
   });
 });
