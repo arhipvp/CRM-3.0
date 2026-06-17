@@ -44,6 +44,8 @@ const FIELD_ERROR_LABELS: Record<string, string> = {
   insurance_type: 'Тип страхования',
   client: 'Страхователь',
   sales_channel: 'Канал продаж',
+  payments: 'Платежи',
+  id: 'ID',
 };
 
 const DIRECT_ERROR_KEYS = ['detail', 'message', 'error', 'non_field_errors'];

@@ -43,6 +43,11 @@ const assertUuid = (value: string | undefined | null, label: string, required = 
   }
 };
 
+const normalizeOptionalUuid = (value: string | undefined | null): string | undefined => {
+  const normalized = value?.trim();
+  return normalized || undefined;
+};
+
 const validatePolicyDraftPayload = (
   data: PolicyDraftPayload,
   options: { requireDeal: boolean },
@@ -186,14 +191,30 @@ export interface PolicyDraftSaveResult {
   payments: Payment[];
 }
 
-const mapDraftRecord = (record: PolicyDraftFinancialRecordPayload) => ({
-  id: record.id,
-  amount: record.amount,
-  date: record.date || null,
-  description: record.description || '',
-  source: record.source || '',
-  note: record.note || '',
-});
+const mapDraftRecord = (record: PolicyDraftFinancialRecordPayload) => {
+  const id = normalizeOptionalUuid(record.id);
+  return {
+    ...(id ? { id } : {}),
+    amount: record.amount,
+    date: record.date || null,
+    description: record.description || '',
+    source: record.source || '',
+    note: record.note || '',
+  };
+};
+
+const mapDraftPayment = (payment: PolicyDraftPaymentPayload) => {
+  const id = normalizeOptionalUuid(payment.id);
+  return {
+    ...(id ? { id } : {}),
+    amount: payment.amount,
+    description: payment.description || '',
+    scheduled_date: payment.scheduledDate || null,
+    actual_date: payment.actualDate || null,
+    incomes: (payment.incomes ?? []).map(mapDraftRecord),
+    expenses: (payment.expenses ?? []).map(mapDraftRecord),
+  };
+};
 
 const buildPolicyDraftBody = (data: PolicyDraftPayload): Record<string, unknown> => {
   const bodyPayload: Record<string, unknown> = {
@@ -214,15 +235,7 @@ const buildPolicyDraftBody = (data: PolicyDraftPayload): Record<string, unknown>
     end_date: data.endDate || null,
     client: data.clientId || null,
     client_name: data.clientName || '',
-    payments: (data.payments ?? []).map((payment) => ({
-      id: payment.id,
-      amount: payment.amount,
-      description: payment.description || '',
-      scheduled_date: payment.scheduledDate || null,
-      actual_date: payment.actualDate || null,
-      incomes: (payment.incomes ?? []).map(mapDraftRecord),
-      expenses: (payment.expenses ?? []).map(mapDraftRecord),
-    })),
+    payments: (data.payments ?? []).map(mapDraftPayment),
   };
   if (data.dealId) {
     bodyPayload.deal = data.dealId;

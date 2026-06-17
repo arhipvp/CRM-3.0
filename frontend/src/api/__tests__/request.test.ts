@@ -150,4 +150,18 @@ describe('request error normalization', () => {
       'Страховая компания: Must be a valid UUID. Тип страхования: This field is required.',
     );
   });
+
+  it('keeps nested DRF field errors with labels', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ payments: [{ id: ['Must be a valid UUID.'] }] }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(request('/policies/draft/')).rejects.toThrow('Платежи: ID: Must be a valid UUID.');
+  });
 });
