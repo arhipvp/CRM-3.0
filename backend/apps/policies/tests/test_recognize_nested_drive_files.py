@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from unittest.mock import patch
 
@@ -42,19 +42,19 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.policies.views.build_drive_file_tree_map",
+                "apps.policies.services.recognition.build_drive_file_tree_map",
                 return_value=file_map,
             ) as tree_mock,
             patch(
-                "apps.policies.views.download_drive_file",
+                "apps.policies.services.recognition.download_drive_file",
                 return_value=b"policy-bytes",
             ),
             patch(
-                "apps.policies.views.extract_text_from_bytes",
+                "apps.policies.services.recognition.extract_text_from_bytes",
                 return_value="policy text",
             ) as extract_mock,
             patch(
-                "apps.policies.views.recognize_policy_from_text",
+                "apps.policies.services.recognition.recognize_policy_from_text",
                 return_value=({"policyNumber": "123"}, "transcript"),
             ) as recognize_mock,
         ):
@@ -84,19 +84,19 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.policies.views.build_drive_file_tree_map",
+                "apps.policies.services.recognition.build_drive_file_tree_map",
                 return_value=file_map,
             ),
             patch(
-                "apps.policies.views.download_drive_file",
+                "apps.policies.services.recognition.download_drive_file",
                 return_value=b"docx-bytes",
             ),
             patch(
-                "apps.policies.views.extract_text_from_bytes",
+                "apps.policies.services.recognition.extract_text_from_bytes",
                 return_value="docx policy text",
             ) as extract_mock,
             patch(
-                "apps.policies.views.recognize_policy_from_text",
+                "apps.policies.services.recognition.recognize_policy_from_text",
                 return_value=({"policyNumber": "DOCX-123"}, "transcript"),
             ) as recognize_mock,
         ):
@@ -138,15 +138,15 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.policies.views.build_drive_file_tree_map",
+                "apps.policies.services.recognition.build_drive_file_tree_map",
                 return_value=file_map,
             ),
             patch(
-                "apps.policies.views.download_drive_file",
+                "apps.policies.services.recognition.download_drive_file",
                 side_effect=[b"doc-bytes", b"pdf-bytes"],
             ),
             patch(
-                "apps.policies.views.extract_text_from_bytes",
+                "apps.policies.services.recognition.extract_text_from_bytes",
                 side_effect=[
                     PolicyRecognitionError(
                         "Не удалось извлечь текст из Word-файла broken.doc."
@@ -155,7 +155,7 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
                 ],
             ) as extract_mock,
             patch(
-                "apps.policies.views.recognize_policy_from_text",
+                "apps.policies.services.recognition.recognize_policy_from_text",
                 return_value=({"policyNumber": "PDF-123"}, "transcript"),
             ) as recognize_mock,
         ):

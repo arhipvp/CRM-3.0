@@ -310,6 +310,20 @@ class PolicyDraftSerializer(serializers.Serializer):
         return attrs
 
 
+class PolicyRecognitionRequestSerializer(serializers.Serializer):
+    deal_id = serializers.UUIDField(required=True)
+    file_ids = serializers.ListField(
+        child=serializers.CharField(),
+        min_length=1,
+        allow_empty=False,
+        required=True,
+    )
+
+
+class PolicyMoveRequestSerializer(serializers.Serializer):
+    deal = serializers.UUIDField(required=True)
+
+
 class PolicyIssuanceExecutionLogEntrySerializer(serializers.Serializer):
     timestamp = serializers.CharField()
     level = serializers.CharField()

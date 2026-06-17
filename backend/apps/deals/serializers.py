@@ -341,6 +341,15 @@ class DealEventSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
 
 
+class DealDocumentRecognitionRequestSerializer(serializers.Serializer):
+    file_ids = serializers.ListField(
+        child=serializers.CharField(),
+        min_length=1,
+        allow_empty=False,
+        required=True,
+    )
+
+
 class ManualDealEventSerializer(serializers.Serializer):
     event_type = serializers.ChoiceField(
         choices=(

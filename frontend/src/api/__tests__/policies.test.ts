@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createPolicyDraft, movePolicy } from '../policies';
+import { createPolicyDraft, movePolicy, updatePolicyDraft } from '../policies';
 
 const DEAL_ID = '16c3bcb8-4118-433b-81aa-5a6385538ece';
 const COMPANY_ID = 'd2be7261-c17e-441c-9214-054060e288cf';
@@ -123,6 +123,42 @@ describe('createPolicyDraft', () => {
       }),
     );
     expect(result.policy.dealId).toBe(DEAL_ID);
+  });
+
+  it('allows blank client id and sends client name for new policy client', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          policy: {
+            id: '07cede94-f524-418f-b504-34d4e0ae5ebf',
+            number: 'SYS2851082838',
+            insurance_company: COMPANY_ID,
+            insurance_type: TYPE_ID,
+            deal: DEAL_ID,
+            is_vehicle: true,
+            status: 'active',
+            created_at: '2026-06-17T00:00:00Z',
+          },
+          payments: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createPolicyDraft(
+      buildPolicyDraftPayload({
+        clientId: '',
+        clientName: 'Новый страхователь',
+      }),
+    );
+
+    expect(readDraftRequestBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        client: null,
+        client_name: 'Новый страхователь',
+      }),
+    );
   });
 
   it('omits blank payment and financial record ids from draft payload', async () => {
@@ -255,4 +291,54 @@ describe('createPolicyDraft', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('updatePolicyDraft', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+  });
+
+  it('patches policy draft endpoint with valid UUID references', async () => {
+    const policyId = '07cede94-f524-418f-b504-34d4e0ae5ebf';
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          policy: {
+            id: policyId,
+            number: 'SYS2851082838',
+            insurance_company: COMPANY_ID,
+            insurance_type: TYPE_ID,
+            deal: DEAL_ID,
+            is_vehicle: true,
+            status: 'active',
+            created_at: '2026-06-17T00:00:00Z',
+          },
+          payments: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await updatePolicyDraft(policyId, buildPolicyDraftPayload({ dealId: undefined }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/policies/${policyId}/draft/`,
+      expect.objectContaining({
+        method: 'PATCH',
+      }),
+    );
+    expect(readDraftRequestBody(fetchMock)).not.toHaveProperty('deal');
+  });
+
+  it('rejects invalid policy id before making a network request', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(updatePolicyDraft('policy-short-id', buildPolicyDraftPayload())).rejects.toThrow(
+      'Полис: должен быть корректным UUID.',
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

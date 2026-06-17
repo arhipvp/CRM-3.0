@@ -61,15 +61,15 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
             with (
                 patch(
-                    "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                    "apps.deals.document_recognition_service.build_drive_file_tree_map",
                     return_value={item["id"]: item for item in drive_files},
                 ),
                 patch(
-                    "apps.deals.view_mixins.document_recognition.download_drive_file",
+                    "apps.deals.document_recognition_service.download_drive_file",
                     return_value=b"image-bytes",
                 ),
                 patch(
-                    "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
+                    "apps.deals.document_recognition_service.recognize_document_from_file"
                 ) as recognize_mock,
             ):
                 recognize_mock.return_value.document_type = "passport"
@@ -121,15 +121,15 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                "apps.deals.document_recognition_service.build_drive_file_tree_map",
                 return_value={item["id"]: item for item in drive_files},
             ),
             patch(
-                "apps.deals.view_mixins.document_recognition.download_drive_file",
+                "apps.deals.document_recognition_service.download_drive_file",
                 side_effect=[b"ok", b"bad"],
             ),
             patch(
-                "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
+                "apps.deals.document_recognition_service.recognize_document_from_file"
             ) as recognize_mock,
         ):
             recognize_mock.side_effect = [
@@ -181,15 +181,15 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                "apps.deals.document_recognition_service.build_drive_file_tree_map",
                 return_value={item["id"]: item for item in drive_files},
             ),
             patch(
-                "apps.deals.view_mixins.document_recognition.download_drive_file",
+                "apps.deals.document_recognition_service.download_drive_file",
                 side_effect=[b"front", b"back"],
             ),
             patch(
-                "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
+                "apps.deals.document_recognition_service.recognize_document_from_file"
             ) as recognize_mock,
         ):
             recognize_mock.side_effect = [
@@ -240,7 +240,7 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
         self.authenticate(self.seller)
         Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
         with patch(
-            "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+            "apps.deals.document_recognition_service.build_drive_file_tree_map",
             return_value={},
         ):
             response = self.api_client.post(
@@ -270,15 +270,15 @@ class DealDocumentRecognitionTests(AuthenticatedAPITestCase):
 
         with (
             patch(
-                "apps.deals.view_mixins.document_recognition.build_drive_file_tree_map",
+                "apps.deals.document_recognition_service.build_drive_file_tree_map",
                 return_value=file_map,
             ) as tree_mock,
             patch(
-                "apps.deals.view_mixins.document_recognition.download_drive_file",
+                "apps.deals.document_recognition_service.download_drive_file",
                 return_value=b"nested-image",
             ),
             patch(
-                "apps.deals.view_mixins.document_recognition.recognize_document_from_file"
+                "apps.deals.document_recognition_service.recognize_document_from_file"
             ) as recognize_mock,
         ):
             recognize_mock.return_value.document_type = "passport"

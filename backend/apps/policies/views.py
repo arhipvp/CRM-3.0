@@ -1,17 +1,12 @@
-import logging
 from datetime import timedelta
-from typing import List
 
 from apps.common.drive import (
     DriveError,
-    build_drive_file_tree_map,
-    download_drive_file,
-    ensure_deal_folder,
     ensure_policy_folder,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
-from apps.deals.models import Deal, InsuranceCompany, InsuranceType
+from apps.deals.models import Deal
 from apps.deals.permissions import build_deal_visibility_q
 from apps.finances.models import Payment
 from apps.finances.serializers import PaymentSerializer
@@ -19,7 +14,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import DecimalField, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from rest_framework import serializers, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError as DRFValidationError
@@ -28,17 +23,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .ai_service import (
-    PolicyRecognitionError,
-    extract_text_from_bytes,
-    is_extracted_policy_text_poor,
-    is_pdf_filename,
-    is_policy_recognition_result_poor,
-    is_policy_text_likely_tabular,
-    policy_vision_fallback_enabled,
-    recognize_policy_from_pdf_images,
-    recognize_policy_from_text,
-)
 from .dashboard import get_month_bounds, parse_date_value
 from .dashboard_service import build_seller_dashboard_payload
 from .filters import PolicyFilterSet
@@ -54,6 +38,8 @@ from .permissions import user_can_modify_deal, user_is_admin
 from .serializers import (
     PolicyDraftSerializer,
     PolicyIssuanceExecutionStatusSerializer,
+    PolicyMoveRequestSerializer,
+    PolicyRecognitionRequestSerializer,
     PolicySerializer,
 )
 from .services.delete import delete_policy_with_rules
@@ -64,23 +50,11 @@ from .services.files import (
 )
 from .services.finance import apply_policy_draft
 from .services.move import move_policy_to_deal
+from .services.recognition import (
+    PolicyRecognitionFolderMissing,
+    recognize_policy_files,
+)
 from .status import STATUS_VALUES, with_computed_status_flags
-
-logger = logging.getLogger(__name__)
-
-
-class PolicyRecognitionSerializer(serializers.Serializer):
-    deal_id = serializers.UUIDField(required=True)
-    file_ids = serializers.ListField(
-        child=serializers.CharField(),
-        min_length=1,
-        allow_empty=False,
-        required=True,
-    )
-
-
-class PolicyMoveSerializer(serializers.Serializer):
-    deal = serializers.UUIDField(required=True)
 
 
 class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -263,7 +237,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="recognize")
     def recognize(self, request):
-        serializer = PolicyRecognitionSerializer(data=request.data)
+        serializer = PolicyRecognitionRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         deal_id = serializer.validated_data["deal_id"]
         file_ids = serializer.validated_data["file_ids"]
@@ -281,217 +255,18 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        folder_id = deal.drive_folder_id
-        if not folder_id:
-            try:
-                folder_id = ensure_deal_folder(deal)
-            except DriveError as exc:
-                logger.warning("Failed to ensure drive folder: %s", exc)
-                return Response(
-                    {"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE
-                )
-        if not folder_id:
+        try:
+            payload = recognize_policy_files(deal, file_ids)
+        except PolicyRecognitionFolderMissing as exc:
             return Response(
-                {"detail": "Файловая папка сделки не настроена."},
+                {"detail": str(exc)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        try:
-            file_map = build_drive_file_tree_map(folder_id)
         except DriveError as exc:
-            logger.exception("Cannot list drive files")
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        seen = set()
-        results: List[dict] = []
-        company_names = list(
-            InsuranceCompany.objects.filter(name__isnull=False)
-            .exclude(name__exact="")
-            .order_by("name")
-            .values("name", "description")
-            .distinct()
-        )
-        type_names = list(
-            InsuranceType.objects.filter(name__isnull=False)
-            .exclude(name__exact="")
-            .order_by("name")
-            .values("name", "description")
-            .distinct()
-        )
-
-        downloaded_files: List[dict[str, object]] = []
-        for file_id in file_ids:
-            if file_id in seen:
-                continue
-            seen.add(file_id)
-
-            file_info = file_map.get(file_id)
-            if not file_info:
-                results.append(
-                    {
-                        "fileId": file_id,
-                        "status": "error",
-                        "message": "Файл не найден в папке сделки.",
-                    }
-                )
-                continue
-
-            try:
-                content = download_drive_file(file_id)
-            except DriveError as exc:
-                results.append(
-                    {
-                        "fileId": file_id,
-                        "fileName": file_info["name"],
-                        "status": "error",
-                        "message": str(exc),
-                    }
-                )
-                continue
-
-            extracted_text = ""
-            try:
-                extracted_text = extract_text_from_bytes(content, file_info["name"])
-            except PolicyRecognitionError as exc:
-                if not (
-                    policy_vision_fallback_enabled()
-                    and is_pdf_filename(file_info["name"])
-                ):
-                    results.append(
-                        {
-                            "fileId": file_id,
-                            "fileName": file_info["name"],
-                            "status": "error",
-                            "message": str(exc),
-                            "transcript": exc.transcript,
-                        }
-                    )
-                    continue
-
-            downloaded_files.append(
-                {
-                    "id": file_id,
-                    "name": file_info["name"],
-                    "text": extracted_text,
-                    "content": content,
-                }
-            )
-
-        if downloaded_files:
-            combined_text = "\n\n".join(
-                f"Файл {file_data['name']}:\n{file_data['text']}"
-                for file_data in downloaded_files
-            ).strip()
-            if not combined_text:
-                combined_text = downloaded_files[0]["text"]
-
-            can_use_vision = policy_vision_fallback_enabled() and any(
-                is_pdf_filename(str(file_data["name"]))
-                for file_data in downloaded_files
-            )
-            text_is_poor = any(
-                is_pdf_filename(str(file_data["name"]))
-                and (
-                    is_extracted_policy_text_poor(str(file_data.get("text") or ""))
-                    or is_policy_text_likely_tabular(str(file_data.get("text") or ""))
-                )
-                for file_data in downloaded_files
-            )
-            attempted_vision = False
-            used_vision = False
-            try:
-                if text_is_poor and can_use_vision:
-                    attempted_vision = True
-                    data, transcript = recognize_policy_from_pdf_images(
-                        downloaded_files,
-                        extra_companies=company_names,
-                        extra_types=type_names,
-                    )
-                    used_vision = True
-                else:
-                    data, transcript = recognize_policy_from_text(
-                        str(combined_text),
-                        extra_companies=company_names,
-                        extra_types=type_names,
-                    )
-                    if is_policy_recognition_result_poor(data) and can_use_vision:
-                        attempted_vision = True
-                        data, transcript = recognize_policy_from_pdf_images(
-                            downloaded_files,
-                            extra_companies=company_names,
-                            extra_types=type_names,
-                        )
-                        used_vision = True
-            except PolicyRecognitionError as exc:
-                if can_use_vision and not attempted_vision:
-                    try:
-                        attempted_vision = True
-                        data, transcript = recognize_policy_from_pdf_images(
-                            downloaded_files,
-                            extra_companies=company_names,
-                            extra_types=type_names,
-                        )
-                        used_vision = True
-                    except PolicyRecognitionError as vision_exc:
-                        for file_data in downloaded_files:
-                            results.append(
-                                {
-                                    "fileId": file_data["id"],
-                                    "fileName": file_data["name"],
-                                    "status": "error",
-                                    "message": (
-                                        f"{exc}; vision fallback: {vision_exc}"
-                                    ),
-                                    "transcript": (
-                                        f"{exc.transcript}\n\n"
-                                        f"{vision_exc.transcript}"
-                                    ).strip(),
-                                }
-                            )
-                        return Response({"results": results})
-                else:
-                    for file_data in downloaded_files:
-                        results.append(
-                            {
-                                "fileId": file_data["id"],
-                                "fileName": file_data["name"],
-                                "status": "error",
-                                "message": str(exc),
-                                "transcript": exc.transcript,
-                            }
-                        )
-                    return Response({"results": results})
-
-            primary_file_id = downloaded_files[0]["id"]
-            for file_data in downloaded_files:
-                is_primary = file_data["id"] == primary_file_id
-                if is_primary and used_vision:
-                    message = (
-                        "Распознано через Vision ИИ "
-                        f"(1 запрос на {len(downloaded_files)} файлов)."
-                    )
-                elif is_primary:
-                    message = (
-                        f"Распознано (1 запрос на {len(downloaded_files)} файлов)."
-                    )
-                else:
-                    message = (
-                        "Файл использован в общем распознавании, результат см. "
-                        "в первом файле."
-                    )
-                payload = {
-                    "fileId": file_data["id"],
-                    "fileName": file_data["name"],
-                    "status": "parsed",
-                    "message": message,
-                }
-                if is_primary:
-                    payload["transcript"] = transcript
-                    payload["data"] = data
-                results.append(payload)
-
-        return Response({"results": results})
+        return Response(payload)
 
     @action(detail=False, methods=["get"], url_path="vehicle-brands")
     def vehicle_brands(self, request):
@@ -537,7 +312,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "Только продавец исходной сделки может перенести полис."
             )
 
-        serializer = PolicyMoveSerializer(data=request.data)
+        serializer = PolicyMoveRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         target_deal = self._get_move_target_deal(
             user, serializer.validated_data["deal"]
