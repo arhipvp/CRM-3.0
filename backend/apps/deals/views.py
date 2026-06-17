@@ -308,7 +308,12 @@ class DealViewSet(
             )
         normalized_event_id = str(event_id or "").removeprefix("deal-event-")
         event = get_object_or_404(DealEvent, id=normalized_event_id, deal=deal)
-        if event.event_type != DealEvent.EventType.MANUAL:
+        editable_event_types = {
+            DealEvent.EventType.MANUAL,
+            DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            DealEvent.EventType.MANUAL_NEXT_CONTACT,
+        }
+        if event.event_type not in editable_event_types:
             return Response(
                 {"detail": "Можно изменять только ручные события."},
                 status=status.HTTP_400_BAD_REQUEST,

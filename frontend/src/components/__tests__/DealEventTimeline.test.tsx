@@ -38,6 +38,18 @@ const policyEvent: DealTimelineEvent = {
   createdAt: '2026-06-17T10:00:00Z',
 };
 
+const manualExpectedCloseEvent: DealTimelineEvent = {
+  ...manualEvent,
+  id: 'deal-event-expected-close',
+  eventType: 'manual_expected_close',
+  eventTypeDisplay: 'Дата страхования вручную',
+  eventDate: '2027-06-18',
+  title: 'Дата «Застраховать до» выставлена вручную',
+  description: 'Дата изменена с — на 2027-06-18.',
+  sourceType: 'deal',
+  sourceId: 'deal-1',
+};
+
 describe('DealEventTimeline', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -49,17 +61,17 @@ describe('DealEventTimeline', () => {
 
     render(
       <DealEventTimeline
-        events={[manualEvent, policyEvent]}
+        events={[manualEvent, manualExpectedCloseEvent, policyEvent]}
         onUpdateManualEvent={onUpdateManualEvent}
         onDeleteManualEvent={onDeleteManualEvent}
       />,
     );
 
     expect(screen.getByText('Окончание полиса')).toBeInTheDocument();
-    expect(screen.getAllByText('Изменить')).toHaveLength(1);
-    expect(screen.getAllByText('Удалить')).toHaveLength(1);
+    expect(screen.getAllByText('Изменить')).toHaveLength(2);
+    expect(screen.getAllByText('Удалить')).toHaveLength(2);
 
-    fireEvent.click(screen.getByText('Изменить'));
+    fireEvent.click(screen.getAllByText('Изменить')[0]);
     fireEvent.change(screen.getByLabelText('Причина события'), {
       target: { value: 'Клиент выбрал квартиру, вернуться с предложением' },
     });
@@ -75,7 +87,7 @@ describe('DealEventTimeline', () => {
       });
     });
 
-    fireEvent.click(screen.getByText('Удалить'));
+    fireEvent.click(screen.getAllByText('Удалить')[0]);
 
     await waitFor(() => {
       expect(onDeleteManualEvent).toHaveBeenCalledWith('deal-event-event-1');

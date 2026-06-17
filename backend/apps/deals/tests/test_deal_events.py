@@ -147,7 +147,7 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(DealEvent.objects.filter(id=event.id).exists())
 
-    def test_cannot_update_or_delete_non_manual_event(self):
+    def test_update_and_delete_manual_date_event(self):
         event = DealEvent.objects.create(
             deal=self.deal,
             event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
@@ -155,6 +155,37 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
             title="Дата «Застраховать до» выставлена вручную",
             source_type="deal",
             source_id=str(self.deal.id),
+            actor=self.user,
+        )
+
+        update_response = self.api_client.patch(
+            f"/api/v1/deals/{self.deal.id}/events/{event.id}/",
+            {
+                "event_date": "2026-07-02",
+                "reason": "Причина даты уточнена вручную",
+            },
+            format="json",
+        )
+
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_response.data["event_date"], "2026-07-02")
+        self.assertEqual(update_response.data["title"], "Причина даты уточнена вручную")
+
+        delete_response = self.api_client.delete(
+            f"/api/v1/deals/{self.deal.id}/events/{event.id}/"
+        )
+
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(DealEvent.objects.filter(id=event.id).exists())
+
+    def test_cannot_update_or_delete_policy_event(self):
+        event = DealEvent.objects.create(
+            deal=self.deal,
+            event_type=DealEvent.EventType.POLICY_CREATED,
+            event_date=date(2026, 7, 1),
+            title="Полис создан",
+            source_type="policy",
+            source_id="policy-1",
             actor=self.user,
         )
 

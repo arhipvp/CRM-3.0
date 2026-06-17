@@ -28,6 +28,12 @@ const eventIcon: Record<DealTimelineEvent['eventType'], string> = {
   file_uploaded: '⤒',
 };
 
+const MANAGEABLE_EVENT_TYPES: DealTimelineEvent['eventType'][] = [
+  'manual',
+  'manual_expected_close',
+  'manual_next_contact',
+];
+
 const formatDateTime = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -287,7 +293,9 @@ export function DealEventTimeline({
         const isLast = index === sortedEvents.length - 1;
         const urgency = getEventUrgencyClasses(event);
         const canManage =
-          event.eventType === 'manual' && onUpdateManualEvent && onDeleteManualEvent;
+          MANAGEABLE_EVENT_TYPES.includes(event.eventType) &&
+          onUpdateManualEvent &&
+          onDeleteManualEvent;
         const isEditing = editingEventId === event.id;
         return (
           <div
@@ -333,6 +341,25 @@ export function DealEventTimeline({
                 <span className={`ml-auto text-xs ${urgency.meta}`}>
                   {formatDateTime(event.createdAt)}
                 </span>
+                {canManage && !isEditing && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-quiet"
+                      onClick={() => startEditing(event)}
+                    >
+                      Изменить
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => void deleteEvent(event.id)}
+                      disabled={deletingEventId === event.id}
+                    >
+                      {deletingEventId === event.id ? 'Удаляем…' : 'Удалить'}
+                    </button>
+                  </div>
+                )}
               </div>
               {isEditing && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -369,25 +396,6 @@ export function DealEventTimeline({
                   >
                     {urgency.isPast ? 'Прошло' : 'Дата события'}: {formatEventDate(event.eventDate)}
                   </span>
-                </div>
-              )}
-              {canManage && !isEditing && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-quiet"
-                    onClick={() => startEditing(event)}
-                  >
-                    Изменить
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-danger"
-                    onClick={() => void deleteEvent(event.id)}
-                    disabled={deletingEventId === event.id}
-                  >
-                    {deletingEventId === event.id ? 'Удаляем…' : 'Удалить'}
-                  </button>
                 </div>
               )}
             </div>
