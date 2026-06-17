@@ -111,7 +111,43 @@ describe('request error normalization', () => {
     );
 
     await expect(request('/finance_statements/statement-1/mark-paid/')).rejects.toThrow(
-      'Укажите дату оплаты ведомости.',
+      'paid_at: Укажите дату оплаты ведомости.',
+    );
+  });
+
+  it('keeps known DRF field labels in validation messages', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ deal: ['Must be a valid UUID.'] }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(request('/policies/draft/')).rejects.toThrow('Сделка: Must be a valid UUID.');
+  });
+
+  it('keeps multiple DRF field errors with labels', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            insurance_company: ['Must be a valid UUID.'],
+            insurance_type: ['This field is required.'],
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      ),
+    );
+
+    await expect(request('/policies/draft/')).rejects.toThrow(
+      'Страховая компания: Must be a valid UUID. Тип страхования: This field is required.',
     );
   });
 });

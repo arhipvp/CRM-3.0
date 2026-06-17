@@ -17,6 +17,50 @@ import {
 } from './helpers';
 import { mapPayment, mapPolicy } from './mappers';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const POLICY_DRAFT_ID_LABELS = {
+  dealId: 'Сделка',
+  insuranceCompanyId: 'Страховая компания',
+  insuranceTypeId: 'Тип страхования',
+  clientId: 'Страхователь',
+  salesChannelId: 'Канал продаж',
+  policyId: 'Полис',
+  paymentId: 'Платёж',
+  financialRecordId: 'Финансовая запись',
+};
+
+const assertUuid = (value: string | undefined | null, label: string, required = false) => {
+  const normalized = value?.trim();
+  if (!normalized) {
+    if (required) {
+      throw new Error(`${label}: укажите значение.`);
+    }
+    return;
+  }
+  if (!UUID_PATTERN.test(normalized)) {
+    throw new Error(`${label}: должен быть корректным UUID.`);
+  }
+};
+
+const validatePolicyDraftPayload = (
+  data: PolicyDraftPayload,
+  options: { requireDeal: boolean },
+) => {
+  assertUuid(data.dealId, POLICY_DRAFT_ID_LABELS.dealId, options.requireDeal);
+  assertUuid(data.insuranceCompanyId, POLICY_DRAFT_ID_LABELS.insuranceCompanyId, true);
+  assertUuid(data.insuranceTypeId, POLICY_DRAFT_ID_LABELS.insuranceTypeId, true);
+  assertUuid(data.clientId, POLICY_DRAFT_ID_LABELS.clientId);
+  assertUuid(data.salesChannelId, POLICY_DRAFT_ID_LABELS.salesChannelId);
+
+  (data.payments ?? []).forEach((payment) => {
+    assertUuid(payment.id, POLICY_DRAFT_ID_LABELS.paymentId);
+    [...(payment.incomes ?? []), ...(payment.expenses ?? [])].forEach((record) => {
+      assertUuid(record.id, POLICY_DRAFT_ID_LABELS.financialRecordId);
+    });
+  });
+};
+
 export async function fetchPolicies(filters?: FilterParams): Promise<Policy[]> {
   const qs = buildQueryString(filters);
   const payload = await request(`/policies/${qs}`);
@@ -200,6 +244,7 @@ const mapPolicyDraftSaveResult = (payload: Record<string, unknown>): PolicyDraft
 });
 
 export async function createPolicyDraft(data: PolicyDraftPayload): Promise<PolicyDraftSaveResult> {
+  validatePolicyDraftPayload(data, { requireDeal: true });
   const payload = await request<Record<string, unknown>>('/policies/draft/', {
     method: 'POST',
     body: JSON.stringify(buildPolicyDraftBody(data)),
@@ -211,6 +256,8 @@ export async function updatePolicyDraft(
   id: string,
   data: PolicyDraftPayload,
 ): Promise<PolicyDraftSaveResult> {
+  assertUuid(id, POLICY_DRAFT_ID_LABELS.policyId, true);
+  validatePolicyDraftPayload(data, { requireDeal: false });
   const payload = await request<Record<string, unknown>>(`/policies/${id}/draft/`, {
     method: 'PATCH',
     body: JSON.stringify(buildPolicyDraftBody(data)),

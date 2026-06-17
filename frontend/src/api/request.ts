@@ -38,6 +38,18 @@ const looksLikeHtml = (value: string): boolean => {
   );
 };
 
+const FIELD_ERROR_LABELS: Record<string, string> = {
+  deal: 'Сделка',
+  insurance_company: 'Страховая компания',
+  insurance_type: 'Тип страхования',
+  client: 'Страхователь',
+  sales_channel: 'Канал продаж',
+};
+
+const DIRECT_ERROR_KEYS = ['detail', 'message', 'error', 'non_field_errors'];
+
+const formatFieldErrorLabel = (field: string): string => FIELD_ERROR_LABELS[field] ?? field;
+
 const stringifyErrorPayload = (payload: unknown): string | null => {
   if (typeof payload === 'string') {
     const trimmed = payload.trim();
@@ -61,8 +73,11 @@ const stringifyErrorPayload = (payload: unknown): string | null => {
     }
 
     const parts = Object.entries(record)
-      .filter(([key]) => !['detail', 'message', 'error', 'non_field_errors'].includes(key))
-      .map(([, value]) => stringifyErrorPayload(value))
+      .filter(([key]) => !DIRECT_ERROR_KEYS.includes(key))
+      .map(([key, value]) => {
+        const message = stringifyErrorPayload(value);
+        return message ? `${formatFieldErrorLabel(key)}: ${message}` : null;
+      })
       .filter((item): item is string => Boolean(item));
     return parts.length ? parts.join(' ') : null;
   }
