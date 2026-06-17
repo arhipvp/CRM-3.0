@@ -43,8 +43,6 @@ interface DealFormProps {
   showSellerField?: boolean;
   showNextContactField?: boolean;
   quickNextContactOptions?: QuickNextContactOption[];
-  expectedCloseRequired?: boolean;
-  expectedCloseLabel?: string;
   nextContactLabel?: string;
   submitLabel?: string;
   submittingLabel?: string;
@@ -97,8 +95,6 @@ export const DealForm: React.FC<DealFormProps> = ({
   showSellerField = false,
   showNextContactField = false,
   quickNextContactOptions,
-  expectedCloseRequired = false,
-  expectedCloseLabel,
   nextContactLabel = 'Следующий контакт',
   submitLabel,
   submittingLabel,
@@ -115,7 +111,6 @@ export const DealForm: React.FC<DealFormProps> = ({
   const initialTitle = initialValues?.title ?? '';
   const initialDescription = initialValues?.description ?? '';
   const initialSource = initialValues?.source ?? '';
-  const initialExpectedClose = initialValues?.expectedClose ?? '';
   const initialExecutorId = initialValues?.executorId ?? defaultExecutorId ?? '';
   const initialSellerId = initialValues?.sellerId ?? '';
   const initialNextContactDate = initialValues?.nextContactDate ?? '';
@@ -131,7 +126,6 @@ export const DealForm: React.FC<DealFormProps> = ({
   const [clientQuery, setClientQuery] = useState(initialClientQuery);
   const [description, setDescription] = useState(initialDescription);
   const [source, setSource] = useState(initialSource);
-  const [expectedClose, setExpectedClose] = useState(initialExpectedClose);
   const [executorId, setExecutorId] = useState(initialExecutorId);
   const [sellerId, setSellerId] = useState(initialSellerId);
   const [nextContactDate, setNextContactDate] = useState(initialNextContactDate);
@@ -154,10 +148,6 @@ export const DealForm: React.FC<DealFormProps> = ({
   useEffect(() => {
     setSource(initialSource);
   }, [initialSource]);
-
-  useEffect(() => {
-    setExpectedClose(initialExpectedClose);
-  }, [initialExpectedClose]);
 
   useEffect(() => {
     if (initialValues?.executorId !== undefined) {
@@ -343,7 +333,6 @@ export const DealForm: React.FC<DealFormProps> = ({
       title: trimmedTitle,
       clientId: selectedClientId,
       description: trimmedDescription,
-      expectedClose: expectedClose || null,
       executorId: executorId || undefined,
       source: source.trim(),
       ...(showSellerField ? { sellerId: sellerId || null } : {}),
@@ -578,15 +567,6 @@ export const DealForm: React.FC<DealFormProps> = ({
           </div>
         </FormField>
       )}
-
-      <FormField label={expectedCloseLabel ?? 'Крайний срок'} required={expectedCloseRequired}>
-        <DateInput
-          value={expectedClose}
-          onChange={(event) => setExpectedClose(event.target.value)}
-          className="field field-input"
-          required={expectedCloseRequired}
-        />
-      </FormField>
 
       <FormActions
         isSubmitting={isSubmitting}

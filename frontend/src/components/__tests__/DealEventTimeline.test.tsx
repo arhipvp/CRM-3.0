@@ -44,7 +44,7 @@ const manualExpectedCloseEvent: DealTimelineEvent = {
   eventType: 'manual_expected_close',
   eventTypeDisplay: 'Дата страхования вручную',
   eventDate: '2027-06-18',
-  title: 'Дата «Застраховать до» выставлена вручную',
+  title: 'Ручной крайний срок выставлен',
   description: 'Дата изменена с — на 2027-06-18.',
   sourceType: 'deal',
   sourceId: 'deal-1',

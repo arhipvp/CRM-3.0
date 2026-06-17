@@ -72,7 +72,6 @@ describe('useDealDetailsPanelActions', () => {
     expect(result.current.delayValidationError).toBeNull();
     expect(onScheduleDelay).toHaveBeenCalledWith({
       nextContactDate: '2026-08-25',
-      expectedClose: '2026-10-24',
     });
   });
 

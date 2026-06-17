@@ -78,8 +78,10 @@ def create_manual_date_event(
         return None
 
     if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE:
-        title = "Дата «Застраховать до» выставлена вручную"
-        description = f"Дата изменена с {old_value or '—'} на {new_value or '—'}."
+        title = "Ручной крайний срок выставлен"
+        description = (
+            f"Крайний срок изменён с {old_value or '—'} на {new_value or '—'}."
+        )
     else:
         title = "Следующий контакт выставлен вручную"
         description = f"Дата следующего контакта изменена с {old_value or '—'} на {new_value or '—'}."

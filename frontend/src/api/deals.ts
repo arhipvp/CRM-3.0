@@ -4,6 +4,7 @@ import { mapActivityLog, mapDeal, mapDealTimelineEvent, mapQuote } from './mappe
 import type {
   ActivityLog,
   Deal,
+  DealTimelineEventType,
   DealTimelineEvent,
   DealMergeResponse,
   DealMergePreviewResponse,
@@ -93,7 +94,6 @@ export async function createDeal(data: {
       title: data.title,
       description: data.description,
       client: data.clientId,
-      expected_close: data.expectedClose || null,
       executor: data.executorId || null,
       source: data.source?.trim() ?? '',
       visible_users: data.visibleUserIds ?? [],
@@ -145,7 +145,6 @@ export async function updateDeal(
     description: data.description,
     client: data.clientId,
     next_contact_date: data.nextContactDate || null,
-    expected_close: data.expectedClose || null,
     stage_name: data.stageName,
   };
   if ('executorId' in data) {
@@ -220,6 +219,7 @@ export async function fetchDealEvents(
 export async function createDealEvent(
   dealId: string,
   data: {
+    eventType?: Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
     eventDate: string;
     reason: string;
   },
@@ -227,6 +227,7 @@ export async function createDealEvent(
   const payload = await request(`/deals/${dealId}/events/`, {
     method: 'POST',
     body: JSON.stringify({
+      event_type: data.eventType ?? 'manual',
       event_date: data.eventDate,
       reason: data.reason,
     }),
@@ -238,11 +239,15 @@ export async function updateDealEvent(
   dealId: string,
   eventId: string,
   data: {
+    eventType?: Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
     eventDate?: string;
     reason?: string;
   },
 ): Promise<DealTimelineEvent> {
   const body: Record<string, string> = {};
+  if (data.eventType !== undefined) {
+    body.event_type = data.eventType;
+  }
   if (data.eventDate !== undefined) {
     body.event_date = data.eventDate;
   }

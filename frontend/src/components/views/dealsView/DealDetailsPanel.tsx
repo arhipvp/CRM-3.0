@@ -347,9 +347,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     nextContactInputValue,
     expectedCloseInputValue,
     handleNextContactChange,
-    handleExpectedCloseChange,
     handleNextContactBlur,
-    handleExpectedCloseBlur,
     handleQuickNextContactShift,
     quickInlinePostponeShift,
     quickInlineShift,
@@ -652,9 +650,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     const matchingDate = dealTimelineEvents.filter(
       (event) =>
         event.eventDate === selectedDeal.expectedClose &&
-        ['policy_expiration', 'payment_due', 'manual_expected_close', 'manual'].includes(
-          event.eventType,
-        ),
+        ['policy_expiration', 'payment_due', 'manual_expected_close'].includes(event.eventType),
     );
     if (matchingDate.length > 0) {
       return matchingDate;
@@ -663,14 +659,19 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   }, [dealTimelineEvents, selectedDeal?.expectedClose]);
 
   const handleCreateManualDealEvent = useCallback(
-    async (data: { eventDate: string; reason: string }) => {
+    async (data: {
+      eventType?: 'manual' | 'manual_expected_close';
+      eventDate: string;
+      reason: string;
+    }) => {
       if (!selectedDeal?.id) {
         throw new Error('Сделка не выбрана');
       }
       await onCreateDealEvent(selectedDeal.id, data);
       await loadDealEvents();
+      await handleRefreshDealWithContext();
     },
-    [loadDealEvents, onCreateDealEvent, selectedDeal?.id],
+    [handleRefreshDealWithContext, loadDealEvents, onCreateDealEvent, selectedDeal?.id],
   );
 
   const handleUpdateManualDealEvent = useCallback(
@@ -680,8 +681,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       }
       await onUpdateDealEvent(selectedDeal.id, eventId, data);
       await loadDealEvents();
+      await handleRefreshDealWithContext();
     },
-    [loadDealEvents, onUpdateDealEvent, selectedDeal?.id],
+    [handleRefreshDealWithContext, loadDealEvents, onUpdateDealEvent, selectedDeal?.id],
   );
 
   const handleDeleteManualDealEvent = useCallback(
@@ -691,8 +693,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       }
       await onDeleteDealEvent(selectedDeal.id, eventId);
       await loadDealEvents();
+      await handleRefreshDealWithContext();
     },
-    [loadDealEvents, onDeleteDealEvent, selectedDeal?.id],
+    [handleRefreshDealWithContext, loadDealEvents, onDeleteDealEvent, selectedDeal?.id],
   );
 
   return (
@@ -760,8 +763,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               quickOptions={quickInlineDateOptions}
               onNextContactChange={handleNextContactChange}
               onNextContactBlur={handleNextContactBlur}
-              onExpectedCloseChange={handleExpectedCloseChange}
-              onExpectedCloseBlur={handleExpectedCloseBlur}
               onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
               expectedCloseReasons={expectedCloseReasons}
               isExpectedCloseReasonsLoading={isDealEventsLoading}

@@ -36,7 +36,7 @@ interface UseDealDetailsPanelActionsParams {
   }>;
   onRefreshDeal?: (dealId: string) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
-  onScheduleDelay: (payload: { nextContactDate: string; expectedClose: string }) => Promise<void>;
+  onScheduleDelay: (payload: { nextContactDate: string }) => Promise<void>;
   onLoadChatMessages: () => Promise<void>;
   onLoadActivityLogs: () => Promise<void>;
   onReloadNotes: () => Promise<void>;
@@ -331,7 +331,6 @@ export const useDealDetailsPanelActions = ({
       action: () =>
         onScheduleDelay({
           nextContactDate: delayNextContactInput,
-          expectedClose: selectedDelayEvent.date,
         }),
       debugLabel: 'Deal delay schedule failed',
       fallbackMessage: 'Не удалось обновить даты сделки.',

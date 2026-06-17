@@ -217,7 +217,6 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
               sellerId: selectedDeal.seller ?? null,
               source: selectedDeal.source ?? '',
               nextContactDate: selectedDeal.nextContactDate ?? null,
-              expectedClose: selectedDeal.expectedClose ?? null,
               visibleUserIds: selectedDeal.visibleUsers ?? [],
             }}
             mode="edit"

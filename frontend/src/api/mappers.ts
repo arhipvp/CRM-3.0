@@ -206,6 +206,10 @@ export const mapDeal = (raw: Record<string, unknown>): Deal => {
     isPinned: Boolean(raw.is_pinned ?? raw.isPinned ?? false),
     expectedClose:
       raw.expected_close === undefined ? undefined : toNullableString(raw.expected_close),
+    manualExpectedClose:
+      raw.manual_expected_close === undefined
+        ? undefined
+        : toNullableString(raw.manual_expected_close),
     nextContactDate:
       raw.next_contact_date === undefined ? undefined : toNullableString(raw.next_contact_date),
     source: toOptionalString(raw.source),

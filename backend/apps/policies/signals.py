@@ -4,6 +4,7 @@ import logging
 
 from apps.common.audit_helpers import serialize_model_fields, store_old_values
 from apps.common.drive import DriveError, ensure_policy_folder
+from apps.deals.deadline_service import recalculate_deal_deadline
 from apps.users.models import AuditLog
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
@@ -80,6 +81,7 @@ def log_policy_change(sender, instance, created, **kwargs):
         logger.exception(
             "Failed to sync Google Drive folder for policy %s", instance.pk
         )
+    recalculate_deal_deadline(instance.deal_id)
 
 
 @receiver(post_delete, sender=Policy)
@@ -97,3 +99,4 @@ def log_policy_delete(sender, instance, **kwargs):
         action="hard_delete",
         description=f"Окончательно удалён {policy_name}",
     )
+    recalculate_deal_deadline(instance.deal_id)

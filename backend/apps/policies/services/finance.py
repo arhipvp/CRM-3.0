@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from apps.clients.models import Client
+from apps.deals.deadline_service import recalculate_deal_deadline
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment
 from django.db import transaction
@@ -258,4 +259,5 @@ def apply_policy_draft(
         move_recognized_files_to_policy_folder(policy, file_ids)
         detach_source_files_from_notes(policy.deal, file_ids)
 
+    recalculate_deal_deadline(policy.deal_id)
     return _refresh_policy_graph(policy)

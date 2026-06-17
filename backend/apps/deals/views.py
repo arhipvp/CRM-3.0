@@ -33,6 +33,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from .deadline_service import sync_manual_expected_close_from_events
 from .event_service import (
     create_manual_date_event,
     get_deal_events,
@@ -275,13 +276,26 @@ class DealViewSet(
                 )
             serializer = ManualDealEventSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            event_type = serializer.validated_data["event_type"]
             event = DealEvent.objects.create(
                 deal=deal,
-                event_type=DealEvent.EventType.MANUAL,
+                event_type=event_type,
                 event_date=serializer.validated_data["event_date"],
                 title=serializer.validated_data["reason"],
+                source_type=(
+                    "deal"
+                    if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
+                    else ""
+                ),
+                source_id=(
+                    str(deal.id)
+                    if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
+                    else ""
+                ),
                 actor=request.user if request.user.is_authenticated else None,
             )
+            if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE:
+                sync_manual_expected_close_from_events(deal.id)
             return Response(
                 DealEventSerializer(stored_event_payload(event)).data,
                 status=status.HTTP_201_CREATED,
@@ -318,21 +332,33 @@ class DealViewSet(
                 {"detail": "Можно изменять только ручные события."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        was_deadline_event = (
+            event.event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
+        )
         if request.method == "DELETE":
             event.delete()
+            if was_deadline_event:
+                sync_manual_expected_close_from_events(deal.id)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         serializer = ManualDealEventSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        if "event_type" in serializer.validated_data:
+            event.event_type = serializer.validated_data["event_type"]
         if "event_date" in serializer.validated_data:
             event.event_date = serializer.validated_data["event_date"]
         if "reason" in serializer.validated_data:
             event.title = serializer.validated_data["reason"]
         event.description = ""
-        event.source_type = ""
-        event.source_id = ""
+        if event.event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE:
+            event.source_type = "deal"
+            event.source_id = str(deal.id)
+        else:
+            event.source_type = ""
+            event.source_id = ""
         event.save(
             update_fields=[
+                "event_type",
                 "event_date",
                 "title",
                 "description",
@@ -340,6 +366,11 @@ class DealViewSet(
                 "source_id",
             ]
         )
+        if (
+            was_deadline_event
+            or event.event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
+        ):
+            sync_manual_expected_close_from_events(deal.id)
         event.refresh_from_db()
         return Response(DealEventSerializer(stored_event_payload(event)).data)
 
@@ -460,7 +491,6 @@ class DealViewSet(
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        previous_expected_close = instance.expected_close
         previous_next_contact_date = instance.next_contact_date
         previous_ids = set(instance.visible_users.values_list("id", flat=True))
         self._reject_viewer_update(request, instance)
@@ -468,11 +498,10 @@ class DealViewSet(
         if response:
             return response
         response = super().update(request, *args, **kwargs)
-        instance.refresh_from_db(fields=["expected_close", "next_contact_date"])
+        instance.refresh_from_db(fields=["next_contact_date"])
         self._log_manual_date_events(
             instance,
             request,
-            previous_expected_close=previous_expected_close,
             previous_next_contact_date=previous_next_contact_date,
         )
         self._log_viewer_changes(instance, previous_ids)
@@ -509,22 +538,9 @@ class DealViewSet(
         deal: Deal,
         request,
         *,
-        previous_expected_close,
         previous_next_contact_date,
     ):
         actor = request.user if request.user and request.user.is_authenticated else None
-        if (
-            "expected_close" in request.data
-            and previous_expected_close != deal.expected_close
-        ):
-            create_manual_date_event(
-                deal=deal,
-                event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
-                event_date=deal.expected_close,
-                actor=actor,
-                old_value=previous_expected_close,
-                new_value=deal.expected_close,
-            )
         if (
             "next_contact_date" in request.data
             and previous_next_contact_date != deal.next_contact_date

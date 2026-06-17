@@ -10,6 +10,7 @@ import { PoliciesTab } from './tabs/PoliciesTab';
 import { QuotesTab } from './tabs/QuotesTab';
 import { TasksTab } from './tabs/TasksTab';
 import type { ActivityLog } from '../../../types';
+import type { DealTimelineEventType } from '../../../types';
 import type { DealTabId } from './helpers';
 
 interface DealDetailsPanelTabContentProps {
@@ -27,7 +28,11 @@ interface DealDetailsPanelTabContentProps {
     dealEventsError: string | null;
     dealTimelineEvents: React.ComponentProps<typeof DealEventTimeline>['events'];
     isDealEventsLoading: boolean;
-    onCreateManualEvent: (data: { eventDate: string; reason: string }) => Promise<void>;
+    onCreateManualEvent: (data: {
+      eventType?: Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
+      eventDate: string;
+      reason: string;
+    }) => Promise<void>;
     onUpdateManualEvent: (
       eventId: string,
       data: { eventDate?: string; reason?: string },
@@ -49,6 +54,8 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
   activityProps,
 }) => {
   const [manualEventDate, setManualEventDate] = React.useState(getTodayInputValue);
+  const [manualEventType, setManualEventType] =
+    React.useState<Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>>('manual');
   const [manualEventReason, setManualEventReason] = React.useState('');
   const [manualEventError, setManualEventError] = React.useState<string | null>(null);
   const [isManualEventFormOpen, setIsManualEventFormOpen] = React.useState(false);
@@ -56,6 +63,7 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
 
   const resetManualEventForm = () => {
     setManualEventDate(getTodayInputValue());
+    setManualEventType('manual');
     setManualEventReason('');
     setManualEventError(null);
   };
@@ -77,6 +85,7 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
     setIsManualEventSaving(true);
     try {
       await activityProps.onCreateManualEvent({
+        eventType: manualEventType,
         eventDate: manualEventDate,
         reason,
       });
@@ -145,7 +154,7 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
                   Отмена
                 </button>
               </div>
-              <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)_auto] md:items-end">
+              <div className="grid gap-3 md:grid-cols-[180px_220px_minmax(0,1fr)_auto] md:items-end">
                 <label className="space-y-1 text-sm font-medium text-slate-700">
                   <span>Дата</span>
                   <input
@@ -154,6 +163,24 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
                     value={manualEventDate}
                     onChange={(event) => setManualEventDate(event.target.value)}
                   />
+                </label>
+                <label className="space-y-1 text-sm font-medium text-slate-700">
+                  <span>Тип</span>
+                  <select
+                    className="input"
+                    value={manualEventType}
+                    onChange={(event) =>
+                      setManualEventType(
+                        event.target.value as Extract<
+                          DealTimelineEventType,
+                          'manual' | 'manual_expected_close'
+                        >,
+                      )
+                    }
+                  >
+                    <option value="manual">Обычное событие</option>
+                    <option value="manual_expected_close">Ручной крайний срок</option>
+                  </select>
                 </label>
                 <label className="space-y-1 text-sm font-medium text-slate-700">
                   <span>Причина</span>

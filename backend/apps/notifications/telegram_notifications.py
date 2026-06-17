@@ -228,7 +228,7 @@ def send_expected_close_reminders() -> None:
                 attention_prefix = f"{URGENT_PREFIX} Внимание!"
             text = _append_link(
                 (
-                    f"{attention_prefix} Застраховать до {formatted_date}, "
+                    f"{attention_prefix} Крайний срок {formatted_date}, "
                     f"осталось {delta_days} дн.{deal_part}"
                 ),
                 deal.id,

@@ -570,7 +570,7 @@ export const SettingsView: React.FC = () => {
                   className="check"
                   disabled={telegramSaving}
                 />
-                Напоминания «Застраховать долг»
+                Напоминания «Крайний срок»
               </label>
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <input

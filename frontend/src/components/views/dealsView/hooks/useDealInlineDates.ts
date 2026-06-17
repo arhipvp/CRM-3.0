@@ -3,8 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Deal } from '../../../../types';
 import type { DealFormValues } from '../../../forms/DealForm';
 
-type DateField = 'nextContactDate' | 'expectedClose';
-
 const QUICK_INLINE_DATE_OPTIONS = [
   { label: 'завтра', days: 1 },
   { label: '+2 дня', days: 2 },
@@ -37,10 +35,7 @@ export const useDealInlineDates = ({
   const [expectedCloseInputValue, setExpectedCloseInputValue] = useState('');
 
   const buildPayload = useCallback(
-    (fields: {
-      nextContactDate?: string | null;
-      expectedClose?: string | null;
-    }): DealFormValues | null => {
+    (fields: { nextContactDate?: string | null }): DealFormValues | null => {
       if (!selectedDeal) {
         return null;
       }
@@ -51,14 +46,13 @@ export const useDealInlineDates = ({
         clientId: selectedDeal.clientId,
         source: selectedDeal.source ?? null,
         nextContactDate: fields.nextContactDate ?? selectedDeal.nextContactDate ?? null,
-        expectedClose: fields.expectedClose ?? selectedDeal.expectedClose ?? null,
       };
     },
     [selectedDeal],
   );
 
   const updateDealDates = useCallback(
-    async (fields: { nextContactDate?: string | null; expectedClose?: string | null }) => {
+    async (fields: { nextContactDate?: string | null }) => {
       const payload = buildPayload(fields);
       if (!payload || !selectedDeal) {
         return;
@@ -77,11 +71,7 @@ export const useDealInlineDates = ({
   }, [selectedDeal?.id, selectedDeal?.expectedClose]);
 
   const handleInlineDateSave = useCallback(
-    async (
-      field: DateField,
-      rawValue: string,
-      options?: { selectTopDeal?: boolean },
-    ): Promise<void> => {
+    async (rawValue: string, options?: { selectTopDeal?: boolean }): Promise<void> => {
       if (!selectedDeal) {
         return;
       }
@@ -89,16 +79,8 @@ export const useDealInlineDates = ({
       const value = rawValue || null;
 
       try {
-        await updateDealDates(
-          field === 'nextContactDate' ? { nextContactDate: value } : { expectedClose: value },
-        );
-
-        if (field === 'nextContactDate') {
-          setNextContactInputValue(value ?? '');
-        }
-        if (field === 'expectedClose') {
-          setExpectedCloseInputValue(value ?? '');
-        }
+        await updateDealDates({ nextContactDate: value });
+        setNextContactInputValue(value ?? '');
 
         if (options?.selectTopDeal) {
           const topDeal = sortedDeals[0];
@@ -117,24 +99,15 @@ export const useDealInlineDates = ({
     setNextContactInputValue(value);
   }, []);
 
-  const handleExpectedCloseChange = useCallback((value: string) => {
-    setExpectedCloseInputValue(value);
-  }, []);
-
   const handleNextContactBlur = useCallback(
-    (value: string) => handleInlineDateSave('nextContactDate', value),
-    [handleInlineDateSave],
-  );
-
-  const handleExpectedCloseBlur = useCallback(
-    (value: string) => handleInlineDateSave('expectedClose', value),
+    (value: string) => handleInlineDateSave(value),
     [handleInlineDateSave],
   );
 
   const handleQuickNextContactShift = useCallback(
     (newValue: string) => {
       setNextContactInputValue(newValue);
-      return handleInlineDateSave('nextContactDate', newValue, { selectTopDeal: true });
+      return handleInlineDateSave(newValue, { selectTopDeal: true });
     },
     [handleInlineDateSave],
   );
@@ -143,7 +116,6 @@ export const useDealInlineDates = ({
     async (
       fields: {
         nextContactDate?: string | null;
-        expectedClose?: string | null;
       },
       options?: { updateInput?: boolean },
     ) => {
@@ -156,7 +128,6 @@ export const useDealInlineDates = ({
       }
       const payload = buildPayload({
         nextContactDate: fields.nextContactDate ?? null,
-        expectedClose: fields.expectedClose,
       });
       if (!payload) {
         return;
@@ -172,7 +143,7 @@ export const useDealInlineDates = ({
   );
 
   const postponeDealDates = useCallback(
-    async (fields: { nextContactDate?: string | null; expectedClose?: string | null }) => {
+    async (fields: { nextContactDate?: string | null }) => {
       await handleQuickNextContactPostpone(fields, { updateInput: true });
     },
     [handleQuickNextContactPostpone],
@@ -209,9 +180,7 @@ export const useDealInlineDates = ({
     nextContactInputValue,
     expectedCloseInputValue,
     handleNextContactChange,
-    handleExpectedCloseChange,
     handleNextContactBlur,
-    handleExpectedCloseBlur,
     handleQuickNextContactShift,
     handleQuickNextContactPostpone,
     quickInlineShift,

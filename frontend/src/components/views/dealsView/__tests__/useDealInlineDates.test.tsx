@@ -132,7 +132,6 @@ describe('useDealInlineDates', () => {
     await act(async () => {
       await resultRef.current?.postponeDealDates({
         nextContactDate: '2025-01-12',
-        expectedClose: '2025-01-20',
       });
     });
 
@@ -141,7 +140,6 @@ describe('useDealInlineDates', () => {
         deal.id,
         expect.objectContaining({
           nextContactDate: '2025-01-12',
-          expectedClose: '2025-01-20',
         }),
       );
     });

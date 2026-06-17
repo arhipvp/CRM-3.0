@@ -228,6 +228,7 @@ export interface Deal {
   stageName?: string;
   isPinned?: boolean;
   expectedClose?: string | null;
+  manualExpectedClose?: string | null;
   nextContactDate?: string | null;
   source?: string;
   lossReason?: string;

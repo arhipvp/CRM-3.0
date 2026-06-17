@@ -15,8 +15,6 @@ interface DealDateControlsProps {
   quickOptions: QuickOption[];
   onNextContactChange: (value: string) => void;
   onNextContactBlur: (value: string) => void;
-  onExpectedCloseChange: (value: string) => void;
-  onExpectedCloseBlur: (value: string) => void;
   onQuickShift: (days: number) => void;
   expectedCloseReasons?: DealTimelineEvent[];
   isExpectedCloseReasonsLoading?: boolean;
@@ -29,8 +27,6 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
   quickOptions,
   onNextContactChange,
   onNextContactBlur,
-  onExpectedCloseChange,
-  onExpectedCloseBlur,
   onQuickShift,
   expectedCloseReasons = [],
   isExpectedCloseReasonsLoading = false,
@@ -60,16 +56,11 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
       </div>
     </div>
     <div>
-      <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>
-        Застраховать до
-      </p>
+      <p className={`text-xs uppercase tracking-wide ${headerExpectedCloseTone}`}>Крайний срок</p>
       <div className="mt-1 flex flex-col gap-2">
-        <DateInput
-          value={expectedCloseValue}
-          onChange={(event) => onExpectedCloseChange(event.target.value)}
-          onBlur={(event) => onExpectedCloseBlur(event.target.value)}
-          className="field field-input max-w-[220px] font-semibold text-slate-900"
-        />
+        <div className="field field-input flex min-h-[40px] max-w-[220px] items-center font-semibold text-slate-900">
+          {expectedCloseValue || '—'}
+        </div>
         <div className="max-w-[360px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
             Почему эта дата

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapDealTimelineEvent, mapTask } from '../mappers';
+import { mapDeal, mapDealTimelineEvent, mapTask } from '../mappers';
 
 describe('mapTask', () => {
   it('maps completion comment from API payload', () => {
@@ -15,6 +15,23 @@ describe('mapTask', () => {
     });
 
     expect(task.completionComment).toBe('Посчитано в Сбер.');
+  });
+});
+
+describe('mapDeal', () => {
+  it('maps manual expected close from API payload', () => {
+    const deal = mapDeal({
+      id: 'deal-1',
+      title: 'Deal',
+      client: 'client-1',
+      status: 'open',
+      expected_close: '2026-07-01',
+      manual_expected_close: '2026-08-01',
+      created_at: '2026-06-17T10:00:00Z',
+    });
+
+    expect(deal.expectedClose).toBe('2026-07-01');
+    expect(deal.manualExpectedClose).toBe('2026-08-01');
   });
 });
 

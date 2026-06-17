@@ -45,6 +45,7 @@ describe('DealDetailsPanelTabContent', () => {
 
     await waitFor(() => {
       expect(onCreateManualEvent).toHaveBeenCalledWith({
+        eventType: 'manual',
         eventDate: '2027-06-16',
         reason: 'Предположительно купит квартиру, предложить застраховать',
       });
@@ -52,6 +53,53 @@ describe('DealDetailsPanelTabContent', () => {
 
     expect(screen.queryByLabelText('Причина')).not.toBeInTheDocument();
     expect(screen.getByText('Добавить событие')).toBeInTheDocument();
+  });
+
+  it('creates manual deadline event from events tab form', async () => {
+    const onCreateManualEvent = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DealDetailsPanelTabContent
+        activeTab="events"
+        notesSectionProps={{} as never}
+        tasksTabProps={{} as never}
+        policiesTabProps={{} as never}
+        quotesTabProps={{} as never}
+        filesTabProps={{} as never}
+        chatTabProps={{} as never}
+        activityProps={{
+          activityError: null,
+          activityLogs: [],
+          isActivityLoading: false,
+          dealEventsError: null,
+          dealTimelineEvents: [],
+          isDealEventsLoading: false,
+          onCreateManualEvent,
+          onUpdateManualEvent: vi.fn().mockResolvedValue(undefined),
+          onDeleteManualEvent: vi.fn().mockResolvedValue(undefined),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Добавить событие'));
+    fireEvent.change(screen.getByLabelText('Дата'), {
+      target: { value: '2027-06-16' },
+    });
+    fireEvent.change(screen.getByLabelText('Тип'), {
+      target: { value: 'manual_expected_close' },
+    });
+    fireEvent.change(screen.getByLabelText('Причина'), {
+      target: { value: 'Ручной срок по просьбе клиента' },
+    });
+    fireEvent.click(screen.getByText('Добавить'));
+
+    await waitFor(() => {
+      expect(onCreateManualEvent).toHaveBeenCalledWith({
+        eventType: 'manual_expected_close',
+        eventDate: '2027-06-16',
+        reason: 'Ручной срок по просьбе клиента',
+      });
+    });
   });
 
   it('collapses manual event form and clears validation error on cancel', () => {

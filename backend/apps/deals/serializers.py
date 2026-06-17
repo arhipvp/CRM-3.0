@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 from .models import (
     Deal,
+    DealEvent,
     DealViewer,
     InsuranceCompany,
     InsuranceType,
@@ -157,6 +158,7 @@ class DealSerializer(serializers.ModelSerializer):
     documents = DocumentBriefSerializer(many=True, read_only=True)
     next_contact_date = DateOrDateTimeField(required=False, allow_null=True)
     expected_close = DateOrDateTimeField(required=False, allow_null=True)
+    manual_expected_close = DateOrDateTimeField(required=False, allow_null=True)
     next_review_date = DateOrDateTimeField(required=False, allow_null=True)
     payments_total = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
@@ -215,6 +217,19 @@ class DealSerializer(serializers.ModelSerializer):
         if not user or not user.is_authenticated:
             return False
         return obj.pins.filter(user=user).exists()
+
+    def validate(self, attrs):
+        raw_data = getattr(self, "initial_data", {}) or {}
+        forbidden = {}
+        if "expected_close" in raw_data:
+            forbidden["expected_close"] = "Крайний срок меняется через события сделки."
+        if "manual_expected_close" in raw_data:
+            forbidden["manual_expected_close"] = (
+                "Ручной крайний срок меняется через события сделки."
+            )
+        if forbidden:
+            raise serializers.ValidationError(forbidden)
+        return super().validate(attrs)
 
     def get_policies(self, obj: Deal):
         if not self.context.get("include_policies"):
@@ -327,6 +342,14 @@ class DealEventSerializer(serializers.Serializer):
 
 
 class ManualDealEventSerializer(serializers.Serializer):
+    event_type = serializers.ChoiceField(
+        choices=(
+            (DealEvent.EventType.MANUAL, "Ручное событие"),
+            (DealEvent.EventType.MANUAL_EXPECTED_CLOSE, "Ручной крайний срок"),
+        ),
+        required=False,
+        default=DealEvent.EventType.MANUAL,
+    )
     event_date = serializers.DateField()
     reason = serializers.CharField(max_length=255, trim_whitespace=True)
 

@@ -115,6 +115,11 @@ class Deal(SoftDeleteModel):
     expected_close = models.DateField(
         null=True, blank=True, help_text="Плановая дата закрытия"
     )
+    manual_expected_close = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Ручной крайний срок сделки",
+    )
     next_contact_date = models.DateField(
         default=timezone.now,
         help_text="Дата следующего контакта (по-умолчанию - текущая дата)",
@@ -241,7 +246,7 @@ class DealTimeTick(models.Model):
 class DealEvent(models.Model):
     class EventType(models.TextChoices):
         MANUAL = "manual", "Ручное событие"
-        MANUAL_EXPECTED_CLOSE = "manual_expected_close", "Дата страхования вручную"
+        MANUAL_EXPECTED_CLOSE = "manual_expected_close", "Ручной крайний срок"
         MANUAL_NEXT_CONTACT = "manual_next_contact", "Следующий контакт вручную"
         PAYMENT_DUE = "payment_due", "Очередной платеж"
         POLICY_EXPIRATION = "policy_expiration", "Окончание полиса"

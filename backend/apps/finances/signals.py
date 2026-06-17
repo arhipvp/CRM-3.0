@@ -4,6 +4,7 @@ import logging
 
 from apps.common.audit_helpers import serialize_model_fields, store_old_values
 from apps.common.drive import DriveError, ensure_statement_folder
+from apps.deals.deadline_service import recalculate_deadline_for_payment
 from apps.users.models import AuditLog
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
@@ -75,6 +76,7 @@ def log_payment_change(sender, instance, created, **kwargs):
         delattr(instance, "_now_deleted")
     if hasattr(instance, "_old_value"):
         delattr(instance, "_old_value")
+    recalculate_deadline_for_payment(instance)
 
 
 @receiver(post_delete, sender=Payment)
@@ -92,6 +94,7 @@ def log_payment_delete(sender, instance, **kwargs):
         action="hard_delete",
         description=f"Окончательно удалён {payment_name}",
     )
+    recalculate_deadline_for_payment(instance)
 
 
 # ============ FINANCIAL RECORD SIGNALS ============

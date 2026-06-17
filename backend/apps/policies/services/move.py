@@ -4,6 +4,7 @@ from apps.common.drive import (
     ensure_policy_folder_for_deal,
     move_drive_folder_to_parent,
 )
+from apps.deals.deadline_service import recalculate_deal_deadline
 from apps.deals.models import Deal
 from apps.finances.models import Payment
 from django.db import transaction
@@ -39,5 +40,7 @@ def move_policy_to_deal(policy: Policy, target_deal: Deal, user) -> Policy:
         Payment.objects.filter(policy=policy, deleted_at__isnull=True).update(
             deal=target_deal
         )
+        recalculate_deal_deadline(source_deal.id)
+        recalculate_deal_deadline(target_deal.id)
 
     return policy

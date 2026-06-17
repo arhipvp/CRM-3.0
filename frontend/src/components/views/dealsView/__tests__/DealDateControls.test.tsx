@@ -13,8 +13,6 @@ const baseProps = {
   ],
   onNextContactChange: vi.fn(),
   onNextContactBlur: vi.fn(),
-  onExpectedCloseChange: vi.fn(),
-  onExpectedCloseBlur: vi.fn(),
   onQuickShift: vi.fn(),
 };
 
@@ -23,11 +21,13 @@ describe('DealDateControls', () => {
     vi.clearAllMocks();
   });
 
-  it('renders inputs and quick options', () => {
+  it('renders next contact input, read-only deadline and quick options', () => {
     render(<DealDateControls {...baseProps} />);
 
     expect(screen.getByDisplayValue('2024-01-10')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('2024-02-10')).toBeInTheDocument();
+    expect(screen.getByText('Крайний срок')).toBeInTheDocument();
+    expect(screen.getByText('2024-02-10')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('2024-02-10')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByDisplayValue('2024-01-10'), {
       target: { value: '2024-01-20' },
@@ -39,18 +39,6 @@ describe('DealDateControls', () => {
 
     fireEvent.click(screen.getByText('завтра'));
     expect(baseProps.onQuickShift).toHaveBeenCalledWith(1);
-  });
-
-  it('handles expected close changes', () => {
-    render(<DealDateControls {...baseProps} />);
-
-    fireEvent.change(screen.getByDisplayValue('2024-02-10'), {
-      target: { value: '2024-03-10' },
-    });
-    expect(baseProps.onExpectedCloseChange).toHaveBeenCalledWith('2024-03-10');
-
-    fireEvent.blur(screen.getByDisplayValue('2024-02-10'));
-    expect(baseProps.onExpectedCloseBlur).toHaveBeenCalledWith('2024-02-10');
   });
 
   it('shows expected close reason when provided', () => {

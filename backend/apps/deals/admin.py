@@ -36,6 +36,7 @@ class DealResource(resources.ModelResource):
             "status",
             "stage_name",
             "expected_close",
+            "manual_expected_close",
             "next_review_date",
             "source",
             "loss_reason",
@@ -171,7 +172,13 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         "deleted_at",
     )
     search_fields = ("title", "client__name", "description")
-    readonly_fields = ("id", "created_at", "updated_at", "deleted_at")
+    readonly_fields = (
+        "id",
+        "expected_close",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+    )
     list_select_related = ("client", "seller", "executor")
     autocomplete_fields = ("client", "seller", "executor")
     ordering = ("next_review_date", "-created_at")
@@ -195,7 +202,12 @@ class DealAdmin(SoftDeleteImportExportAdmin):
         (
             "Планирование",
             {
-                "fields": ("expected_close", "next_contact_date", "next_review_date"),
+                "fields": (
+                    "expected_close",
+                    "manual_expected_close",
+                    "next_contact_date",
+                    "next_review_date",
+                ),
             },
         ),
         (

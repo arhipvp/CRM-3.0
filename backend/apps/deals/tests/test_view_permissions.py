@@ -44,12 +44,16 @@ class DealUpdatePermissionsTests(AuthenticatedAPITestCase):
             format="json",
         )
 
-    def test_seller_can_update_expected_close(self):
+    def test_seller_cannot_update_expected_close_directly(self):
         response = self._patch_expected_close(self.seller, date(2025, 12, 31))
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["expected_close"][0],
+            "Крайний срок меняется через события сделки.",
+        )
         self.deal.refresh_from_db()
-        self.assertEqual(self.deal.expected_close, date(2025, 12, 31))
+        self.assertIsNone(self.deal.expected_close)
 
     def test_non_seller_cannot_update_deal(self):
         response = self._patch_expected_close(self.other_user, date(2025, 12, 31))
@@ -58,12 +62,12 @@ class DealUpdatePermissionsTests(AuthenticatedAPITestCase):
         self.deal.refresh_from_db()
         self.assertIsNone(self.deal.expected_close)
 
-    def test_admin_can_update_any_deal(self):
+    def test_admin_cannot_update_expected_close_directly(self):
         response = self._patch_expected_close(self.admin_user, date(2025, 12, 31))
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.deal.refresh_from_db()
-        self.assertEqual(self.deal.expected_close, date(2025, 12, 31))
+        self.assertIsNone(self.deal.expected_close)
 
     def _extract_deal_ids(self, response):
         data = response.data

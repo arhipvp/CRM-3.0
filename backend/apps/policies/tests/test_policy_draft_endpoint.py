@@ -99,6 +99,31 @@ class PolicyDraftEndpointTests(AuthenticatedAPITestCase):
         self.assertIn("policy", response.json())
         self.assertEqual(len(response.json()["payments"]), 1)
 
+    def test_draft_create_recalculates_deal_deadline(self):
+        self.authenticate(self.seller)
+
+        response = self.api_client.post(
+            "/api/v1/policies/draft/",
+            self._draft_payload(
+                end_date="2026-12-31",
+                payments=[
+                    {
+                        "amount": "1000.00",
+                        "description": "Неоплаченная рассрочка",
+                        "scheduled_date": "2026-03-10",
+                        "actual_date": None,
+                        "incomes": [],
+                        "expenses": [],
+                    }
+                ],
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.deal.refresh_from_db()
+        self.assertEqual(self.deal.expected_close, date(2026, 3, 10))
+
     def test_draft_update_updates_and_removes_missing_draft_entities(self):
         self.authenticate(self.seller)
         policy = Policy.objects.create(
