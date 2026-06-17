@@ -5,11 +5,9 @@ from typing import Any
 
 from apps.finances.models import Payment
 from apps.policies.models import Policy
-from apps.users.models import AuditLog
 from django.db.models import Q
 from django.utils import timezone
 
-from .history_utils import collect_related_ids, get_related_audit_logs
 from .models import Deal, DealEvent
 
 EVENT_LIMIT = 250
@@ -102,21 +100,25 @@ def create_manual_date_event(
     )
 
 
+def stored_event_payload(event: DealEvent) -> dict[str, Any]:
+    return _event_payload(
+        event_id=f"deal-event-{event.id}",
+        deal=event.deal,
+        event_type=event.event_type,
+        event_date=event.event_date,
+        title=event.title,
+        description=event.description,
+        source_type=event.source_type,
+        source_id=event.source_id,
+        actor=event.actor,
+        metadata=event.metadata,
+        created_at=event.created_at,
+    )
+
+
 def _stored_events(deal: Deal) -> list[dict[str, Any]]:
     return [
-        _event_payload(
-            event_id=f"deal-event-{event.id}",
-            deal=deal,
-            event_type=event.event_type,
-            event_date=event.event_date,
-            title=event.title,
-            description=event.description,
-            source_type=event.source_type,
-            source_id=event.source_id,
-            actor=event.actor,
-            metadata=event.metadata,
-            created_at=event.created_at,
-        )
+        stored_event_payload(event)
         for event in deal.events.select_related("actor").all()
     ]
 
@@ -202,56 +204,11 @@ def _policy_events(deal: Deal) -> list[dict[str, Any]]:
     return events
 
 
-def _audit_event_type(log: AuditLog) -> str:
-    if log.object_type == "task" and log.action == "create":
-        return DealEvent.EventType.TASK_CREATED
-    if log.object_type == "task" and log.action == "update":
-        new_status = (log.new_value or {}).get("status")
-        if new_status == "done":
-            return DealEvent.EventType.TASK_COMPLETED
-    if log.object_type == "policy" and log.action == "create":
-        return DealEvent.EventType.POLICY_CREATED
-    if log.object_type == "quote" and log.action == "create":
-        return DealEvent.EventType.QUOTE_CREATED
-    if log.object_type == "document" and log.action == "create":
-        return DealEvent.EventType.FILE_UPLOADED
-    return DealEvent.EventType.DEAL_UPDATED
-
-
-def _audit_events(deal: Deal) -> list[dict[str, Any]]:
-    related_ids = collect_related_ids(deal)
-    events = []
-    for log in get_related_audit_logs(deal, related_ids=related_ids):
-        event_type = _audit_event_type(log)
-        events.append(
-            _event_payload(
-                event_id=f"audit-{log.id}",
-                deal=deal,
-                event_type=event_type,
-                event_date=log.created_at.date(),
-                title=log.get_action_display(),
-                description=log.description
-                or log.object_name
-                or log.get_action_display(),
-                source_type=log.object_type,
-                source_id=log.object_id,
-                actor=log.actor,
-                metadata={
-                    "audit_action": log.action,
-                    "object_name": log.object_name,
-                },
-                created_at=log.created_at,
-            )
-        )
-    return events
-
-
 def get_deal_events(deal: Deal) -> list[dict[str, Any]]:
     events = [
         *_stored_events(deal),
         *_payment_events(deal),
         *_policy_events(deal),
-        *_audit_events(deal),
     ]
     events.sort(
         key=lambda item: (

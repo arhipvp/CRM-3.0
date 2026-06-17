@@ -326,6 +326,16 @@ class DealEventSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
 
 
+class ManualDealEventSerializer(serializers.Serializer):
+    event_date = serializers.DateField()
+    reason = serializers.CharField(max_length=255, trim_whitespace=True)
+
+    def validate_reason(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Укажите причину события.")
+        return value.strip()
+
+
 class DealMergeSerializer(serializers.Serializer):
     """Валидация данных для объединения сделок."""
 

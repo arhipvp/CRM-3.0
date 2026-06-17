@@ -41,4 +41,28 @@ describe('mapDealTimelineEvent', () => {
     expect(event.eventDate).toBe('2026-08-15');
     expect(event.metadata.policy_number).toBe('POL-777');
   });
+
+  it('maps manual event payload from API', () => {
+    const event = mapDealTimelineEvent({
+      id: 'deal-event-event-1',
+      deal: 'deal-1',
+      event_type: 'manual',
+      event_type_display: 'Ручное событие',
+      event_date: '2027-06-16',
+      title: 'Предположительно купит квартиру, предложить застраховать',
+      description: '',
+      source_type: '',
+      source_id: '',
+      actor: 'user-1',
+      actor_username: 'seller',
+      actor_display_name: 'Seller',
+      metadata: {},
+      created_at: '2026-06-17T10:00:00Z',
+    });
+
+    expect(event.eventType).toBe('manual');
+    expect(event.eventDate).toBe('2027-06-16');
+    expect(event.title).toBe('Предположительно купит квартиру, предложить застраховать');
+    expect(event.sourceType).toBe('');
+  });
 });

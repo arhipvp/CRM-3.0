@@ -33,7 +33,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from .event_service import create_manual_date_event, get_deal_events
+from .event_service import (
+    create_manual_date_event,
+    get_deal_events,
+    stored_event_payload,
+)
 from .filters import DealFilterSet
 from .lifecycle_service import close_deal, reopen_deal
 from .models import (
@@ -60,6 +64,7 @@ from .serializers import (
     DealSerializer,
     InsuranceCompanySerializer,
     InsuranceTypeSerializer,
+    ManualDealEventSerializer,
     QuoteSerializer,
     SalesChannelSerializer,
 )
@@ -254,11 +259,84 @@ class DealViewSet(
         deal = self.get_object()
         return Response(record_time_tracking_tick(request.user, deal))
 
-    @action(detail=True, methods=["get"], url_path="events")
+    @action(detail=True, methods=["get", "post"], url_path="events")
     def events(self, request, pk=None):
         deal = self.get_object()
+        if request.method == "POST":
+            if not can_modify_deal(request.user, deal):
+                return Response(
+                    {
+                        "detail": (
+                            "Создавать события может только продавец сделки "
+                            "или администратор."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            serializer = ManualDealEventSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            event = DealEvent.objects.create(
+                deal=deal,
+                event_type=DealEvent.EventType.MANUAL,
+                event_date=serializer.validated_data["event_date"],
+                title=serializer.validated_data["reason"],
+                actor=request.user if request.user.is_authenticated else None,
+            )
+            return Response(
+                DealEventSerializer(stored_event_payload(event)).data,
+                status=status.HTTP_201_CREATED,
+            )
         serializer = DealEventSerializer(get_deal_events(deal), many=True)
         return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path=r"events/(?P<event_id>[^/.]+)",
+    )
+    def event_detail(self, request, pk=None, event_id=None):
+        deal = self.get_object()
+        if not can_modify_deal(request.user, deal):
+            return Response(
+                {
+                    "detail": (
+                        "Изменять события может только продавец сделки "
+                        "или администратор."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        normalized_event_id = str(event_id or "").removeprefix("deal-event-")
+        event = get_object_or_404(DealEvent, id=normalized_event_id, deal=deal)
+        if event.event_type != DealEvent.EventType.MANUAL:
+            return Response(
+                {"detail": "Можно изменять только ручные события."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if request.method == "DELETE":
+            event.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = ManualDealEventSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        if "event_date" in serializer.validated_data:
+            event.event_date = serializer.validated_data["event_date"]
+        if "reason" in serializer.validated_data:
+            event.title = serializer.validated_data["reason"]
+        event.description = ""
+        event.source_type = ""
+        event.source_id = ""
+        event.save(
+            update_fields=[
+                "event_date",
+                "title",
+                "description",
+                "source_type",
+                "source_id",
+            ]
+        )
+        event.refresh_from_db()
+        return Response(DealEventSerializer(stored_event_payload(event)).data)
 
     def _pinned_ids(self, user):
         if not user or not user.is_authenticated:

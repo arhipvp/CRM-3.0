@@ -93,7 +93,7 @@ export const useDealDetailsPanelActions = ({
   const [delayNextContactInput, setDelayNextContactInput] = useState<string | null>(null);
   const [delayValidationError, setDelayValidationError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'tasks' | 'policies' | 'quotes' | 'files' | 'chat' | 'history'
+    'overview' | 'tasks' | 'policies' | 'quotes' | 'files' | 'chat' | 'events' | 'history'
   >('overview');
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);

@@ -35,6 +35,8 @@ export const useDealCommunication = ({
 
   useEffect(() => {
     setChatMessages([]);
+    setActivityLogs([]);
+    setActivityError(null);
     setDealTimelineEvents([]);
     setDealEventsError(null);
   }, [selectedDealId]);
@@ -135,10 +137,16 @@ export const useDealCommunication = ({
   }, [loadDealEvents, selectedDealId]);
 
   useEffect(() => {
-    if (activeTab === 'history') {
+    if (activeTab === 'events') {
       void loadDealEvents();
     }
   }, [activeTab, loadDealEvents]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      void loadActivityLogs();
+    }
+  }, [activeTab, loadActivityLogs]);
 
   return {
     chatMessages,

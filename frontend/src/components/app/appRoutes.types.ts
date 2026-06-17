@@ -84,6 +84,16 @@ export interface AppRouteDealsActions {
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
+  onCreateDealEvent: (
+    dealId: string,
+    data: { eventDate: string; reason: string },
+  ) => Promise<DealTimelineEvent>;
+  onUpdateDealEvent: (
+    dealId: string,
+    eventId: string,
+    data: { eventDate?: string; reason?: string },
+  ) => Promise<DealTimelineEvent>;
+  onDeleteDealEvent: (dealId: string, eventId: string) => Promise<void>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;

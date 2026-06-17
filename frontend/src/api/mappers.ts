@@ -57,6 +57,7 @@ const ACTIVITY_ACTION_TYPES: ActivityActionType[] = [
   'custom',
 ];
 const DEAL_TIMELINE_EVENT_TYPES: DealTimelineEventType[] = [
+  'manual',
   'manual_expected_close',
   'manual_next_contact',
   'payment_due',

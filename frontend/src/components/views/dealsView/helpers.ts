@@ -29,7 +29,8 @@ export const DEAL_TABS = [
   { id: 'policies', label: 'Полисы' },
   { id: 'chat', label: 'Чат' },
   { id: 'files', label: 'Файлы' },
-  { id: 'history', label: 'Лента' },
+  { id: 'events', label: 'Лента' },
+  { id: 'history', label: 'Журнал' },
 ] as const;
 
 export type DealTabId = (typeof DEAL_TABS)[number]['id'];

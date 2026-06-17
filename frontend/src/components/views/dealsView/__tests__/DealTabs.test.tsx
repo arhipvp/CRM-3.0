@@ -17,6 +17,8 @@ describe('DealTabs', () => {
 
     const tasksTab = screen.getByRole('tab', { name: 'Задачи' });
     expect(tasksTab).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Лента' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Журнал' })).toBeInTheDocument();
     fireEvent.click(tasksTab);
     expect(onChange).toHaveBeenCalledWith('tasks');
   });

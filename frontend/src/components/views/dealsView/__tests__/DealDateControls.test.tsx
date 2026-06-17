@@ -83,6 +83,36 @@ describe('DealDateControls', () => {
     expect(screen.getByText(/полис POL-777/)).toBeInTheDocument();
   });
 
+  it('shows manual expected close reason when provided', () => {
+    render(
+      <DealDateControls
+        {...baseProps}
+        expectedCloseReasons={[
+          {
+            id: 'deal-event-event-1',
+            deal: 'deal-1',
+            eventType: 'manual',
+            eventTypeDisplay: 'Ручное событие',
+            eventDate: '2024-02-10',
+            title: 'Предположительно купит квартиру, предложить застраховать',
+            description: '',
+            sourceType: '',
+            sourceId: '',
+            actor: null,
+            actorUsername: null,
+            actorDisplayName: null,
+            metadata: {},
+            createdAt: '2024-01-01T10:00:00Z',
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText('Предположительно купит квартиру, предложить застраховать'),
+    ).toBeInTheDocument();
+  });
+
   it('shows unknown reason fallback', () => {
     render(<DealDateControls {...baseProps} expectedCloseReasons={[]} />);
 

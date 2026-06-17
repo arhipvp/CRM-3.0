@@ -633,6 +633,7 @@ export interface ActivityLog {
 }
 
 export type DealTimelineEventType =
+  | 'manual'
   | 'manual_expected_close'
   | 'manual_next_contact'
   | 'payment_due'

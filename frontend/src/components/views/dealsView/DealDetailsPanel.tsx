@@ -122,6 +122,16 @@ export interface DealDetailsPanelProps {
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
+  onCreateDealEvent?: (
+    dealId: string,
+    data: { eventDate: string; reason: string },
+  ) => Promise<DealTimelineEvent>;
+  onUpdateDealEvent?: (
+    dealId: string,
+    eventId: string,
+    data: { eventDate?: string; reason?: string },
+  ) => Promise<DealTimelineEvent>;
+  onDeleteDealEvent?: (dealId: string, eventId: string) => Promise<void>;
   onCreateTask: (dealId: string, data: AddTaskFormValues) => Promise<void>;
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
@@ -189,6 +199,15 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onDeleteChatMessage,
   onFetchDealHistory,
   onFetchDealEvents,
+  onCreateDealEvent = async () => {
+    throw new Error('Создание событий недоступно');
+  },
+  onUpdateDealEvent = async () => {
+    throw new Error('Редактирование событий недоступно');
+  },
+  onDeleteDealEvent = async () => {
+    throw new Error('Удаление событий недоступно');
+  },
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
@@ -507,6 +526,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isDealEventsLoading,
     dealEventsError,
     loadChatMessages,
+    loadActivityLogs,
     loadDealEvents,
     handleChatSendMessage,
     handleChatDelete,
@@ -569,9 +589,12 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       await loadChatMessages();
     }
     if (activeTab === 'history') {
+      await loadActivityLogs();
+    }
+    if (activeTab === 'events') {
       await loadDealEvents();
     }
-  }, [activeTab, handleRefreshDeal, loadChatMessages, loadDealEvents]);
+  }, [activeTab, handleRefreshDeal, loadActivityLogs, loadChatMessages, loadDealEvents]);
 
   useEffect(() => {
     if (isDelayModalOpen) {
@@ -629,13 +652,48 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     const matchingDate = dealTimelineEvents.filter(
       (event) =>
         event.eventDate === selectedDeal.expectedClose &&
-        ['policy_expiration', 'payment_due', 'manual_expected_close'].includes(event.eventType),
+        ['policy_expiration', 'payment_due', 'manual_expected_close', 'manual'].includes(
+          event.eventType,
+        ),
     );
     if (matchingDate.length > 0) {
       return matchingDate;
     }
     return dealTimelineEvents.filter((event) => event.eventType === 'manual_expected_close');
   }, [dealTimelineEvents, selectedDeal?.expectedClose]);
+
+  const handleCreateManualDealEvent = useCallback(
+    async (data: { eventDate: string; reason: string }) => {
+      if (!selectedDeal?.id) {
+        throw new Error('Сделка не выбрана');
+      }
+      await onCreateDealEvent(selectedDeal.id, data);
+      await loadDealEvents();
+    },
+    [loadDealEvents, onCreateDealEvent, selectedDeal?.id],
+  );
+
+  const handleUpdateManualDealEvent = useCallback(
+    async (eventId: string, data: { eventDate?: string; reason?: string }) => {
+      if (!selectedDeal?.id) {
+        throw new Error('Сделка не выбрана');
+      }
+      await onUpdateDealEvent(selectedDeal.id, eventId, data);
+      await loadDealEvents();
+    },
+    [loadDealEvents, onUpdateDealEvent, selectedDeal?.id],
+  );
+
+  const handleDeleteManualDealEvent = useCallback(
+    async (eventId: string) => {
+      if (!selectedDeal?.id) {
+        throw new Error('Сделка не выбрана');
+      }
+      await onDeleteDealEvent(selectedDeal.id, eventId);
+      await loadDealEvents();
+    },
+    [loadDealEvents, onDeleteDealEvent, selectedDeal?.id],
+  );
 
   return (
     <>
@@ -718,7 +776,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   policies: policiesCount,
                   chat: chatCount,
                   files: filesCount,
-                  history: dealTimelineEvents.length,
+                  events: dealTimelineEvents.length,
+                  history: activityLogs.length,
                 }}
                 loadingByTab={{
                   tasks: isTasksLoading,
@@ -726,7 +785,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   policies: isPoliciesRefreshing,
                   chat: isChatLoading,
                   files: isDriveLoading,
-                  history: isDealEventsLoading,
+                  events: isDealEventsLoading,
+                  history: isActivityLoading,
                 }}
               />
               <div
@@ -859,6 +919,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     dealEventsError,
                     dealTimelineEvents,
                     isDealEventsLoading,
+                    onCreateManualEvent: handleCreateManualDealEvent,
+                    onUpdateManualEvent: handleUpdateManualDealEvent,
+                    onDeleteManualEvent: handleDeleteManualDealEvent,
                   }}
                 />
               </div>

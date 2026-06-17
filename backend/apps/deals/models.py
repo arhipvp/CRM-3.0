@@ -240,6 +240,7 @@ class DealTimeTick(models.Model):
 
 class DealEvent(models.Model):
     class EventType(models.TextChoices):
+        MANUAL = "manual", "Ручное событие"
         MANUAL_EXPECTED_CLOSE = "manual_expected_close", "Дата страхования вручную"
         MANUAL_NEXT_CONTACT = "manual_next_contact", "Следующий контакт вручную"
         PAYMENT_DUE = "payment_due", "Очередной платеж"

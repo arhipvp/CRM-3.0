@@ -217,6 +217,51 @@ export async function fetchDealEvents(
   return payload.map(mapDealTimelineEvent);
 }
 
+export async function createDealEvent(
+  dealId: string,
+  data: {
+    eventDate: string;
+    reason: string;
+  },
+): Promise<DealTimelineEvent> {
+  const payload = await request(`/deals/${dealId}/events/`, {
+    method: 'POST',
+    body: JSON.stringify({
+      event_date: data.eventDate,
+      reason: data.reason,
+    }),
+  });
+  return mapDealTimelineEvent(payload as Record<string, unknown>);
+}
+
+export async function updateDealEvent(
+  dealId: string,
+  eventId: string,
+  data: {
+    eventDate?: string;
+    reason?: string;
+  },
+): Promise<DealTimelineEvent> {
+  const body: Record<string, string> = {};
+  if (data.eventDate !== undefined) {
+    body.event_date = data.eventDate;
+  }
+  if (data.reason !== undefined) {
+    body.reason = data.reason;
+  }
+  const payload = await request(`/deals/${dealId}/events/${eventId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+  return mapDealTimelineEvent(payload as Record<string, unknown>);
+}
+
+export async function deleteDealEvent(dealId: string, eventId: string): Promise<void> {
+  await request(`/deals/${dealId}/events/${eventId}/`, {
+    method: 'DELETE',
+  });
+}
+
 export async function createQuote(data: {
   dealId: string;
   insuranceCompanyId: string;
