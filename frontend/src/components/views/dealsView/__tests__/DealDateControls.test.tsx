@@ -15,6 +15,7 @@ const baseProps = {
   onNextContactBlur: vi.fn(),
   onQuickShift: vi.fn(),
   onEventDelayClick: vi.fn(),
+  onAddEventClick: vi.fn(),
 };
 
 describe('DealDateControls', () => {
@@ -40,6 +41,13 @@ describe('DealDateControls', () => {
 
     fireEvent.click(screen.getByText('завтра'));
     expect(baseProps.onQuickShift).toHaveBeenCalledWith(1);
+  });
+
+  it('renders add event action near deadline and wires click', () => {
+    render(<DealDateControls {...baseProps} />);
+
+    fireEvent.click(screen.getByText('Добавить событие'));
+    expect(baseProps.onAddEventClick).toHaveBeenCalled();
   });
 
   it('renders event delay quick action and wires click', () => {

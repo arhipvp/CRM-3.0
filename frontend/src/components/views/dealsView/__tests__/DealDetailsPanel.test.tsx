@@ -220,7 +220,13 @@ vi.mock('../DealActions', () => ({
 }));
 
 vi.mock('../DealDateControls', () => ({
-  DealDateControls: () => <div data-testid="deal-date-controls" />,
+  DealDateControls: ({ onAddEventClick }: { onAddEventClick?: () => void }) => (
+    <div data-testid="deal-date-controls">
+      <button type="button" onClick={onAddEventClick}>
+        Добавить событие
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('../DealNotesSection', () => ({
@@ -574,6 +580,154 @@ describe('DealDetailsPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Снять фокус со сделки' }));
     expect(onClearDealFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates manual deadline event from deadline modal', async () => {
+    const onCreateDealEvent = vi.fn().mockResolvedValue({
+      id: 'event-1',
+      eventType: 'manual_expected_close',
+    });
+    const onRefreshDeal = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <DealDetailsPanel
+        deals={[selectedDeal]}
+        clients={[]}
+        policies={[]}
+        payments={[]}
+        financialRecords={[]}
+        tasks={[]}
+        users={[currentUser]}
+        currentUser={currentUser}
+        sortedDeals={[selectedDeal]}
+        selectedDeal={selectedDeal}
+        selectedClient={null}
+        onSelectDeal={vi.fn()}
+        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
+        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
+        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
+        onRefreshDeal={onRefreshDeal}
+        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onRequestAddPolicy={vi.fn()}
+        onRequestEditPolicy={vi.fn()}
+        onRequestAddClient={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onAddPayment={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDriveFolderCreated={vi.fn()}
+        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal })}
+        onCheckDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal, mailboxSync: {} })}
+        onFetchChatMessages={vi.fn().mockResolvedValue([])}
+        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
+        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
+        onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
+        onCreateDealEvent={onCreateDealEvent}
+        onCreateTask={vi.fn().mockResolvedValue(undefined)}
+        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
+        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить событие' }));
+    const dialog = screen.getByRole('dialog', { name: 'Добавить событие' });
+
+    fireEvent.change(within(dialog).getByLabelText('Дата'), {
+      target: { value: '2027-06-16' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Тип'), {
+      target: { value: 'manual_expected_close' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Причина'), {
+      target: { value: 'Ручной срок по просьбе клиента' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Добавить' }));
+
+    await waitFor(() => {
+      expect(onCreateDealEvent).toHaveBeenCalledWith('deal-1', {
+        eventType: 'manual_expected_close',
+        eventDate: '2027-06-16',
+        reason: 'Ручной срок по просьбе клиента',
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Добавить событие' })).not.toBeInTheDocument();
+      expect(onRefreshDeal).toHaveBeenCalledWith('deal-1');
+    });
+  });
+
+  it('closes manual event modal and clears validation error on cancel', () => {
+    render(
+      <DealDetailsPanel
+        deals={[selectedDeal]}
+        clients={[]}
+        policies={[]}
+        payments={[]}
+        financialRecords={[]}
+        tasks={[]}
+        users={[currentUser]}
+        currentUser={currentUser}
+        sortedDeals={[selectedDeal]}
+        selectedDeal={selectedDeal}
+        selectedClient={null}
+        onSelectDeal={vi.fn()}
+        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
+        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
+        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
+        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onRequestAddPolicy={vi.fn()}
+        onRequestEditPolicy={vi.fn()}
+        onRequestAddClient={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onAddPayment={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDriveFolderCreated={vi.fn()}
+        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal })}
+        onCheckDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal, mailboxSync: {} })}
+        onFetchChatMessages={vi.fn().mockResolvedValue([])}
+        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
+        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
+        onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
+        onCreateTask={vi.fn().mockResolvedValue(undefined)}
+        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
+        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить событие' }));
+    let dialog = screen.getByRole('dialog', { name: 'Добавить событие' });
+    fireEvent.change(within(dialog).getByLabelText('Причина'), {
+      target: { value: '' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Добавить' }));
+
+    expect(screen.getByText('Укажите дату и причину события.')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }));
+    expect(screen.queryByRole('dialog', { name: 'Добавить событие' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить событие' }));
+    dialog = screen.getByRole('dialog', { name: 'Добавить событие' });
+    expect(within(dialog).queryByText('Укажите дату и причину события.')).not.toBeInTheDocument();
   });
 
   it('refreshes selected deal and shows loading marker for files tab', async () => {

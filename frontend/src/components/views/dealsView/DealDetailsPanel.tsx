@@ -8,6 +8,7 @@ import {
   ClientDuplicateHint,
   Deal,
   DealTimelineEvent,
+  DealTimelineEventType,
   FinancialRecord,
   Payment,
   Policy,
@@ -126,7 +127,11 @@ export interface DealDetailsPanelProps {
   onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
   onCreateDealEvent?: (
     dealId: string,
-    data: { eventDate: string; reason: string },
+    data: {
+      eventType?: Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
+      eventDate: string;
+      reason: string;
+    },
   ) => Promise<DealTimelineEvent>;
   onUpdateDealEvent?: (
     dealId: string,
@@ -147,6 +152,9 @@ export interface DealDetailsPanelProps {
   isTasksLoading?: boolean;
   isQuotesLoading?: boolean;
 }
+
+const getTodayInputValue = () => new Date().toISOString().slice(0, 10);
+type ManualDealEventType = Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
 
 export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   deals,
@@ -367,6 +375,12 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const [policySortKey, setPolicySortKey] = useState<PolicySortKey>('startDate');
   const [policySortOrder, setPolicySortOrder] = useState<'asc' | 'desc'>('asc');
+  const [isManualEventModalOpen, setIsManualEventModalOpen] = useState(false);
+  const [manualEventDate, setManualEventDate] = useState(getTodayInputValue);
+  const [manualEventType, setManualEventType] = useState<ManualDealEventType>('manual');
+  const [manualEventReason, setManualEventReason] = useState('');
+  const [manualEventError, setManualEventError] = useState<string | null>(null);
+  const [isManualEventSaving, setIsManualEventSaving] = useState(false);
 
   const relatedPolicies = useMemo(
     () => (selectedDeal ? policies.filter((policy) => policy.dealId === selectedDeal.id) : []),
@@ -634,12 +648,25 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     return resolveExpectedCloseReason(selectedDeal?.expectedClose, dealTimelineEvents);
   }, [dealTimelineEvents, selectedDeal?.expectedClose]);
 
+  const resetManualEventForm = useCallback(() => {
+    setManualEventDate(getTodayInputValue());
+    setManualEventType('manual');
+    setManualEventReason('');
+    setManualEventError(null);
+  }, []);
+
+  const handleOpenManualEventModal = useCallback(() => {
+    setManualEventError(null);
+    setIsManualEventModalOpen(true);
+  }, []);
+
+  const handleCloseManualEventModal = useCallback(() => {
+    resetManualEventForm();
+    setIsManualEventModalOpen(false);
+  }, [resetManualEventForm]);
+
   const handleCreateManualDealEvent = useCallback(
-    async (data: {
-      eventType?: 'manual' | 'manual_expected_close';
-      eventDate: string;
-      reason: string;
-    }) => {
+    async (data: { eventType?: ManualDealEventType; eventDate: string; reason: string }) => {
       if (!selectedDeal?.id) {
         throw new Error('Сделка не выбрана');
       }
@@ -648,6 +675,41 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       await handleRefreshDealWithContext();
     },
     [handleRefreshDealWithContext, loadDealEvents, onCreateDealEvent, selectedDeal?.id],
+  );
+
+  const handleManualEventSubmit = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const reason = manualEventReason.trim();
+      if (!manualEventDate || !reason) {
+        setManualEventError('Укажите дату и причину события.');
+        return;
+      }
+
+      setManualEventError(null);
+      setIsManualEventSaving(true);
+      try {
+        await handleCreateManualDealEvent({
+          eventType: manualEventType,
+          eventDate: manualEventDate,
+          reason,
+        });
+        resetManualEventForm();
+        setIsManualEventModalOpen(false);
+      } catch (err) {
+        console.error('Ошибка создания события сделки:', err);
+        setManualEventError('Не удалось добавить событие.');
+      } finally {
+        setIsManualEventSaving(false);
+      }
+    },
+    [
+      handleCreateManualDealEvent,
+      manualEventDate,
+      manualEventReason,
+      manualEventType,
+      resetManualEventForm,
+    ],
   );
 
   const handleUpdateManualDealEvent = useCallback(
@@ -747,6 +809,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               onNextContactBlur={handleNextContactBlur}
               onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
               onEventDelayClick={() => void handleQuickEventDelay()}
+              onAddEventClick={handleOpenManualEventModal}
               expectedCloseReason={expectedCloseReasons}
               isExpectedCloseReasonsLoading={isDealEventsLoading}
             />
@@ -903,7 +966,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     dealEventsError,
                     dealTimelineEvents,
                     isDealEventsLoading,
-                    onCreateManualEvent: handleCreateManualDealEvent,
                     onUpdateManualEvent: handleUpdateManualDealEvent,
                     onDeleteManualEvent: handleDeleteManualDealEvent,
                   }}
@@ -1017,6 +1079,59 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         quickInlineDateOptions={quickInlineDateOptions}
         handleQuickNextContactShift={handleQuickNextContactShift}
       />
+      <FormModal
+        isOpen={isManualEventModalOpen}
+        title="Добавить событие"
+        onClose={handleCloseManualEventModal}
+        size="sm"
+      >
+        <form className="space-y-4" onSubmit={handleManualEventSubmit}>
+          {manualEventError && <InlineAlert>{manualEventError}</InlineAlert>}
+          <label className="space-y-1 text-sm font-medium text-slate-700">
+            <span>Дата</span>
+            <input
+              type="date"
+              className="input"
+              value={manualEventDate}
+              onChange={(event) => setManualEventDate(event.target.value)}
+            />
+          </label>
+          <label className="space-y-1 text-sm font-medium text-slate-700">
+            <span>Тип</span>
+            <select
+              className="input"
+              value={manualEventType}
+              onChange={(event) => setManualEventType(event.target.value as ManualDealEventType)}
+            >
+              <option value="manual">Обычное событие</option>
+              <option value="manual_expected_close">Ручной крайний срок</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-sm font-medium text-slate-700">
+            <span>Причина</span>
+            <input
+              type="text"
+              className="input"
+              value={manualEventReason}
+              onChange={(event) => setManualEventReason(event.target.value)}
+              placeholder="Например: предположительно купит квартиру, предложить застраховать"
+            />
+          </label>
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={handleCloseManualEventModal}
+              disabled={isManualEventSaving}
+            >
+              Отмена
+            </button>
+            <button type="submit" className={BTN_PRIMARY} disabled={isManualEventSaving}>
+              {isManualEventSaving ? 'Добавляем…' : 'Добавить'}
+            </button>
+          </div>
+        </form>
+      </FormModal>
       <ConfirmDialogRenderer />
       <FormModal
         isOpen={isTimeTrackingConfirmModalOpen}

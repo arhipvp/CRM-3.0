@@ -20,6 +20,7 @@ interface DealDateControlsProps {
   onNextContactBlur: (value: string) => void;
   onQuickShift: (days: number) => void;
   onEventDelayClick?: () => void;
+  onAddEventClick?: () => void;
   expectedCloseReason?: ExpectedCloseReasonResult;
   isExpectedCloseReasonsLoading?: boolean;
 }
@@ -36,6 +37,7 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
   onNextContactBlur,
   onQuickShift,
   onEventDelayClick,
+  onAddEventClick,
   expectedCloseReason = {
     status: 'empty',
     events: [],
@@ -84,6 +86,15 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
         <div className="field field-input flex min-h-[40px] max-w-[220px] items-center font-semibold text-slate-900">
           {expectedCloseValue || '—'}
         </div>
+        {onAddEventClick && (
+          <button
+            type="button"
+            className={`${BTN_SM_QUIET} max-w-[220px]`}
+            onClick={onAddEventClick}
+          >
+            Добавить событие
+          </button>
+        )}
         <div className="max-w-[360px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
             Почему эта дата
