@@ -45,24 +45,27 @@ describe('DealDateControls', () => {
     render(
       <DealDateControls
         {...baseProps}
-        expectedCloseReasons={[
-          {
-            id: 'policy-expiration-policy-1',
-            deal: 'deal-1',
-            eventType: 'policy_expiration',
-            eventTypeDisplay: 'Окончание полиса',
-            eventDate: '2024-02-10',
-            title: 'Окончание полиса',
-            description: 'полис POL-777',
-            sourceType: 'policy',
-            sourceId: 'policy-1',
-            actor: null,
-            actorUsername: null,
-            actorDisplayName: null,
-            metadata: { policy_number: 'POL-777' },
-            createdAt: '2024-01-01T10:00:00Z',
-          },
-        ]}
+        expectedCloseReason={{
+          status: 'exact',
+          events: [
+            {
+              id: 'policy-expiration-policy-1',
+              deal: 'deal-1',
+              eventType: 'policy_expiration',
+              eventTypeDisplay: 'Окончание полиса',
+              eventDate: '2024-02-10',
+              title: 'Окончание полиса',
+              description: 'полис POL-777',
+              sourceType: 'policy',
+              sourceId: 'policy-1',
+              actor: null,
+              actorUsername: null,
+              actorDisplayName: null,
+              metadata: { policy_number: 'POL-777' },
+              createdAt: '2024-01-01T10:00:00Z',
+            },
+          ],
+        }}
       />,
     );
 
@@ -75,24 +78,27 @@ describe('DealDateControls', () => {
     render(
       <DealDateControls
         {...baseProps}
-        expectedCloseReasons={[
-          {
-            id: 'deal-event-event-1',
-            deal: 'deal-1',
-            eventType: 'manual',
-            eventTypeDisplay: 'Ручное событие',
-            eventDate: '2024-02-10',
-            title: 'Предположительно купит квартиру, предложить застраховать',
-            description: '',
-            sourceType: '',
-            sourceId: '',
-            actor: null,
-            actorUsername: null,
-            actorDisplayName: null,
-            metadata: {},
-            createdAt: '2024-01-01T10:00:00Z',
-          },
-        ]}
+        expectedCloseReason={{
+          status: 'exact',
+          events: [
+            {
+              id: 'deal-event-event-1',
+              deal: 'deal-1',
+              eventType: 'manual',
+              eventTypeDisplay: 'Ручное событие',
+              eventDate: '2024-02-10',
+              title: 'Предположительно купит квартиру, предложить застраховать',
+              description: '',
+              sourceType: '',
+              sourceId: '',
+              actor: null,
+              actorUsername: null,
+              actorDisplayName: null,
+              metadata: {},
+              createdAt: '2024-01-01T10:00:00Z',
+            },
+          ],
+        }}
       />,
     );
 
@@ -102,8 +108,51 @@ describe('DealDateControls', () => {
   });
 
   it('shows unknown reason fallback', () => {
-    render(<DealDateControls {...baseProps} expectedCloseReasons={[]} />);
+    render(
+      <DealDateControls
+        {...baseProps}
+        expectedCloseReason={{
+          status: 'empty',
+          events: [],
+          message: 'Нет событий, которые объясняют крайний срок.',
+        }}
+      />,
+    );
 
-    expect(screen.getByText('Причина не определена')).toBeInTheDocument();
+    expect(screen.getByText('Нет событий, которые объясняют крайний срок.')).toBeInTheDocument();
+  });
+
+  it('shows mismatch warning when deadline differs from source event', () => {
+    render(
+      <DealDateControls
+        {...baseProps}
+        expectedCloseReason={{
+          status: 'mismatch',
+          message:
+            'Ближайшее основание: окончание полиса 26.06.2027, но крайний срок сейчас 26.06.2026.',
+          events: [
+            {
+              id: 'policy-expiration-policy-1',
+              deal: 'deal-1',
+              eventType: 'policy_expiration',
+              eventTypeDisplay: 'Окончание полиса',
+              eventDate: '2027-06-26',
+              title: 'Окончание полиса',
+              description: 'полис EMGI-26-111666-78',
+              sourceType: 'policy',
+              sourceId: 'policy-1',
+              actor: null,
+              actorUsername: null,
+              actorDisplayName: null,
+              metadata: {},
+              createdAt: '2024-01-01T10:00:00Z',
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/Ближайшее основание: окончание полиса/)).toBeInTheDocument();
+    expect(screen.getByText(/полис EMGI-26-111666-78/)).toBeInTheDocument();
   });
 });

@@ -39,6 +39,7 @@ interface UseDealDetailsPanelActionsParams {
   onScheduleDelay: (payload: { nextContactDate: string }) => Promise<void>;
   onLoadChatMessages: () => Promise<void>;
   onLoadActivityLogs: () => Promise<void>;
+  onLoadDealEvents: () => Promise<void>;
   onReloadNotes: () => Promise<void>;
   onLoadDriveFiles: () => Promise<void>;
   openMergeModal: () => void;
@@ -68,6 +69,7 @@ export const useDealDetailsPanelActions = ({
   onScheduleDelay,
   onLoadChatMessages,
   onLoadActivityLogs,
+  onLoadDealEvents,
   onReloadNotes,
   onLoadDriveFiles,
   openMergeModal,
@@ -336,11 +338,19 @@ export const useDealDetailsPanelActions = ({
       fallbackMessage: 'Не удалось обновить даты сделки.',
       setPending: setIsSchedulingDelay,
       setError: setActionError,
-      onSuccess: () => {
+      onSuccess: async () => {
+        await Promise.all([onRefreshDeal?.(selectedDeal.id), onLoadDealEvents()]);
         setIsDelayModalOpen(false);
       },
     });
-  }, [delayNextContactInput, onScheduleDelay, selectedDeal, selectedDelayEvent]);
+  }, [
+    delayNextContactInput,
+    onLoadDealEvents,
+    onRefreshDeal,
+    onScheduleDelay,
+    selectedDeal,
+    selectedDelayEvent,
+  ]);
 
   const handleCreateMailbox = useCallback(async () => {
     const dealId = selectedDeal?.id;

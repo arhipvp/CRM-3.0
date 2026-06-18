@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -36,10 +36,12 @@ import { DealTabs } from './DealTabs';
 import { calculateNextContactForEvent, resolveSelectedDelayEvent } from './eventDelay';
 import type { DealEvent } from './eventUtils';
 import { buildDealEvents, buildEventWindow } from './eventUtils';
+import { resolveExpectedCloseReason } from './expectedCloseReason';
 import {
   DealTabId,
   PolicySortKey,
   closedDealStatuses,
+  formatDate,
   getDeadlineTone,
   getPolicySortValue,
   getUserDisplayName,
@@ -223,6 +225,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 }) => {
   const navigate = useNavigate();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
+  const loadDealEventsRef = useRef<() => Promise<void>>(async () => undefined);
   const sellerDisplayName = sellerUser
     ? getUserDisplayName(sellerUser)
     : selectedDeal?.sellerName || '—';
@@ -508,6 +511,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     },
     onLoadChatMessages: async () => undefined,
     onLoadActivityLogs: async () => undefined,
+    onLoadDealEvents: () => loadDealEventsRef.current(),
     onReloadNotes: reloadNotes,
     onLoadDriveFiles: loadDriveFiles,
     openMergeModal,
@@ -538,6 +542,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     onFetchDealHistory,
     onFetchDealEvents,
   });
+
+  useEffect(() => {
+    loadDealEventsRef.current = loadDealEvents;
+  }, [loadDealEvents]);
 
   const {
     myTotalLabel,
@@ -644,18 +652,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const filesCount = sortedDriveFiles.length;
   const selectedClientDisplayName = selectedClient?.name || selectedDeal?.clientName || '—';
   const expectedCloseReasons = useMemo(() => {
-    if (!selectedDeal?.expectedClose) {
-      return [];
-    }
-    const matchingDate = dealTimelineEvents.filter(
-      (event) =>
-        event.eventDate === selectedDeal.expectedClose &&
-        ['policy_expiration', 'payment_due', 'manual_expected_close'].includes(event.eventType),
-    );
-    if (matchingDate.length > 0) {
-      return matchingDate;
-    }
-    return dealTimelineEvents.filter((event) => event.eventType === 'manual_expected_close');
+    return resolveExpectedCloseReason(selectedDeal?.expectedClose, dealTimelineEvents);
   }, [dealTimelineEvents, selectedDeal?.expectedClose]);
 
   const handleCreateManualDealEvent = useCallback(
@@ -758,13 +755,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             {dealRefreshError && <InlineAlert>{dealRefreshError}</InlineAlert>}
             <DealDateControls
               nextContactValue={nextContactInputValue}
-              expectedCloseValue={expectedCloseInputValue}
+              expectedCloseValue={formatDate(expectedCloseInputValue)}
               headerExpectedCloseTone={headerExpectedCloseTone}
               quickOptions={quickInlineDateOptions}
               onNextContactChange={handleNextContactChange}
               onNextContactBlur={handleNextContactBlur}
               onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
-              expectedCloseReasons={expectedCloseReasons}
+              expectedCloseReason={expectedCloseReasons}
               isExpectedCloseReasonsLoading={isDealEventsLoading}
             />
             <div>

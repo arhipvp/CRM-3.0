@@ -1,7 +1,7 @@
 import React from 'react';
-import type { DealTimelineEvent } from '../../../types';
 import { BTN_SM_QUIET } from '../../common/buttonStyles';
 import { DateInput } from '../../common/forms/DateInput';
+import type { ExpectedCloseReasonResult } from './expectedCloseReason';
 
 interface QuickOption {
   label: string;
@@ -16,7 +16,7 @@ interface DealDateControlsProps {
   onNextContactChange: (value: string) => void;
   onNextContactBlur: (value: string) => void;
   onQuickShift: (days: number) => void;
-  expectedCloseReasons?: DealTimelineEvent[];
+  expectedCloseReason?: ExpectedCloseReasonResult;
   isExpectedCloseReasonsLoading?: boolean;
 }
 
@@ -28,7 +28,11 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
   onNextContactChange,
   onNextContactBlur,
   onQuickShift,
-  expectedCloseReasons = [],
+  expectedCloseReason = {
+    status: 'empty',
+    events: [],
+    message: 'Нет событий, которые объясняют крайний срок.',
+  },
   isExpectedCloseReasonsLoading = false,
 }) => (
   <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -67,9 +71,14 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
           </p>
           {isExpectedCloseReasonsLoading ? (
             <div className="mt-2 h-3 w-3/4 animate-pulse rounded bg-slate-200" />
-          ) : expectedCloseReasons.length > 0 ? (
+          ) : expectedCloseReason.events.length > 0 ? (
             <div className="mt-2 space-y-1.5">
-              {expectedCloseReasons.slice(0, 3).map((event) => (
+              {expectedCloseReason.status === 'mismatch' && expectedCloseReason.message && (
+                <p className="rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+                  {expectedCloseReason.message}
+                </p>
+              )}
+              {expectedCloseReason.events.slice(0, 3).map((event) => (
                 <div key={event.id} className="min-w-0 text-xs leading-5">
                   <span className="font-medium text-slate-800">{event.title}</span>
                   {event.description && (
@@ -79,7 +88,9 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-slate-500">Причина не определена</p>
+            <p className="mt-2 text-xs text-slate-500">
+              {expectedCloseReason.message ?? 'Нет событий, которые объясняют крайний срок.'}
+            </p>
           )}
         </div>
       </div>

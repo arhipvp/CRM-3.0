@@ -27,6 +27,8 @@ const selectedDelayEvent: DealEvent = {
 describe('useDealDetailsPanelActions', () => {
   it('confirms delay without date-to-event validation and keeps schedule payload', async () => {
     const onScheduleDelay = vi.fn().mockResolvedValue(undefined);
+    const onRefreshDeal = vi.fn().mockResolvedValue(undefined);
+    const onLoadDealEvents = vi.fn().mockResolvedValue(undefined);
 
     const { result } = renderHook(() =>
       useDealDetailsPanelActions({
@@ -49,11 +51,12 @@ describe('useDealDetailsPanelActions', () => {
         onCheckDealMailbox: vi.fn().mockResolvedValue({
           mailboxSync: { processed: 0, skipped: 0, failed: 0, deleted: 0 },
         }),
-        onRefreshDeal: vi.fn().mockResolvedValue(undefined),
+        onRefreshDeal,
         onRefreshPolicies: vi.fn().mockResolvedValue(undefined),
         onScheduleDelay,
         onLoadChatMessages: vi.fn().mockResolvedValue(undefined),
         onLoadActivityLogs: vi.fn().mockResolvedValue(undefined),
+        onLoadDealEvents,
         onReloadNotes: vi.fn().mockResolvedValue(undefined),
         onLoadDriveFiles: vi.fn().mockResolvedValue(undefined),
         openMergeModal: vi.fn(),
@@ -73,6 +76,8 @@ describe('useDealDetailsPanelActions', () => {
     expect(onScheduleDelay).toHaveBeenCalledWith({
       nextContactDate: '2026-08-25',
     });
+    expect(onRefreshDeal).toHaveBeenCalledWith(selectedDeal.id);
+    expect(onLoadDealEvents).toHaveBeenCalled();
   });
 
   it('passes trimmed completion comment when marking task done', async () => {
@@ -104,6 +109,7 @@ describe('useDealDetailsPanelActions', () => {
         onScheduleDelay: vi.fn().mockResolvedValue(undefined),
         onLoadChatMessages: vi.fn().mockResolvedValue(undefined),
         onLoadActivityLogs: vi.fn().mockResolvedValue(undefined),
+        onLoadDealEvents: vi.fn().mockResolvedValue(undefined),
         onReloadNotes: vi.fn().mockResolvedValue(undefined),
         onLoadDriveFiles: vi.fn().mockResolvedValue(undefined),
         openMergeModal: vi.fn(),
