@@ -12,8 +12,7 @@ import { Modal } from '../../Modal';
 import { PaymentModal } from '../../payments/PaymentModal';
 import { PromptDialog } from '../../common/modal/PromptDialog';
 import { BTN_SECONDARY } from '../../common/buttonStyles';
-import { DealDelayModal, DealMergeModal, DealSimilarModal } from './DealDetailsModals';
-import type { DealEvent } from './eventUtils';
+import { DealMergeModal, DealSimilarModal } from './DealDetailsModals';
 
 const DEAL_CHILD_MODAL_Z_INDEX = 70;
 
@@ -54,19 +53,6 @@ interface DealDetailsPanelModalsProps {
   financialRecordPaymentId: string;
   financialRecordDefaultRecordType?: 'income' | 'expense';
   closeFinancialRecordModal: () => void;
-  isDelayModalOpen: boolean;
-  setIsDelayModalOpen: (value: boolean) => void;
-  selectedDelayEvent: DealEvent | null;
-  selectedEventNextContact: string | null;
-  nextContactValue: string | null;
-  upcomingEvents: DealEvent[];
-  pastEvents: DealEvent[];
-  isSchedulingDelay: boolean;
-  isLeadDaysLoading: boolean;
-  validationError: string | null;
-  onEventSelect: (value: string | null) => void;
-  onNextContactChange: (value: string | null) => void;
-  onConfirmDelay: () => Promise<void>;
   isMergeModalOpen: boolean;
   mergeSearch: string;
   setMergeSearch: (value: string) => void;
@@ -142,19 +128,6 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
   financialRecordPaymentId,
   financialRecordDefaultRecordType,
   closeFinancialRecordModal,
-  isDelayModalOpen,
-  setIsDelayModalOpen,
-  selectedDelayEvent,
-  selectedEventNextContact,
-  nextContactValue,
-  upcomingEvents,
-  pastEvents,
-  isSchedulingDelay,
-  isLeadDaysLoading,
-  validationError,
-  onEventSelect,
-  onNextContactChange,
-  onConfirmDelay,
   isMergeModalOpen,
   mergeSearch,
   setMergeSearch,
@@ -321,24 +294,6 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
           }
           closeFinancialRecordModal();
         }}
-      />
-    )}
-    {isDelayModalOpen && selectedDeal && (
-      <DealDelayModal
-        deal={selectedDeal}
-        selectedEvent={selectedDelayEvent}
-        selectedEventNextContact={selectedEventNextContact}
-        nextContactValue={nextContactValue}
-        upcomingEvents={upcomingEvents}
-        pastEvents={pastEvents}
-        isSchedulingDelay={isSchedulingDelay}
-        isLeadDaysLoading={isLeadDaysLoading}
-        validationError={validationError}
-        zIndex={DEAL_CHILD_MODAL_Z_INDEX}
-        onClose={() => setIsDelayModalOpen(false)}
-        onEventSelect={onEventSelect}
-        onNextContactChange={onNextContactChange}
-        onConfirm={onConfirmDelay}
       />
     )}
     {isMergeModalOpen && selectedDeal && (

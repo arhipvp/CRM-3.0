@@ -12,7 +12,6 @@ const baseProps = {
   isReopeningDeal: false,
   isCurrentUserSeller: true,
   canReopenClosedDeal: true,
-  dealEventsLength: 1,
   onEdit: vi.fn(),
   onRestore: vi.fn(),
   onDelete: vi.fn(),
@@ -20,7 +19,6 @@ const baseProps = {
   onReopen: vi.fn(),
   onMerge: vi.fn(),
   onSimilar: vi.fn(),
-  onDelay: vi.fn(),
   onRefresh: vi.fn(),
 };
 
@@ -47,11 +45,14 @@ describe('DealActions', () => {
     fireEvent.click(screen.getByText('Похожие сделки'));
     expect(baseProps.onSimilar).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Отложить'));
-    expect(baseProps.onDelay).toHaveBeenCalled();
-
     fireEvent.click(screen.getByText('Обновить'));
     expect(baseProps.onRefresh).toHaveBeenCalled();
+  });
+
+  it('does not render delay action in the main actions bar', () => {
+    render(<DealActions {...baseProps} />);
+
+    expect(screen.queryByText('Отложить')).not.toBeInTheDocument();
   });
 
   it('shows restore button when deal deleted and calls restore', () => {

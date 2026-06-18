@@ -14,6 +14,7 @@ const baseProps = {
   onNextContactChange: vi.fn(),
   onNextContactBlur: vi.fn(),
   onQuickShift: vi.fn(),
+  onEventDelayClick: vi.fn(),
 };
 
 describe('DealDateControls', () => {
@@ -39,6 +40,31 @@ describe('DealDateControls', () => {
 
     fireEvent.click(screen.getByText('завтра'));
     expect(baseProps.onQuickShift).toHaveBeenCalledWith(1);
+  });
+
+  it('renders event delay quick action and wires click', () => {
+    render(
+      <DealDateControls
+        {...baseProps}
+        eventDelayLabel="за 60 дней до ближайшего события"
+        eventDelayTitle="Окончание полиса: 28.07.2026"
+      />,
+    );
+
+    fireEvent.click(screen.getByText('за 60 дней до ближайшего события'));
+    expect(baseProps.onEventDelayClick).toHaveBeenCalled();
+  });
+
+  it('disables event delay quick action when requested', () => {
+    render(
+      <DealDateControls
+        {...baseProps}
+        eventDelayLabel="за 60 дней до ближайшего события"
+        eventDelayDisabled
+      />,
+    );
+
+    expect(screen.getByText('за 60 дней до ближайшего события')).toBeDisabled();
   });
 
   it('shows expected close reason when provided', () => {

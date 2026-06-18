@@ -13,9 +13,13 @@ interface DealDateControlsProps {
   expectedCloseValue: string;
   headerExpectedCloseTone: string;
   quickOptions: QuickOption[];
+  eventDelayLabel?: string;
+  eventDelayDisabled?: boolean;
+  eventDelayTitle?: string;
   onNextContactChange: (value: string) => void;
   onNextContactBlur: (value: string) => void;
   onQuickShift: (days: number) => void;
+  onEventDelayClick?: () => void;
   expectedCloseReason?: ExpectedCloseReasonResult;
   isExpectedCloseReasonsLoading?: boolean;
 }
@@ -25,9 +29,13 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
   expectedCloseValue,
   headerExpectedCloseTone,
   quickOptions,
+  eventDelayLabel,
+  eventDelayDisabled = false,
+  eventDelayTitle,
   onNextContactChange,
   onNextContactBlur,
   onQuickShift,
+  onEventDelayClick,
   expectedCloseReason = {
     status: 'empty',
     events: [],
@@ -56,6 +64,17 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
               {option.label}
             </button>
           ))}
+          {eventDelayLabel && onEventDelayClick && (
+            <button
+              type="button"
+              onClick={onEventDelayClick}
+              disabled={eventDelayDisabled}
+              title={eventDelayTitle}
+              className={BTN_SM_QUIET}
+            >
+              {eventDelayLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

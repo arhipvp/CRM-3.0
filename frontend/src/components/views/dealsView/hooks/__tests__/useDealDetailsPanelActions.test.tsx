@@ -25,7 +25,7 @@ const selectedDelayEvent: DealEvent = {
 };
 
 describe('useDealDetailsPanelActions', () => {
-  it('confirms delay without date-to-event validation and keeps schedule payload', async () => {
+  it('schedules event-based next contact with a narrow payload', async () => {
     const onScheduleDelay = vi.fn().mockResolvedValue(undefined);
     const onRefreshDeal = vi.fn().mockResolvedValue(undefined);
     const onLoadDealEvents = vi.fn().mockResolvedValue(undefined);
@@ -35,9 +35,6 @@ describe('useDealDetailsPanelActions', () => {
         selectedDeal,
         relatedTasks: [],
         dealEvents: [selectedDelayEvent],
-        nextDelayEventId: selectedDelayEvent.id,
-        selectedDelayEvent,
-        selectedDelayEventNextContact: '2026-08-25',
         isSelectedDealDeleted: false,
         isDealClosedStatus: false,
         isCurrentUserSeller: true,
@@ -65,14 +62,9 @@ describe('useDealDetailsPanelActions', () => {
     );
 
     await act(async () => {
-      result.current.setDelayNextContactInput('2026-08-25');
+      await result.current.scheduleNextContact('2026-08-25');
     });
 
-    await act(async () => {
-      await result.current.handleDelayModalConfirm();
-    });
-
-    expect(result.current.delayValidationError).toBeNull();
     expect(onScheduleDelay).toHaveBeenCalledWith({
       nextContactDate: '2026-08-25',
     });
@@ -88,9 +80,6 @@ describe('useDealDetailsPanelActions', () => {
         selectedDeal,
         relatedTasks: [],
         dealEvents: [],
-        nextDelayEventId: null,
-        selectedDelayEvent: null,
-        selectedDelayEventNextContact: null,
         isSelectedDealDeleted: false,
         isDealClosedStatus: false,
         isCurrentUserSeller: true,

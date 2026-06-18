@@ -15,12 +15,3 @@ export const calculateNextContactForEvent = (event: DealEvent | null, leadDays: 
   }
   return new Date(nextContactMs).toISOString().split('T')[0];
 };
-
-export const resolveSelectedDelayEvent = (
-  dealEvents: DealEvent[],
-  selectedDelayEventId: string | null,
-  nextEventId: string | null,
-) => {
-  const preferredId = selectedDelayEventId ?? nextEventId ?? dealEvents[0]?.id ?? null;
-  return dealEvents.find((event) => event.id === preferredId) ?? null;
-};

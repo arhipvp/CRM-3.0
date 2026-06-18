@@ -16,7 +16,6 @@ interface DealActionsProps {
   isReopeningDeal: boolean;
   isCurrentUserSeller: boolean;
   canReopenClosedDeal: boolean;
-  dealEventsLength: number;
   onEdit: () => void;
   onRestore: () => void;
   onDelete: () => void;
@@ -24,8 +23,6 @@ interface DealActionsProps {
   onReopen: () => void;
   onMerge: () => void;
   onSimilar: () => void;
-  onDelay: () => void;
-  onDelayDisabled?: boolean;
   onRefresh: () => void;
   isRefreshing?: boolean;
 }
@@ -39,7 +36,6 @@ export const DealActions: React.FC<DealActionsProps> = ({
   isReopeningDeal,
   isCurrentUserSeller,
   canReopenClosedDeal,
-  dealEventsLength,
   onEdit,
   onRestore,
   onDelete,
@@ -47,8 +43,6 @@ export const DealActions: React.FC<DealActionsProps> = ({
   onReopen,
   onMerge,
   onSimilar,
-  onDelay,
-  onDelayDisabled,
   onRefresh,
   isRefreshing = false,
 }) => (
@@ -61,15 +55,6 @@ export const DealActions: React.FC<DealActionsProps> = ({
         className={BTN_PRIMARY}
       >
         Редактировать
-      </button>
-      <button
-        type="button"
-        onClick={onDelay}
-        disabled={onDelayDisabled ?? !dealEventsLength}
-        className={BTN_SECONDARY}
-      >
-        <span className="text-base leading-none">🕒</span>
-        <span>Отложить</span>
       </button>
       <button
         type="button"

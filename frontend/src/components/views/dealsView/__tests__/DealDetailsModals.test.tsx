@@ -2,8 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Deal, DealSimilarityCandidate, User } from '../../../../types';
-import { DealDelayModal, DealMergeModal, DealSimilarModal } from '../DealDetailsModals';
-import type { DealEvent } from '../eventUtils';
+import { DealMergeModal, DealSimilarModal } from '../DealDetailsModals';
 
 const deal: Deal = {
   id: 'deal-1',
@@ -16,21 +15,6 @@ const deal: Deal = {
   documents: [],
 };
 
-const upcomingEvent: DealEvent = {
-  id: 'event-1',
-  type: 'payment',
-  date: '2025-01-01',
-  title: 'Очередной платёж',
-  description: 'Взнос по полису',
-};
-
-const pastEvent: DealEvent = {
-  id: 'event-2',
-  type: 'payment',
-  date: '2023-12-01',
-  title: 'Прошлый платёж',
-};
-
 const users: User[] = [
   {
     id: 'user-1',
@@ -40,51 +24,6 @@ const users: User[] = [
 ];
 
 describe('DealDetailsModals', () => {
-  it('renders delay modal and wires events', () => {
-    const onClose = vi.fn();
-    const onEventSelect = vi.fn();
-    const onConfirm = vi.fn();
-    const onNextContactChange = vi.fn();
-
-    render(
-      <DealDelayModal
-        deal={deal}
-        selectedEvent={upcomingEvent}
-        selectedEventNextContact="2024-12-01"
-        nextContactValue="2024-12-01"
-        upcomingEvents={[upcomingEvent]}
-        pastEvents={[pastEvent]}
-        isSchedulingDelay={false}
-        zIndex={70}
-        onClose={onClose}
-        onEventSelect={onEventSelect}
-        onNextContactChange={onNextContactChange}
-        onConfirm={onConfirm}
-      />,
-    );
-
-    expect(screen.getByText('Отложить до следующего контакта')).toBeInTheDocument();
-    expect(
-      screen.getByRole('dialog', { name: 'Отложить до следующего контакта' }).parentElement,
-    ).toHaveStyle({
-      zIndex: '70',
-    });
-    expect(screen.queryByText('Дата должна быть не позже даты события.')).not.toBeInTheDocument();
-
-    const nextContactInput = screen.getByDisplayValue('2024-12-01');
-    expect(nextContactInput).not.toHaveAttribute('max');
-
-    const eventButton = screen.getByRole('button', { name: /Очередной платёж/ });
-    fireEvent.click(eventButton);
-    expect(onEventSelect).toHaveBeenCalledWith(upcomingEvent.id);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Перенести следующий контакт' }));
-    expect(onConfirm).toHaveBeenCalled();
-
-    fireEvent.click(screen.getByLabelText('Закрыть'));
-    expect(onClose).toHaveBeenCalled();
-  });
-
   it('renders merge modal and exposes handlers', () => {
     const onMergeSearchChange = vi.fn();
     const toggleMergeSource = vi.fn();

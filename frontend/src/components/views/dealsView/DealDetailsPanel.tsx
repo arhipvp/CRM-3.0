@@ -33,7 +33,7 @@ import { DealDetailsPanelModals } from './DealDetailsPanelModals';
 import { DealDetailsPanelTabContent } from './DealDetailsPanelTabContent';
 import { DealHeader } from './DealHeader';
 import { DealTabs } from './DealTabs';
-import { calculateNextContactForEvent, resolveSelectedDelayEvent } from './eventDelay';
+import { calculateNextContactForEvent } from './eventDelay';
 import type { DealEvent } from './eventUtils';
 import { buildDealEvents, buildEventWindow } from './eventUtils';
 import { resolveExpectedCloseReason } from './expectedCloseReason';
@@ -401,7 +401,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   }, [relatedPolicies, relatedPayments, selectedDeal]);
 
   const eventWindow = useMemo(() => buildEventWindow(dealEvents), [dealEvents]);
-  const { upcomingEvents, pastEvents } = eventWindow;
+  const { upcomingEvents } = eventWindow;
 
   const sortedPolicies = useMemo(() => {
     const normalized = [...relatedPolicies];
@@ -436,8 +436,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     dealRefreshError,
     delayLeadDays,
     delayLeadDaysLoading,
-    delayNextContactInput,
-    delayValidationError,
     editingTask,
     editingTaskId,
     isCheckingMailbox,
@@ -447,7 +445,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isCreatingTask,
     isDealRefreshing,
     isDeletingDeal,
-    isDelayModalOpen,
     isEditingDeal,
     isPoliciesRefreshing,
     isReopeningDeal,
@@ -455,40 +452,29 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     isSchedulingDelay,
     mailboxActionError,
     mailboxActionSuccess,
-    selectedDelayEventId,
     setActiveTab,
     setCloseDealReason,
     setEditingTaskId,
     setIsCloseDealPromptOpen,
     setIsCreatingTask,
-    setIsDelayModalOpen,
     setIsEditingDeal,
-    setDelayNextContactInput,
-    setSelectedDelayEventId,
     handleCheckMailbox,
     handleCloseDealClick,
     handleCloseDealConfirm,
     handleCreateMailbox,
     handleDeleteDealClick,
-    handleDelayModalConfirm,
     handleEditDealClick,
     handleMarkTaskDone,
     handleMergeClick,
     handleRefreshDeal,
     handleReopenDealClick,
     handleRestoreDealClick,
+    scheduleNextContact,
     handleSimilarClick,
   } = useDealDetailsPanelActions({
     selectedDeal,
     relatedTasks,
     dealEvents,
-    nextDelayEventId: eventWindow.nextEvent?.id ?? null,
-    selectedDelayEvent: resolveSelectedDelayEvent(
-      dealEvents,
-      null,
-      eventWindow.nextEvent?.id ?? null,
-    ),
-    selectedDelayEventNextContact: null,
     isSelectedDealDeleted,
     isDealClosedStatus,
     isCurrentUserSeller,
@@ -574,20 +560,19 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     closePaymentModal,
   } = usePaymentModal(payments);
 
-  const selectedDelayEvent = useMemo(
-    () =>
-      resolveSelectedDelayEvent(
-        dealEvents,
-        selectedDelayEventId,
-        eventWindow.nextEvent?.id ?? null,
-      ),
-    [dealEvents, eventWindow.nextEvent?.id, selectedDelayEventId],
+  const quickEventDelayEvent = upcomingEvents[0] ?? null;
+  const quickEventDelayNextContact = useMemo(
+    () => calculateNextContactForEvent(quickEventDelayEvent, Math.max(1, delayLeadDays ?? 90)),
+    [delayLeadDays, quickEventDelayEvent],
   );
-
-  const selectedDelayEventNextContact = useMemo(
-    () => calculateNextContactForEvent(selectedDelayEvent, Math.max(1, delayLeadDays ?? 90)),
-    [delayLeadDays, selectedDelayEvent],
-  );
+  const quickEventDelayLeadDays = Math.max(1, delayLeadDays ?? 90);
+  const quickEventDelayLabel = `за ${quickEventDelayLeadDays} дней до ближайшего события`;
+  const quickEventDelayTitle = quickEventDelayEvent
+    ? `${quickEventDelayEvent.title}: ${formatDate(quickEventDelayEvent.date)}`
+    : 'Нет предстоящих событий';
+  const handleQuickEventDelay = useCallback(async () => {
+    await scheduleNextContact(quickEventDelayNextContact);
+  }, [quickEventDelayNextContact, scheduleNextContact]);
 
   const handleRefreshDealWithContext = useCallback(async () => {
     await handleRefreshDeal();
@@ -601,12 +586,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       await loadDealEvents();
     }
   }, [activeTab, handleRefreshDeal, loadActivityLogs, loadChatMessages, loadDealEvents]);
-
-  useEffect(() => {
-    if (isDelayModalOpen) {
-      setDelayNextContactInput(selectedDelayEventNextContact);
-    }
-  }, [isDelayModalOpen, selectedDelayEventNextContact, setDelayNextContactInput]);
 
   useEffect(() => {
     onDealSelectionBlockedChange?.(isTimeTrackingConfirmModalOpen);
@@ -738,7 +717,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 isReopeningDeal={isReopeningDeal}
                 isCurrentUserSeller={isCurrentUserSeller}
                 canReopenClosedDeal={canReopenClosedDeal}
-                dealEventsLength={dealEvents.length}
                 onEdit={handleEditDealClick}
                 onRestore={handleRestoreDealClick}
                 onDelete={handleDeleteDealClick}
@@ -746,7 +724,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 onReopen={handleReopenDealClick}
                 onMerge={handleMergeClick}
                 onSimilar={handleSimilarClick}
-                onDelay={() => setIsDelayModalOpen(true)}
                 onRefresh={handleRefreshDealWithContext}
                 isRefreshing={isDealRefreshing}
               />
@@ -758,9 +735,18 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               expectedCloseValue={formatDate(expectedCloseInputValue)}
               headerExpectedCloseTone={headerExpectedCloseTone}
               quickOptions={quickInlineDateOptions}
+              eventDelayLabel={quickEventDelayLabel}
+              eventDelayDisabled={
+                !quickEventDelayEvent ||
+                !quickEventDelayNextContact ||
+                delayLeadDaysLoading ||
+                isSchedulingDelay
+              }
+              eventDelayTitle={quickEventDelayTitle}
               onNextContactChange={handleNextContactChange}
               onNextContactBlur={handleNextContactBlur}
               onQuickShift={onPostponeDeal ? quickInlinePostponeShift : quickInlineShift}
+              onEventDelayClick={() => void handleQuickEventDelay()}
               expectedCloseReason={expectedCloseReasons}
               isExpectedCloseReasonsLoading={isDealEventsLoading}
             />
@@ -991,19 +977,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         financialRecordPaymentId={financialRecordPaymentId}
         financialRecordDefaultRecordType={financialRecordDefaultRecordType}
         closeFinancialRecordModal={closeFinancialRecordModal}
-        isDelayModalOpen={isDelayModalOpen}
-        setIsDelayModalOpen={setIsDelayModalOpen}
-        selectedDelayEvent={selectedDelayEvent}
-        selectedEventNextContact={selectedDelayEventNextContact}
-        nextContactValue={delayNextContactInput}
-        upcomingEvents={upcomingEvents}
-        pastEvents={pastEvents}
-        isSchedulingDelay={isSchedulingDelay}
-        isLeadDaysLoading={delayLeadDaysLoading}
-        validationError={delayValidationError}
-        onEventSelect={(value) => value && setSelectedDelayEventId(value)}
-        onNextContactChange={(value) => value && setDelayNextContactInput(value)}
-        onConfirmDelay={handleDelayModalConfirm}
         isMergeModalOpen={isMergeModalOpen}
         mergeSearch={mergeSearch}
         setMergeSearch={setMergeSearch}

@@ -250,7 +250,6 @@ vi.mock('../tabs/ChatTab', () => ({
 }));
 
 vi.mock('../DealDetailsModals', () => ({
-  DealDelayModal: () => null,
   DealMergeModal: () => null,
   DealSimilarModal: () => null,
 }));

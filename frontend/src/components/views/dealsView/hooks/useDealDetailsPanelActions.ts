@@ -9,9 +9,6 @@ interface UseDealDetailsPanelActionsParams {
   selectedDeal: Deal | null;
   relatedTasks: Task[];
   dealEvents: DealEvent[];
-  nextDelayEventId: string | null;
-  selectedDelayEvent: DealEvent | null;
-  selectedDelayEventNextContact: string | null;
   isSelectedDealDeleted: boolean;
   isDealClosedStatus: boolean;
   isCurrentUserSeller: boolean;
@@ -50,9 +47,6 @@ export const useDealDetailsPanelActions = ({
   selectedDeal,
   relatedTasks,
   dealEvents,
-  nextDelayEventId,
-  selectedDelayEvent,
-  selectedDelayEventNextContact,
   isSelectedDealDeleted,
   isDealClosedStatus,
   isCurrentUserSeller,
@@ -84,16 +78,12 @@ export const useDealDetailsPanelActions = ({
   const [closeDealReason, setCloseDealReason] = useState('');
   const [closeDealReasonError, setCloseDealReasonError] = useState<string | null>(null);
   const [isReopeningDeal, setIsReopeningDeal] = useState(false);
-  const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
   const [isSchedulingDelay, setIsSchedulingDelay] = useState(false);
   const [isDealRefreshing, setIsDealRefreshing] = useState(false);
   const [isPoliciesRefreshing, setIsPoliciesRefreshing] = useState(false);
   const [dealRefreshError, setDealRefreshError] = useState<string | null>(null);
-  const [selectedDelayEventId, setSelectedDelayEventId] = useState<string | null>(null);
   const [delayLeadDays, setDelayLeadDays] = useState<number | null>(null);
   const [delayLeadDaysLoading, setDelayLeadDaysLoading] = useState(false);
-  const [delayNextContactInput, setDelayNextContactInput] = useState<string | null>(null);
-  const [delayValidationError, setDelayValidationError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     'overview' | 'tasks' | 'policies' | 'quotes' | 'files' | 'chat' | 'events' | 'history'
   >('overview');
@@ -138,12 +128,13 @@ export const useDealDetailsPanelActions = ({
   }, [selectedDeal?.id]);
 
   useEffect(() => {
-    if (!isDelayModalOpen) {
+    if (!selectedDeal?.id || dealEvents.length === 0) {
+      setDelayLeadDays(null);
+      setDelayLeadDaysLoading(false);
       return;
     }
     let mounted = true;
     setDelayLeadDaysLoading(true);
-    setDelayValidationError(null);
     fetchNotificationSettings()
       .then((response) => {
         if (!mounted) {
@@ -165,31 +156,7 @@ export const useDealDetailsPanelActions = ({
     return () => {
       mounted = false;
     };
-  }, [isDelayModalOpen]);
-
-  useEffect(() => {
-    if (!isDelayModalOpen) {
-      return;
-    }
-    setDelayNextContactInput(selectedDelayEventNextContact);
-    setDelayValidationError(null);
-  }, [isDelayModalOpen, selectedDelayEvent?.id, selectedDelayEventNextContact]);
-
-  useEffect(() => {
-    if (!isDelayModalOpen) {
-      return;
-    }
-    const defaultId = nextDelayEventId ?? dealEvents[0]?.id ?? null;
-    setSelectedDelayEventId((prev) => prev ?? defaultId);
-  }, [dealEvents, isDelayModalOpen, nextDelayEventId]);
-
-  useEffect(() => {
-    if (!isDelayModalOpen) {
-      setSelectedDelayEventId(null);
-      setDelayNextContactInput(null);
-      setDelayValidationError(null);
-    }
-  }, [isDelayModalOpen]);
+  }, [dealEvents.length, selectedDeal?.id]);
 
   const handleEditDealClick = useCallback(() => {
     if (!selectedDeal || isSelectedDealDeleted) {
@@ -323,34 +290,28 @@ export const useDealDetailsPanelActions = ({
     [completingTaskIds, onUpdateTask],
   );
 
-  const handleDelayModalConfirm = useCallback(async () => {
-    if (!selectedDeal || !selectedDelayEvent || !delayNextContactInput) {
-      return;
-    }
-    setDelayValidationError(null);
+  const scheduleNextContact = useCallback(
+    async (nextContactDate: string | null) => {
+      if (!selectedDeal || !nextContactDate) {
+        return;
+      }
 
-    await runAsyncUiAction({
-      action: () =>
-        onScheduleDelay({
-          nextContactDate: delayNextContactInput,
-        }),
-      debugLabel: 'Deal delay schedule failed',
-      fallbackMessage: 'Не удалось обновить даты сделки.',
-      setPending: setIsSchedulingDelay,
-      setError: setActionError,
-      onSuccess: async () => {
-        await Promise.all([onRefreshDeal?.(selectedDeal.id), onLoadDealEvents()]);
-        setIsDelayModalOpen(false);
-      },
-    });
-  }, [
-    delayNextContactInput,
-    onLoadDealEvents,
-    onRefreshDeal,
-    onScheduleDelay,
-    selectedDeal,
-    selectedDelayEvent,
-  ]);
+      await runAsyncUiAction({
+        action: () =>
+          onScheduleDelay({
+            nextContactDate,
+          }),
+        debugLabel: 'Deal delay schedule failed',
+        fallbackMessage: 'Не удалось обновить даты сделки.',
+        setPending: setIsSchedulingDelay,
+        setError: setActionError,
+        onSuccess: async () => {
+          await Promise.all([onRefreshDeal?.(selectedDeal.id), onLoadDealEvents()]);
+        },
+      });
+    },
+    [onLoadDealEvents, onRefreshDeal, onScheduleDelay, selectedDeal],
+  );
 
   const handleCreateMailbox = useCallback(async () => {
     const dealId = selectedDeal?.id;
@@ -456,8 +417,6 @@ export const useDealDetailsPanelActions = ({
     dealRefreshError,
     delayLeadDays,
     delayLeadDaysLoading,
-    delayNextContactInput,
-    delayValidationError,
     editingTask,
     editingTaskId,
     isCheckingMailbox,
@@ -467,7 +426,6 @@ export const useDealDetailsPanelActions = ({
     isCreatingTask,
     isDealRefreshing,
     isDeletingDeal,
-    isDelayModalOpen,
     isEditingDeal,
     isPoliciesRefreshing,
     isReopeningDeal,
@@ -475,32 +433,27 @@ export const useDealDetailsPanelActions = ({
     isSchedulingDelay,
     mailboxActionError,
     mailboxActionSuccess,
-    selectedDelayEventId,
     setActiveTab,
     setCloseDealReason,
     setCloseDealReasonError,
-    setDelayNextContactInput,
-    setDelayValidationError,
     setEditingTaskId,
     setIsCloseDealPromptOpen,
     setIsCreatingTask,
-    setIsDelayModalOpen,
     setIsEditingDeal,
     setMailboxActionError,
     setMailboxActionSuccess,
-    setSelectedDelayEventId,
     handleCheckMailbox,
     handleCloseDealClick,
     handleCloseDealConfirm,
     handleCreateMailbox,
     handleDeleteDealClick,
-    handleDelayModalConfirm,
     handleEditDealClick,
     handleMarkTaskDone,
     handleMergeClick,
     handleRefreshDeal,
     handleReopenDealClick,
     handleRestoreDealClick,
+    scheduleNextContact,
     handleSimilarClick,
   };
 };
