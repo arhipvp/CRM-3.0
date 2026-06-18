@@ -60,48 +60,6 @@ def _event_payload(
     }
 
 
-def create_manual_date_event(
-    *,
-    deal: Deal,
-    event_type: str,
-    event_date,
-    actor=None,
-    old_value=None,
-    new_value=None,
-) -> DealEvent | None:
-    if event_type not in {
-        DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
-        DealEvent.EventType.MANUAL_NEXT_CONTACT,
-    }:
-        return None
-    if old_value == new_value:
-        return None
-
-    if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE:
-        title = "Ручной крайний срок выставлен"
-        description = (
-            f"Крайний срок изменён с {old_value or '—'} на {new_value or '—'}."
-        )
-    else:
-        title = "Следующий контакт выставлен вручную"
-        description = f"Дата следующего контакта изменена с {old_value or '—'} на {new_value or '—'}."
-
-    return DealEvent.objects.create(
-        deal=deal,
-        event_type=event_type,
-        event_date=event_date,
-        title=title,
-        description=description,
-        source_type="deal",
-        source_id=str(deal.id),
-        actor=actor if actor and actor.is_authenticated else None,
-        metadata={
-            "old_value": str(old_value) if old_value else None,
-            "new_value": str(new_value) if new_value else None,
-        },
-    )
-
-
 def stored_event_payload(event: DealEvent) -> dict[str, Any]:
     return _event_payload(
         event_id=f"deal-event-{event.id}",
@@ -121,7 +79,9 @@ def stored_event_payload(event: DealEvent) -> dict[str, Any]:
 def _stored_events(deal: Deal) -> list[dict[str, Any]]:
     return [
         stored_event_payload(event)
-        for event in deal.events.select_related("actor").all()
+        for event in deal.events.select_related("actor")
+        .exclude(event_type=DealEvent.EventType.MANUAL_NEXT_CONTACT)
+        .all()
     ]
 
 

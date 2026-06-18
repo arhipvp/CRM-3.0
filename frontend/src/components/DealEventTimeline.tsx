@@ -31,7 +31,6 @@ const eventIcon: Record<DealTimelineEvent['eventType'], string> = {
 const MANAGEABLE_EVENT_TYPES: DealTimelineEvent['eventType'][] = [
   'manual',
   'manual_expected_close',
-  'manual_next_contact',
 ];
 
 const formatDateTime = (value: string) => {
@@ -202,7 +201,11 @@ export function DealEventTimeline({
   const [actionError, setActionError] = useState<string | null>(null);
   const [savingEventId, setSavingEventId] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
-  const sortedEvents = useMemo(() => sortEventsByDateCloseness(events), [events]);
+  const visibleEvents = useMemo(
+    () => events.filter((event) => event.eventType !== 'manual_next_contact'),
+    [events],
+  );
+  const sortedEvents = useMemo(() => sortEventsByDateCloseness(visibleEvents), [visibleEvents]);
 
   const startEditing = (event: DealTimelineEvent) => {
     setEditingEventId(event.id);
@@ -278,7 +281,7 @@ export function DealEventTimeline({
     );
   }
 
-  if (events.length === 0) {
+  if (visibleEvents.length === 0) {
     return <div className={PANEL_MUTED_TEXT}>Пока нет событий по сделке.</div>;
   }
 

@@ -35,7 +35,6 @@ from rest_framework.response import Response
 
 from .deadline_service import sync_manual_expected_close_from_events
 from .event_service import (
-    create_manual_date_event,
     get_deal_events,
     stored_event_payload,
 )
@@ -325,7 +324,6 @@ class DealViewSet(
         editable_event_types = {
             DealEvent.EventType.MANUAL,
             DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
-            DealEvent.EventType.MANUAL_NEXT_CONTACT,
         }
         if event.event_type not in editable_event_types:
             return Response(
@@ -491,19 +489,12 @@ class DealViewSet(
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        previous_next_contact_date = instance.next_contact_date
         previous_ids = set(instance.visible_users.values_list("id", flat=True))
         self._reject_viewer_update(request, instance)
         response = self._reject_when_no_seller(request.user, instance)
         if response:
             return response
         response = super().update(request, *args, **kwargs)
-        instance.refresh_from_db(fields=["next_contact_date"])
-        self._log_manual_date_events(
-            instance,
-            request,
-            previous_next_contact_date=previous_next_contact_date,
-        )
         self._log_viewer_changes(instance, previous_ids)
         return response
 
@@ -532,27 +523,6 @@ class DealViewSet(
         raise PermissionDenied(
             "Изменять список наблюдателей может только продавец сделки или администратор."
         )
-
-    def _log_manual_date_events(
-        self,
-        deal: Deal,
-        request,
-        *,
-        previous_next_contact_date,
-    ):
-        actor = request.user if request.user and request.user.is_authenticated else None
-        if (
-            "next_contact_date" in request.data
-            and previous_next_contact_date != deal.next_contact_date
-        ):
-            create_manual_date_event(
-                deal=deal,
-                event_type=DealEvent.EventType.MANUAL_NEXT_CONTACT,
-                event_date=deal.next_contact_date,
-                actor=actor,
-                old_value=previous_next_contact_date,
-                new_value=deal.next_contact_date,
-            )
 
     def _log_viewer_changes(self, deal: Deal, previous_ids=None):
         if not deal:

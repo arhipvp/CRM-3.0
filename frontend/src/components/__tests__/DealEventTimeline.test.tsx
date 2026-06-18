@@ -94,6 +94,29 @@ describe('DealEventTimeline', () => {
     });
   });
 
+  it('hides legacy next contact events from the business timeline', () => {
+    const nextContactEvent: DealTimelineEvent = {
+      ...manualEvent,
+      id: 'deal-event-next-contact',
+      eventType: 'manual_next_contact',
+      eventTypeDisplay: 'Следующий контакт вручную',
+      eventDate: '2026-06-19',
+      title: 'Следующий контакт выставлен вручную',
+      description: 'Дата следующего контакта изменена с 2026-06-15 на 2026-06-19.',
+      sourceType: 'deal',
+      sourceId: 'deal-1',
+    };
+
+    const { rerender } = render(<DealEventTimeline events={[nextContactEvent, policyEvent]} />);
+
+    expect(screen.queryByText('Следующий контакт выставлен вручную')).not.toBeInTheDocument();
+    expect(screen.getByText('Окончание полиса')).toBeInTheDocument();
+
+    rerender(<DealEventTimeline events={[nextContactEvent]} />);
+
+    expect(screen.getByText('Пока нет событий по сделке.')).toBeInTheDocument();
+  });
+
   it('sorts dated events by closeness and places undated events after them', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 5, 17, 12, 0, 0));

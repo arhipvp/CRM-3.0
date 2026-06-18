@@ -107,6 +107,48 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
         )
         self.assertEqual(policy_event["metadata"]["policy_number"], "POL-777")
 
+    def test_events_endpoint_hides_legacy_next_contact_events(self):
+        DealEvent.objects.create(
+            deal=self.deal,
+            event_type=DealEvent.EventType.MANUAL_NEXT_CONTACT,
+            event_date=date(2026, 7, 1),
+            title="Следующий контакт выставлен вручную",
+            source_type="deal",
+            source_id=str(self.deal.id),
+            actor=self.user,
+        )
+        DealEvent.objects.create(
+            deal=self.deal,
+            event_type=DealEvent.EventType.MANUAL,
+            event_date=date(2026, 7, 2),
+            title="Ручное бизнес-событие",
+            actor=self.user,
+        )
+
+        response = self.api_client.get(f"/api/v1/deals/{self.deal.id}/events/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        event_types = {event["event_type"] for event in response.data}
+        self.assertNotIn(DealEvent.EventType.MANUAL_NEXT_CONTACT, event_types)
+        self.assertIn(DealEvent.EventType.MANUAL, event_types)
+
+    def test_update_next_contact_does_not_create_deal_event(self):
+        response = self.api_client.patch(
+            f"/api/v1/deals/{self.deal.id}/",
+            {"next_contact_date": "2026-07-01"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.deal.refresh_from_db()
+        self.assertEqual(self.deal.next_contact_date, date(2026, 7, 1))
+        self.assertFalse(
+            DealEvent.objects.filter(
+                deal=self.deal,
+                event_type=DealEvent.EventType.MANUAL_NEXT_CONTACT,
+            ).exists()
+        )
+
     def test_create_update_and_delete_manual_event(self):
         create_response = self.api_client.post(
             f"/api/v1/deals/{self.deal.id}/events/",
@@ -277,6 +319,30 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
         update_response = self.api_client.patch(
             f"/api/v1/deals/{self.deal.id}/events/{event.id}/",
             {"reason": "Нельзя менять системное событие"},
+            format="json",
+        )
+        delete_response = self.api_client.delete(
+            f"/api/v1/deals/{self.deal.id}/events/{event.id}/"
+        )
+
+        self.assertEqual(update_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(delete_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(DealEvent.objects.filter(id=event.id).exists())
+
+    def test_cannot_update_or_delete_legacy_next_contact_event(self):
+        event = DealEvent.objects.create(
+            deal=self.deal,
+            event_type=DealEvent.EventType.MANUAL_NEXT_CONTACT,
+            event_date=date(2026, 7, 1),
+            title="Следующий контакт выставлен вручную",
+            source_type="deal",
+            source_id=str(self.deal.id),
+            actor=self.user,
+        )
+
+        update_response = self.api_client.patch(
+            f"/api/v1/deals/{self.deal.id}/events/{event.id}/",
+            {"reason": "Не бизнес-событие"},
             format="json",
         )
         delete_response = self.api_client.delete(
