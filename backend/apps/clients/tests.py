@@ -422,7 +422,7 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         self.assertEqual(self.target.email, "merged@example.com")
         self.assertEqual(self.target.notes, "merged-note")
 
-    def test_merge_preview_requires_permissions(self):
+    def test_merge_preview_allows_authenticated_user_without_client_access(self):
         self.authenticate(self.other)
         response = self.api_client.post(
             "/api/v1/clients/merge/preview/",
@@ -432,8 +432,20 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
             },
             format="json",
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn("продавец связанной сделки", str(response.data["detail"]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["moved_counts"]["deals"], 1)
+
+    def test_merge_preview_rejects_anonymous_user(self):
+        self.clear_authentication()
+        response = self.api_client.post(
+            "/api/v1/clients/merge/preview/",
+            {
+                "target_client_id": str(self.target.id),
+                "source_client_ids": [str(self.source.id)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 401)
 
     def test_merge_preview_allows_seller_of_related_deals_without_client_ownership(
         self,
@@ -528,7 +540,7 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         self.assertEqual(source_policy.client_id, target.id)
         self.assertEqual(source_policy.insured_client_id, target.id)
 
-    def test_merge_preview_requires_seller_access_for_each_client(self):
+    def test_merge_preview_allows_authenticated_user_with_partial_client_access(self):
         seller = User.objects.create_user(
             username="target-only-seller",
             password="pass",  # pragma: allowlist secret
@@ -554,8 +566,7 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 403)
-        self.assertIn("продавец связанной сделки", str(response.data["detail"]))
+        self.assertEqual(response.status_code, 200)
 
     def test_merge_preview_allows_superuser(self):
         admin = User.objects.create_superuser(
@@ -1255,7 +1266,7 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, 400)
 
-    def test_similarity_exclusion_endpoint_requires_merge_access_to_both_clients(self):
+    def test_similarity_exclusion_endpoint_allows_authenticated_user(self):
         self.authenticate(self.other)
         response = self.api_client.post(
             "/api/v1/clients/similarity-exclusions/",
@@ -1266,7 +1277,11 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            {response.data["first_client_id"], response.data["second_client_id"]},
+            {str(self.target.id), str(self.candidate.id)},
+        )
 
     def test_duplicate_hints_endpoint_returns_email_name_and_normalization_hints(self):
         self.authenticate(self.owner)

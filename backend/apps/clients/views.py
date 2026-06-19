@@ -7,7 +7,6 @@ from apps.clients.services import (
 from apps.common.drive import DriveError, ensure_client_folder
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
-from apps.deals.models import Deal
 from apps.users.models import AuditLog
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import status, viewsets
@@ -28,8 +27,7 @@ from .serializers import (
 )
 
 CLIENT_MERGE_PERMISSION_MESSAGE = (
-    "Только администратор, владелец клиента или продавец связанной сделки "
-    "может объединять клиентов."
+    "Только авторизованный пользователь может объединять клиентов."
 )
 
 
@@ -497,11 +495,7 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         }
 
     def _can_merge_client(self, user, client: Client) -> bool:
-        if self._can_modify(user, client):
-            return True
-        if not user or not user.is_authenticated:
-            return False
-        return Deal.objects.alive().filter(client=client, seller=user).exists()
+        return bool(user and user.is_authenticated)
 
     def _resolve_merge_clients(self, data):
         target_id = str(data["target_client_id"])
