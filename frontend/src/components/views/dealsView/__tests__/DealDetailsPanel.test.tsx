@@ -641,6 +641,10 @@ describe('DealDetailsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Добавить событие' }));
     const dialog = screen.getByRole('dialog', { name: 'Добавить событие' });
 
+    expect(within(dialog).getByLabelText('Дата')).toHaveClass('w-full');
+    expect(within(dialog).getByLabelText('Тип')).toHaveClass('w-full');
+    expect(within(dialog).getByLabelText('Причина')).toHaveClass('w-full');
+
     fireEvent.change(within(dialog).getByLabelText('Дата'), {
       target: { value: '2027-06-16' },
     });

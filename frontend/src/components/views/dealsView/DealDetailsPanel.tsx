@@ -22,6 +22,8 @@ import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../../forms/AddTaskForm';
 import type { DealFormValues } from '../../forms/DealForm';
 import { BTN_PRIMARY } from '../../common/buttonStyles';
+import { FormActions } from '../../common/forms/FormActions';
+import { FormField } from '../../common/forms/FormField';
 import { InlineAlert } from '../../common/InlineAlert';
 import { FormModal } from '../../common/modal/FormModal';
 import { useConfirm } from '../../../hooks/useConfirm';
@@ -1087,49 +1089,42 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       >
         <form className="space-y-4" onSubmit={handleManualEventSubmit}>
           {manualEventError && <InlineAlert>{manualEventError}</InlineAlert>}
-          <label className="space-y-1 text-sm font-medium text-slate-700">
-            <span>Дата</span>
+          <FormField label="Дата" htmlFor="deal-manual-event-date">
             <input
+              id="deal-manual-event-date"
               type="date"
-              className="input"
+              className="input w-full"
               value={manualEventDate}
               onChange={(event) => setManualEventDate(event.target.value)}
             />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-slate-700">
-            <span>Тип</span>
+          </FormField>
+          <FormField label="Тип" htmlFor="deal-manual-event-type">
             <select
-              className="input"
+              id="deal-manual-event-type"
+              className="input w-full"
               value={manualEventType}
               onChange={(event) => setManualEventType(event.target.value as ManualDealEventType)}
             >
               <option value="manual">Обычное событие</option>
               <option value="manual_expected_close">Ручной крайний срок</option>
             </select>
-          </label>
-          <label className="space-y-1 text-sm font-medium text-slate-700">
-            <span>Причина</span>
+          </FormField>
+          <FormField label="Причина" htmlFor="deal-manual-event-reason">
             <input
+              id="deal-manual-event-reason"
               type="text"
-              className="input"
+              className="input w-full"
               value={manualEventReason}
               onChange={(event) => setManualEventReason(event.target.value)}
               placeholder="Например: предположительно купит квартиру, предложить застраховать"
             />
-          </label>
-          <div className="flex flex-wrap justify-end gap-2 pt-1">
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={handleCloseManualEventModal}
-              disabled={isManualEventSaving}
-            >
-              Отмена
-            </button>
-            <button type="submit" className={BTN_PRIMARY} disabled={isManualEventSaving}>
-              {isManualEventSaving ? 'Добавляем…' : 'Добавить'}
-            </button>
-          </div>
+          </FormField>
+          <FormActions
+            onCancel={handleCloseManualEventModal}
+            submitLabel="Добавить"
+            submittingLabel="Добавляем..."
+            isSubmitting={isManualEventSaving}
+          />
         </form>
       </FormModal>
       <ConfirmDialogRenderer />
