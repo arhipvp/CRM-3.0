@@ -897,7 +897,7 @@ export const SellerDashboardView: React.FC = () => {
 
   return (
     <section aria-labelledby="sellerDashboardHeading" className="space-y-6 pb-2">
-      <div className="app-panel space-y-4 border-none bg-gradient-to-r from-slate-50 via-white to-blue-50/60 p-6 shadow-none">
+      <div className="app-panel space-y-4 p-6 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">Дашборд продавца</p>

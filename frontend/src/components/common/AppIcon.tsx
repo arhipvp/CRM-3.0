@@ -20,7 +20,9 @@ export type AppIconName =
   | 'file'
   | 'upload'
   | 'check'
-  | 'commands';
+  | 'commands'
+  | 'whatsapp'
+  | 'telegram';
 
 type AppIconProps = Omit<SVGProps<SVGSVGElement>, 'name'> & {
   name: AppIconName;
@@ -151,6 +153,18 @@ const iconPaths: Record<AppIconName, ReactElement> = {
       <path d="M9 15H6a3 3 0 1 0 3 3v-3Z" />
       <path d="M15 15v3a3 3 0 1 0 3-3h-3Z" />
       <path d="M9 9h6v6H9z" />
+    </>
+  ),
+  whatsapp: (
+    <>
+      <path d="M5.5 18.5 4 22l3.8-1.25A9 9 0 1 0 3 12.8a8.9 8.9 0 0 0 2.5 5.7Z" />
+      <path d="M8.8 8.7c.2-.5.45-.55.85-.55h.45c.25 0 .45.1.58.4l.72 1.7c.08.2.05.42-.1.6l-.42.5a6.2 6.2 0 0 0 2.8 2.8l.5-.42c.18-.15.4-.18.6-.1l1.7.72c.3.13.4.33.4.58v.45c0 .4-.05.65-.55.85-.45.18-1.25.42-2.2.18-2.5-.62-5.03-3.15-5.65-5.65-.24-.95 0-1.75.18-2.2Z" />
+    </>
+  ),
+  telegram: (
+    <>
+      <path d="M21 4 3 11.5l7 2.5L17 8l-5.2 7.3L17 20z" />
+      <path d="m10 14 1.8 1.3" />
     </>
   ),
 };

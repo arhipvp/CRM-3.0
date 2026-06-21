@@ -1,4 +1,6 @@
 import type { Task } from '../../types';
+import { AppIcon } from '../common/AppIcon';
+import { IconButton } from '../common/Button';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
@@ -306,30 +308,32 @@ export function TaskTable({
                             aria-label="Отметить выполненной"
                             title="Отметить выполненной"
                           >
-                            {completingTaskIds.includes(task.id) ? '…' : '✓'}
+                            {completingTaskIds.includes(task.id) ? (
+                              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
+                            ) : (
+                              <AppIcon name="check" size={16} />
+                            )}
                           </button>
                         )}
                         {onEditTask && (
-                          <button
-                            type="button"
+                          <IconButton
                             onClick={() => onEditTask(task.id)}
-                            className="icon-btn h-8 w-8 text-slate-600 hover:bg-slate-50 hover:text-sky-700"
-                            aria-label="Редактировать"
-                            title="Редактировать"
-                          >
-                            ✎
-                          </button>
+                            icon="edit"
+                            label="Редактировать"
+                            tone="primary"
+                            size="sm"
+                            className="h-8 w-8"
+                          />
                         )}
                         {onDeleteTask && (
-                          <button
-                            type="button"
+                          <IconButton
                             onClick={() => handleDelete(task.id)}
-                            className="icon-btn h-8 w-8 text-slate-600 hover:bg-rose-50 hover:text-rose-700"
-                            aria-label="Удалить"
-                            title="Удалить"
-                          >
-                            🗑
-                          </button>
+                            icon="delete"
+                            label="Удалить"
+                            tone="danger"
+                            size="sm"
+                            className="h-8 w-8"
+                          />
                         )}
                       </div>
                     </td>

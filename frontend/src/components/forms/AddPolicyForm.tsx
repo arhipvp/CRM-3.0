@@ -28,6 +28,7 @@ import {
   buildPolicyFormSnapshot,
 } from './addPolicy/policyFormState';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import {
   buildCommissionIncomeNote,
@@ -784,14 +785,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               {steps.map((step, stepIndex) => (
-                <button
+                <Button
                   key={step.title}
-                  type="button"
                   onClick={() => setCurrentStep(stepIndex + 1)}
-                  className={`btn btn-sm ${currentStep === stepIndex + 1 ? 'btn-primary' : 'btn-secondary'}`}
+                  variant={currentStep === stepIndex + 1 ? 'primary' : 'secondary'}
+                  size="sm"
                 >
                   {step.title}
-                </button>
+                </Button>
               ))}
             </div>
             <p className="text-sm text-slate-600">{steps[currentStep - 1].description}</p>

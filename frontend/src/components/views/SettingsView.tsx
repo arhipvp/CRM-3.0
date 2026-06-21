@@ -19,9 +19,11 @@ import {
   type NotificationSettings,
   type TelegramLinkResponse,
 } from '../../api';
-import { BTN_OUTLINE, BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
+import { EmptyState } from '../common/EmptyState';
 import { FORM_INPUT_DISABLED } from '../common/forms/formClassNames';
 import { InlineAlert } from '../common/InlineAlert';
+import { Panel, SectionHeader, StatusBadge } from '../common/layoutPrimitives';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 
 export const SettingsView: React.FC = () => {
@@ -434,22 +436,17 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">
-      <header>
-        <h2 className="text-xl font-semibold text-slate-900">Настройки</h2>
-        <p className="text-sm text-slate-600 mt-2">
-          Обновите пароль для доступа в систему. Используйте надежную комбинацию и не повторяйте
-          старые пароли.
-        </p>
-      </header>
+    <Panel padding="lg" className="space-y-6">
+      <SectionHeader
+        title="Настройки"
+        description="Обновите пароль для доступа в систему. Используйте надежную комбинацию и не повторяйте старые пароли."
+      />
 
-      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
-        <header className="space-y-1">
-          <h3 className="text-lg font-semibold text-slate-900">Telegram-уведомления</h3>
-          <p className="text-sm text-slate-600">
-            Подключите Telegram и выберите события, по которым хотите получать уведомления.
-          </p>
-        </header>
+      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
+        <SectionHeader
+          title="Telegram-уведомления"
+          description="Подключите Telegram и выберите события, по которым хотите получать уведомления."
+        />
 
         {telegramError && <InlineAlert as="p">{telegramError}</InlineAlert>}
 
@@ -459,8 +456,11 @@ export const SettingsView: React.FC = () => {
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-700">
-                  Статус: {telegramLinked ? 'Привязан' : 'Не привязан'}
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-700">Статус:</span>{' '}
+                  <StatusBadge tone={telegramLinked ? 'success' : 'neutral'}>
+                    {telegramLinked ? 'Привязан' : 'Не привязан'}
+                  </StatusBadge>
                 </p>
                 {telegramLinkedAt && (
                   <p className="text-xs text-slate-500">
@@ -482,23 +482,21 @@ export const SettingsView: React.FC = () => {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className={BTN_SECONDARY}
+                <Button
                   onClick={handleGenerateTelegramCode}
+                  variant="secondary"
                   disabled={telegramSaving}
                 >
                   Получить код привязки
-                </button>
+                </Button>
                 {telegramLinked && (
-                  <button
-                    type="button"
-                    className={BTN_OUTLINE}
+                  <Button
                     onClick={handleUnlinkTelegram}
+                    variant="outline"
                     disabled={telegramSaving}
                   >
                     Отвязать
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -513,7 +511,7 @@ export const SettingsView: React.FC = () => {
                     href={telegramLink.deep_link}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-indigo-600 hover:text-indigo-700 hover:border-indigo-300"
+                    className="btn btn-secondary text-indigo-600 hover:border-indigo-300 hover:text-indigo-700"
                   >
                     Открыть бота с кодом
                   </a>
@@ -603,16 +601,13 @@ export const SettingsView: React.FC = () => {
             </div>
           </>
         )}
-      </section>
+      </Panel>
 
-      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
-        <header className="space-y-1">
-          <h3 className="text-lg font-semibold text-slate-900">Google Drive</h3>
-          <p className="text-sm text-slate-600">
-            Контролируйте состояние интеграции Drive и перепривязывайте OAuth для пользователя Vova
-            без ручного SSH.
-          </p>
-        </header>
+      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
+        <SectionHeader
+          title="Google Drive"
+          description="Контролируйте состояние интеграции Drive и перепривязывайте OAuth для пользователя Vova без ручного SSH."
+        />
 
         {driveError && <InlineAlert as="p">{driveError}</InlineAlert>}
         {driveReconnectNotice && (
@@ -627,7 +622,22 @@ export const SettingsView: React.FC = () => {
           <>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-700">Статус: {driveStatusLabel}</p>
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-700">Статус:</span>{' '}
+                  <StatusBadge
+                    tone={
+                      driveStatus?.status === 'connected'
+                        ? 'success'
+                        : driveStatus?.status === 'error'
+                          ? 'danger'
+                          : driveStatus?.status === 'needs_reconnect'
+                            ? 'warning'
+                            : 'neutral'
+                    }
+                  >
+                    {driveStatusLabel}
+                  </StatusBadge>
+                </p>
                 <p className="text-xs text-slate-500">
                   Режим: {driveStatus?.auth_mode || 'неизвестно'}
                   {driveStatus?.active_auth_type
@@ -647,23 +657,21 @@ export const SettingsView: React.FC = () => {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className={BTN_OUTLINE}
+                <Button
                   onClick={handleDriveRefresh}
+                  variant="outline"
                   disabled={driveLoading || driveReconnectBusy}
                 >
                   Обновить статус
-                </button>
+                </Button>
                 {isDriveReconnectUser && driveStatus?.reconnect_available && (
-                  <button
-                    type="button"
-                    className={BTN_PRIMARY}
+                  <Button
                     onClick={handleDriveReconnect}
+                    variant="primary"
                     disabled={driveReconnectBusy}
                   >
                     {driveReconnectBusy ? 'Переходим в Google...' : 'Переподключить Google Drive'}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -681,15 +689,13 @@ export const SettingsView: React.FC = () => {
             )}
           </>
         )}
-      </section>
+      </Panel>
 
-      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
-        <header className="space-y-1">
-          <h3 className="text-lg font-semibold text-slate-900">Почта</h3>
-          <p className="text-sm text-slate-600">
-            Создавайте почтовые ящики и просматривайте входящие письма прямо здесь.
-          </p>
-        </header>
+      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
+        <SectionHeader
+          title="Почта"
+          description="Создавайте почтовые ящики и просматривайте входящие письма прямо здесь."
+        />
 
         {mailboxError && <InlineAlert as="p">{mailboxError}</InlineAlert>}
 
@@ -733,14 +739,13 @@ export const SettingsView: React.FC = () => {
               }}
             />
           </div>
-          <button
-            type="button"
-            className={BTN_PRIMARY}
+          <Button
             onClick={handleMailboxCreate}
+            variant="primary"
             disabled={mailboxCreating || !mailboxLocalPart.trim()}
           >
             {mailboxCreating ? 'Создаём...' : 'Создать'}
-          </button>
+          </Button>
         </div>
 
         {mailboxCreatedPassword && (
@@ -749,9 +754,9 @@ export const SettingsView: React.FC = () => {
               Пароль для нового ящика:{' '}
               <span className="font-semibold">{mailboxCreatedPassword}</span>
             </div>
-            <button type="button" className={BTN_SECONDARY} onClick={handlePasswordCopy}>
+            <Button onClick={handlePasswordCopy} variant="secondary">
               {mailboxPasswordCopied ? 'Скопировано' : 'Скопировать'}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -762,7 +767,7 @@ export const SettingsView: React.FC = () => {
             <div className="space-y-3">
               <p className="text-sm font-medium text-slate-700">Ваши ящики</p>
               {mailboxes.length === 0 ? (
-                <p className="text-sm text-slate-500">Пока нет созданных ящиков.</p>
+                <EmptyState compact>Пока нет созданных ящиков.</EmptyState>
               ) : (
                 <ul className="space-y-2">
                   {mailboxes.map((mailbox) => (
@@ -781,20 +786,20 @@ export const SettingsView: React.FC = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className={BTN_SECONDARY}
+                        <Button
                           onClick={() => handleMailboxSelect(mailbox.id)}
+                          variant="secondary"
+                          size="sm"
                         >
                           Письма
-                        </button>
-                        <button
-                          type="button"
-                          className={BTN_OUTLINE}
+                        </Button>
+                        <Button
                           onClick={() => handleMailboxDelete(mailbox.id)}
+                          variant="outline"
+                          size="sm"
                         >
                           Удалить
-                        </button>
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -804,21 +809,21 @@ export const SettingsView: React.FC = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-slate-700">Входящие</p>
-                <button
-                  type="button"
-                  className={BTN_OUTLINE}
+                <Button
                   onClick={handleMailboxRefresh}
+                  variant="outline"
+                  size="sm"
                   disabled={!selectedMailboxId || mailMessagesLoading}
                 >
                   Обновить
-                </button>
+                </Button>
               </div>
               {selectedMailboxId === null ? (
-                <p className="text-sm text-slate-500">Выберите ящик, чтобы увидеть письма.</p>
+                <EmptyState compact>Выберите ящик, чтобы увидеть письма.</EmptyState>
               ) : mailMessagesLoading ? (
                 <p className="text-sm text-slate-500">Загружаем письма...</p>
               ) : mailMessages.length === 0 ? (
-                <p className="text-sm text-slate-500">Писем пока нет.</p>
+                <EmptyState compact>Писем пока нет.</EmptyState>
               ) : (
                 <ul className="space-y-2">
                   {mailMessages.map((message) => (
@@ -841,15 +846,13 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
         )}
-      </section>
+      </Panel>
 
-      <section className="rounded-2xl border border-slate-200 p-6 space-y-4">
-        <header className="space-y-1">
-          <h3 className="text-lg font-semibold text-slate-900">Настройки сделок</h3>
-          <p className="text-sm text-slate-600">
-            Укажите, за сколько дней до выбранного события ставить следующий контакт по умолчанию.
-          </p>
-        </header>
+      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
+        <SectionHeader
+          title="Настройки сделок"
+          description="Укажите, за сколько дней до выбранного события ставить следующий контакт по умолчанию."
+        />
 
         {nextContactLeadDaysError && <InlineAlert as="p">{nextContactLeadDaysError}</InlineAlert>}
 
@@ -880,7 +883,7 @@ export const SettingsView: React.FC = () => {
             Минимум 1. Значение влияет на «Отложить до следующего контакта».
           </p>
         </div>
-      </section>
+      </Panel>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
         {error && <InlineAlert as="p">{error}</InlineAlert>}
@@ -936,11 +939,11 @@ export const SettingsView: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-end pt-2">
-          <button type="submit" className={BTN_PRIMARY} disabled={loading}>
+          <Button type="submit" variant="primary" disabled={loading}>
             {loading ? 'Сохраняем...' : 'Обновить пароль'}
-          </button>
+          </Button>
         </div>
       </form>
-    </div>
+    </Panel>
   );
 };
