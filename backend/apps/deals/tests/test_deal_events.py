@@ -1,4 +1,5 @@
 from datetime import date
+from importlib import import_module
 
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
@@ -6,6 +7,7 @@ from apps.deals.models import Deal, DealEvent, InsuranceCompany, InsuranceType
 from apps.finances.models import Payment
 from apps.policies.models import Policy
 from apps.users.models import AuditLog
+from django.apps import apps
 from django.contrib.auth.models import User
 from rest_framework import status
 
@@ -131,6 +133,78 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
         event_types = {event["event_type"] for event in response.data}
         self.assertNotIn(DealEvent.EventType.MANUAL_NEXT_CONTACT, event_types)
         self.assertIn(DealEvent.EventType.MANUAL, event_types)
+
+    def test_legacy_manual_expected_close_event_is_returned(self):
+        self.deal.manual_expected_close = date(2026, 6, 28)
+        self.deal.expected_close = date(2026, 6, 28)
+        self.deal.save(update_fields=["manual_expected_close", "expected_close"])
+
+        migration = import_module(
+            "apps.deals.migrations.0035_materialize_legacy_manual_expected_close_events"
+        )
+        migration.materialize_legacy_manual_expected_close_events(apps, None)
+
+        response = self.api_client.get(f"/api/v1/deals/{self.deal.id}/events/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        legacy_event = next(
+            event
+            for event in response.data
+            if event["event_type"] == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
+        )
+        self.assertEqual(legacy_event["event_date"], "2026-06-28")
+        self.assertEqual(legacy_event["title"], "Крайний срок из старых данных")
+        self.assertEqual(legacy_event["source_type"], "deal")
+        self.assertEqual(legacy_event["source_id"], str(self.deal.id))
+        self.assertEqual(
+            legacy_event["metadata"]["origin"],
+            "legacy_manual_expected_close",
+        )
+
+    def test_legacy_manual_expected_close_migration_is_idempotent(self):
+        self.deal.manual_expected_close = date(2026, 6, 28)
+        self.deal.expected_close = date(2026, 6, 28)
+        self.deal.save(update_fields=["manual_expected_close", "expected_close"])
+
+        migration = import_module(
+            "apps.deals.migrations.0035_materialize_legacy_manual_expected_close_events"
+        )
+        migration.materialize_legacy_manual_expected_close_events(apps, None)
+        migration.materialize_legacy_manual_expected_close_events(apps, None)
+
+        events = DealEvent.objects.filter(
+            deal=self.deal,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=date(2026, 6, 28),
+        )
+        self.assertEqual(events.count(), 1)
+
+    def test_legacy_manual_expected_close_migration_keeps_existing_manual_event(self):
+        self.deal.manual_expected_close = date(2026, 6, 28)
+        self.deal.expected_close = date(2026, 6, 28)
+        self.deal.save(update_fields=["manual_expected_close", "expected_close"])
+        existing_event = DealEvent.objects.create(
+            deal=self.deal,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=date(2026, 6, 28),
+            title="Уже объясненный срок",
+            source_type="deal",
+            source_id=str(self.deal.id),
+            actor=self.user,
+        )
+
+        migration = import_module(
+            "apps.deals.migrations.0035_materialize_legacy_manual_expected_close_events"
+        )
+        migration.materialize_legacy_manual_expected_close_events(apps, None)
+
+        events = DealEvent.objects.filter(
+            deal=self.deal,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=date(2026, 6, 28),
+        )
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events.get().id, existing_event.id)
 
     def test_update_next_contact_does_not_create_deal_event(self):
         response = self.api_client.patch(
