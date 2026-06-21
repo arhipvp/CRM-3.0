@@ -51,7 +51,8 @@ npm run test         # Vitest с Testing Library и setupTests
 
 - Confirm-диалоги: используйте `src/hooks/useConfirm.ts` и словарь `src/constants/confirmTexts.ts`; прямой `window.confirm` не использовать.
 - Prompt-потоки: вместо `window.prompt` используйте `src/components/common/modal/PromptDialog.tsx`.
-- Малые action-кнопки: используйте константы из `src/components/common/buttonStyles.ts` (`BTN_SM_PRIMARY`, `BTN_SM_SECONDARY`, `BTN_SM_DANGER`, `BTN_SM_QUIET`, а также `BTN_OUTLINE`/`BTN_SUCCESS`).
+- Кнопки и иконки: для нового UI используйте `Button`, `IconButton` и `AppIcon` из `src/components/common/*`; `buttonStyles.ts` оставлен как compatibility layer для старых участков.
+- Панели, вкладки и статусы: используйте `Panel`, `SectionHeader`, `StatusBadge`, `SegmentedControl` и `EmptyState` из `src/components/common/*`, чтобы не плодить локальные варианты `rounded-*`, `shadow-*` и tab-классов.
 - Form input классы: используйте `FORM_INPUT_DISABLED` и `FORM_TEXTAREA_DISABLED` из `src/components/common/forms/formClassNames.ts`.
 - Date-поля: используйте `src/components/common/forms/DateInput.tsx`, чтобы вставка дат из буфера работала одинаково во всех формах.
 - Частые UI-классы: используйте `src/components/common/uiClassNames.ts` (`LINK_ACTION_XS`, `PANEL_MUTED_TEXT`, `STATUS_*`) вместо локальных строковых дублей.

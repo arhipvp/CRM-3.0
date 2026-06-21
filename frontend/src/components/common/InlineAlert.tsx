@@ -13,7 +13,7 @@ interface InlineAlertProps {
 const TONE_CLASS: Record<InlineAlertTone, string> = {
   danger: 'app-alert app-alert-danger',
   success: 'app-alert app-alert-success',
-  info: 'app-panel-muted text-slate-700',
+  info: 'app-alert border-slate-200 bg-slate-50 text-slate-700',
 };
 
 export const InlineAlert: React.FC<InlineAlertProps> = ({

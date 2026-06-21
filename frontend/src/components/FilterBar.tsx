@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
 
 import type { FilterParams } from '../api';
-import { BTN_SM_SECONDARY } from './common/buttonStyles';
+import { Button } from './common/Button';
+import { Panel } from './common/layoutPrimitives';
 
 type CustomFilterDefinition =
   | { key: string; label: string; type: 'text' }
@@ -98,9 +99,6 @@ export function FilterBar({
     ordering !== initialOrdering ||
     Object.values(customFilterValues).some((value) => value && value.length > 0);
   const isCompact = density === 'compact';
-  const panelClassName = ['app-panel shadow-none mb-4', isCompact ? 'p-3' : 'p-4']
-    .filter(Boolean)
-    .join(' ');
   const rootGapClassName = isCompact ? 'flex flex-col gap-3' : 'flex flex-col gap-4';
   const controlsClassName =
     layout === 'inline-wrap'
@@ -111,7 +109,7 @@ export function FilterBar({
   const compactCheckboxClassName = isCompact ? 'px-2.5 py-1.5 text-[11px]' : 'px-3 py-2 text-xs';
 
   return (
-    <div className={panelClassName}>
+    <Panel padding={isCompact ? 'sm' : 'md'} className="mb-4">
       <div className={rootGapClassName}>
         <div className={controlsClassName}>
           <div className={inputWidthClassName}>
@@ -227,16 +225,17 @@ export function FilterBar({
           ))}
 
           {hasActiveFilters && (
-            <button
-              type="button"
+            <Button
               onClick={handleClearFilters}
-              className={`${BTN_SM_SECONDARY} whitespace-nowrap`}
+              variant="secondary"
+              size="sm"
+              className="whitespace-nowrap"
             >
               Сбросить фильтры
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

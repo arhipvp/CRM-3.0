@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
+import { AppIcon } from '../AppIcon';
 import { Modal } from '../../Modal';
 
 export interface CommandPaletteItem {
@@ -75,31 +76,38 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   return (
     <Modal title={title} onClose={onClose} size="lg" zIndex={70} closeOnOverlayClick={false}>
       <div className="space-y-3">
-        <input
-          type="text"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              setActiveIndex((prev) => Math.min(prev + 1, filteredItems.length - 1));
-            }
-            if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              setActiveIndex((prev) => Math.max(prev - 1, 0));
-            }
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              const item = filteredItems[activeIndex];
-              if (item) {
-                void handleSelect(item);
+        <div className="relative">
+          <AppIcon
+            name="search"
+            size={17}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveIndex((prev) => Math.min(prev + 1, filteredItems.length - 1));
               }
-            }
-          }}
-          autoFocus
-          placeholder={placeholder}
-          className="field field-input"
-        />
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveIndex((prev) => Math.max(prev - 1, 0));
+              }
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                const item = filteredItems[activeIndex];
+                if (item) {
+                  void handleSelect(item);
+                }
+              }
+            }}
+            autoFocus
+            placeholder={placeholder}
+            className="field field-input pl-9"
+          />
+        </div>
         <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-slate-200 bg-white">
           {filteredItems.length ? (
             <ul className="divide-y divide-slate-100">

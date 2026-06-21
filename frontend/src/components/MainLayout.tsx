@@ -2,12 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 
 import type { User } from '../types';
-import {
-  BTN_BLOCK_DANGER,
-  BTN_BLOCK_PRIMARY,
-  BTN_BLOCK_QUIET,
-  BTN_BLOCK_SECONDARY,
-} from './common/buttonStyles';
+import { AppIcon, type AppIconName } from './common/AppIcon';
+import { Button, IconButton } from './common/Button';
 import { UserBadge } from './common/UserBadge';
 
 interface MainLayoutProps {
@@ -20,14 +16,14 @@ interface MainLayoutProps {
   children: ReactNode;
 }
 
-const NAV_ITEMS: Array<{ path: string; label: string; icon: string }> = [
-  { path: '/seller-dashboard', label: 'Дашборд продавца', icon: '▦' },
-  { path: '/deals', label: 'Сделки', icon: '◆' },
-  { path: '/clients', label: 'Клиенты', icon: '◉' },
-  { path: '/policies', label: 'Полисы', icon: '▤' },
-  { path: '/commissions', label: 'Доходы и расходы', icon: '₽' },
-  { path: '/tasks', label: 'Задачи', icon: '✓' },
-  { path: '/settings', label: 'Настройки', icon: '⚙' },
+const NAV_ITEMS: Array<{ path: string; label: string; icon: AppIconName }> = [
+  { path: '/seller-dashboard', label: 'Дашборд продавца', icon: 'dashboard' },
+  { path: '/deals', label: 'Сделки', icon: 'deals' },
+  { path: '/clients', label: 'Клиенты', icon: 'clients' },
+  { path: '/policies', label: 'Полисы', icon: 'policies' },
+  { path: '/commissions', label: 'Доходы и расходы', icon: 'finance' },
+  { path: '/tasks', label: 'Задачи', icon: 'tasks' },
+  { path: '/settings', label: 'Настройки', icon: 'settings' },
 ];
 
 const HIDDEN_NAV_PATHS = new Set(['/knowledge', '/library']);
@@ -38,9 +34,8 @@ const NAV_LINK_BASE_CLASS =
 const NAV_LINK_ACTIVE_CLASS = 'bg-blue-50 text-blue-900 before:opacity-100';
 const NAV_LINK_IDLE_CLASS = 'text-slate-700 hover:bg-slate-100';
 const NAV_ICON_CLASS =
-  'inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--app-border)] bg-white text-sm font-bold text-slate-500';
-const TOP_SLOT_CLASS =
-  'rounded-2xl border border-blue-200/90 bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-white px-4 py-3 shadow-sm';
+  'inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--app-border)] bg-white text-slate-500';
+const TOP_SLOT_CLASS = 'rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 shadow-sm';
 
 const getNavLinkClassName = (isActive: boolean) =>
   `${NAV_LINK_BASE_CLASS} ${isActive ? NAV_LINK_ACTIVE_CLASS : NAV_LINK_IDLE_CLASS}`;
@@ -92,31 +87,25 @@ export function MainLayout({
               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">CRM 3.0</p>
               <p className="text-2xl font-bold text-blue-700">Insure Desk</p>
             </div>
-            <button
-              type="button"
+            <IconButton
               onClick={toggleSidebar}
-              className="icon-btn hidden shrink-0 lg:inline-flex"
-              aria-label={
-                isSidebarCollapsed ? 'Развернуть боковую панель' : 'Свернуть боковую панель'
-              }
+              className="hidden shrink-0 lg:inline-flex"
+              icon={isSidebarCollapsed ? 'expand' : 'collapse'}
+              label={isSidebarCollapsed ? 'Развернуть боковую панель' : 'Свернуть боковую панель'}
               aria-expanded={!isSidebarCollapsed}
-              title={isSidebarCollapsed ? 'Развернуть боковую панель' : 'Свернуть боковую панель'}
-            >
-              {isSidebarCollapsed ? '›' : '‹'}
-            </button>
+            />
           </div>
-          <button
-            type="button"
+          <Button
             onClick={onOpenCommandPalette}
-            className={`${BTN_BLOCK_QUIET} ${isSidebarCollapsed ? 'lg:px-0' : ''}`}
+            variant="quiet"
+            size="block"
+            icon="commands"
+            className={isSidebarCollapsed ? 'lg:px-0' : ''}
             aria-label="Команды"
             title={isSidebarCollapsed ? 'Команды' : undefined}
           >
-            <span aria-hidden="true" className="hidden lg:inline">
-              {isSidebarCollapsed ? '⌘' : null}
-            </span>
             <span className={desktopLabelClassName}>Команды</span>
-          </button>
+          </Button>
         </div>
 
         <nav className="flex-1 overflow-x-auto overflow-y-visible px-3 py-3 lg:overflow-y-auto">
@@ -131,7 +120,9 @@ export function MainLayout({
                   aria-label={item.label}
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
-                  <span className={NAV_ICON_CLASS}>{item.icon}</span>
+                  <span className={NAV_ICON_CLASS}>
+                    <AppIcon name={item.icon} size={16} />
+                  </span>
                   <span className={desktopLabelClassName}>{item.label}</span>
                 </NavLink>
               </li>
@@ -142,26 +133,28 @@ export function MainLayout({
         <div
           className={`space-y-3 border-t border-[var(--app-border)] bg-white/70 p-4 ${isSidebarCollapsed ? 'lg:px-3' : ''}`}
         >
-          <button
-            type="button"
+          <Button
             onClick={onAddDeal}
-            className={`${BTN_BLOCK_PRIMARY} ${isSidebarCollapsed ? 'lg:px-0' : ''}`}
+            variant="primary"
+            size="block"
+            icon="plus"
+            className={isSidebarCollapsed ? 'lg:px-0' : ''}
             aria-label="Добавить сделку"
             title={isSidebarCollapsed ? 'Добавить сделку' : undefined}
           >
-            <span aria-hidden="true">+</span>
             <span className={desktopLabelClassName}>Добавить сделку</span>
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={onAddClient}
-            className={`${BTN_BLOCK_SECONDARY} ${isSidebarCollapsed ? 'lg:px-0' : ''}`}
+            variant="secondary"
+            size="block"
+            icon="plus"
+            className={isSidebarCollapsed ? 'lg:px-0' : ''}
             aria-label="Добавить клиента"
             title={isSidebarCollapsed ? 'Добавить клиента' : undefined}
           >
-            <span aria-hidden="true">+</span>
             <span className={desktopLabelClassName}>Добавить клиента</span>
-          </button>
+          </Button>
 
           {currentUser && (
             <div className="space-y-2 border-t border-[var(--app-border)] pt-2">
@@ -190,18 +183,17 @@ export function MainLayout({
                 </p>
               </div>
               {onLogout && (
-                <button
-                  type="button"
+                <Button
                   onClick={onLogout}
-                  className={`${BTN_BLOCK_DANGER} ${isSidebarCollapsed ? 'lg:px-0' : ''}`}
+                  variant="danger"
+                  size="block"
+                  icon="logout"
+                  className={isSidebarCollapsed ? 'lg:px-0' : ''}
                   aria-label="Выйти"
                   title={isSidebarCollapsed ? 'Выйти' : undefined}
                 >
-                  <span aria-hidden="true" className="hidden lg:inline">
-                    {isSidebarCollapsed ? '↪' : null}
-                  </span>
                   <span className={desktopLabelClassName}>Выйти</span>
-                </button>
+                </Button>
               )}
             </div>
           )}

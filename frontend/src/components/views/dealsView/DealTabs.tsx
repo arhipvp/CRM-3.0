@@ -17,7 +17,7 @@ export const DealTabs: React.FC<DealTabsProps> = ({
   <div
     role="tablist"
     aria-label="Разделы выбранной сделки"
-    className="flex w-full flex-nowrap gap-2 overflow-x-auto app-panel-muted p-1 shadow-none scrollbar-none"
+    className="app-segmented-control scrollbar-none"
   >
     {DEAL_TABS.map((tab) => {
       const isActive = activeTab === tab.id;
@@ -35,9 +35,9 @@ export const DealTabs: React.FC<DealTabsProps> = ({
           aria-controls={`deal-tabpanel-${tab.id}`}
           type="button"
           onClick={() => onChange(tab.id)}
-          className={`min-w-[120px] flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+          className={`app-segmented-control-button min-w-[120px] ${
             isActive
-              ? 'bg-white font-semibold text-sky-700 border border-slate-200 shadow-sm'
+              ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
               : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
           }`}
         >

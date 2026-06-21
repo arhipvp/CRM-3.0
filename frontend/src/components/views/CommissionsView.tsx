@@ -515,7 +515,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       <div
         role="tablist"
         aria-label="Разделы доходов и расходов"
-        className="flex w-full flex-nowrap gap-2 overflow-x-auto app-panel-muted p-1 shadow-none scrollbar-none"
+        className="app-segmented-control scrollbar-none"
       >
         <button
           id="financial-tab-statements"
@@ -524,9 +524,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           aria-selected={viewMode === 'statements'}
           aria-controls="financial-tabpanel-statements"
           onClick={() => setViewMode('statements')}
-          className={`min-w-[200px] flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+          className={`app-segmented-control-button min-w-[200px] ${
             viewMode === 'statements'
-              ? 'bg-white font-semibold text-sky-700 border border-slate-200 shadow-sm'
+              ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
               : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
           }`}
         >
@@ -539,9 +539,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           aria-selected={viewMode === 'all'}
           aria-controls="financial-tabpanel-all"
           onClick={() => setViewMode('all')}
-          className={`min-w-[240px] flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+          className={`app-segmented-control-button min-w-[240px] ${
             viewMode === 'all'
-              ? 'bg-white font-semibold text-sky-700 border border-slate-200 shadow-sm'
+              ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
               : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
           }`}
         >
@@ -739,7 +739,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     <div
                       role="tablist"
                       aria-label="Разделы ведомости"
-                      className="flex w-full flex-nowrap gap-2 overflow-x-auto app-panel-muted p-1 shadow-none scrollbar-none"
+                      className="app-segmented-control scrollbar-none"
                     >
                       {statementTabs.map((tab) => {
                         const isActive = statementTab === tab.id;
@@ -753,9 +753,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                             aria-controls={`statement-tabpanel-${tab.id}`}
                             type="button"
                             onClick={() => setStatementTab(tab.id)}
-                            className={`min-w-[120px] flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                            className={`app-segmented-control-button min-w-[120px] ${
                               isActive
-                                ? 'bg-white font-semibold text-sky-700 border border-slate-200 shadow-sm'
+                                ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
                                 : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
                             }`}
                           >

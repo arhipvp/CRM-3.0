@@ -17,6 +17,7 @@ import { DataTableShell } from '../common/table/DataTableShell';
 import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 import { ClientNameIndicators } from '../clients/ClientNameIndicators';
+import { Panel } from '../common/layoutPrimitives';
 
 const PAGE_SIZE = 20;
 
@@ -135,20 +136,20 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     <div className="space-y-6">
       <h1 className="sr-only">Клиенты</h1>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="app-panel border-none bg-gradient-to-r from-blue-50 to-white p-5 shadow-none">
+        <Panel padding="md" className="border-blue-100 bg-blue-50/80">
           <p className="text-sm text-slate-500">Клиентов</p>
           <p className="text-3xl font-semibold text-slate-900">{totals.clients}</p>
-        </div>
-        <div className="app-panel border-none p-5 shadow-none">
+        </Panel>
+        <Panel padding="md">
           <p className="text-sm text-slate-500">
             {hasPartialDealsMetric ? 'Загружено сделок' : 'Активных сделок'}
           </p>
           <p className="text-3xl font-semibold text-slate-900">{totals.active}</p>
-        </div>
-        <div className="app-panel border-none p-5 shadow-none">
+        </Panel>
+        <Panel padding="md">
           <p className="text-sm text-slate-500">Новых за 30 дней</p>
           <p className="text-3xl font-semibold text-slate-900">{newClientsCount}</p>
-        </div>
+        </Panel>
       </div>
 
       <FilterBar

@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { EmptyState } from '../EmptyState';
+
 interface EmptyTableStateProps {
   colSpan: number;
   children: React.ReactNode;
@@ -12,9 +14,7 @@ export const EmptyTableState: React.FC<EmptyTableStateProps> = ({ colSpan, child
         colSpan={colSpan}
         className="border border-slate-200 px-6 py-10 text-center text-slate-600"
       >
-        <div className="app-panel-muted inline-flex px-4 py-3 text-sm text-slate-600">
-          {children}
-        </div>
+        <EmptyState compact>{children}</EmptyState>
       </td>
     </tr>
   );

@@ -10,6 +10,13 @@
   --app-primary: #1872d9;
   --app-danger: #e11d48;
   --app-success: #059669;
+  --app-warning: #d97706;
+  --app-radius-sm: 0.75rem;
+  --app-radius-md: 1rem;
+  --app-radius-lg: 1.25rem;
+  --app-control-height-sm: 2rem;
+  --app-control-height-md: 2.5rem;
+  --app-focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.18);
   --app-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 18px 36px rgba(15, 23, 42, 0.08);
   --app-sidebar-bg: #f8fbff;
 }
@@ -49,7 +56,7 @@ body {
 
 @layer components {
   .app-panel {
-    @apply rounded-3xl border bg-white shadow-md;
+    @apply rounded-2xl border bg-white shadow-md;
     border-color: var(--app-border);
     box-shadow: var(--app-shadow);
   }
@@ -80,12 +87,13 @@ body {
   }
 
   .field {
-    @apply w-full rounded-xl border bg-white px-3 text-sm text-slate-700 shadow-sm focus:ring focus:ring-sky-100 focus:ring-offset-0;
+    @apply w-full rounded-xl border bg-white px-3 text-sm text-slate-700 shadow-sm focus:outline-none;
     border-color: var(--app-border);
   }
 
   .field:focus-visible {
     border-color: color-mix(in srgb, var(--app-primary) 75%, white);
+    box-shadow: var(--app-focus-ring);
   }
 
   .field-input {
@@ -156,6 +164,15 @@ body {
 
   .link-danger {
     @apply font-semibold text-rose-700 transition hover:text-rose-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-md;
+  }
+
+  .app-segmented-control {
+    @apply flex w-full flex-nowrap gap-1 overflow-x-auto rounded-2xl border bg-slate-50 p-1;
+    border-color: var(--app-border);
+  }
+
+  .app-segmented-control-button {
+    @apply min-h-9 flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50;
   }
 }
 

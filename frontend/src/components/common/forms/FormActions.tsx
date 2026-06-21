@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { Button } from '../Button';
+
 interface FormActionsProps {
   onCancel?: () => void;
   cancelLabel?: string;
@@ -31,22 +33,23 @@ export const FormActions: React.FC<FormActionsProps> = ({
   return (
     <div className={containerClassName}>
       {onCancel && (
-        <button
-          type="button"
+        <Button
           onClick={onCancel}
           disabled={isSubmitting}
+          variant="secondary"
           className={cancelClassName || 'btn btn-secondary'}
         >
           {cancelLabel}
-        </button>
+        </Button>
       )}
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting || isSubmitDisabled}
+        variant="primary"
         className={submitClassName || 'btn btn-primary'}
       >
         {isSubmitting ? submittingLabel : submitLabel}
-      </button>
+      </Button>
     </div>
   );
 };

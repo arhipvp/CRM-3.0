@@ -1,5 +1,7 @@
 import { useEffect, useId, type ReactNode } from 'react';
 
+import { IconButton } from './common/Button';
+
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
 const MODAL_SIZE_TO_CLASS: Record<ModalSize, string> = {
@@ -65,7 +67,7 @@ export function Modal({
       }}
     >
       <div
-        className={`flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
+        className={`flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-[var(--app-border)] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -75,11 +77,7 @@ export function Modal({
           <h2 id={titleId} className="min-w-0 break-words text-lg font-semibold text-slate-900">
             {title}
           </h2>
-          {!hideCloseButton && (
-            <button type="button" onClick={onClose} className="icon-btn" aria-label="Закрыть">
-              &times;
-            </button>
-          )}
+          {!hideCloseButton && <IconButton icon="close" label="Закрыть" onClick={onClose} />}
         </div>
         <div
           className={`min-h-0 min-w-0 flex-1 p-4 sm:p-5 ${
