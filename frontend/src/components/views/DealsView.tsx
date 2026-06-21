@@ -91,6 +91,7 @@ interface DealsViewProps {
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
+  dealEventsRefreshTokens?: Record<string, number>;
   onCreateDealEvent: (
     dealId: string,
     data: { eventDate: string; reason: string },
@@ -190,6 +191,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDeleteChatMessage,
   onFetchDealHistory,
   onFetchDealEvents,
+  dealEventsRefreshTokens,
   onCreateDealEvent,
   onUpdateDealEvent,
   onDeleteDealEvent,
@@ -339,6 +341,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onDeleteChatMessage={onDeleteChatMessage}
             onFetchDealHistory={onFetchDealHistory}
             onFetchDealEvents={onFetchDealEvents}
+            dealEventsRefreshToken={
+              selectedDeal ? (dealEventsRefreshTokens?.[selectedDeal.id] ?? 0) : 0
+            }
             onCreateDealEvent={onCreateDealEvent}
             onUpdateDealEvent={onUpdateDealEvent}
             onDeleteDealEvent={onDeleteDealEvent}

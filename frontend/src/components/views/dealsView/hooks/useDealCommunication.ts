@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ActivityLog, ChatMessage, DealTimelineEvent } from '../../../../types';
 import type { DealTabId } from '../helpers';
@@ -12,6 +12,7 @@ interface UseDealCommunicationArgs {
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
+  dealEventsRefreshToken?: number;
 }
 
 export const useDealCommunication = ({
@@ -23,6 +24,7 @@ export const useDealCommunication = ({
   onDeleteChatMessage,
   onFetchDealHistory,
   onFetchDealEvents,
+  dealEventsRefreshToken = 0,
 }: UseDealCommunicationArgs) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -32,6 +34,10 @@ export const useDealCommunication = ({
   const [dealTimelineEvents, setDealTimelineEvents] = useState<DealTimelineEvent[]>([]);
   const [isDealEventsLoading, setIsDealEventsLoading] = useState(false);
   const [dealEventsError, setDealEventsError] = useState<string | null>(null);
+  const previousDealEventsRefresh = useRef<{
+    dealId?: string;
+    token: number;
+  }>({ token: dealEventsRefreshToken });
 
   useEffect(() => {
     setChatMessages([]);
@@ -141,6 +147,24 @@ export const useDealCommunication = ({
       void loadDealEvents();
     }
   }, [activeTab, loadDealEvents]);
+
+  useEffect(() => {
+    const previous = previousDealEventsRefresh.current;
+    previousDealEventsRefresh.current = {
+      dealId: selectedDealId,
+      token: dealEventsRefreshToken,
+    };
+
+    if (
+      !selectedDealId ||
+      dealEventsRefreshToken === 0 ||
+      previous.dealId !== selectedDealId ||
+      previous.token === dealEventsRefreshToken
+    ) {
+      return;
+    }
+    void loadDealEvents();
+  }, [dealEventsRefreshToken, loadDealEvents, selectedDealId]);
 
   useEffect(() => {
     if (activeTab === 'history') {

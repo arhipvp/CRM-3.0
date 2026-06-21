@@ -62,6 +62,9 @@ const AppContent: React.FC = () => {
   const [isDealSelectionBlocked, setDealSelectionBlocked] = useState(false);
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
   const [isRefreshingDealsList, setIsRefreshingDealsList] = useState(false);
+  const [dealEventsRefreshTokens, setDealEventsRefreshTokens] = useState<Record<string, number>>(
+    {},
+  );
 
   const {
     dataState,
@@ -373,6 +376,23 @@ const AppContent: React.FC = () => {
     [],
   );
 
+  const notifyDealEventsChanged = useCallback((dealIds: (string | null | undefined)[]) => {
+    const uniqueDealIds = Array.from(
+      new Set(dealIds.filter((dealId): dealId is string => Boolean(dealId))),
+    );
+    if (uniqueDealIds.length === 0) {
+      return;
+    }
+
+    setDealEventsRefreshTokens((prev) => {
+      const next = { ...prev };
+      uniqueDealIds.forEach((dealId) => {
+        next[dealId] = (next[dealId] ?? 0) + 1;
+      });
+      return next;
+    });
+  }, []);
+
   const {
     handleAddPayment,
     handleUpdatePayment,
@@ -437,6 +457,7 @@ const AppContent: React.FC = () => {
     refreshDealsWithSelection,
     syncDealsByIds,
     selectDealById: dealPreview.selectDealById,
+    notifyDealEventsChanged,
     adjustPaymentsTotals,
   });
 
@@ -629,6 +650,7 @@ const AppContent: React.FC = () => {
       onDeleteChatMessage: handleDeleteChatMessage,
       onFetchDealHistory: fetchDealHistory,
       onFetchDealEvents: fetchDealEvents,
+      dealEventsRefreshTokens,
       onCreateDealEvent: createDealEvent,
       onUpdateDealEvent: updateDealEvent,
       onDeleteDealEvent: deleteDealEvent,
@@ -687,6 +709,7 @@ const AppContent: React.FC = () => {
       handleUnpinDeal,
       handleUpdateDeal,
       handleUpdateTask,
+      dealEventsRefreshTokens,
       openClientModal,
       pendingDealClientId,
       refreshPoliciesList,
@@ -904,6 +927,7 @@ const AppContent: React.FC = () => {
       onDeleteChatMessage: handleDeleteChatMessage,
       onFetchDealHistory: fetchDealHistory,
       onFetchDealEvents: fetchDealEvents,
+      dealEventsRefreshToken: previewDeal ? (dealEventsRefreshTokens[previewDeal.id] ?? 0) : 0,
       onCreateDealEvent: createDealEvent,
       onUpdateDealEvent: updateDealEvent,
       onDeleteDealEvent: deleteDealEvent,

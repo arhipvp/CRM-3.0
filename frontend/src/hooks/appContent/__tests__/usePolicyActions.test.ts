@@ -51,6 +51,7 @@ import {
   createPayment as createPaymentApi,
   createPolicy as createPolicyApi,
   createPolicyDraft,
+  deletePolicy,
   deleteFinancialRecord,
   fetchPayments,
   movePolicy,
@@ -65,6 +66,7 @@ const createFinancialRecordMock = vi.mocked(createFinancialRecordApi);
 const createPaymentMock = vi.mocked(createPaymentApi);
 const createPolicyMock = vi.mocked(createPolicyApi);
 const createPolicyDraftMock = vi.mocked(createPolicyDraft);
+const deletePolicyMock = vi.mocked(deletePolicy);
 const deleteFinancialRecordMock = vi.mocked(deleteFinancialRecord);
 const fetchPaymentsMock = vi.mocked(fetchPayments);
 const movePolicyMock = vi.mocked(movePolicy);
@@ -208,6 +210,7 @@ const createParams = ({
       refreshDealsWithSelection: vi.fn().mockResolvedValue([]),
       syncDealsByIds: vi.fn().mockResolvedValue(undefined),
       selectDealById: vi.fn(),
+      notifyDealEventsChanged: vi.fn(),
       adjustPaymentsTotals: vi.fn((items) => items),
     },
     appState,
@@ -283,6 +286,7 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(appState.policies[0]).toEqual(policy);
     expect(appState.payments[0]).toEqual(payment);
     expect(appState.financialRecords[0]).toEqual(record);
+    expect(params.notifyDealEventsChanged).toHaveBeenCalledWith([policy.dealId]);
     expect(params.setError).not.toHaveBeenCalled();
   });
 
@@ -325,6 +329,7 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(deleteFinancialRecordMock).not.toHaveBeenCalled();
     expect(appState.policies[0]).toEqual(updatedPolicy);
     expect(appState.payments[0]).toEqual(updatedPayment);
+    expect(params.notifyDealEventsChanged).toHaveBeenCalledWith([policy.dealId]);
     expect(params.setError).not.toHaveBeenCalled();
   });
 
@@ -365,6 +370,28 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
 
     expect(updatePolicyRenewedMock).toHaveBeenCalledWith(policy.id, true);
     expect(updatePolicyMock).not.toHaveBeenCalled();
+    expect(params.syncDealsByIds).toHaveBeenCalledWith([policy.dealId]);
+    expect(params.notifyDealEventsChanged).toHaveBeenCalledWith([policy.dealId]);
+  });
+
+  it('notifies deal events after deleting a policy', async () => {
+    const policy = createPolicy();
+    const payment = createPayment({ policyId: policy.id, dealId: policy.dealId });
+    const { params, appState } = createParams({ policy, payments: [payment] });
+    deletePolicyMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => usePolicyActions(params));
+
+    await act(async () => {
+      await result.current.handleDeletePolicy(policy.id);
+    });
+
+    expect(deletePolicyMock).toHaveBeenCalledWith(policy.id);
+    expect(params.syncDealsByIds).toHaveBeenCalledWith([policy.dealId]);
+    expect(params.loadDealPolicies).toHaveBeenCalledWith(policy.dealId, { force: true });
+    expect(params.notifyDealEventsChanged).toHaveBeenCalledWith([policy.dealId]);
+    expect(appState.policies).toEqual([]);
+    expect(appState.payments).toEqual([]);
   });
 
   it('moves policy and refreshes both affected deals', async () => {
@@ -390,6 +417,7 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(params.syncDealsByIds).toHaveBeenCalledWith([policy.dealId, 'deal-2']);
     expect(params.loadDealPolicies).toHaveBeenCalledWith(policy.dealId, { force: true });
     expect(params.loadDealPolicies).toHaveBeenCalledWith('deal-2', { force: true });
+    expect(params.notifyDealEventsChanged).toHaveBeenCalledWith([policy.dealId, 'deal-2']);
     expect(appState.policies[0].dealId).toBe('deal-2');
     expect(appState.payments[0].dealId).toBe('deal-2');
   });

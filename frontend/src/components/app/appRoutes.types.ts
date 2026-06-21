@@ -84,6 +84,7 @@ export interface AppRouteDealsActions {
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
+  dealEventsRefreshTokens?: Record<string, number>;
   onCreateDealEvent: (
     dealId: string,
     data: { eventDate: string; reason: string },

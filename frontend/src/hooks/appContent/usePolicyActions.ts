@@ -41,6 +41,7 @@ interface UsePolicyActionsParams {
   ) => Promise<Deal[]>;
   syncDealsByIds: (dealIds: (string | null | undefined)[]) => Promise<void>;
   selectDealById: (dealId: string) => void;
+  notifyDealEventsChanged: (dealIds: (string | null | undefined)[]) => void;
   adjustPaymentsTotals: <
     T extends { id: string; paymentsTotal?: string | null; paymentsPaid?: string | null },
   >(
@@ -67,6 +68,7 @@ export const usePolicyActions = ({
   refreshDealsWithSelection,
   syncDealsByIds,
   selectDealById,
+  notifyDealEventsChanged,
 }: UsePolicyActionsParams) => {
   const [policyDealId, setPolicyDealId] = useState<string | null>(null);
   const [policyPrefill, setPolicyPrefill] = useState<{
@@ -244,6 +246,7 @@ export const usePolicyActions = ({
 
         try {
           await loadDealPolicies(dealId, { force: true });
+          notifyDealEventsChanged([dealId]);
         } catch (refreshErr) {
           setError(
             refreshErr instanceof Error ? refreshErr.message : 'Не удалось обновить список полисов',
@@ -282,6 +285,7 @@ export const usePolicyActions = ({
       selectDealById,
       setError,
       setIsSyncing,
+      notifyDealEventsChanged,
       syncDealsByIds,
     ],
   );
@@ -302,6 +306,7 @@ export const usePolicyActions = ({
         if (currentPolicy.dealId) {
           await syncDealsByIds([currentPolicy.dealId]);
           await loadDealPolicies(currentPolicy.dealId, { force: true });
+          notifyDealEventsChanged([currentPolicy.dealId]);
         }
         setEditingPolicy(null);
       } catch (err) {
@@ -322,6 +327,7 @@ export const usePolicyActions = ({
       invalidateDealsCache,
       loadDealPolicies,
       mergePolicyDraftResult,
+      notifyDealEventsChanged,
       policies,
       setError,
       setIsSyncing,
@@ -357,6 +363,7 @@ export const usePolicyActions = ({
         if (targetDealId) {
           await syncDealsByIds([targetDealId]);
           await loadDealPolicies(targetDealId, { force: true });
+          notifyDealEventsChanged([targetDealId]);
         }
       } catch (err) {
         setError(formatErrorMessage(err, 'Не удалось удалить полис'));
@@ -367,6 +374,7 @@ export const usePolicyActions = ({
       invalidateDealPoliciesCache,
       invalidateDealsCache,
       loadDealPolicies,
+      notifyDealEventsChanged,
       policies,
       setError,
       syncDealsByIds,
@@ -423,6 +431,7 @@ export const usePolicyActions = ({
             .filter((dealId): dealId is string => Boolean(dealId))
             .map((dealId) => loadDealPolicies(dealId, { force: true })),
         );
+        notifyDealEventsChanged([sourceDealId, targetDealId]);
       } catch (err) {
         setError(formatErrorMessage(err, 'Не удалось перенести полис'));
         throw err;
@@ -435,6 +444,7 @@ export const usePolicyActions = ({
       invalidateDealPoliciesCache,
       invalidateDealsCache,
       loadDealPolicies,
+      notifyDealEventsChanged,
       policies,
       setError,
       setIsSyncing,
@@ -456,7 +466,9 @@ export const usePolicyActions = ({
           policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
         }));
         if (targetDealId) {
+          await syncDealsByIds([targetDealId]);
           await loadDealPolicies(targetDealId, { force: true });
+          notifyDealEventsChanged([targetDealId]);
         }
       } catch (err) {
         setError(formatErrorMessage(err, 'Не удалось обновить признак продления полиса'));
@@ -469,9 +481,11 @@ export const usePolicyActions = ({
       invalidateDealPoliciesCache,
       invalidateDealsCache,
       loadDealPolicies,
+      notifyDealEventsChanged,
       policies,
       setError,
       setIsSyncing,
+      syncDealsByIds,
       updateAppData,
     ],
   );

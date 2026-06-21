@@ -127,6 +127,7 @@ export interface DealDetailsPanelProps {
   onDeleteChatMessage: (messageId: string) => Promise<void>;
   onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
   onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
+  dealEventsRefreshToken?: number;
   onCreateDealEvent?: (
     dealId: string,
     data: {
@@ -211,6 +212,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onDeleteChatMessage,
   onFetchDealHistory,
   onFetchDealEvents,
+  dealEventsRefreshToken = 0,
   onCreateDealEvent = async () => {
     throw new Error('Создание событий недоступно');
   },
@@ -543,6 +545,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     onDeleteChatMessage,
     onFetchDealHistory,
     onFetchDealEvents,
+    dealEventsRefreshToken,
   });
 
   useEffect(() => {
