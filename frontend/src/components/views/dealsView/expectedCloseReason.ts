@@ -13,7 +13,6 @@ const EXACT_REASON_TYPES: ReadonlySet<DealTimelineEvent['eventType']> = new Set(
   'policy_expiration',
   'payment_due',
   'manual_expected_close',
-  'manual',
 ]);
 
 const DEADLINE_SOURCE_TYPES: ReadonlySet<DealTimelineEvent['eventType']> = new Set([

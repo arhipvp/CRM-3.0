@@ -51,7 +51,7 @@ describe('resolveExpectedCloseReason', () => {
     ]);
   });
 
-  it('uses generic manual event only for exact date explanation', () => {
+  it('ignores legacy generic manual events as deadline reasons', () => {
     const exact = resolveExpectedCloseReason('2027-06-26', [
       makeEvent({
         id: 'manual-1',
@@ -61,19 +61,8 @@ describe('resolveExpectedCloseReason', () => {
       }),
     ]);
 
-    const mismatch = resolveExpectedCloseReason('2027-06-27', [
-      makeEvent({
-        id: 'manual-1',
-        eventType: 'manual',
-        eventDate: '2027-06-26',
-        title: 'Предположительно купит квартиру',
-      }),
-    ]);
-
-    expect(exact.status).toBe('exact');
-    expect(exact.events).toHaveLength(1);
-    expect(mismatch.status).toBe('empty');
-    expect(mismatch.events).toHaveLength(0);
+    expect(exact.status).toBe('empty');
+    expect(exact.events).toHaveLength(0);
   });
 
   it('returns mismatch with nearest deadline source when dates do not match', () => {

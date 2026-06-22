@@ -351,14 +351,6 @@ class DealDocumentRecognitionRequestSerializer(serializers.Serializer):
 
 
 class ManualDealEventSerializer(serializers.Serializer):
-    event_type = serializers.ChoiceField(
-        choices=(
-            (DealEvent.EventType.MANUAL, "Ручное событие"),
-            (DealEvent.EventType.MANUAL_EXPECTED_CLOSE, "Ручной крайний срок"),
-        ),
-        required=False,
-        default=DealEvent.EventType.MANUAL,
-    )
     event_date = serializers.DateField()
     reason = serializers.CharField(max_length=255, trim_whitespace=True)
 

@@ -118,8 +118,8 @@ describe('DealDateControls', () => {
             {
               id: 'deal-event-event-1',
               deal: 'deal-1',
-              eventType: 'manual',
-              eventTypeDisplay: 'Ручное событие',
+              eventType: 'manual_expected_close',
+              eventTypeDisplay: 'Ручной крайний срок',
               eventDate: '2024-02-10',
               title: 'Предположительно купит квартиру, предложить застраховать',
               description: '',

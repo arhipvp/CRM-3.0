@@ -275,26 +275,16 @@ class DealViewSet(
                 )
             serializer = ManualDealEventSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            event_type = serializer.validated_data["event_type"]
             event = DealEvent.objects.create(
                 deal=deal,
-                event_type=event_type,
+                event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
                 event_date=serializer.validated_data["event_date"],
                 title=serializer.validated_data["reason"],
-                source_type=(
-                    "deal"
-                    if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
-                    else ""
-                ),
-                source_id=(
-                    str(deal.id)
-                    if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
-                    else ""
-                ),
+                source_type="deal",
+                source_id=str(deal.id),
                 actor=request.user if request.user.is_authenticated else None,
             )
-            if event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE:
-                sync_manual_expected_close_from_events(deal.id)
+            sync_manual_expected_close_from_events(deal.id)
             return Response(
                 DealEventSerializer(stored_event_payload(event)).data,
                 status=status.HTTP_201_CREATED,
@@ -321,42 +311,27 @@ class DealViewSet(
             )
         normalized_event_id = str(event_id or "").removeprefix("deal-event-")
         event = get_object_or_404(DealEvent, id=normalized_event_id, deal=deal)
-        editable_event_types = {
-            DealEvent.EventType.MANUAL,
-            DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
-        }
-        if event.event_type not in editable_event_types:
+        if event.event_type != DealEvent.EventType.MANUAL_EXPECTED_CLOSE:
             return Response(
-                {"detail": "Можно изменять только ручные события."},
+                {"detail": "Можно изменять только ручные крайние сроки."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        was_deadline_event = (
-            event.event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
-        )
         if request.method == "DELETE":
             event.delete()
-            if was_deadline_event:
-                sync_manual_expected_close_from_events(deal.id)
+            sync_manual_expected_close_from_events(deal.id)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         serializer = ManualDealEventSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        if "event_type" in serializer.validated_data:
-            event.event_type = serializer.validated_data["event_type"]
         if "event_date" in serializer.validated_data:
             event.event_date = serializer.validated_data["event_date"]
         if "reason" in serializer.validated_data:
             event.title = serializer.validated_data["reason"]
         event.description = ""
-        if event.event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE:
-            event.source_type = "deal"
-            event.source_id = str(deal.id)
-        else:
-            event.source_type = ""
-            event.source_id = ""
+        event.source_type = "deal"
+        event.source_id = str(deal.id)
         event.save(
             update_fields=[
-                "event_type",
                 "event_date",
                 "title",
                 "description",
@@ -364,11 +339,7 @@ class DealViewSet(
                 "source_id",
             ]
         )
-        if (
-            was_deadline_event
-            or event.event_type == DealEvent.EventType.MANUAL_EXPECTED_CLOSE
-        ):
-            sync_manual_expected_close_from_events(deal.id)
+        sync_manual_expected_close_from_events(deal.id)
         event.refresh_from_db()
         return Response(DealEventSerializer(stored_event_payload(event)).data)
 

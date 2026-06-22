@@ -1,7 +1,7 @@
-import type { Payment, Policy } from '../../../types';
+import type { DealTimelineEvent, Payment, Policy } from '../../../types';
 import { formatCurrencyRu } from '../../../utils/formatting';
 
-export type DealEventType = 'payment' | 'policyExpiration';
+export type DealEventType = 'payment' | 'policyExpiration' | 'manualDeadline';
 
 export interface DealEvent {
   id: string;
@@ -103,6 +103,58 @@ export const buildDealEvents = ({
 
   return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 };
+
+const TIMELINE_DEADLINE_TYPES: ReadonlySet<DealTimelineEvent['eventType']> = new Set([
+  'manual_expected_close',
+  'payment_due',
+  'policy_expiration',
+]);
+
+const timelineEventTypeMap: Record<
+  Extract<
+    DealTimelineEvent['eventType'],
+    'manual_expected_close' | 'payment_due' | 'policy_expiration'
+  >,
+  DealEventType
+> = {
+  manual_expected_close: 'manualDeadline',
+  payment_due: 'payment',
+  policy_expiration: 'policyExpiration',
+};
+
+const normalizeMetadataAmount = (value: unknown) => {
+  const amount =
+    typeof value === 'number'
+      ? normalizeAmount(String(value))
+      : typeof value === 'string'
+        ? normalizeAmount(value)
+        : null;
+  return amount ?? undefined;
+};
+
+export const buildDealEventsFromTimeline = (events: DealTimelineEvent[]): DealEvent[] =>
+  events
+    .filter(
+      (
+        event,
+      ): event is DealTimelineEvent & {
+        eventType: 'manual_expected_close' | 'payment_due' | 'policy_expiration';
+        eventDate: string;
+      } => Boolean(event.eventDate) && TIMELINE_DEADLINE_TYPES.has(event.eventType),
+    )
+    .map(
+      (event): DealEvent => ({
+        id: event.id,
+        type: timelineEventTypeMap[event.eventType],
+        date: event.eventDate,
+        title: event.title,
+        description: event.description || undefined,
+        policyNumber:
+          typeof event.metadata.policyNumber === 'string' ? event.metadata.policyNumber : undefined,
+        amount: normalizeMetadataAmount(event.metadata.amount),
+      }),
+    )
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 export interface DealEventWindow {
   upcomingEvents: DealEvent[];

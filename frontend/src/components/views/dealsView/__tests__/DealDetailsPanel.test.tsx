@@ -28,6 +28,14 @@ const { policiesTabPropsSpy } = vi.hoisted(() => ({
 const { quotesTabPropsSpy } = vi.hoisted(() => ({
   quotesTabPropsSpy: vi.fn(),
 }));
+const { dealCommunicationState } = vi.hoisted(() => ({
+  dealCommunicationState: {
+    dealTimelineEvents: [] as Array<Record<string, unknown>>,
+  },
+}));
+const { updateDealDatesMock } = vi.hoisted(() => ({
+  updateDealDatesMock: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
@@ -178,7 +186,8 @@ vi.mock('../hooks/useDealInlineDates', () => ({
     quickInlinePostponeShift: vi.fn(),
     quickInlineShift: vi.fn(),
     quickInlineDateOptions: [],
-    updateDealDates: vi.fn(),
+    updateDealDates: updateDealDatesMock,
+    postponeDealDates: vi.fn(),
   }),
 }));
 
@@ -189,7 +198,7 @@ vi.mock('../hooks/useDealCommunication', () => ({
     activityLogs: [],
     isActivityLoading: false,
     activityError: null,
-    dealTimelineEvents: [],
+    dealTimelineEvents: dealCommunicationState.dealTimelineEvents,
     isDealEventsLoading: false,
     dealEventsError: null,
     loadChatMessages: vi.fn().mockResolvedValue(undefined),
@@ -220,8 +229,23 @@ vi.mock('../DealActions', () => ({
 }));
 
 vi.mock('../DealDateControls', () => ({
-  DealDateControls: ({ onAddEventClick }: { onAddEventClick?: () => void }) => (
+  DealDateControls: ({
+    eventDelayDisabled,
+    eventDelayLabel,
+    onAddEventClick,
+    onEventDelayClick,
+  }: {
+    eventDelayDisabled?: boolean;
+    eventDelayLabel?: string;
+    onAddEventClick?: () => void;
+    onEventDelayClick?: () => void;
+  }) => (
     <div data-testid="deal-date-controls">
+      {eventDelayLabel && (
+        <button type="button" disabled={eventDelayDisabled} onClick={onEventDelayClick}>
+          {eventDelayLabel}
+        </button>
+      )}
       <button type="button" onClick={onAddEventClick}>
         Добавить событие
       </button>
@@ -369,6 +393,9 @@ describe('DealDetailsPanel', () => {
     dealTimeTrackingState.isConfirmModalOpen = false;
     dealTimeTrackingState.isPausedForConfirm = false;
     dealTimeTrackingState.continueTracking = vi.fn();
+    dealCommunicationState.dealTimelineEvents = [];
+    updateDealDatesMock.mockReset();
+    updateDealDatesMock.mockResolvedValue(undefined);
     policiesTabPropsSpy.mockReset();
     quotesTabPropsSpy.mockReset();
   });
@@ -642,14 +669,11 @@ describe('DealDetailsPanel', () => {
     const dialog = screen.getByRole('dialog', { name: 'Добавить событие' });
 
     expect(within(dialog).getByLabelText('Дата')).toHaveClass('w-full');
-    expect(within(dialog).getByLabelText('Тип')).toHaveClass('w-full');
+    expect(within(dialog).queryByLabelText('Тип')).not.toBeInTheDocument();
     expect(within(dialog).getByLabelText('Причина')).toHaveClass('w-full');
 
     fireEvent.change(within(dialog).getByLabelText('Дата'), {
       target: { value: '2027-06-16' },
-    });
-    fireEvent.change(within(dialog).getByLabelText('Тип'), {
-      target: { value: 'manual_expected_close' },
     });
     fireEvent.change(within(dialog).getByLabelText('Причина'), {
       target: { value: 'Ручной срок по просьбе клиента' },
@@ -666,6 +690,87 @@ describe('DealDetailsPanel', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Добавить событие' })).not.toBeInTheDocument();
       expect(onRefreshDeal).toHaveBeenCalledWith('deal-1');
+    });
+  });
+
+  it('uses manual deadline event from timeline for event-based next contact', async () => {
+    dealCommunicationState.dealTimelineEvents = [
+      {
+        id: 'deal-event-1',
+        deal: 'deal-1',
+        eventType: 'manual_expected_close',
+        eventTypeDisplay: 'Ручной крайний срок',
+        eventDate: '2027-07-11',
+        title: 'Предположительная дата окончания текущих полисов',
+        description: '',
+        sourceType: 'deal',
+        sourceId: 'deal-1',
+        actor: null,
+        actorUsername: null,
+        actorDisplayName: null,
+        metadata: {},
+        createdAt: '2026-06-22T10:00:00Z',
+      },
+    ];
+
+    render(
+      <DealDetailsPanel
+        deals={[selectedDeal]}
+        clients={[]}
+        policies={[]}
+        payments={[]}
+        financialRecords={[]}
+        tasks={[]}
+        users={[currentUser]}
+        currentUser={currentUser}
+        sortedDeals={[selectedDeal]}
+        selectedDeal={selectedDeal}
+        selectedClient={null}
+        onSelectDeal={vi.fn()}
+        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
+        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
+        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
+        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onRequestAddPolicy={vi.fn()}
+        onRequestEditPolicy={vi.fn()}
+        onRequestAddClient={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onAddPayment={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDriveFolderCreated={vi.fn()}
+        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal })}
+        onCheckDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal, mailboxSync: {} })}
+        onFetchChatMessages={vi.fn().mockResolvedValue([])}
+        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
+        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
+        onFetchDealHistory={vi.fn().mockResolvedValue([])}
+        onFetchDealEvents={vi.fn().mockResolvedValue([])}
+        onCreateTask={vi.fn().mockResolvedValue(undefined)}
+        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
+        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
+        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const delayButton = await screen.findByRole('button', {
+      name: 'за 90 дней до ближайшего события',
+    });
+    expect(delayButton).not.toBeDisabled();
+
+    fireEvent.click(delayButton);
+
+    await waitFor(() => {
+      expect(updateDealDatesMock).toHaveBeenCalledWith({
+        nextContactDate: '2027-04-12',
+      });
     });
   });
 

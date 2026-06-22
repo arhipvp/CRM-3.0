@@ -8,7 +8,6 @@ import {
   ClientDuplicateHint,
   Deal,
   DealTimelineEvent,
-  DealTimelineEventType,
   FinancialRecord,
   Payment,
   Policy,
@@ -37,8 +36,7 @@ import { DealDetailsPanelTabContent } from './DealDetailsPanelTabContent';
 import { DealHeader } from './DealHeader';
 import { DealTabs } from './DealTabs';
 import { calculateNextContactForEvent } from './eventDelay';
-import type { DealEvent } from './eventUtils';
-import { buildDealEvents, buildEventWindow } from './eventUtils';
+import { buildDealEventsFromTimeline, buildEventWindow } from './eventUtils';
 import { resolveExpectedCloseReason } from './expectedCloseReason';
 import {
   DealTabId,
@@ -131,7 +129,7 @@ export interface DealDetailsPanelProps {
   onCreateDealEvent?: (
     dealId: string,
     data: {
-      eventType?: Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
+      eventType?: 'manual_expected_close';
       eventDate: string;
       reason: string;
     },
@@ -157,7 +155,6 @@ export interface DealDetailsPanelProps {
 }
 
 const getTodayInputValue = () => new Date().toISOString().slice(0, 10);
-type ManualDealEventType = Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
 
 export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   deals,
@@ -381,7 +378,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const [policySortOrder, setPolicySortOrder] = useState<'asc' | 'desc'>('asc');
   const [isManualEventModalOpen, setIsManualEventModalOpen] = useState(false);
   const [manualEventDate, setManualEventDate] = useState(getTodayInputValue);
-  const [manualEventType, setManualEventType] = useState<ManualDealEventType>('manual');
   const [manualEventReason, setManualEventReason] = useState('');
   const [manualEventError, setManualEventError] = useState<string | null>(null);
   const [isManualEventSaving, setIsManualEventSaving] = useState(false);
@@ -407,19 +403,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     () => (selectedDeal ? tasks.filter((task) => task.dealId === selectedDeal.id) : []),
     [selectedDeal, tasks],
   );
-
-  const dealEvents = useMemo<DealEvent[]>(() => {
-    if (!selectedDeal) {
-      return [];
-    }
-    return buildDealEvents({
-      policies: relatedPolicies,
-      payments: relatedPayments,
-    });
-  }, [relatedPolicies, relatedPayments, selectedDeal]);
-
-  const eventWindow = useMemo(() => buildEventWindow(dealEvents), [dealEvents]);
-  const { upcomingEvents } = eventWindow;
 
   const sortedPolicies = useMemo(() => {
     const normalized = [...relatedPolicies];
@@ -492,7 +475,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   } = useDealDetailsPanelActions({
     selectedDeal,
     relatedTasks,
-    dealEvents,
     isSelectedDealDeleted,
     isDealClosedStatus,
     isCurrentUserSeller,
@@ -579,7 +561,15 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     closePaymentModal,
   } = usePaymentModal(payments);
 
-  const quickEventDelayEvent = upcomingEvents[0] ?? null;
+  const timelineDeadlineEvents = useMemo(
+    () => buildDealEventsFromTimeline(dealTimelineEvents),
+    [dealTimelineEvents],
+  );
+  const quickEventWindow = useMemo(
+    () => buildEventWindow(timelineDeadlineEvents),
+    [timelineDeadlineEvents],
+  );
+  const quickEventDelayEvent = quickEventWindow.upcomingEvents[0] ?? null;
   const quickEventDelayNextContact = useMemo(
     () => calculateNextContactForEvent(quickEventDelayEvent, Math.max(1, delayLeadDays ?? 90)),
     [delayLeadDays, quickEventDelayEvent],
@@ -655,7 +645,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
 
   const resetManualEventForm = useCallback(() => {
     setManualEventDate(getTodayInputValue());
-    setManualEventType('manual');
     setManualEventReason('');
     setManualEventError(null);
   }, []);
@@ -671,11 +660,14 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   }, [resetManualEventForm]);
 
   const handleCreateManualDealEvent = useCallback(
-    async (data: { eventType?: ManualDealEventType; eventDate: string; reason: string }) => {
+    async (data: { eventDate: string; reason: string }) => {
       if (!selectedDeal?.id) {
         throw new Error('Сделка не выбрана');
       }
-      await onCreateDealEvent(selectedDeal.id, data);
+      await onCreateDealEvent(selectedDeal.id, {
+        eventType: 'manual_expected_close',
+        ...data,
+      });
       await loadDealEvents();
       await handleRefreshDealWithContext();
     },
@@ -695,7 +687,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
       setIsManualEventSaving(true);
       try {
         await handleCreateManualDealEvent({
-          eventType: manualEventType,
           eventDate: manualEventDate,
           reason,
         });
@@ -708,13 +699,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         setIsManualEventSaving(false);
       }
     },
-    [
-      handleCreateManualDealEvent,
-      manualEventDate,
-      manualEventReason,
-      manualEventType,
-      resetManualEventForm,
-    ],
+    [handleCreateManualDealEvent, manualEventDate, manualEventReason, resetManualEventForm],
   );
 
   const handleUpdateManualDealEvent = useCallback(
@@ -1100,17 +1085,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               value={manualEventDate}
               onChange={(event) => setManualEventDate(event.target.value)}
             />
-          </FormField>
-          <FormField label="Тип" htmlFor="deal-manual-event-type">
-            <select
-              id="deal-manual-event-type"
-              className="input w-full"
-              value={manualEventType}
-              onChange={(event) => setManualEventType(event.target.value as ManualDealEventType)}
-            >
-              <option value="manual">Обычное событие</option>
-              <option value="manual_expected_close">Ручной крайний срок</option>
-            </select>
           </FormField>
           <FormField label="Причина" htmlFor="deal-manual-event-reason">
             <input

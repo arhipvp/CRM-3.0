@@ -59,7 +59,6 @@ describe('deal api', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await createDealEvent('deal-1', {
-      eventType: 'manual_expected_close',
       eventDate: '2026-07-01',
       reason: 'Ручной срок',
     });

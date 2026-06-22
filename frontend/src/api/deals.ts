@@ -219,7 +219,7 @@ export async function fetchDealEvents(
 export async function createDealEvent(
   dealId: string,
   data: {
-    eventType?: Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
+    eventType?: Extract<DealTimelineEventType, 'manual_expected_close'>;
     eventDate: string;
     reason: string;
   },
@@ -227,7 +227,7 @@ export async function createDealEvent(
   const payload = await request(`/deals/${dealId}/events/`, {
     method: 'POST',
     body: JSON.stringify({
-      event_type: data.eventType ?? 'manual',
+      event_type: data.eventType ?? 'manual_expected_close',
       event_date: data.eventDate,
       reason: data.reason,
     }),
@@ -239,15 +239,11 @@ export async function updateDealEvent(
   dealId: string,
   eventId: string,
   data: {
-    eventType?: Extract<DealTimelineEventType, 'manual' | 'manual_expected_close'>;
     eventDate?: string;
     reason?: string;
   },
 ): Promise<DealTimelineEvent> {
   const body: Record<string, string> = {};
-  if (data.eventType !== undefined) {
-    body.event_type = data.eventType;
-  }
   if (data.eventDate !== undefined) {
     body.event_date = data.eventDate;
   }

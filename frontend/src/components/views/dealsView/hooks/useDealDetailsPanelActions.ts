@@ -2,13 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { fetchNotificationSettings } from '../../../../api/notifications';
 import type { Deal, Task } from '../../../../types';
-import type { DealEvent } from '../eventUtils';
 import { runAsyncUiAction } from '../../../../utils/uiAction';
 
 interface UseDealDetailsPanelActionsParams {
   selectedDeal: Deal | null;
   relatedTasks: Task[];
-  dealEvents: DealEvent[];
   isSelectedDealDeleted: boolean;
   isDealClosedStatus: boolean;
   isCurrentUserSeller: boolean;
@@ -46,7 +44,6 @@ interface UseDealDetailsPanelActionsParams {
 export const useDealDetailsPanelActions = ({
   selectedDeal,
   relatedTasks,
-  dealEvents,
   isSelectedDealDeleted,
   isDealClosedStatus,
   isCurrentUserSeller,
@@ -128,7 +125,7 @@ export const useDealDetailsPanelActions = ({
   }, [selectedDeal?.id]);
 
   useEffect(() => {
-    if (!selectedDeal?.id || dealEvents.length === 0) {
+    if (!selectedDeal?.id) {
       setDelayLeadDays(null);
       setDelayLeadDaysLoading(false);
       return;
@@ -156,7 +153,7 @@ export const useDealDetailsPanelActions = ({
     return () => {
       mounted = false;
     };
-  }, [dealEvents.length, selectedDeal?.id]);
+  }, [selectedDeal?.id]);
 
   const handleEditDealClick = useCallback(() => {
     if (!selectedDeal || isSelectedDealDeleted) {

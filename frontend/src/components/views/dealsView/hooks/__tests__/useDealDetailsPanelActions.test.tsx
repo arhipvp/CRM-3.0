@@ -2,7 +2,6 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Deal } from '../../../../../types';
-import type { DealEvent } from '../../eventUtils';
 import { useDealDetailsPanelActions } from '../useDealDetailsPanelActions';
 
 const selectedDeal: Deal = {
@@ -16,14 +15,6 @@ const selectedDeal: Deal = {
   documents: [],
 };
 
-const selectedDelayEvent: DealEvent = {
-  id: 'payment-1',
-  type: 'payment',
-  date: '2026-10-24',
-  title: 'Очередной платёж',
-  description: 'по полису AI524281220 · Сумма 42 425,50 ₽',
-};
-
 describe('useDealDetailsPanelActions', () => {
   it('schedules event-based next contact with a narrow payload', async () => {
     const onScheduleDelay = vi.fn().mockResolvedValue(undefined);
@@ -34,7 +25,6 @@ describe('useDealDetailsPanelActions', () => {
       useDealDetailsPanelActions({
         selectedDeal,
         relatedTasks: [],
-        dealEvents: [selectedDelayEvent],
         isSelectedDealDeleted: false,
         isDealClosedStatus: false,
         isCurrentUserSeller: true,
@@ -79,7 +69,6 @@ describe('useDealDetailsPanelActions', () => {
       useDealDetailsPanelActions({
         selectedDeal,
         relatedTasks: [],
-        dealEvents: [],
         isSelectedDealDeleted: false,
         isDealClosedStatus: false,
         isCurrentUserSeller: true,

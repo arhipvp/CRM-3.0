@@ -119,20 +119,11 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
             source_id=str(self.deal.id),
             actor=self.user,
         )
-        DealEvent.objects.create(
-            deal=self.deal,
-            event_type=DealEvent.EventType.MANUAL,
-            event_date=date(2026, 7, 2),
-            title="Ручное бизнес-событие",
-            actor=self.user,
-        )
-
         response = self.api_client.get(f"/api/v1/deals/{self.deal.id}/events/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         event_types = {event["event_type"] for event in response.data}
         self.assertNotIn(DealEvent.EventType.MANUAL_NEXT_CONTACT, event_types)
-        self.assertIn(DealEvent.EventType.MANUAL, event_types)
 
     def test_legacy_manual_expected_close_event_is_returned(self):
         self.deal.manual_expected_close = date(2026, 6, 28)
@@ -206,6 +197,32 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
         self.assertEqual(events.count(), 1)
         self.assertEqual(events.get().id, existing_event.id)
 
+    def test_manual_event_conversion_migration_turns_manual_into_deadline(self):
+        event = DealEvent.objects.create(
+            deal=self.deal,
+            event_type=DealEvent.EventType.MANUAL,
+            event_date=date(2027, 7, 11),
+            title="Предположительная дата окончания текущих полисов",
+            source_type="",
+            source_id="",
+            actor=self.user,
+        )
+
+        migration = import_module(
+            "apps.deals.migrations.0036_convert_manual_events_to_deadlines"
+        )
+        migration.convert_manual_events_to_deadlines(apps, None)
+        migration.convert_manual_events_to_deadlines(apps, None)
+
+        event.refresh_from_db()
+        self.assertEqual(event.event_type, DealEvent.EventType.MANUAL_EXPECTED_CLOSE)
+        self.assertEqual(event.source_type, "deal")
+        self.assertEqual(event.source_id, str(self.deal.id))
+        self.deal.refresh_from_db()
+        self.assertEqual(self.deal.manual_expected_close, date(2027, 7, 11))
+        self.assertEqual(self.deal.expected_close, date(2027, 7, 11))
+        self.assertEqual(DealEvent.objects.filter(id=event.id).count(), 1)
+
     def test_update_next_contact_does_not_create_deal_event(self):
         response = self.api_client.patch(
             f"/api/v1/deals/{self.deal.id}/",
@@ -223,7 +240,7 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
             ).exists()
         )
 
-    def test_create_update_and_delete_manual_event(self):
+    def test_create_update_and_delete_manual_deadline_event_by_default(self):
         create_response = self.api_client.post(
             f"/api/v1/deals/{self.deal.id}/events/",
             {
@@ -234,23 +251,29 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
         )
 
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(create_response.data["event_type"], DealEvent.EventType.MANUAL)
+        self.assertEqual(
+            create_response.data["event_type"],
+            DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+        )
         self.assertEqual(create_response.data["event_date"], "2027-06-16")
         self.assertEqual(
             create_response.data["title"],
             "Предположительно купит квартиру, предложить застраховать",
         )
-        self.assertEqual(create_response.data["source_type"], "")
-        self.assertEqual(create_response.data["source_id"], "")
-        event = DealEvent.objects.get(event_type=DealEvent.EventType.MANUAL)
+        self.assertEqual(create_response.data["source_type"], "deal")
+        self.assertEqual(create_response.data["source_id"], str(self.deal.id))
+        event = DealEvent.objects.get(
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE
+        )
         self.assertEqual(event.actor, self.user)
         self.deal.refresh_from_db()
-        self.assertIsNone(self.deal.manual_expected_close)
-        self.assertIsNone(self.deal.expected_close)
+        self.assertEqual(self.deal.manual_expected_close, date(2027, 6, 16))
+        self.assertEqual(self.deal.expected_close, date(2027, 6, 16))
 
         update_response = self.api_client.patch(
             f"/api/v1/deals/{self.deal.id}/events/{create_response.data['id']}/",
             {
+                "event_type": DealEvent.EventType.MANUAL,
                 "event_date": "2027-06-17",
                 "reason": "Клиент выбрал квартиру, вернуться с предложением",
             },
@@ -263,6 +286,13 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
             update_response.data["title"],
             "Клиент выбрал квартиру, вернуться с предложением",
         )
+        self.assertEqual(
+            update_response.data["event_type"],
+            DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+        )
+        self.deal.refresh_from_db()
+        self.assertEqual(self.deal.manual_expected_close, date(2027, 6, 17))
+        self.assertEqual(self.deal.expected_close, date(2027, 6, 17))
 
         delete_response = self.api_client.delete(
             f"/api/v1/deals/{self.deal.id}/events/{create_response.data['id']}/"
@@ -270,6 +300,29 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
 
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(DealEvent.objects.filter(id=event.id).exists())
+        self.deal.refresh_from_db()
+        self.assertIsNone(self.deal.manual_expected_close)
+        self.assertIsNone(self.deal.expected_close)
+
+    def test_create_event_ignores_legacy_manual_type(self):
+        response = self.api_client.post(
+            f"/api/v1/deals/{self.deal.id}/events/",
+            {
+                "event_type": DealEvent.EventType.MANUAL,
+                "event_date": "2027-06-16",
+                "reason": "Старый клиент пытается создать manual",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.data["event_type"],
+            DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+        )
+        self.assertFalse(
+            DealEvent.objects.filter(event_type=DealEvent.EventType.MANUAL).exists()
+        )
 
     def test_update_and_delete_manual_date_event(self):
         create_response = self.api_client.post(
@@ -427,7 +480,7 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
         self.assertEqual(delete_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(DealEvent.objects.filter(id=event.id).exists())
 
-    def test_visible_user_cannot_create_manual_event(self):
+    def test_visible_user_cannot_create_manual_deadline_event(self):
         viewer = User.objects.create_user(
             username="viewer", password="pass"  # pragma: allowlist secret
         )
@@ -445,5 +498,7 @@ class DealEventsAPITests(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(
-            DealEvent.objects.filter(event_type=DealEvent.EventType.MANUAL).exists()
+            DealEvent.objects.filter(
+                event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE
+            ).exists()
         )
