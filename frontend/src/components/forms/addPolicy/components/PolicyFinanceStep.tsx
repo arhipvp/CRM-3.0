@@ -1,6 +1,10 @@
 import React from 'react';
 
 import { formatCurrency, formatDate } from '../../../views/dealsView/helpers';
+import { Button } from '../../../common/Button';
+import { EmptyState } from '../../../common/EmptyState';
+import { InlineAlert } from '../../../common/InlineAlert';
+import { Panel } from '../../../common/layoutPrimitives';
 import { FinancialRecordInputs } from './FinancialRecordInputs';
 import type { FinancialRecordDraft } from '../types';
 import type { PaymentDraftOrderEntry } from '../paymentDraftOrdering';
@@ -131,7 +135,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 shadow-inner shadow-slate-200/40 md:p-5">
+        <Panel variant="muted" padding="md" className="md:p-5">
           <label className="app-label">Контрагент</label>
           <div className="mt-3 flex flex-wrap gap-2">
             <input
@@ -144,16 +148,19 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
               className="field field-input flex-1"
               placeholder="Контрагент / организация"
             />
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="plus"
+              aria-label="+ Расход"
               onClick={onAddCounterpartyExpenses}
-              className="btn btn-sm btn-secondary whitespace-nowrap"
+              className="whitespace-nowrap"
             >
-              + Расход
-            </button>
+              Расход
+            </Button>
           </div>
-        </div>
-        <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 shadow-inner shadow-slate-200/40 md:p-5">
+        </Panel>
+        <Panel variant="muted" padding="md" className="md:p-5">
           <label className="app-label">Исполнитель по сделке</label>
           <div className="mt-3 flex flex-wrap gap-2">
             <input
@@ -162,19 +169,22 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
               readOnly
               className="field field-input flex-1 bg-slate-50 text-slate-900"
             />
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="plus"
+              aria-label="+ Расход"
               onClick={onAddExecutorExpenses}
               disabled={!executorName?.trim()}
-              className="btn btn-sm btn-secondary whitespace-nowrap"
+              className="whitespace-nowrap"
             >
-              + Расход
-            </button>
+              Расход
+            </Button>
           </div>
-        </div>
+        </Panel>
       </div>
 
-      <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 shadow-inner shadow-slate-200/40 md:p-5">
+      <Panel variant="muted" padding="md" className="md:p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="app-label">Платежи</p>
@@ -182,26 +192,28 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
         </div>
         {showMiniIndex && (
           <div
-            className="sticky top-0 z-10 mt-4 rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur"
+            className="app-segmented-control sticky top-0 z-10 mt-4 bg-white/95 shadow-sm backdrop-blur"
             data-testid="policy-finance-payment-mini-index"
           >
-            <div className="flex flex-wrap gap-2">
-              {paymentEntries.map((entry, displayIndex) => (
+            {paymentEntries.map((entry, displayIndex) => {
+              const isSelected = activeSourceIndex === entry.sourceIndex;
+              return (
                 <button
                   key={`finance-jump-${entry.sourceIndex}`}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => scrollToPayment(entry.sourceIndex)}
                   data-testid={`policy-finance-payment-index-${displayIndex + 1}`}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    activeSourceIndex === entry.sourceIndex
-                      ? 'border-sky-300 bg-sky-100 text-sky-800 shadow-sm'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'
+                  className={`app-segmented-control-button text-xs ${
+                    isSelected
+                      ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
+                      : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'
                   }`}
                 >
                   Платёж {displayIndex + 1}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
         <div
@@ -221,14 +233,13 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                 ref={(node) => {
                   cardRefs.current[sourceIndex] = node;
                 }}
-                className={`relative overflow-hidden rounded-[28px] border border-slate-300/90 bg-gradient-to-br from-white via-white to-slate-50/90 shadow-[0_18px_42px_rgba(15,23,42,0.12)] transition ${
-                  isExpanded ? 'ring-1 ring-sky-200 shadow-[0_24px_54px_rgba(14,165,233,0.18)]' : ''
+                className={`app-panel overflow-hidden shadow-none transition ${
+                  isExpanded ? 'border-sky-200 ring-1 ring-sky-200' : 'border-slate-200'
                 }`}
                 data-testid="policy-finance-payment-card"
               >
-                <div className="absolute inset-y-0 left-0 w-2 rounded-l-[28px] bg-gradient-to-b from-sky-500 via-cyan-500 to-emerald-400" />
                 <div
-                  className={`ml-2 flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between ${
+                  className={`flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between ${
                     isExpanded
                       ? 'border-b border-sky-200/90 bg-sky-50/70'
                       : 'border-b border-slate-200/90'
@@ -266,61 +277,70 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="plus"
+                      aria-label="+ Доход"
                       onClick={() => {
                         onAddRecord(sourceIndex, 'incomes');
                         onExpandPaymentDetails(sourceIndex);
                       }}
-                      className="btn btn-sm btn-secondary"
                     >
-                      + Доход
-                    </button>
-                    <button
-                      type="button"
+                      Доход
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="plus"
+                      aria-label="+ Расход"
                       onClick={() => {
                         onAddRecord(sourceIndex, 'expenses');
                         onExpandPaymentDetails(sourceIndex);
                       }}
-                      className="btn btn-sm btn-secondary"
                     >
-                      + Расход
-                    </button>
+                      Расход
+                    </Button>
                   </div>
                 </div>
                 {isExpanded && (
-                  <div className="ml-2 space-y-4 px-4 pb-4 pt-4">
+                  <div className="space-y-4 px-4 pb-4 pt-4">
                     {(errors.length > 0 || warnings.length > 0) && (
                       <div className="space-y-2" data-testid="policy-finance-payment-issues">
                         {errors.length > 0 && (
-                          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                          <InlineAlert>
                             {errors.map((issue) => issue.message).join(' ')}
-                          </div>
+                          </InlineAlert>
                         )}
                         {warnings.length > 0 && (
-                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                          <InlineAlert
+                            tone="info"
+                            className="border-amber-200 bg-amber-50 text-amber-800"
+                          >
                             {warnings.map((issue) => issue.message).join(' ')}
-                          </div>
+                          </InlineAlert>
                         )}
                       </div>
                     )}
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-inner">
+                    <Panel variant="muted" padding="md" className="border-emerald-100 bg-white">
                       <div className="mb-2 flex items-center justify-between">
                         <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                           Доходы
                         </h4>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-quiet"
+                        <Button
+                          variant="quiet"
+                          size="sm"
+                          icon="plus"
+                          aria-label="+ Добавить доход"
                           onClick={() => onAddRecord(sourceIndex, 'incomes')}
                         >
-                          + Добавить доход
-                        </button>
+                          Добавить доход
+                        </Button>
                       </div>
                       {payment.incomes.length === 0 && (
-                        <p className="text-sm text-slate-600">
+                        <EmptyState compact>
                           Добавьте доход, чтобы привязать поступление к этому платежу.
-                        </p>
+                        </EmptyState>
                       )}
                       <FinancialRecordInputs
                         paymentIndex={sourceIndex}
@@ -329,24 +349,26 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                         onUpdateRecord={onUpdateRecord}
                         onRemoveRecord={onRemoveRecord}
                       />
-                    </div>
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-inner">
+                    </Panel>
+                    <Panel variant="muted" padding="md" className="border-rose-100 bg-white">
                       <div className="mb-2 flex items-center justify-between">
                         <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                           Расходы
                         </h4>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-quiet"
+                        <Button
+                          variant="quiet"
+                          size="sm"
+                          icon="plus"
+                          aria-label="+ Добавить расход"
                           onClick={() => onAddRecord(sourceIndex, 'expenses')}
                         >
-                          + Добавить расход
-                        </button>
+                          Добавить расход
+                        </Button>
                       </div>
                       {payment.expenses.length === 0 && (
-                        <p className="text-sm text-slate-600">
+                        <EmptyState compact>
                           Добавьте расход, чтобы контролировать связанные списания.
-                        </p>
+                        </EmptyState>
                       )}
                       <FinancialRecordInputs
                         paymentIndex={sourceIndex}
@@ -355,25 +377,27 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                         onUpdateRecord={onUpdateRecord}
                         onRemoveRecord={onRemoveRecord}
                       />
-                    </div>
+                    </Panel>
                   </div>
                 )}
-                <div className="ml-2 border-t border-slate-200/90 px-4 pb-4 pt-3">
-                  <button
-                    type="button"
+                <div className="border-t border-slate-200/90 px-4 pb-4 pt-3">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={isExpanded ? 'collapse' : 'expand'}
                     onClick={() => onTogglePaymentDetails(sourceIndex)}
-                    className="btn btn-sm btn-secondary w-full justify-center"
+                    className="w-full"
                     aria-expanded={isExpanded}
                     data-testid="policy-finance-payment-expand-toggle"
                   >
                     {isExpanded ? 'Свернуть' : 'Развернуть'}
-                  </button>
+                  </Button>
                 </div>
               </section>
             );
           })}
         </div>
-      </div>
+      </Panel>
     </div>
   );
 };

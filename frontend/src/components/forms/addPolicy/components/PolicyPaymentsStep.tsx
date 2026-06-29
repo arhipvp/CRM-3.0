@@ -1,6 +1,10 @@
 import React from 'react';
 
 import { DateInput } from '../../../common/forms/DateInput';
+import { Button } from '../../../common/Button';
+import { EmptyState } from '../../../common/EmptyState';
+import { InlineAlert } from '../../../common/InlineAlert';
+import { Panel } from '../../../common/layoutPrimitives';
 import { PaymentSection } from './PaymentSection';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
 import type { PaymentDraftOrderEntry } from '../paymentDraftOrdering';
@@ -156,57 +160,65 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
       </div>
 
       {policyDurationWarning && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <InlineAlert tone="info" className="border-amber-200 bg-amber-50 text-amber-800">
           {policyDurationWarning}
-        </p>
+        </InlineAlert>
       )}
 
-      <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 shadow-inner shadow-slate-200/40 md:p-5">
+      <Panel variant="muted" padding="md" className="md:p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="app-label">Платежи</p>
           </div>
-          <button type="button" onClick={onAddPayment} className="btn btn-sm btn-secondary">
-            + Добавить платёж
-          </button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="plus"
+            aria-label="+ Добавить платёж"
+            onClick={onAddPayment}
+          >
+            Добавить платёж
+          </Button>
         </div>
         {showMiniIndex && (
           <div
-            className="sticky top-0 z-10 mt-4 rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur"
+            className="app-segmented-control sticky top-0 z-10 mt-4 bg-white/95 shadow-sm backdrop-blur"
             data-testid="policy-payment-mini-index"
           >
-            <div className="flex flex-wrap gap-2">
-              {paymentEntries.map((entry, displayIndex) => (
+            {paymentEntries.map((entry, displayIndex) => {
+              const isSelected = activeSourceIndex === entry.sourceIndex;
+              return (
                 <button
                   key={`jump-${entry.sourceIndex}`}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => {
                     onExpandPaymentDetails(entry.sourceIndex);
                     scrollToPayment(entry.sourceIndex);
                   }}
                   data-testid={`policy-payment-index-${displayIndex + 1}`}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    activeSourceIndex === entry.sourceIndex
-                      ? 'border-sky-300 bg-sky-100 text-sky-800 shadow-sm'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700'
+                  className={`app-segmented-control-button text-xs ${
+                    isSelected
+                      ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
+                      : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'
                   }`}
                 >
                   Платёж {displayIndex + 1}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
         <div className="mt-4 space-y-3">
           {firstPaymentDateWarning && (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <InlineAlert tone="info" className="border-amber-200 bg-amber-50 text-amber-800">
               {firstPaymentDateWarning}
-            </p>
+            </InlineAlert>
           )}
           {paymentEntries.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-sm text-slate-600">
+            <EmptyState compact className="w-full border-dashed bg-white">
               Добавьте хотя бы один платёж, чтобы связать финансовые данные.
-            </p>
+            </EmptyState>
           )}
         </div>
         <div
@@ -240,7 +252,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
             </div>
           ))}
         </div>
-      </div>
+      </Panel>
     </div>
   );
 };

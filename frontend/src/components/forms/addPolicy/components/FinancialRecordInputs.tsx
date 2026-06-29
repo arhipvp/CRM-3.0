@@ -1,5 +1,7 @@
 import React from 'react';
 import { DateInput } from '../../../common/forms/DateInput';
+import { IconButton } from '../../../common/Button';
+import { Panel } from '../../../common/layoutPrimitives';
 import type { FinancialRecordDraft } from '../types';
 
 interface FinancialRecordInputsProps {
@@ -25,26 +27,23 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
 }) => (
   <>
     {records.map((record, recordIndex) => (
-      <div
-        key={`${type}-${recordIndex}`}
-        className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white"
-      >
-        <div className="flex justify-between items-center">
+      <Panel variant="flat" padding="sm" key={`${type}-${recordIndex}`} className="space-y-2">
+        <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-slate-900">
             {type === 'incomes' ? 'Доход' : 'Расход'} #{recordIndex + 1}
           </span>
-          <button
-            type="button"
-            className="link-danger text-xs"
+          <IconButton
+            icon="delete"
+            label="Удалить"
+            tone="danger"
+            size="sm"
             onClick={() => onRemoveRecord(paymentIndex, type, recordIndex)}
-          >
-            Удалить
-          </button>
+          />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div
             data-testid={`${type}-record-amount-accent`}
-            className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-3 shadow-inner shadow-emerald-100/70"
+            className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm"
           >
             <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
               Сумма, ₽
@@ -61,7 +60,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
           </div>
           <div
             data-testid={`${type}-record-date-accent`}
-            className="rounded-2xl border border-sky-200 bg-sky-50/90 p-3 shadow-inner shadow-sky-100/70"
+            className="rounded-2xl border border-sky-100 bg-white p-3 shadow-sm"
           >
             <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-sky-800">
               Фактическая дата
@@ -76,7 +75,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="block text-xs font-medium text-slate-600">Примечание</label>
             <input
@@ -89,7 +88,7 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             />
           </div>
         </div>
-      </div>
+      </Panel>
     ))}
   </>
 );

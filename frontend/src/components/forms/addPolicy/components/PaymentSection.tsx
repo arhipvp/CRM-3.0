@@ -2,7 +2,10 @@ import React from 'react';
 import { FinancialRecordInputs } from './FinancialRecordInputs';
 import type { FinancialRecordDraft, PaymentDraft } from '../types';
 import { DateInput } from '../../../common/forms/DateInput';
-import { LINK_ACTION_XS } from '../../../common/uiClassNames';
+import { Button, IconButton } from '../../../common/Button';
+import { EmptyState } from '../../../common/EmptyState';
+import { InlineAlert } from '../../../common/InlineAlert';
+import { Panel, StatusBadge } from '../../../common/layoutPrimitives';
 import type { PaymentIssue } from '../paymentIssues';
 
 interface PaymentSectionProps {
@@ -54,10 +57,8 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   }, {});
   const errors = issues.filter((issue) => issue.severity === 'error');
   const warnings = issues.filter((issue) => issue.severity === 'warning');
-  const moneyAccentClassName =
-    'rounded-2xl border border-emerald-200 bg-emerald-50/90 p-3 shadow-inner shadow-emerald-100/70';
-  const dateAccentClassName =
-    'rounded-2xl border border-sky-200 bg-sky-50/90 p-3 shadow-inner shadow-sky-100/70';
+  const moneyAccentClassName = 'rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm';
+  const dateAccentClassName = 'rounded-2xl border border-sky-100 bg-white p-3 shadow-sm';
   const getFieldClassName = (field: string) => {
     if (issuesByField[field]?.some((issue) => issue.severity === 'error')) {
       return 'border-rose-300 bg-rose-50/60 ring-2 ring-rose-100';
@@ -71,15 +72,14 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   };
 
   return (
-    <section
+    <Panel
+      as="section"
+      variant="flat"
       data-testid="policy-payment-card"
-      className={`relative overflow-hidden rounded-[28px] border border-slate-300/90 bg-gradient-to-br from-white via-white to-slate-50/90 shadow-[0_18px_42px_rgba(15,23,42,0.12)] ${
-        dense ? 'space-y-3 p-4' : 'space-y-4 p-5'
-      }`}
+      className={`border-slate-200 ${dense ? 'space-y-3 p-4' : 'space-y-4 p-5'}`}
     >
-      <div className="absolute inset-y-0 left-0 w-2 rounded-l-[28px] bg-gradient-to-b from-sky-500 via-cyan-500 to-emerald-400" />
       <div
-        className={`ml-2 flex items-start justify-between border-b border-slate-200/90 pb-3 ${
+        className={`flex items-start justify-between border-b border-slate-200/90 pb-3 ${
           dense ? 'gap-3' : 'gap-4'
         }`}
       >
@@ -91,39 +91,36 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
             <p className="text-xs text-slate-500">Отдельный шаг графика</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium">
-            <span className="rounded-full border border-sky-200 bg-sky-100 px-3 py-1.5 text-sky-800 shadow-sm">
-              План: {payment.scheduledDate || 'не указана'}
-            </span>
-            <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-cyan-800 shadow-sm">
+            <StatusBadge tone="primary">План: {payment.scheduledDate || 'не указана'}</StatusBadge>
+            <StatusBadge tone="neutral" className="border-cyan-200 bg-cyan-50 text-cyan-800">
               Факт: {payment.actualDate || 'не указан'}
-            </span>
+            </StatusBadge>
           </div>
         </div>
-        <button
-          type="button"
+        <IconButton
+          icon="delete"
+          label="Удалить платёж"
+          tone="danger"
+          size="sm"
           onClick={() => onRemovePayment(paymentIndex)}
-          className="link-danger rounded-full border border-rose-100 bg-rose-50/70 px-3 py-1 text-xs"
-        >
-          Удалить платёж
-        </button>
+          className="flex-shrink-0"
+        />
       </div>
       {(errors.length > 0 || warnings.length > 0) && (
-        <div className="ml-2 space-y-2" data-testid="policy-payment-issues">
+        <div className="space-y-2" data-testid="policy-payment-issues">
           {errors.length > 0 && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {errors.map((issue) => issue.message).join(' ')}
-            </div>
+            <InlineAlert>{errors.map((issue) => issue.message).join(' ')}</InlineAlert>
           )}
           {warnings.length > 0 && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <InlineAlert tone="info" className="border-amber-200 bg-amber-50 text-amber-800">
               {warnings.map((issue) => issue.message).join(' ')}
-            </div>
+            </InlineAlert>
           )}
         </div>
       )}
       {isExpanded && (
         <>
-          <div className={`ml-2 grid grid-cols-1 ${dense ? 'gap-3' : 'gap-4'} md:grid-cols-2`}>
+          <div className={`grid grid-cols-1 ${dense ? 'gap-3' : 'gap-4'} md:grid-cols-2`}>
             <div
               data-testid="policy-payment-amount-accent"
               className={`${moneyAccentClassName} ${getFieldClassName('amount')}`}
@@ -165,9 +162,9 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                   </label>
                   <p className="mt-1 text-[11px] text-sky-700">Главная дата для графика полиса</p>
                 </div>
-                <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                <StatusBadge tone="primary" className="bg-white text-[10px] uppercase">
                   Ключевая
-                </span>
+                </StatusBadge>
               </div>
               <DateInput
                 value={payment.scheduledDate || ''}
@@ -201,23 +198,25 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
 
           {showRecords && (
             <div className={dense ? 'space-y-2' : 'space-y-3'}>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <Panel variant="muted" padding="sm">
                 <div className="mb-2 flex items-center justify-between">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Доходы
                   </h4>
-                  <button
-                    type="button"
-                    className={LINK_ACTION_XS}
+                  <Button
+                    variant="quiet"
+                    size="sm"
+                    icon="plus"
+                    aria-label="+ Добавить доход"
                     onClick={() => onAddRecord(paymentIndex, 'incomes')}
                   >
-                    + Добавить доход
-                  </button>
+                    Добавить доход
+                  </Button>
                 </div>
                 {payment.incomes.length === 0 && (
-                  <p className="text-xs text-slate-500">
+                  <EmptyState compact>
                     Добавьте доход, чтобы привязать поступление к этому платежу.
-                  </p>
+                  </EmptyState>
                 )}
                 <FinancialRecordInputs
                   paymentIndex={paymentIndex}
@@ -226,24 +225,26 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                   onUpdateRecord={onUpdateRecord}
                   onRemoveRecord={onRemoveRecord}
                 />
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              </Panel>
+              <Panel variant="muted" padding="sm">
                 <div className="mb-2 flex items-center justify-between">
                   <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Расходы
                   </h4>
-                  <button
-                    type="button"
-                    className={LINK_ACTION_XS}
+                  <Button
+                    variant="quiet"
+                    size="sm"
+                    icon="plus"
+                    aria-label="+ Добавить расход"
                     onClick={() => onAddRecord(paymentIndex, 'expenses')}
                   >
-                    + Добавить расход
-                  </button>
+                    Добавить расход
+                  </Button>
                 </div>
                 {payment.expenses.length === 0 && (
-                  <p className="text-xs text-slate-500">
+                  <EmptyState compact>
                     Добавьте расход, чтобы контролировать связанные списания.
-                  </p>
+                  </EmptyState>
                 )}
                 <FinancialRecordInputs
                   paymentIndex={paymentIndex}
@@ -252,25 +253,27 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                   onUpdateRecord={onUpdateRecord}
                   onRemoveRecord={onRemoveRecord}
                 />
-              </div>
+              </Panel>
             </div>
           )}
         </>
       )}
 
       {showExpandToggle && onToggleExpand && (
-        <div className="ml-2 border-t border-slate-200/90 pt-3">
-          <button
-            type="button"
+        <div className="border-t border-slate-200/90 pt-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={isExpanded ? 'collapse' : 'expand'}
             onClick={onToggleExpand}
             aria-expanded={isExpanded}
             data-testid="policy-payment-expand-toggle"
-            className="btn btn-sm btn-secondary w-full justify-center"
+            className="w-full"
           >
             {isExpanded ? 'Свернуть' : 'Развернуть'}
-          </button>
+          </Button>
         </div>
       )}
-    </section>
+    </Panel>
   );
 };

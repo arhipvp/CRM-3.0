@@ -143,7 +143,7 @@ describe('AddPolicyForm', () => {
     });
     expect(screen.getByTestId('policy-payment-mini-index')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('policy-payment-index-2'));
-    expect(screen.getByTestId('policy-payment-index-2').className).toContain('bg-sky-100');
+    expect(screen.getByTestId('policy-payment-index-2')).toHaveAttribute('aria-pressed', 'true');
 
     const paymentCards = within(screen.getByTestId('policy-payment-list')).getAllByTestId(
       'policy-payment-card',
@@ -335,14 +335,20 @@ describe('AddPolicyForm', () => {
     expect(screen.getAllByTestId('policy-finance-payment-actual-chip')[0]).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('policy-finance-payment-index-3'));
-    expect(screen.getByTestId('policy-finance-payment-index-3').className).toContain('bg-sky-100');
+    expect(screen.getByTestId('policy-finance-payment-index-3')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
 
     const expandButtons = screen.getAllByRole('button', { name: 'Развернуть' });
     fireEvent.click(expandButtons[2]);
     expect(
       screen.getByText('Добавьте доход, чтобы привязать поступление к этому платежу.'),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('policy-finance-payment-index-3').className).toContain('bg-sky-100');
+    expect(screen.getByTestId('policy-finance-payment-index-3')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Развернуть' })[0]);
 
@@ -421,7 +427,7 @@ describe('AddPolicyForm', () => {
 
     const counterpartyInput = await screen.findByPlaceholderText('Контрагент / организация');
     fireEvent.change(counterpartyInput, { target: { value: 'СпецКонтрагент' } });
-    const counterpartyCard = counterpartyInput.closest('div.rounded-\\[28px\\]');
+    const counterpartyCard = counterpartyInput.closest('div.app-panel-muted');
     expect(counterpartyCard).not.toBeNull();
 
     expect(
@@ -616,7 +622,7 @@ describe('AddPolicyForm', () => {
     expect(screen.queryByDisplayValue('Расход исполнителю Alisa')).not.toBeInTheDocument();
 
     const executorInput = screen.getByDisplayValue('Alisa');
-    const executorCard = executorInput.closest('div.rounded-\\[28px\\]');
+    const executorCard = executorInput.closest('div.app-panel-muted');
     expect(executorCard).not.toBeNull();
 
     fireEvent.click(within(executorCard as HTMLElement).getByRole('button', { name: '+ Расход' }));
