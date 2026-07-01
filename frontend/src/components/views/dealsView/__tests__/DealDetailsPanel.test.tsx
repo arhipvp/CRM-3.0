@@ -1,5 +1,5 @@
 ﻿import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Deal, User } from '../../../../types';
 
@@ -383,6 +383,10 @@ const currentUser: User = {
 };
 
 describe('DealDetailsPanel', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     reloadNotesMock.mockResolvedValue(undefined);
@@ -694,6 +698,9 @@ describe('DealDetailsPanel', () => {
   });
 
   it('uses manual deadline event from timeline for event-based next contact', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-01T12:00:00Z'));
+
     dealCommunicationState.dealTimelineEvents = [
       {
         id: 'deal-event-1',
