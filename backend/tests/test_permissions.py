@@ -24,13 +24,13 @@ class PermissionsTestCase(APITestCase):
         """Set up test data: users, roles, and deals"""
         # Create test users
         self.admin_user = User.objects.create_user(
-            username="admin", password="testpass123"
+            username="admin", password="testpass123"  # pragma: allowlist secret
         )
         self.seller_user = User.objects.create_user(
-            username="seller", password="testpass123"
+            username="seller", password="testpass123"  # pragma: allowlist secret
         )
         self.executor_user = User.objects.create_user(
-            username="executor", password="testpass123"
+            username="executor", password="testpass123"  # pragma: allowlist secret
         )
 
         # Create roles
@@ -210,10 +210,10 @@ class ClientPermissionsTestCase(APITestCase):
     def setUp(self):
         """Set up test data for client tests"""
         self.admin_user = User.objects.create_user(
-            username="admin", password="testpass123"
+            username="admin", password="testpass123"  # pragma: allowlist secret
         )
         self.seller_user = User.objects.create_user(
-            username="seller", password="testpass123"
+            username="seller", password="testpass123"  # pragma: allowlist secret
         )
 
         self.admin_role = Role.objects.create(name="Admin")
