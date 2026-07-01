@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import patch
 
 from apps.clients.models import Client, ClientMergeSession, ClientSimilarityExclusion
@@ -861,6 +862,123 @@ class ClientMergeAPITests(AuthenticatedAPITestCase):
         self.target.refresh_from_db()
         self.assertTrue(self.target.is_counterparty)
         self.assertTrue(response.data["is_counterparty"])
+
+    def test_seller_can_update_related_client_counterparty_flag(self):
+        seller = User.objects.create_user(username="counterparty-seller")
+        Deal.objects.create(
+            title="Counterparty seller deal",
+            client=self.target,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.patch(
+            f"/api/v1/clients/{self.target.id}/",
+            {"is_counterparty": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.target.refresh_from_db()
+        self.assertTrue(self.target.is_counterparty)
+
+    def test_seller_can_update_counterparty_flag_with_unchanged_form_payload(self):
+        seller = User.objects.create_user(username="counterparty-form-seller")
+        self.target.phone = "+79990001122"
+        self.target.email = "client@example.test"
+        self.target.birth_date = date(1990, 1, 2)
+        self.target.notes = "Existing note"
+        self.target.save(
+            update_fields=["phone", "email", "birth_date", "notes", "updated_at"]
+        )
+        Deal.objects.create(
+            title="Counterparty form seller deal",
+            client=self.target,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.patch(
+            f"/api/v1/clients/{self.target.id}/",
+            {
+                "name": self.target.name,
+                "is_counterparty": True,
+                "phone": self.target.phone,
+                "email": self.target.email,
+                "birth_date": self.target.birth_date.isoformat(),
+                "notes": self.target.notes,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.target.refresh_from_db()
+        self.assertTrue(self.target.is_counterparty)
+
+    def test_seller_can_unset_related_client_counterparty_flag(self):
+        seller = User.objects.create_user(username="counterparty-unset-seller")
+        self.target.is_counterparty = True
+        self.target.save(update_fields=["is_counterparty", "updated_at"])
+        Deal.objects.create(
+            title="Counterparty unset seller deal",
+            client=self.target,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.patch(
+            f"/api/v1/clients/{self.target.id}/",
+            {"is_counterparty": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.target.refresh_from_db()
+        self.assertFalse(self.target.is_counterparty)
+
+    def test_seller_cannot_update_other_client_fields_with_counterparty_flag(self):
+        seller = User.objects.create_user(username="counterparty-name-seller")
+        Deal.objects.create(
+            title="Counterparty name seller deal",
+            client=self.target,
+            seller=seller,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.authenticate(seller)
+        response = self.api_client.patch(
+            f"/api/v1/clients/{self.target.id}/",
+            {
+                "name": "Новое имя",
+                "is_counterparty": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.target.refresh_from_db()
+        self.assertEqual(self.target.name, "Иванов Иван")
+        self.assertFalse(self.target.is_counterparty)
+
+    def test_unrelated_user_cannot_update_counterparty_flag(self):
+        unrelated = User.objects.create_user(username="counterparty-unrelated")
+        self.authenticate(unrelated)
+        response = self.api_client.patch(
+            f"/api/v1/clients/{self.target.id}/",
+            {"is_counterparty": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.target.refresh_from_db()
+        self.assertFalse(self.target.is_counterparty)
 
 
 class ClientSimilarityServiceTests(TestCase):

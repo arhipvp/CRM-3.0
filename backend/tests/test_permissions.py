@@ -252,6 +252,28 @@ class ClientPermissionsTestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_seller_can_update_related_client_counterparty_flag(self):
+        """Test: Seller can update only the counterparty flag for a related client"""
+        Deal.objects.create(
+            title="Test Deal",
+            client=self.client_obj,
+            seller=self.seller_user,
+            status="open",
+            stage_name="initial",
+        )
+
+        self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.seller_token}")
+
+        response = self.api_client.patch(
+            f"/api/v1/clients/{self.client_obj.id}/",
+            {"is_counterparty": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.client_obj.refresh_from_db()
+        self.assertTrue(self.client_obj.is_counterparty)
+
     def test_admin_can_update_client(self):
         """Test: Admin can update clients"""
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.admin_token}")

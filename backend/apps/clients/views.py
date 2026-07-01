@@ -7,6 +7,7 @@ from apps.clients.services import (
 from apps.common.drive import DriveError, ensure_client_folder
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
+from apps.deals.models import Deal
 from apps.users.models import AuditLog
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import status, viewsets
@@ -58,6 +59,19 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Client.objects.alive().order_by("-created_at")
         return queryset
+
+    def partial_update(self, request, *args, **kwargs):
+        client = self.get_object()
+        if self._can_modify(request.user, client):
+            return super().partial_update(request, *args, **kwargs)
+        if self._can_update_counterparty_flag(request.user, client, request.data):
+            return viewsets.ModelViewSet.update(
+                self, request, *args, partial=True, **kwargs
+            )
+        return Response(
+            {"detail": "Только администратор или владелец может редактировать данные"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     @action(
         detail=True,
@@ -496,6 +510,26 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def _can_merge_client(self, user, client: Client) -> bool:
         return bool(user and user.is_authenticated)
+
+    def _can_update_counterparty_flag(self, user, client: Client, data) -> bool:
+        if not user or not user.is_authenticated:
+            return False
+        if "is_counterparty" not in data:
+            return False
+        if not Deal.objects.alive().filter(client=client, seller_id=user.id).exists():
+            return False
+
+        unchanged_fields = {
+            "name": client.name,
+            "phone": client.phone,
+            "email": client.email,
+            "birth_date": client.birth_date.isoformat() if client.birth_date else None,
+            "notes": client.notes,
+        }
+        for field, current_value in unchanged_fields.items():
+            if field in data and data.get(field) != current_value:
+                return False
+        return True
 
     def _resolve_merge_clients(self, data):
         target_id = str(data["target_client_id"])
