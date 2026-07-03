@@ -49,6 +49,7 @@ const FIELD_ERROR_LABELS: Record<string, string> = {
 };
 
 const DIRECT_ERROR_KEYS = ['detail', 'message', 'error', 'non_field_errors'];
+const ERROR_CODE_KEY = 'error_code';
 
 const formatFieldErrorLabel = (field: string): string => FIELD_ERROR_LABELS[field] ?? field;
 
@@ -87,15 +88,30 @@ const stringifyErrorPayload = (payload: unknown): string | null => {
   return null;
 };
 
-const extractErrorMessage = async (response: Response, path: string): Promise<string> => {
+interface ExtractedErrorPayload {
+  message: string;
+  errorCode?: string;
+}
+
+const extractErrorPayload = async (
+  response: Response,
+  path: string,
+): Promise<ExtractedErrorPayload> => {
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
 
   if (contentType.includes('application/json')) {
     try {
       const payload = (await response.json()) as unknown;
       const message = stringifyErrorPayload(payload);
+      const errorCode =
+        payload && typeof payload === 'object'
+          ? (payload as Record<string, unknown>)[ERROR_CODE_KEY]
+          : undefined;
       if (message) {
-        return message;
+        return {
+          message,
+          errorCode: typeof errorCode === 'string' && errorCode.trim() ? errorCode : undefined,
+        };
       }
     } catch {
       // Fall through to generic handling when body is malformed.
@@ -104,7 +120,7 @@ const extractErrorMessage = async (response: Response, path: string): Promise<st
     try {
       const text = (await response.text()).trim();
       if (text && !looksLikeHtml(text)) {
-        return text;
+        return { message: text };
       }
     } catch {
       // Ignore body parsing errors and use a generic message below.
@@ -112,10 +128,10 @@ const extractErrorMessage = async (response: Response, path: string): Promise<st
   }
 
   if (response.status >= 500) {
-    return 'Ошибка сервера';
+    return { message: 'Ошибка сервера' };
   }
 
-  return `Request ${path} failed with status ${response.status}`;
+  return { message: `Request ${path} failed with status ${response.status}` };
 };
 
 export function getAccessToken(): string | null {
@@ -286,12 +302,14 @@ export function redirectToLogin(): void {
 export class APIError extends Error {
   status: number;
   path: string;
+  errorCode?: string;
 
-  constructor(message: string, status: number, path: string) {
+  constructor(message: string, status: number, path: string, errorCode?: string) {
     super(message);
     this.name = 'APIError';
     this.status = status;
     this.path = path;
+    this.errorCode = errorCode;
   }
 }
 
@@ -367,7 +385,8 @@ export async function request<T = unknown>(
   }
 
   if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, path));
+    const { errorCode, message } = await extractErrorPayload(response, path);
+    throw new APIError(message, response.status, path, errorCode);
   }
 
   if (response.status === 204) {
@@ -414,7 +433,8 @@ export async function requestBlob(
   }
 
   if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, path));
+    const { errorCode, message } = await extractErrorPayload(response, path);
+    throw new APIError(message, response.status, path, errorCode);
   }
 
   return response.blob();
@@ -457,7 +477,8 @@ export async function requestBlobWithHeaders(
   }
 
   if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, path));
+    const { errorCode, message } = await extractErrorPayload(response, path);
+    throw new APIError(message, response.status, path, errorCode);
   }
 
   return { blob: await response.blob(), headers: response.headers };

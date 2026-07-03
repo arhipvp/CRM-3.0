@@ -5,6 +5,7 @@ from apps.common.drive import (
     ensure_deal_folder,
     ensure_trash_folder,
     move_drive_file_to_folder,
+    serialize_drive_error,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.users.models import UserRole
@@ -155,7 +156,7 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             self._move_attachments_to_trash(instance)
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return super().destroy(request, *args, **kwargs)
@@ -193,7 +194,7 @@ class NoteViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             content = download_drive_file(str(file_id))
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 

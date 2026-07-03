@@ -19,4 +19,17 @@ describe('formatErrorMessage', () => {
       'Сервис временно недоступен',
     );
   });
+
+  it('uses friendly Google Drive temporary upload message', () => {
+    const error = new APIError(
+      'Google Drive временно не принял файл. Попробуйте ещё раз.',
+      503,
+      '/deals/deal-1/drive-files/',
+      'drive_temporary_error',
+    );
+
+    expect(formatErrorMessage(error, 'Не удалось загрузить файл')).toBe(
+      'Google Drive временно не принял файл. Попробуйте ещё раз через минуту.',
+    );
+  });
 });

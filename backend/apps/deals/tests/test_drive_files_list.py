@@ -3,9 +3,11 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from apps.clients.models import Client
+from apps.common.drive import DRIVE_TEMPORARY_ERROR_CODE, DriveOperationError
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
 
@@ -133,3 +135,58 @@ class DealDriveFilesListTests(AuthenticatedAPITestCase):
             "Указанная папка не принадлежит дереву папок сделки.",
         )
         list_contents_mock.assert_called_once_with("deal-folder")
+
+    def test_post_temporary_drive_error_returns_error_code(self):
+        error = DriveOperationError(
+            "Google Drive временно не принял файл. Попробуйте ещё раз.",
+            error_code=DRIVE_TEMPORARY_ERROR_CODE,
+            is_temporary=True,
+        )
+        upload = SimpleUploadedFile(
+            "policy.pdf", b"pdf", content_type="application/pdf"
+        )
+
+        with patch(
+            "apps.deals.view_mixins.drive.manage_drive_files",
+            side_effect=error,
+        ):
+            response = self.api_client.post(
+                f"/api/v1/deals/{self.deal.id}/drive-files/",
+                {"file": upload},
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["error_code"], DRIVE_TEMPORARY_ERROR_CODE)
+        self.assertEqual(response.data["detail"], str(error))
+
+    def test_post_success_keeps_file_payload_contract(self):
+        upload = SimpleUploadedFile(
+            "policy.pdf", b"pdf", content_type="application/pdf"
+        )
+        payload = {
+            "folder_id": "deal-folder",
+            "file": {
+                "id": "file-1",
+                "name": "policy.pdf",
+                "mime_type": "application/pdf",
+                "size": 12,
+                "created_at": None,
+                "modified_at": None,
+                "web_view_link": None,
+                "is_folder": False,
+            },
+        }
+
+        with patch(
+            "apps.deals.view_mixins.drive.manage_drive_files",
+            return_value=payload,
+        ):
+            response = self.api_client.post(
+                f"/api/v1/deals/{self.deal.id}/drive-files/",
+                {"file": upload},
+                format="multipart",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, payload)

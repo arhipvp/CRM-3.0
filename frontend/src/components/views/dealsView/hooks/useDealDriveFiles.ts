@@ -464,9 +464,10 @@ export const useDealDriveFiles = ({
         }
         console.error('Ошибка загрузки и распознавания полиса:', error);
         setRecognitionMessage(
-          error instanceof Error
-            ? error.message
-            : 'Не удалось загрузить и распознать документы. Попробуйте ещё раз.',
+          formatErrorMessage(
+            error,
+            'Не удалось загрузить и распознать документы. Попробуйте ещё раз.',
+          ),
         );
       } finally {
         if (latestDealIdRef.current === currentDealId) {

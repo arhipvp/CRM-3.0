@@ -5,6 +5,10 @@ const STATUS_FRIENDLY_MESSAGES: Record<number, string> = {
   403: 'У вас нет прав для этого действия.',
 };
 
+const ERROR_CODE_FRIENDLY_MESSAGES: Record<string, string> = {
+  drive_temporary_error: 'Google Drive временно не принял файл. Попробуйте ещё раз через минуту.',
+};
+
 const HTML_TAG_PATTERN = /<[^>]+>/;
 
 const looksLikeHtml = (value: string): boolean => {
@@ -30,6 +34,13 @@ const sanitizeMessage = (message: string, fallback?: string): string => {
 
 export function formatErrorMessage(error: unknown, fallback?: string): string {
   if (error instanceof APIError) {
+    const errorCodeMessage = error.errorCode
+      ? ERROR_CODE_FRIENDLY_MESSAGES[error.errorCode]
+      : undefined;
+    if (errorCodeMessage) {
+      return errorCodeMessage;
+    }
+
     const override = STATUS_FRIENDLY_MESSAGES[error.status];
     const detail = error.message && error.message !== override ? ` — ${error.message}` : '';
     if (override) {

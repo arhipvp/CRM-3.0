@@ -4,7 +4,7 @@ from apps.clients.services import (
     ClientSimilarityService,
     normalize_client_name,
 )
-from apps.common.drive import DriveError, ensure_client_folder
+from apps.common.drive import DriveError, ensure_client_folder, serialize_drive_error
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.models import Deal
@@ -98,7 +98,7 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return Response(result)
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -130,13 +130,12 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         except ValueError as exc:
             raise ValidationError({"field_overrides": str(exc)}) from exc
         except DriveError as exc:
+            payload = serialize_drive_error(exc)
+            payload["warning"] = (
+                "Ошибка Google Drive: часть папок могла быть не перенесена."
+            )
             return Response(
-                {
-                    "detail": str(exc),
-                    "warning": (
-                        "Ошибка Google Drive: часть папок могла быть не перенесена."
-                    ),
-                },
+                payload,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -199,14 +198,12 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         except ValueError as exc:
             raise ValidationError({"field_overrides": str(exc)}) from exc
         except DriveError as exc:
+            payload = serialize_drive_error(exc)
+            payload["warning"] = (
+                "Ошибка Google Drive: не удалось подготовить пошаговое " "объединение."
+            )
             return Response(
-                {
-                    "detail": str(exc),
-                    "warning": (
-                        "Ошибка Google Drive: не удалось подготовить пошаговое "
-                        "объединение."
-                    ),
-                },
+                payload,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return Response(

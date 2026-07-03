@@ -11,6 +11,7 @@ from apps.common.drive import (
     ensure_trash_folder,
     list_drive_folder_contents,
     move_drive_file_to_folder,
+    serialize_drive_error,
     upload_file_to_drive,
 )
 from apps.common.permissions import EditProtectedMixin
@@ -916,7 +917,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
             except DriveError as exc:
                 return Response(
-                    {"detail": str(exc)},
+                    serialize_drive_error(exc),
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
@@ -935,7 +936,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return Response(result)
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -1020,7 +1021,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 

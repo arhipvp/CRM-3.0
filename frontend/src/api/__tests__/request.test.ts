@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  APIError,
   buildLoginRedirectPath,
   consumePostLoginRedirect,
   getPostLoginRedirect,
@@ -127,6 +128,36 @@ describe('request error normalization', () => {
     );
 
     await expect(request('/policies/draft/')).rejects.toThrow('Сделка: Must be a valid UUID.');
+  });
+
+  it('keeps structured error codes on api errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail: 'Google Drive временно не принял файл. Попробуйте ещё раз.',
+            error_code: 'drive_temporary_error',
+          }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      ),
+    );
+
+    try {
+      await request('/deals/deal-1/drive-files/');
+      throw new Error('Expected request to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(APIError);
+      expect((error as APIError).status).toBe(503);
+      expect((error as APIError).errorCode).toBe('drive_temporary_error');
+      expect((error as APIError).message).toBe(
+        'Google Drive временно не принял файл. Попробуйте ещё раз.',
+      );
+    }
   });
 
   it('keeps multiple DRF field errors with labels', async () => {

@@ -3,6 +3,7 @@ from datetime import timedelta
 from apps.common.drive import (
     DriveError,
     ensure_policy_folder,
+    serialize_drive_error,
 )
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
@@ -197,7 +198,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             return Response(result)
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -264,7 +265,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+                serialize_drive_error(exc), status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
         return Response(payload)
 
@@ -331,7 +332,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             move_policy_to_deal(policy, target_deal, user)
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 

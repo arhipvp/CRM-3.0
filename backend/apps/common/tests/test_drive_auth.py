@@ -1,9 +1,14 @@
 import json
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from apps.common import drive
-from apps.common.drive import DriveConfigurationError
+from apps.common.drive import (
+    DRIVE_TEMPORARY_ERROR_CODE,
+    DriveConfigurationError,
+    DriveOperationError,
+)
 from django.test import SimpleTestCase, override_settings
 from google.auth.exceptions import RefreshError
 
@@ -110,3 +115,133 @@ class DriveAuthTests(SimpleTestCase):
         )
         self.assertEqual(code, "oauth_refresh_revoked")
         self.assertIn("invalid_grant", message)
+
+    def test_upload_file_to_drive_retries_temporary_http_error(self):
+        upload_request = Mock()
+        upload_request.next_chunk.side_effect = [
+            _FakeHttpError(502, "backendError"),
+            (
+                None,
+                {
+                    "id": "file-1",
+                    "name": "policy.pdf",
+                    "mimeType": "application/pdf",
+                    "size": "12",
+                    "createdTime": "2026-07-03T10:00:00Z",
+                    "modifiedTime": "2026-07-03T10:00:00Z",
+                    "webViewLink": "https://drive/file-1",
+                },
+            ),
+        ]
+        media_upload = Mock(return_value="media-body")
+
+        with (
+            patch.object(drive, "_GDriveHttpError", _FakeHttpError),
+            patch.object(drive, "_MediaIoBaseUpload", media_upload),
+            patch.object(drive, "_run_with_drive_service", return_value=upload_request),
+            patch.object(drive.time, "sleep") as sleep_mock,
+        ):
+            result = drive.upload_file_to_drive(
+                "folder-1", BytesIO(b"pdf"), "policy.pdf", "application/pdf"
+            )
+
+        self.assertEqual(result["id"], "file-1")
+        self.assertEqual(upload_request.next_chunk.call_count, 2)
+        sleep_mock.assert_called_once_with(1)
+        self.assertEqual(media_upload.call_args.kwargs["resumable"], True)
+        self.assertEqual(
+            media_upload.call_args.kwargs["chunksize"], drive.DRIVE_UPLOAD_CHUNK_SIZE
+        )
+
+    def test_upload_file_to_drive_raises_temporary_error_after_retries(self):
+        upload_request = Mock()
+        upload_request.next_chunk.side_effect = [
+            _FakeHttpError(502, "backendError"),
+            _FakeHttpError(502, "backendError"),
+            _FakeHttpError(502, "backendError"),
+            _FakeHttpError(502, "backendError"),
+            _FakeHttpError(502, "backendError"),
+        ]
+
+        with (
+            patch.object(drive, "_GDriveHttpError", _FakeHttpError),
+            patch.object(drive, "_MediaIoBaseUpload", Mock(return_value="media-body")),
+            patch.object(drive, "_run_with_drive_service", return_value=upload_request),
+            patch.object(drive.time, "sleep") as sleep_mock,
+        ):
+            with self.assertRaises(DriveOperationError) as ctx:
+                drive.upload_file_to_drive(
+                    "folder-1", BytesIO(b"pdf"), "policy.pdf", "application/pdf"
+                )
+
+        self.assertEqual(ctx.exception.error_code, DRIVE_TEMPORARY_ERROR_CODE)
+        self.assertTrue(ctx.exception.is_temporary)
+        self.assertEqual(upload_request.next_chunk.call_count, 5)
+        self.assertEqual(sleep_mock.call_count, len(drive.DRIVE_UPLOAD_RETRY_DELAYS))
+
+    def test_upload_file_to_drive_does_not_retry_refresh_error(self):
+        upload_request = Mock()
+        upload_request.next_chunk.side_effect = RefreshError(
+            "invalid_grant: Token has been expired or revoked."
+        )
+
+        with (
+            patch.object(drive, "_MediaIoBaseUpload", Mock(return_value="media-body")),
+            patch.object(drive, "_run_with_drive_service", return_value=upload_request),
+            patch.object(drive.time, "sleep") as sleep_mock,
+        ):
+            with self.assertRaises(DriveOperationError) as ctx:
+                drive.upload_file_to_drive(
+                    "folder-1", BytesIO(b"pdf"), "policy.pdf", "application/pdf"
+                )
+
+        self.assertEqual(ctx.exception.error_code, drive.DRIVE_RECONNECT_REQUIRED_CODE)
+        self.assertEqual(upload_request.next_chunk.call_count, 1)
+        sleep_mock.assert_not_called()
+
+    def test_upload_file_to_drive_does_not_retry_not_found(self):
+        upload_request = Mock()
+        upload_request.next_chunk.side_effect = _FakeHttpError(404, "notFound")
+
+        with (
+            patch.object(drive, "_GDriveHttpError", _FakeHttpError),
+            patch.object(drive, "_MediaIoBaseUpload", Mock(return_value="media-body")),
+            patch.object(drive, "_run_with_drive_service", return_value=upload_request),
+            patch.object(drive.time, "sleep") as sleep_mock,
+        ):
+            with self.assertRaises(DriveOperationError):
+                drive.upload_file_to_drive(
+                    "folder-1", BytesIO(b"pdf"), "policy.pdf", "application/pdf"
+                )
+
+        self.assertEqual(upload_request.next_chunk.call_count, 1)
+        sleep_mock.assert_not_called()
+
+    def test_upload_file_to_drive_reads_resumable_chunks_until_done(self):
+        upload_request = Mock()
+        upload_request.next_chunk.side_effect = [
+            (Mock(), None),
+            (
+                None,
+                {
+                    "id": "file-1",
+                    "name": "policy.pdf",
+                    "mimeType": "application/pdf",
+                    "size": "12",
+                    "createdTime": None,
+                    "modifiedTime": None,
+                    "webViewLink": None,
+                },
+            ),
+        ]
+
+        with (
+            patch.object(drive, "_MediaIoBaseUpload", Mock(return_value="media-body")),
+            patch.object(drive, "_run_with_drive_service", return_value=upload_request),
+        ):
+            result = drive.upload_file_to_drive(
+                "folder-1", BytesIO(b"pdf"), "policy.pdf", "application/pdf"
+            )
+
+        self.assertEqual(result["id"], "file-1")
+        self.assertEqual(upload_request.next_chunk.call_count, 2)

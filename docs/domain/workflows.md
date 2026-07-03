@@ -39,9 +39,9 @@
 ## 6) Документы и распознавание
 
 1. UI: загрузка документа в сделке.
-2. API: `POST /api/v1/documents/`.
-3. Запуск распознавания.
-4. API: `POST /api/v1/documents/recognize/` (JWT required).
+2. API: `POST /api/v1/deals/<id>/drive-files/` загружает файл в Google Drive через resumable upload; временные ошибки Google Drive (`429/5xx`) повторяются с backoff.
+3. Если Google Drive временно не принял файл, API возвращает `503` с `error_code=drive_temporary_error`, а UI просит повторить загрузку через минуту.
+4. Запуск распознавания полиса по выбранным Drive-файлам: `POST /api/v1/policies/recognize/` (JWT required).
 
 ## 7) Knowledge / Open Notebook
 

@@ -11,6 +11,7 @@ from apps.common.drive import (
     list_drive_folder_contents,
     move_drive_file_to_folder,
     rename_drive_file,
+    serialize_drive_error,
 )
 from apps.common.services import manage_drive_files
 from apps.users.models import AuditLog
@@ -166,7 +167,7 @@ class DealDriveMixin:
                 return Response({"folder_id": folder_id, "files": drive_files})
             except DriveError as exc:
                 return Response(
-                    {"detail": str(exc)},
+                    serialize_drive_error(exc),
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
@@ -203,7 +204,7 @@ class DealDriveMixin:
                 return Response({"file": updated_file})
             except DriveError as exc:
                 return Response(
-                    {"detail": str(exc)},
+                    serialize_drive_error(exc),
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
@@ -275,7 +276,7 @@ class DealDriveMixin:
                 )
             except DriveError as exc:
                 return Response(
-                    {"detail": str(exc)},
+                    serialize_drive_error(exc),
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
@@ -294,7 +295,7 @@ class DealDriveMixin:
             return Response(result)
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -398,6 +399,6 @@ class DealDriveMixin:
             return response
         except DriveError as exc:
             return Response(
-                {"detail": str(exc)},
+                serialize_drive_error(exc),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )

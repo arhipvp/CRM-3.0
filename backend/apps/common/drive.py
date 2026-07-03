@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
+import time
 from io import BytesIO
 from pathlib import Path
 from typing import Any, BinaryIO, Callable, NotRequired, Optional, TypedDict, TypeVar
@@ -38,6 +40,15 @@ TRASH_FOLDER_NAME = "Корзина"
 STATEMENTS_ROOT_FOLDER_NAME = "Ведомости"
 DEFAULT_GOOGLE_OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
 DRIVE_AUTH_MODE_OAUTH = "oauth"
+DRIVE_UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024
+DRIVE_UPLOAD_RETRY_DELAYS = (1, 3, 7, 15)
+DRIVE_TEMPORARY_ERROR_CODE = "drive_temporary_error"
+DRIVE_RECONNECT_REQUIRED_CODE = "drive_reconnect_required"
+DRIVE_TEMPORARY_ERROR_MESSAGE = (
+    "Google Drive временно не принял файл. Попробуйте ещё раз."
+)
+DRIVE_RECONNECT_REQUIRED_MESSAGE = "Google Drive нужно переподключить."
+DRIVE_TRANSIENT_HTTP_STATUSES = {429, 500, 502, 503, 504}
 
 _T = TypeVar("_T")
 
@@ -52,6 +63,17 @@ class DriveConfigurationError(DriveError):
 
 class DriveOperationError(DriveError):
     """Raised when a Drive API call fails."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_code: str = "",
+        is_temporary: bool = False,
+    ):
+        super().__init__(message)
+        self.error_code = error_code
+        self.is_temporary = is_temporary
 
 
 class DriveFileInfo(TypedDict):
@@ -271,6 +293,39 @@ def _extract_drive_error_details(exc: Exception) -> tuple[Optional[int], str, st
         exc.__class__.__name__.lower(),
         str(exc).strip() or exc.__class__.__name__,
     )
+
+
+def _is_temporary_drive_error(exc: Exception) -> bool:
+    status, _, _ = _extract_drive_error_details(exc)
+    if status in DRIVE_TRANSIENT_HTTP_STATUSES:
+        return True
+    return isinstance(exc, (TimeoutError, ConnectionError, socket.timeout))
+
+
+def _drive_operation_error_from_exception(
+    default_message: str, exc: Exception
+) -> DriveOperationError:
+    _, code, _ = _extract_drive_error_details(exc)
+    if _is_temporary_drive_error(exc):
+        return DriveOperationError(
+            DRIVE_TEMPORARY_ERROR_MESSAGE,
+            error_code=DRIVE_TEMPORARY_ERROR_CODE,
+            is_temporary=True,
+        )
+    if code.startswith("oauth_") and "refresh" in code:
+        return DriveOperationError(
+            DRIVE_RECONNECT_REQUIRED_MESSAGE,
+            error_code=DRIVE_RECONNECT_REQUIRED_CODE,
+        )
+    return DriveOperationError(default_message)
+
+
+def serialize_drive_error(exc: DriveError) -> dict[str, str]:
+    payload = {"detail": str(exc)}
+    error_code = getattr(exc, "error_code", "")
+    if error_code:
+        payload["error_code"] = error_code
+    return payload
 
 
 def _log_drive_api_failure(operation: str, auth_type: str, exc: Exception) -> None:
@@ -563,25 +618,59 @@ def upload_file_to_drive(
     media_body = _MediaIoBaseUpload(
         file_obj,
         mimetype=mime_type or "application/octet-stream",
-        resumable=False,
+        chunksize=DRIVE_UPLOAD_CHUNK_SIZE,
+        resumable=True,
     )
 
     metadata = {"name": file_name, "parents": [folder_id]}
 
     try:
-        created = _run_with_drive_service(
+        request = _run_with_drive_service(
             "upload_drive_file",
-            lambda service: service.files()
-            .create(
+            lambda service: service.files().create(
                 body=metadata,
                 media_body=media_body,
                 fields="id, name, mimeType, size, createdTime, modifiedTime, webViewLink",
                 supportsAllDrives=True,
-            )
-            .execute(),
+            ),
         )
     except Exception as exc:
-        raise DriveOperationError("Unable to upload file to Google Drive.") from exc
+        raise _drive_operation_error_from_exception(
+            "Unable to upload file to Google Drive.", exc
+        ) from exc
+
+    if request is None:
+        raise DriveOperationError("Unable to upload file to Google Drive.")
+
+    created = None
+    attempt = 0
+    while created is None:
+        try:
+            _, created = request.next_chunk()
+        except Exception as exc:
+            if attempt >= len(
+                DRIVE_UPLOAD_RETRY_DELAYS
+            ) or not _is_temporary_drive_error(exc):
+                _log_drive_api_failure("upload_drive_file", DRIVE_AUTH_MODE_OAUTH, exc)
+                raise _drive_operation_error_from_exception(
+                    "Unable to upload file to Google Drive.", exc
+                ) from exc
+            delay = DRIVE_UPLOAD_RETRY_DELAYS[attempt]
+            attempt += 1
+            status, code, message = _extract_drive_error_details(exc)
+            logger.warning(
+                "Retrying Google Drive upload. attempt=%s delay=%s status=%s code=%s reason=%s size=%s mime_type=%s",
+                attempt,
+                delay,
+                status or "unknown",
+                code or "unknown",
+                message or "unknown",
+                getattr(file_obj, "size", None)
+                or getattr(file_obj, "_size", None)
+                or "unknown",
+                mime_type or "application/octet-stream",
+            )
+            time.sleep(delay)
 
     if not created:
         raise DriveOperationError("Unable to upload file to Google Drive.")
