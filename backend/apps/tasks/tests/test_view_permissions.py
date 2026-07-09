@@ -252,20 +252,20 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         returned_ids = {item["id"] for item in payload}
         self.assertIn(str(assigned_task.id), returned_ids)
 
-    def test_tasks_default_to_priority_then_due_date_then_created_at(self):
+    def test_tasks_default_to_priority_then_created_at(self):
         now = timezone.now()
-        urgent_later = Task.objects.create(
+        urgent_newer = Task.objects.create(
             deal=self.deal,
-            title="Urgent later",
-            priority=Task.PriorityChoices.URGENT,
-            due_at=now + timedelta(days=3),
-            created_by=self.seller,
-        )
-        urgent_sooner = Task.objects.create(
-            deal=self.deal,
-            title="Urgent sooner",
+            title="Urgent newer",
             priority=Task.PriorityChoices.URGENT,
             due_at=now + timedelta(days=1),
+            created_by=self.seller,
+        )
+        urgent_older = Task.objects.create(
+            deal=self.deal,
+            title="Urgent older",
+            priority=Task.PriorityChoices.URGENT,
+            due_at=now + timedelta(days=3),
             created_by=self.seller,
         )
         high_task = Task.objects.create(
@@ -275,6 +275,9 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
             due_at=now + timedelta(days=1),
             created_by=self.seller,
         )
+        Task.objects.filter(id=urgent_older.id).update(created_at=now - timedelta(days=2))
+        Task.objects.filter(id=urgent_newer.id).update(created_at=now - timedelta(days=1))
+        Task.objects.filter(id=high_task.id).update(created_at=now - timedelta(days=3))
 
         self.authenticate(self.seller)
         response = self.api_client.get("/api/v1/tasks/")
@@ -282,12 +285,12 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         payload = response.data.get("results", response.data)
         returned_ids = [item["id"] for item in payload]
-        urgent_later_index = returned_ids.index(str(urgent_later.id))
-        urgent_sooner_index = returned_ids.index(str(urgent_sooner.id))
+        urgent_older_index = returned_ids.index(str(urgent_older.id))
+        urgent_newer_index = returned_ids.index(str(urgent_newer.id))
         high_task_index = returned_ids.index(str(high_task.id))
 
-        self.assertLess(urgent_sooner_index, urgent_later_index)
-        self.assertLess(urgent_later_index, high_task_index)
+        self.assertLess(urgent_older_index, urgent_newer_index)
+        self.assertLess(urgent_newer_index, high_task_index)
 
     def test_tasks_support_explicit_priority_ordering(self):
         low_task = Task.objects.create(

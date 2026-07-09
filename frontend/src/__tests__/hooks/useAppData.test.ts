@@ -17,7 +17,7 @@ import {
 } from '../../api';
 
 vi.mock('../../api', () => ({
-  DEFAULT_TASKS_API_ORDERING: '-priority,due_at,-created_at',
+  DEFAULT_TASKS_API_ORDERING: '-priority,created_at',
   fetchClients: vi.fn(),
   fetchDealsWithPagination: vi.fn(),
   fetchFinancialRecords: vi.fn(),

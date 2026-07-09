@@ -41,33 +41,36 @@ const LocationProbe = () => {
 };
 
 describe('TasksView', () => {
-  it('sorts urgent tasks first and then by nearest due date by default', () => {
+  it('sorts urgent tasks first and then by oldest created date by default', () => {
     renderTasksView([
       buildTask({
         id: 'task-high',
         title: 'Высокая',
         priority: 'high',
         dueAt: '2026-04-03T10:00:00Z',
+        createdAt: '2026-04-01T10:00:00Z',
       }),
       buildTask({
-        id: 'task-urgent-later',
-        title: 'Срочная позже',
-        priority: 'urgent',
-        dueAt: '2026-04-05T10:00:00Z',
-      }),
-      buildTask({
-        id: 'task-urgent-sooner',
-        title: 'Срочная раньше',
+        id: 'task-urgent-newer',
+        title: 'Срочная новая',
         priority: 'urgent',
         dueAt: '2026-04-02T10:00:00Z',
+        createdAt: '2026-04-03T10:00:00Z',
+      }),
+      buildTask({
+        id: 'task-urgent-older',
+        title: 'Срочная старая',
+        priority: 'urgent',
+        dueAt: '2026-04-05T10:00:00Z',
+        createdAt: '2026-04-02T10:00:00Z',
       }),
     ]);
 
     const titles = screen.getAllByRole('cell').map((cell) => cell.textContent ?? '');
     const combined = titles.join(' | ');
 
-    expect(combined.indexOf('Срочная раньше')).toBeLessThan(combined.indexOf('Срочная позже'));
-    expect(combined.indexOf('Срочная позже')).toBeLessThan(combined.indexOf('Высокая'));
+    expect(combined.indexOf('Срочная старая')).toBeLessThan(combined.indexOf('Срочная новая'));
+    expect(combined.indexOf('Срочная новая')).toBeLessThan(combined.indexOf('Высокая'));
   });
 
   it('keeps deleted tasks hidden by default', () => {
@@ -93,7 +96,7 @@ describe('TasksView', () => {
     await waitFor(() => {
       expect(onRefreshTasks).toHaveBeenCalledWith({
         force: true,
-        ordering: '-priority,due_at,-created_at',
+        ordering: '-priority,created_at',
         showDeleted: true,
       });
     });
@@ -103,7 +106,7 @@ describe('TasksView', () => {
     await waitFor(() => {
       expect(onRefreshTasks).toHaveBeenLastCalledWith({
         force: true,
-        ordering: '-priority,due_at,-created_at',
+        ordering: '-priority,created_at',
         showDeleted: false,
       });
     });

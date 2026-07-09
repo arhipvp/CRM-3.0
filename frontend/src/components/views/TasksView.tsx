@@ -8,13 +8,13 @@ import { BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { PRIORITY_LABELS, STATUS_LABELS } from '../tasks/constants';
 import { TaskTable } from '../tasks/TaskTable';
 
-type TaskSortKey = 'dueAt' | 'priority' | 'createdAt' | 'priorityThenDueAt';
+type TaskSortKey = 'dueAt' | 'priority' | 'createdAt' | 'priorityThenCreatedAt';
 
-const DEFAULT_TASKS_SORTING = 'priorityThenDueAt';
+const DEFAULT_TASKS_SORTING = 'priorityThenCreatedAt';
 const DEFAULT_TASKS_FILTERS: FilterParams = { ordering: DEFAULT_TASKS_SORTING };
 
 const TASK_SORT_OPTIONS = [
-  { value: DEFAULT_TASKS_SORTING, label: 'Сначала срочные, затем ближайший срок' },
+  { value: DEFAULT_TASKS_SORTING, label: 'Сначала срочные, затем старые' },
   { value: '-dueAt', label: 'Срок (сначала ближние)' },
   { value: 'dueAt', label: 'Срок (сначала дальние)' },
   { value: '-priority', label: 'Приоритет (высокие сначала)' },
@@ -46,7 +46,7 @@ const getDueAtValue = (task: Task): number => {
 
 const getTaskSortValue = (task: Task, key: TaskSortKey): number => {
   switch (key) {
-    case 'priorityThenDueAt':
+    case 'priorityThenCreatedAt':
       return 0;
     case 'priority':
       return getPriorityOrder(task.priority);
@@ -58,18 +58,13 @@ const getTaskSortValue = (task: Task, key: TaskSortKey): number => {
   }
 };
 
-const compareTasksByPriorityThenDueAt = (a: Task, b: Task): number => {
+const compareTasksByPriorityThenCreatedAt = (a: Task, b: Task): number => {
   const priorityComparison = getPriorityOrder(b.priority) - getPriorityOrder(a.priority);
   if (priorityComparison !== 0) {
     return priorityComparison;
   }
 
-  const dueAtComparison = getDueAtValue(a) - getDueAtValue(b);
-  if (dueAtComparison !== 0) {
-    return dueAtComparison;
-  }
-
-  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
 };
 
 interface TasksViewProps {
@@ -174,7 +169,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
     const ordering = (filters.ordering as string) || DEFAULT_TASKS_SORTING;
     if (ordering === DEFAULT_TASKS_SORTING) {
-      result.sort(compareTasksByPriorityThenDueAt);
+      result.sort(compareTasksByPriorityThenCreatedAt);
       return result;
     }
 

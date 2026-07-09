@@ -31,7 +31,7 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, TaskOrderingFilter)
     search_fields = ["title", "description"]
     ordering_fields = ["created_at", "updated_at", "due_at", "priority"]
-    ordering = ["-priority_order", "due_at_is_null", "due_at", "-created_at"]
+    ordering = ["-priority_order", "created_at"]
     owner_field = "created_by"
     _allow_executor_status_update = False
 
