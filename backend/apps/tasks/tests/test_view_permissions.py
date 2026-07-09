@@ -275,8 +275,12 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
             due_at=now + timedelta(days=1),
             created_by=self.seller,
         )
-        Task.objects.filter(id=urgent_older.id).update(created_at=now - timedelta(days=2))
-        Task.objects.filter(id=urgent_newer.id).update(created_at=now - timedelta(days=1))
+        Task.objects.filter(id=urgent_older.id).update(
+            created_at=now - timedelta(days=2)
+        )
+        Task.objects.filter(id=urgent_newer.id).update(
+            created_at=now - timedelta(days=1)
+        )
         Task.objects.filter(id=high_task.id).update(created_at=now - timedelta(days=3))
 
         self.authenticate(self.seller)
