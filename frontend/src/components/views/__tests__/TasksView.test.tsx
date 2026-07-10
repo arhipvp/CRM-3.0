@@ -98,6 +98,7 @@ describe('TasksView', () => {
         force: true,
         ordering: '-priority,created_at',
         showDeleted: true,
+        activeOnly: false,
       });
     });
 
@@ -108,8 +109,60 @@ describe('TasksView', () => {
         force: true,
         ordering: '-priority,created_at',
         showDeleted: false,
+        activeOnly: true,
       });
     });
+  });
+
+  it('loads archived tasks only when completed or canceled tasks are requested', async () => {
+    const onRefreshTasks = vi.fn().mockResolvedValue(undefined);
+    renderTasksView([buildTask()], onRefreshTasks);
+
+    fireEvent.click(screen.getByLabelText('Показывать выполненные'));
+
+    await waitFor(() => {
+      expect(onRefreshTasks).toHaveBeenLastCalledWith({
+        force: true,
+        ordering: '-priority,created_at',
+        showDeleted: false,
+        activeOnly: false,
+      });
+    });
+
+    fireEvent.click(screen.getByLabelText('Показывать выполненные'));
+    fireEvent.change(screen.getByLabelText('Статус'), { target: { value: 'canceled' } });
+
+    await waitFor(() => {
+      expect(onRefreshTasks).toHaveBeenLastCalledWith({
+        force: true,
+        ordering: '-priority,created_at',
+        showDeleted: false,
+        activeOnly: false,
+      });
+    });
+  });
+
+  it('shows completed tasks when the completed status filter requests the archive', () => {
+    renderTasksView([
+      buildTask({ id: 'task-active', title: 'Активная', status: 'todo' }),
+      buildTask({ id: 'task-done', title: 'Завершённая', status: 'done' }),
+    ]);
+
+    fireEvent.change(screen.getByLabelText('Статус'), { target: { value: 'done' } });
+
+    expect(screen.getByText('Завершённая')).toBeInTheDocument();
+    expect(screen.queryByText('Активная')).not.toBeInTheDocument();
+  });
+
+  it('keeps the first task page visible while background pages are loading', () => {
+    render(
+      <MemoryRouter>
+        <TasksView tasks={[buildTask({ title: 'Уже загружена' })]} currentUser={null} isLoading />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Уже загружена')).toBeInTheDocument();
+    expect(screen.queryByText('Загружаем задачи...')).not.toBeInTheDocument();
   });
 
   it('explains how to create tasks from an empty state', () => {

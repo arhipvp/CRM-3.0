@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import uuid
 
+from apps.common.indexes import PostgresTrigramIndex
 from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.db import models
@@ -151,6 +152,12 @@ class Deal(SoftDeleteModel):
         ordering = ["next_contact_date", "-next_review_date", "-created_at"]
         verbose_name = "Сделка"
         verbose_name_plural = "Сделки"
+        indexes = [
+            PostgresTrigramIndex(
+                "title",
+                name="deal_title_trgm_idx",
+            )
+        ]
 
     def __str__(self) -> str:
         return self.title

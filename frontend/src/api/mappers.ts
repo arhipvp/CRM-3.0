@@ -509,6 +509,7 @@ export const mapTask = (raw: Record<string, unknown>): Task => {
     dueAt: raw.due_at === undefined ? undefined : toNullableString(raw.due_at),
     remindAt: raw.remind_at === undefined ? undefined : toNullableString(raw.remind_at),
     checklist: checklistItems,
+    checklistCount: toNumberValue(raw.checklist_count, checklistItems.length),
     createdAt: toStringValue(raw.created_at),
     completedAt: raw.completed_at === undefined ? undefined : toNullableString(raw.completed_at),
     completedByName:

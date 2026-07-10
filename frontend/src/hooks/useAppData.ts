@@ -40,6 +40,7 @@ interface AppDataState {
 
 const DEALS_PAGE_SIZE = 20;
 const POLICIES_PAGE_SIZE = 50;
+const TASKS_PAGE_SIZE = 500;
 
 const INITIAL_APP_DATA_STATE: AppDataState = {
   clients: [],
@@ -107,6 +108,7 @@ export const useAppData = () => {
   const dealsRequestRef = useRef(0);
   const commissionsRequestRef = useRef(0);
   const financeRequestRef = useRef(0);
+  const tasksRequestRef = useRef(0);
   const commissionsLoadPromiseRef = useRef<Promise<void> | null>(null);
   const financeLoadPromiseRef = useRef<Promise<void> | null>(null);
   const financeRevisionRef = useRef(0);
@@ -401,8 +403,10 @@ export const useAppData = () => {
     setIsCommissionsDataLoading(false);
     setHasCommissionsSnapshotLoaded(false);
     setHasFinanceSnapshotLoaded(false);
+    tasksRequestRef.current += 1;
     tasksLoadedRef.current = false;
     tasksLoadKeyRef.current = null;
+    setIsTasksLoading(false);
     try {
       const dealsPromise = refreshDeals();
       const [clientsData, usersData, salesChannelsData] = await Promise.all([
@@ -539,27 +543,49 @@ export const useAppData = () => {
   );
 
   const ensureTasksLoaded = useCallback(
-    async (options?: { force?: boolean; showDeleted?: boolean; ordering?: string }) => {
+    async (options?: {
+      force?: boolean;
+      showDeleted?: boolean;
+      activeOnly?: boolean;
+      ordering?: string;
+    }) => {
       const force = options?.force ?? false;
       const showDeleted = options?.showDeleted ?? false;
+      const activeOnly = options?.activeOnly ?? true;
       const ordering = options?.ordering ?? DEFAULT_TASKS_API_ORDERING;
-      const loadKey = JSON.stringify({ showDeleted, ordering });
+      const loadKey = JSON.stringify({ showDeleted, activeOnly, ordering });
       if (tasksLoadedRef.current && tasksLoadKeyRef.current === loadKey && !force) {
         return;
       }
-      if (isTasksLoading) {
-        return;
-      }
+      tasksRequestRef.current += 1;
+      const requestId = tasksRequestRef.current;
       setIsTasksLoading(true);
       try {
-        const tasksData = await fetchTasks({
-          ordering,
-          show_deleted: showDeleted,
-        });
+        const tasksData = await fetchTasks(
+          {
+            ordering,
+            show_deleted: showDeleted,
+            active_only: activeOnly,
+          },
+          {
+            pageSize: TASKS_PAGE_SIZE,
+            onPage: (loadedTasks) => {
+              if (tasksRequestRef.current === requestId) {
+                setAppData({ tasks: loadedTasks });
+              }
+            },
+          },
+        );
+        if (tasksRequestRef.current !== requestId) {
+          return;
+        }
         setAppData({ tasks: tasksData });
         tasksLoadedRef.current = true;
         tasksLoadKeyRef.current = loadKey;
       } catch (err) {
+        if (tasksRequestRef.current !== requestId) {
+          return;
+        }
         setError(
           formatErrorMessage(
             err,
@@ -568,10 +594,12 @@ export const useAppData = () => {
         );
         throw err;
       } finally {
-        setIsTasksLoading(false);
+        if (tasksRequestRef.current === requestId) {
+          setIsTasksLoading(false);
+        }
       }
     },
-    [isTasksLoading, setAppData, setError],
+    [setAppData, setError],
   );
 
   const dealsHasMore = Boolean(dealsNextPage);

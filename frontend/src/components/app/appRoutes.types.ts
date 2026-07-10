@@ -174,6 +174,7 @@ export interface AppRouteLoadingState {
   onRefreshTasks?: (options?: {
     force?: boolean;
     showDeleted?: boolean;
+    activeOnly?: boolean;
     ordering?: string;
   }) => Promise<void>;
   onRefreshCommissionsSnapshot?: () => Promise<void>;

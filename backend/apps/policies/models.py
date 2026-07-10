@@ -1,5 +1,6 @@
 import uuid
 
+from apps.common.indexes import PostgresTrigramIndex
 from apps.common.models import SoftDeleteModel
 from django.db import models
 from django.db.models import Q
@@ -148,6 +149,10 @@ class Policy(SoftDeleteModel):
         verbose_name = "Policy"
         verbose_name_plural = "Policies"
         indexes = [
+            PostgresTrigramIndex(
+                "number",
+                name="policy_number_trgm_idx",
+            ),
             models.Index(fields=["number"]),
             models.Index(fields=["deal"]),
             models.Index(fields=["insurance_company"]),

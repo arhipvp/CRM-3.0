@@ -227,6 +227,84 @@ class TaskPermissionsTests(AuthenticatedAPITestCase):
         returned_ids = {item["id"] for item in payload}
         self.assertIn(str(self.task.id), returned_ids)
 
+    def test_active_only_returns_only_unfinished_statuses(self):
+        tasks_by_status = {
+            task_status: Task.objects.create(
+                deal=self.deal,
+                title=f"Task {task_status}",
+                status=task_status,
+                created_by=self.seller,
+            )
+            for task_status in Task.TaskStatus.values
+        }
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/tasks/?active_only=true&page_size=500")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {item["id"] for item in response.data["results"]}
+        self.assertIn(str(tasks_by_status[Task.TaskStatus.TODO].id), returned_ids)
+        self.assertIn(
+            str(tasks_by_status[Task.TaskStatus.IN_PROGRESS].id), returned_ids
+        )
+        self.assertIn(str(tasks_by_status[Task.TaskStatus.OVERDUE].id), returned_ids)
+        self.assertNotIn(str(tasks_by_status[Task.TaskStatus.DONE].id), returned_ids)
+        self.assertNotIn(
+            str(tasks_by_status[Task.TaskStatus.CANCELED].id), returned_ids
+        )
+
+    def test_list_uses_compact_checklist_contract_by_default(self):
+        self.task.checklist = [
+            {"text": "Первый пункт", "done": True},
+            {"text": "Второй пункт", "done": False},
+        ]
+        self.task.save(update_fields=["checklist"])
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/tasks/?active_only=true")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_task = next(
+            item for item in response.data["results"] if item["id"] == str(self.task.id)
+        )
+        self.assertNotIn("checklist", returned_task)
+        self.assertEqual(returned_task["checklist_count"], 2)
+
+    def test_list_can_explicitly_include_full_checklist(self):
+        self.task.checklist = [{"text": "Пункт", "done": False}]
+        self.task.save(update_fields=["checklist"])
+
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/tasks/?active_only=true&include_checklist=true"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_task = next(
+            item for item in response.data["results"] if item["id"] == str(self.task.id)
+        )
+        self.assertEqual(returned_task["checklist"], self.task.checklist)
+        self.assertNotIn("checklist_count", returned_task)
+
+    def test_task_page_size_is_capped_at_500(self):
+        Task.objects.bulk_create(
+            [
+                Task(
+                    deal=self.deal,
+                    title=f"Bulk task {index}",
+                    created_by=self.seller,
+                )
+                for index in range(500)
+            ]
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/tasks/?page_size=999")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 501)
+        self.assertEqual(len(response.data["results"]), 500)
+
     def test_assignee_sees_task_even_if_not_related_to_deal(self):
         foreign_client = Client.objects.create(name="Foreign Client")
         foreign_deal = Deal.objects.create(

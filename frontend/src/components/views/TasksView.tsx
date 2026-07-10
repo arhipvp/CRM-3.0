@@ -75,6 +75,7 @@ interface TasksViewProps {
   onRefreshTasks?: (options?: {
     force?: boolean;
     showDeleted?: boolean;
+    activeOnly?: boolean;
     ordering?: string;
   }) => Promise<void>;
   onDealSelect?: (dealId: string) => void;
@@ -89,7 +90,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>(DEFAULT_TASKS_FILTERS);
-  const lastShowDeletedRef = useRef(false);
+  const lastArchiveLoadKeyRef = useRef('false:true');
 
   const handleDealClick = useCallback(
     (dealId?: string) => {
@@ -104,16 +105,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   useEffect(() => {
     const showDeleted = String(filters.show_deleted) === 'true';
-    if (showDeleted === lastShowDeletedRef.current) {
+    const showCompleted = String(filters.show_completed) === 'true';
+    const selectedStatus = String(filters.taskStatus ?? '');
+    const activeOnly =
+      !showDeleted && !showCompleted && selectedStatus !== 'done' && selectedStatus !== 'canceled';
+    const archiveLoadKey = `${showDeleted}:${activeOnly}`;
+    if (archiveLoadKey === lastArchiveLoadKeyRef.current) {
       return;
     }
-    lastShowDeletedRef.current = showDeleted;
-    onRefreshTasks?.({
+    lastArchiveLoadKeyRef.current = archiveLoadKey;
+    const refreshPromise = onRefreshTasks?.({
       force: true,
       ordering: DEFAULT_TASKS_API_ORDERING,
       showDeleted,
-    }).catch(() => undefined);
-  }, [filters.show_deleted, onRefreshTasks]);
+      activeOnly,
+    });
+    refreshPromise?.catch(() => undefined);
+  }, [filters.show_completed, filters.show_deleted, filters.taskStatus, onRefreshTasks]);
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -153,7 +161,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }
 
     const showCompleted = String(filters.show_completed) === 'true';
-    if (!showCompleted) {
+    if (!showCompleted && filters.taskStatus !== 'done') {
       result = result.filter((task) => task.status !== 'done');
     }
 
@@ -241,7 +249,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           },
         ]}
       />
-      {isLoading ? (
+      {isLoading && !tasks.length ? (
         <div className="app-panel-muted px-5 py-6 text-center text-sm text-slate-600">
           Загружаем задачи...
         </div>

@@ -16,6 +16,30 @@ describe('mapTask', () => {
 
     expect(task.completionComment).toBe('Посчитано в Сбер.');
   });
+
+  it('uses compact checklist count while preserving detail checklist items', () => {
+    const compactTask = mapTask({
+      id: 'task-list',
+      title: 'Список',
+      status: 'todo',
+      priority: 'normal',
+      checklist_count: 7,
+      created_at: '2026-04-24T10:00:00Z',
+    });
+    const detailTask = mapTask({
+      id: 'task-detail',
+      title: 'Детали',
+      status: 'todo',
+      priority: 'normal',
+      checklist: [{ label: 'Проверить', done: false }],
+      created_at: '2026-04-24T10:00:00Z',
+    });
+
+    expect(compactTask.checklist).toEqual([]);
+    expect(compactTask.checklistCount).toBe(7);
+    expect(detailTask.checklist).toEqual([{ label: 'Проверить', done: false }]);
+    expect(detailTask.checklistCount).toBe(1);
+  });
 });
 
 describe('mapDeal', () => {

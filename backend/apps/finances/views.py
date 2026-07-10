@@ -131,6 +131,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "statement",
                 "payment",
                 "payment__policy",
+                "payment__policy__client",
+                "payment__policy__insured_client",
                 "payment__policy__deal",
                 "payment__policy__deal__client",
                 "payment__policy__insurance_type",

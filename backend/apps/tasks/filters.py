@@ -27,6 +27,10 @@ class TaskFilterSet(django_filters.FilterSet):
 
     deal = django_filters.UUIDFilter(field_name="deal__id", label="Deal ID")
 
+    active_only = django_filters.BooleanFilter(
+        method="filter_active_only", label="Only active tasks"
+    )
+
     ordering = django_filters.OrderingFilter(
         fields=(
             ("priority", "priority"),
@@ -39,4 +43,15 @@ class TaskFilterSet(django_filters.FilterSet):
 
     class Meta:
         model = Task
-        fields = ("status", "priority", "deal")
+        fields = ("status", "priority", "deal", "active_only")
+
+    def filter_active_only(self, queryset, name, value):
+        if value:
+            return queryset.filter(
+                status__in=(
+                    Task.TaskStatus.TODO,
+                    Task.TaskStatus.IN_PROGRESS,
+                    Task.TaskStatus.OVERDUE,
+                )
+            )
+        return queryset

@@ -1,5 +1,6 @@
 import uuid
 
+from apps.common.indexes import PostgresTrigramIndex
 from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.db import models
@@ -37,6 +38,12 @@ class Client(SoftDeleteModel):
 
     class Meta:
         ordering = ["name"]
+        indexes = [
+            PostgresTrigramIndex(
+                "name",
+                name="client_name_trgm_idx",
+            )
+        ]
 
     def __str__(self) -> str:
         return self.name

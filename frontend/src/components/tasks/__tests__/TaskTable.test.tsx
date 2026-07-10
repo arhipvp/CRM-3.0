@@ -42,6 +42,12 @@ describe('TaskTable', () => {
     expect(screen.getByText('Обычная задача')).not.toHaveClass('text-rose-700');
   });
 
+  it('renders checklist count from the compact list payload', () => {
+    render(<TaskTable tasks={[buildTask({ checklist: [], checklistCount: 12 })]} />);
+
+    expect(screen.getByText('Чеклист: 12')).toBeInTheDocument();
+  });
+
   it('keeps urgent completed task title red and struck through', () => {
     render(
       <TaskTable

@@ -13,6 +13,8 @@ from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework import status
@@ -1407,6 +1409,97 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         record_ids = {str(item["id"]) for item in results}
         self.assertIn(str(self.income_record.id), record_ids)
         self.assertNotIn(str(self.expense_record.id), record_ids)
+
+    def test_search_keeps_all_supported_fields(self):
+        insured_client = Client.objects.create(name="InsuredSearchToken")
+        insurance_type = InsuranceType.objects.create(name="TypeSearchToken")
+        sales_channel = SalesChannel.objects.create(name="ChannelSearchToken")
+        self.policy.client = self.deal.client
+        self.policy.insured_client = insured_client
+        self.policy.insurance_type = insurance_type
+        self.policy.sales_channel = sales_channel
+        self.policy.save(
+            update_fields=[
+                "client",
+                "insured_client",
+                "insurance_type",
+                "sales_channel",
+                "updated_at",
+            ]
+        )
+        self.policy_record.description = "RecordDescriptionToken"
+        self.policy_record.source = "RecordSourceToken"
+        self.policy_record.note = "RecordNoteToken"
+        self.policy_record.save(update_fields=["description", "source", "note"])
+
+        search_terms = (
+            "FILTER-POLICY",
+            "Search Client",
+            "InsuredSearchToken",
+            "TypeSearchToken",
+            "ChannelSearchToken",
+            "Search Deal",
+            "Policy payment seed",
+            "RecordDescriptionToken",
+            "RecordSourceToken",
+            "RecordNoteToken",
+        )
+
+        self.authenticate(self.seller)
+        for search_term in search_terms:
+            with self.subTest(search_term=search_term):
+                response = self.api_client.get(
+                    "/api/v1/financial_records/", {"search": search_term}
+                )
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                returned_ids = {item["id"] for item in self._extract_results(response)}
+                self.assertIn(str(self.policy_record.id), returned_ids)
+
+    def test_financial_record_list_query_count_does_not_grow_per_policy(self):
+        one_client = Client.objects.create(name="Query One Client")
+        one_policy = Policy.objects.create(
+            number="QUERY-ONE",
+            deal=self.deal,
+            client=one_client,
+            insured_client=one_client,
+        )
+        one_payment = Payment.objects.create(
+            policy=one_policy,
+            amount=Decimal("10.00"),
+            description="Query one payment",
+        )
+        FinancialRecord.objects.create(payment=one_payment, amount=Decimal("1.00"))
+
+        for index in range(20):
+            client = Client.objects.create(name=f"Query Many Client {index}")
+            policy = Policy.objects.create(
+                number=f"QUERY-MANY-{index}",
+                deal=self.deal,
+                client=client,
+                insured_client=client,
+            )
+            payment = Payment.objects.create(
+                policy=policy,
+                amount=Decimal("10.00"),
+                description=f"Query many payment {index}",
+            )
+            FinancialRecord.objects.create(payment=payment, amount=Decimal("1.00"))
+
+        self.authenticate(self.seller)
+        with CaptureQueriesContext(connection) as one_context:
+            one_response = self.api_client.get(
+                "/api/v1/financial_records/", {"search": "QUERY-ONE"}
+            )
+        with CaptureQueriesContext(connection) as many_context:
+            many_response = self.api_client.get(
+                "/api/v1/financial_records/", {"search": "QUERY-MANY"}
+            )
+
+        self.assertEqual(one_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(many_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(self._extract_results(one_response)), 1)
+        self.assertEqual(len(self._extract_results(many_response)), 20)
+        self.assertEqual(len(one_context), len(many_context))
 
     def test_filter_paid_balance_not_zero(self):
         self.authenticate(self.seller)

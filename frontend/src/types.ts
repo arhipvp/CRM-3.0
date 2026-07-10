@@ -683,6 +683,7 @@ export interface Task {
   dueAt?: string | null;
   remindAt?: string | null;
   checklist: ChecklistItem[];
+  checklistCount?: number;
   createdAt: string;
   completedAt?: string | null;
   completedByName?: string | null;

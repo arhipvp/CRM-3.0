@@ -1,5 +1,6 @@
 ﻿import re
 
+from apps.common.indexes import PostgresTrigramIndex
 from apps.common.models import SoftDeleteModel
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -38,6 +39,12 @@ class Payment(SoftDeleteModel):
         ordering = ["-created_at"]
         verbose_name = "Платёж"
         verbose_name_plural = "Платежи"
+        indexes = [
+            PostgresTrigramIndex(
+                "description",
+                name="payment_desc_trgm_idx",
+            )
+        ]
 
     @property
     def is_paid(self) -> bool:
@@ -213,6 +220,26 @@ class FinancialRecord(SoftDeleteModel):
         ordering = ["-date", "-created_at"]
         verbose_name = "Финансовая запись"
         verbose_name_plural = "Финансовые записи"
+        indexes = [
+            models.Index(
+                fields=["payment"],
+                condition=models.Q(deleted_at__isnull=True, date__isnull=False),
+                include=["amount"],
+                name="finrec_balance_active_idx",
+            ),
+            PostgresTrigramIndex(
+                "description",
+                name="finrec_desc_trgm_idx",
+            ),
+            PostgresTrigramIndex(
+                "source",
+                name="finrec_source_trgm_idx",
+            ),
+            PostgresTrigramIndex(
+                "note",
+                name="finrec_note_trgm_idx",
+            ),
+        ]
 
     @classmethod
     def infer_record_type_from_amount(cls, amount):

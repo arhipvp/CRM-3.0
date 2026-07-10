@@ -224,9 +224,46 @@ describe('useAppData loading strategy', () => {
       expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
       expect(mockedFetchTasks).toHaveBeenCalledTimes(1);
     });
-    expect(mockedFetchTasks).toHaveBeenCalledWith({
-      ordering: DEFAULT_TASKS_API_ORDERING,
-      show_deleted: false,
+    expect(mockedFetchTasks).toHaveBeenCalledWith(
+      {
+        ordering: DEFAULT_TASKS_API_ORDERING,
+        show_deleted: false,
+        active_only: true,
+      },
+      expect.objectContaining({ pageSize: 500, onPage: expect.any(Function) }),
+    );
+  });
+
+  it('publishes the first task page before background pagination finishes', async () => {
+    const secondPage = deferred<never[]>();
+    mockedFetchTasks.mockImplementationOnce(async (_filters, options) => {
+      const firstTask = {
+        id: 'task-first',
+        title: 'Первая страница',
+        status: 'todo',
+        priority: 'normal',
+        checklist: [],
+        createdAt: '2026-01-01T00:00:00Z',
+      } as never;
+      options?.onPage?.([firstTask], 1);
+      await secondPage.promise;
+      return [firstTask];
+    });
+
+    const { result } = renderHook(() => useAppData());
+    let loadPromise: Promise<void> | undefined;
+
+    await act(async () => {
+      loadPromise = result.current.ensureTasksLoaded();
+      await Promise.resolve();
+    });
+
+    expect(result.current.dataState.tasks.map((task) => task.id)).toEqual(['task-first']);
+    expect(result.current.isTasksLoading).toBe(true);
+
+    await act(async () => {
+      secondPage.resolve([]);
+      await loadPromise;
     });
   });
 

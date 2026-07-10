@@ -166,7 +166,7 @@ export function TaskTable({
             {tasks.map((task) => {
               const isDone = task.status === 'done';
               const isUrgent = task.priority === 'urgent';
-              const checklistCount = task.checklist?.length ?? 0;
+              const checklistCount = task.checklistCount ?? task.checklist?.length ?? 0;
 
               return (
                 <tr

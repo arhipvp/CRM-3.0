@@ -4,10 +4,17 @@ from django.db.models import Case, IntegerField, Q, Value, When
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
+from rest_framework.pagination import PageNumberPagination
 
 from .filters import TaskFilterSet
 from .models import Task
-from .serializers import TaskSerializer
+from .serializers import TaskListSerializer, TaskSerializer
+
+
+class TaskPageNumberPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 500
 
 
 class TaskOrderingFilter(filters.OrderingFilter):
@@ -27,6 +34,7 @@ class TaskOrderingFilter(filters.OrderingFilter):
 
 class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = TaskSerializer
+    pagination_class = TaskPageNumberPagination
     filterset_class = TaskFilterSet
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, TaskOrderingFilter)
     search_fields = ["title", "description"]
@@ -34,6 +42,14 @@ class TaskViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ordering = ["-priority_order", "created_at"]
     owner_field = "created_by"
     _allow_executor_status_update = False
+
+    def get_serializer_class(self):
+        include_checklist = (
+            self.request.query_params.get("include_checklist", "").lower() == "true"
+        )
+        if self.action == "list" and not include_checklist:
+            return TaskListSerializer
+        return TaskSerializer
 
     def get_queryset(self):
         user = self.request.user

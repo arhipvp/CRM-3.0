@@ -7,7 +7,7 @@ export const DEFAULT_TASKS_API_ORDERING = '-priority,created_at';
 
 export async function fetchTasks(
   filters?: FilterParams,
-  options?: { pageSize?: number },
+  options?: { pageSize?: number; onPage?: (tasks: Task[], page: number) => void },
 ): Promise<Task[]> {
   const pageSize = options?.pageSize ?? 200;
   const results: Task[] = [];
@@ -20,6 +20,7 @@ export async function fetchTasks(
       page_size: pageSize,
     });
     results.push(...payload.results);
+    options?.onPage?.([...results], page);
     if (!payload.next) {
       break;
     }
@@ -55,6 +56,7 @@ export async function fetchTasksByDeal(
     const payload = await fetchTasksWithPagination({
       deal: dealId,
       show_deleted: showDeleted,
+      include_checklist: true,
       page,
       page_size: pageSize,
     });
